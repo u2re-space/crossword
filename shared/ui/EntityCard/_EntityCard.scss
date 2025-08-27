@@ -1,0 +1,75 @@
+@layer entity-card {
+    .entity-card {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+
+        & > *:empty {
+            display: none;
+        }
+    }
+
+    .entity-card-header {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+
+        & > *:empty {
+            display: none;
+        }
+
+        .entity-card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .entity-card-icon {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+    }
+
+    .entity-card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+
+        & > *:empty {
+            display: none;
+        }
+
+        .entity-card-kind {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .entity-card-description {
+            font-size: 1rem;
+        }
+
+        .entity-card-tags {
+            font-size: 1rem;
+        }
+
+        .entity-card-location {
+            font-size: 1rem;
+        }
+
+        .entity-card-members {
+            font-size: 1rem;
+        }
+
+        .entity-card-services {
+            font-size: 1rem;
+        }
+
+        .entity-card-actions {
+            font-size: 1rem;
+        }
+
+        .entity-card-bonuses {
+            font-size: 1rem;
+        }
+    }
+
+}
