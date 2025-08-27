@@ -20,3 +20,6 @@
 ./https
 ./private/
 ./https/
+./shared/vendor
+./shared/vendor/*
+./shared/vendor/
