@@ -1,12 +1,17 @@
 import { H } from "fest/lure";
 
 //
-export const AppLayout = (content: HTMLElement)=>{
+export const AppLayout = (tabs: Map<string, HTMLElement>)=>{
     const $layout = H`<ui-box-with-sidebar>
-        <ui-tabbed-box class="c2-surface" style="background-color: --c2-surface(0.0, var(--current, currentColor));">
-            ${content}
+        <ui-tabbed-box prop:tabs=${tabs}>
         </ui-tabbed-box>
     </ui-box-with-sidebar>`;
+
+    //
+    /*const $tabbedBox = $layout.querySelector("ui-tabbed-box");
+    if ($tabbedBox) {
+        $tabbedBox.setTabs(tabs);
+    }*/
 
     //
     return $layout;

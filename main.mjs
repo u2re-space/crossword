@@ -37,17 +37,22 @@ async function bootstrap() {
     await loadCSS();
 
     //
-    const content = H`<div>
+    /*const content = H`<div>
         <ui-tabbed-box>
             <div data-name="timeline" class="c2-surface">${TimelineView()}</div>
             <div data-name="items" class="c2-surface"><p>Items placeholder</p></div>
             <div data-name="services" class="c2-surface"><p>Services placeholder</p></div>
             <div data-name="bonuses" class="c2-surface"><p>Bonuses placeholder</p></div>
         </ui-tabbed-box>
-    </div>`;
+    </div>`;*/
 
     //
-    const layout = MobileLayout(content);
+    const tabs = new Map([
+        ["timeline", TimelineView()]
+    ]);
+
+    //
+    const layout = MobileLayout(tabs);
     const sidebarEl = Sidebar();
 
     //
