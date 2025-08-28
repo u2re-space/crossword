@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-//import { compression } from 'vite-plugin-compression2';
 
+//
 import optimizer from 'vite-plugin-optimizer';
 import createExternal from "vite-plugin-external";
 import cssnano from "cssnano";
@@ -9,8 +9,9 @@ import autoprefixer from "autoprefixer";
 import https from "../private/https/certificate.mjs";
 
 //
-//import postcssPresetEnv from 'postcss-preset-env';
-//import tsconfigPaths from 'vite-tsconfig-paths';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+import visualizer from 'vite-bundle-analyzer';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 //
 function normalizeAliasPattern(pattern) {
@@ -38,7 +39,7 @@ const importFromTSConfig = (tsconfig, __dirname) => {
 export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve("./", import.meta.dirname))=>{
     const $resolve = { alias: importFromTSConfig(tsconfig, __dirname) }
     const terserOptions = {
-        ecma: 2020,
+        ecma: 2025,
         keep_classnames: false,
         keep_fnames: false,
         module: true,
@@ -58,7 +59,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             }
         },
         compress: {
-            ecma: 2020,
+            ecma: 2025,
             keep_classnames: false,
             keep_fnames: false,
             keep_infinity: false,
@@ -96,7 +97,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         format: {
             braces: false,
             comments: false,
-            ecma: 2020,
+            ecma: 2025,
             //indent_level: 0,
             semicolons: true,
             shebang: true,
@@ -109,11 +110,18 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     //
     const plugins = [
-        /*tsconfigPaths({
-            projects: [resolve(__dirname, './tsconfig.json')],
-        }),*/
+        viteSingleFile(),
+        visualizer({
+            open: false,
+            filename: 'dist/stats.html',
+        }),
+        viteStaticCopy({
+            targets: [
+                { src: 'src/pwa/manifest.json', dest: '.' },
+                { src: 'icon.svg', dest: '.' }
+            ]
+        }),
         optimizer({}),
-        //compression(),
         createExternal({
             interop: 'auto',
             externals: { "externals": "externals", "dist": "dist", "fonts": "fonts", "fest": "fest", "fest-src": "fest-src" },
@@ -134,12 +142,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         external: (source) => {
             if (source.startsWith("/externals") || source.startsWith("fest")) return true;
             return false;
-        },/*
-        external: [
-            "externals", "/externals", "./externals",
-            "dist", "/dist", "./dist",
-            "fest", "../"
-        ],*/
+        },
 
         output: {
             compact: true,
@@ -170,10 +173,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                         }
                     }],
                 }),
-                /*postcssPresetEnv({
-                    features: { 'nesting-rules': false, 'custom-properties': false },
-                    stage: 0
-                })*/
             ],
         },
     }
@@ -229,15 +228,19 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     //
     const build = {
+        target: 'esnext',
+        outDir: 'dist',
+        assetsInlineLimit: 4096,
+        cssCodeSplit: false,
         chunkSizeWarningLimit: 1600,
         assetsInlineLimit: 1024 * 1024,
-        minify: false,///"terser",
+        minify: false, // "terser",
         emptyOutDir: true,
         sourcemap: 'hidden',
-        target: "esnext",
         modulePreload: {
             polyfill: true,
             include: [
+                "fest/fl-ui",
                 "fest/dom",
                 "fest/lure",
                 "fest/object",
@@ -256,7 +259,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     }
 
     //
-    return {rollupOptions, plugins, resolve: $resolve, build, css, optimizeDeps, server};
+    return {
+        rollupOptions, plugins, resolve: $resolve, build, css, optimizeDeps, server,
+        define: { 'process.env': {} }
+    };
 }
 
 //

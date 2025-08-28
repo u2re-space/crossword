@@ -101,8 +101,8 @@ export const GPT_API = {
             }),
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+                "Content-Type": "application/json", // @ts-ignore
+                "Authorization": `Bearer ${import.meta?.env?.VITE_OPENAI_API_KEY || ''}`
             },
         });
 
