@@ -5,8 +5,8 @@
         //grid-template-columns: 260px minmax(0px, 1fr);
         //grid-template-rows: auto minmax(1fr, auto);
         gap: 0.5rem;
-        inline-size: 100%;
-        block-size: 100dvb;
+        inline-size: stretch;
+        block-size: stretch;
         padding: 0.5rem;
         box-sizing: border-box;
     }
@@ -30,15 +30,11 @@
     ui-box-with-sidebar > ui-tabbed-box {
         grid-column: 2 / -1;
         grid-row: 2 / 3;
-        inline-size: 100%;
-        block-size: 100%;
+        inline-size: stretch;
+        block-size: stretch;
     }
 
     @container (max-width: 800px) {
-        ui-box-with-sidebar {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto auto 1fr;
-        }
         ui-box-with-sidebar > nav[slot="sidebar"] {
             position: static;
             max-block-size: none;

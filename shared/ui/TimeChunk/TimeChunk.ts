@@ -5,8 +5,8 @@ export const TimeChunk = (timeChunk: any) => {
     return H`
     <div class="time-chunk">
         <div class="time-chunk-header">
-            <h3 class="time-chunk-title">${timeChunk.title}</h3>
-            <div class="time-chunk-icon">${timeChunk.icon}</div>
+            <div class="time-chunk-title">${timeChunk.title}</div>
+            <div class="time-chunk-icon"><ui-icon icon=${timeChunk.icon}></ui-icon></div>
         </div>
         <div class="time-chunk-range">
             <div class="time-chunk-range-start">${timeChunk.begin_time.toLocaleTimeString()}</div>

@@ -6,5 +6,3 @@ export const ItemsView = () => {
         <div class="cards-grid"></div>
     </section>`;
 };
-
-
