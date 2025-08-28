@@ -9,3 +9,14 @@ export const Sidebar = H`<nav slot="sidebar" class="c2-surface" style="backgroun
     <li><a href="#bonuses" data-name="bonuses">Bonuses</a></li>
     </ul>
 </nav>`;
+
+// navigation wiring for ui-tabbed-box
+Sidebar.addEventListener?.("click", (ev: any)=>{
+    const a = ev?.target?.closest?.('a[data-name]');
+    if (!a) return;
+    ev.preventDefault();
+    const name = a.getAttribute('data-name');
+    const owner = Sidebar.getRootNode?.()?.host || document;
+    const tabbed: any = owner?.querySelector?.('ui-tabbed-box');
+    tabbed?.openTab?.(name);
+});

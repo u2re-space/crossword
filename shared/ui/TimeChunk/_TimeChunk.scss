@@ -1,0 +1,33 @@
+
+@layer time-chunk {
+    .time-chunk {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5rem 0.75rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background: var(--c2-surface);
+    }
+
+    .time-chunk-header {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .time-chunk-title { margin: 0; font-weight: 700; }
+
+    .time-chunk-range {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .time-chunk-body {
+        display: grid;
+        gap: 0.25rem;
+    }
+}
+

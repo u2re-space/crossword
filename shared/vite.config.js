@@ -109,18 +109,21 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     };
 
     //
+    const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'production';
     const plugins = [
         viteSingleFile(),
         visualizer({
             open: false,
             filename: 'dist/stats.html',
         }),
-        viteStaticCopy({
-            targets: [
-                { src: 'src/pwa/manifest.json', dest: '.' },
-                { src: 'icon.svg', dest: '.' }
-            ]
-        }),
+        ...(isBuild ? [] : [
+            viteStaticCopy({
+                targets: [
+                    { src: 'src/pwa/manifest.json', dest: '.' },
+                    { src: 'icon.svg', dest: '.' }
+                ]
+            })
+        ]),
         optimizer({}),
         createExternal({
             interop: 'auto',
