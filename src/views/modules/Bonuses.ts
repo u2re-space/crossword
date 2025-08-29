@@ -6,5 +6,3 @@ export const BonusesView = () => {
         <div class="cards-grid"></div>
     </section>`;
 };
-
-

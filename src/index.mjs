@@ -9,8 +9,8 @@ import "shared/ui/EntityCard/_EntityCard.scss";
 import { H, Q } from "fest/lure";
 
 //
-import { AppLayout as DesktopLayout } from "./ui/app/layout/Desktop.ts";
-import { TimelineView, ItemsView, ServicesView, BonusesView } from "./ui/app/Views.ts";
+import { AppLayout as DesktopLayout } from "./frontend/layout/Desktop.js";
+import { TimelineView, ItemsView, ServicesView, BonusesView } from "./views/Views.js";
 import { colorScheme } from "fest/fl-ui";
 import { loadInlineStyle, default as loadCSS, initialize as initDOM } from "fest/dom";
 import { makeReactive } from "fest/object";

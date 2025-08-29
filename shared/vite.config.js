@@ -113,8 +113,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const plugins = [
         viteSingleFile(),
         visualizer({
-            open: false,
-            filename: 'dist/stats.html',
+            //open: false,
+            //filename: 'dist/stats.html',
         }),
         ...(isBuild ? [] : [
             viteStaticCopy({
@@ -233,7 +233,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const build = {
         target: 'esnext',
         outDir: 'dist',
-        assetsInlineLimit: 4096,
+        //assetsInlineLimit: 4096,
         cssCodeSplit: false,
         chunkSizeWarningLimit: 1600,
         assetsInlineLimit: 1024 * 1024,

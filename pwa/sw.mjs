@@ -1,6 +1,6 @@
-import { GPT_API } from "shared/api/GPT-API";
-import { idbOpen } from "shared/data/IDBStorage.ts";
-import { IDBStorage } from "shared/data/IDBStorage.ts";
+import { GPT_API } from "../src/core/api/GPT-API";
+import { idbOpen } from "../src/core/data/IDBStorage";
+import { IDBStorage } from "../src/core/data/IDBStorage";
 
 //
 const DB_NAME = 'req-queue';
