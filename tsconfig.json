@@ -18,9 +18,8 @@
             "fest/polyfill/*": ["./shared/fest/polyfill/*"],
             "polyfill/*": ["./shared/fest/polyfill/*"],
             "shared/*": ["./shared/*"],
-            "@legacy/*": ["./shared/fest/fl-ui/legacy/*"],
-            "@helpers/*": ["./shared/fest/fl-ui/helpers/*"],
-            "@scss/*": ["./shared/fest/fl-ui/scss/*"]
+            "@design/*": ["./shared/fest/fl-ui/design/*"],
+            "@ui/*": ["./shared/fest/fl-ui/ui/*"]
         },
         "target": "ESNext",
         "module": "ESNext",
