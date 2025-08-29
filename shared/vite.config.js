@@ -119,7 +119,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         ...(isBuild ? [] : [
             viteStaticCopy({
                 targets: [
-                    { src: 'src/pwa/manifest.json', dest: '.' },
+                    { src: 'pwa/manifest.json', dest: '.' },
                     { src: 'icon.svg', dest: '.' }
                 ]
             })
