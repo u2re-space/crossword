@@ -1,6 +1,6 @@
 {
-    "include": ["./src/**/*.ts", "./fest/**/*.ts"],
-    "exclude": ["../dist/**/*", "./externals/**/*"],
+    "include": ["./fest/**/*.ts"],
+    "exclude": ["../dist/**/*"],
     "compilerOptions": {
         "outDir": "../dist/",
         "paths": {
