@@ -148,9 +148,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-https
-https/
-https/*
+#
 fest
 fest/
 fest/*
@@ -158,6 +156,26 @@ externals
 externals/
 externals/*
 
+#
 private
 private/
 private/*
+https
+https/
+https/*
+
+# Build
+./dist
+./dist/
+./dist/*
+./build
+./build/
+./build/*
+
+# Builds
+dist
+dist/
+dist/*
+build
+build/
+build/*
