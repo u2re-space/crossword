@@ -71,9 +71,28 @@ externals
 ./shared/vendor
 ./shared/vendor/*
 ./shared/vendor/
-./concepts
-./concepts/
-./concepts/*
+
+# Legacy
+./deprecated
+./deprecated/
+./deprecated/*
+./outdated
+./outdated/
+./outdated/*
+./legacy
+./legacy/
+./legacy/*
+
+# Legacy
+deprecated
+deprecated/
+deprecated/*
+outdated
+outdated/
+outdated/*
+legacy
+legacy/
+legacy/*
 
 # Build
 ./dist
