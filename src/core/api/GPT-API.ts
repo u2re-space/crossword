@@ -12,9 +12,9 @@ Output only JSON code, nothing else.
 //
 const INSTRUCTIONS = {
     "math": "Needs to solve math problems and return the answer.",
-    "url": "Needs to search in url and convert into JSON scheme, auto-detected kind of url, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
-    "text": "Needs to convert text into JSON scheme, auto-detected kind of text, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
-    "image": "Needs to recognize image contents and convert into JSON scheme, auto-detected kind of image, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
+    "url": "Needs to search in url and convert into JSON scheme, entity type of url, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
+    "text": "Needs to convert text into JSON scheme, entity type of text, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
+    "image": "Needs to recognize image contents and convert into JSON scheme, entity type of image, and return it in JSON format. Return only JSON. Use JSON_SCHEMES from Scheme.ts.",
 }
 
 //
@@ -86,7 +86,7 @@ const COMPUTE_TEMPERATURE = (dataSource?: string|Blob|File|any, kind?: "math" | 
 // text, image_url, text_search_result, json_schema, json_schema_search_result
 export const GPT_API = {
     // simple logic for recognize data source
-    async recognizeDataSource(dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text") {
+    async recognizeDataSource(dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text", asEntity: "auto" | "bonus" | "person" | "location" | "market" | "service" | "task" | "item" | "vehicle" | "entertainment" = "auto") {
         const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
             body: JSON.stringify({
                 reasoning: { effort: PROMPT_COMPUTE_EFFORT(dataSource,kind) },
@@ -95,6 +95,7 @@ export const GPT_API = {
                 input: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: await getUsableData(dataSource, kind), type: typesForKind[kind] || "text" },
+                    { role: "user", content: asEntity === "auto" ? "Auto-detect entity type of data source" : `Entity type of data source is ${asEntity}` },
                     { role: "assistant", content: INSTRUCTIONS[kind] }
                 ],
                 instructions: INSTRUCTIONS[kind],
@@ -112,12 +113,12 @@ export const GPT_API = {
         return JSON.parse(data.choices[0].message.content);
     },
 
-    // assistance bit more complex logic for make plan
+    // assistance bit more complex logic for make plan, compute efforts always high
     async makePlan(preference: string, forDays: { start: Date, end: Date }, allowedDataSets?: any[]|null) {
         // step 1. get keywords and kind of data from preference and check allowed data sets, select best data sets
         // do first step by AI API
 
-        // step 2. filter data sets by allowed data sets
+        // step 2. filter data sets by allowed data sets (optimize context and token usage)
         // do some JS operations to filter data sets
 
         // step 3. make plan
@@ -133,5 +134,11 @@ export const GPT_API = {
         // store plan in application storage as JSON
 
         // step 6. return plan
+    },
+
+    // for generate solutions, such as math, coding, etc.
+    // more direct and less complex, may be passed some datasets for context
+    async makeSolution(reQuest: any, contextDataSets?: any[]|null) {
+
     }
 }
