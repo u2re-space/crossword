@@ -1,13 +1,13 @@
 const BASE_URL = "https://api.openai.com/v1";
-const MODEL = "gpt-5";
 const ENDPOINT = "responses";
+const MODEL = "gpt-5";
 
 //
 const SYSTEM_PROMPT = `
 You are a helpful assistant that can answer questions and help with tasks.
 You are also a helpful assistant that can help with tasks.
 Output only JSON code, nothing else.
-`
+`;
 
 //
 const INSTRUCTIONS = {
@@ -18,24 +18,24 @@ const INSTRUCTIONS = {
 }
 
 //
-const getUsableData = async (prompt: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text") => {
-    if (prompt instanceof Blob || prompt instanceof File) {
+const getUsableData = async (dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text") => {
+    if (dataSource instanceof Blob || dataSource instanceof File) {
         const reader = new FileReader();
         if (kind === "image") {
             return new Promise((resolve, reject) => {
-                reader.readAsDataURL(prompt);
+                reader.readAsDataURL(dataSource);
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = reject;
             });
         } else {
             return new Promise((resolve, reject) => {
-                reader.readAsText(prompt);
+                reader.readAsText(dataSource);
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = reject;
             });
         }
     }
-    return prompt;
+    return dataSource;
 }
 
 //
@@ -47,22 +47,22 @@ const typesForKind: Record<"math" | "url" | "text" | "image", "text" | "image_ur
 }
 
 //
-const PROMPT_COMPUTE_EFFORT = (kind: "math" | "url" | "text" | "image", prompt?: string|Blob|File|any) => {
-    if (prompt instanceof Blob || prompt instanceof File) {
+const PROMPT_COMPUTE_EFFORT = (dataSource?: string|Blob|File|any, kind?: "math" | "url" | "text" | "image") => {
+    if (dataSource instanceof Blob || dataSource instanceof File) {
         if (kind === "image") return "medium";
         return "low";
     }
-    if (typeof prompt === "string") {
-        if (prompt.includes("math")) return "high";
-        if (prompt.includes("url")) return "medium";
-        if (prompt.includes("text")) return "medium";
+    if (typeof dataSource === "string") {
+        if (dataSource.includes("math")) return "high";
+        if (dataSource.includes("url")) return "medium";
+        if (dataSource.includes("text")) return "medium";
         return "low";
     }
     return "low";
 }
 
 //
-const COMPUTE_TEMPERATURE = (kind: "math" | "url" | "text" | "image", prompt?: string|Blob|File|any) => {
+const COMPUTE_TEMPERATURE = (dataSource?: string|Blob|File|any, kind?: "math" | "url" | "text" | "image") => {
     // math needs more reasoning than creativity
     if (kind === "math") return 0.2;
 
@@ -85,15 +85,16 @@ const COMPUTE_TEMPERATURE = (kind: "math" | "url" | "text" | "image", prompt?: s
 // https://platform.openai.com/docs/api-reference/responses/
 // text, image_url, text_search_result, json_schema, json_schema_search_result
 export const GPT_API = {
-    getResponse: async (prompt: string|Blob|File, kind: "math" | "url" | "text" | "image" = "text") => {
+    // simple logic for recognize data source
+    async recognizeDataSource(dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text") {
         const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
             body: JSON.stringify({
-                reasoning: { effort: PROMPT_COMPUTE_EFFORT(kind, prompt) },
+                reasoning: { effort: PROMPT_COMPUTE_EFFORT(dataSource,kind) },
                 model: MODEL,
-                temperature: COMPUTE_TEMPERATURE(kind, prompt),
+                temperature: COMPUTE_TEMPERATURE(dataSource, kind),
                 input: [
                     { role: "system", content: SYSTEM_PROMPT },
-                    { role: "user", content: await getUsableData(prompt, kind), type: typesForKind[kind] || "text" },
+                    { role: "user", content: await getUsableData(dataSource, kind), type: typesForKind[kind] || "text" },
                     { role: "assistant", content: INSTRUCTIONS[kind] }
                 ],
                 instructions: INSTRUCTIONS[kind],
@@ -109,5 +110,28 @@ export const GPT_API = {
         //
         const data = await response.json();
         return JSON.parse(data.choices[0].message.content);
+    },
+
+    // assistance bit more complex logic for make plan
+    async makePlan(preference: string, forDays: { start: Date, end: Date }, allowedDataSets?: any[]|null) {
+        // step 1. get keywords and kind of data from preference and check allowed data sets, select best data sets
+        // do first step by AI API
+
+        // step 2. filter data sets by allowed data sets
+        // do some JS operations to filter data sets
+
+        // step 3. make plan
+        // do next step by AI API
+
+        // step 4. optimize plan
+        // compare with current plan, and some changes if needed
+
+        // step 4.5.
+        // if has conflicts or difficulties try new AI request for make compatible plan
+
+        // step 5. save plan in application storage
+        // store plan in application storage as JSON
+
+        // step 6. return plan
     }
 }
