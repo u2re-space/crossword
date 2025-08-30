@@ -72,6 +72,16 @@ externals
 ./shared/vendor/*
 ./shared/vendor/
 
+# Assets
+assets/fonts/*
+assets/images/*
+assets/icons/*
+assets/*
+assets/fonts/
+assets/images/
+assets/icons/
+assets/
+
 # Legacy
 ./deprecated
 ./deprecated/
@@ -101,3 +111,11 @@ legacy/*
 ./build
 ./build/
 ./build/*
+
+#
+concepts/prompts/original/*
+concepts/prompts/original/
+concepts/prompts/original
+./concepts/prompts/original/*
+./concepts/prompts/original/
+./concepts/prompts/original
