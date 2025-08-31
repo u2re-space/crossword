@@ -1,25 +1,29 @@
 import {H} from "fest/lure";
 
 //
-export const EntityCard = (entity: any) => {
+export const TaskItem = (taskItem: any) => {
     return H`
-    <div class="entity-card">
-        <div class="entity-card-header">
-            <div class="entity-card-icon">${entity.icon}</div>
-            <h3 class="entity-card-title">${entity.name}</h3>
+    <div class="time-chunk">
+        <div class="time-chunk-header">
+            <div class="time-chunk-title">${taskItem.title}</div>
+            <div class="time-chunk-icon"><ui-icon icon=${taskItem.icon}></ui-icon></div>
         </div>
-        <div class="entity-card-content">
-            <div class="entity-card-kind">${entity.kind}</div>
-            <div class="entity-card-description">${entity.description}</div>
-            <div class="entity-card-tags">${entity.tags}</div>
-            <div class="entity-card-location">${entity.location}</div>
-            <div class="entity-card-members">${entity.members}</div>
-            <div class="entity-card-services">${entity.services}</div>
-            <div class="entity-card-actions">${entity.actions}</div>
+        <div class="time-chunk-range">
+            <div class="time-chunk-range-start">${taskItem.begin_time.toLocaleTimeString()}</div>
+            <div class="time-chunk-range-end">${taskItem.end_time.toLocaleTimeString()}</div>
         </div>
-        <div class="entity-card-footer">
-            <div class="entity-card-bonuses">${entity.bonuses}</div>
-            <div class="entity-card-rewards">${entity.rewards}</div>
+        <div class="time-chunk-body">
+            <div class="time-chunk-description">${taskItem.description}</div>
+            <div class="time-chunk-tasks">${taskItem.tasks}</div>
+            <div class="time-chunk-location">${taskItem.location}</div>
+            <div class="time-chunk-tags">${taskItem.tags}</div>
+            <div class="time-chunk-members">${taskItem.members}</div>
+            <div class="time-chunk-services">${taskItem.services}</div>
+            <div class="time-chunk-actions">${taskItem.actions}</div>
+        </div>
+        <div class="time-chunk-benefits">
+            <div class="time-chunk-rewards">${taskItem.rewards}</div>
+            <div class="time-chunk-bonuses">${taskItem.bonuses}</div>
         </div>
     </div>
     `

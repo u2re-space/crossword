@@ -1,7 +1,7 @@
 import H from "fest-src/fest/lure/lure/node/Syntax";
 
 // TODO: This is a legacy component, we should remove it and use the new one
-export const TimeHeader = ()=>{
+export const TasksHeader = ()=>{
     return H`<div class="timeline-header">
         <div class="time-chunk-header">
             <div class="time-chunk-title">Time event</div>
