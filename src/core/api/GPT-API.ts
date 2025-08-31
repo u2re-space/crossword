@@ -18,28 +18,35 @@ const INSTRUCTIONS = {
 }
 
 //
-const getUsableData = async (dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text") => {
-    if (dataSource instanceof Blob || dataSource instanceof File) {
+type DataKind = "math" | "url" | "text" | "image";
+type DataInput = {
+    dataSource: string|Blob|File|any,
+    dataKind: DataKind
+}
+
+//
+const getUsableData = async (data: DataInput) => {
+    if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
         const reader = new FileReader();
-        if (kind === "image") {
+        if (data.dataKind === "image") {
             return new Promise((resolve, reject) => {
-                reader.readAsDataURL(dataSource);
+                reader.readAsDataURL(data.dataSource);
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = reject;
             });
         } else {
             return new Promise((resolve, reject) => {
-                reader.readAsText(dataSource);
+                reader.readAsText(data.dataSource);
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = reject;
             });
         }
     }
-    return dataSource;
+    return data.dataSource;
 }
 
 //
-const typesForKind: Record<"math" | "url" | "text" | "image", "text" | "image_url" | "text_search_result" | "json_schema" | "json_schema_search_result"> = {
+const typesForKind: Record<DataKind, "text" | "image_url" | "text_search_result" | "json_schema" | "json_schema_search_result"> = {
     "math": "text",
     "url": "text",
     "text": "text",
@@ -47,33 +54,33 @@ const typesForKind: Record<"math" | "url" | "text" | "image", "text" | "image_ur
 }
 
 //
-const PROMPT_COMPUTE_EFFORT = (dataSource?: string|Blob|File|any, kind?: "math" | "url" | "text" | "image") => {
-    if (dataSource instanceof Blob || dataSource instanceof File) {
-        if (kind === "image") return "medium";
+const PROMPT_COMPUTE_EFFORT = (data: DataInput) => {
+    if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
+        if (data.dataKind === "image") return "medium";
         return "low";
     }
-    if (typeof dataSource === "string") {
-        if (dataSource.includes("math")) return "high";
-        if (dataSource.includes("url")) return "medium";
-        if (dataSource.includes("text")) return "medium";
+    if (typeof data.dataSource === "string") {
+        if (data.dataSource.includes("math")) return "high";
+        if (data.dataSource.includes("url")) return "medium";
+        if (data.dataSource.includes("text")) return "medium";
         return "low";
     }
     return "low";
 }
 
 //
-const COMPUTE_TEMPERATURE = (dataSource?: string|Blob|File|any, kind?: "math" | "url" | "text" | "image") => {
+const COMPUTE_TEMPERATURE = (data: DataInput) => {
     // math needs more reasoning than creativity
-    if (kind === "math") return 0.2;
+    if (data.dataKind === "math") return 0.2;
 
     // don't know...
-    if (kind === "url") return 0.4;
+    if (data.dataKind === "url") return 0.4;
 
     // needs to some working for better understanding of image
-    if (kind === "image") return 0.5;
+    if (data.dataKind === "image") return 0.5;
 
     // texts needs to be bit creative
-    if (kind === "text") return 0.6;
+    if (data.dataKind === "text") return 0.6;
 
     // default level
     return 0.5;
@@ -91,32 +98,133 @@ export const GPT_API = {
     // - also, for bonus, may be asked about requirements, for what is it usable, such as minimum order amount, minimum number of items, etc.
     // - after second response, and give to request short list (of related entities ids), to format ids as compatible for entities by IDs.
 
-    // simple logic for recognize data source
-    async recognizeDataSource(dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text", asEntity: "auto" | "bonus" | "person" | "location" | "market" | "service" | "task" | "item" | "vehicle" | "entertainment" = "auto") {
+    // phase 1 - recognize entity type by data source, and return entity type for further processing
+    async recognizeEntityType(dataInput: DataInput) {
         const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
             body: JSON.stringify({
-                reasoning: { effort: PROMPT_COMPUTE_EFFORT(dataSource,kind) },
                 model: MODEL,
-                temperature: COMPUTE_TEMPERATURE(dataSource, kind),
+                reasoning: PROMPT_COMPUTE_EFFORT(dataInput),
+                temperature: COMPUTE_TEMPERATURE(dataInput),
                 input: [
                     { role: "system", content: SYSTEM_PROMPT },
-                    { role: "user", content: await getUsableData(dataSource, kind), type: typesForKind[kind] || "text" },
-                    { role: "user", content: asEntity === "auto" ? "Auto-detect entity type of data source" : `Entity type of data source is ${asEntity}` },
-                    { role: "assistant", content: INSTRUCTIONS[kind] }
+
+                    // requested for phase 1
+                    { role: "user", content: await getUsableData(dataInput) },
                 ],
-                instructions: INSTRUCTIONS[kind],
-                response_format: { type: typesForKind[kind] || "text" }
+                instructions: INSTRUCTIONS[dataInput.dataKind],
+                response_format: { type: "text" }
             }),
+        });
+
+        const data = await response.json();
+        return JSON.parse(data.choices[0].message.content);
+    },
+
+    // phase 2 - make some extraction of entity kind (make simpler sampling and filtering from entity database)
+    // also, send JSON scheme of entity type for better understanding of entity kind
+    async recognizeKindOfEntity(dataInput: DataInput, entityType: string) {
+        const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
+            body: JSON.stringify({
+                model: MODEL,
+                reasoning: PROMPT_COMPUTE_EFFORT(dataInput),
+                temperature: COMPUTE_TEMPERATURE(dataInput),
+                input: [
+                    { role: "system", content: SYSTEM_PROMPT },
+
+                    // requested for phase 1
+                    { role: "user", content: await getUsableData(dataInput) },
+
+                    // response from phase 1
+                    { role: "assistant", content: `Entity type of data source is ${entityType}` },
+
+                    // json scheme of entity type
+                    { role: "user", content: INSTRUCTIONS[dataInput.dataKind] },
+                ],
+                instructions: INSTRUCTIONS[dataInput.dataKind],
+                response_format: { type: "text" }
+            }),
+        });
+
+        const data = await response.json();
+        return JSON.parse(data.choices[0].message.content);
+    },
+
+    // phase 3 - make capable entity data for entity type and entity kind
+    // also, send additional simplified version of list of possibly related entities for further processing
+    async makeCapableEntityData(dataInput: DataInput, desc: {
+        // response from phase 1
+        entityType: string,
+
+        // from phase 2
+        entityKind: string,
+        entityUsage?: any|null,
+
+        // additions for phase 3 (for make searchable related entities)
+        contextDataset?: any[]|null
+
+        // optionals for phase 3
+        instructions?: string|null
+    }) {
+        const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json", // @ts-ignore
                 "Authorization": `Bearer ${import.meta?.env?.VITE_OPENAI_API_KEY || ''}`
             },
+            body: JSON.stringify({
+                model: MODEL,
+                reasoning: PROMPT_COMPUTE_EFFORT(dataInput),
+                temperature: COMPUTE_TEMPERATURE(dataInput),
+                input: [
+                    { role: "system", content: SYSTEM_PROMPT },
+
+                    // requested for phase 1
+                    { role: "user", content: await getUsableData(dataInput) },
+
+                    // response from phase 1
+                    { role: "assistant", content: `Entity type of data source is ${desc.entityType}` },
+
+                    // requested for phase 2
+                    { role: "user", content: desc?.instructions || INSTRUCTIONS[desc.entityKind] },
+
+                    // response from phase 2
+                    { role: "assistant", content: `Entity usage: ${JSON.stringify(desc.entityUsage)}` },
+
+                    // for phase 3 - request with context dataset
+                    { role: "user", content: `Context dataset: ${desc.contextDataset?.map(item => JSON.stringify(item)).join(", ")}` },
+                    { role: "user", content: desc?.contextDataset ? `Entity data: ${JSON.stringify(desc.entityUsage)}` : `Make capable entity data for entity type ${desc.entityType} and entity kind ${desc.entityKind}` },
+                ],
+                instructions: desc?.instructions || INSTRUCTIONS[desc.entityKind] || INSTRUCTIONS[desc.entityType] || INSTRUCTIONS[dataInput.dataKind],
+                response_format: { type: typesForKind[desc.entityKind] || typesForKind[desc.entityType] || typesForKind[dataInput.dataKind] || "text" }
+            }),
         });
 
         //
         const data = await response.json();
         return JSON.parse(data.choices[0].message.content);
+    },
+
+    // three phase logic for recognize data source
+    async recognizeDataSource(dataInput: DataInput, asEntity: "auto" | "bonus" | "person" | "location" | "market" | "service" | "task" | "item" | "vehicle" | "entertainment" = "auto") {
+        if (asEntity === "auto") {
+            const resp1 = this.recognizeEntityType(dataInput);
+            asEntity = resp1.entityType;
+        }
+
+        //
+        const resp2 = this.recognizeKindOfEntity(dataInput, asEntity);
+        const entityKind = {
+            entityType: asEntity,
+            entityKind: resp2.entityKind
+        };
+
+        //
+        const capableEntityData = this.makeCapableEntityData(dataInput, entityKind);
+        return {
+            entityType: asEntity,
+            entityKind: resp2.entityKind,
+            entityUsage: capableEntityData
+        };
     },
 
     // assistance bit more complex logic for make plan, compute efforts always high
