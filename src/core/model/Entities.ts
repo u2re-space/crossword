@@ -80,7 +80,42 @@ export const SHARED_DEFS = {
     Timestamp: TIMESTAMP_SCHEME
 };
 
+//
 export const JSON_SCHEMES = {
+    task: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            name: NAME_SCHEME,
+            icon: ICON_SCHEME,
+            description: DESCRIPTION_SCHEME,
+            status: { enum: ["under_consideration", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"] },
+
+            //
+            image: { $ref: "#/$defs/Images" },
+            tags: { $ref: "#/$defs/Tags" },
+
+            //
+            begin_time: { $ref: "#/$defs/Timestamp" },
+            end_time: { $ref: "#/$defs/Timestamp" },
+
+            //
+            location: { $ref: "#/$defs/LocationRef" },
+            contacts: { $ref: "#/$defs/Contact" },
+            members: { $ref: "#/$defs/IdArray" },
+
+            //
+            rewards: BONUSES_SCHEME,
+            bonuses: BONUSES_SCHEME,
+            actions: ACTIONS_SCHEME,
+            costs: BONUSES_SCHEME
+        },
+        required: ["name", "status", "location"]
+    },
+
+    //
     location: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -106,6 +141,8 @@ export const JSON_SCHEMES = {
         },
         required: ["name"]
     },
+
+    //
     skill: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -127,6 +164,8 @@ export const JSON_SCHEMES = {
         },
         required: ["name"]
     },
+
+    //
     vendor: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -141,11 +180,14 @@ export const JSON_SCHEMES = {
             members: { $ref: "#/$defs/IdArray" },
             services: { $ref: "#/$defs/IdArray" },
             tags: { $ref: "#/$defs/Tags" },
+            feedbacks: FEEDBACKS_SCHEME,
             bonuses: BONUSES_SCHEME,
             rewards: BONUSES_SCHEME
         },
         required: ["name"]
     },
+
+    //
     market: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -162,15 +204,25 @@ export const JSON_SCHEMES = {
             description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
             image: { $ref: "#/$defs/Images" },
+
+            //
             location: { $ref: "#/$defs/LocationRef" },
+
+            //
             members: { $ref: "#/$defs/IdArray" },
             services: { $ref: "#/$defs/IdArray" },
             tags: { $ref: "#/$defs/Tags" },
+
+            //
+            feedbacks: FEEDBACKS_SCHEME,
             bonuses: BONUSES_SCHEME,
-            rewards: BONUSES_SCHEME
+            rewards: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME
         },
         required: ["name"]
     },
+
+    //
     placement: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -182,15 +234,23 @@ export const JSON_SCHEMES = {
             description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
             image: { $ref: "#/$defs/Images" },
+
+            //
             coordinates: { $ref: "#/$defs/LocationRef" },
             members: { $ref: "#/$defs/IdArray" },
             services: { $ref: "#/$defs/IdArray" },
             tags: { $ref: "#/$defs/Tags" },
+
+            //
+            feedbacks: FEEDBACKS_SCHEME,
             bonuses: BONUSES_SCHEME,
-            rewards: BONUSES_SCHEME
+            rewards: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME
         },
         required: ["name"]
     },
+
+    //
     service: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -201,20 +261,34 @@ export const JSON_SCHEMES = {
             description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
             image: { $ref: "#/$defs/Images" },
+
+            //
             whereIs: WHERE_IS_SCHEME,
+
+            //
             location: { $ref: "#/$defs/LocationRef" },
+
+            //
             persons: PERSON_SCHEME,
             contacts: { $ref: "#/$defs/Contact" },
             tags: { $ref: "#/$defs/Tags" },
+            tasks: { $ref: "#/$defs/IdArray" },
             actions: ACTIONS_SCHEME,
+
+            //
             bonuses: BONUSES_SCHEME,
             rewards: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME,
             feedbacks: FEEDBACKS_SCHEME,
+
+            //
             price: { type: "number" },
             quantity: { type: "number" }
         },
         required: ["name"]
     },
+
+    //
     person: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -227,15 +301,21 @@ export const JSON_SCHEMES = {
             image: { $ref: "#/$defs/Images" },
             home: { $ref: "#/$defs/LocationRef" },
             jobs: { type: "array", items: { $ref: "#/$defs/LocationRef" } },
-            contacts: { $ref: "#/$defs/Contact" },
             tags: { $ref: "#/$defs/Tags" },
-            services: { $ref: "#/$defs/IdArray" },
             tasks: { $ref: "#/$defs/IdArray" },
+
+            //
+            contacts: { $ref: "#/$defs/Contact" },
+            services: { $ref: "#/$defs/IdArray" },
+
+            //
             actions: ACTIONS_SCHEME,
             feedbacks: FEEDBACKS_SCHEME
         },
         required: ["name"]
     },
+
+    // it's your car, transport, bike, or rented transport, or ride on bus, train, etc.
     vehicle: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -243,41 +323,41 @@ export const JSON_SCHEMES = {
         $defs: SHARED_DEFS,
         properties: {
             name: NAME_SCHEME,
-            description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
+            description: DESCRIPTION_SCHEME,
             image: { $ref: "#/$defs/Images" },
-            whereIs: WHERE_IS_SCHEME,
+
+            //
+            role: { enum: ["driver", "passenger", "other"] },
+            rights: { enum: ["own", "rented", "borrowed", "service", "free", "other"] },
+            destination: { $ref: "#/$defs/LocationRef" },
+            route: { $ref: "#/$defs/IdArray" }, // routes to destination, in future it may be separate entity, but now it's just array of locations
+
+            // for bus, train, etc.
+            timeLimit: { $ref: "#/$defs/Timestamp" },
+
+            //
             location: { $ref: "#/$defs/LocationRef" },
+            services: { $ref: "#/$defs/IdArray" },
             contacts: { $ref: "#/$defs/Contact" },
             tags: { $ref: "#/$defs/Tags" },
+
+            //
+            members: { $ref: "#/$defs/IdArray" },
+
+            //
             bonuses: BONUSES_SCHEME,
             rewards: BONUSES_SCHEME,
             feedbacks: FEEDBACKS_SCHEME,
+
+            //
             price: { type: "number" },
             quantity: { type: "number" }
         },
         required: ["name"]
     },
-    time: {
-        $schema: "https://json-schema.org/draft/2020-12/schema",
-        type: "object",
-        additionalProperties: false,
-        $defs: SHARED_DEFS,
-        properties: {
-            name: NAME_SCHEME,
-            description: DESCRIPTION_SCHEME,
-            icon: ICON_SCHEME,
-            image: { $ref: "#/$defs/Images" },
-            contacts: { $ref: "#/$defs/Contact" },
-            tags: { $ref: "#/$defs/Tags" },
-            location: { $ref: "#/$defs/LocationRef" },
-            begin_time: { $ref: "#/$defs/Timestamp" },
-            end_time: { $ref: "#/$defs/Timestamp" },
-            actions: ACTIONS_SCHEME,
-            rewards: BONUSES_SCHEME
-        },
-        required: ["name", "begin_time"]
-    },
+
+    //
     event: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -288,35 +368,35 @@ export const JSON_SCHEMES = {
             description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
             image: { $ref: "#/$defs/Images" },
+
+            //
+            tags: { $ref: "#/$defs/Tags" },
+
+            //
             location: { $ref: "#/$defs/LocationRef" },
+
+            //
+            tasks: { $ref: "#/$defs/IdArray" },
+
+            //
             begin_time: { $ref: "#/$defs/Timestamp" },
             end_time: { $ref: "#/$defs/Timestamp" },
-            tags: { $ref: "#/$defs/Tags" },
+
+            //
             members: { $ref: "#/$defs/IdArray" },
-            tasks: { $ref: "#/$defs/IdArray" },
+
+            //
             actions: ACTIONS_SCHEME,
-            rewards: BONUSES_SCHEME
+
+            //
+            bonuses: BONUSES_SCHEME,
+            rewards: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME
         },
         required: ["name", "begin_time"]
     },
-    task: {
-        $schema: "https://json-schema.org/draft/2020-12/schema",
-        type: "object",
-        additionalProperties: false,
-        $defs: SHARED_DEFS,
-        properties: {
-            name: NAME_SCHEME,
-            description: DESCRIPTION_SCHEME,
-            icon: ICON_SCHEME,
-            image: { $ref: "#/$defs/Images" },
-            location: { $ref: "#/$defs/LocationRef" },
-            tags: { $ref: "#/$defs/Tags" },
-            members: { $ref: "#/$defs/IdArray" },
-            actions: ACTIONS_SCHEME,
-            bonuses: BONUSES_SCHEME
-        },
-        required: ["name"]
-    },
+
+    //
     item: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -324,23 +404,33 @@ export const JSON_SCHEMES = {
         $defs: SHARED_DEFS,
         properties: {
             name: NAME_SCHEME,
-            kind: { enum: ["book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"] },
-            description: DESCRIPTION_SCHEME,
+            kind: { enum: ["currency", "book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"] },
             icon: ICON_SCHEME,
+            description: DESCRIPTION_SCHEME,
+
+            //
             image: { $ref: "#/$defs/Images" },
-            whereIs: WHERE_IS_SCHEME,
+
+            //
+            markets: { $ref: "#/$defs/IdArray" },
+
+            //
             location: { $ref: "#/$defs/LocationRef" },
             contacts: { $ref: "#/$defs/Contact" },
             tags: { $ref: "#/$defs/Tags" },
-            actions: ACTIONS_SCHEME,
-            bonuses: BONUSES_SCHEME,
-            rewards: BONUSES_SCHEME,
+
+            //
+            suitableFor: ACTIONS_SCHEME,
             feedbacks: FEEDBACKS_SCHEME,
-            price: { type: "number" },
-            quantity: { type: "number" }
+
+            //
+            price: { type: "number" }, // if currency, used for exchange (RUB/EUR/USD)
+            quantity: { type: "number" } // if currency, how many money you has, negative value is used for debt
         },
         required: ["name"]
     },
+
+    //
     action: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -350,19 +440,33 @@ export const JSON_SCHEMES = {
             name: NAME_SCHEME,
             description: DESCRIPTION_SCHEME,
             icon: ICON_SCHEME,
+            tags: { $ref: "#/$defs/Tags" },
             kind: { enum: ["thinking", "imagination", "remembering", "speaking", "learning", "listening", "reading", "writing", "moving", "traveling", "speech", "physically", "crafting", "following", "other"] },
             image: { $ref: "#/$defs/Images" },
-            whereIs: WHERE_IS_SCHEME,
-            location: { $ref: "#/$defs/LocationRef" },
+
+            //
             difficulty: DIFFICULTY_SCHEME,
             duration: DURATION_SCHEME,
+
+            // <isn't very good suitable for actions, preferred for tasks>
+            location: { $ref: "#/$defs/LocationRef" },
+
+            // for what tasks doing this action
             tasks: { $ref: "#/$defs/IdArray" },
-            tags: { $ref: "#/$defs/Tags" },
+
+            // what used items, skills, services, etc. so needs to mention entity type
+            // arrays of pairs of entity type and entity id, e.g. [{ type: "item", id: "book" }, { type: "skill", id: "coding" }]
+            whatUsed: { $ref: "#/$defs/IdArray" },
+
+            //
             bonuses: BONUSES_SCHEME,
-            rewards: BONUSES_SCHEME
+            rewards: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME
         },
         required: ["name"]
     },
+
+    //
     entertainment: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -374,31 +478,46 @@ export const JSON_SCHEMES = {
             kind: { enum: ["entertainment", "sport", "education", "cinema", "museum", "hobby", "drawing", "reading", "shopping", "other"] },
             icon: ICON_SCHEME,
             image: { $ref: "#/$defs/Images" },
-            whereIs: WHERE_IS_SCHEME,
-            location: { $ref: "#/$defs/LocationRef" },
+
+            //
+            actions: ACTIONS_SCHEME,
             persons: PERSON_SCHEME,
+
+            //
             contacts: { $ref: "#/$defs/Contact" },
+
+            //
+            location: { $ref: "#/$defs/LocationRef" },
             begin_time: { $ref: "#/$defs/Timestamp" },
             end_time: { $ref: "#/$defs/Timestamp" },
+
+            //
             tasks: { $ref: "#/$defs/IdArray" },
             tags: { $ref: "#/$defs/Tags" },
-            actions: ACTIONS_SCHEME,
+
+            //
             bonuses: BONUSES_SCHEME,
             rewards: BONUSES_SCHEME,
             feedbacks: FEEDBACKS_SCHEME
         },
         required: ["name"]
     },
+
+    //
     bonus: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
         additionalProperties: false,
         $defs: SHARED_DEFS,
         properties: {
+            icon: ICON_SCHEME,
+            tags: { $ref: "#/$defs/Tags" },
             kind: { enum: [
                 "cash-back", "promo-code", "loyalty-card", "gift-card", "discount",
                 "bonus-card", "bonus-points", "bonus-points-card", "earn-points", "earn-points-card"
             ] },
+            description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
 
             //
             availability: AVAILABILITY_SCHEME,
@@ -419,18 +538,9 @@ export const JSON_SCHEMES = {
             location: { $ref: "#/$defs/LocationRef" },
             market: { $ref: "#/$defs/Id" },
 
-            // where is can be found
-            whereIs: WHERE_IS_SCHEME,
-
-            //
-            description: DESCRIPTION_SCHEME,
-            icon: ICON_SCHEME,
-            image: { $ref: "#/$defs/Images" },
-
             //
             persons: PERSON_SCHEME,
             contacts: { $ref: "#/$defs/Contact" },
-            tags: { $ref: "#/$defs/Tags" },
 
             //
             actions: ACTIONS_SCHEME,
@@ -438,9 +548,97 @@ export const JSON_SCHEMES = {
             rewards: BONUSES_SCHEME
         },
         required: ["kind"]
+    },
+
+    //
+    lottery: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            name: NAME_SCHEME,
+            description: DESCRIPTION_SCHEME,
+            requirements: { $ref: "#/$defs/IdArray" },
+            icon: ICON_SCHEME,
+            chance: { type: "number", minimum: 0, maximum: 100 },
+            image: { $ref: "#/$defs/Images" },
+            location: { $ref: "#/$defs/LocationRef" },
+            tags: { $ref: "#/$defs/Tags" },
+            usageLimit: { type: "number" },
+            timeLimit: { $ref: "#/$defs/Timestamp" },
+            rewards: BONUSES_SCHEME,
+            bonuses: BONUSES_SCHEME,
+            costs: BONUSES_SCHEME
+        },
+        required: ["name", "chance", "rewards", "requirements"]
+    },
+
+    // also, may means debt, receipt, etc.
+    fine: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            // what needs to give in case of fine (time is may be arrest or sentence, or job), but not for reward
+            type: { enum: ["item", "time", "cash", "bonus", "skill", "stat", "experience", "other", "person", "contact", "task", "job", "entertainment"] },
+            reasonsToGive: { $ref: "#/$defs/IdArray" },
+            location: { $ref: "#/$defs/LocationRef" },
+            market: { $ref: "#/$defs/Id" },
+            entity: { $ref: "#/$defs/Id" },
+            tags: { $ref: "#/$defs/Tags" },
+            usageLimit: { type: "number" },
+            timeLimit: { $ref: "#/$defs/Timestamp" },
+            description: DESCRIPTION_SCHEME,
+            icon: ICON_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            entityLocation: { $ref: "#/$defs/LocationRef" }
+        },
+        required: ["type", "entity"]
+    },
+
+    //
+    reward: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            type: { enum: ["item", "cash", "bonus", "skill", "stat", "experience", "other", "person", "contact", "task", "job", "entertainment"] },
+            requirements: { $ref: "#/$defs/IdArray" },
+            location: { $ref: "#/$defs/LocationRef" },
+            tags: { $ref: "#/$defs/Tags" },
+            entity: { $ref: "#/$defs/Id" },
+            usageLimit: { type: "number" },
+            timeLimit: { $ref: "#/$defs/Timestamp" },
+            description: DESCRIPTION_SCHEME,
+            icon: ICON_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            entityLocation: { $ref: "#/$defs/LocationRef" }
+        },
+        required: ["type", "entity"]
+    },
+
+    // if entity is not specified, it's unknown
+    unspecified: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            name: NAME_SCHEME,
+            description: DESCRIPTION_SCHEME,
+            icon: ICON_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            location: { $ref: "#/$defs/LocationRef" },
+            tags: { $ref: "#/$defs/Tags" },
+        },
+        required: ["name"]
     }
 };
 
+//
 export const AI_OUTPUT_SCHEMA = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     oneOf: [
@@ -451,12 +649,15 @@ export const AI_OUTPUT_SCHEMA = {
         JSON_SCHEMES.service,
         JSON_SCHEMES.person,
         JSON_SCHEMES.vehicle,
-        JSON_SCHEMES.time,
         JSON_SCHEMES.event,
         JSON_SCHEMES.task,
         JSON_SCHEMES.item,
         JSON_SCHEMES.action,
         JSON_SCHEMES.entertainment,
-        JSON_SCHEMES.bonus
+        JSON_SCHEMES.bonus,
+        JSON_SCHEMES.reward,
+        JSON_SCHEMES.lottery,
+        JSON_SCHEMES.fine,
+        JSON_SCHEMES.unspecified
     ]
 };
