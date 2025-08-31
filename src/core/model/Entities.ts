@@ -105,6 +105,7 @@ export const JSON_SCHEMES = {
             location: { $ref: "#/$defs/LocationRef" },
             contacts: { $ref: "#/$defs/Contact" },
             members: { $ref: "#/$defs/IdArray" },
+            events: { $ref: "#/$defs/IdArray" },
 
             //
             rewards: BONUSES_SCHEME,
