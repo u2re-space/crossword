@@ -130,6 +130,10 @@ export const JSON_SCHEMES = {
             affect: { enum: ["positive", "negative", "neutral"] },
             actions: { $ref: "#/$defs/IdArray" },
             image: { $ref: "#/$defs/Images" },
+            location: { $ref: "#/$defs/LocationRef" },
+            begin_time: { $ref: "#/$defs/Timestamp" },
+            end_time: { $ref: "#/$defs/Timestamp" },
+            members: { $ref: "#/$defs/IdArray" },
             description: DESCRIPTION_SCHEME,
         },
         required: ["name", "kind", "affect"]
