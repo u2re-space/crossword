@@ -80,6 +80,33 @@ export const SHARED_DEFS = {
     Timestamp: TIMESTAMP_SCHEME
 };
 
+
+
+/*
+ * JSON Schemes for entities
+ *
+ * Rules for generating entity IDs:
+ * - Letters or numbers
+ * - Allowed symbols, such as '-', '_', '&', '#', '+'
+ * - Whitespace not allowed
+ * - No emojis or special symbols
+ * - No Cyrillic or Latin letters
+ *
+ * How generates entity IDs:
+ * - Prefixed by service, market or vendor (if bonus entity, such as promo, discount, bonus, etc.)
+ * - Name, type or kind (if no name declared) of entity encodes into ID by conversion spaces into '-', etc.
+ * - CODE suffix is used for unique code of entity, such as promo-code, discount-code, etc.
+ *
+ * For example:
+ * - [in bonuses list] zdravia-clinic_therapist_CODE123 - promo-code for therapist of zdravia-clinic
+ * - [in persons list] alena-victorovna_additional-identifier - person of Alena Viktorovna, for additional identifier may be used service, skill, email or phone number
+ * - [in items list] book_the-best-book - book of the best book
+ *
+ * Such idea used for make simpler search, filtering and sorting of entities.
+ */
+
+
+
 //
 export const JSON_SCHEMES = {
     task: {

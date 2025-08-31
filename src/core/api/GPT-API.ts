@@ -85,6 +85,12 @@ const COMPUTE_TEMPERATURE = (dataSource?: string|Blob|File|any, kind?: "math" | 
 // https://platform.openai.com/docs/api-reference/responses/
 // text, image_url, text_search_result, json_schema, json_schema_search_result
 export const GPT_API = {
+    // for economy tokens, I propose three phase:
+    // - request entity type by prompt data source, such as text, image, url, etc.
+    // - after response, request what kind of entity, ('kind' property of entity, such as kind of bonus, kind of item, kind of service, etc.)
+    // - also, for bonus, may be asked about requirements, for what is it usable, such as minimum order amount, minimum number of items, etc.
+    // - after second response, and give to request short list (of related entities ids), to format ids as compatible for entities by IDs.
+
     // simple logic for recognize data source
     async recognizeDataSource(dataSource: string|Blob|File|any, kind: "math" | "url" | "text" | "image" = "text", asEntity: "auto" | "bonus" | "person" | "location" | "market" | "service" | "task" | "item" | "vehicle" | "entertainment" = "auto") {
         const response = await fetch(`${BASE_URL}/${ENDPOINT}`, {
