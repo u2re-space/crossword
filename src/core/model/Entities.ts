@@ -117,6 +117,25 @@ export const JSON_SCHEMES = {
     },
 
     //
+    factor: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        additionalProperties: false,
+        $defs: SHARED_DEFS,
+        properties: {
+            name: NAME_SCHEME,
+            icon: ICON_SCHEME,
+            tags: { $ref: "#/$defs/Tags" },
+            kind: { enum: ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "other"] },
+            affect: { enum: ["positive", "negative", "neutral"] },
+            actions: { $ref: "#/$defs/IdArray" },
+            image: { $ref: "#/$defs/Images" },
+            description: DESCRIPTION_SCHEME,
+        },
+        required: ["name", "kind", "affect"]
+    },
+
+    //
     location: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
@@ -659,6 +678,7 @@ export const AI_OUTPUT_SCHEMA = {
         JSON_SCHEMES.reward,
         JSON_SCHEMES.lottery,
         JSON_SCHEMES.fine,
-        JSON_SCHEMES.unspecified
+        JSON_SCHEMES.unspecified,
+        JSON_SCHEMES.factor
     ]
 };
