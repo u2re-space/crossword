@@ -1,119 +1,24 @@
 import { H, M } from "fest/lure";
-import { makeReactive } from "fest/object";
+import { FileManager } from "fest/fl-ui";
+import { openDirectory } from "fest/lure";
+import { categories } from "../dataset/Data";
 
 //
-export const realtimeStates = makeReactive({
-    time: new Date(),
-    location: null,
-    coordinates: null,
-    otherProps: new Map([]),
-
-    // for payments, id is card id, value is card balance (if available), or additional info
-    cards: new Map([])
-});
-
-//
-export const categories = makeReactive([
-    {
-        label: "Items",
-        items: makeReactive([]),
-        id: "item"
-    },
-    {
-        label: "Bonuses",
-        items: makeReactive([]),
-        id: "bonus"
-    },
-    {
-        label: "Services",
-        items: makeReactive([]),
-        id: "service"
-    },
-    {
-        label: "Tasks",
-        items: makeReactive([]),
-        id: "task"
-    },
-    {
-        label: "Locations",
-        items: makeReactive([]),
-        id: "location"
-    },
-    {
-        label: "Events",
-        items: makeReactive([]),
-        id: "events"
-    },
-    {
-        label: "Factors",
-        items: makeReactive([]),
-        id: "factor"
-    },
-    {
-        label: "Entertainments",
-        items: makeReactive([]),
-        id: "entertainment"
-    },
-    {
-        label: "Markets",
-        items: makeReactive([]),
-        id: "market"
-    },
-    {
-        label: "Placements",
-        items: makeReactive([]),
-        id: "placement"
-    },
-    {
-        label: "Vendors",
-        items: makeReactive([]),
-        id: "place"
-    },
-    {
-        label: "Persons",
-        items: makeReactive([]),
-        id: "person"
-    },
-    {
-        label: "Skills",
-        items: makeReactive([]),
-        id: "skill"
-    },
-    {
-        label: "Entertainments",
-        items: makeReactive([]),
-        id: "entertainment"
-    },
-    {
-        label: "Vehicles",
-        items: makeReactive([]),
-        id: "vehicle"
-    },
-    {
-        label: "Rewards",
-        items: makeReactive([]),
-        id: "reward"
-    },
-    {
-        label: "Fins",
-        items: makeReactive([]),
-        id: "fine"
-    },
-    {
-        label: "Actions",
-        items: makeReactive([]),
-        id: "action"
-    },
-    {
-        label: "Lotteries",
-        items: makeReactive([]),
-        id: "lottery"
-    }
-]);
-
-//
+const rowFileMap = new WeakMap<HTMLElement, any>();
 export const DataView = ()=>{
-    return H`<section class="data-view">
+    // make folders of entity types
+    const folders = M(categories, (category)=>{
+        const folder = openDirectory(null, `/user/${category.id}/`, {create: true});
+        const row = H`<div class="folder">${category.label}</div>`
+        rowFileMap.set(row, folder);
+        return row;
+    });
 
-    </section>`;
+    // make file manager
+    const viewer = H`<ui-file-manager path="/user/" sidebar="auto"></ui-file-manager>`;
+
+    // TODO: make JSON data editor and viewer for opened files...
+
+    //
+    return H`<section class="data-view">${viewer}</section>`;
 };

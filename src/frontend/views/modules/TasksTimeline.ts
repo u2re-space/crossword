@@ -1,47 +1,22 @@
-import { H } from "fest/lure";
-import { makeReactive, ref } from "fest/object";
+import { H, M } from "fest/lure";
+import { makeReactive, observableByMap } from "fest/object";
+import { TaskItem } from "../items/TaskItem";
 
 //
-const now = new Date();
-const later = ref(new Date(now.getTime() + 60*60*1000));
-
-//
-export const taskItems = makeReactive([
-    makeReactive({
-        title: "Sample event",
-        icon: "calendar",
-        description: "Demo entry in the timeline",
-        begin_time: now,
-        end_time: later,
-        location: "Downtown",
-        tags: ["demo"],
-        members: [],
-        services: [],
-        actions: [],
-        rewards: [],
-        bonuses: []
-    })
-]);
-
-
-// Editor for the chunk
-/*const editor = makeReactive({
-    chunk: chunk,
-    is_editing: false
-});*/
-
-// Add a new chunk to the timeline
-const addTaskItem = ()=>{
-    // we have no currently editor!
-    //editor.is_editing = true;
+const daysTabs = makeReactive(new Map<string, any[]>()) as Map<string, any[]>;
+const addDayTab = (day: Date, tasks: any[])=>{
+    console.log("addDayTab", day, tasks);
+    daysTabs?.set?.(day.toISOString(), tasks);
 }
-
-//${M(taskItems, (taskItem)=>TaskItem(taskItem))}
 
 // Render the timeline
 export const TasksTimelineView = ()=>{
     return H`<section class="timeline c2-surface" style="background-color: --c2-surface(0.0, var(--current, currentColor));">
-        <h1>Timeline</h1>
-        <button onclick=${addTaskItem}>Add task item</button>
+        <ui-tabbed-box prop:tabs=${daysTabs} class="days">
+            ${M(observableByMap(daysTabs), ([day, tasks])=>H`
+                <div class="day" data-day=${day}>${M(tasks, (task)=>TaskItem(task))}</div>`
+            )}
+        </ui-tabbed-box>
+        <button on:click=${addDayTab}>New Day Plan</button>
     </section>`;
 }
