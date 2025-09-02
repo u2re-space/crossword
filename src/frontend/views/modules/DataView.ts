@@ -1,7 +1,7 @@
 import { H, M } from "fest/lure";
 import { FileManager } from "fest/fl-ui";
 import { openDirectory } from "fest/lure";
-import { categories } from "../dataset/Data";
+import { categories } from "../../../core/dataset/Data";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();

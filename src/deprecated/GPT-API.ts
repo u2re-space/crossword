@@ -53,39 +53,6 @@ const typesForKind: Record<DataKind, "text" | "image_url" | "text_search_result"
     "image": "image_url",
 }
 
-//
-const PROMPT_COMPUTE_EFFORT = (data: DataInput) => {
-    if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
-        if (data.dataKind === "image") return "medium";
-        return "low";
-    }
-    if (typeof data.dataSource === "string") {
-        if (data.dataSource.includes("math")) return "high";
-        if (data.dataSource.includes("url")) return "medium";
-        if (data.dataSource.includes("text")) return "medium";
-        return "low";
-    }
-    return "low";
-}
-
-//
-const COMPUTE_TEMPERATURE = (data: DataInput) => {
-    // math needs more reasoning than creativity
-    if (data.dataKind === "math") return 0.2;
-
-    // don't know...
-    if (data.dataKind === "url") return 0.4;
-
-    // needs to some working for better understanding of image
-    if (data.dataKind === "image") return 0.5;
-
-    // texts needs to be bit creative
-    if (data.dataKind === "text") return 0.6;
-
-    // default level
-    return 0.5;
-}
-
 // according to the kind of data, we need to use different types of messages
 // POST https://api.openai.com/v1/responses
 // https://platform.openai.com/docs/api-reference/chat/
