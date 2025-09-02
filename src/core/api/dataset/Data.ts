@@ -1,6 +1,4 @@
 import { makeReactive, observe, safe } from "fest/object";
-
-// suboptimal, later will merged into another location
 import { idbGet, idbPut } from "../../data/IDBStorage";
 
 //
@@ -14,114 +12,108 @@ export const realtimeStates = makeReactive({
     cards: new Map([])
 });
 
-
-// associated with IndexedDB for service workers
-const observeCategory = async (category: any)=>{
-    return observe(category.items = makeReactive(JSON.parse(await (idbGet(category?.id) ?? "[]"))), (item, index)=>{
-        idbPut(category?.id, JSON.stringify(safe(category?.items)))
-    });
+//
+const editableArray = (category: any, items: any[])=>{
+    const wrapped = makeReactive(items);
+    observe(wrapped, (item, index)=>idbPut(category?.id, JSON.stringify(safe(wrapped))));
+    return wrapped;
 }
 
+// associated with IndexedDB for service workers
+const observeCategory = (category: any)=>{
+    Object.defineProperty(category, "items", {
+        get: async () => { // get will get new array from indexedDB, for prevent data corruption
+            return editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]"));
+        },
+        set: (value: any) => {
+            idbPut(category?.id, JSON.stringify(safe(value)));
+        }
+    });
+    return category;
+}
+
+//
+const $wrapCategory = (category: any): any=>{
+    return makeReactive(observeCategory(category));
+}
 
 // `items` is cached file maps... is directly associated with IndexedDB for service workers
 // also, may be used as arrays with simpler data for sending to AI
 export const categories = makeReactive([
-    makeReactive({
+    $wrapCategory({
         label: "Items",
-        items: makeReactive([]),
         id: "item"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Bonuses",
-        items: makeReactive([]),
         id: "bonus"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Services",
-        items: makeReactive([]),
         id: "service"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Tasks",
-        items: makeReactive([]),
         id: "task"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Locations",
-        items: makeReactive([]),
         id: "location"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Events",
-        items: makeReactive([]),
         id: "events"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Factors",
-        items: makeReactive([]),
         id: "factor"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Entertainments",
-        items: makeReactive([]),
         id: "entertainment"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Markets",
-        items: makeReactive([]),
         id: "market"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Placements",
-        items: makeReactive([]),
         id: "placement"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Vendors",
-        items: makeReactive([]),
         id: "place"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Persons",
-        items: makeReactive([]),
         id: "person"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Skills",
-        items: makeReactive([]),
         id: "skill"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Entertainments",
-        items: makeReactive([]),
         id: "entertainment"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Vehicles",
-        items: makeReactive([]),
         id: "vehicle"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Rewards",
-        items: makeReactive([]),
         id: "reward"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Fins",
-        items: makeReactive([]),
         id: "fine"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Actions",
-        items: makeReactive([]),
         id: "action"
     }),
-    makeReactive({
+    $wrapCategory({
         label: "Lotteries",
-        items: makeReactive([]),
         id: "lottery"
     })
 ]);
-
-//
-(categories as any)?.forEach?.(observeCategory as any);
