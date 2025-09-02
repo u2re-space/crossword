@@ -2,26 +2,19 @@ import { DataInput, DataKind, getDataKindByMIMEType, typesForKind } from "./GPT-
 
 //
 export const getUsableData = async (data: DataInput) => {
-    if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
-        const reader = new FileReader();
-        if (data.dataKind === "image") {
-            return new Promise((resolve, reject) => {
-                reader.readAsDataURL(data.dataSource);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-            });
+    if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
+        if (data?.dataKind === "image") {
+            const BASE64URL = `data:${data?.dataSource?.type};base64,`; // @ts-ignore
+            return BASE64URL+(new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64url" }));
         } else {
-            return new Promise((resolve, reject) => {
-                reader.readAsText(data.dataSource);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-            });
+            // anyways returns Promise<string>
+            return data?.dataSource?.text();
         }
     }
 
-    //
-    let result = data.dataSource;
-    try { result = JSON.stringify(data.dataSource); } catch (e) { console.warn(e); }
+    // is not Blob or File, so it's (may be) string (if not string, try to parse it as JSON)
+    let result = data?.dataSource;
+    try { result = (typeof data?.dataSource != "object") ? data?.dataSource : JSON.stringify(data?.dataSource); } catch (e) { console.warn(e); }
     return result;
 }
 
@@ -68,6 +61,11 @@ export class GPTConversion {
     //
     async addToRequest(request: (string|Blob|File|any), dataKind: DataKind|null = null) {
         this.pending.push(await this.convertPlainToInput(request, dataKind ??= getDataKindByMIMEType(request?.type) || "text"));
+    }
+
+    //
+    async addInstruction(instruction: string) {
+        this.messages.push({ role: "system", content: instruction });
     }
 
     //
