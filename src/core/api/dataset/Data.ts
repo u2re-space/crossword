@@ -1,4 +1,4 @@
-import { makeReactive, observe, safe } from "fest/object";
+import { Promised, makeReactive, observe, safe } from "fest/object";
 import { idbGet, idbPut } from "../../data/IDBStorage";
 
 //
@@ -22,8 +22,8 @@ const editableArray = (category: any, items: any[])=>{
 // associated with IndexedDB for service workers
 const observeCategory = (category: any)=>{
     Object.defineProperty(category, "items", {
-        get: async () => { // get will get new array from indexedDB, for prevent data corruption
-            return editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]"));
+        get: () => { // get will get new array from indexedDB, for prevent data corruption
+            return Promised((async()=> editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]")))());
         },
         set: (value: any) => {
             idbPut(category?.id, JSON.stringify(safe(value)));
