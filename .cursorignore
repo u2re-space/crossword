@@ -111,6 +111,9 @@ legacy/*
 ./build
 ./build/
 ./build/*
+./dev-dist
+./dev-dist/
+./dev-dist/*
 
 #
 concepts/prompts/original/*
