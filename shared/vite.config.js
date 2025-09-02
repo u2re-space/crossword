@@ -12,10 +12,11 @@ import https from "../private/https/certificate.mjs";
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import visualizer from 'vite-bundle-analyzer';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { VitePWA } from 'vite-plugin-pwa'
+import { searchForWorkspaceRoot } from "vite";
 
 //
 function normalizeAliasPattern(pattern) {
-    // Удаляет /*, /**, /**/* с конца строки
     return pattern.replace(/\/\*+$/, '');
 }
 
@@ -119,8 +120,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         ...(isBuild ? [] : [
             viteStaticCopy({
                 targets: [
-                    { src: 'pwa/manifest.json', dest: '.' },
-                    { src: 'icon.svg', dest: '.' }
+                    { src: resolve(__dirname, 'src/pwa/manifest.json'), dest: resolve(__dirname, './dist/pwa') },
+                    { src: resolve(__dirname, 'src/pwa/icon.svg'), dest: resolve(__dirname, './dist/pwa') }
                 ]
             })
         ]),
@@ -135,13 +136,32 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 "fest", "../fest", "./fest"
             ]
         }),
+        VitePWA({
+            registerType: 'autoUpdate',
+            //strategies: 'injectManifest',
+            strategies: 'generateSW',
+            injectRegister: 'auto',
+            injectManifest: {
+                swSrc: resolve(__dirname, './src/pwa/sw.ts'),
+                swDest: resolve(__dirname, './dist/pwa/sw.mjs'),
+                maximumFileSizeToCacheInBytes: 1024 * 1024 * 16,
+            },
+            includeAssets: [
+                resolve(__dirname, './src/pwa/icon.svg')
+            ],
+            manifest: false,
+            devOptions: {
+                type: 'module',
+                enabled: true
+            }
+        }),
     ];
 
     //
     const rollupOptions = {
         plugins,
         treeshake: 'smallest',
-        input: "./src/index.ts",
+        input: resolve(__dirname, './src/index.ts'),
         external: (source) => {
             if (source.startsWith("/externals") || source.startsWith("fest")) return true;
             return false;
@@ -152,7 +172,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             globals: {},
             format: 'es',
             name: NAME,
-            dir: './dist',
+            dir: resolve(__dirname, './dist'),
             exports: "auto",
             minifyInternalExports: true,
             experimentalMinChunkSize: 500_500,
@@ -183,20 +203,20 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const optimizeDeps = {
         include: [
-            "./node_modules/**/*.mjs",
-            "./node_modules/**/*.js",
-            "./node_modules/**/*.ts",
-            "./src/**/*.mjs",
-            "./src/**/*.js",
-            "./src/**/*.ts",
-            "./src/*.mjs",
-            "./src/*.js",
-            "./src/*.ts",
-            "./test/*.mjs",
-            "./test/*.js",
-            "./test/*.ts"
+            resolve(__dirname, './node_modules/**/*.mjs'),
+            resolve(__dirname, './node_modules/**/*.js'),
+            resolve(__dirname, './node_modules/**/*.ts'),
+            resolve(__dirname, './src/**/*.mjs'),
+            resolve(__dirname, './src/**/*.js'),
+            resolve(__dirname, './src/**/*.ts'),
+            resolve(__dirname, './src/*.mjs'),
+            resolve(__dirname, './src/*.js'),
+            resolve(__dirname, './src/*.ts'),
+            resolve(__dirname, './test/*.mjs'),
+            resolve(__dirname, './test/*.js'),
+            resolve(__dirname, './test/*.ts')
         ],
-        entries: [resolve(__dirname, './src/index.ts'),],
+        entries: [resolve(__dirname, './src/index.ts')],
         force: true
     }
 
@@ -204,10 +224,12 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const server = {
         port: 443,
         open: false,
+        host: "0.0.0.0",
         origin: "https://localhost/",
         https,
         fs: {
-            allow: ['..', resolve(__dirname, '../') ]
+            strict: false,
+            allow: [searchForWorkspaceRoot(process.cwd()), '../**/*', '../*', '..', resolve(__dirname, './**/*'), resolve(__dirname, './*'), __dirname ]
         },
         cors: {
             allowedHeaders: "*",
@@ -232,7 +254,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const build = {
         target: 'esnext',
-        outDir: 'dist',
+        outDir: resolve(__dirname, './dist'),
         //assetsInlineLimit: 4096,
         cssCodeSplit: false,
         chunkSizeWarningLimit: 1600,

@@ -9,8 +9,8 @@ import "shared/ui/EntityCard/_EntityCard.scss";
 import { H, Q } from "fest/lure";
 
 //
-import { AppLayout as DesktopLayout } from "./frontend/elements/layout/Desktop.js";
-import { TimelineView, ItemsView, ServicesView, BonusesView } from "./frontend/views/Views.js";
+import { AppLayout as DesktopLayout } from "./frontend/elements/layout/Desktop";
+import { TasksTimelineView } from "./frontend/views/Views";
 import { colorScheme } from "fest/fl-ui";
 import { loadInlineStyle, default as loadCSS, initialize as initDOM } from "fest/dom";
 import { makeReactive } from "fest/object";
@@ -19,7 +19,7 @@ import { makeReactive } from "fest/object";
 //const mount = document.getElementById("app");
 
 //
-import style from "./src/index.scss?inline";
+import style from "./index.scss?inline";
 export default async function bootstrap(mountElement) {
     await initDOM(document.body);
     await loadCSS();
@@ -37,10 +37,7 @@ export default async function bootstrap(mountElement) {
 
     //
     const tabs = new Map([
-        ["timeline", TimelineView()],
-        ["items", ItemsView()],
-        ["services", ServicesView()],
-        ["bonuses", BonusesView()]
+        ["timeline", TasksTimelineView()],
     ]);
 
     //
