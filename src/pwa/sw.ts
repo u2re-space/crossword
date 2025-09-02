@@ -1,6 +1,5 @@
-import { GPT_API } from "../src/core/api/GPT-API";
-import { idbOpen } from "../src/core/data/IDBStorage";
-import { IDBStorage } from "../src/core/data/IDBStorage";
+import { idbOpen } from "../core/data/IDBStorage";
+import { IDBStorage } from "../core/data/IDBStorage";
 
 //
 const DB_NAME = 'req-queue';
@@ -33,7 +32,7 @@ async function idbPushQueue(item) {
         await new Promise((res) => {
             const req = indexedDB.open(DB_NAME, 2);
             req.onupgradeneeded = () => req.result.createObjectStore(STORE, { autoIncrement: true });
-            req.onsuccess = () => { req.result.close(); res(); };
+            req.onsuccess = () => { req.result.close(); res(void 0); };
         });
     } else db.close();
 
@@ -63,7 +62,7 @@ async function flushQueue() {
         await removeOneFromQueue(cur.value);
         cur.continue();
     };
-    req.onerror = () => { db.close(); rej(req.error); };
+    req.onerror = () => { db.close(); }
 }
 
 //
@@ -74,8 +73,8 @@ async function removeOneFromQueue(item) {
         const req = tx.objectStore(STORE).openCursor();
         req.onsuccess = () => {
             const cur = req.result;
-            if (!cur) { res(); return; }
-            if (JSON.stringify(cur.value) === JSON.stringify(item)) { cur.delete(); res(); return; }
+            if (!cur) { res(void 0); return; }
+            if (JSON.stringify(cur.value) === JSON.stringify(item)) { cur.delete(); res(void 0); return; }
             cur.continue();
         };
         req.onerror = () => rej(req.error);
@@ -104,7 +103,7 @@ self.addEventListener('message', (e) => {
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
 
-    // POST
+    // POST request
     if (e.request.method === 'POST') {
         /* // api/geo, handling beacons in service worker
         if (url.pathname.includes('/api/geo')) {
@@ -112,67 +111,69 @@ self.addEventListener('fetch', (e) => {
             return;
         }*/
 
-        // share-target
+        // Shared target
         if (url.pathname === '/share-target') {
             e.respondWith((async () => {
                 const fd = await e.request.formData();
-                const payload = {
+                const inputs = {
                     title: fd.get('title'),
                     text: fd.get('text'),
                     url: fd.get('url'),
                     files: fd.getAll('files') // File[]
                 };
 
-                // GPT
-                const response = await GPT_API.getResponse(payload.files?.[0] ?? payload.text, getKind(payload));
-                idbStorage.put("response-" + Date.now(), JSON.stringify(response));
+                //
+                const entityType = "bonus";
 
-                // shared-target
-                const clientsArr = await self.clients.matchAll({type: 'window', includeUncontrolled:true});
-                if (clientsArr.length) clientsArr[0].postMessage({type: 'shared', payload});
-                return Response.redirect('/shared', 303);
+                // JSON coded
+                const jsonCoded = JSON.stringify({
+                    kind: "test",
+                    desc: {
+                        name: 'response',
+                        description: 'Response from GPT'
+                    }
+                });
+
+                // GPT response
+                const response: any = {
+                    output: [{
+                        type: 'text_output',
+                        content: jsonCoded
+                    }]
+                };
+
+                // Pending fs write (OPFS)
+                idbStorage.put("pending-fs-write-" + entityType + "_" + (JSON.parse(jsonCoded)?.desc?.name || Date.now().toString()), jsonCoded);
+
+                // @ts-ignore
+                const clientsArr = await clients.matchAll({type: 'window', includeUncontrolled:true});
+                if (clientsArr.length) clientsArr[0].postMessage({entityType, jsonCoded});
+
+                // TODO: correct status by GPT response
+                return new Response(JSON.stringify(response), {
+                    status: 200,
+                    statusText: 'OK',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
             })());
         }
     }
 
     // GET
     if (e.request.method === 'GET') {
-        // shared
-        if (url.pathname === '/shared') {
-            e.respondWith((async () => {
-                const payload = await idbStorage.get("response-" + Date.now());
-                return Response.json(payload);
-            })());
-        }
+
     }
 
     // PUT
-    if (e.request.method === 'PUT') {
-        // shared
-        if (url.pathname === '/shared') {
-            e.respondWith((async () => {
-                const fd = await e.request.formData();
-                const payload = {
-                    title: fd.get('title'),
-                    text: fd.get('text'),
-                    url: fd.get('url'),
-                    files: fd.getAll('files') // File[]
-                };
-                idbStorage.put("response-" + Date.now(), JSON.stringify(payload));
-                return Response.json(payload);
-            })());
-        }
+    if (e.request.method == 'PUT') {
+
     }
 
     // DELETE
-    if (e.request.method === 'DELETE') {
-        // shared
-        if (url.pathname === '/shared') {
-            e.respondWith((async () => {
-                await idbStorage.delete("response-" + Date.now());
-                return Response.json({});
-            })());
-        }
+    if (e.request.method == 'DELETE') {
+
     }
 
     //

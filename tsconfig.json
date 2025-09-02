@@ -1,5 +1,5 @@
 {
-    "include": ["./main.mjs", "./src/index.mjs", "./pwa/sw.mjs", "./src/**/*.ts", "./test/**/*.ts", "./shared/**/*.ts"],
+    "include": ["./main.mjs", "./src/index.mjs", "./src/**/*.ts", "./test/**/*.ts", "./shared/**/*.ts"],
     "exclude": ["./dist/**/*", "./externals/**/*"],
     "compilerOptions": {
         "outDir": "./dist/",
