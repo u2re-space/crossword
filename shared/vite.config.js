@@ -120,8 +120,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         ...(isBuild ? [] : [
             viteStaticCopy({
                 targets: [
-                    { src: resolve(__dirname, 'src/pwa/manifest.json'), dest: resolve(__dirname, './dist/pwa') },
-                    { src: resolve(__dirname, 'src/pwa/icon.svg'), dest: resolve(__dirname, './dist/pwa') }
+                    { src: resolve(__dirname, 'src/pwa/manifest.json'), dest: resolve(__dirname, './dist/pwa/') },
+                    { src: resolve(__dirname, 'src/pwa/icons/icon.svg'), dest: resolve(__dirname, './dist/pwa/icons/') }
                 ]
             })
         ]),
@@ -147,7 +147,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 maximumFileSizeToCacheInBytes: 1024 * 1024 * 16,
             },
             includeAssets: [
-                resolve(__dirname, './src/pwa/icon.svg')
+                resolve(__dirname, './src/pwa/icons/icon.svg')
             ],
             manifest: false,
             devOptions: {

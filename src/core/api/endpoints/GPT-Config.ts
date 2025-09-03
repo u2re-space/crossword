@@ -53,3 +53,8 @@ export const getDataKindByMIMEType = (mime: string): DataKind => {
     if (mime.includes("url")) return "url";
     return "text";
 }
+
+//
+export const ASK_WRITE_JSON_FORMAT = `
+Don't write anything else, just the JSON format, do not write comments, do not write anything else.
+`?.trim?.();
