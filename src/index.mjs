@@ -36,12 +36,12 @@ export default async function bootstrap(mountElement) {
     </div>`;*/
 
     //
-    const tabs = new Map([
+    const views = new Map([
         ["timeline", TasksTimelineView()],
     ]);
 
     //
-    const layout = DesktopLayout(tabs);
+    const layout = DesktopLayout(views);
 
     //
     mountElement?.append?.(layout);
