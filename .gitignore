@@ -171,6 +171,9 @@ https/*
 ./build
 ./build/
 ./build/*
+./dev-dist
+./dev-dist/
+./dev-dist/*
 
 # Builds
 dist
@@ -179,3 +182,6 @@ dist/*
 build
 build/
 build/*
+dev-dist
+dev-dist/
+dev-dist/*
