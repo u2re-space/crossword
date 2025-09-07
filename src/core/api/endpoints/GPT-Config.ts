@@ -58,3 +58,70 @@ export const getDataKindByMIMEType = (mime: string): DataKind => {
 export const ASK_WRITE_JSON_FORMAT = `
 Don't write anything else, just the JSON format, do not write comments, do not write anything else.
 `?.trim?.();
+
+//
+export const GLOBAL_PROMPT_INSTRUCTIONS = `
+You are a helpful assistant that can recognize data and organize it in needed formats.
+
+You are given a data source, and needs to follow by requests...
+
+Give in results (outputs) only code or JSON string, without any additional comments.
+`;
+
+//
+export const actionWithDataType = (data: DataInput): string => {
+    switch(typesForKind[data?.dataKind]) {
+        case "image_url":
+            return `Recognize data from image, also preferred to orient by fonts in image.
+
+In recognition result, do not include image itself.
+
+In recognized from image data (what you seen in image), do:
+
+- If textual content, format as Markdown string (multiline).
+- If math (expression, equation, formula), format as $KaTeX$
+- If table (or looks alike table), format as | table |
+- If image, format as [$image$]($image$)
+- If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
+- If JSON, format as JSON string.
+- If phone number, format as as correct phone number (in normalized format).
+- If email, format as as correct email (in normalized format).
+- If URL, format as as correct URL (in normalized format).
+- If date, format as as correct date (in normalized format).
+- If time, format as as correct time (in normalized format).
+- If other, format as $text$.
+- If seen alike list, format as list (in markdown format).
+
+If nothing found, return "No data recognized". Write into "additional_details" (JSON string) field.
+
+Also, collect special data tags and keywords (if any)...
+
+Get result in JSON format:
+
+\`\`\`json
+{
+    "keywords_and_tags": [string],
+    "additional_details": [string],
+    "requested_data": [string]
+}
+\`\`\`
+`;
+
+        case "text":
+            return `Collect special data tags and keywords (if any)...
+
+In additional details, can be written phone numbers, emails, URLs, dates, times, codes, etc.
+
+Get result in JSON format:
+
+\`\`\`json
+{
+    "keywords_and_tags": [string],
+    "additional_details": [string],
+    "requested_data": [string]
+}
+\`\`\`
+`;
+    }
+    return "";
+}
