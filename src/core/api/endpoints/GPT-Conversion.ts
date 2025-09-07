@@ -70,7 +70,7 @@ export class GPTConversion {
     }
 
     //
-    async convertPlainToInput(request: (string|Blob|File|any), firstAction: string|null = null, dataKind: DataKind|null = null): Promise<any> {
+    async convertPlainToInput(request: (string|Blob|File|any), dataKind: DataKind|null = null, firstAction: string|null = null): Promise<any> {
         dataKind ??= getDataKindByMIMEType(request?.type) || "text";
         return {
             type: "message",
@@ -96,8 +96,8 @@ export class GPTConversion {
     }
 
     //
-    async addToRequest(request: (string|Blob|File|any), dataKind: DataKind|null = null) {
-        this.pending.push(await this.convertPlainToInput(request, dataKind ??= getDataKindByMIMEType(request?.type)));
+    async addToRequest(request: (string|Blob|File|any), dataKind: DataKind|null = null, firstAction: string|null = null) {
+        this.pending.push(await this.convertPlainToInput(request, dataKind ??= getDataKindByMIMEType(request?.type), firstAction));
         return this.pending[this.pending.length - 1];
     }
 
@@ -128,7 +128,7 @@ export class GPTConversion {
 
         //
         const resp = await response.json();
-        this.responseId = resp?.id;
+        this.responseId = resp?.id || this.responseId;
         this.messages.push(...(this.pending || [])); this.pending?.splice(0, this.pending.length);
         this.messages.push(...(resp?.output || []));
         return this.messages[this.messages.length - 1];

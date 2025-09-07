@@ -55,17 +55,16 @@ export const getDataKindByMIMEType = (mime: string): DataKind => {
 }
 
 //
-export const ASK_WRITE_JSON_FORMAT = `
-Don't write anything else, just the JSON format, do not write comments, do not write anything else.
-`?.trim?.();
-
-//
 export const GLOBAL_PROMPT_INSTRUCTIONS = `
 You are a helpful assistant that can recognize data and organize it in needed formats.
+
+JSON Data schemes partially complains with: <https://json-schema.org/draft/2020-12/schema>
 
 You are given a data source, and needs to follow by requests...
 
 Give in results (outputs) only code or JSON string, without any additional comments.
+
+Don't write anything else, just the JSON format, do not write comments, do not write anything else.
 `;
 
 //
@@ -96,13 +95,13 @@ If nothing found, return "No data recognized". Write into "additional_details" (
 
 Also, collect special data tags and keywords (if any)...
 
-Get result in JSON format:
+Get results in JSON format:
 
 \`\`\`json
 {
     "keywords_and_tags": [string],
     "additional_details": [string],
-    "requested_data": [string]
+    "requested_data": [string] // where to write output data of following requests
 }
 \`\`\`
 `;
@@ -118,7 +117,7 @@ Get result in JSON format:
 {
     "keywords_and_tags": [string],
     "additional_details": [string],
-    "requested_data": [string]
+    "requested_data": [string] // where to write output data of following requests
 }
 \`\`\`
 `;
