@@ -15,7 +15,18 @@
         "last 1 chrome version",
         "last 1 firefox version"
     ],
+    "overrides": {
+        "rollup": "4.50.1",
+        "@rollup/rollup-linux-x64-gnu": "4.50.1",
+        "@rollup/rollup-linux-x64-musl": "4.50.1",
+        "@rollup/plugin-terser": "0.4.4",
+        "@rollup/plugin-typescript": "12.1.4"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "4.50.1"
+    },
     "devDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "^4.50.1",
         "@danielx/civet": "^0.10.4",
         "@phosphor-icons/core": "^2.1.1",
         "@picocss/pico": "^2.1.1",

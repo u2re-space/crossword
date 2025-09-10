@@ -10,7 +10,6 @@ import https from "../private/https/certificate.mjs";
 
 //
 import { viteSingleFile } from 'vite-plugin-singlefile';
-import visualizer from 'vite-bundle-analyzer';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa'
 import { searchForWorkspaceRoot } from "vite";
@@ -113,10 +112,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'production';
     const plugins = [
         viteSingleFile(),
-        visualizer({
-            //open: false,
-            //filename: 'dist/stats.html',
-        }),
         ...(isBuild ? [] : [
             viteStaticCopy({
                 targets: [
@@ -141,6 +136,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             //strategies: 'injectManifest',
             strategies: 'generateSW',
             injectRegister: 'auto',
+            workbox: {
+                maximumFileSizeToCacheInBytes: 1024 * 1024 * 8,
+                globIgnores: ['**/index.html']
+            },
             injectManifest: {
                 swSrc: resolve(__dirname, './src/pwa/sw.ts'),
                 swDest: resolve(__dirname, './dist/pwa/sw.mjs'),
@@ -225,7 +224,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         port: 443,
         open: false,
         host: "0.0.0.0",
-        origin: "https://localhost/",
+        origin: "https://localhost",
         https,
         fs: {
             strict: false,

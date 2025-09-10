@@ -1,7 +1,28 @@
 import { H } from "fest/lure";
 
+
+
+// sample tasks for demo and mobile-first layout
+export const sampleTasks = [
+    { id: 't1', title: 'Plan morning', desc: 'Make coffee, review emails', kind: 'personal', variant: 'blur', icon: 'coffee' },
+    { id: 't2', title: 'Design meeting', desc: 'Sync with product team', kind: 'work', variant: 'purple', icon: 'users' },
+    { id: 't3', title: 'Grocery', desc: 'Buy milk and bread', kind: 'errand', variant: 'green', icon: 'shopping-cart' }
+];
+
+const _LOG_ = (data: any) => {
+    console.log("LOG_", data);
+    return data;
+}
+
+//
+export const bindTaskWithElement = (task: any, element: HTMLElement) => {
+    console.log("bindTaskWithElement", task, element);
+}
+
+
+
 // Card-like task item with avatar, variant colors and tap-to-expand
-export const TaskItem = (task: any) => {
+export const createTaskElement = (task: any) => {
     const variant = task?.variant || "default";
     const title = task?.title || task?.desc || "Task";
     const desc = task?.desc || "";
@@ -20,4 +41,4 @@ export const TaskItem = (task: any) => {
             <div class="card-meta">${kind}</div>
         </div>
     </div>`;
-};
+}
