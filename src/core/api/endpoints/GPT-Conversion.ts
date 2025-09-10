@@ -72,24 +72,25 @@ export class GPTConversion {
 
 
     //
-    async convertPlainToInput(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null): Promise<any> {
+    async convertPlainToInput(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, additionalAction: string | null = null): Promise<any> {
         dataKind ??= getDataKindByMIMEType(dataSource?.type) || "text";
         return {
             type: "message",
             role: "system",
             content: [
                 { type: "text", text: "What to do: " + actionWithDataType({ dataSource, dataKind }) },
-                firstAction ? { type: "text", text: "Additional request data: " + firstAction } : null,
-                { type: "text", text: "Attached data: \n --- \n" },
+                additionalAction ? { type: "text", text: "Additional request data: " + additionalAction } : null,
+                { type: "text", text: "\n === BEGIN:ATTACHED_DATA === \n" },
                 { /*type: typesForKind?.[dataKind],*/ ...await getUsableData({ dataSource, dataKind }) },
-                { type: "text", text: "\n --- \n;" },
+                { type: "text", text: "\n === END:ATTACHED_DATA === \n" },
             ]?.filter?.((item)=> item !== null)
         };
     }
 
     //
     async attachToRequest(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null) {
-        this.pending.push(await this.convertPlainToInput(dataSource, dataKind ??= getDataKindByMIMEType(dataSource?.type), firstAction));
+        this.pending.push(await this.convertPlainToInput(dataSource, dataKind ??= getDataKindByMIMEType(dataSource?.type)));
+        if (firstAction) { this.pending.push(await this.askToDoAction(firstAction)); }
         return this.pending[this.pending.length - 1];
     }
 

@@ -38,7 +38,7 @@ Shortlist of existing items in ${entityType} registry and related entities, for 
 ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 \`\`\``,
         "=== END:PREPARE_DATA ===",
-        "",
+        "", "",
         "=== BEGIN:RESOLVE_STEP ===",
         "Request: resolve entity item, by following scheme: ",
         `\`\`\`json

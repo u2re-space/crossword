@@ -91,7 +91,7 @@ In recognized from image data (what you seen in image), do:
 - If other, format as $text$.
 - If seen alike list, format as list (in markdown format).
 
-If nothing found, return "No data recognized". Write into "additional_details" (JSON string) field.
+If nothing found, return "No data recognized". Write into "recognized_data" (JSON string) field.
 
 Also, collect special data tags and keywords (if any)...
 
@@ -101,6 +101,7 @@ Get results in JSON wrapped format:
 {
     "keywords_and_tags": string[],
     "additional_details": string[],
+    "recognized_data": string,
     "requested_data": string // where to write output data of following requests
 }
 \`\`\`
@@ -117,6 +118,7 @@ Get result in JSON wrapped format:
 {
     "keywords_and_tags": string[],
     "additional_details": string[],
+    "recognized_data": string,
     "requested_data": string // where to write output data of following requests
 }
 \`\`\`

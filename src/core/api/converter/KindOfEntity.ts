@@ -11,7 +11,6 @@ This is the kind scheme of ${entityType} entity (enums values):
 \`\`\`json
 ${JSON.stringify(JSON_SCHEMES.$entities[entityType].kind.enum, null, 2)}
 \`\`\`
-
 === END:PREPARE_DATA ===
 
 === BEGIN:ENTITY_KIND_REQUEST ===
