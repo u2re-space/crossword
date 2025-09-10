@@ -20,5 +20,5 @@ export const DataView = ()=>{
     // TODO: make JSON data editor and viewer for opened files...
 
     //
-    return H`<section class="data-view">${viewer}</section>`;
+    return H`<section id="items" style="background-color: transparent;" class="data-view c2-surface">${viewer}</section>`;
 };

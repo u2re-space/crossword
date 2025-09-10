@@ -1,0 +1,17 @@
+@layer rs-forms {
+    ui-longtext {
+        --thumb-size: 1.25rem;
+        --track-height: 0.25rem;
+        display: inline-block;
+    }
+
+    ui-slider[variant="slider"] {
+        block-size: 1rem;
+        border-radius: 9999px;
+    }
+
+    .u2-input, .u2-field {
+        display: grid;
+        gap: 0.25rem;
+    }
+}

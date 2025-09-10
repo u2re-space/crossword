@@ -1,6 +1,6 @@
-import { AppLayout as DesktopLayout } from "./elements/layout/Desktop";
+import { AppLayout } from "./layout/AppLayout";
 //import { AppLayout as DesktopLayout } from "./frontend/elements/layout/Mobile";
-import { TasksTimelineView } from "./views/Views";
+import { TasksTimelineView, DataView } from "./views/Views";
 import { colorScheme } from "fest/fl-ui";
 import { loadInlineStyle, default as loadCSS, initialize as initDOM } from "fest/dom";
 import { makeReactive } from "fest/object";
@@ -33,13 +33,12 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", TasksTimelineView()],
+        ["items", DataView()],
+        ["timeline", TasksTimelineView()]
     ]);
 
     //
-    const layout = DesktopLayout(views);
-
-    //
+    const layout = AppLayout(views);
     mountElement?.append?.(layout);
 
     //

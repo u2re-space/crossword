@@ -16,5 +16,5 @@ export const TasksTimelineView = ()=>{
 ></ui-tabbed-box>`;
 
     tabbed.renderTabName = (tabName: string) => { return sampleDays?.find((day: any) => day.id == tabName)?.title || tabName; };
-    return H`<section style="background-color: transparent;" class="timeline c2-surface">${tabbed}</section>`;
+    return H`<section id="timeline" style="background-color: transparent;" class="timeline c2-surface">${tabbed}</section>`;
 }

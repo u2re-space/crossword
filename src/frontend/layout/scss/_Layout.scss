@@ -80,6 +80,11 @@
                 border-radius: 0.25rem;
                 background: transparent;
                 transition: background-color .12s linear, color .12s linear;
+                pointer-events: none;
+
+                * {
+                    pointer-events: none;
+                }
 
                 &:hover,
                 &:focus-within {
@@ -98,6 +103,12 @@
                     color: inherit;
                     background: transparent;
                     block-size: stretch;
+
+                    pointer-events: auto;
+
+                    a * {
+                        pointer-events: none;
+                    }
 
                     ui-icon {
                         justify-self: start;
