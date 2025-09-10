@@ -18,7 +18,7 @@ export const bindDayWithElement = (day: any, element: HTMLElement) => {
 
 //
 export const createDayElement = (day: any, sampleTasks: any[]) => {
-    return H`<div style="background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${day.variant} on:click=${(ev: any) => {
+    return H`<div style="display: flex; flex-direction: column; gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${day.variant} on:click=${(ev: any) => {
         const el = ev.currentTarget as HTMLElement;
         el.toggleAttribute?.('data-open');
     }}>${M(sampleTasks, (task) => createTaskElement(task))}</div>`;

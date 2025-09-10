@@ -9,7 +9,12 @@ export const TasksTimelineView = ()=>{
     // initialize a default tab
     if (!daysTabs.size) { bindDayWithElement(sampleDays[0], createDayElement(sampleDays[0], sampleTasks)); }
 
-    return H`<section style="background-color: transparent;" class="timeline c2-surface">
-        <ui-tabbed-box style="background-color: transparent;" prop:tabs=${daysTabs} class="days"></ui-tabbed-box>
-    </section>`;
+    const tabbed = H`<ui-tabbed-box
+    prop:tabs=${daysTabs}
+    style="background-color: transparent;"
+    class="days"
+></ui-tabbed-box>`;
+
+    tabbed.renderTabName = (tabName: string) => { return sampleDays?.find((day: any) => day.id == tabName)?.title || tabName; };
+    return H`<section style="background-color: transparent;" class="timeline c2-surface">${tabbed}</section>`;
 }
