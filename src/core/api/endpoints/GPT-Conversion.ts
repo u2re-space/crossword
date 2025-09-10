@@ -3,7 +3,7 @@ import { DataInput, DataKind, GLOBAL_PROMPT_INSTRUCTIONS, actionWithDataType, ge
 //
 export const getUsableData = async (data: DataInput) => {
     if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
-        if (typesForKind[data?.dataKind] === "image_url" || (data?.dataSource?.type?.startsWith?.("image/"))) {
+        if (typesForKind?.[data?.dataKind] === "image_url" || (data?.dataSource?.type?.startsWith?.("image/"))) {
             const BASE64URL = `data:${data?.dataSource?.type};base64,`;
             return {
                 "type": "image_url",
@@ -28,7 +28,7 @@ export const getUsableData = async (data: DataInput) => {
 
     //
     return {
-        "type": typesForKind[data?.dataKind],
+        "type": typesForKind?.[data?.dataKind] || "text",
         "text": result
     }
 }
@@ -69,45 +69,38 @@ export class GPTConversion {
         return this.tools[this.tools.length - 1];
     }
 
+
+
     //
-    async convertPlainToInput(request: (string|Blob|File|any), dataKind: DataKind|null = null, firstAction: string|null = null): Promise<any> {
-        dataKind ??= getDataKindByMIMEType(request?.type) || "text";
+    async convertPlainToInput(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null): Promise<any> {
+        dataKind ??= getDataKindByMIMEType(dataSource?.type) || "text";
         return {
             type: "message",
-            role: "user",
+            role: "system",
             content: [
-                { type: "text", text: "What to do: " + actionWithDataType({ dataSource: request, dataKind }) },
+                { type: "text", text: "What to do: " + actionWithDataType({ dataSource, dataKind }) },
                 firstAction ? { type: "text", text: "Additional request data: " + firstAction } : null,
                 { type: "text", text: "Attached data: \n --- \n" },
-                { /*type: typesForKind?.[dataKind],*/ ...await getUsableData({ dataSource: request, dataKind }) },
+                { /*type: typesForKind?.[dataKind],*/ ...await getUsableData({ dataSource, dataKind }) },
                 { type: "text", text: "\n --- \n;" },
             ]?.filter?.((item)=> item !== null)
         };
     }
+
+    //
+    async attachToRequest(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null) {
+        this.pending.push(await this.convertPlainToInput(dataSource, dataKind ??= getDataKindByMIMEType(dataSource?.type), firstAction));
+        return this.pending[this.pending.length - 1];
+    }
+
+
 
     // for responses (not first requests)
     async askToDoAction(action: string) {
         this.pending.push({
             type: "message",
             role: "user",
-            content: [{ type: "text", text: action}]
-        });
-        return this.pending[this.pending.length - 1];
-    }
-
-    //
-    async attachToRequest(request: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null) {
-        this.pending.push(await this.convertPlainToInput(request, dataKind ??= getDataKindByMIMEType(request?.type), firstAction));
-        return this.pending[this.pending.length - 1];
-    }
-
-    //
-    async addSystemInput(request: (string|Blob|File|any), dataKind: DataKind|null = null) {
-        dataKind ??= getDataKindByMIMEType(request?.type) || "text";
-        this.pending.push({
-            type: "message",
-            role: "system",
-            content: [{...await getUsableData({ dataSource: request, dataKind }) }]
+            content: [{ type: "text", text: action }]
         });
         return this.pending[this.pending.length - 1];
     }

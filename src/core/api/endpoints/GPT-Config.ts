@@ -69,7 +69,7 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 
 //
 export const actionWithDataType = (data: DataInput): string => {
-    switch(typesForKind[data?.dataKind]) {
+    switch (typesForKind?.[data?.dataKind]) {
         case "image_url":
             return `Recognize data from image, also preferred to orient by fonts in image.
 
