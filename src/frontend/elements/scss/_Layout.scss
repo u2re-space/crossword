@@ -1,44 +1,149 @@
+@use "./core/General";
 
+//
 @layer rs-layout {
+
+    //
     ui-box-with-sidebar {
         display: grid;
-        //grid-template-columns: 260px minmax(0px, 1fr);
-        //grid-template-rows: auto minmax(1fr, auto);
-        gap: 0.5rem;
+
         inline-size: stretch;
         block-size: stretch;
-        padding: 0.5rem;
         box-sizing: border-box;
+
+        place-content: center;
+        place-items: center;
+        justify-content: start;
+
+        & > [slot="bar"] {
+            grid-column: 1 / -1;
+            margin: 0;
+            padding: 0.25rem 0.5rem;
+        }
+
+        & > ui-tabbed-box {
+            grid-column: 2 / -1;
+            grid-row: 2 / 3;
+            inline-size: stretch;
+            block-size: stretch;
+        }
     }
 
-    ui-box-with-sidebar > [slot="bar"] {
-        grid-column: 1 / -1;
-        margin: 0;
-        padding: 0.25rem 0.5rem;
-    }
-
-    ui-box-with-sidebar > nav[slot="sidebar"] {
-        grid-column: 1 / 2;
-        grid-row: 2 / 3;
-        position: sticky;
-        inset-block-start: 0.5rem;
-        align-self: start;
-        max-block-size: calc(100dvb - 1rem);
-        overflow: auto;
-    }
-
-    ui-box-with-sidebar > ui-tabbed-box {
-        grid-column: 2 / -1;
-        grid-row: 2 / 3;
+    ui-box-with-sidebar nav {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
         inline-size: stretch;
-        block-size: stretch;
+        text-align: start;
+        padding: 0.25rem;
+        min-inline-size: 160px;
+
+        &[slot="sidebar"] {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            position: sticky;
+            inset-block-start: 0.5rem;
+            align-self: start;
+            max-block-size: calc(100dvb - 1rem);
+            overflow: auto;
+        }
+
+        // Navigation list container
+        ul {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            //padding: 0.375rem; /* inset padding */
+            padding: 0rem;
+            margin: 0;
+            border-radius: 0.5rem;
+            inline-size: stretch;
+            user-select: none;
+            list-style: none;
+            overflow: hidden;
+            background-color: --c2-surface(0.08, var(--current, transparent));
+            box-shadow: inset 0 6px 14px rgba(0,0,0,0.04), inset 0 -6px 10px rgba(255,255,255,0.02);
+
+            // list items are simple rows inside the inset box
+            li {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 0.5rem;
+                inline-size: stretch;
+                box-sizing: border-box;
+                margin: 0;
+                border-radius: 0.25rem;
+                background: transparent;
+                transition: background-color .12s linear, color .12s linear;
+
+                &:hover,
+                &:focus-within {
+                    background-color: --c2-surface(0.12, var(--current, transparent));
+                }
+
+                a {
+                    display: grid;
+                    grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr);
+                    align-items: center;
+                    justify-items: start;
+                    gap: 0.25rem;
+                    padding: 0.5rem 0.5rem;
+                    inline-size: 100%;
+                    text-decoration: none;
+                    color: inherit;
+                    background: transparent;
+                    block-size: stretch;
+
+                    ui-icon {
+                        justify-self: start;
+                        inline-size: 1.5rem;
+                        block-size: 1.5rem;
+
+                        --icon-color: --c2-on-surface(0.0, var(--current, currentColor));
+                    }
+
+                    span {
+                        display: block;
+                        justify-self: start;
+                        text-align: start;
+                        inline-size: 100%;
+                    }
+                }
+            }
+        }
+
+        // enforce left/start alignment for all nested text elements
+        &, ul, ul li, ul li a, ul li a span {
+            text-align: start;
+            direction: ltr;
+            justify-items: start;
+            justify-self: start;
+        }
     }
 
-    @container (max-width: 800px) {
+    @container (max-inline-size: 800px) {
         ui-box-with-sidebar > nav[slot="sidebar"] {
             position: static;
             max-block-size: none;
             order: 2;
+            inline-size: 100%;
+        }
+        ui-box-with-sidebar nav {
+            padding: 0.25rem 0.5rem;
+        }
+        ui-box-with-sidebar nav ul {
+            flex-direction: row;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-inline: 0.25rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        ui-box-with-sidebar nav ul li {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            border-radius: 0.375rem;
         }
         ui-box-with-sidebar > ui-tabbed-box {
             order: 3;

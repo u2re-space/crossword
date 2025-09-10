@@ -19,8 +19,24 @@
             "polyfill/*": ["./shared/fest/polyfill/*"],
             "shared/*": ["./shared/*"],
             "@ui/*": ["./shared/fest/fl-ui/ui/*"],
-            "@src/*": ["./shared/fest/fl-ui/*"],
-            "@design/*": ["./shared/fest/fl-ui/design/*"]
+            "@src/*": [
+                "./shared/fest/fl-ui/*"
+            ],
+            "@design/*": [
+                "./shared/fest/fl-ui/design/*"
+            ],
+            "@rs-core/*": [
+                "./src/core/*"
+            ],
+            "@rs-frontend/*": [
+                "./src/frontend/*"
+            ],
+            "@rs-shared/*": [
+                "./shared/*"
+            ],
+            "@rs-test/*": [
+                "./test/*"
+            ]
         },
         "target": "ESNext",
         "module": "ESNext",

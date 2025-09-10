@@ -1,43 +1,4 @@
-
-@layer rs-views {
-    .view {
-        display: block;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-    }
-
-    .view > h2 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 700;
-        font-size: 1.125rem;
-        letter-spacing: 0.01em;
-    }
-
-    .cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 0.5rem;
-    }
-
-    // Task timeline card variables
-    :root {
-        --card-radius: 0.75rem;
-        --card-padding: 0.75rem;
-        --card-shadow: 0 6px 18px rgba(0,0,0,0.12);
-        --card-avatar-size: 40px;
-
-        // simple color variants
-        --card-bg-default: #ffffff;
-        --card-on-default: #111827;
-
-        --card-bg-purple: #7c3aed;
-        --card-on-purple: #ffffff;
-
-        --card-bg-green: #10b981;
-        --card-on-green: #ffffff;
-
-        --card-bg-blur: rgba(255,255,255,0.65);
-    }
+@layer rs-task-item {
 
     .card {
         display: flex;
@@ -46,8 +7,8 @@
         padding: var(--card-padding);
         border-radius: var(--card-radius);
         box-shadow: var(--card-shadow);
-        background-color: var(--card-bg-default);
-        color: var(--card-on-default);
+        background-color: --c2-surface(0.5, var(--current));;
+        color: --c2-on-surface(0.0, var(--current));;
         transition: transform 160ms ease, box-shadow 160ms ease, backdrop-filter 160ms ease;
         touch-action: manipulation;
         user-select: none;
@@ -79,8 +40,7 @@
     .card-meta { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
 
     // variants
-    .card[data-variant="purple"] { background: var(--card-bg-purple); color: var(--card-on-purple); }
-    .card[data-variant="green"] { background: var(--card-bg-green); color: var(--card-on-green); }
-    .card[data-variant="blur"] { background: var(--card-bg-blur); backdrop-filter: blur(8px) saturate(120%); }
+    .card[data-variant="purple"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1); }
+    .card[data-variant="green"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 60) / 1); }
+    .card[data-variant="blur"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 120) / 1); backdrop-filter: blur(8px) saturate(120%); }
 }
-

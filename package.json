@@ -7,7 +7,9 @@
         "preview": "vite preview",
         "start": "vite",
         "dev": "vite dev",
-        "test": "vite dev"
+        "test": "vite dev",
+        "test:dev": "vite dev",
+        "test:test": "echo 'No tests configured for ras-klad' && exit 0"
     },
     "browserslist": [
         "last 1 chrome version",
@@ -23,6 +25,7 @@
         "country-flag-emoji-polyfill": "^0.1.8",
         "cssnano": "^7.0.7",
         "cssnano-preset-advanced": "^7.0.7",
+        "culori": "^4.0.2",
         "dompurify": "^3.2.4",
         "isomorphic-dompurify": "^2.22.0",
         "jsdom": "^26.0.0",

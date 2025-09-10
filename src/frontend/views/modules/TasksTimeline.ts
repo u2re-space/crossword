@@ -1,6 +1,6 @@
 import { H, M } from "fest/lure";
 import { makeReactive, observableByMap } from "fest/object";
-import { TaskItem } from "../items/TaskItem";
+import { TaskItem } from "@rs-frontend/views/items/TaskItem";
 
 // sample tasks for demo and mobile-first layout
 const sampleTasks = [
@@ -31,6 +31,6 @@ export const TasksTimelineView = ()=>{
             ${M(sampleTasks, (task) => TaskItem(task))}
         </div>
         <ui-tabbed-box prop:tabs=${daysTabs} class="days" style="display:none"></ui-tabbed-box>
-        <button on:click=${() => addDayTab(new Date())}>New Day Plan</button>
+        <button on:click=${() => addDayTab(new Date(), sampleTasks)}>New Day Plan</button>
     </section>`;
 }

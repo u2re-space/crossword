@@ -1,0 +1,29 @@
+@layer rs-task-view {
+    .view {
+        display: block;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+    }
+
+    .view > h2 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 700;
+        font-size: 1.125rem;
+        letter-spacing: 0.01em;
+    }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 0.5rem;
+    }
+
+    // Task timeline card variables
+    :root {
+        --card-radius: 0.75rem;
+        --card-padding: 0.75rem;
+        --card-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        --card-avatar-size: 40px;
+    }
+
+}
