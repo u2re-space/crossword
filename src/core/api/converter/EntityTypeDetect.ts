@@ -1,5 +1,5 @@
 import type { GPTConversion } from '../endpoints/GPT-Conversion';
-import { JSON_SCHEMES } from '../../model/Entities';
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '../../model/Entities';
 
 // for optimize images before sending to GPT
 import { decode } from '@jsquash/png';
@@ -14,13 +14,31 @@ export const convertImageToJPEG = async (image: Blob|File|any): Promise<Blob>=>{
 
 //
 export const recognizeEntityType = async (dataSource: string|Blob|File|any, gptConversion: GPTConversion)=>{
-    const instructions = [
-        "You are a helpful assistant that can recognize type of entity. You are given a data source and you need to recognize type of entity. Give in JSON format '{ entityType: string }'. ",
-        "Select only from these entity types: " + JSON.stringify(Object.keys(JSON_SCHEMES.$entities), null, 2) + ", otherwise 'unknown'."
+    const firstStep = [
+        "", `${ABOUT_NAME_ID_GENERATION}`, "",
+        "",
+        "=== BEGIN:PREPARE_DATA ===",
+        "Shared Defs Declared:",
+        "",
+        `\`\`\`json
+${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
+\`\`\``,
+        "=== END:PREPARE_DATA ===",
+        "", "",
+        "=== BEGIN:FIRST_STEP ===",
+        "You are given a data source and you need to recognize type of entity.",
+        "Choice most suitable entity type from following list of schemes: ",
+        `\`\`\`json
+${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
+\`\`\``,
+        "",
+        "Output in JSON format: \`{ entityType: string, potentialName: string }\`.",
+        "=== END:FIRST_STEP ===",
     ]?.map?.((instruction)=> instruction?.trim?.());
 
     //
-    gptConversion.addToRequest(dataSource?.type?.startsWith?.("image/") ? await convertImageToJPEG(dataSource) : dataSource, null, instructions?.join?.("\n"));
+    await gptConversion.attachToRequest(dataSource)
+    await gptConversion.askToDoAction(firstStep?.join?.("\n"))
     const response = await gptConversion.sendRequest(), $PRIMARY = JSON.parse(response?.content || "{}");
     return $PRIMARY?.entityType || "unknown";
 }

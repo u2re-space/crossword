@@ -96,7 +96,7 @@ export class GPTConversion {
     }
 
     //
-    async addToRequest(request: (string|Blob|File|any), dataKind: DataKind|null = null, firstAction: string|null = null) {
+    async attachToRequest(request: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null) {
         this.pending.push(await this.convertPlainToInput(request, dataKind ??= getDataKindByMIMEType(request?.type), firstAction));
         return this.pending[this.pending.length - 1];
     }

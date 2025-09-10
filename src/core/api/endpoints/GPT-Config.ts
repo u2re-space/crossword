@@ -95,13 +95,13 @@ If nothing found, return "No data recognized". Write into "additional_details" (
 
 Also, collect special data tags and keywords (if any)...
 
-Get results in JSON format:
+Get results in JSON wrapped format:
 
 \`\`\`json
 {
-    "keywords_and_tags": [string],
-    "additional_details": [string],
-    "requested_data": [string] // where to write output data of following requests
+    "keywords_and_tags": string[],
+    "additional_details": string[],
+    "requested_data": string // where to write output data of following requests
 }
 \`\`\`
 `;
@@ -111,13 +111,13 @@ Get results in JSON format:
 
 In additional details, can be written phone numbers, emails, URLs, dates, times, codes, etc.
 
-Get result in JSON format:
+Get result in JSON wrapped format:
 
 \`\`\`json
 {
-    "keywords_and_tags": [string],
-    "additional_details": [string],
-    "requested_data": [string] // where to write output data of following requests
+    "keywords_and_tags": string[],
+    "additional_details": string[],
+    "requested_data": string // where to write output data of following requests
 }
 \`\`\`
 `;
