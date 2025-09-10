@@ -15,6 +15,7 @@ export const USAGE_SCHEME = { type: "string" };
 export const PERSON_SCHEME = { type: "array", items: { type: "string" } };
 export const BONUSES_SCHEME = { type: "array", items: { type: "string" } };
 export const FEEDBACKS_SCHEME = { type: "array", items: { type: "string" } };
+export const TITLE_SCHEME = { type: "string" };
 
 //
 export const COORDINATES_SCHEME = {
@@ -151,6 +152,7 @@ export const KIND_MAP = {
 export const PRIMARY_PROPS = {
     "name": NAME_SCHEME,
     "icon": ICON_SCHEME,
+    "title": TITLE_SCHEME,
     "description": DESCRIPTION_SCHEME,
     "tags": { $ref: "#/$defs/Tags" }
 };
