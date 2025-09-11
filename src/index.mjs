@@ -1,4 +1,6 @@
+import frontend from "./frontend/index.ts";
+
 //
 export default async function bootstrap(mountElement) {
-    import("./frontend/index.ts").then(({default: frontend}) => frontend(mountElement));
+    frontend(mountElement);
 }

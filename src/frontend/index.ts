@@ -2,7 +2,7 @@ import { AppLayout } from "./layout/AppLayout";
 //import { AppLayout as DesktopLayout } from "./frontend/elements/layout/Mobile";
 import { TasksTimelineView, DataView } from "./views/Views";
 import { colorScheme } from "fest/fl-ui";
-import { loadInlineStyle, default as loadCSS, initialize as initDOM } from "fest/dom";
+import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { makeReactive } from "fest/object";
 import { dropFile } from "fest/lure";
 
@@ -17,9 +17,8 @@ import style from "./index.scss?inline";
 
 //
 export default async function frontend(mountElement) {
-    await initDOM(document.body);
-    await loadCSS();
-    await loadInlineStyle(style);
+    initDOM(document.body);
+    loadInlineStyle(style);
 
     //
     /*const content = H`<div>
