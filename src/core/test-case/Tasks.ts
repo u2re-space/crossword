@@ -11,7 +11,7 @@ export const sampleTasks = [
 export const writeSampleTask = (task: any) => {
     const fileName = `${task?.desc?.name}.json`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    writeFile(null, `/tasks/${fileName}`, file);
+    writeFile(null, `/task/${fileName}`, file)?.catch?.(console.error);
 }
 
 //
