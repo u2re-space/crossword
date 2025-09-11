@@ -33,8 +33,8 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", TasksTimelineView()],
-        ["items", DataView()]
+        ["items", await DataView()],
+        ["timeline", await TasksTimelineView()]
     ]);
 
     //
