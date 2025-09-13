@@ -13,13 +13,3 @@ export const writeSampleTask = async (task: any) => {
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
     return writeFile(null, `/task/${fileName}`, file)?.catch?.(console.warn.bind(console));
 }
-
-/*
-//
-(async () => {
-    await clearAllInDirectory()?.catch?.(console.warn.bind(console));
-    for (const task of sampleTasks) {
-        writeSampleTask(task)?.catch?.(console.warn.bind(console));
-    }
-})();
-*/

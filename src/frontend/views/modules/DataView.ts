@@ -1,14 +1,16 @@
-import { H, M } from "fest/lure";
+import { clearAllInDirectory, H, M } from "fest/lure";
 import { FileManager } from "fest/fl-ui";
 import { openDirectory } from "fest/lure";
-import { categories } from "@rs-core/api/dataset/Data";
+import { dataCategories } from "@rs-core/api/dataset/Data";
+import { sampleTasks, writeSampleTask } from "@rs-core/test-case/Tasks";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();
 export const DataView = ()=>{
+
     // make folders of entity types
-    const folders = M(categories, (category)=>{
-        const folder = openDirectory(null, `/user/${category.id}/`, {create: true});
+    const folders = M(dataCategories, (category) => {
+        const folder = openDirectory(null, `/user/data/${category.id}/`, { create: true });
         const row = H`<div class="folder">${category.label}</div>`
         rowFileMap.set(row, folder);
         return row;

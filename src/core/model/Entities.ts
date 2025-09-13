@@ -161,35 +161,35 @@ export const PRIMARY_PROPS = {
 export const JSON_SCHEMES = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $defs: SHARED_DEFS,
-    $entities: {
-        task: {
-            desc: PRIMARY_PROPS,
-            kind: { enum: KIND_MAP.task },
-            properties: {
-                status: { enum: ["under_consideration", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"] },
+    $task: {
+        desc: PRIMARY_PROPS,
+        kind: { enum: KIND_MAP.task },
+        properties: {
+            status: { enum: ["under_consideration", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"] },
 
-                //
-                image: { $ref: "#/$defs/Images" },
+            //
+            image: { $ref: "#/$defs/Images" },
 
-                //
-                begin_time: { $ref: "#/$defs/Timestamp" },
-                end_time: { $ref: "#/$defs/Timestamp" },
+            //
+            begin_time: { $ref: "#/$defs/Timestamp" },
+            end_time: { $ref: "#/$defs/Timestamp" },
 
-                //
-                location: { $ref: "#/$defs/LocationRef" },
-                contacts: { $ref: "#/$defs/Contact" },
-                members: { $ref: "#/$defs/IdArray" },
-                events: { $ref: "#/$defs/IdArray" },
+            //
+            location: { $ref: "#/$defs/LocationRef" },
+            contacts: { $ref: "#/$defs/Contact" },
+            members: { $ref: "#/$defs/IdArray" },
+            events: { $ref: "#/$defs/IdArray" },
 
-                //
-                rewards: BONUSES_SCHEME,
-                bonuses: BONUSES_SCHEME,
-                actions: ACTIONS_SCHEME,
-                costs: BONUSES_SCHEME
-            },
-            required: ["kind", "status", "location"]
+            //
+            rewards: BONUSES_SCHEME,
+            bonuses: BONUSES_SCHEME,
+            actions: ACTIONS_SCHEME,
+            costs: BONUSES_SCHEME
         },
+        required: ["kind", "status", "location"]
+    },
 
+    $entities: {
         //
         factor: {
             desc: PRIMARY_PROPS,
@@ -638,6 +638,7 @@ export const JSON_SCHEMES = {
 
 //
 export const AI_OUTPUT_SCHEMA = {
+    task: JSON_SCHEMES.$task,
     oneOf: [
         JSON_SCHEMES.$entities.location,
         JSON_SCHEMES.$entities.vendor,
@@ -647,7 +648,6 @@ export const AI_OUTPUT_SCHEMA = {
         JSON_SCHEMES.$entities.person,
         JSON_SCHEMES.$entities.vehicle,
         JSON_SCHEMES.$entities.event,
-        JSON_SCHEMES.$entities.task,
         JSON_SCHEMES.$entities.item,
         JSON_SCHEMES.$entities.action,
         JSON_SCHEMES.$entities.entertainment,

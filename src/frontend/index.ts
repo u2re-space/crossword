@@ -4,7 +4,7 @@ import { TasksTimelineView, DataView } from "./views/Views";
 import { colorScheme } from "fest/fl-ui";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { makeReactive } from "fest/object";
-import { dropFile } from "fest/lure";
+import { clearAllInDirectory, dropFile } from "fest/lure";
 
 //
 import "fest/fl-ui";
@@ -14,6 +14,7 @@ import "fest/fl-ui";
 
 // @ts-ignore
 import style from "./index.scss?inline";
+import { sampleTasks, writeSampleTask } from "@rs-core/test-case/Tasks";
 
 //
 export default async function frontend(mountElement) {
@@ -29,6 +30,12 @@ export default async function frontend(mountElement) {
             <div data-name="bonuses" class="c2-surface"><p>Bonuses placeholder</p></div>
         </ui-tabbed-box>
     </div>`;*/
+
+    //
+    await (async () => {
+        await clearAllInDirectory()?.catch?.(console.warn.bind(console));
+        await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));
+    })();
 
     //
     const views = new Map([

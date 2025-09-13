@@ -37,9 +37,17 @@ const $wrapCategory = (category: any): any=>{
     return makeReactive(observeCategory(category));
 }
 
+//
+export const tasksCategories = makeReactive([
+    $wrapCategory({
+        label: "Tasks",
+        id: "task"
+    })
+]);
+
 // `items` is cached file maps... is directly associated with IndexedDB for service workers
 // also, may be used as arrays with simpler data for sending to AI
-export const categories = makeReactive([
+export const dataCategories = makeReactive([
     $wrapCategory({
         label: "Items",
         id: "item"
@@ -51,10 +59,6 @@ export const categories = makeReactive([
     $wrapCategory({
         label: "Services",
         id: "service"
-    }),
-    $wrapCategory({
-        label: "Tasks",
-        id: "task"
     }),
     $wrapCategory({
         label: "Locations",

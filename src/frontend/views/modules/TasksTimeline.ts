@@ -11,7 +11,7 @@ import "@rs-core/test-case/Tasks";
 // Render the timeline
 export const TasksTimelineView = async () => {
     const taskMap = getDirectoryHandle(null, "/task/")?.then?.(async (handle) => {
-        const entries = await Array.fromAsync(handle.entries());
+        const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
             const task = JSON.parse(await file.text());
