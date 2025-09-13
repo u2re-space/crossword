@@ -11,7 +11,7 @@
         padding: var(--card-padding);
         border-radius: var(--card-radius);
         box-shadow: none;
-        background-color: --c2-surface(0.5, var(--current));;
+        background-color: --c2-surface(0.3, var(--current));
         color: --c2-on-surface(0.0, var(--current));;
         transition: transform 160ms ease, box-shadow 160ms ease, backdrop-filter 160ms ease;
         touch-action: manipulation;

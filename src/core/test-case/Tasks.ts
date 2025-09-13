@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "fest/lure";
+import { clearAllInDirectory, readFile, writeFile } from "fest/lure";
 
 //
 export const sampleTasks = [
@@ -8,13 +8,18 @@ export const sampleTasks = [
 ];
 
 //
-export const writeSampleTask = (task: any) => {
+export const writeSampleTask = async (task: any) => {
     const fileName = `${task?.desc?.name}.json`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    writeFile(null, `/task/${fileName}`, file)?.catch?.(console.error);
+    return writeFile(null, `/task/${fileName}`, file)?.catch?.(console.warn.bind(console));
 }
 
+/*
 //
-for (const task of sampleTasks) {
-    writeSampleTask(task);
-}
+(async () => {
+    await clearAllInDirectory()?.catch?.(console.warn.bind(console));
+    for (const task of sampleTasks) {
+        writeSampleTask(task)?.catch?.(console.warn.bind(console));
+    }
+})();
+*/
