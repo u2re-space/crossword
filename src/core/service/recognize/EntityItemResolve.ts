@@ -53,6 +53,8 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //
-    const response = await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
-    return JSON.parse(response?.content);
+    await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
+    const response = JSON.parse(await gptResponses.sendRequest() || "[]");
+    console.log("resolve entity response", response);
+    return response?.content;
 }

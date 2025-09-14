@@ -14,6 +14,14 @@ export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob
 
 //
 export const recognizeEntityType = async (dataSource: string | Blob | File | any, gptResponses: GPTResponses) => {
+    // upload dataset to GPT for recognize, and get response for analyze...
+    await gptResponses.attachToRequest(dataSource);
+    const rawDataset = JSON.parse(await gptResponses.sendRequest() || "[]"); // for use in first step...
+    console.log("rawDataset", rawDataset);
+
+
+
+    //
     const firstStep = [
         "", `${ABOUT_NAME_ID_GENERATION}`,
         "", "",
@@ -37,10 +45,11 @@ ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
         "=== END:FIRST_STEP ===",
     ]?.map?.((instruction) => instruction?.trim?.());
 
-    //
-    await gptResponses.attachToRequest(dataSource)
+    // use same context for first step...
     await gptResponses.askToDoAction(firstStep?.join?.("\n"))
-    const response = await gptResponses.sendRequest(), $PRIMARY = JSON.parse(response?.content || "[]");
+    const response = JSON.parse(await gptResponses.sendRequest() || "[]");
+    const $PRIMARY = response?.content;
+    console.log("first step response", response);
     return $PRIMARY || [{ "entityType": "unknown" }];
 }
 

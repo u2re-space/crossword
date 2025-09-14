@@ -100,9 +100,9 @@ Get results in JSON wrapped format:
 \`\`\`json
 {
     "keywords_and_tags": string[],
-    "additional_details": string[],
-    "recognized_data": string[],
-    "requested_data": string[] // where to write output data of following requests
+    "additional_details": any[],
+    "recognized_data": any[],
+    "requested_data": any[] // where to write output data of following requests
 }
 \`\`\`
 `;
@@ -117,9 +117,9 @@ Get result in JSON wrapped format:
 \`\`\`json
 {
     "keywords_and_tags": string[],
-    "additional_details": string[],
-    "recognized_data": string[],
-    "requested_data": string[] // where to write output data of following requests
+    "additional_details": any[],
+    "recognized_data": any[],
+    "requested_data": any[] // where to write output data of following requests
 }
 \`\`\`
 `;
