@@ -19,6 +19,7 @@
             grid-column: 1 / -1;
             margin: 0;
             padding: 0.25rem 0.5rem;
+            background-color: --c2-surface(0.02, var(--current, currentColor));
         }
 
         & > ui-tabbed-box {
@@ -26,6 +27,57 @@
             grid-row: 2 / 3;
             inline-size: stretch;
             block-size: stretch;
+        }
+
+        & > .toolbar {
+            grid-column: 1 / -1;
+            margin: 0;
+            flex-direction: row;
+            gap: 0.25rem;
+            block-size: max-content;
+            inline-size: stretch;
+            display: flex;
+            background-color: transparent;
+            justify-content: start;
+            padding: 0.25rem 0.5rem;
+            padding-block-start: 0.5rem;
+
+            button {
+                display: flex;
+                flex-direction: row;
+                gap: 0.25rem;
+                block-size: max-content;
+                inline-size: max-content;
+                max-block-size: 3rem;
+                border-radius: 0.5rem;
+                border: 0px none transparent;
+                outline: 0px none transparent;
+                cursor: pointer;
+                background-color: --c2-surface(0.02, var(--current, currentColor));
+                padding: 0.333rem;
+                transition: background-color 0.12s linear;
+                aspect-ratio: auto;
+
+                span {
+                    display: block;
+                    font-size: 0.8rem;
+                    font-weight: 400;
+                    color: --c2-on-surface(0.0, var(--current, currentColor));
+                    padding-inline-end: 0.333rem;
+                }
+
+                &:hover {
+                    background-color: --c2-surface(0.04, var(--current, currentColor));
+                }
+            }
+
+            @container (max-inline-size: 800px) {
+                button {
+                    span {
+                        display: none;
+                    }
+                }
+            }
         }
     }
 
