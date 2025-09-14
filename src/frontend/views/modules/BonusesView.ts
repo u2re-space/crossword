@@ -1,5 +1,5 @@
 import { H, M, getDirectoryHandle } from "fest/lure";
-import { makeReactive } from "fest/object";
+import { makeReactive, ref } from "fest/object";
 
 //
 const BONUSES_DIR = "/data/bonus/";
@@ -38,7 +38,8 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const BonusesView = (currentTab: any) => {
+export const BonusesView = (currentTab?: any | null) => {
+    currentTab ??= ref("discount");
     if (currentTab != null) { currentTab.value = "discount"; }
 
     //

@@ -1,6 +1,7 @@
 import { H } from "fest/lure";
 import { bindDayWithElement, createDayElement, daysTabs, sampleDays } from "../items/DayTab";
 import { getDirectoryHandle } from "fest/lure";
+import { ref } from "fest/object";
 
 //
 import "@rs-core/workers/Tasks";
@@ -9,7 +10,8 @@ import "@rs-core/workers/Tasks";
 const TIMELINE_DIR = "/timeline/";
 
 // Render the timeline
-export const PlannedTimeline = async (currentTab: any) => {
+export const PlannedTimeline = async (currentTab?: any | null) => {
+    currentTab ??= ref("days");
     if (currentTab != null) { currentTab.value = "days"; }
 
     //

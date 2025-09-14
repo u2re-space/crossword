@@ -6,6 +6,7 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
         <div style="flex: 1;"></div>
         <button><ui-icon icon="clipboard"></ui-icon><span>Paste and Recognize</span></button>
         <button><ui-icon icon="crop"></ui-icon><span>Snip and Recognize</span></button>
+        <button><ui-icon icon="screwdriver"></ui-icon><span>Mount User Directory</span></button>
     </div>`;
 
     //

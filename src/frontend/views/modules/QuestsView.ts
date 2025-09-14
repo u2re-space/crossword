@@ -1,7 +1,7 @@
 /* Here will be math, coding, etc. questions (and answers by AI) */
 /* Used for solving problems and questions by AI */
 
-import { makeReactive } from "fest/object";
+import { makeReactive, ref } from "fest/object";
 import { getDirectoryHandle, H, M } from "fest/lure";
 
 //
@@ -49,7 +49,8 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const QuestsView = (currentTab: any) => {
+export const QuestsView = (currentTab?: any | null) => {
+    currentTab ??= ref("quests");
     if (currentTab != null) { currentTab.value = "quests"; }
 
     //
@@ -80,6 +81,10 @@ export const QuestsView = (currentTab: any) => {
         <button>
             <ui-icon icon="arrows-clockwise"></ui-icon>
             <span>Refresh</span>
+        </button>
+        <button>
+            <ui-icon icon="magic-wand"></ui-icon>
+            <span>Ask to Suggest Solutions</span>
         </button>
         </div>
     </div>

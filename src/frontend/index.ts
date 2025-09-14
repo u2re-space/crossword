@@ -1,5 +1,5 @@
 import { AppLayout } from "./layout/AppLayout";
-import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView } from "./views/Views";
+import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { clearAllInDirectory, dropFile } from "fest/lure";
 
@@ -41,7 +41,8 @@ export default async function frontend(mountElement) {
         ["services", await ServicesView()],
         ["preferences", await PreferencesView()],
         ["quests", await QuestsView()],
-        ["explorer", await DataExplorer()]
+        ["explorer", await DataExplorer()],
+        ["settings", await Settings()]
     ]);
 
     //

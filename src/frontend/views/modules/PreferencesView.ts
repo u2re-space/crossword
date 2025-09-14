@@ -2,7 +2,7 @@
 /* Used for making plans, goals, etc. by AI */
 
 import { H, M, getDirectoryHandle } from "fest/lure";
-import { makeReactive } from "fest/object";
+import { makeReactive, ref } from "fest/object";
 
 //
 const PLANS_DIR = "/docs/plans/";
@@ -49,7 +49,8 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const PreferencesView = (currentView: any) => {
+export const PreferencesView = (currentView?: any | null) => {
+    currentView ??= ref("plans");
     if (currentView != null) { currentView.value = "plans"; }
 
     //

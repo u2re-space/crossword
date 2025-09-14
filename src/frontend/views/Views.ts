@@ -5,3 +5,4 @@ export * from "./modules/ServicesView";
 export * from "./modules/PreferencesView";
 export * from "./modules/QuestsView";
 export * from "./debug/DataExplorer";
+export * from "./system/Settings";

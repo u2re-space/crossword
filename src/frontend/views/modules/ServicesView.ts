@@ -1,5 +1,5 @@
 import { getDirectoryHandle, H, M } from "fest/lure";
-import { makeReactive } from "fest/object";
+import { makeReactive, ref } from "fest/object";
 
 //
 const SERVICES_DIR = "/data/service/";
@@ -47,7 +47,8 @@ const tabs = new Map<string, HTMLElement>([
 ]);
 
 //
-export const ServicesView = (currentTab: any) => {
+export const ServicesView = (currentTab?: any | null) => {
+    currentTab ??= ref("digital");
     if (currentTab != null) { currentTab.value = "digital"; }
 
     //

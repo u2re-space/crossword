@@ -1,4 +1,4 @@
-import { makeReactive } from "fest/object";
+import { makeReactive, ref } from "fest/object";
 import { H, M, getDirectoryHandle } from "fest/lure";
 
 //
@@ -45,7 +45,8 @@ const tabs = new Map<string, HTMLElement>([
 ]);
 
 //
-export const ContactsView = (currentTab: any) => {
+export const ContactsView = (currentTab?: any | null) => {
+    currentTab ??= ref("person");
     if (currentTab != null) { currentTab.value = "person"; }
 
     //
