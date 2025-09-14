@@ -27,12 +27,13 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
         "", "",
         "=== BEGIN:FIRST_STEP ===",
         "You are given a data source and you need to recognize type of entity.",
-        "Choice most suitable entity type from following list of schemes: ",
+        "Recognize all possible entities (if may be multiple entities in data source).",
+        "Choice most suitable entity types from following list of schemes: ",
         `\`\`\`json
 ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
 \`\`\``,
         "",
-        "Output in JSON format: \`{ entityType: string, potentialName: string }\`.",
+        "Output in JSON format: \`[...{ entityType: string, potentialName: string }]\`.",
         "=== END:FIRST_STEP ===",
     ]?.map?.((instruction)=> instruction?.trim?.());
 

@@ -1,9 +1,9 @@
 import { GPTConversion } from "../core/api/endpoints/GPT-Conversion";
-import { JSON_SCHEMES } from "../core/model/Entities";
 import { recognizeEntityType } from "../core/api/converter/EntityTypeDetect";
 import { recognizeKindOfEntity } from "../core/api/converter/KindOfEntity";
 import { resolveEntity } from "../core/api/converter/EntityItemResolve";
 import { idbStorage } from "./lib/idbQueue";
+import { dataCategories } from "../core/api/dataset/Data";
 
 // TODO! needs to debug completely and complex and make it more robust
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
@@ -40,20 +40,22 @@ self.addEventListener('fetch', (e) => {
 
                 //
                 const entityType = "bonus";
-                const resultEntity = await initiateConversionProcedure(inputs?.files?.[0] || inputs?.text || inputs?.url);
+                const resultEntities = await initiateConversionProcedure(inputs?.files?.[0] || inputs?.text || inputs?.url);
+                resultEntities.forEach((resultEntity) => {
 
-                // pending fs write (OPFS)
-                idbStorage.put("pending-fs-write_" + entityType + "_" + (JSON.parse(resultEntity)?.desc?.name || Date.now().toString()), resultEntity);
+                    // pending fs write (OPFS)
+                    idbStorage.put("pending-fs-write_" + entityType + "_" + (JSON.parse(resultEntity)?.desc?.name || Date.now().toString()), resultEntity);
 
-                // update categories with new item
-                (JSON_SCHEMES.$entities as any)?.find?.((category)=> category?.id === entityType)?.items?.push(resultEntity?.desc?.name);
+                    // update categories with new item
+                    (dataCategories as any)?.find?.((category) => category?.id === entityType)?.items?.push(resultEntity?.desc?.name);
+                });
 
                 // @ts-ignore
-                const clientsArr = await clients.matchAll({type: 'window', includeUncontrolled:true});
-                if (clientsArr.length) clientsArr[0].postMessage({entityType, resultEntity});
+                const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
+                if (clientsArr?.length) clientsArr[0]?.postMessage?.({ entityType, resultEntities });
 
                 // TODO: correct status by GPT response
-                return new Response(JSON.stringify(resultEntity, null, 2), {
+                return new Response(JSON.stringify(resultEntities, null, 2), {
                     status: 200,
                     statusText: 'OK',
                     headers: {

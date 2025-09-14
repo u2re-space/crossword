@@ -101,8 +101,8 @@ Get results in JSON wrapped format:
 {
     "keywords_and_tags": string[],
     "additional_details": string[],
-    "recognized_data": string,
-    "requested_data": string // where to write output data of following requests
+    "recognized_data": string[],
+    "requested_data": string[] // where to write output data of following requests
 }
 \`\`\`
 `;
@@ -118,8 +118,8 @@ Get result in JSON wrapped format:
 {
     "keywords_and_tags": string[],
     "additional_details": string[],
-    "recognized_data": string,
-    "requested_data": string // where to write output data of following requests
+    "recognized_data": string[],
+    "requested_data": string[] // where to write output data of following requests
 }
 \`\`\`
 `;

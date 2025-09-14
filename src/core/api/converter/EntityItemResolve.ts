@@ -19,11 +19,11 @@ export const resolveEntity = async (entityType: any, entityKind: any, gptConvers
 Shortlist of existing items in ${entityType} registry and related entities, for making compatible resolve:
 
 \`\`\`json
-{
+[...{
     existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
     inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
     forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)}
-}
+}]
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 
@@ -40,9 +40,9 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
         "=== END:PREPARE_DATA ===",
         "", "",
         "=== BEGIN:RESOLVE_STEP ===",
-        "Request: resolve entity item, by following scheme: ",
+        "Request: resolve entity items, by following schemes (according of entity types): ",
         `\`\`\`json
-${JSON.stringify(safe(JSON_SCHEMES.$entities?.[entityType]), null, 2)}
+[...${JSON.stringify(safe(JSON_SCHEMES.$entities), null, 2)}]
 \`\`\``,
         "Search potential duplicates for give possible merge decision.",
         "Also, search potentially related items (names, IDs)...",
