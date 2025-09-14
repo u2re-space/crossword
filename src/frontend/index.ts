@@ -1,9 +1,6 @@
 import { AppLayout } from "./layout/AppLayout";
-//import { AppLayout as DesktopLayout } from "./frontend/elements/layout/Mobile";
-import { TasksTimelineView, DataView } from "./views/Views";
-import { colorScheme } from "fest/fl-ui";
+import { TasksTimelineView, DataView, ContactsView, BonusesView } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
-import { makeReactive } from "fest/object";
 import { clearAllInDirectory, dropFile } from "fest/lure";
 
 //
@@ -40,7 +37,9 @@ export default async function frontend(mountElement) {
     //
     const views = new Map([
         ["timeline", await TasksTimelineView()],
-        ["items", await DataView()]
+        ["items", await DataView()],
+        ["contacts", await ContactsView()],
+        ["bonuses", await BonusesView()]
     ]);
 
     //

@@ -1,6 +1,4 @@
-import { H, M } from "fest/lure";
-import { makeReactive, observableByMap } from "fest/object";
-import { sampleTasks } from "@rs-core/test-case/Tasks";
+import { H } from "fest/lure";
 import { bindDayWithElement, createDayElement, daysTabs, sampleDays } from "../items/DayTab";
 import { getDirectoryHandle } from "fest/lure";
 
@@ -20,7 +18,7 @@ export const TasksTimelineView = async () => {
     })?.catch?.(console.error);
 
     //
-    if (!daysTabs.size) { bindDayWithElement(sampleDays[0], createDayElement(sampleDays[0], await taskMap)); }
+    if (!daysTabs.size) { bindDayWithElement(sampleDays[0], createDayElement(sampleDays[0], await taskMap ?? [])); }
 
     //
     const tabbed = H`<ui-tabbed-box
