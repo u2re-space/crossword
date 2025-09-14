@@ -1,22 +1,22 @@
 import { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
-import { recognizeEntityType } from "@rs-core/pipeline/recognize/EntityTypeDetect";
-import { recognizeKindOfEntity } from "@rs-core/pipeline/recognize/KindOfEntity";
-import { resolveEntity } from "@rs-core/pipeline/recognize/EntityItemResolve";
+import { recognizeEntityType } from "@rs-core/service/recognize/EntityTypeDetect";
+import { recognizeKindOfEntity } from "@rs-core/service/recognize/KindOfEntity";
+import { resolveEntity } from "@rs-core/service/recognize/EntityItemResolve";
 import { idbStorage } from "./lib/idbQueue";
-import { dataCategories } from "@rs-core/pipeline/Cache";
+import { dataCategories } from "@rs-core/service/Cache";
 
 // TODO! needs to debug completely and complex and make it more robust
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const gptConversion = new GPTConversion();
 
     // phase 1 - recognize entity type
-    let entityType: any = (await recognizeEntityType(dataSource, gptConversion)) || "unknown";
+    let entityTypes: any[] = (await recognizeEntityType(dataSource, gptConversion)) || "unknown";
 
     // phase 2 - recognize kind of entity
-    let entityKind: any = (await recognizeKindOfEntity(entityType, gptConversion)) || "unknown";
+    let entityKinds: any[] = (await recognizeKindOfEntity(entityTypes, gptConversion)) || "unknown";
 
     // phase 3 - convert data to target format
-    const resultEntity = await resolveEntity(entityType, entityKind, gptConversion);
+    const resultEntity = await resolveEntity(entityTypes, entityKinds, gptConversion);
     return resultEntity;
 }
 

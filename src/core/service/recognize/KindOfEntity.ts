@@ -1,4 +1,4 @@
-import { JSON_SCHEMES } from "@rs-core/pipeline/template/Entities";
+import { JSON_SCHEMES } from "@rs-core/service/template/Entities";
 import type { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
 
 

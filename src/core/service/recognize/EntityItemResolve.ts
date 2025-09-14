@@ -1,29 +1,34 @@
 import type { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/pipeline/template/Entities';
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
 import { safe } from "fest/object";
 
+
 //
-export const resolveEntity = async (entityType: any, entityKind: any, gptConversion: GPTConversion) => {
+const makeRelatedListPerEntity = (entityKind: any, entityType: any) => {
+    const items: any[] = [];
+    const itemsOfInEntities: any[] = [];
+    const itemsOfForEntities: any[] = [];
+    return `{
+        existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
+        inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
+        forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)}
+    }`;
+}
+
+
+//
+export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptConversion: GPTConversion) => {
     // - get entity type items by criteria: `categoriesCache?.find?.((category)=> category?.id === entityType)`
     // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
     // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`
     // from items caches...
 
-    // temporary items
-    const items: any[] = [];
-    const itemsOfInEntities: any[] = [];
-    const itemsOfForEntities: any[] = [];
-
     //
     const shortlistOfItems = [`=== BEGIN:PREPARE_RELATED_ITEMS ===
-Shortlist of existing items in ${entityType} registry and related entities, for making compatible resolve:
+Shortlist of existing items in ${entityTypes} registry and related entities, for making compatible resolve:
 
 \`\`\`json
-[...{
-    existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
-    inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
-    forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)}
-}]
+[${entityTypes?.map((entityType, index) => makeRelatedListPerEntity(entityKinds?.[index] || "", entityType))?.join?.(",")}]
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 

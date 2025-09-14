@@ -1,17 +1,16 @@
 import { AppLayout } from "./layout/AppLayout";
-import { TasksTimelineView, DataView, ContactsView, BonusesView } from "./views/Views";
+import { TasksTimelineView, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, SolutionsView } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { clearAllInDirectory, dropFile } from "fest/lure";
 
 //
 import "fest/fl-ui";
 
-//
-//const mount = document.getElementById("app");
-
 // @ts-ignore
 import style from "./index.scss?inline";
 import { sampleTasks, writeSampleTask } from "@rs-core/workers/Tasks";
+import { Sidebar } from "./views/Sidebar";
+import { ref } from "fest/object";
 
 //
 export default async function frontend(mountElement) {
@@ -37,13 +36,17 @@ export default async function frontend(mountElement) {
     //
     const views = new Map([
         ["timeline", await TasksTimelineView()],
-        ["items", await DataView()],
         ["contacts", await ContactsView()],
-        ["bonuses", await BonusesView()]
+        ["bonuses", await BonusesView()],
+        ["services", await ServicesView()],
+        ["preferences", await PreferencesView()],
+        ["solutions", await SolutionsView()],
+        ["explorer", await DataExplorer()]
     ]);
 
     //
-    const layout = AppLayout(views);
+    const currentView = ref([...views?.keys?.()]?.[0]);
+    const layout = AppLayout(views, currentView, Sidebar(currentView));
     mountElement?.append?.(layout);
 
     //

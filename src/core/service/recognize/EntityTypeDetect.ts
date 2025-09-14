@@ -1,5 +1,5 @@
 import type { GPTConversion } from '@rs-core/service/model/GPT-Conversion';
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/pipeline/template/Entities';
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
 
 // for optimize images before sending to GPT
 import { decode } from '@jsquash/png';

@@ -3,7 +3,7 @@ import { dataCategories } from "@rs-core/service/Cache";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();
-export const DataView = ()=>{
+export const DataExplorer = () => {
 
     // make folders of entity types
     const folders = M(dataCategories, (category) => {

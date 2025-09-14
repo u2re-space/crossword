@@ -7,14 +7,15 @@ export const Sidebar: any = (currentView: any) => {
     <li><a target="_self" href="#bonuses" data-name="bonuses"><ui-icon icon="ticket"></ui-icon><span>Bonuses</span></a></li>
     <li><a target="_self" href="#contacts" data-name="contacts"><ui-icon icon="user"></ui-icon><span>Contacts</span></a></li>
     <li><a target="_self" href="#services" data-name="services"><ui-icon icon="headset"></ui-icon><span>Services</span></a></li>
-    <li><a target="_self" href="#items" data-name="items"><ui-icon icon="books"></ui-icon><span>Items</span></a></li>
+    <li><a target="_self" href="#solutions" data-name="solutions"><ui-icon icon="code"></ui-icon><span>Solutions</span></a></li>
+    <li><a target="_self" href="#preferences" data-name="preferences"><ui-icon icon="user-gear"></ui-icon><span>Preferences</span></a></li>
+    <li><a target="_self" href="#explorer" data-name="explorer"><ui-icon icon="books"></ui-icon><span>Explorer</span></a></li>
 </ul></nav>`;
 
     // navigation wiring for ui-tabbed-box
     sidebar.addEventListener?.("click", (ev: any) => {
         const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');
-        if (!a) return; //ev.preventDefault();
-        const name = a?.getAttribute?.('data-name');
+        if (!a) return; const name = a?.getAttribute?.('data-name');
         if (currentView) currentView.value = name || currentView.value;
     });
 

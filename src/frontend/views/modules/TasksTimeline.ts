@@ -6,9 +6,12 @@ import { getDirectoryHandle } from "fest/lure";
 import "@rs-core/workers/Tasks";
 
 //
+const TASKS_DIR = "/task/";
+
+//
 // Render the timeline
 export const TasksTimelineView = async () => {
-    const taskMap = getDirectoryHandle(null, "/task/")?.then?.(async (handle) => {
+    const taskMap = getDirectoryHandle(null, TASKS_DIR)?.then?.(async (handle) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
@@ -18,7 +21,11 @@ export const TasksTimelineView = async () => {
     })?.catch?.(console.error);
 
     //
-    if (!daysTabs.size) { bindDayWithElement(sampleDays[0], createDayElement(sampleDays[0], await taskMap ?? [])); }
+    if (!daysTabs.size) {
+        await Promise.all(sampleDays.map(async (day) => {
+            return bindDayWithElement(day, createDayElement(day, await taskMap ?? []));
+        }));
+    }
 
     //
     const tabbed = H`<ui-tabbed-box
