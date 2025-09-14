@@ -1,5 +1,5 @@
 import { AppLayout } from "./layout/AppLayout";
-import { TasksTimelineView, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, SolutionsView } from "./views/Views";
+import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { clearAllInDirectory, dropFile } from "fest/lure";
 
@@ -35,12 +35,12 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", await TasksTimelineView()],
+        ["timeline", await PlannedTimeline()],
         ["contacts", await ContactsView()],
         ["bonuses", await BonusesView()],
         ["services", await ServicesView()],
         ["preferences", await PreferencesView()],
-        ["solutions", await SolutionsView()],
+        ["quests", await QuestsView()],
         ["explorer", await DataExplorer()]
     ]);
 

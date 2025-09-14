@@ -1,41 +1,36 @@
-import { H, M } from "fest/lure";
-
+import { H, M, getDirectoryHandle } from "fest/lure";
+import { makeReactive } from "fest/object";
 
 //
 const BONUSES_DIR = "/data/bonus/";
 
 
 //
-const DiscountBonuses = () => {
-    const bonuses = M([], (bonus) => {
-        return H`<div class="discount-item"></div>`;
-    });
-    return H`<div data-name="discount" class="tab">${bonuses}</div>`;
+const BonusItem = (bonus: any) => {
+    return H`<div class="bonus-item"></div>`;
 }
 
-//
-const CashbackBonuses = () => {
-    const bonuses = M([], (bonus) => {
-        return H`<div class="cashback-item"></div>`;
-    });
-    return H`<div data-name="cashback" class="tab">${bonuses}</div>`;
-}
 
 //
-const RewardBonuses = () => {
-    const bonuses = M([], (bonus) => {
-        return H`<div class="reward-item"></div>`;
-    });
-    return H`<div data-name="reward" class="tab">${bonuses}</div>`;
-}
+const $ShowBonusesByType = (DIR: string, TYPE: string, name?: string) => {
+    name = name ?? TYPE;
+    const dataRef: any = makeReactive([]);
+    const data = getDirectoryHandle(null, DIR)?.then?.(async (handle) => {
+        const entries = await Array.fromAsync(handle?.entries?.() ?? []);
+        return Promise.all(entries?.map?.(async ([name, handle]: any) => {
+            const file = await handle.getFile();
+            const bonus = JSON.parse(await file.text());
+            if (bonus.kind === TYPE) { dataRef.push(bonus); }
+            return bonus;
+        })?.filter?.((e) => e));
+    })?.catch?.(console.error);
 
-//
-const AllBonuses = () => {
-    const bonuses = M([], (bonuses) => {
-        return H`<div class="bonus-item"></div>`;
+    //
+    const bonuses = M(dataRef, (bonus) => {
+        return BonusItem(bonus);
     });
-    return H`<div data-name="reward" class="tab">${bonuses}</div>`;
-}
+    return H`<div data-name="${name}" class="tab">${bonuses}</div>`;
+};
 
 //
 const renderTabName = (tabName: string) => {
@@ -43,12 +38,15 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const BonusesView = () => {
+export const BonusesView = (currentTab: any) => {
+    if (currentTab != null) { currentTab.value = "discount"; }
+
+    //
     const tabs = new Map<string, HTMLElement>([
-        ["discount", DiscountBonuses()],
-        ["cashback", CashbackBonuses()],
-        ["reward", RewardBonuses()],
-        ["all", AllBonuses()]
+        ["discount", $ShowBonusesByType(BONUSES_DIR, "discount")],
+        ["cashback", $ShowBonusesByType(BONUSES_DIR, "cashback")],
+        ["reward", $ShowBonusesByType(BONUSES_DIR, "reward")],
+        ["all", $ShowBonusesByType(BONUSES_DIR, "all")]
     ]);
 
     //
@@ -60,5 +58,13 @@ export const BonusesView = () => {
     ></ui-tabbed-box>`;
 
     //
-    return H`<section class="all-view">${tabbed}</section>`;
+    return H`<section class="all-view">${tabbed}
+    <div class="view-toolbar">
+        <div class="button-set">
+        <button>
+            <ui-icon icon="user-plus"></ui-icon>
+            <span>Add Bonus</span>
+        </button>
+    </div>
+    </section>`;
 }

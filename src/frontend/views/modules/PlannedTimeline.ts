@@ -8,9 +8,11 @@ import "@rs-core/workers/Tasks";
 //
 const TASKS_DIR = "/task/";
 
-//
 // Render the timeline
-export const TasksTimelineView = async () => {
+export const PlannedTimeline = async (currentTab: any) => {
+    if (currentTab != null) { currentTab.value = "days"; }
+
+    //
     const taskMap = getDirectoryHandle(null, TASKS_DIR)?.then?.(async (handle) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
@@ -36,5 +38,12 @@ export const TasksTimelineView = async () => {
 
     //
     tabbed.renderTabName = (tabName: string) => { return sampleDays?.find((day: any) => day.id == tabName)?.title || tabName; };
-    return H`<section id="timeline" style="background-color: transparent;" class="timeline c2-surface">${tabbed}</section>`;
+    return H`<section id="timeline" style="background-color: transparent;" class="timeline c2-surface">
+    ${tabbed}
+    <div class="view-toolbar">
+        <div class="button-set">
+            <button><ui-icon icon="calendar"></ui-icon><span>Make Timeline Plan</span></button>
+        </div>
+    </div>
+    </section>`;
 }

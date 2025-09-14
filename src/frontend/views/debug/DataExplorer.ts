@@ -17,5 +17,27 @@ export const DataExplorer = () => {
     const viewer = H`<ui-file-manager path="/user/" sidebar="auto"></ui-file-manager>`;
 
     // TODO: make JSON data editor and viewer for opened files...
-    return H`<section id="items" style="background-color: transparent;" class="data-view c2-surface">${viewer}</section>`;
+    return H`<section id="items" class="data-view c2-surface">
+    ${viewer}
+    <div class="view-toolbar">
+        <div class="button-set">
+        <button>
+            <ui-icon icon="upload"></ui-icon>
+            <span>Upload</span>
+        </button>
+        <button>
+            <ui-icon icon="download"></ui-icon>
+            <span>Download</span>
+        </button>
+        <button>
+            <ui-icon icon="screwdriver"></ui-icon>
+            <span>Mount</span>
+        </button>
+        <button>
+            <ui-icon icon="arrows-clockwise"></ui-icon>
+            <span>Refresh</span>
+        </button>
+        </div>
+    </div>
+    </section>`;
 };

@@ -1,62 +1,33 @@
-import { H, M } from "fest/lure";
+import { getDirectoryHandle, H, M } from "fest/lure";
+import { makeReactive } from "fest/object";
 
 //
 const SERVICES_DIR = "/data/service/";
 
 //
-const DigitalServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="digital" class="tab">${services}</div>`;
+const ServiceItem = (service: any) => {
+    return H`<div class="service-item"></div>`;
 }
 
 //
-const SupportingServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="supporting" class="tab">${services}</div>`;
-}
+const $ShowServicesByType = (DIR: string, TYPE: string, name?: string) => {
+    name = name ?? TYPE;
+    const dataRef: any = makeReactive([]);
+    const data = getDirectoryHandle(null, DIR)?.then?.(async (handle) => {
+        const entries = await Array.fromAsync(handle?.entries?.() ?? []);
+        return Promise.all(entries?.map?.(async ([name, handle]: any) => {
+            const file = await handle.getFile();
+            const service = JSON.parse(await file.text());
+            if (service.kind === TYPE) { dataRef.push(service); }
+            return service;
+        })?.filter?.((e) => e));
+    })?.catch?.(console.error);
 
-//
-const MedicalServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
+    //
+    const services = M(dataRef, (service) => {
+        return ServiceItem(service);
     });
-    return H`<div data-name="medical" class="tab">${services}</div>`;
-}
-
-//
-const EducationServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="education" class="tab">${services}</div>`;
-}
-
-//
-const DeliveryServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="delivery" class="tab">${services}</div>`;
-}
-
-//
-const OtherServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="other" class="tab">${services}</div>`;
-}
-
-//
-const AllServices = () => {
-    const services = M([], (services) => {
-        return H`<div class="service-item"></div>`;
-    });
-    return H`<div data-name="all" class="tab">${services}</div>`;
+    return H`<div data-name="${name}" class="tab">${services}</div>`;
 }
 
 //
@@ -66,17 +37,20 @@ const renderTabName = (tabName: string) => {
 
 //
 const tabs = new Map<string, HTMLElement>([
-    ["digital", DigitalServices()],
-    ["supporting", SupportingServices()],
-    ["medical", MedicalServices()],
-    ["education", EducationServices()],
-    ["delivery", DeliveryServices()],
-    ["other", OtherServices()],
-    ["all", AllServices()],
+    ["digital", $ShowServicesByType(SERVICES_DIR, "digital")],
+    ["supporting", $ShowServicesByType(SERVICES_DIR, "supporting")],
+    ["medical", $ShowServicesByType(SERVICES_DIR, "medical")],
+    ["education", $ShowServicesByType(SERVICES_DIR, "education")],
+    ["delivery", $ShowServicesByType(SERVICES_DIR, "delivery")],
+    ["other", $ShowServicesByType(SERVICES_DIR, "other")],
+    ["all", $ShowServicesByType(SERVICES_DIR, "all")],
 ]);
 
 //
-export const ServicesView = () => {
+export const ServicesView = (currentTab: any) => {
+    if (currentTab != null) { currentTab.value = "digital"; }
+
+    //
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
         prop:renderTabName=${renderTabName}
@@ -85,5 +59,15 @@ export const ServicesView = () => {
     ></ui-tabbed-box>`;
 
     //
-    return H`<section class="all-view">${tabbed}</section>`;
+    return H`<section class="all-view">
+    ${tabbed}
+    <div class="view-toolbar">
+        <div class="button-set">
+        <button>
+            <ui-icon icon="headset"></ui-icon>
+            <span>Add Service</span>
+        </button>
+        </div>
+    </div>
+    </section>`;
 }

@@ -31,6 +31,18 @@
             block-size: stretch;
         }
 
+        & section {
+            display: grid;
+            grid-template-columns: minmax(0px, 1fr);
+            grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
+            grid-template-areas: "content" "toolbar";
+            border-radius: 0.5rem;
+            inline-size: stretch;
+            block-size: stretch;
+            gap: 0.25rem;
+            background-color: transparent;
+        }
+
         & > .toolbar {
             & {
                 grid-column: 1 / -1;
@@ -62,6 +74,9 @@
                     padding: 0.333rem;
                     transition: background-color 0.12s linear;
                     aspect-ratio: auto;
+
+                    place-content: center;
+                    place-items: center;
                 }
 
                 span {

@@ -1,0 +1,71 @@
+@layer rs-toolbars {
+
+    .view-toolbar {
+        display: flex;
+        flex-direction: row;
+        border-radius: 0.5rem;
+        inline-size: stretch;
+        block-size: max-content;
+        background-color: transparent;
+
+        gap: 0.25rem;
+        padding-block: 0.25rem;
+
+        place-content: center;
+        place-items: center;
+
+        &:empty {
+            display: none;
+        }
+
+        & > .button-set {
+            display: flex;
+            flex-direction: row;
+            border-radius: 0.5rem;
+            inline-size: max-content;
+            block-size: max-content;
+            background-color: --c2-surface(0.02, var(--current, currentColor));
+
+            gap: 0.25rem;
+            padding: 0.25rem;
+
+            & > button {
+                display: flex;
+                flex-direction: row;
+                border-radius: 0.5rem;
+                padding: 0.25rem;
+                cursor: pointer;
+
+                place-content: center;
+                place-items: center;
+                gap: 0.25rem;
+
+                @media (hover: hover) {
+                    &:hover {
+                        background-color: --c2-surface(0.04, var(--current, currentColor));
+                    }
+                }
+
+                &:active {
+                    background-color: --c2-surface(0.04, var(--current, currentColor));
+                }
+
+                & > ui-icon {
+                    display: flex;
+                    flex-direction: row;
+                    border-radius: 0.5rem;
+                }
+
+                & > span {
+                    display: flex;
+                    flex-direction: row;
+                    border-radius: 0.5rem;
+                }
+            }
+
+            &:empty {
+                display: none;
+            }
+        }
+    }
+}

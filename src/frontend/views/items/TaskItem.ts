@@ -24,6 +24,7 @@ export const createTaskElement = (task: any) => {
     const begin_time = task?.properties?.begin_time || "";
     const end_time = task?.properties?.end_time || "";
 
+    //
     return H`<div class="task-item card" data-variant=${variant} on:click=${(ev: any) => {
         const el = ev.currentTarget as HTMLElement;
         el.toggleAttribute?.('data-open');
