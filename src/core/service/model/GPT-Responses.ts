@@ -8,18 +8,18 @@ export const getUsableData = async (data: DataInput) => {
             return {
                 "type": "image_url",
                 "image_url": { // @ts-ignore
-                    "url": BASE64URL+(new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64url" })),
+                    "url": BASE64URL + (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64url" })),
                     "detail": "high"
                 }
             }
         } else
-        if (typeof data?.dataSource === "string") {
-            // anyways returns Promise<string>
-            return {
-                "type": "text",
-                "text": data?.dataSource
+            if (typeof data?.dataSource === "string") {
+                // anyways returns Promise<string>
+                return {
+                    "type": "text",
+                    "text": data?.dataSource
+                }
             }
-        }
     }
 
     // is not Blob or File, so it's (may be) string (if not string, try to parse it as JSON)
@@ -34,14 +34,14 @@ export const getUsableData = async (data: DataInput) => {
 }
 
 //
-export class GPTConversion {
+export class GPTResponses {
     private apiKey: string;
     private apiSecret: string;
 
     //
     private apiUrl: string = "https://openai.api.proxyapi.ru/v1";//"https://api.openai.com/v1";
     private model: string = "gpt-5";
-    private responseId?: string|null = null;
+    private responseId?: string | null = null;
 
     //
     protected pending: any[] = [];
@@ -83,7 +83,7 @@ export class GPTConversion {
                 { type: "text", text: "\n === BEGIN:ATTACHED_DATA === \n" },
                 { /*type: typesForKind?.[dataKind],*/ ...await getUsableData({ dataSource, dataKind }) },
                 { type: "text", text: "\n === END:ATTACHED_DATA === \n" },
-            ]?.filter?.((item)=> item !== null)
+            ]?.filter?.((item) => item !== null)
         };
     }
 
@@ -112,9 +112,9 @@ export class GPTConversion {
             method: "POST",
             body: JSON.stringify({
                 model: this.model,
-                tools: this.tools?.filter?.((tool)=> !!tool),
-                input: [...this.pending]?.filter?.((item)=> !!item),
-                reasoning: {"effort": "medium"},
+                tools: this.tools?.filter?.((tool) => !!tool),
+                input: [...this.pending]?.filter?.((item) => !!item),
+                reasoning: { "effort": "medium" },
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),

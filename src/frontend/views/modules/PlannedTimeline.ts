@@ -6,26 +6,26 @@ import { getDirectoryHandle } from "fest/lure";
 import "@rs-core/workers/Tasks";
 
 //
-const TASKS_DIR = "/task/";
+const TIMELINE_DIR = "/timeline/";
 
 // Render the timeline
 export const PlannedTimeline = async (currentTab: any) => {
     if (currentTab != null) { currentTab.value = "days"; }
 
     //
-    const taskMap = getDirectoryHandle(null, TASKS_DIR)?.then?.(async (handle) => {
-        const entries = await Array.fromAsync(handle?.entries?.() ?? []);
-        return Promise.all(entries?.map?.(async ([name, handle]: any) => {
+    const timelineMap = getDirectoryHandle(null, TIMELINE_DIR)?.then?.(async (handle) => {
+        const timeline = await Array.fromAsync(handle?.entries?.() ?? []);
+        return Promise.all(timeline?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const task = JSON.parse(await file.text());
-            return task;
+            const timeline = JSON.parse(await file.text());
+            return timeline;
         })?.filter?.((e) => e));
     })?.catch?.(console.error);
 
     //
     if (!daysTabs.size) {
         await Promise.all(sampleDays.map(async (day) => {
-            return bindDayWithElement(day, createDayElement(day, await taskMap ?? []));
+            return bindDayWithElement(day, createDayElement(day, await timelineMap ?? []));
         }));
     }
 

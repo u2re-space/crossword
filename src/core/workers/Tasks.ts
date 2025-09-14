@@ -11,5 +11,5 @@ export const sampleTasks = [
 export const writeSampleTask = async (task: any) => {
     const fileName = `${task?.desc?.name}.json`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    return writeFile(null, `/task/${fileName}`, file)?.catch?.(console.warn.bind(console));
+    return writeFile(null, `/timeline/${fileName}`, file)?.catch?.(console.warn.bind(console));
 }

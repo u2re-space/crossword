@@ -1,7 +1,6 @@
-import type { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
+import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
 import { safe } from "fest/object";
-
 
 //
 const makeRelatedListPerEntity = (entityKind: any, entityType: any) => {
@@ -15,28 +14,27 @@ const makeRelatedListPerEntity = (entityKind: any, entityType: any) => {
     }`;
 }
 
-
 //
-export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptConversion: GPTConversion) => {
-    // - get entity type items by criteria: `categoriesCache?.find?.((category)=> category?.id === entityType)`
-    // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
-    // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`
+export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptResponses: GPTResponses) => {
+    // - get entity type items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === entityType)`
+    // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
+    // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`
     // from items caches...
 
     //
     const shortlistOfItems = [`=== BEGIN:PREPARE_RELATED_ITEMS ===
-Shortlist of existing items in ${entityTypes} registry and related entities, for making compatible resolve:
+Shortlist of existing items in ${entityTypes?.join?.(", ")} registry and related entities, for making compatible resolve:
 
 \`\`\`json
-[${entityTypes?.map((entityType, index) => makeRelatedListPerEntity(entityKinds?.[index] || "", entityType))?.join?.(",")}]
+[${entityTypes?.map((entityType, index) => makeRelatedListPerEntity(entityKinds?.[index] || "", entityType))?.join?.(",") || ""}]
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 
     //
     const resolveStep = [
         ...shortlistOfItems,
-        "", `${ABOUT_NAME_ID_GENERATION}`, "",
-        "",
+        "", `${ABOUT_NAME_ID_GENERATION}`,
+        "", "",
         "=== BEGIN:PREPARE_DATA ===",
         "Shared Defs Declared:",
         `\`\`\`json
@@ -55,6 +53,6 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //
-    const response = await gptConversion.askToDoAction(resolveStep?.join?.("\n"));
+    const response = await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
     return JSON.parse(response?.content);
 }

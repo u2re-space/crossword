@@ -1,4 +1,4 @@
-import type { GPTConversion } from '@rs-core/service/model/GPT-Conversion';
+import type { GPTResponses } from '@rs-core/service/model/GPT-Responses';
 import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
 
 // for optimize images before sending to GPT
@@ -13,10 +13,10 @@ export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob
 }
 
 //
-export const recognizeEntityType = async (dataSource: string | Blob | File | any, gptConversion: GPTConversion) => {
+export const recognizeEntityType = async (dataSource: string | Blob | File | any, gptResponses: GPTResponses) => {
     const firstStep = [
-        "", `${ABOUT_NAME_ID_GENERATION}`, "",
-        "",
+        "", `${ABOUT_NAME_ID_GENERATION}`,
+        "", "",
         "=== BEGIN:PREPARE_DATA ===",
         "Shared Defs Declared:",
         "",
@@ -38,8 +38,13 @@ ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //
-    await gptConversion.attachToRequest(dataSource)
-    await gptConversion.askToDoAction(firstStep?.join?.("\n"))
-    const response = await gptConversion.sendRequest(), $PRIMARY = JSON.parse(response?.content || "{}");
-    return $PRIMARY?.entityType || "unknown";
+    await gptResponses.attachToRequest(dataSource)
+    await gptResponses.askToDoAction(firstStep?.join?.("\n"))
+    const response = await gptResponses.sendRequest(), $PRIMARY = JSON.parse(response?.content || "[]");
+    return $PRIMARY || [{ "entityType": "unknown" }];
+}
+
+//
+export const getEntityTypesFromObjArray = (objArray: any[]) => {
+    return objArray?.map?.((obj) => obj?.entityType) || [];
 }

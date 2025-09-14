@@ -1,4 +1,4 @@
-import { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
+import { GPTConversion } from "@rs-core/service/model/GPT-Responses";
 import { recognizeEntityType } from "@rs-core/service/recognize/EntityTypeDetect";
 import { recognizeKindOfEntity } from "@rs-core/service/recognize/KindOfEntity";
 import { resolveEntity } from "@rs-core/service/recognize/EntityItemResolve";
