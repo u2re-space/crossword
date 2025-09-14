@@ -1,9 +1,9 @@
-import { GPTConversion } from "../core/api/endpoints/GPT-Conversion";
-import { recognizeEntityType } from "../core/api/converter/EntityTypeDetect";
-import { recognizeKindOfEntity } from "../core/api/converter/KindOfEntity";
-import { resolveEntity } from "../core/api/converter/EntityItemResolve";
+import { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
+import { recognizeEntityType } from "@rs-core/pipeline/recognize/EntityTypeDetect";
+import { recognizeKindOfEntity } from "@rs-core/pipeline/recognize/KindOfEntity";
+import { resolveEntity } from "@rs-core/pipeline/recognize/EntityItemResolve";
 import { idbStorage } from "./lib/idbQueue";
-import { dataCategories } from "../core/api/dataset/Data";
+import { dataCategories } from "@rs-core/pipeline/Cache";
 
 // TODO! needs to debug completely and complex and make it more robust
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{

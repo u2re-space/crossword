@@ -1,5 +1,5 @@
 import { openDirectory, H, M } from "fest/lure";
-import { dataCategories } from "@rs-core/api/dataset/Data";
+import { dataCategories } from "@rs-core/service/Cache";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();

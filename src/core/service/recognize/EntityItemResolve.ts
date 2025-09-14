@@ -1,9 +1,9 @@
-import type { GPTConversion } from "../endpoints/GPT-Conversion";
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from "../../model/Entities";
+import type { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/pipeline/template/Entities';
 import { safe } from "fest/object";
 
 //
-export const resolveEntity = async (entityType: any, entityKind: any, gptConversion: GPTConversion)=>{
+export const resolveEntity = async (entityType: any, entityKind: any, gptConversion: GPTConversion) => {
     // - get entity type items by criteria: `categoriesCache?.find?.((category)=> category?.id === entityType)`
     // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
     // - get related items by criteria: `categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`

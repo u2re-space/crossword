@@ -3,7 +3,7 @@ import { bindDayWithElement, createDayElement, daysTabs, sampleDays } from "../i
 import { getDirectoryHandle } from "fest/lure";
 
 //
-import "@rs-core/test-case/Tasks";
+import "@rs-core/workers/Tasks";
 
 //
 // Render the timeline

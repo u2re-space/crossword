@@ -1,6 +1,6 @@
 export type DataKind = "math" | "url" | "output_text" | "text" | "image" | "image_url";
 export type DataInput = {
-    dataSource: string|Blob|File|any,
+    dataSource: string | Blob | File | any,
     dataKind: DataKind
 }
 

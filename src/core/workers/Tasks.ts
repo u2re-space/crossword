@@ -1,4 +1,4 @@
-import { clearAllInDirectory, readFile, writeFile } from "fest/lure";
+import { writeFile } from "fest/lure";
 
 //
 export const sampleTasks = [

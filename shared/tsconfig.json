@@ -20,8 +20,12 @@
             "culori": [
                 "./node_modules/culori/bundled/culori.mjs"
             ],
-            "@design/*": ["./fest/fl-ui/design/*"],
-            "@ui/*": ["./fest/fl-ui/ui/*"]
+            "@fl-design/*": [
+                "./fest/fl-ui/design/*"
+            ],
+            "@fl-ui/*": [
+                "./fest/fl-ui/ui/*"
+            ]
         },
         "target": "ESNext",
         "module": "ESNext",

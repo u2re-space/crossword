@@ -1,5 +1,5 @@
-import { JSON_SCHEMES } from "../../model/Entities";
-import type { GPTConversion } from "../endpoints/GPT-Conversion";
+import { JSON_SCHEMES } from "@rs-core/pipeline/template/Entities";
+import type { GPTConversion } from "@rs-core/service/model/GPT-Conversion";
 
 
 
@@ -61,7 +61,7 @@ Output in JSON format: \`\`\`json
 `?.trim?.();
 
 //
-export const recognizeKindOfEntity = async (entityType: any, gptConversion: GPTConversion)=>{
+export const recognizeKindOfEntity = async (entityType: any, gptConversion: GPTConversion) => {
     gptConversion.askToDoAction(entityType == "bonus" ? ASK_ABOUT_USABILITY_KIND_OF_BONUS : ASK_ABOUT_KIND_OF_ENTITY(entityType));
     const response = await gptConversion.sendRequest();
     return JSON.parse(response?.content)?.kind;

@@ -1,8 +1,5 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
-import { idbGet, idbPut } from "../../data/IDBStorage";
-import { idbStorage } from "../../../pwa/lib/idbQueue";
-import { writeFile } from "fest/lure";
-import { getDir } from "fest/lure";
+import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 
 //
 export const realtimeStates = makeReactive({
@@ -16,17 +13,17 @@ export const realtimeStates = makeReactive({
 });
 
 //
-const editableArray = (category: any, items: any[])=>{
+const editableArray = (category: any, items: any[]) => {
     const wrapped = makeReactive(items);
     observe(wrapped, (item, index) => idbPut(category?.id, JSON.stringify(safe(wrapped))));
     return wrapped;
 }
 
 // associated with IndexedDB for service workers
-const observeCategory = (category: any)=>{
+const observeCategory = (category: any) => {
     Object.defineProperty(category, "items", {
         get: () => { // get will get new array from indexedDB, for prevent data corruption
-            return Promised((async()=> editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]")))());
+            return Promised((async () => editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]")))());
         },
         set: (value: any) => {
             idbPut(category?.id, JSON.stringify(safe(value)));
@@ -36,7 +33,7 @@ const observeCategory = (category: any)=>{
 }
 
 //
-const $wrapCategory = (category: any): any=>{
+const $wrapCategory = (category: any): any => {
     return makeReactive(observeCategory(category));
 }
 
@@ -124,14 +121,3 @@ export const dataCategories = makeReactive([
         id: "lottery"
     })
 ]);
-
-//
-export const pushPendingToFS = async (entityType: string) => {
-    const allEntries = await idbStorage.getAll("pending-fs-write_" + entityType + "_");
-    return Promise.all(allEntries.map(async (entry) => {
-        writeFile(null, entry.key, safe(entry.value));
-        console.log("Written file: " + getDir(entry.key));
-        await new Promise((res) => setTimeout(res, 1000));
-        await idbStorage.delete(getDir(entry.key));
-    }));
-}

@@ -18,12 +18,17 @@
             "fest/polyfill/*": ["./shared/fest/polyfill/*"],
             "polyfill/*": ["./shared/fest/polyfill/*"],
             "shared/*": ["./shared/*"],
-            "@ui/*": ["./shared/fest/fl-ui/ui/*"],
-            "@src/*": [
+            "@fl-ui/*": [
+                "./shared/fest/fl-ui/ui/*"
+            ],
+            "@fl-src/*": [
                 "./shared/fest/fl-ui/*"
             ],
-            "@design/*": [
+            "@fl-design/*": [
                 "./shared/fest/fl-ui/design/*"
+            ],
+            "@rs-pwa/*": [
+                "./src/pwa/*"
             ],
             "@rs-core/*": [
                 "./src/core/*"

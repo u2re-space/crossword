@@ -11,7 +11,7 @@ import "fest/fl-ui";
 
 // @ts-ignore
 import style from "./index.scss?inline";
-import { sampleTasks, writeSampleTask } from "@rs-core/test-case/Tasks";
+import { sampleTasks, writeSampleTask } from "@rs-core/workers/Tasks";
 
 //
 export default async function frontend(mountElement) {

@@ -1,4 +1,4 @@
-import { idbOpen, IDBStorage } from "../../core/data/IDBStorage";
+import { idbOpen, IDBStorage } from "../../core/store/IDBStorage";
 
 //
 const DB_NAME = 'req-queue';
