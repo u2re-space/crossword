@@ -1,5 +1,5 @@
 {
-    "name": "ras-klad",
+    "name": "crossword",
     "private": true,
     "type": "module",
     "scripts": {
