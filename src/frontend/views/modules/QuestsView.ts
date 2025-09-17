@@ -15,7 +15,7 @@ const QuestItem = (questMarkdown: any) => {
     const blob = new Blob([questMarkdown], { type: "text/plain" });
 
     //
-    return H`<div class="preference-item">
+    return H`<div data-type="quest" class="preference-item">
     <div class="spoiler-handler">${questMarkdown?.trim?.()?.split?.("\n")?.[0]}</div>
     <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
     </div>`;
@@ -39,7 +39,7 @@ const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
     const quests = M(dataRef, (quest) => {
         return QuestItem(quest);
     });
-    return H`<div data-name="${name}" class="tab">${quests}</div>`;
+    return H`<div data-name="${name}" data-type="quests" class="tab">${quests}</div>`;
 }
 
 //
@@ -70,7 +70,7 @@ export const QuestsView = (currentTab?: any | null) => {
     ></ui-tabbed-box>`;
 
     //
-    return H`<section class="quests-view quests">
+    return H`<section id="quests" class="quests-view quests">
     ${tabbed}
     <div class="view-toolbar">
         <div class="button-set">

@@ -16,7 +16,7 @@ const PreferenceItem = (preferenceMarkdown: any) => {
     const blob = new Blob([preferenceMarkdown], { type: "text/plain" });
 
     //
-    return H`<div class="preference-item">
+    return H`<div data-type="preference" class="preference-item">
     <div class="spoiler-handler">${preferenceMarkdown?.trim?.()?.split?.("\n")?.[0]}</div>
     <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
     </div>`;
@@ -39,7 +39,7 @@ const $ShowPreferencesByDir = (DIR: string, name: string) => {
     const preferences = M(dataRef, (preference) => {
         return PreferenceItem(preference);
     });
-    return H`<div data-name="${name}" class="content">${preferences}</div>`;
+    return H`<div data-name="${name}" data-type="preferences" class="content">${preferences}</div>`;
 }
 
 //
@@ -69,7 +69,7 @@ export const PreferencesView = (currentView?: any | null) => {
     ></ui-tabbed-box>`;
 
     //
-    return H`<section class="preferences-view">
+    return H`<section id="preferences" class="preferences-view">
     ${tabbed}
     <div class="view-toolbar">
         <div class="button-set">

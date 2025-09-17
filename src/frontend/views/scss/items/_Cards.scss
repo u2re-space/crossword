@@ -1,0 +1,97 @@
+@layer rs-cards {
+    :root {
+        --card-gap: 0.5rem;
+        --card-radius: 0.75rem;
+        --card-padding: 0.75rem;
+        --card-avatar-size: 40px;
+    }
+
+    .card {
+        display: grid;
+        grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr) minmax(0px, max-content) minmax(0px, max-content) minmax(0px, max-content) minmax(0px, max-content);
+        grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
+        align-items: center;
+        gap: 0.5rem;
+        padding: var(--card-padding);
+        border-radius: var(--card-radius);
+        background-color: --c2-surface(0.16, var(--current, currentColor));
+        color: --c2-on-surface(0.0, var(--current, currentColor));
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
+        touch-action: manipulation;
+        user-select: none;
+        inline-size: stretch;
+
+        &[data-variant="purple"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1); }
+        &[data-variant="green"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 60) / 1); }
+        &[data-variant="blur"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 120) / 1); backdrop-filter: blur(8px) saturate(120%); }
+
+        &[data-open] {
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
+    }
+
+    [data-type="day"],
+    [data-type="tasks"],
+    [data-type="contacts"],
+    [data-type="bonuses"],
+    [data-type="services"],
+    [data-type="preferences"],
+    [data-type="quests"] {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: var(--card-gap);
+        align-items: start;
+    }
+
+    .card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+    .card[data-open] { box-shadow: 0 10px 24px rgba(0,0,0,0.16); }
+
+    .card-avatar {
+        inline-size: var(--card-avatar-size);
+        block-size: var(--card-avatar-size);
+        min-inline-size: var(--card-avatar-size);
+        border-radius: 9999px;
+        display: grid;
+        place-content: center;
+        place-items: center;
+        background-color: --c2-surface(0.08, var(--current, currentColor));
+        background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.03));
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08) inset;
+        aspect-ratio: 1 / 1;
+    }
+    .card-avatar .avatar-inner { font-weight: 700; font-size: 1rem; }
+
+    .card-content { display:grid; grid-template-columns: minmax(0px, 1fr); gap: 0.25rem; min-inline-size: 0; }
+    .card-title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-kind { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
+    .card-time { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
+    .card-props { display:flex; inline-size: stretch; flex-direction:column; gap:0.25rem; justify-items:center; align-content: flex-start; }
+    .card-actions { display:flex; gap:0.25rem; }
+    .card-actions > .action { display:flex; align-items:center; gap:0.25rem; padding:0.25rem 0.4rem; border-radius:0.375rem; background: --c2-surface(0.03, var(--current, currentColor)); cursor:pointer; border:0; }
+    .card-actions > .action:hover { background: --c2-surface(0.06, var(--current, currentColor)); }
+
+    .card-desc {
+        grid-column: 1 / -1;
+        box-sizing: border-box;
+        display: none; opacity: 0; block-size: 0px; transition: opacity 160ms ease, block-size 160ms ease, display 160ms ease, padding-block 160ms ease;
+        transition-behavior: allow-discrete;
+        padding-block: 0rem;
+        font-size: 0.875rem;
+        color: rgba(17,24,39,0.75);
+        overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical;
+    }
+    .card[data-open] .card-desc { display:flex; opacity:1; block-size:max-content; padding-block:0.5rem; }
+    @starting-style { .card[data-open] .card-desc { opacity:0; block-size:0px; padding-block:0rem; } }
+
+    // Adapt button density and hide long text on small containers
+    @container (max-inline-size: 800px) {
+        .card-time { display:none; }
+        .card-actions > .action span { display:none; }
+    }
+
+
+    /* removed duplicate legacy .card block */
+}
+
+
