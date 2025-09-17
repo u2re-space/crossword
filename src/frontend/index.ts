@@ -8,7 +8,8 @@ import "fest/fl-ui";
 
 // @ts-ignore
 import style from "./index.scss?inline";
-import { sampleTasks, writeSampleTask } from "@rs-core/workers/Tasks";
+import { sampleDays } from "@rs-core/$test/Days";
+import { sampleTasks, writeSampleTask } from "@rs-core/$test/Tasks";
 import { Sidebar } from "./views/Sidebar";
 import { ref } from "fest/object";
 
@@ -35,7 +36,7 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", await PlannedTimeline()],
+        ["timeline", await PlannedTimeline(null, sampleDays)],
         ["contacts", await ContactsView()],
         ["bonuses", await BonusesView()],
         ["services", await ServicesView()],

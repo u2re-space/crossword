@@ -4,11 +4,6 @@ import { createTaskElement } from "@rs-frontend/views/items/TaskItem";
 
 //
 export const daysTabs = makeReactive(new Map<string, HTMLElement>()) as Map<string, HTMLElement>;
-export const sampleDays = [
-    { id: 'd1', title: 'Monday', variant: 'purple', icon: 'calendar' },
-    { id: 'd2', title: 'Tuesday', variant: 'green', icon: 'calendar' },
-    { id: 'd3', title: 'Wednesday', variant: 'purple', icon: 'calendar' }
-];
 
 //
 export const bindDayWithElement = (day: any, element: HTMLElement) => {

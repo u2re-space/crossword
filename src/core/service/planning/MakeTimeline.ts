@@ -16,10 +16,11 @@
 
 //
 import type { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readMarkDowns, writeJSON } from "@rs-core/workers/FileSystem";
+import { readJSONs, readMarkDowns } from "@rs-core/workers/FileSystem";
 import { TIMELINE_DIR, realtimeStates } from "../Cache";
 import { JSON_SCHEMES } from "../template/Entities";
 import { safe } from "fest/object";
+import { writeFile } from "fest/lure";
 
 //
 export const PREFERENCES_DIR = "/docs/preferences/";
@@ -107,6 +108,15 @@ const filterEvents = (events: any[], currentTime: Date) => {
 
 
 //
+export const writeTimelineTask = async (task: any) => {
+    const fileName = `${TIMELINE_DIR}/${task?.desc?.name}.json`;
+    const file = new File([JSON.stringify(task)], fileName?.split?.("/")?.pop?.() || "timeline.json", { type: 'application/json' });
+    return writeFile(null, fileName, file)?.catch?.(console.error.bind(console));
+}
+
+
+
+//
 export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimeline: any | null = null) => {
     gptResponses.attachToRequest(MAKE_TIMELINE_REQUEST);
 
@@ -149,7 +159,7 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     console.log("timeline", timeline);
 
     // write timeline
-    await writeJSON(TIMELINE_DIR, timeline);
+    await writeTimelineTask(timeline);
 
     // return timeline
     return timeline;

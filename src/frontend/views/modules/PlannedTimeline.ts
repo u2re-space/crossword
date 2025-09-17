@@ -1,16 +1,16 @@
-import { H } from "fest/lure";
-import { bindDayWithElement, createDayElement, daysTabs, sampleDays } from "../items/DayTab";
-import { getDirectoryHandle } from "fest/lure";
+import { getDirectoryHandle, H } from "fest/lure";
+import { bindDayWithElement, createDayElement, daysTabs } from "../items/DayTab";
 import { ref } from "fest/object";
+import { sampleDays } from "@rs-core/$test/Days";
 
 //
-import "@rs-core/workers/Tasks";
+import "@rs-core/$test/Tasks";
 
 //
 const TIMELINE_DIR = "/timeline/";
 
 // Render the timeline
-export const PlannedTimeline = async (currentTab?: any | null) => {
+export const PlannedTimeline = async (currentTab?: any | null, daysDesc?: any[] | null) => {
     currentTab ??= ref("days");
     if (currentTab != null) { currentTab.value = "days"; }
 
@@ -26,7 +26,7 @@ export const PlannedTimeline = async (currentTab?: any | null) => {
 
     //
     if (!daysTabs.size) {
-        await Promise.all(sampleDays.map(async (day) => {
+        await Promise.all(daysDesc ?? sampleDays.map(async (day) => {
             return bindDayWithElement(day, createDayElement(day, await timelineMap ?? []));
         }));
     }
@@ -39,7 +39,7 @@ export const PlannedTimeline = async (currentTab?: any | null) => {
 ></ui-tabbed-box>`;
 
     //
-    tabbed.renderTabName = (tabName: string) => { return sampleDays?.find((day: any) => day.id == tabName)?.title || tabName; };
+    tabbed.renderTabName = (tabName: string) => { return daysDesc?.find((day: any) => day.id == tabName)?.title || tabName; };
     return H`<section id="timeline" style="background-color: transparent;" class="timeline c2-surface">
     ${tabbed}
     <div class="view-toolbar">
