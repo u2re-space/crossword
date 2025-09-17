@@ -6,10 +6,15 @@ import { writeFile, getDir, getDirectoryHandle } from "fest/lure";
 export const pushPendingToFS = async (entityType: string) => {
     const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
     return Promise.all(allEntries.map(async (entry) => {
-        writeFile(null, entry.key, safe(entry.value));
-        console.log("Written file: " + getDir(entry.key));
-        await new Promise((res) => setTimeout(res, 1000));
-        await idbDelete(getDir(entry.key));
+        try {
+            const path = entry?.value?.path || entry?.key;
+            const data = entry?.value?.data ?? entry?.value;
+            await writeFile(null, path, safe(data));
+            console.log("Written file: " + path);
+        } finally {
+            await new Promise((res) => setTimeout(res, 250));
+            await idbDelete(entry?.key);
+        }
     }));
 }
 
@@ -63,8 +68,18 @@ export const readMarkDowns = async (dir: any | null) => {
 //
 export const writeJSON = async (dir: any | null, data: any) => {
     const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const handle = await dirHandle.getFileHandle(data?.id, { create: true });
-    await handle.putFile(new Blob([JSON.stringify(data)]));
+    const writeOne = async (obj: any, index = 0) => {
+        let base = obj?.id || obj?.desc?.name || `${Date.now()}_${index}`;
+        base = String(base).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-');
+        const fileName = base.endsWith('.json') ? base : `${base}.json`;
+        const handle = await dirHandle.getFileHandle(fileName, { create: true });
+        await handle.putFile(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+    };
+    if (Array.isArray(data)) {
+        for (let i = 0; i < data.length; i++) await writeOne(data[i], i);
+        return;
+    }
+    await writeOne(data, 0);
 }
 
 //

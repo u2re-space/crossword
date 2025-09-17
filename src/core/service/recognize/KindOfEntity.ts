@@ -49,7 +49,7 @@ Output in JSON format: \`\`\`json
 //
 export const recognizeKindOfEntity = async (entityTypes: any[], gptResponses: GPTResponses) => {
     gptResponses.askToDoAction(ASK_ABOUT_KIND_OF_ENTITY(entityTypes));
-    const response = JSON.parse(await gptResponses.sendRequest() || "[]");
-    console.log("kind of entity response", response);
-    return response?.content;
+    const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
+    console.log("kind of entity response", parsed);
+    return parsed;
 }

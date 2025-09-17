@@ -30,7 +30,9 @@ const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
             const quest = await file.text();
-            if (quest.type === TYPE) { dataRef.push(quest); }
+            // Markdown-only viewer: treat TYPE as subfolder context, not a field in content
+            // Push all files found under the requested directory
+            dataRef.push(quest);
             return quest;
         })?.filter?.((e) => e));
     })?.catch?.(console.error);

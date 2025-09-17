@@ -54,7 +54,7 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 
     //
     await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
-    const response = JSON.parse(await gptResponses.sendRequest() || "[]");
-    console.log("resolve entity response", response);
-    return response?.content;
+    const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
+    console.log("resolve entity response", parsed);
+    return parsed;
 }

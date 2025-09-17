@@ -39,7 +39,7 @@ export class GPTResponses {
     private apiSecret: string;
 
     //
-    private apiUrl: string = "https://openai.api.proxyapi.ru/v1";//"https://api.openai.com/v1";
+    private apiUrl: string = "https://api.openai.com/v1";
     private model: string = "gpt-5";
     private responseId?: string | null = null;
 
@@ -51,8 +51,12 @@ export class GPTResponses {
     //
     constructor() {
         this.apiKey = process.env.GPT_API_KEY || "";
-        this.apiUrl = process.env.GPT_API_URL || "";
+        // Prefer explicit env URL, otherwise keep default
+        this.apiUrl = process.env.GPT_API_URL || this.apiUrl;
         this.apiSecret = process.env.GPT_API_SECRET || "";
+        // Allow overriding model via env
+        // @ts-ignore
+        this.model = process.env.GPT_MODEL || this.model;
     }
 
     //
@@ -110,6 +114,10 @@ export class GPTResponses {
     async sendRequest() {
         const response = await fetch(`${this.apiUrl}/responses`, {
             method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(this.apiKey ? { "Authorization": `Bearer ${this.apiKey}` } : {})
+            },
             body: JSON.stringify({
                 model: this.model,
                 tools: this.tools?.filter?.((tool) => !!tool),
@@ -125,7 +133,37 @@ export class GPTResponses {
         this.responseId = resp?.id || this.responseId;
         this.messages.push(...(this.pending || [])); this.pending?.splice(0, this.pending.length);
         this.messages.push(...(resp?.output || []));
-        return this.messages[this.messages.length - 1];
+
+        // Try best-effort extraction of textual content to feed callers that JSON.parse the result
+        const extractText = (r: any): string | null => {
+            try {
+                if (!r) return null;
+                if (typeof r === "string") return r;
+                if (r.output_text && Array.isArray(r.output_text) && r.output_text.length) {
+                    return r.output_text.join("\n\n");
+                }
+                const outputs = r.output || [];
+                const texts: string[] = [];
+                for (const msg of outputs) {
+                    const content = msg?.content || [];
+                    for (const part of content) {
+                        // OpenAI responses: {type: 'text', text: '...'} or {type:'output_text', text: {...}}
+                        if (typeof part?.text === "string") texts.push(part.text);
+                        else if (part?.text?.value) texts.push(part.text.value);
+                    }
+                }
+                if (texts.length) return texts.join("\n\n");
+            } catch (e) {
+                console.warn(e);
+            }
+            return null;
+        };
+
+        const text = extractText(resp);
+        if (text != null) return text;
+        // Fallback: return last message content as JSON string
+        try { return JSON.stringify(resp?.output ?? resp); } catch { /* noop */ }
+        return "";
     }
 
     //

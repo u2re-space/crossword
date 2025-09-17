@@ -17,8 +17,9 @@
 //
 import type { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readMarkDowns, writeJSON } from "@rs-core/workers/FileSystem";
-import { TIMELINE_DIR } from "../Cache";
+import { TIMELINE_DIR, realtimeStates } from "../Cache";
 import { JSON_SCHEMES } from "../template/Entities";
+import { safe } from "fest/object";
 
 //
 export const PREFERENCES_DIR = "/docs/preferences/";
@@ -53,29 +54,85 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 
 
 //
+const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
+    // after begins and before ends
+    if (beginTime && endTime) {
+        return new Date(beginTime) < currentTime && currentTime < new Date(endTime);
+    }
+    // after begins
+    if (beginTime) {
+        return new Date(beginTime) < currentTime;
+    }
+    // before ends
+    if (endTime) {
+        return currentTime < new Date(endTime);
+    }
+    return false;
+}
+
+//
+const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Date) => {
+    // utils begins and before ends
+    if (beginTime && endTime) {
+        return new Date(beginTime) > currentTime && currentTime < new Date(endTime);
+    }
+    // utils begins
+    if (beginTime) {
+        return new Date(beginTime) > currentTime;
+    }
+    // before ends
+    if (endTime) {
+        return currentTime < new Date(endTime);
+    }
+    return false;
+}
+
+
+
+// get only today and future tasks, and tasks in the past, but not ended (not finished)
+const filterTasks = (timeline: any[], currentTime: Date) => {
+    return timeline?.filter?.((task) => checkRemainsTime(task?.properties?.begin_time, task?.properties?.end_time, currentTime));
+}
+
+// get only today and future factors, and factors in the past, but not ended (not finished)
+const filterFactors = (factors: any[], currentTime: Date) => {
+    return factors?.filter?.((factor) => checkRemainsTime(factor?.properties?.begin_time, factor?.properties?.end_time, currentTime));
+}
+
+// get only today and future events, and events in the past, but not ended (not finished)
+const filterEvents = (events: any[], currentTime: Date) => {
+    return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime));
+}
+
+
+
+//
 export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimeline: any | null = null) => {
     gptResponses.attachToRequest(MAKE_TIMELINE_REQUEST);
 
     // attach exists timeline
     if (existsTimeline) {
-        gptResponses.attachToRequest(existsTimeline);
+        gptResponses.attachToRequest("current timeline: " + JSON.stringify(existsTimeline) + "\n");
     }
 
-    // attach some plans
+    // use real-time state (oriented on current time and location)
+    gptResponses.attachToRequest("realtime states: " + JSON.stringify(safe(realtimeStates)) + "\n");
+
+    // attach some plans (except finished)
     const plans = await readMarkDowns(PLANS_DIR);
-    gptResponses.attachToRequest(JSON.stringify(plans?.map?.((plans) => plans)));
+    gptResponses.attachToRequest("plans: " + JSON.stringify(filterTasks(plans, (realtimeStates as any)?.time)) + "\n");
 
-    // attach some preferences
+    // attach some preferences (except finished)
     const preferences = await readMarkDowns(PREFERENCES_DIR);
-    gptResponses.attachToRequest(JSON.stringify(preferences?.map?.((preference) => preference)));
+    gptResponses.attachToRequest("preferences: " + JSON.stringify(filterTasks(preferences, (realtimeStates as any)?.time)) + "\n");
 
-    // attach some factors
+    // attach some factors (except finished)
     const factors = await readJSONs(FACTORS_DIR);
-    gptResponses.attachToRequest(JSON.stringify(factors?.map?.((factor) => factor)));
+    gptResponses.attachToRequest("factors: " + JSON.stringify(filterFactors(factors, (realtimeStates as any)?.time)) + "\n");
 
-    // attach some events
+    // attach some events (except finished)
     const events = await readJSONs(EVENTS_DIR);
-    gptResponses.attachToRequest(JSON.stringify(events?.map?.((event) => event)));
+    gptResponses.attachToRequest("events: " + JSON.stringify(filterEvents(events, (realtimeStates as any)?.time)) + "\n");
 
     // load into context
     const readyStatus = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: 'No attached data', keywords: [] }");
