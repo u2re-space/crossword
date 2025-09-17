@@ -1,6 +1,7 @@
 /* Here is will be preferences view, which used Markdown notes in directory /user/preferences/ */
 /* Used for making plans, goals, etc. by AI */
 
+//
 import { H, M, getDirectoryHandle } from "fest/lure";
 import { makeReactive, ref } from "fest/object";
 
@@ -11,8 +12,14 @@ const NOTES_DIR = "/docs/notes/";
 const PREFERENCES_DIR = "/docs/preferences/";
 
 //
-const PreferenceItem = (preference: any) => {
-    return H`<div class="preference-item"></div>`;
+const PreferenceItem = (preferenceMarkdown: any) => {
+    const blob = new Blob([preferenceMarkdown], { type: "text/plain" });
+
+    //
+    return H`<div class="preference-item">
+    <div class="spoiler-handler">${preferenceMarkdown?.trim?.()?.split?.("\n")?.[0]}</div>
+    <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
+    </div>`;
 }
 
 //
@@ -22,7 +29,7 @@ const $ShowPreferencesByDir = (DIR: string, name: string) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const preference = JSON.parse(await file.text());
+            const preference = await file.text();
             dataRef.push(preference);
             return preference;
         })?.filter?.((e) => e));
