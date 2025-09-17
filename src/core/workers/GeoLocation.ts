@@ -35,15 +35,3 @@ boardcastChannel.onmessage = (e) => {
 export const getGeolocation = async () => {
     return new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
 }
-
-/* // in service worker
-//
-export const startTrackingRemote = () => {
-    boardcastChannel.postMessage({type: 'start'});
-}
-
-//
-export const stopTrackingRemote = () => {
-    boardcastChannel.postMessage({type: 'stop'});
-}
-*/

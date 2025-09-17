@@ -1,5 +1,6 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
 import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
+import { readJSONs } from "@rs-core/workers/FileSystem";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -126,3 +127,22 @@ export const dataCategories = makeReactive([
         id: "lottery"
     })
 ]);
+
+//
+export const getShortFormFromEntity = (entity: any) => {
+    return [
+        entity?.type?.toLowerCase?.()?.replace?.(" ", "-"),
+        entity?.kind?.toLowerCase?.()?.replace?.(" ", "-"),
+        entity?.desc?.name?.toLowerCase?.()?.replace?.(" ", "-")
+    ]?.filter?.((item) => (!!item))?.join?.(":");
+}
+
+//
+export const getShortFormFromEntities = (entities: any[]) => {
+    return entities?.map?.((entity) => getShortFormFromEntity(entity));
+}
+
+//
+export const getEntitiesFromFS = (dir: string) => {
+    return readJSONs(dir);
+}
