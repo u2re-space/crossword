@@ -11,8 +11,14 @@ const CODING_DIR = "/docs/questions/coding/";
 const MATH_DIR = "/docs/questions/math/";
 
 //
-const QuestItem = (quest: any) => {
-    return H`<div class="quest-item"></div>`;
+const QuestItem = (questMarkdown: any) => {
+    const blob = new Blob([questMarkdown], { type: "text/plain" });
+
+    //
+    return H`<div class="preference-item">
+    <div class="spoiler-handler">${questMarkdown?.trim?.()?.split?.("\n")?.[0]}</div>
+    <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
+    </div>`;
 }
 
 //
@@ -23,7 +29,7 @@ const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const quest = JSON.parse(await file.text());
+            const quest = await file.text();
             if (quest.type === TYPE) { dataRef.push(quest); }
             return quest;
         })?.filter?.((e) => e));
