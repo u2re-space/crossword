@@ -1,5 +1,5 @@
 import { getDirectoryHandle, H } from "fest/lure";
-import { bindDayWithElement, createDayElement, daysTabs } from "../items/DayTab";
+import { bindDayWithElement, createDayElement, daysTabs } from "./items/DayTab";
 import { makeReactive, ref } from "fest/object";
 
 //

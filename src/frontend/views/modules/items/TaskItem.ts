@@ -1,4 +1,6 @@
 import { H, writeFile, remove } from "fest/lure";
+import { MOCElement } from "fest/dom";
+import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 
 
 
@@ -29,35 +31,38 @@ export const createTaskElement = (task: any) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete task "${title}"?`)) return;
         try { await remove(null, path); } catch (e) { console.warn(e); }
-        const el = (ev.currentTarget as HTMLElement)?.closest?.('.task-item');
+        const el = MOCElement(ev.target as HTMLElement, '.task-item');
         el?.remove?.();
     };
 
     const doEdit = async (ev: Event) => {
         ev?.stopPropagation?.();
-        const newTitle = prompt('Title', title) ?? title;
-        const newDesc = prompt('Description', desc) ?? desc;
-        const newBegin = prompt('Begin time', begin_time) ?? begin_time;
-        const newEnd = prompt('End time', end_time) ?? end_time;
-        const updated = {
-            ...task,
-            desc: { ...(task?.desc || {}), title: newTitle, description: newDesc },
-            properties: { ...(task?.properties || {}), begin_time: newBegin, end_time: newEnd }
-        };
+        const result = await openFormModal('Edit Task', [
+            { name: 'title', label: 'Title' },
+            { name: 'description', label: 'Description' },
+            { name: 'begin_time', label: 'Begin time', placeholder: 'YYYY-MM-DD or HH:MM' },
+            { name: 'end_time', label: 'End time', placeholder: 'YYYY-MM-DD or HH:MM' }
+        ], { title, description: desc, begin_time, end_time });
+        if (!result) return;
+        const updated = Object.assign(task, {
+            desc: { ...(task?.desc || {}), title: result.title, description: result.description },
+            properties: { ...(task?.properties || {}), begin_time: result.begin_time, end_time: result.end_time }
+        });
+        console.log(updated);
         try {
             const fileName = path.split('/').pop() || 'task.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }
         // Reflect quick UI update
-        (ev.currentTarget as HTMLElement)?.closest?.('.task-item')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(newTitle));
-        (ev.currentTarget as HTMLElement)?.closest?.('.task-item')?.querySelector?.('.card-desc')?.replaceChildren?.(document.createTextNode(newDesc));
-        (ev.currentTarget as HTMLElement)?.closest?.('.task-item')?.querySelector?.('.card-time')?.replaceChildren?.(document.createTextNode(`${newBegin} - ${newEnd}`));
+        MOCElement(ev.target as HTMLElement, '.task-item')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(result.title));
+        MOCElement(ev.target as HTMLElement, '.task-item')?.querySelector?.('.card-desc')?.replaceChildren?.(document.createTextNode(result.description));
+        MOCElement(ev.target as HTMLElement, '.task-item')?.querySelector?.('.card-time')?.replaceChildren?.(document.createTextNode(`${result.begin_time} - ${result.end_time}`));
     };
 
     //
     return H`<div data-type="task" class="task-item card" data-variant=${variant} on:click=${(ev: any) => {
-        const el = ev.currentTarget as HTMLElement;
+        const el = ev.target as HTMLElement;
         el.toggleAttribute?.('data-open');
     }}>
     <div class="card-avatar">

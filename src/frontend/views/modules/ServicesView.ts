@@ -1,5 +1,7 @@
 import { getDirectoryHandle, H, M, writeFile, remove } from "fest/lure";
+import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { makeReactive, ref } from "fest/object";
+import { MOCElement } from "fest/dom";
 
 //
 const SERVICES_DIR = "/data/service/";
@@ -13,20 +15,25 @@ const ServiceItem = (service: any) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete service "${title}"?`)) return;
         try { await remove(null, path); } catch (e) { console.warn(e); }
-        (ev.currentTarget as HTMLElement)?.closest?.('.card')?.remove?.();
+        MOCElement(ev.target as HTMLElement, '.card')?.remove?.();
     };
     const doEdit = async (ev: Event) => {
         ev?.stopPropagation?.();
-        const newTitle = prompt('Title', title) ?? title;
-        const updated = { ...service, desc: { ...(service?.desc || {}), title: newTitle } };
+        const result = await openFormModal('Edit Service', [
+            { name: 'title', label: 'Title' },
+            { name: 'kind', label: 'Kind' },
+            { name: 'price', label: 'Price' }
+        ], { title, kind, price: service?.properties?.price ?? '' });
+        if (!result) return;
+        const updated = Object.assign(service, { desc: { ...(service?.desc || {}), title: result.title }, kind: result.kind || kind, properties: { ...(service?.properties || {}), price: result.price } });
         try {
             const fileName = path.split('/').pop() || 'service.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }
-        (ev.currentTarget as HTMLElement)?.closest?.('.card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(newTitle));
+        MOCElement(ev.target as HTMLElement, '.card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(result.title));
     };
-    return H`<div data-type="service" class="card" on:click=${(ev: any) => { (ev.currentTarget as HTMLElement).toggleAttribute?.('data-open'); }}>
+    return H`<div data-type="service" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
         <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "S"}</div></div>
         <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
         <div class="card-actions">

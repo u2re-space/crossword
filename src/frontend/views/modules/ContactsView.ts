@@ -1,5 +1,7 @@
 import { makeReactive, ref } from "fest/object";
 import { H, M, getDirectoryHandle, writeFile, remove } from "fest/lure";
+import { MOCElement } from "fest/dom";
+import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 
 //
 const PERSONS_DIR = "/data/person/";
@@ -16,20 +18,25 @@ const ContactItem = (contact: any) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete contact "${title}"?`)) return;
         try { await remove(null, path); } catch (e) { console.warn(e); }
-        (ev.currentTarget as HTMLElement)?.closest?.('.card')?.remove?.();
+        MOCElement(ev.target as HTMLElement, '.card')?.remove?.();
     };
     const doEdit = async (ev: Event) => {
         ev?.stopPropagation?.();
-        const newTitle = prompt('Title', title) ?? title;
-        const updated = { ...contact, desc: { ...(contact?.desc || {}), title: newTitle } };
+        const result = await openFormModal('Edit Contact', [
+            { name: 'title', label: 'Title' },
+            { name: 'email', label: 'Email' },
+            { name: 'phone', label: 'Phone' }
+        ], { title: title, email: contact?.contacts?.email?.[0] || '', phone: contact?.contacts?.phone?.[0] || '' });
+        if (!result) return;
+        const updated = Object.assign(contact, { desc: { ...(contact?.desc || {}), title: result.title }, contacts: { ...(contact?.contacts || {}), email: result.email ? [result.email] : [], phone: result.phone ? [result.phone] : [] } });
         try {
             const fileName = path.split('/').pop() || 'contact.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }
-        (ev.currentTarget as HTMLElement)?.closest?.('.card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(newTitle));
+        MOCElement(ev.target as HTMLElement, '.card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(result.title));
     };
-    return H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.currentTarget as HTMLElement).toggleAttribute?.('data-open'); }}>
+    return H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
         <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "C"}</div></div>
         <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
         <div class="card-actions">

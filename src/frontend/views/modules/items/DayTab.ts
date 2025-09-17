@@ -1,6 +1,6 @@
 import { H, M } from "fest/lure";
 import { makeReactive } from "fest/object";
-import { createTaskElement } from "@rs-frontend/views/items/TaskItem";
+import { createTaskElement } from "./TaskItem";
 
 //
 export const daysTabs = makeReactive(new Map<string, HTMLElement>()) as Map<string, HTMLElement>;
@@ -26,7 +26,7 @@ const isDate = (date: any) => {
 //
 export const createDayElement = (day: any, sampleTasks: any[]) => {
     return H`<div data-type="day" style="display: flex; flex-direction: column; gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${day.variant} on:click=${(ev: any) => {
-        const el = ev.currentTarget as HTMLElement; el.toggleAttribute?.('data-open');
+        const el = ev.target as HTMLElement; el.toggleAttribute?.('data-open');
     }}>${M(sampleTasks, (task) => {
         if (day.properties?.begin_time <= day.properties?.end_time || !day.properties?.begin_time) {
             const dayBeginTime = new Date(day.properties?.begin_time);
