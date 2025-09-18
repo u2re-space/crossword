@@ -3,14 +3,13 @@ import { DataInput, DataKind, GLOBAL_PROMPT_INSTRUCTIONS, actionWithDataType, ge
 //
 export const getUsableData = async (data: DataInput) => {
     if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
-        if (typesForKind?.[data?.dataKind] === "image_url" || (data?.dataSource?.type?.startsWith?.("image/"))) {
-            const BASE64URL = `data:${data?.dataSource?.type};base64,`;
+        if (typesForKind?.[data?.dataKind] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
+            const BASE64URL = `data:${data?.dataSource?.type};base64,`; // @ts-ignore
+            const URL = BASE64URL + await (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64" }));
             return {
-                "type": "image_url",
-                "image_url": { // @ts-ignore
-                    "url": BASE64URL + (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base6" })),
-                    "detail": "high"
-                }
+                "type": "input_image",
+                "detail": "high",
+                "image_url": URL
             }
         }
     } else
@@ -18,17 +17,15 @@ export const getUsableData = async (data: DataInput) => {
             // be aware, this may be base64 encoded image
             if (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) {
                 return {
-                    "type": "image_url",
-                    "image_url": { // @ts-ignore
-                        "url": data?.dataSource,
-                        "detail": "high"
-                    }
+                    "type": "input_image",
+                    "image_url": data?.dataSource,// @ts-ignore
+                    "detail": "high"
                 }
             }
 
             // anyways returns Promise<string>
             return {
-                "type": "text",
+                "type": "input_text",
                 "text": data?.dataSource
             }
     }
@@ -50,7 +47,7 @@ export class GPTResponses {
     private apiSecret: string;
 
     //
-    private apiUrl: string = "https://api.openai.com/v1";
+    private apiUrl: string = "https://api.proxyapi.ru/openai/v1";
     private model: string = "gpt-5";
     private responseId?: string | null = null;
 
@@ -91,13 +88,13 @@ export class GPTResponses {
         dataKind ??= getDataKindByMIMEType(dataSource?.type) || "text";
         return {
             type: "message",
-            role: "system",
+            role: "user",
             content: [
-                { type: "text", text: "What to do: " + actionWithDataType({ dataSource, dataKind }) },
+                { type: "input_text", text: "What to do: " + actionWithDataType({ dataSource, dataKind }) },
                 additionalAction ? { type: "text", text: "Additional request data: " + additionalAction } : null,
-                { type: "text", text: "\n === BEGIN:ATTACHED_DATA === \n" },
-                { /*type: typesForKind?.[dataKind],*/ ...await getUsableData({ dataSource, dataKind }) },
-                { type: "text", text: "\n === END:ATTACHED_DATA === \n" },
+                { type: "input_text", text: "\n === BEGIN:ATTACHED_DATA === \n" },
+                { /*type: typesForKind?.[dataKind],*/ ...(await getUsableData({ dataSource, dataKind })) },
+                { type: "input_text", text: "\n === END:ATTACHED_DATA === \n" },
             ]?.filter?.((item) => item !== null)
         };
     }
@@ -116,13 +113,15 @@ export class GPTResponses {
         this.pending.push({
             type: "message",
             role: "user",
-            content: [{ type: "text", text: action }]
+            content: [{ type: "input_text", text: action }]
         });
         return this.pending[this.pending.length - 1];
     }
 
     //
     async sendRequest() {
+        console.log(this.apiKey)
+
         const response = await fetch(`${this.apiUrl}/responses`, {
             method: "POST",
             headers: {
@@ -131,19 +130,33 @@ export class GPTResponses {
             },
             body: JSON.stringify({
                 model: this.model,
-                tools: this.tools?.filter?.((tool) => !!tool),
-                input: [...this.pending]?.filter?.((item) => !!item),
+                tools: this.tools?.filter?.((tool: any) => !!tool),
+                input: [...this.pending]?.filter?.((item: any) => !!item),
                 reasoning: { "effort": "medium" },
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),
-        });
+        })?.catch?.((e) => { console.warn(e); return null; });
+        if (!response) return null;
+        console.log(response);
+
+        if (response.status !== 200) {
+            const error = await response?.json?.()?.catch?.((e) => { console.warn(e); return null; });
+            console.log(error);
+            console.warn(error);
+            return null;
+        }
 
         //
-        const resp = await response.json();
+        const resp = response.status === 200 ? await response?.json?.()?.catch?.((e) => { console.warn(e); return null; }) : null;
+        console.log(resp);
+        if (!resp) return null;
+
+        //
         this.responseId = resp?.id || this.responseId;
-        this.messages.push(...(this.pending || [])); this.pending?.splice(0, this.pending.length);
+        this.messages.push(...(this.pending || [])); this.pending?.splice?.(0, this.pending.length);
         this.messages.push(...(resp?.output || []));
+        console.log(this.messages);
 
         // Try best-effort extraction of textual content to feed callers that JSON.parse the result
         const extractText = (r: any): string | null => {
@@ -157,8 +170,9 @@ export class GPTResponses {
                 const texts: string[] = [];
                 for (const msg of outputs) {
                     const content = msg?.content || [];
+                    if (!content) continue;
                     for (const part of content) {
-                        // OpenAI responses: {type: 'text', text: '...'} or {type:'output_text', text: {...}}
+                        // OpenAI responses: {type: 'input_text', text: '...'} or {type:'output_text', text: {...}}
                         if (typeof part?.text === "string") texts.push(part.text);
                         else if (part?.text?.value) texts.push(part.text.value);
                     }
@@ -171,9 +185,10 @@ export class GPTResponses {
         };
 
         const text = extractText(resp);
+        console.log(text);
         if (text != null) return text;
         // Fallback: return last message content as JSON string
-        try { return JSON.stringify(resp?.output ?? resp); } catch { /* noop */ }
+        try { return JSON.parse(resp?.output ?? resp); } catch { /* noop */ }
         return "";
     }
 

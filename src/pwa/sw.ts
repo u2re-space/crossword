@@ -12,34 +12,36 @@ import {
     NetworkFirst, //Cache the network response first and return it if it succeeds, otherwise return the cached response
     NetworkOnly, //Fetch the resource from the network and don't cache it
     Strategy, //Base class for caching strategies
-    StrategyHandler //Base class for caching strategy handlers
+    StrategyHandler, //Base class for caching strategy handlers
+    StaleWhileRevalidate
 } from 'workbox-strategies'
 
 
-// lifecycle
-self.addEventListener('install', (e) => {
-    // @ts-ignore
-    e.waitUntil(self.skipWaiting());
-});
-self.addEventListener('activate', (e) => {
-    // @ts-ignore
-    e.waitUntil(self.clients.claim());
-});
+import { clientsClaim } from 'workbox-core'
+import { precacheAndRoute } from 'workbox-precaching'
+import { BackgroundSyncPlugin } from 'workbox-background-sync'
+
+
+
 
 
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const settings = await idbGet("rs-settings");
+    console.log(settings);
 
     //
     if (!settings) return { resultEntities: [], entityTypes: [] };
-    const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.apiUrl, settings.ai.apiSecret, settings.ai.model);
+    const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+    console.log(gptResponses);
 
     // phase 1 - recognize entity type
     let entityTypes: any[] = (await recognizeEntityType(dataSource, gptResponses)) || [{ entityType: "unknown" }];
+    console.log(entityTypes);
 
     // phase 2 - recognize kind of entity
     let entityKinds: any[] = (await recognizeKindOfEntity(entityTypes, gptResponses)) || [{ kinds: ["unknown"] }];
+    console.log(entityKinds);
 
     // phase 3 - convert data to target format
     const resultEntity = await resolveEntity(entityTypes, entityKinds, gptResponses);
@@ -58,9 +60,24 @@ const _LOG = (a) => {
     return a;
 }
 
+// lifecycle
+self.addEventListener('install', (e) => {
+    // @ts-ignore
+    e.waitUntil(self.skipWaiting());
+});
+self.addEventListener('activate', (e) => {
+    // @ts-ignore
+    e.waitUntil(self.clients.claim());
+});
 
 //
 setDefaultHandler(new NetworkFirst())
+
+//
+registerRoute(
+    ({ request }) => request.mode === 'navigate',
+    new NetworkFirst({ cacheName: 'html-cache' })
+)
 
 //
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {

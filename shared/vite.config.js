@@ -133,8 +133,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         }),
         VitePWA({
             registerType: 'autoUpdate',
-            //strategies: 'injectManifest',
-            strategies: 'generateSW',
+            strategies: 'injectManifest',
             injectRegister: 'auto',
             selfDestroying: false,
             mode: 'development',
