@@ -2,7 +2,10 @@
 /* Used for solving problems and questions by AI */
 
 import { makeReactive, ref } from "fest/object";
-import { getDirectoryHandle, H, M } from "fest/lure";
+import { getDirectoryHandle, H, M, remove } from "fest/lure";
+import { openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/Upload";
+import { pasteIntoDir } from "@rs-frontend/utils/Paste";
+import { bindDropToDir } from "@rs-frontend/utils/Drop";
 
 //
 const SOLUTIONS_DIR = "/docs/solutions/";
@@ -11,13 +14,32 @@ const CODING_DIR = "/docs/questions/coding/";
 const MATH_DIR = "/docs/questions/math/";
 
 //
-const QuestItem = (questMarkdown: any) => {
-    const blob = new Blob([questMarkdown], { type: "text/plain" });
+const QuestItem = (item: any) => {
+    const text = typeof item === 'string' ? item : (item?.text || '');
+    const path = (item as any)?.__path || '';
+    const name = (item as any)?.__name || '';
+    const blob = new Blob([text], { type: "text/plain" });
+    const doDelete = async (ev: Event) => {
+        ev?.stopPropagation?.();
+        if (!path) return;
+        if (!confirm(`Delete \"${name}\"?`)) return;
+        try { await remove(null, path); } catch (e) { console.warn(e); }
+        (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
+    };
+    const doDownload = async (ev: Event) => {
+        ev?.stopPropagation?.();
+        if (!path) return;
+        try { await downloadByPath(path); } catch (e) { console.warn(e); }
+    };
 
     //
-    return H`<div data-type="quest" class="preference-item">
-    <div class="spoiler-handler">${questMarkdown?.trim?.()?.split?.("\n")?.[0]}</div>
+    return H`<div data-type="quest" class="preference-item" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
+    <div class="spoiler-handler">${text?.trim?.()?.split?.("\n")?.[0]}</div>
     <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
+    <div class="card-actions" style="display:flex; gap:0.25rem; margin-top:0.25rem;">
+        <button class="action" on:click=${doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
+        <button class="action" on:click=${doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+    </div>
     </div>`;
 }
 
@@ -25,21 +47,24 @@ const QuestItem = (questMarkdown: any) => {
 const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
     name = name ?? DIR;
     const dataRef: any = makeReactive([]);
-    const data = getDirectoryHandle(null, DIR)?.then?.(async (handle) => {
-        const entries = await Array.fromAsync(handle?.entries?.() ?? []);
-        return Promise.all(entries?.map?.(async ([name, handle]: any) => {
-            const file = await handle.getFile();
-            const quest = await file.text();
-            // Markdown-only viewer: treat TYPE as subfolder context, not a field in content
-            // Push all files found under the requested directory
-            dataRef.push(quest);
-            return quest;
-        })?.filter?.((e) => e));
-    })?.catch?.(console.error);
-    const quests = M(dataRef, (quest) => {
-        return QuestItem(quest);
-    });
-    return H`<div data-name="${name}" data-type="quests" class="tab">${quests}</div>`;
+    const load = async () => {
+        dataRef.length = 0;
+        const handle = await getDirectoryHandle(null, DIR).catch(() => null as any);
+        const entries = handle ? await Array.fromAsync(handle?.entries?.() ?? []) : [];
+        await Promise.all(entries?.map?.(async ([fname, fhandle]: any) => {
+            try {
+                const file = await fhandle.getFile();
+                const text = await file.text();
+                dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
+            } catch { }
+        }));
+    };
+    load().catch(console.warn.bind(console));
+    const quests = M(dataRef, (quest) => QuestItem(quest));
+    const root = H`<div data-name="${name}" data-type="quests" class="tab">${quests}</div>`;
+    (root as any).reloadList = load;
+    bindDropToDir(root as any, DIR);
+    return root;
 }
 
 //
@@ -64,37 +89,52 @@ export const QuestsView = (currentTab?: any | null) => {
     //
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
+        prop:currentTab=${currentTab}
         prop:renderTabName=${renderTabName}
         style="background-color: transparent;"
         class="quests"
     ></ui-tabbed-box>`;
 
     //
-    return H`<section id="quests" class="quests-view quests">
+    const section = H`<section id="quests" class="quests-view quests">
     ${tabbed}
     <div class="view-toolbar">
         <div class="button-set">
-        <button>
-            <ui-icon icon="upload"></ui-icon>
-            <span>Upload</span>
-        </button>
-        <button>
-            <ui-icon icon="download"></ui-icon>
-            <span>Download</span>
-        </button>
-        <button>
-            <ui-icon icon="screwdriver"></ui-icon>
-            <span>Mount</span>
-        </button>
-        <button>
-            <ui-icon icon="arrows-clockwise"></ui-icon>
-            <span>Refresh</span>
-        </button>
-        <button>
-            <ui-icon icon="magic-wand"></ui-icon>
-            <span>Ask to Suggest Solutions</span>
-        </button>
+        <button id="btn-upload"><ui-icon icon="upload"></ui-icon><span>Upload</span></button>
+        <button id="btn-download"><ui-icon icon="download"></ui-icon><span>Download</span></button>
+        <button id="btn-mount"><ui-icon icon="screwdriver"></ui-icon><span>Mount</span></button>
+        <button id="btn-refresh"><ui-icon icon="arrows-clockwise"></ui-icon><span>Refresh</span></button>
+        <button id="btn-ask"><ui-icon icon="magic-wand"></ui-icon><span>Ask to Suggest Solutions</span></button>
         </div>
     </div>
-    </section>`;
+    </section>` as HTMLElement;
+
+    const tabDirOf = (name: string) => ({ questions: QUEST_DIR, quests: QUEST_DIR, coding: CODING_DIR, math: MATH_DIR, solutions: SOLUTIONS_DIR } as any)[name] || QUEST_DIR;
+    const getCurrentDir = () => tabDirOf((currentTab?.value || 'quests'));
+
+    section.addEventListener('paste', async (ev: ClipboardEvent) => {
+        ev.stopPropagation();
+        await pasteIntoDir(getCurrentDir());
+        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    });
+    section.querySelector('#btn-upload')?.addEventListener('click', async () => {
+        await openPickerAndWrite(getCurrentDir(), 'text/markdown,text/plain,.md', true);
+        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    });
+    section.querySelector('#btn-download')?.addEventListener('click', async () => {
+        try {
+            const dir = getCurrentDir();
+            const handle = await getDirectoryHandle(null, dir);
+            const entries = await Array.fromAsync(handle?.entries?.() ?? []);
+            for (const it of (entries as any[])) { const name = it?.[0]; if (name) await downloadByPath(`${dir}${name}`, name); }
+        } catch (e) { console.warn(e); }
+    });
+    section.querySelector('#btn-mount')?.addEventListener('click', async () => {
+        try { for (const d of [SOLUTIONS_DIR, QUEST_DIR, CODING_DIR, MATH_DIR]) await getDirectoryHandle(null, d, { create: true } as any); } catch (e) { console.warn(e); }
+    });
+    section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
+        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    });
+
+    return section;
 }

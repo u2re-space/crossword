@@ -9,5 +9,24 @@
             font-size: 1.125rem;
             letter-spacing: 0.01em;
         }
+
+        [data-type="preferences"] {
+            inline-size: stretch;
+            block-size: stretch;
+            display: flex;
+            grid-template-columns: minmax(0px, 1fr);
+            background-color: --c2-contrast(0.0, var(--current, currentColor));
+            border-radius: 0.5rem;
+
+            & > * {
+                inline-size: stretch;
+            }
+        }
+
+        md-view {
+            inline-size: stretch;
+            block-size: stretch;
+            color-scheme: light only;
+        }
     }
 }

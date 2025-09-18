@@ -89,6 +89,7 @@ export const BonusesView = (currentTab?: any | null) => {
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
         prop:renderTabName=${renderTabName}
+        prop:currentTab=${currentTab}
         style="background-color: transparent;"
         class="all"
     ></ui-tabbed-box>`;

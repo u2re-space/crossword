@@ -87,6 +87,7 @@ export const PlannedTimeline = async (currentTab?: any | null, daysDesc?: any[] 
     //
     const tabbed = H`<ui-tabbed-box
     prop:tabs=${daysTabs}
+    prop:currentTab=${currentTab}
     style="background-color: transparent;"
     class="days"
 ></ui-tabbed-box>`;

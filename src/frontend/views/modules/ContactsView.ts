@@ -89,6 +89,7 @@ export const ContactsView = (currentTab?: any | null) => {
     //
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
+        prop:currentTab=${currentTab}
         prop:renderTabName=${renderTabName}
         style="background-color: transparent;"
         class="all"
