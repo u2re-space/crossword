@@ -34,9 +34,21 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
                 const items = await (navigator.clipboard as any).read();
                 for (const item of items) {
                     for (const type of item.types) {
+                        if (type.startsWith('text/')) {
+                            const text = await (await item.getType(type))?.text?.();
+                            if (text?.startsWith?.("data:image/") && text?.includes?.(";base64,")) { // @ts-ignore
+                                const arrayBuffer = Uint8Array.fromBase64(text.split(';base64,')[1]);
+                                const type = text.split(';')[0].split(':')[1];
+                                await postShareTarget({ file: new File([arrayBuffer], 'clipboard-image', { type }) });
+                                return;
+                            } else {
+                                await postShareTarget({ text });
+                                return;
+                            }
+                        }
                         if (type.startsWith('image/')) {
                             const blob = await item.getType(type);
-                            await postShareTarget({ file: new File([blob], 'clipboard-image', { type }) });
+                            await postShareTarget({ file: new File([blob], 'clipboard-image', { type: type.startsWith('image/') ? type : 'image/png' }) });
                             return;
                         }
                     }

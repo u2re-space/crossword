@@ -8,17 +8,28 @@ export const getUsableData = async (data: DataInput) => {
             return {
                 "type": "image_url",
                 "image_url": { // @ts-ignore
-                    "url": BASE64URL + (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64url" })),
+                    "url": BASE64URL + (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base6" })),
                     "detail": "high"
                 }
             }
-        } else
-            if (typeof data?.dataSource === "string") {
-                // anyways returns Promise<string>
+        }
+    } else
+        if (typeof data?.dataSource == "string") {
+            // be aware, this may be base64 encoded image
+            if (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) {
                 return {
-                    "type": "text",
-                    "text": data?.dataSource
+                    "type": "image_url",
+                    "image_url": { // @ts-ignore
+                        "url": data?.dataSource,
+                        "detail": "high"
+                    }
                 }
+            }
+
+            // anyways returns Promise<string>
+            return {
+                "type": "text",
+                "text": data?.dataSource
             }
     }
 
@@ -49,14 +60,14 @@ export class GPTResponses {
     protected tools: any[] = [];
 
     //
-    constructor() {
-        this.apiKey = process.env.GPT_API_KEY || "";
+    constructor(apiKey: string, apiUrl: string, apiSecret: string, model: string) {
+        this.apiKey = apiKey || "";
         // Prefer explicit env URL, otherwise keep default
-        this.apiUrl = process.env.GPT_API_URL || this.apiUrl;
-        this.apiSecret = process.env.GPT_API_SECRET || "";
+        this.apiUrl = apiUrl || this.apiUrl;
+        this.apiSecret = apiSecret || "";
         // Allow overriding model via env
         // @ts-ignore
-        this.model = process.env.GPT_MODEL || this.model;
+        this.model = model || this.model;
     }
 
     //

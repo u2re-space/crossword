@@ -136,6 +136,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             //strategies: 'injectManifest',
             strategies: 'generateSW',
             injectRegister: 'auto',
+            selfDestroying: false,
+            mode: 'development',
             workbox: {
                 maximumFileSizeToCacheInBytes: 1024 * 1024 * 8,
                 globIgnores: ['**/index.html']
