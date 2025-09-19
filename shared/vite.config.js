@@ -235,7 +235,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             allowedHeaders: "*",
             preflightContinue: true,
             credentials: true,
-            methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+            methods: "PROPFIND,GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
             origin: "*"
         },
         headers: {
@@ -244,7 +244,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             "Permissions-Policy": "fullscreen=*, window-management=*",
             "Cross-Origin-Embedder-Policy": "require-corp",
             "Cross-Origin-Opener-Policy": "same-origin",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Methods": "PROPFIND,HEAD,GET,POST,PUT,MOVE,DELETE,PATCH,OPTIONS",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "*",
             "Access-Control-Request-Headers": "*"

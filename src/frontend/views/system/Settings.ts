@@ -1,5 +1,6 @@
 import { H } from "fest/lure";
 import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
+import { updateWebDavSettings } from "@rs-core/workers/WebDavSync";
 
 type AppSettings = {
     ai: {
@@ -25,7 +26,7 @@ const DEFAULTS: AppSettings = {
         customModel: ""
     },
     webdav: {
-        url: "http://localhost:8080",
+        url: "http://localhost:6065",
         username: "",
         password: "",
         token: ""
@@ -51,7 +52,9 @@ const loadSettings = async (): Promise<AppSettings> => {
 };
 
 const saveSettings = async (settings: AppSettings) => {
-    return idbPut(SETTINGS_KEY, settings);
+    const out = await idbPut(SETTINGS_KEY, settings);
+    updateWebDavSettings(settings);
+    return out;
 };
 
 //
