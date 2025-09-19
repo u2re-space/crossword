@@ -109,7 +109,8 @@ const filterEvents = (events: any[], currentTime: Date) => {
 
 //
 export const writeTimelineTask = async (task: any) => {
-    const fileName = `${TIMELINE_DIR}/${task?.desc?.name}.json`;
+    const name = `${TIMELINE_DIR}/${task?.desc?.name}`;
+    const fileName = name?.endsWith?.(".json") ? name : (name + ".json");
     const file = new File([JSON.stringify(task)], fileName?.split?.("/")?.pop?.() || "timeline.json", { type: 'application/json' });
     return writeFile(null, fileName, file)?.catch?.(console.error.bind(console));
 }

@@ -10,7 +10,7 @@ const SERVICES_DIR = "/data/service/";
 const ServiceItem = (service: any) => {
     const title = service?.desc?.title || service?.desc?.name || service?.name || "Service";
     const kind = service?.kind || "";
-    const path = (service as any)?.__path || `/data/service/${(service?.desc?.name || title).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    const path = (service as any)?.__path || `/data/service/${(service?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     const doDelete = async (ev: Event) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete service "${title}"?`)) return;
@@ -27,7 +27,7 @@ const ServiceItem = (service: any) => {
         if (!result) return;
         const updated = Object.assign(service, { desc: { ...(service?.desc || {}), title: result.title }, kind: result.kind || kind, properties: { ...(service?.properties || {}), price: result.price } });
         try {
-            const fileName = path.split('/').pop() || 'service.json';
+            const fileName = path?.split?.('/')?.pop?.() || 'service.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }

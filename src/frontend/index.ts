@@ -67,8 +67,7 @@ export default async function frontend(mountElement) {
         if (event?.target?.matches?.("#app") || event?.target?.querySelector?.("#app")) {
             event.preventDefault();
             const file = event.dataTransfer.files[0];
-            console.log(file);
-            if (file) { dropFile(file, "/user/images/"); }
+            if (file) { dropFile(file, "/images/"); }
         }
     });
 }

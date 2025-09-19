@@ -7,7 +7,7 @@ export const DataExplorer = () => {
 
     // make folders of entity types
     const folders = M(dataCategories, (category) => {
-        const folder = openDirectory(null, `/user/data/${category.id}/`, { create: true });
+        const folder = openDirectory(null, `/data/${category.id}/`, { create: true });
         const row = H`<div class="folder">${category.label}</div>`
         rowFileMap.set(row, folder);
         return row;

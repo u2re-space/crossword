@@ -13,7 +13,7 @@ const CONTACTS_DIR = "/data/contacts/";
 const ContactItem = (contact: any) => {
     const title = contact?.desc?.title || contact?.desc?.name || contact?.name || "Contact";
     const kind = contact?.kind || contact?.type || "";
-    const path = (contact as any)?.__path || `/data/contacts/${(contact?.desc?.name || title).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    const path = (contact as any)?.__path || `/data/contacts/${(contact?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     const doDelete = async (ev: Event) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete contact "${title}"?`)) return;
@@ -30,7 +30,7 @@ const ContactItem = (contact: any) => {
         if (!result) return;
         const updated = Object.assign(contact, { desc: { ...(contact?.desc || {}), title: result.title }, contacts: { ...(contact?.contacts || {}), email: result.email ? [result.email] : [], phone: result.phone ? [result.phone] : [] } });
         try {
-            const fileName = path.split('/').pop() || 'contact.json';
+            const fileName = path?.split?.('/')?.pop?.() || 'contact.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }

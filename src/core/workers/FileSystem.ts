@@ -51,13 +51,18 @@ export const readMarkDowns = async (dir: any | null) => {
 
 //
 export const writeJSON = async (dir: any | null, data: any) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir, { create: true }) : dir;
+    if (!data) return;
+    dir = dir?.trim?.();
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
     const writeOne = async (obj: any, index = 0) => {
-        let base = obj?.id || obj?.desc?.name || `${Date.now()}_${index}`;
-        base = String(base).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-');
-        const fileName = base.endsWith('.json') ? base : `${base}.json`;
-        const handle = await dirHandle?.getFileHandle?.(fileName, { create: true });
-        await handle?.putFile?.(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+        if (!obj) return;
+        let base = (obj?.id || obj?.name || obj?.desc?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
+        base = base?.trim?.();
+        const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
+        const handle = await dirHandle?.getFileHandle?.(fileName?.trim?.(), { create: true });
+        const fileWriter = await handle?.createWritable?.();
+        await fileWriter?.write?.(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+        await fileWriter?.close?.();
     };
     if (Array.isArray(data)) {
         for (let i = 0; i < data.length; i++) await writeOne(data[i], i);
@@ -68,7 +73,13 @@ export const writeJSON = async (dir: any | null, data: any) => {
 
 //
 export const writeMarkDown = async (dir: any | null, data: any) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir, { create: true }) : dir;
-    const handle = await dirHandle?.getFileHandle?.(data?.id, { create: true });
-    await handle?.putFile?.(new Blob([data]));
+    if (!data) return;
+    dir = dir?.trim?.();
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
+    let fileName = (data?.name || data?.id || data?.desc?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
+    fileName = fileName?.trim?.();
+    const handle = await dirHandle?.getFileHandle?.(fileName?.endsWith?.(".md") ? fileName : (fileName + ".md")?.trim?.(), { create: true });
+    const fileWriter = await handle?.createWritable?.();
+    await fileWriter?.write?.(new Blob([data], { type: 'text/markdown' }));
+    await fileWriter?.close?.();
 }

@@ -21,8 +21,6 @@ import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
 
-//rawDataset
-
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
 const controlChannel = new BroadcastChannel('rs-sw');
@@ -35,13 +33,15 @@ const getKey = (resolvedType: string, idx: number | null = null) => {
 
 //
 const writeToFS = (resolvedType: string, resultEntity: any, outDir: any | null = null, name: string | null = null, idx: number | null = null) => {
-    idx ??= Date.now();
-    name ??= resultEntity?.id || resultEntity?.desc?.name || idx;
-    const path = `${outDir ?? ("/user/data/" + resolvedType + "/")}` + `${name}.json`;
-    const key = getKey(resolvedType, idx);
-    idbStorage.put("pending-fs-write_" + key, { path, data: resultEntity });
-    fileSystemChannel.postMessage({ type: 'pending-write', results: [{ status: 'queued', entityType: resolvedType, data: resultEntity, name, path, key, idx: idx || Date.now() }] });
-    return { path, key };
+    idx ||= Date.now();
+    name ??= (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || idx);
+    name = name?.endsWith?.(".json") ? name : (name + ".json");
+    outDir ||= ("/data/" + resolvedType + "/");
+    const fullPath = outDir + name;
+    const idKey = getKey(resolvedType, idx);
+    idbStorage.put("pending-fs-write_" + idKey, { path: fullPath, data: resultEntity });
+    fileSystemChannel.postMessage({ type: 'pending-write', results: [{ status: 'queued', entityType: resolvedType, data: resultEntity, name, path: fullPath, idKey, idx }] });
+    return { path: fullPath, name };
 }
 
 //
@@ -59,8 +59,8 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const rawDataset = JSON.parse(await gptResponses.sendRequest() || "[]"); // for use in first step...
 
     // write to FS raw cache
-    const cacheFileName = "cache" + Date.now() + ".json";
-    writeToFS("rawDataset", rawDataset, "/user/cache/", cacheFileName, Date.now());
+    const cacheFileName = "recognized_cache_" + Date.now();
+    writeToFS("rawDataset", rawDataset, "/cache/", cacheFileName, Date.now());
 
     // phase 1 - recognize entity type
     let entityTypes: any[] = (await recognizeEntityType(gptResponses)) || [{ entityType: "unknown" }];
@@ -72,14 +72,18 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const resultEntity = await resolveEntity(entityTypes, entityKinds, gptResponses);
     resultEntity?.forEach((resultEntity: any, i: number) => {
         const resolvedType = entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown';
-        const name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()
-            }_${i}`)
+
+        //
+        const timeStamp = Date.now();
+        const fileName = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || timeStamp)
             ?.toString?.()
             ?.toLowerCase?.()
             ?.replace?.(/\s+/g, '-')
-            ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || `${Date.now()}_${i}`;
+            ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || timeStamp;
+        const outDir = "/data/" + resolvedType + "/";
 
-        writeToFS(resolvedType, resultEntity, "/user/data/" + resolvedType + "/", name, i);
+        //
+        writeToFS(resolvedType, resultEntity, outDir, fileName, timeStamp);
     });
 
     //
@@ -135,28 +139,25 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     for (const file of files) {
         const source = file || inputs?.text || inputs?.url;
         if (!source) continue;
-        console.log(source);
         try {
             const { resultEntities, entityTypes } = await initiateConversionProcedure(source);
-            console.log(resultEntities, entityTypes);
             resultEntities.forEach((resultEntity, i) => {
-                const resolvedType = entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown';
-                const name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
+                const resolvedType = (entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown')?.trim?.();
+                let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
+                    ?.trim?.()
                     ?.toString?.()
                     ?.toLowerCase?.()
                     ?.replace?.(/\s+/g, '-')
-                    ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || `${Date.now()}_${idx}`;
+                    ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
+                    || `${Date.now()}_${idx}`;
 
                 //
-                const path = `/user/data/${resolvedType}/${name}.json`;
-                const key = getKey(resolvedType, idx);
-                console.log(key);
-                idbStorage.put(key, { path, data: resultEntity });
-                writeToFS(resolvedType, resultEntity, path, name, idx);
+                const path = `/data/${resolvedType}/`?.trim?.();
+                writeToFS(resolvedType, resultEntity, path, name = name?.trim?.(), idx);
 
-
+                //
                 (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-                results.push({ status: 'queued', entityType: resolvedType, data: resultEntity, name, path, key, idx: idx || Date.now() });
+                results.push({ status: 'queued', entityType: resolvedType, data: resultEntity, name, path, idx: idx || Date.now() });
                 idx++;
             });
         } catch (err) {
@@ -175,27 +176,26 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
 //
 registerRoute(({ url }) => url?.pathname == "/share-target-json", async (e: any) => {
     const url = new URL(e.request.url);
-    console.log(url.pathname);
     try {
         const body = await e.request.json().catch(() => ({}));
         const source = body?.file || body?.text || body?.url || JSON.stringify(body || {});
-        console.log(source);
         const { resultEntities, entityTypes } = await initiateConversionProcedure(source);
-        console.log(resultEntities);
         const results: any[] = [];
         resultEntities.forEach((resultEntity, i) => {
-            const resolvedType = entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown';
-            const name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()}_${i}`)
+            const resolvedType = (entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown')?.trim?.();
+            let name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()}_${i}`)?.trim?.()
                 ?.toString?.()
                 ?.toLowerCase?.()
                 ?.replace?.(/\s+/g, '-')
                 ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || `${Date.now()}_${i}`;
-            const path = `/user/data/${resolvedType}/${name}.json`;
+            name = name?.trim?.();
+            const path = (`/data/${resolvedType}/`)?.trim?.();
+            const fileName = name?.endsWith?.(".json") ? name : (name + ".json")?.trim?.();
+            const fullPath = path + fileName;
             const key = getKey(resolvedType, i);
-            console.log(key);
-            idbStorage.put(key, { path, data: resultEntity });
+            idbStorage.put(key, { path: fullPath, data: resultEntity });
             (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-            results.push({ status: 'queued', entityType: resolvedType, name, path, key, idx: i || Date.now() });
+            results.push({ status: 'queued', entityType: resolvedType, name, path: fullPath, key, idx: i || Date.now() });
         });
         try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
         return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });

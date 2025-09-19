@@ -154,11 +154,11 @@ export const pushPendingToFS = async (entityType: string = "") => {
     const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
     return Promise.all(allEntries.map(async (entry) => {
         try {
-            const path = entry?.value?.path || entry?.key;
-            const data = entry?.value?.data ?? entry?.value ?? entry?.data;
-            const jsonData = JSON.parse(data);
-            await writeJSON(path, jsonData);
-            console.log("Written file: " + path);
+            const path = entry?.value?.path || entry?.path || entry?.key;
+            const data = entry?.value?.data ?? entry?.data ?? entry?.value;
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            await writeJSON(path?.trim?.(), jsonData);
+            console.log("Written file: " + path, jsonData);
         } finally {
             await new Promise((res) => setTimeout(res, 250));
             await idbDelete(entry?.key);
@@ -172,7 +172,9 @@ fileSystemChannel.addEventListener('message', (event) => {
     if (event.data.type === 'pending-write') {
         event.data.results?.forEach?.((result) => {
             const { entityType, data, name, path, key, idx } = result;
-            writeJSON(path, data);
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            console.log("Written file: " + path, jsonData);
+            writeJSON(path?.trim?.(), jsonData);
         });
     }
 });

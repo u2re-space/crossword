@@ -10,7 +10,7 @@ const BONUSES_DIR = "/data/bonus/";
 const BonusItem = (bonus: any) => {
     const title = bonus?.desc?.title || bonus?.desc?.name || bonus?.name || "Bonus";
     const kind = bonus?.kind || "";
-    const path = (bonus as any)?.__path || `/data/bonus/${(bonus?.desc?.name || title).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    const path = (bonus as any)?.__path || `/data/bonus/${(bonus?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     const doDelete = async (ev: Event) => {
         ev?.stopPropagation?.();
         if (!confirm(`Delete bonus "${title}"?`)) return;
@@ -26,7 +26,7 @@ const BonusItem = (bonus: any) => {
         if (!result) return;
         const updated = Object.assign(bonus, { desc: { ...(bonus?.desc || {}), title: result.title }, kind: result.kind || kind });
         try {
-            const fileName = path.split('/').pop() || 'bonus.json';
+            const fileName = path?.split?.('/')?.pop?.() || 'bonus.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }

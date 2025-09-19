@@ -26,7 +26,7 @@ export const createTaskElement = (task: any) => {
     const kind = task?.kind || "";
     const begin_time = task?.properties?.begin_time || "";
     const end_time = task?.properties?.end_time || "";
-    const path = (task as any)?.__path || `/timeline/${(task?.desc?.name || title).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    const path = (task as any)?.__path || `/timeline/${(task?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     if (!path) return null;
 
     const doDelete = async (ev: Event) => {
@@ -50,9 +50,8 @@ export const createTaskElement = (task: any) => {
             desc: { ...(task?.desc || {}), title: result.title, description: result.description },
             properties: { ...(task?.properties || {}), begin_time: result.begin_time, end_time: result.end_time }
         });
-        console.log(updated);
         try {
-            const fileName = path.split('/').pop() || 'task.json';
+            const fileName = path?.split?.('/')?.pop?.() || 'task.json';
             const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
             await writeFile(null, path, file);
         } catch (e) { console.warn(e); }
