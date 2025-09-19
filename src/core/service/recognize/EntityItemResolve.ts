@@ -8,9 +8,9 @@ const makeRelatedListPerEntity = (entityKind: any, entityType: any) => {
     const itemsOfInEntities: any[] = [];
     const itemsOfForEntities: any[] = [];
     return `{
-        existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
-        inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)},
-        forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))), null, 2)}
+        existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))},
+        inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))},
+        forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))}
     }`;
 }
 
@@ -23,10 +23,17 @@ export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptR
 
     //
     const shortlistOfItems = [`=== BEGIN:PREPARE_RELATED_ITEMS ===
-Shortlist of existing items in ${entityTypes?.join?.(", ")} registry and related entities, for making compatible resolve:
+Shortlist of existing items in ${JSON.stringify(entityTypes)} registry.
 
+And related entities, for making compatible resolve:
 \`\`\`json
-[${entityTypes?.map((entityType, index) => makeRelatedListPerEntity(entityKinds?.[index] || "", entityType))?.join?.(",") || ""}]
+${JSON.stringify(entityTypes?.map?.((entityType, index) => {
+    const relatedList: any[] = [];
+    for (const entityKind of entityKinds?.[index]?.kinds ?? []) {
+        relatedList.push(makeRelatedListPerEntity(entityKind || "", entityType?.entityType ?? "unknown"))
+    }
+    return relatedList
+}) ?? [])}
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 
@@ -35,21 +42,27 @@ Shortlist of existing items in ${entityTypes?.join?.(", ")} registry and related
         ...shortlistOfItems,
         "", `${ABOUT_NAME_ID_GENERATION}`,
         "", "",
-        "=== BEGIN:PREPARE_DATA ===",
+        "=== BEGIN:EXPLAIN_TYPES ===",
         "Shared Defs Declared:",
         `\`\`\`json
 ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 \`\`\``,
-        "=== END:PREPARE_DATA ===",
+        "=== END:EXPLAIN_TYPES ===",
         "", "",
         "=== BEGIN:RESOLVE_STEP ===",
-        "Request: resolve entity items, by following schemes (according of entity types): ",
-        `\`\`\`json
-[...${JSON.stringify(safe(JSON_SCHEMES.$entities), null, 2)}]
-\`\`\``,
+        "# Request: ",
         "Search potential duplicates for give possible merge decision.",
         "Also, search potentially related items (names, IDs)...",
-        "=== END:RESOLVE_STEP ===",
+        "Resolve entity items, by following schemes (according of entity types): ",
+        `\`\`\`json
+${JSON.stringify(
+            entityTypes?.map?.((entityType) => {
+                return Object.entries(JSON_SCHEMES.$entities)
+                    ?.filter?.((entity) => (entityType?.entityType ?? "unknown") == (entity?.[0] ?? "unknown"))
+                    ?.map?.((entity) => entity?.[1] ?? {}) ?? [];
+            }) ?? [],
+            null, 2)}
+\`\`\``, "=== END:RESOLVE_STEP ===",
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //

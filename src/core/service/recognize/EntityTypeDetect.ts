@@ -13,25 +13,17 @@ export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob
 }
 
 //
-export const recognizeEntityType = async (dataSource: string | Blob | File | any, gptResponses: GPTResponses) => {
-    // upload dataset to GPT for recognize, and get response for analyze...
-    await gptResponses.attachToRequest(dataSource);
-    const rawDataset = JSON.parse(await gptResponses.sendRequest() || "[]"); // for use in first step...
-    console.log("rawDataset", rawDataset);
-
-
-
+export const recognizeEntityType = async (gptResponses: GPTResponses) => {
     //
     const firstStep = [
-        "", `${ABOUT_NAME_ID_GENERATION}`,
+        `${ABOUT_NAME_ID_GENERATION}`,
         "", "",
-        "=== BEGIN:PREPARE_DATA ===",
+        "=== BEGIN:EXPLAIN_TYPES ===",
         "Shared Defs Declared:",
-        "",
         `\`\`\`json
 ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 \`\`\``,
-        "=== END:PREPARE_DATA ===",
+        "=== END:EXPLAIN_TYPES ===",
         "", "",
         "=== BEGIN:FIRST_STEP ===",
         "You are given a data source and you need to recognize type of entity.",
@@ -41,7 +33,7 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
 \`\`\``,
         "",
-        "Output in JSON format: \`[...{ entityType: string, potentialName: string }]\`.",
+        "Request: Output in JSON format: \`[...{ entityType: string, potentialName: string }]\`.",
         "=== END:FIRST_STEP ===",
     ]?.map?.((instruction) => instruction?.trim?.());
 

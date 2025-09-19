@@ -1,6 +1,6 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
-import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
-import { readJSONs } from "@rs-core/workers/FileSystem";
+import { idbDelete, idbGet, idbGetAll, idbPut } from "@rs-core/store/IDBStorage";
+import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -87,8 +87,8 @@ export const dataCategories = makeReactive([
         id: "market"
     }),
     $wrapCategory({
-        label: "Placements",
-        id: "placement"
+        label: "Places",
+        id: "place"
     }),
     $wrapCategory({
         label: "Vendors",
@@ -146,3 +146,36 @@ export const getShortFormFromEntities = (entities: any[]) => {
 export const getEntitiesFromFS = (dir: string) => {
     return readJSONs(dir);
 }
+
+
+
+//
+export const pushPendingToFS = async (entityType: string = "") => {
+    const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
+    return Promise.all(allEntries.map(async (entry) => {
+        try {
+            const path = entry?.value?.path || entry?.key;
+            const data = entry?.value?.data ?? entry?.value ?? entry?.data;
+            const jsonData = JSON.parse(data);
+            await writeJSON(path, jsonData);
+            console.log("Written file: " + path);
+        } finally {
+            await new Promise((res) => setTimeout(res, 250));
+            await idbDelete(entry?.key);
+        }
+    }));
+}
+
+//
+const fileSystemChannel = new BroadcastChannel('rs-fs');
+fileSystemChannel.addEventListener('message', (event) => {
+    if (event.data.type === 'pending-write') {
+        event.data.results?.forEach?.((result) => {
+            const { entityType, data, name, path, key, idx } = result;
+            writeJSON(path, data);
+        });
+    }
+});
+
+//
+pushPendingToFS();

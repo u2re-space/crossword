@@ -48,7 +48,7 @@ export class GPTResponses {
 
     //
     private apiUrl: string = "https://api.proxyapi.ru/openai/v1";
-    private model: string = "gpt-5";
+    private model: string = "gpt-5-mini";
     private responseId?: string | null = null;
 
     //
@@ -120,8 +120,6 @@ export class GPTResponses {
 
     //
     async sendRequest() {
-        console.log(this.apiKey)
-
         const response = await fetch(`${this.apiUrl}/responses`, {
             method: "POST",
             headers: {
@@ -132,31 +130,27 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "medium" },
+                reasoning: { "effort": "low" },
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
         if (!response) return null;
-        console.log(response);
 
         if (response.status !== 200) {
             const error = await response?.json?.()?.catch?.((e) => { console.warn(e); return null; });
-            console.log(error);
             console.warn(error);
             return null;
         }
 
         //
         const resp = response.status === 200 ? await response?.json?.()?.catch?.((e) => { console.warn(e); return null; }) : null;
-        console.log(resp);
         if (!resp) return null;
 
         //
         this.responseId = resp?.id || this.responseId;
         this.messages.push(...(this.pending || [])); this.pending?.splice?.(0, this.pending.length);
         this.messages.push(...(resp?.output || []));
-        console.log(this.messages);
 
         // Try best-effort extraction of textual content to feed callers that JSON.parse the result
         const extractText = (r: any): string | null => {
@@ -185,7 +179,6 @@ export class GPTResponses {
         };
 
         const text = extractText(resp);
-        console.log(text);
         if (text != null) return text;
         // Fallback: return last message content as JSON string
         try { return JSON.parse(resp?.output ?? resp); } catch { /* noop */ }

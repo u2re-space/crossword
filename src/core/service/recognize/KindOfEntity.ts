@@ -4,51 +4,56 @@ import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 
 
 //
-export const ASK_ABOUT_KIND_OF_ENTITY = (entityTypes: string[]) => `
-=== BEGIN:PREPARE_DATA ===
-This is the kind scheme of ${entityTypes?.join(", ")} entities (enums values):
+export const ASK_ABOUT_KIND_OF_ENTITY = (entityTypes: any[]) => `
+=== BEGIN:EXPLAIN_KINDS_ENUMS ===
+This is the enums of kinds of scheme by entity types (enums values):
 
 \`\`\`json
-${JSON.stringify(Object.fromEntries([...Object.entries(JSON_SCHEMES.$entities)].map((entity: any) => [entity?.[0], entity?.[1]?.kind?.enum ?? []]).flat()), null, 2)}
+${JSON.stringify(entityTypes?.map?.((type) => ([...Object.entries(JSON_SCHEMES.$entities)]?.find?.(entry => (type?.entityType ?? "unknown") == (entry?.[0] ?? "unknown"))?.[1]?.kind?.enum ?? [])) || [], null, 2)}
 \`\`\`
-=== END:PREPARE_DATA ===
 
-=== BEGIN:ENTITY_RELATED_REQUEST ===
-if (if is 'bonus' entity, there is additional usability kind scheme)
-This is the usability kind scheme of ${entityTypes?.join(", ")} entities:
+Search at least one kind for each entity type, or 'unknown' if no kind found.
+=== END:EXPLAIN_KINDS_ENUMS ===
+
+
+
+=== BEGIN:ENTITY_RELATED_REQUEST_ADDITION ===
+if ones of entityType is 'bonus' entity, there is additional usability kind scheme
+Search relevant and related usability kind schemes of 'bonus' entity:
 
 \`\`\`json
 usabilityKind: [...{
-    forEntity: array of (enum[
+    forEntity: array of (one of enum[
         "item",
         "service",
         "entertainment",
         "action"
-    ]),
-    inEntity: array of (enum[
+    ]) or [],
+    inEntity: array of (one of enum[
         "location",
         "market",
         "placement",
         "event",
         "action",
         "person"
-    ]),
-}]
+    ]) or [],
+}] or []
 }\`\`\`
-=== END:ENTITY_RELATED_REQUEST ===
+=== END:ENTITY_RELATED_REQUEST_ADDITION ===
 
-=== BEGIN:ENTITY_KIND_REQUEST ===
+
+=== BEGIN:ENTITY_KIND_REQUEST_OUTPUT ===
 Output in JSON format: \`\`\`json
 [...{
     kinds: string[],
-    usabilityKinds: [...{ forEntity: string[], inEntity: string[] }]
+    usabilityKinds: [...{ forEntity: string[], inEntity: string[] }] or []
 }]\`\`\`
-=== END:ENTITY_KIND_REQUEST ===
+=== END:ENTITY_KIND_REQUEST_OUTPUT ===
 `?.trim?.();
 
 //
 export const recognizeKindOfEntity = async (entityTypes: any[], gptResponses: GPTResponses) => {
-    gptResponses.askToDoAction(ASK_ABOUT_KIND_OF_ENTITY(entityTypes));
+    await gptResponses.askToDoAction(ASK_ABOUT_KIND_OF_ENTITY(entityTypes));
     const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
     console.log("kind of entity response", parsed);
     return parsed;

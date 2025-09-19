@@ -54,7 +54,7 @@ const $ShowContactsByDir = (DIR: string, name: string) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const obj = JSON.parse(await file.text());
+            const obj = JSON.parse(await file?.text?.() || "{}");
             (obj as any).__name = name;
             (obj as any).__path = `${DIR}${name}`;
             dataRef.push(obj);

@@ -7,7 +7,6 @@ import { makeReactive, ref } from "fest/object";
 import { openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/Upload";
 import { pasteIntoDir } from "@rs-frontend/utils/Paste";
 import { bindDropToDir } from "@rs-frontend/utils/Drop";
-import { pushPendingToFS } from "@rs-core/workers/FileSystem";
 
 //
 const PLANS_DIR = "/docs/plans/";
@@ -158,7 +157,7 @@ export const PreferencesView = (currentTab?: any | null) => {
         try { for (const d of [PLANS_DIR, IDEAS_DIR, NOTES_DIR, PREFERENCES_DIR]) await getDirectoryHandle(null, d, { create: true } as any); } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-sync')?.addEventListener('click', async () => {
-        try { await pushPendingToFS('bonus'); } catch (e) { console.warn(e); }
+        // try { await pushPendingToFS('bonus'); } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
@@ -166,3 +165,4 @@ export const PreferencesView = (currentTab?: any | null) => {
 
     return section;
 }
+ 

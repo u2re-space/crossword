@@ -19,6 +19,7 @@ export const bindTaskWithElement = (task: any, element: HTMLElement) => {
 
 // Card-like task item with avatar, variant colors and tap-to-expand
 export const createTaskElement = (task: any) => {
+    if (!task) return null;
     const variant = task?.desc?.variant || "default";
     const title = task?.desc?.title || "Task";
     const desc = task?.desc?.description || "";
@@ -26,6 +27,7 @@ export const createTaskElement = (task: any) => {
     const begin_time = task?.properties?.begin_time || "";
     const end_time = task?.properties?.end_time || "";
     const path = (task as any)?.__path || `/timeline/${(task?.desc?.name || title).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    if (!path) return null;
 
     const doDelete = async (ev: Event) => {
         ev?.stopPropagation?.();

@@ -52,7 +52,7 @@ const $ShowBonusesByType = (DIR: string, TYPE: string, name?: string) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const bonus = JSON.parse(await file.text());
+            const bonus = JSON.parse(await file?.text?.() || "{}");
             (bonus as any).__name = name;
             (bonus as any).__path = `${DIR}${name}`;
             if (TYPE === 'all' || bonus.kind === TYPE) { dataRef.push(bonus); }

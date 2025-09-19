@@ -25,12 +25,14 @@ const isDate = (date: any) => {
 
 //
 export const createDayElement = (day: any, sampleTasks: any[]) => {
+    if (!day) return null;
     return H`<div data-type="day" style="display: flex; flex-direction: column; gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${day.variant} on:click=${(ev: any) => {
         const el = ev.target as HTMLElement; el.toggleAttribute?.('data-open');
     }}>${M(sampleTasks, (task) => {
         if (day.properties?.begin_time <= day.properties?.end_time || !day.properties?.begin_time) {
             const dayBeginTime = new Date(day.properties?.begin_time);
             const dayEndTime = new Date(day.properties?.end_time);
+            if (!task) return null;
             if (task.properties?.begin_time && task.properties?.end_time) {
                 const taskBeginTime = new Date(task.properties?.begin_time);
                 const taskEndTime = new Date(task.properties?.end_time);

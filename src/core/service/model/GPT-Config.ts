@@ -73,7 +73,7 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 //
 export const actionWithDataType = (data: DataInput): string => {
     switch (typesForKind?.[data?.dataKind]) {
-        case "image_url":
+        case "input_image":
             return `Recognize data from image, also preferred to orient by fonts in image.
 
 In recognition result, do not include image itself.
@@ -101,16 +101,16 @@ Also, collect special data tags and keywords (if any)...
 Get results in JSON wrapped format:
 
 \`\`\`json
-{
+[...{
     "keywords_and_tags": string[],
     "additional_details": any[],
     "recognized_data": any[],
     "requested_data": any[] // where to write output data of following requests
-}
+}]
 \`\`\`
 `;
 
-        case "text":
+        case "input_text":
             return `Collect special data tags and keywords (if any)...
 
 In additional details, can be written phone numbers, emails, URLs, dates, times, codes, etc.
@@ -118,12 +118,12 @@ In additional details, can be written phone numbers, emails, URLs, dates, times,
 Get result in JSON wrapped format:
 
 \`\`\`json
-{
+[...{
     "keywords_and_tags": string[],
     "additional_details": any[],
     "recognized_data": any[],
     "requested_data": any[] // where to write output data of following requests
-}
+}]
 \`\`\`
 `;
     }

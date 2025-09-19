@@ -1,5 +1,5 @@
 import { H, I, getDirectoryHandle } from "fest/lure";
-import { pushPendingToFS } from "@rs-core/workers/FileSystem";
+import { pushPendingToFS } from "@rs-core/service/Cache";
 
 //
 export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value: string }, sidebar: HTMLElement) => {

@@ -52,7 +52,7 @@ const $ShowServicesByType = (DIR: string, TYPE: string, name?: string) => {
         const entries = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(entries?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const service = JSON.parse(await file.text());
+            const service = JSON.parse(await file?.text?.() || "{}");
             (service as any).__name = name;
             (service as any).__path = `${DIR}${name}`;
             if (TYPE === 'all' || service.kind === TYPE) { dataRef.push(service); }

@@ -30,7 +30,7 @@ const updateDaysDesc = async (daysDesc: any[] | null = null) => {
         const timeline = await Array.fromAsync(handle?.entries?.() ?? []);
         return Promise.all(timeline?.map?.(async ([name, handle]: any) => {
             const file = await handle.getFile();
-            const item = JSON.parse(await file.text());
+            const item = JSON.parse(await file?.text?.() || "{}");
             // attach file path metadata for actions
             (item as any).__name = name;
             (item as any).__path = `${TIMELINE_DIR}${name}`;

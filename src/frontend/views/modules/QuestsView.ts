@@ -54,7 +54,7 @@ const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
         await Promise.all(entries?.map?.(async ([fname, fhandle]: any) => {
             try {
                 const file = await fhandle.getFile();
-                const text = await file.text();
+                const text = await file?.text?.();
                 dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
             } catch { }
         }));

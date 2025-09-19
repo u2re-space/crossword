@@ -2,22 +2,6 @@ import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
 import { safe } from "fest/object";
 import { writeFile, getDir, getDirectoryHandle } from "fest/lure";
 
-//
-export const pushPendingToFS = async (entityType: string) => {
-    const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
-    return Promise.all(allEntries.map(async (entry) => {
-        try {
-            const path = entry?.value?.path || entry?.key;
-            const data = entry?.value?.data ?? entry?.value;
-            await writeFile(null, path, safe(data));
-            console.log("Written file: " + path);
-        } finally {
-            await new Promise((res) => setTimeout(res, 250));
-            await idbDelete(entry?.key);
-        }
-    }));
-}
-
 
 //
 export const getMarkDownFromFile = async (handle: any) => {
@@ -67,13 +51,13 @@ export const readMarkDowns = async (dir: any | null) => {
 
 //
 export const writeJSON = async (dir: any | null, data: any) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir, { create: true }) : dir;
     const writeOne = async (obj: any, index = 0) => {
         let base = obj?.id || obj?.desc?.name || `${Date.now()}_${index}`;
         base = String(base).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-+#&]/g, '-');
         const fileName = base.endsWith('.json') ? base : `${base}.json`;
-        const handle = await dirHandle.getFileHandle(fileName, { create: true });
-        await handle.putFile(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+        const handle = await dirHandle?.getFileHandle?.(fileName, { create: true });
+        await handle?.putFile?.(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
     };
     if (Array.isArray(data)) {
         for (let i = 0; i < data.length; i++) await writeOne(data[i], i);
@@ -84,7 +68,7 @@ export const writeJSON = async (dir: any | null, data: any) => {
 
 //
 export const writeMarkDown = async (dir: any | null, data: any) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const handle = await dirHandle.getFileHandle(data?.id, { create: true });
-    await handle.putFile(new Blob([data]));
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir, { create: true }) : dir;
+    const handle = await dirHandle?.getFileHandle?.(data?.id, { create: true });
+    await handle?.putFile?.(new Blob([data]));
 }
