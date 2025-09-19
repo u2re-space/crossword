@@ -29,7 +29,8 @@ export default async function frontend(mountElement) {
     </div>`;*/
 
     //
-    /*await (async () => {
+    /*
+    await (async () => {
         await clearAllInDirectory()?.catch?.(console.warn.bind(console));
         //await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));
     })();*/

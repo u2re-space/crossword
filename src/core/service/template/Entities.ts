@@ -144,27 +144,25 @@ export const SHARED_DEFS = {
 
 //
 export const KIND_MAP = {
-    "task": [],
-    "factor": ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "other"],
-    "location": [],
+    "task": ["target", "complete", "current", "delayed", "finished", "canceled", "planned", "resolved", "reviewed", "assigned", "proposed", "suggested"],
+    "factor": ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "news", "other"],
+    "location": ["building", "point", "street", "destination", "address", "other"],
     "skill": ["skill", "knowledge", "ability", "trait", "experience", "other"],
     "vendor": ["vendor", "company", "organization", "institution", "other"],
-    "market": ["market", "store", "shop", "mall", "cafe", "bar", "restaurant", "hotel", "other"],
+    "market": ["market", "service", "store", "pharmacy", "shop", "mall", "cafe", "bar", "restaurant", "hotel", "other"],
     "place": ["placement", "place", "school", "university", "service", "clinic", "pharmacy", "hospital", "library", "market", "location", "shop", "restaurant", "cafe", "bar", "hotel", "other"],
-    "service": ["service", "product", "item", "thing", "other"],
-    "person": [],
-    "vehicle": [],
-    "event": [],
+    "service": ["service", "product", "consultation", "advice", "medical", "mentoring", "training", "item", "thing", "other"],
+    "person": ["specialist", "service", "consultant", "coach", "mentor", "dear", "helper", "assistant", "friend", "family", "relative", "other"],
+    "vehicle": ["bus", "trolleybus", "boat", "yacht", "ship", "scooter", "bike", "train", "tram", "auto", "car", "taxi", "truck", "airplane", "helicopter", "other"],
+    "event": ["education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other"],
     "item": ["currency", "book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"],
     "bonus": ["cash-back", "promo-code", "loyalty-card", "gift-card", "discount", "bonus-card", "bonus-points", "bonus-points-card", "earn-points", "earn-points-card"],
     "lottery": ["lottery", "raffle", "draw", "draw-lottery", "draw-raffle", "draw-lottery-raffle", "draw-lottery-raffle-draw", "draw-lottery-raffle-draw-draw-lottery", "draw-lottery-raffle-draw-draw-raffle"],
-    "reward": ["item", "cash", "bonus", "skill", "stat", "experience", "other", "person", "contact", "task", "job", "entertainment"],
+    "reward": ["item", "cash", "bonus", "skill", "stat", "experience", "person", "contact", "task", "job", "entertainment", "other"],
     "fine": ["item", "time", "cash", "bonus", "skill", "stat", "experience", "other", "person", "contact", "task", "job", "entertainment"],
     "action": ["thinking", "imagination", "remembering", "speaking", "learning", "listening", "reading", "writing", "moving", "traveling", "speech", "physically", "crafting", "following", "other"],
     "entertainment": ["entertainment", "sport", "education", "cinema", "museum", "hobby", "drawing", "reading", "shopping", "other"],
-    "unspecified": ["unspecified", "unknown", "other"],
-    "unknown": ["unknown", "other"],
-    "other": ["other"]
+    "unknown": ["unspecified", "unknown", "other"]
 };
 
 //

@@ -81,20 +81,21 @@ In recognition result, do not include image itself.
 In recognized from image data (what you seen in image), do:
 
 - If textual content, format as Markdown string (multiline).
+- If phone number, format as as correct phone number (in normalized format).
+  - Also, if phone numbers (for example starts with +7, format as 8), replace to correct regional code.
+  - Remove brackets, parentheses, spaces or other symbols from phone number.
+  - Trim spaces from phone number.
+- If email, format as as correct email (in normalized format), and trim spaces from email.
+- If URL, format as as correct URL (in normalized format), and unicode codes to human readable, and trim spaces from URL.
+- If date, format as as correct date (in normalized format).
+- If time, format as as correct time (in normalized format).
 - If math (expression, equation, formula), format as $KaTeX$
 - If table (or looks alike table), format as | table |
 - If image, format as [$image$]($image$)
 - If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
-- If JSON, format as JSON string.
-- If phone number, format as as correct phone number (in normalized format).
-- If email, format as as correct email (in normalized format).
-- If URL, format as as correct URL (in normalized format).
-- If date, format as as correct date (in normalized format).
-- If time, format as as correct time (in normalized format).
+- If JSON, format as correct JSON string, and trim spaces from JSON string.
 - If other, format as $text$.
 - If seen alike list, format as list (in markdown format).
-
-If nothing found, return "No data recognized". Write into "recognized_data" (JSON string) field.
 
 Also, collect special data tags and keywords (if any)...
 
@@ -111,9 +112,28 @@ Get results in JSON wrapped format:
 `;
 
         case "input_text":
-            return `Collect special data tags and keywords (if any)...
+            return `Needs to analyze text and extract specific or special data from it, also normalize data by those rules...
 
 In additional details, can be written phone numbers, emails, URLs, dates, times, codes, etc.
+
+Normalize phone numbers, emails, URLs, dates, times, codes, etc for best efforts and by those rules.
+- If phone number, format as as correct phone number (in normalized format).
+  - If phone numbers (for example starts with +7, format as 8), replace to correct regional code.
+  - Trim spaces from phone numbers, emails, URLs, dates, times, codes, etc.
+  - Remove brackets, parentheses, spaces or other symbols from phone numbers.
+- If email, format as as correct email (in normalized format), and trim spaces from email.
+- If URL, format as as correct URL (in normalized format), and unicode codes to human readable, and trim spaces from URL.
+- If date, format as as correct date (in normalized format).
+- If time, format as as correct time (in normalized format).
+- If math, format as $KaTeX$
+- If table, format as | table |
+- If image, format as [$image$]($image$)
+- If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
+- If JSON, format as correct JSON string, and trim spaces from JSON string.
+- If other, format as $text$.
+- If seen alike list, format as list (in markdown format).
+
+Also, collect special data tags and keywords (if any)...
 
 Get result in JSON wrapped format:
 
