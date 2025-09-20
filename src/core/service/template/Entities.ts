@@ -17,6 +17,7 @@ Rules for generating entity IDs ('name' in { desc: { name: string, ... }, proper
 - No Cyrillic or Latin letters
 
 How generates entity IDs:
+- If known person names (biography), use formatted their names, location or job also can be used.
 - Prefixed by service, market or vendor (if bonus entity, such as promo, discount, bonus, etc.)
 - Name, type or kind (if no name declared) of entity encodes into ID by conversion spaces into '-', etc.
 - CODE suffix is used for unique code of entity, such as promo-code, discount-code, etc.
@@ -385,6 +386,15 @@ export const JSON_SCHEMES = {
                 //
                 contacts: { $ref: "#/$defs/Contact" },
                 services: { $ref: "#/$defs/IdArray" },
+                location: { $ref: "#/$defs/LocationRef" },
+                biography: {
+                    firstName: { type: "string" },
+                    lastName: { type: "string" },
+                    middleName: { type: "string" },
+                    nickName: { type: "string" },
+                    birthdate: { type: "string", format: "date" },
+                    gender: { enum: ["male", "female", "other"] }
+                },
 
                 //
                 actions: ACTIONS_SCHEME,

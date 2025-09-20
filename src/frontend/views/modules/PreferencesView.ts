@@ -7,6 +7,7 @@ import { makeReactive, ref } from "fest/object";
 import { openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/Upload";
 import { pasteIntoDir } from "@rs-frontend/utils/Paste";
 import { bindDropToDir } from "@rs-frontend/utils/Drop";
+import { currentWebDav } from "@rs-core/workers/WebDavSync";
 
 //
 const PLANS_DIR = "/docs/plans/";
@@ -14,39 +15,55 @@ const IDEAS_DIR = "/docs/ideas/";
 const NOTES_DIR = "/docs/notes/";
 const PREFERENCES_DIR = "/docs/preferences/";
 
+
+
 //
-const PreferenceItem = (item: any) => {
+const isDate = (date: any) => {
+    return date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
+}
+
+//
+const makeEvents = (path: string, name: string) => {
+    return {
+        doDelete: async (ev: Event) => {
+            ev?.stopPropagation?.(); if (!path) return;
+            if (!confirm(`Delete \"${name}\"?`)) return; if (isDate(name)) return; if (name === 'all') return;
+            try { await remove(null, path); } catch (e) { console.warn(e); }
+            (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
+        },
+        doDownload: async (ev: Event) => {
+            ev?.stopPropagation?.(); if (!path) return;
+            if (isDate(name)) return; if (name === 'all') return;
+            try { await downloadByPath(path); } catch (e) { console.warn(e); }
+        }
+    }
+}
+
+//
+const PreferenceItem = (item: any, byKind: string | null = null) => {
     if (item == null) return;
+    if (byKind && byKind != item?.kind) return;
 
     //
     const text = typeof item === 'string' ? item : (item?.text || '');
     const path = (item as any)?.__path || '';
     const name = (item as any)?.__name || '';
     const blob = new Blob([text], { type: "text/plain" });
-    const doDelete = async (ev: Event) => {
-        ev?.stopPropagation?.(); if (!path) return;
-        if (!confirm(`Delete \"${name}\"?`)) return;
-        try { await remove(null, path); } catch (e) { console.warn(e); }
-        (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
-    };
-    const doDownload = async (ev: Event) => {
-        ev?.stopPropagation?.(); if (!path) return;
-        try { await downloadByPath(path); } catch (e) { console.warn(e); }
-    };
+    const events = makeEvents(path, name);
 
     //
     return H`<div data-type="preference" class="preference-item" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="spoiler-handler">${text?.trim?.()?.split?.("\n")?.[0]}</div>
     <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
     <div class="card-actions" style="display:flex; gap:0.25rem; margin-top:0.25rem;">
-        <button class="action" on:click=${doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
-        <button class="action" on:click=${doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+        <button class="action" on:click=${events.doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
+        <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     </div>`;
 }
 
 //
-const $ShowPreferencesByDir = (DIR: string, name: string) => {
+const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
     const dataRef: any = makeReactive([]);
     const load = async () => {
         dataRef.length = 0;
@@ -64,20 +81,21 @@ const $ShowPreferencesByDir = (DIR: string, name: string) => {
     };
 
     //
-    const preferences = M(dataRef, (preference) => PreferenceItem(preference));
-    const root = H`<div data-name="${name}" data-type="preferences" class="content">${preferences}</div>`;
+    const preferences = M(dataRef, (preference) => PreferenceItem(preference, byKind));
+    const root = H`<div data-name="${byKind}" data-type="preferences" class="content">${preferences}</div>`;
+    preferences.boundParent = root;
     (root as any).reloadList = load;
-    bindDropToDir(root as any, DIR);
 
     //
     load().catch(console.warn.bind(console));
+    bindDropToDir(root as any, DIR);
 
     //
     return root;
 }
 
 //
-const tabs = new Map<string, HTMLElement>([
+const tabs = new Map<string, HTMLElement | null | string | any>([
     ["plans", $ShowPreferencesByDir(PLANS_DIR, "plans")],
     ["ideas", $ShowPreferencesByDir(IDEAS_DIR, "ideas")],
     ["notes", $ShowPreferencesByDir(NOTES_DIR, "notes")],
@@ -157,8 +175,9 @@ export const PreferencesView = (currentTab?: any | null) => {
         try { for (const d of [PLANS_DIR, IDEAS_DIR, NOTES_DIR, PREFERENCES_DIR]) await getDirectoryHandle(null, d, { create: true } as any); } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-sync')?.addEventListener('click', async () => {
-
-        // try { await pushPendingToFS('bonus'); } catch (e) { console.warn(e); }
+        try {
+            currentWebDav?.sync?.download?.()?.catch?.(console.warn.bind(console));
+        } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();

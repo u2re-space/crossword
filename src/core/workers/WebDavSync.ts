@@ -10,7 +10,9 @@ const downloadContentsToOPFS = async (webDavClient, path = "/") => {
         if (file?.type == "directory") { return downloadContentsToOPFS(webDavClient, fullPath); };
         if (file?.type == "file") {
             if (new Date(file?.lastmod).getTime() > new Date((await readFile(null, fullPath))?.lastModified).getTime()) {
-                return writeFile(null, fullPath, await webDavClient.getFileContents(fullPath));
+                const contents = await webDavClient.getFileContents(fullPath)?.catch?.((e) => { console.warn(e); return null; });
+                if (!contents || contents?.byteLength == 0) return;
+                return writeFile(null, fullPath, new File([contents], file.filename, { type: file.type }));
             }
         };
     }));
@@ -23,19 +25,22 @@ const uploadOPFSToWebDav = async (webDavClient, dirHandle: FileSystemDirectoryHa
         const fullPath = path + fileOrDir.name + (fileOrDir instanceof FileSystemDirectoryHandle ? "/" : "");
         if (fileOrDir instanceof FileSystemDirectoryHandle) {
             let suffixLessPath = path + fileOrDir.name;
-            if (!(await webDavClient.exists(suffixLessPath))) {
+            if (!(await webDavClient.exists(suffixLessPath)?.catch?.((e) => { console.warn(e); return false; }))) {
                 await webDavClient.createDirectory(suffixLessPath, { recursive: true });
             }
             await uploadOPFSToWebDav(webDavClient, fileOrDir, fullPath)
         }
         if (fileOrDir instanceof FileSystemFileHandle) {
             const fileContent = await (await fileOrDir)?.getFile?.();
-            if (!(await webDavClient.exists(fullPath))) {
-                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true });
+            if (!fileContent || fileContent?.size == 0) return;
+
+            //
+            if (!(await webDavClient.exists(fullPath)?.catch?.((e) => { console.warn(e); return false; }))) {
+                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true })?.catch?.((e) => { console.warn(e); return null; });
                 return;
             }
-            if (new Date(await fileContent?.lastModified).getTime() > new Date((await webDavClient.stat(fullPath) as FileStat)?.lastmod).getTime()) {
-                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true });
+            if (new Date(await fileContent?.lastModified).getTime() > new Date((await webDavClient.stat(fullPath)?.catch?.((e) => { console.warn(e); return null; }) as FileStat)?.lastmod).getTime()) {
+                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true })?.catch?.((e) => { console.warn(e); return null; });
                 return;
             }
         }
@@ -59,7 +64,7 @@ export const WebDavSync = (address, options: any = {}) => {
 }
 
 //
-const currentWebDav: { sync: any } = { sync: null };
+export const currentWebDav: { sync: any } = { sync: null };
 (async () => {
     const settings = await idbGet("rs-settings");
     console.log(settings);

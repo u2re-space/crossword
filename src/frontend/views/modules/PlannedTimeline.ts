@@ -39,7 +39,7 @@ const updateDaysDesc = async (daysDesc: any[] | null = null) => {
     })?.catch?.(console.error);
 
     // get available days from timelines
-    for (const timeline of await timelineMap ?? []) {
+    for (const timeline of (await timelineMap) ?? []) {
         if (timeline?.properties?.begin_time && timeline?.properties?.end_time) {
             const beginTime = new Date(timeline?.properties?.begin_time);
             const endTime = new Date(timeline?.properties?.end_time);
@@ -67,7 +67,7 @@ const updateDaysDesc = async (daysDesc: any[] | null = null) => {
 
     //
     await Promise.all((daysDesc).map(async (day, index) => {
-        return bindDayWithElement(day, createDayElement(day, await timelineMap ?? []));
+        return bindDayWithElement(day, createDayElement(day, (await timelineMap) ?? []));
     }));
 
     //

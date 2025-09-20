@@ -22,6 +22,10 @@
         user-select: none;
         inline-size: stretch;
 
+        &:not([data-variant]) {
+            background-color: --c2-surface(0.01, var(--current, currentColor));
+            --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1);
+        }
         &[data-variant="purple"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1); }
         &[data-variant="green"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 60) / 1); }
         &[data-variant="blur"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 120) / 1); backdrop-filter: blur(8px) saturate(120%); }
@@ -62,7 +66,7 @@
     }
     .card-avatar .avatar-inner { font-weight: 700; font-size: 1rem; }
 
-    .card-content { display:grid; grid-template-columns: minmax(0px, 1fr); gap: 0.25rem; min-inline-size: 0; }
+    .card-content { display:grid; grid-column: 1 / -1; grid-template-columns: minmax(0px, 1fr); gap: 0.25rem; min-inline-size: 0; }
     .card-title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-kind { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
     .card-time { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
@@ -71,7 +75,7 @@
     .card-actions > .action { display:flex; align-items:center; gap:0.25rem; padding:0.25rem 0.4rem; border-radius:0.375rem; background: --c2-surface(0.03, var(--current, currentColor)); cursor:pointer; border:0; }
     .card-actions > .action:hover { background: --c2-surface(0.06, var(--current, currentColor)); }
 
-    .card-desc {
+    .card-description {
         grid-column: 1 / -1;
         box-sizing: border-box;
         display: none; opacity: 0; block-size: 0px; transition: opacity 160ms ease, block-size 160ms ease, display 160ms ease, padding-block 160ms ease;
@@ -81,8 +85,8 @@
         color: rgba(17,24,39,0.75);
         overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical;
     }
-    .card[data-open] .card-desc { display:flex; opacity:1; block-size:max-content; padding-block:0.5rem; }
-    @starting-style { .card[data-open] .card-desc { opacity:0; block-size:0px; padding-block:0rem; } }
+    .card[data-open] .card-description { display:flex; opacity:1; block-size:max-content; padding-block:0.5rem; }
+    @starting-style { .card[data-open] .card-description { opacity:0; block-size:0px; padding-block:0rem; } }
 
     // Adapt button density and hide long text on small containers
     @container (max-inline-size: 800px) {

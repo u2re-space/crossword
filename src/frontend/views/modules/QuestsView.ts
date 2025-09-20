@@ -14,61 +14,82 @@ const CODING_DIR = "/docs/questions/coding/";
 const MATH_DIR = "/docs/questions/math/";
 
 //
-const QuestItem = (item: any) => {
+const makeEvents = (path: string, name: string) => {
+    return {
+        doDelete: async (ev: Event) => {
+            ev?.stopPropagation?.();
+            if (!path) return;
+            if (!confirm(`Delete \"${name}\"?`)) return;
+            try { await remove(null, path); } catch (e) { console.warn(e); }
+            (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
+        },
+        doDownload: async (ev: Event) => {
+            ev?.stopPropagation?.();
+            if (!path) return;
+            try { await downloadByPath(path); } catch (e) { console.warn(e); }
+        }
+    }
+}
+
+//
+const QuestItem = (item: any, byKind: string | null = null) => {
+    if (byKind && byKind != item?.kind) return;
+
+    //
     const text = typeof item === 'string' ? item : (item?.text || '');
     const path = (item as any)?.__path || '';
     const name = (item as any)?.__name || '';
     const blob = new Blob([text], { type: "text/plain" });
-    const doDelete = async (ev: Event) => {
-        ev?.stopPropagation?.();
-        if (!path) return;
-        if (!confirm(`Delete \"${name}\"?`)) return;
-        try { await remove(null, path); } catch (e) { console.warn(e); }
-        (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
-    };
-    const doDownload = async (ev: Event) => {
-        ev?.stopPropagation?.();
-        if (!path) return;
-        try { await downloadByPath(path); } catch (e) { console.warn(e); }
-    };
+    const events = makeEvents(path, name);
 
     //
     return H`<div data-type="quest" class="preference-item" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="spoiler-handler">${text?.trim?.()?.split?.("\n")?.[0]}</div>
     <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
     <div class="card-actions" style="display:flex; gap:0.25rem; margin-top:0.25rem;">
-        <button class="action" on:click=${doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
-        <button class="action" on:click=${doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+        <button class="action" on:click=${events.doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
+        <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     </div>`;
 }
 
 //
-const $ShowQuestsByType = (DIR: string, TYPE: string, name?: string) => {
-    name = name ?? DIR;
+const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
     const dataRef: any = makeReactive([]);
     const load = async () => {
         dataRef.length = 0;
+
+        //
         const handle = await getDirectoryHandle(null, DIR).catch(() => null as any);
         const entries = handle ? await Array.fromAsync(handle?.entries?.() ?? []) : [];
         await Promise.all(entries?.map?.(async ([fname, fhandle]: any) => {
             try {
                 const file = await fhandle.getFile();
                 const text = await file?.text?.();
-                dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
+                const quest = JSON.parse(text || "{}");
+                (quest as any).__name = fname;
+                (quest as any).__path = `${DIR}${fname}`;
+                if (byKind === 'all' || quest.kind === byKind || !byKind) { dataRef.push(quest); }
+                return quest;
             } catch { }
         }));
     };
+
+    //
+    const quests = M(dataRef, (quests) => QuestItem(quests, byKind));
+    const root = H`<div data-name="${byKind}" data-type="quests" class="tab">${quests}</div>`;
+    quests.boundParent = root; (root as any).reloadList = load;
+
+    //
     load().catch(console.warn.bind(console));
-    const quests = M(dataRef, (quest) => QuestItem(quest));
-    const root = H`<div data-name="${name}" data-type="quests" class="tab">${quests}</div>`;
-    (root as any).reloadList = load;
     bindDropToDir(root as any, DIR);
+
+    //
     return root;
 }
 
 //
-const tabs = new Map<string, HTMLElement>([
+const tabs = new Map<string, HTMLElement | null | string | any>([
     ["questions", $ShowQuestsByType(QUEST_DIR, "questions")],
     ["quests", $ShowQuestsByType(QUEST_DIR, "quests")],
     ["coding", $ShowQuestsByType(CODING_DIR, "coding")],
