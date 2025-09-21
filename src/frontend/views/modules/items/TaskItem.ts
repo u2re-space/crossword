@@ -84,6 +84,9 @@ export const createTaskElement = (task: any) => {
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-time">${begin_time} - ${end_time}</div>
+    <div class="card-description">
+        <div class="card-description-text">${desc}</div>
+    </div>
     <div class="card-content">
         <div class="card-kind">${task?.properties?.kind || ''}</div>
         <div class="card-location">${task?.properties?.location || ''}</div>
@@ -94,9 +97,6 @@ export const createTaskElement = (task: any) => {
         <div class="card-rewards">${task?.properties?.rewards || ''}</div>
         <div class="card-bonuses">${task?.properties?.bonuses || ''}</div>
         <div class="card-actions">${task?.properties?.actions || ''}</div>
-    </div>
-    <div class="card-description">
-        <div class="card-description-text">${desc}</div>
     </div>
 </div>`;
 

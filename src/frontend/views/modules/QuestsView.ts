@@ -44,12 +44,12 @@ const QuestItem = (item: any, byKind: string | null = null) => {
 
     //
     return H`<div data-type="quest" class="preference-item" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
-    <div class="spoiler-handler">${text?.trim?.()?.split?.("\n")?.[0]}</div>
-    <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
-    <div class="card-actions" style="display:flex; gap:0.25rem; margin-top:0.25rem;">
-        <button class="action" on:click=${events.doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
-        <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
-    </div>
+        <div class="spoiler-handler">${text?.trim?.()?.split?.("\n")?.[0]}</div>
+        <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
+        <div class="card-actions" style="display:flex; gap:0.25rem; margin-top:0.25rem;">
+            <button class="action" on:click=${events.doDownload}><ui-icon icon="download"></ui-icon><span>Download</span></button>
+            <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+        </div>
     </div>`;
 }
 

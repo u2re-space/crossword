@@ -59,6 +59,32 @@ const ContactItem = (contact: any, byKind: string) => {
     const properties = contact?.properties || {};
 
     //
+    const formatAtList = (text: string | string[] | any[]) => (text?.map?.((part: any) => {
+        return H`<li>${part?.trim?.()}</li>`
+    }) || []).flat();
+
+    //
+    const formatEmail = (email: string) => {
+        return H`<li>${email?.trim?.()}</li>`;
+    }
+
+    //
+    const formatEmailList = (emails: string[]) => {
+        return emails?.map?.((email: string) => formatEmail(email)) || [];
+    }
+
+    //
+    const formatPhone = (phone: string) => {
+        const text = phone?.replace?.(/\s+/g, '').replace?.(/[^0-9]/g, '');
+        return H`<li>${text?.trim?.()}</li>`;
+    }
+
+    //
+    const formatPhoneList = (phones: string[]) => {
+        return phones?.map?.((phone: string) => formatPhone(phone)) || [];
+    }
+
+    //
     const item = H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
         <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "C"}</div></div>
         <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
@@ -66,13 +92,14 @@ const ContactItem = (contact: any, byKind: string) => {
             <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
-        <div class="card-description">
-            <div class="card-description-text">${contact?.description || ''}</div>
-        </div>
         <div class="card-content">
-            <div class="card-kind">${kind || ''}</div>
-            <div class="card-email">${properties?.contacts?.email?.[0] || ''}</div>
-            <div class="card-phone">${properties?.contacts?.phone?.[0] || ''}</div>
+            <div class="card-kind">${"Contacts:"}</div>
+            <ul class="card-email">${formatEmailList(properties?.contacts?.email || []) || ''}</ul>
+            <ul class="card-phone">${formatPhoneList(properties?.contacts?.phone || []) || ''}</ul>
+        </div>
+        <div class="card-description">
+            <div class="card-description-text">${"Description:"}</div>
+            <ul>${formatAtList(contact?.description)}</ul>
         </div>
     </div>`;
 

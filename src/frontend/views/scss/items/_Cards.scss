@@ -11,7 +11,8 @@
         grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr) minmax(0px, max-content) minmax(0px, max-content) minmax(0px, max-content) minmax(0px, max-content);
         grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
         align-items: center;
-        gap: 0.5rem;
+        gap: 1rem;
+        row-gap: 0.5rem;
         padding: var(--card-padding);
         border-radius: var(--card-radius);
         background-color: --c2-surface(0.16, var(--current, currentColor));
@@ -23,8 +24,13 @@
         inline-size: stretch;
 
         &:not([data-variant]) {
-            background-color: --c2-surface(0.01, var(--current, currentColor));
+            background-color: --c2-surface(0.1, var(--current, currentColor));
             --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1);
+
+            .card-avatar {
+                background-color: --c2-on-surface(0, var(--current, currentColor));
+                color: --c2-surface(0, var(--current, currentColor));
+            }
         }
         &[data-variant="purple"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1); }
         &[data-variant="green"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 60) / 1); }
@@ -32,6 +38,15 @@
 
         &[data-open] {
             box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
+
+        & > *:empty {
+            display: none;
+        }
+
+        & > * {
+            pointer-events: none;
+            user-select: none;
         }
     }
 
@@ -66,7 +81,113 @@
     }
     .card-avatar .avatar-inner { font-weight: 700; font-size: 1rem; }
 
-    .card-content { display:grid; grid-column: 1 / -1; grid-template-columns: minmax(0px, 1fr); gap: 0.25rem; min-inline-size: 0; }
+    /* Verbal description */
+    .card-description {
+        display: none;
+        flex-direction: column;
+        gap: 0.25rem;
+        grid-column: 1 / -1;
+        block-size: 0px;
+        line-height: normal;
+        overflow: hidden;
+
+        .card-description-text {
+            block-size: max-content;
+            opacity: 0.5;
+            font-size: 0.8rem;
+            line-height: normal;
+            display: flex;
+            flex-direction: row;
+        }
+
+        ul {
+            margin: 0;
+            padding: 0;
+            color: --c2-on-surface(-0.1, var(--current, currentColor));
+            opacity: 0.8;
+            font-size: 0.875rem;
+            display: flex;
+            gap: 0.25rem;
+            flex-direction: column;
+            list-style-position: inside;
+
+            li {
+                display: list-item;
+                flex-direction: row;
+                flex-wrap: wrap;
+                list-style-position: inside;
+
+                overflow-wrap: break-word;
+                text-wrap: pretty;
+                text-align: justify;
+                text-overflow: ellipsis;
+                text-spacing-trim: trim-start;
+                word-break: break-word;
+                white-space: normal;
+                hyphens: auto;
+                line-height: normal;
+
+                block-size: max-content;
+                margin: 0;
+                padding: 0;
+
+                &::first-letter {
+                    text-transform: capitalize;
+                }
+            }
+        }
+    }
+
+     /* Properties descriptions (such as contacts) */
+    .card-content {
+        grid-column: 1 / -1;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-inline-size: 0;
+        box-sizing: border-box;
+        opacity: 1;
+        block-size: max-content;
+        padding-block: 0.5rem;
+        font-size: 0.875rem;
+        color: rgba(17,24,39,0.75);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        display: flex;
+        line-clamp: 4;
+        line-height: normal;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+
+        ul {
+            margin: 0;
+            padding: 0;
+            list-style-position: inside;
+            color: --c2-on-surface(-0.1, var(--current, currentColor));
+            opacity: 0.8;
+            line-height: normal;
+            font-size: 0.875rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            block-size: max-content;
+            overflow: hidden;
+            font-variant-numeric: tabular-nums;
+
+            li {
+                display: list-item;
+                margin: 0;
+                padding: 0;
+                font-variant-numeric: tabular-nums;
+
+                &::marker {
+                    margin: 0;
+                    padding: 0;
+                }
+            }
+        }
+    }
+
     .card-title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-kind { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
     .card-time { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
@@ -75,18 +196,14 @@
     .card-actions > .action { display:flex; align-items:center; gap:0.25rem; padding:0.25rem 0.4rem; border-radius:0.375rem; background: --c2-surface(0.03, var(--current, currentColor)); cursor:pointer; border:0; }
     .card-actions > .action:hover { background: --c2-surface(0.06, var(--current, currentColor)); }
 
-    .card-description {
-        grid-column: 1 / -1;
-        box-sizing: border-box;
-        display: none; opacity: 0; block-size: 0px; transition: opacity 160ms ease, block-size 160ms ease, display 160ms ease, padding-block 160ms ease;
-        transition-behavior: allow-discrete;
-        padding-block: 0rem;
-        font-size: 0.875rem;
-        color: rgba(17,24,39,0.75);
-        overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical;
+    .card {
+        .card-description {
+            transition: opacity 160ms ease, block-size 160ms ease, display 160ms ease, padding-block 160ms ease;
+            transition-behavior: allow-discrete;
+        }
+        &[data-open] .card-description { display:flex; opacity:1; block-size: max-content; padding-block:0.5rem; }
+        @starting-style { &[data-open] .card-description { opacity:0; block-size: 0px; padding-block:0rem; } }
     }
-    .card[data-open] .card-description { display:flex; opacity:1; block-size:max-content; padding-block:0.5rem; }
-    @starting-style { .card[data-open] .card-description { opacity:0; block-size:0px; padding-block:0rem; } }
 
     // Adapt button density and hide long text on small containers
     @container (max-inline-size: 800px) {
