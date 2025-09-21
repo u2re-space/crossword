@@ -1,6 +1,7 @@
 import { H, writeFile, remove, M } from "fest/lure";
 import { MOCElement } from "fest/dom";
 import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
+import { makePropertyDesc } from "../format/Formatted";
 
 
 
@@ -52,28 +53,6 @@ const makeEvents = (path: string, title: string, task: any, desc: string, begin_
     }
 }
 
-//
-const makePropertyDesc = (label: string, property: any, key?: string | null) => {
-    const basis = key != null ? property?.[key] : property;
-    if (!(typeof basis == "string" ? basis?.trim?.() : basis)) return;
-    if (Array.isArray(basis)) {
-        return M(basis, (property) => {
-            return (typeof property == "string" ? property?.trim?.() : property) ? (H`<li>${label}: ${property}</li>`) : null;
-        });
-    }
-    if (basis instanceof Map) {
-        return M([...basis?.entries?.()], ([key, value]) => {
-            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
-        });
-    }
-    if (typeof basis == "object") {
-        return M([...Object.entries(basis)], ([key, value]) => {
-            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
-        });
-    }
-    return H`<li>${label}: ${basis}</li>`
-}
-
 
 
 // Card-like task item with avatar, variant colors and tap-to-expand
@@ -95,8 +74,8 @@ export const createTaskElement = (task: any) => {
         <div class="avatar-inner">${task?.desc?.icon ? H`<ui-icon icon=${task.desc.icon}></ui-icon>` : (title?.[0] ?? "T")}</div>
     </div>
     <div class="card-props">
-        <div class="card-title">${title}</div>
-        <div class="card-kind">${kind}</div>
+        <ul class="card-title"><li>${title}</li></ul>
+        <ul class="card-kind">${makePropertyDesc("", task?.properties || kind, "kind")}</ul>
     </div>
     <div class="card-time">${begin_time} - ${end_time}</div>
     <div class="card-actions">
@@ -104,15 +83,16 @@ export const createTaskElement = (task: any) => {
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
-        <ul>${makePropertyDesc("Location", task?.properties?.location, "location")}</ul>
-        <ul>${makePropertyDesc("Events", task?.properties?.events, "events")}</ul>
-        <ul>${makePropertyDesc("Tasks", task?.properties?.tasks, "tasks")}</ul>
-        <ul>${makePropertyDesc("Contacts", task?.properties?.contacts, "contacts")}</ul>
-        <ul>${makePropertyDesc("Members", task?.properties?.members, "members")}</ul>
-        <ul>${makePropertyDesc("Rewards", task?.properties?.rewards, "rewards")}</ul>
-    </div>
-    <div class="card-description">
-        <div class="card-description-text">${desc}</div>
+    <span class="card-label">Properties:</span><ul>
+        ${makePropertyDesc("Kind", task?.properties || kind, "kind")}
+        ${makePropertyDesc("Location", task?.properties, "location")}
+        ${makePropertyDesc("Events", task?.properties, "events")}
+        ${makePropertyDesc("Tasks", task?.properties, "tasks")}
+        ${makePropertyDesc("Contacts", task?.properties, "contacts")}
+        ${makePropertyDesc("Members", task?.properties, "members")}
+        ${makePropertyDesc("Rewards", task?.properties, "rewards")}
+    </ul></div>
+    <div class="card-description"><span class="card-label">Description:</span><ul class="card-desc">${makePropertyDesc("", desc, "")}</ul>
     </div>
 </div>`;
 

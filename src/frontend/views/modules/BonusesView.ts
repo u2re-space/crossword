@@ -2,6 +2,7 @@ import { H, M, getDirectoryHandle, writeFile, remove } from "fest/lure";
 import { MOCElement } from "fest/dom";
 import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { makeReactive, ref } from "fest/object";
+import { makePropertyDesc } from "./format/Formatted";
 
 //
 const BONUSES_DIR = "/data/bonus/";
@@ -43,31 +44,41 @@ const BonusItem = (bonus: any, byKind: string | null = null) => {
 
 
     return H`<div data-type="bonus" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
-        <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "B"}</div></div>
-        <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
+        <div class="card-avatar">
+            <div class="avatar-inner">${title?.[0] ?? "B"}</div>
+        </div>
+        <div class="card-props">
+            <ul class="card-title"><li>${title}</li></ul>
+            <ul class="card-kind">${makePropertyDesc("", kind || bonus?.properties, "kind")}</ul>
+        </div>
         <div class="card-actions">
             <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
-        <div class="card-description">
-            <div class="card-description-text">${bonus?.properties?.description || ''}</div>
-        </div>
         <div class="card-content">
-            <div class="card-kind">${bonus?.properties?.kind || ''}</div>
-            <div class="card-usableFor">${bonus?.properties?.usableFor || ''}</div>
-            <div class="card-usableIn">${bonus?.properties?.usableIn || ''}</div>
-            <div class="card-availability">${bonus?.properties?.availability || ''}</div>
-            <div class="card-availabilityTime">${bonus?.properties?.availabilityTime || ''}</div>
-            <div class="card-availabilityDays">${bonus?.properties?.availabilityDays || ''}</div>
-            <div class="card-requirements">${bonus?.properties?.requirements || ''}</div>
-            <div class="card-persons">${bonus?.properties?.persons || ''}</div>
-            <div class="card-actions">${bonus?.properties?.actions || ''}</div>
-            <div class="card-bonuses">${bonus?.properties?.bonuses || ''}</div>
-            <div class="card-rewards">${bonus?.properties?.rewards || ''}</div>
-            <div class="card-contacts">${bonus?.properties?.contacts || ''}</div>
+            <span class="card-label">Properties:</span><ul>
+                ${makePropertyDesc("Kind", kind || bonus?.properties, "kind")}
+                ${makePropertyDesc("Usable For", bonus?.properties, "usableFor")}
+                ${makePropertyDesc("Usable In", bonus?.properties, "usableIn")}
+                ${makePropertyDesc("Availability", bonus?.properties, "availability")}
+                ${makePropertyDesc("Availability Time", bonus?.properties, "availabilityTime")}
+                ${makePropertyDesc("Availability Days", bonus?.properties, "availabilityDays")}
+                ${makePropertyDesc("Requirements", bonus?.properties, "requirements")}
+                ${makePropertyDesc("Persons", bonus?.properties, "persons")}
+                ${makePropertyDesc("Actions", bonus?.properties, "actions")}
+                ${makePropertyDesc("Bonuses", bonus?.properties, "bonuses")}
+                ${makePropertyDesc("Rewards", bonus?.properties, "rewards")}
+                ${makePropertyDesc("Contacts", bonus?.properties, "contacts")}
+            </ul>
+        </div>
+        <div class="card-description">
+            <span class="card-label">Description:</span>
+            <ul class="card-desc">${makePropertyDesc("Description", bonus?.description, "text")}</ul>
         </div>
     </div>`;
 }
+
+
 
 //
 const $ShowBonusesByType = (DIR: string, byKind: string | null = null) => {

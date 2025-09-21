@@ -3,6 +3,7 @@ import { H, M, getDirectoryHandle, writeFile, remove, ghostImage } from "fest/lu
 import { MOCElement } from "fest/dom";
 import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { bindDropToDir } from "@rs-frontend/utils/Drop";
+import { makePropertyDesc } from "./format/Formatted";
 
 //
 const PERSONS_DIR = "/data/person/";
@@ -59,85 +60,28 @@ const ContactItem = (contact: any, byKind: string) => {
     const properties = contact?.properties || {};
 
     //
-    const beginDragAsText = (ev: DragEvent) => {
-        //ev?.preventDefault?.();
-        //ev?.stopPropagation?.();
-        const text = (ev.currentTarget as HTMLElement)?.textContent?.trim?.();
-        if (text) {
-            ev.dataTransfer!.effectAllowed = "copy";
-            ev.dataTransfer?.clearData?.();
-            ev.dataTransfer?.setData?.("plain/text", text);
-        }
-    }
-
-
-    //
-    const copyPhoneClick = (ev) => {
-        const isPhoneElement = (ev.currentTarget as HTMLElement)?.matches?.('.phone') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.phone');
-
-        if (isPhoneElement) {
-            ev?.preventDefault?.();
-            ev?.stopPropagation?.();
-            const phone = isPhoneElement?.textContent?.trim?.();
-            if (phone) { navigator.clipboard.writeText(phone); }
-        }
-    }
-
-    //
-    const copyEmailClick = (ev) => {
-        const isEmailElement = (ev.currentTarget as HTMLElement)?.matches?.('.email') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.email');
-
-        if (isEmailElement) {
-            ev?.preventDefault?.();
-            ev?.stopPropagation?.();
-            const email = isEmailElement?.textContent?.trim?.();
-            if (email) { navigator.clipboard.writeText(email); }
-        }
-    }
-
-    //
-    const formatAtList = (text: string | string[] | any[]) => (text?.map?.((part: any) => {
-        return H`<li><span draggable="true" data-action="copy-text" class="text">${part?.trim?.()}</span></li>`;
-    }) || []).flat();
-
-    //
-    const formatEmail = (email: string) => {
-        return H`<li><a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-email" class="email" href="mailto:${email?.trim?.()}" on:click=${copyEmailClick}>${email?.trim?.()}</a></li>`;
-    }
-
-    //
-    const formatEmailList = (emails: string[]) => {
-        return emails?.map?.((email: string) => formatEmail(email)) || [];
-    }
-
-    //
-    const formatPhone = (phone: string) => {
-        const text = phone?.replace?.(/\s+/g, '').replace?.(/[^0-9]/g, '');
-        return H`<li><a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-phone" class="phone" href="tel:${text?.trim?.()}" on:click=${copyPhoneClick}>${text?.trim?.()}</a></li>`;
-    }
-
-    //
-    const formatPhoneList = (phones: string[]) => {
-        return phones?.map?.((phone: string) => formatPhone(phone)) || [];
-    }
-
-    //
     const item = H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.currentTarget as HTMLElement).toggleAttribute?.('data-open'); }}>
-        <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "C"}</div></div>
-        <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
+        <div class="card-avatar">
+            <div class="avatar-inner">${title?.[0] ?? "C"}</div>
+        </div>
+        <div class="card-props">
+            <ul class="card-title"><li>${title}</li></ul>
+            <ul class="card-kind">${makePropertyDesc("", contact?.properties || kind, "kind")}</ul>
+        </div>
         <div class="card-actions">
             <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
         <div class="card-content">
-            <div class="card-kind">${properties?.contacts?.email?.length || properties?.contacts?.phone?.length ? "Contacts:" : ""}</div>
-            <ul class="card-email">${formatEmailList(properties?.contacts?.email || []) || ''}</ul>
-            <ul class="card-phone">${formatPhoneList(properties?.contacts?.phone || []) || ''}</ul>
-            <div class="card-kind">${contact?.description ? "Description:" : ""}</div>
-            <ul>${formatAtList(contact?.description || [])}</ul>
+            <span class="card-label">Description:</span>
+            <ul>${makePropertyDesc("", contact?.description, "")}</ul>
         </div>
         <div class="card-description">
-            <div class="card-description-text"></div>
+            <span class="card-label">Contacts:</span><ul>
+                ${makePropertyDesc("Kind", contact?.properties || kind, "kind")}
+                ${makePropertyDesc("Email", properties?.contacts, "email")}
+                ${makePropertyDesc("Phone", properties?.contacts, "phone")}
+            </ul>
         </div>
     </div>`; //${"Description:"}
 

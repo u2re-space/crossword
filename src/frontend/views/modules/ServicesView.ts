@@ -2,6 +2,7 @@ import { getDirectoryHandle, H, M, writeFile, remove } from "fest/lure";
 import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { makeReactive, ref } from "fest/object";
 import { MOCElement } from "fest/dom";
+import { makePropertyDesc } from "./format/Formatted";
 
 //
 const SERVICES_DIR = "/data/service/";
@@ -34,27 +35,7 @@ const makeEvents = (path: string, title: string, service: any, kind: string) => 
     }
 }
 
-//
-const makePropertyDesc = (label: string, property: any, key?: string | null) => {
-    const basis = key != null ? property?.[key] : property;
-    if (!(typeof basis == "string" ? basis?.trim?.() : basis)) return;
-    if (Array.isArray(basis)) {
-        return M(basis, (property) => {
-            return (typeof property == "string" ? property?.trim?.() : property) ? (H`<li>${label}: ${property}</li>`) : null;
-        });
-    }
-    if (basis instanceof Map) {
-        return M([...basis?.entries?.()], ([key, value]) => {
-            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
-        });
-    }
-    if (typeof basis == "object") {
-        return M([...Object.entries(basis)], ([key, value]) => {
-            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
-        });
-    }
-    return H`<li>${label}: ${basis}</li>`
-}
+
 
 //
 const ServiceItem = (service: any, byKind: string | null = null) => {
@@ -66,30 +47,35 @@ const ServiceItem = (service: any, byKind: string | null = null) => {
     //
     const events = makeEvents(path, title, service, kind);
     return H`<div data-type="service" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
-        <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "S"}</div></div>
+        <div class="card-avatar">
+            <div class="avatar-inner">${title?.[0] ?? "S"}</div>
+        </div>
         <div class="card-props">
-            <div class="card-title">${title}</div>
-            <div class="card-kind"><span>${makePropertyDesc("Kind", kind || service?.properties?.kind || '', "kind")}</span></div>
-            <div class="card-description"><span>${makePropertyDesc("Description", service?.properties?.description || '', "description")}</span></div>
+            <ul class="card-title"><li>${title}</li></ul>
+            <ul class="card-kind">${makePropertyDesc("", kind || service?.properties || '', "kind")}</ul>
         </div>
         <div class="card-actions">
             <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
-        <div class="card-description">
-            <div class="card-description-text">${makePropertyDesc("Description", service?.properties?.description || '', "description")}</div>
-        </div>
         <div class="card-content">
-        <ul>
-            <li>Kind: ${kind}</li>
-            ${makePropertyDesc("Price", service?.properties, "price")}
-            ${makePropertyDesc("Quantity", service?.properties, "quantity")}
-            ${makePropertyDesc("Location", service?.properties, "location")}
-            ${makePropertyDesc("Persons", service?.properties, "persons")}
-            ${makePropertyDesc("Contacts", service?.properties, "contacts")}
-            ${makePropertyDesc("Actions", service?.properties, "actions")}
-            ${makePropertyDesc("Tasks", service?.properties, "tasks")}
-        </ul>
+            <span class="card-label">Properties:</span><ul>
+                ${makePropertyDesc("Kind", kind || service?.properties, "kind")}
+                ${makePropertyDesc("Price", service?.properties, "price")}
+                ${makePropertyDesc("Quantity", service?.properties, "quantity")}
+                ${makePropertyDesc("Location", service?.properties, "location")}
+                ${makePropertyDesc("Persons", service?.properties, "persons")}
+                ${makePropertyDesc("Actions", service?.properties, "actions")}
+                ${makePropertyDesc("Tasks", service?.properties, "tasks")}
+            </ul>
+            <span class="card-label">Contacts:</span><ul>
+                ${makePropertyDesc("Email", service?.properties?.contacts, "email")}
+                ${makePropertyDesc("Phone", service?.properties?.contacts, "phone")}
+            </ul>
+        </div>
+        <div class="card-description">
+            <span class="card-label">Description:</span>
+            <ul class="card-desc">${makePropertyDesc("", service?.description, "")}</ul>
         </div>
     </div>`;
 }
