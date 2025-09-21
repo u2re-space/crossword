@@ -1,5 +1,5 @@
 import { makeReactive, ref } from "fest/object";
-import { H, M, getDirectoryHandle, writeFile, remove } from "fest/lure";
+import { H, M, getDirectoryHandle, writeFile, remove, ghostImage } from "fest/lure";
 import { MOCElement } from "fest/dom";
 import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { bindDropToDir } from "@rs-frontend/utils/Drop";
@@ -59,13 +59,50 @@ const ContactItem = (contact: any, byKind: string) => {
     const properties = contact?.properties || {};
 
     //
+    const beginDragAsText = (ev: DragEvent) => {
+        //ev?.preventDefault?.();
+        //ev?.stopPropagation?.();
+        const text = (ev.currentTarget as HTMLElement)?.textContent?.trim?.();
+        if (text) {
+            ev.dataTransfer!.effectAllowed = "copy";
+            ev.dataTransfer?.clearData?.();
+            ev.dataTransfer?.setData?.("plain/text", text);
+        }
+    }
+
+
+    //
+    const copyPhoneClick = (ev) => {
+        const isPhoneElement = (ev.currentTarget as HTMLElement)?.matches?.('.phone') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.phone');
+
+        if (isPhoneElement) {
+            ev?.preventDefault?.();
+            ev?.stopPropagation?.();
+            const phone = isPhoneElement?.textContent?.trim?.();
+            if (phone) { navigator.clipboard.writeText(phone); }
+        }
+    }
+
+    //
+    const copyEmailClick = (ev) => {
+        const isEmailElement = (ev.currentTarget as HTMLElement)?.matches?.('.email') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.email');
+
+        if (isEmailElement) {
+            ev?.preventDefault?.();
+            ev?.stopPropagation?.();
+            const email = isEmailElement?.textContent?.trim?.();
+            if (email) { navigator.clipboard.writeText(email); }
+        }
+    }
+
+    //
     const formatAtList = (text: string | string[] | any[]) => (text?.map?.((part: any) => {
-        return H`<li>${part?.trim?.()}</li>`
+        return H`<li><span draggable="true" data-action="copy-text" class="text">${part?.trim?.()}</span></li>`;
     }) || []).flat();
 
     //
     const formatEmail = (email: string) => {
-        return H`<li>${email?.trim?.()}</li>`;
+        return H`<li><a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-email" class="email" href="mailto:${email?.trim?.()}" on:click=${copyEmailClick}>${email?.trim?.()}</a></li>`;
     }
 
     //
@@ -76,7 +113,7 @@ const ContactItem = (contact: any, byKind: string) => {
     //
     const formatPhone = (phone: string) => {
         const text = phone?.replace?.(/\s+/g, '').replace?.(/[^0-9]/g, '');
-        return H`<li>${text?.trim?.()}</li>`;
+        return H`<li><a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-phone" class="phone" href="tel:${text?.trim?.()}" on:click=${copyPhoneClick}>${text?.trim?.()}</a></li>`;
     }
 
     //
@@ -93,11 +130,11 @@ const ContactItem = (contact: any, byKind: string) => {
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
         <div class="card-content">
-            <div class="card-kind">${"Contacts:"}</div>
+            <div class="card-kind">${properties?.contacts?.email?.length || properties?.contacts?.phone?.length ? "Contacts:" : ""}</div>
             <ul class="card-email">${formatEmailList(properties?.contacts?.email || []) || ''}</ul>
             <ul class="card-phone">${formatPhoneList(properties?.contacts?.phone || []) || ''}</ul>
-            <div class="card-kind">${"Description:"}</div>
-            <ul>${formatAtList(contact?.description)}</ul>
+            <div class="card-kind">${contact?.description ? "Description:" : ""}</div>
+            <ul>${formatAtList(contact?.description || [])}</ul>
         </div>
         <div class="card-description">
             <div class="card-description-text"></div>

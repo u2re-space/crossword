@@ -35,6 +35,28 @@ const makeEvents = (path: string, title: string, service: any, kind: string) => 
 }
 
 //
+const makePropertyDesc = (label: string, property: any, key?: string | null) => {
+    const basis = key != null ? property?.[key] : property;
+    if (!(typeof basis == "string" ? basis?.trim?.() : basis)) return;
+    if (Array.isArray(basis)) {
+        return M(basis, (property) => {
+            return (typeof property == "string" ? property?.trim?.() : property) ? (H`<li>${label}: ${property}</li>`) : null;
+        });
+    }
+    if (basis instanceof Map) {
+        return M([...basis?.entries?.()], ([key, value]) => {
+            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
+        });
+    }
+    if (typeof basis == "object") {
+        return M([...Object.entries(basis)], ([key, value]) => {
+            return (typeof value == "string" ? value?.trim?.() : value) ? (H`<li>${key || label}: ${value}</li>`) : null;
+        });
+    }
+    return H`<li>${label}: ${basis}</li>`
+}
+
+//
 const ServiceItem = (service: any, byKind: string | null = null) => {
     const title = service?.desc?.title || service?.desc?.name || service?.name || "Service";
     const kind = service?.kind || "";
@@ -47,24 +69,27 @@ const ServiceItem = (service: any, byKind: string | null = null) => {
         <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "S"}</div></div>
         <div class="card-props">
             <div class="card-title">${title}</div>
-            <div class="card-kind"><span>Kind: </span><span>${kind || service?.properties?.kind || ''}</span></div>
+            <div class="card-kind"><span>${makePropertyDesc("Kind", kind || service?.properties?.kind || '', "kind")}</span></div>
+            <div class="card-description"><span>${makePropertyDesc("Description", service?.properties?.description || '', "description")}</span></div>
         </div>
         <div class="card-actions">
             <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
             <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
         </div>
         <div class="card-description">
-            <div class="card-description-text">${service?.properties?.description || ''}</div>
+            <div class="card-description-text">${makePropertyDesc("Description", service?.properties?.description || '', "description")}</div>
         </div>
         <div class="card-content">
-            <div class="card-kind"></div>
-            <div class="card-price"><span>Price: </span><span>${service?.properties?.price || ''}</span></div>
-            <div class="card-quantity"><span>Quantity: </span><span>${service?.properties?.quantity || ''}</span></div>
-            <div class="card-location"><span>Location: </span><span>${service?.properties?.location || ''}</span></div>
-            <div class="card-persons"><span>Persons: </span><span>${service?.properties?.persons || ''}</span></div>
-            <div class="card-contacts"><span>Contacts: </span><span>${service?.properties?.contacts || ''}</span></div>
-            <div class="card-actions"><span>Actions: </span><span>${service?.properties?.actions || ''}</span></div>
-            <div class="card-tasks"><span>Tasks: </span><span>${service?.properties?.tasks || ''}</span></div>
+        <ul>
+            <li>Kind: ${kind}</li>
+            ${makePropertyDesc("Price", service?.properties, "price")}
+            ${makePropertyDesc("Quantity", service?.properties, "quantity")}
+            ${makePropertyDesc("Location", service?.properties, "location")}
+            ${makePropertyDesc("Persons", service?.properties, "persons")}
+            ${makePropertyDesc("Contacts", service?.properties, "contacts")}
+            ${makePropertyDesc("Actions", service?.properties, "actions")}
+            ${makePropertyDesc("Tasks", service?.properties, "tasks")}
+        </ul>
         </div>
     </div>`;
 }

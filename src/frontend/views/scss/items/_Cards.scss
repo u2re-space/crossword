@@ -87,7 +87,7 @@
             block-size: var(--card-avatar-size);
             min-inline-size: var(--card-avatar-size);
             grid-column: 1 / 1 span;
-            border-radius: 9999px;
+            border-radius: 50%;
             line-height: 0;
             display: grid;
             place-content: center;
@@ -119,6 +119,7 @@
             }
 
             .card-description-text {
+                margin-block-start: 0.25rem;
                 block-size: max-content;
                 opacity: 0.8;
                 font-size: 0.8rem;
@@ -161,12 +162,12 @@
                     block-size: max-content;
                     margin: 0;
                     padding: 0;
-
-                    &::first-letter {
-                        text-transform: capitalize;
-                    }
                 }
             }
+
+            ::first-letter { text-transform: capitalize; }
+            ul:empty { display: none; }
+            a { text-transform: math-auto; }
         }
 
         /* Properties descriptions (such as contacts) */
@@ -197,13 +198,13 @@
                 color: --c2-on-surface(-0.1, var(--current, currentColor));
                 opacity: 0.8;
                 line-height: normal;
-                font-size: 0.875rem;
                 display: flex;
                 flex-direction: column;
                 gap: 0.25rem;
                 block-size: max-content;
                 overflow: hidden;
                 font-variant-numeric: tabular-nums;
+                font-size: 0.8rem;
 
                 li {
                     display: list-item;
@@ -217,6 +218,10 @@
                     }
                 }
             }
+
+            ::first-letter { text-transform: capitalize; }
+            ul:empty { display: none; }
+            a { text-transform: math-auto; }
         }
 
         // toggle description
@@ -233,12 +238,38 @@
 
         //
         .card-title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-kind { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
-        .card-time { font-size: 0.75rem; color: rgba(17,24,39,0.5); }
-        .card-props { display:flex; inline-size: stretch; flex-direction:column; gap:0.25rem; justify-items:center; align-content: flex-start; }
-        .card-actions { display:flex; gap:0.25rem; }
+        .card-kind { font-size: 0.8rem; color: rgba(17,24,39,0.5); margin-block-start: 0.25rem; }
+        .card-time { font-size: 0.8rem; color: rgba(17,24,39,0.5); }
+        .card-props { display: flex; inline-size: stretch; flex-direction:column; gap:0.25rem; justify-items:center; align-content: flex-start; }
+        .card-actions { display: flex; gap:0.25rem; }
         .card-actions > .action { display:flex; align-items:center; gap:0.25rem; padding:0.25rem 0.4rem; border-radius:0.375rem; background: --c2-surface(0.03, var(--current, currentColor)); cursor:pointer; border:0; }
         .card-actions > .action:hover { background: --c2-surface(0.06, var(--current, currentColor)); }
+
+        //
+        a {
+            pointer-events: auto;
+            user-select: none;
+            user-drag: auto;
+            -webkit-user-drag: auto;
+            color: --c2-on-surface(0.0, var(--current, currentColor));
+            text-decoration: none;
+            &:hover {
+                text-decoration: underline;
+            }
+            &:active {
+                text-decoration: underline;
+            }
+            &:focus {
+                text-decoration: underline;
+            }
+        }
+
+        button {
+            pointer-events: auto;
+            user-select: none;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
 
         // small screens
         @container (max-inline-size: 800px) {
