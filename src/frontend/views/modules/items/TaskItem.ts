@@ -68,10 +68,7 @@ export const createTaskElement = (task: any) => {
 
     //
     const events = makeEvents(path, title, task, desc, begin_time, end_time);
-    const item = H`<div data-type="task" class="task-item card" data-variant=${variant} on:click=${(ev: any) => {
-        const el = ev.target as HTMLElement;
-        el.toggleAttribute?.('data-open');
-    }}>
+    const item = H`<div data-type="task" class="task-item card" data-variant=${variant} on:click=${(ev: any) => { (ev.currentTarget as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
         <div class="avatar-inner">${task?.desc?.icon ? H`<ui-icon icon=${task.desc.icon}></ui-icon>` : (title?.[0] ?? "T")}</div>
     </div>
@@ -79,24 +76,28 @@ export const createTaskElement = (task: any) => {
         <div class="card-title">${title}</div>
         <div class="card-kind">${kind}</div>
     </div>
+    <div class="card-time">${begin_time} - ${end_time}</div>
     <div class="card-actions">
         <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
-    <div class="card-time">${begin_time} - ${end_time}</div>
+    <div class="card-content">
+        <ul>
+            <li>Kind: ${task?.properties?.kind || ''}</li>
+            <li>Location: ${task?.properties?.location || ''}</li>
+            <li>Members: ${task?.properties?.members || ''}</li>
+            <li>Events: ${task?.properties?.events || ''}</li>
+            <li>Contacts: ${task?.properties?.contacts || ''}</li>
+        </ul>
+        <ul>
+            <li>Tasks: ${task?.properties?.tasks || ''}</li>
+            <li>Rewards: ${task?.properties?.rewards || ''}</li>
+            <li>Bonuses: ${task?.properties?.bonuses || ''}</li>
+            <li>Actions: ${task?.properties?.actions || ''}</li>
+        </ul>
+    </div>
     <div class="card-description">
         <div class="card-description-text">${desc}</div>
-    </div>
-    <div class="card-content">
-        <div class="card-kind">${task?.properties?.kind || ''}</div>
-        <div class="card-location">${task?.properties?.location || ''}</div>
-        <div class="card-members">${task?.properties?.members || ''}</div>
-        <div class="card-events">${task?.properties?.events || ''}</div>
-        <div class="card-contacts">${task?.properties?.contacts || ''}</div>
-        <div class="card-tasks">${task?.properties?.tasks || ''}</div>
-        <div class="card-rewards">${task?.properties?.rewards || ''}</div>
-        <div class="card-bonuses">${task?.properties?.bonuses || ''}</div>
-        <div class="card-actions">${task?.properties?.actions || ''}</div>
     </div>
 </div>`;
 

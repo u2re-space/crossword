@@ -85,7 +85,7 @@ const ContactItem = (contact: any, byKind: string) => {
     }
 
     //
-    const item = H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
+    const item = H`<div data-type="contact" class="card" on:click=${(ev: any) => { (ev.currentTarget as HTMLElement).toggleAttribute?.('data-open'); }}>
         <div class="card-avatar"><div class="avatar-inner">${title?.[0] ?? "C"}</div></div>
         <div class="card-props"><div class="card-title">${title}</div><div class="card-kind">${kind}</div></div>
         <div class="card-actions">
@@ -96,12 +96,13 @@ const ContactItem = (contact: any, byKind: string) => {
             <div class="card-kind">${"Contacts:"}</div>
             <ul class="card-email">${formatEmailList(properties?.contacts?.email || []) || ''}</ul>
             <ul class="card-phone">${formatPhoneList(properties?.contacts?.phone || []) || ''}</ul>
-        </div>
-        <div class="card-description">
-            <div class="card-description-text">${"Description:"}</div>
+            <div class="card-kind">${"Description:"}</div>
             <ul>${formatAtList(contact?.description)}</ul>
         </div>
-    </div>`;
+        <div class="card-description">
+            <div class="card-description-text"></div>
+        </div>
+    </div>`; //${"Description:"}
 
     //
     return item;
