@@ -1,24 +1,13 @@
 import { getDirectoryHandle, H } from "fest/lure";
-import { bindDayWithElement, createDayElement, daysTabs } from "./items/DayTab";
+import { bindDayWithElement, createDayElement, daysTabs } from "./DayTab";
 import { makeReactive, ref } from "fest/object";
 
 //
 import "@rs-core/$test/Tasks";
+import { isDate } from "../format/Formatted";
 
 //
 const TIMELINE_DIR = "/timeline/";
-
-//
-const isDate = (date: any) => {
-    const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
-    let secondStep = false;
-    try {
-        secondStep = new Date(date).getTime() > 0;
-    } catch (e) {
-        secondStep = false;
-    }
-    return firstStep && secondStep;
-}
 
 //
 const updateDaysDesc = async (daysDesc: any[] | null = null) => {

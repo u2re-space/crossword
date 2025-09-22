@@ -202,14 +202,14 @@
 
         // toggle description
         & {
-            .card-content {
+            .card-description {
                 display: none;
                 block-size: 0px;
                 transition: opacity 160ms ease, block-size 160ms ease, display 160ms ease, padding-block 160ms ease;
                 transition-behavior: allow-discrete;
             }
-            &[data-open] .card-content { display:flex; opacity:1; block-size: max-content; padding-block:0.5rem; }
-            @starting-style { &[data-open] .card-content { opacity:0; block-size: 0px; padding-block:0rem; } }
+            &[data-open] .card-description { display:flex; opacity:1; block-size: max-content; padding-block:0.5rem; }
+            @starting-style { &[data-open] .card-description { opacity:0; block-size: 0px; padding-block:0rem; } }
         }
 
         //

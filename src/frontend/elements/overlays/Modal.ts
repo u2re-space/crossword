@@ -2,7 +2,7 @@ import { H } from "fest/lure";
 
 export type FieldSpec = { name: string; label: string; type?: string; placeholder?: string };
 
-export const openFormModal = async (title: string, fields: FieldSpec[], initial: Record<string, any> = {}): Promise<Record<string, any> | null> => {
+export const openFormModal = async (title: string, fields: (FieldSpec | null)[], initial: Record<string, any> = {}): Promise<Record<string, any> | null> => {
     return new Promise((resolve) => {
         const close = () => backdrop?.remove?.();
 
@@ -25,6 +25,7 @@ export const openFormModal = async (title: string, fields: FieldSpec[], initial:
 
         const fieldsHolder = form.querySelector('.modal-fields') as HTMLElement;
         for (const f of fields) {
+            if (!f) continue;
             const value = initial?.[f.name] ?? '';
             const input = H`<input name=${f.name} type=${f.type || 'text'} placeholder=${f.placeholder || ''} value=${String(value)} />` as HTMLInputElement;
             inputs.set(f.name, input);

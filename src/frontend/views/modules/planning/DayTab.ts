@@ -1,6 +1,7 @@
 import { H, M } from "fest/lure";
 import { makeReactive } from "fest/object";
-import { createTaskElement } from "./TaskItem";
+import { TaskItem } from "../items/TaskItem";
+import { isDate } from "../format/Formatted";
 
 //
 export const daysTabs = makeReactive(new Map<string, HTMLElement>()) as Map<string, HTMLElement>;
@@ -9,18 +10,6 @@ export const daysTabs = makeReactive(new Map<string, HTMLElement>()) as Map<stri
 export const bindDayWithElement = (day: any, element: HTMLElement) => {
     console.log("bindDayWithElement", day, element);
     daysTabs?.set?.(day.id, element);
-}
-
-//
-const isDate = (date: any) => {
-    const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
-    let secondStep = false;
-    try {
-        secondStep = new Date(date).getTime() > 0;
-    } catch (e) {
-        secondStep = false;
-    }
-    return firstStep && secondStep;
 }
 
 //
@@ -39,7 +28,7 @@ export const createDayElement = (day: any, sampleTasks: any[]) => {
                 const taskEndTime = new Date(task.properties?.end_time);
                 if (taskBeginTime >= dayBeginTime && taskEndTime <= dayEndTime || !isDate(task.properties?.begin_time) || !isDate(task.properties?.end_time)) {
                     console.log("createTaskElement", task);
-                    return createTaskElement(task);
+                    return TaskItem(task);
                 }
             }
         }

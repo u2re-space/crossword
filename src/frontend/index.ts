@@ -19,16 +19,6 @@ export default async function frontend(mountElement) {
     loadInlineStyle(style);
 
     //
-    /*const content = H`<div>
-        <ui-tabbed-box>
-            <div data-name="timeline" class="c2-surface">${TimelineView()}</div>
-            <div data-name="items" class="c2-surface"><p>Items placeholder</p></div>
-            <div data-name="services" class="c2-surface"><p>Services placeholder</p></div>
-            <div data-name="bonuses" class="c2-surface"><p>Bonuses placeholder</p></div>
-        </ui-tabbed-box>
-    </div>`;*/
-
-    //
     await (async () => {
         //await clearAllInDirectory()?.catch?.(console.warn.bind(console));
         await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));

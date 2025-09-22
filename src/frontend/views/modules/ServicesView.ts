@@ -1,131 +1,17 @@
-import { getDirectoryHandle, H, M, writeFile, remove } from "fest/lure";
-import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
-import { makeReactive, ref } from "fest/object";
-import { MOCElement } from "fest/dom";
-import { makePropertyDesc } from "./format/Formatted";
-
-//
-const SERVICES_DIR = "/data/service/";
-
-//
-const makeEvents = (path: string, title: string, service: any, kind: string) => {
-    return {
-        doDelete: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            if (!confirm(`Delete service "${title}"?`)) return;
-            try { await remove(null, path); } catch (e) { console.warn(e); }
-            MOCElement(ev.target as HTMLElement, '.card')?.remove?.();
-        },
-        doEdit: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            const result = await openFormModal('Edit Service', [
-                { name: 'title', label: 'Title' },
-                { name: 'kind', label: 'Kind' },
-                { name: 'price', label: 'Price' }
-            ], { title, kind, price: service?.properties?.price ?? '' });
-            if (!result) return;
-            const updated = Object.assign(service, { desc: { ...(service?.desc || {}), title: result.title }, kind: result.kind || kind, properties: { ...(service?.properties || {}), price: result.price } });
-            try {
-                const fileName = path?.split?.('/')?.pop?.() || 'service.json';
-                const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
-                await writeFile(null, path, file);
-            } catch (e) { console.warn(e); }
-            MOCElement(ev.target as HTMLElement, '.card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(result.title));
-        }
-    }
-}
-
-
-
-//
-const ServiceItem = (service: any, byKind: string | null = null) => {
-    const title = service?.desc?.title || service?.desc?.name || service?.name || "Service";
-    const kind = service?.kind || "";
-    const path = (service as any)?.__path || `/data/service/${(service?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-    if (byKind && byKind != kind) return;
-
-    //
-    const events = makeEvents(path, title, service, kind);
-    return H`<div data-type="service" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
-        <div class="card-avatar">
-            <div class="avatar-inner">${title?.[0] ?? "S"}</div>
-        </div>
-        <div class="card-props">
-            <ul class="card-title"><li>${title}</li></ul>
-            <ul class="card-kind">${makePropertyDesc("", kind || service?.properties || '', "kind")}</ul>
-        </div>
-        <div class="card-actions">
-            <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
-            <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
-        </div>
-        <div class="card-content">
-            <span class="card-label">Properties:</span><ul>
-                ${makePropertyDesc("Kind", kind || service?.properties, "kind")}
-                ${makePropertyDesc("Price", service?.properties, "price")}
-                ${makePropertyDesc("Quantity", service?.properties, "quantity")}
-                ${makePropertyDesc("Location", service?.properties, "location")}
-                ${makePropertyDesc("Persons", service?.properties, "persons")}
-                ${makePropertyDesc("Actions", service?.properties, "actions")}
-                ${makePropertyDesc("Tasks", service?.properties, "tasks")}
-            </ul>
-            <span class="card-label">Contacts:</span><ul>
-                ${makePropertyDesc("Email", service?.properties?.contacts, "email")}
-                ${makePropertyDesc("Phone", service?.properties?.contacts, "phone")}
-            </ul>
-        </div>
-        <div class="card-description">
-            <span class="card-label">Description:</span>
-            <ul class="card-desc">${makePropertyDesc("", service?.description, "")}</ul>
-        </div>
-    </div>`;
-}
-
-//
-const $ShowServicesByType = (DIR: string, byKind: string | null = null) => {
-    const dataRef: any = makeReactive([]);
-    const load = async () => {
-        dataRef.length = 0;
-
-        //
-        const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
-        const entries = dirHandle ? await Array.fromAsync(await dirHandle?.entries?.() ?? []) : [];
-        await Promise.all(entries?.map?.(async ([fname, handle]: any) => {
-            try {
-                const file = await handle.getFile();
-                const service = JSON.parse(await file?.text?.() || "{}");
-                (service as any).__name = fname;
-                (service as any).__path = `${DIR}${fname}`;
-                if (byKind === 'all' || service.kind === byKind || !byKind) { dataRef.push(service); }
-            } catch { }
-        }));
-    };
-
-    //
-    const services = M(dataRef, (service) => { return ServiceItem(service, byKind); });
-    const item = H`<div data-name="${byKind}" class="tab">${services}</div>`;
-    services.boundParent = item;
-
-    //
-    load().catch(console.warn.bind(console));
-
-    //
-    return item;
-}
-
-//
-const renderTabName = (tabName: string) => {
-    return tabName;
-}
+import { H } from "fest/lure";
+import { ref } from "fest/object";
+import { $ShowItemsByType, renderTabName } from "./format/Formatted";
+import { ServiceItem, SERVICES_DIR } from "./items/ServiceItem";
 
 //
 const tabs = new Map<string, HTMLElement | null | string | any>([
-    ["digital", $ShowServicesByType(SERVICES_DIR, "digital")],
-    ["supporting", $ShowServicesByType(SERVICES_DIR, "supporting")],
-    ["medical", $ShowServicesByType(SERVICES_DIR, "medical")],
-    ["education", $ShowServicesByType(SERVICES_DIR, "education")],
-    ["delivery", $ShowServicesByType(SERVICES_DIR, "delivery")],
-    ["other", $ShowServicesByType(SERVICES_DIR, "other")],
-    ["all", $ShowServicesByType(SERVICES_DIR, "all")],
+    ["digital", $ShowItemsByType(SERVICES_DIR, "digital", ServiceItem)],
+    ["supporting", $ShowItemsByType(SERVICES_DIR, "supporting", ServiceItem)],
+    ["medical", $ShowItemsByType(SERVICES_DIR, "medical", ServiceItem)],
+    ["education", $ShowItemsByType(SERVICES_DIR, "education", ServiceItem)],
+    ["delivery", $ShowItemsByType(SERVICES_DIR, "delivery", ServiceItem)],
+    ["other", $ShowItemsByType(SERVICES_DIR, "other", ServiceItem)],
+    ["all", $ShowItemsByType(SERVICES_DIR, "all", ServiceItem)],
 ]);
 
 //
