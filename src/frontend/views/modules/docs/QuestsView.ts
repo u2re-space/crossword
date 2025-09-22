@@ -3,9 +3,7 @@
 
 import { makeReactive, ref } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
-import { openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/Upload";
-import { pasteIntoDir } from "@rs-frontend/utils/Paste";
-import { bindDropToDir } from "@rs-frontend/utils/Drop";
+import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
 const SOLUTIONS_DIR = "/docs/solutions/";

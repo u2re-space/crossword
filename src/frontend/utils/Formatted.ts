@@ -2,7 +2,7 @@ import { openFormModal } from "@rs-frontend/elements/overlays/Modal";
 import { MOCElement } from "fest/dom";
 import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove, writeFile } from "fest/lure";
-import { bindDropToDir } from "@rs-frontend/utils/Drop";
+import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
 export const beginDragAsText = (ev: DragEvent) => {

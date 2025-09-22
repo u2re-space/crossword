@@ -1,6 +1,7 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
 import { idbDelete, idbGet, idbGetAll, idbPut } from "@rs-core/store/IDBStorage";
 import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
+import type { shareTargetFormData } from "@rs-frontend/utils/HookEvent";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -165,6 +166,19 @@ export const pushPendingToFS = async (entityType: string = "") => {
         }
     }));
 }
+
+// one of handler
+export const postShareTarget = async (payload: shareTargetFormData, entityType: string = "") => {
+    const fd = new FormData();
+    if (payload.text) fd.append('text', payload.text);
+    if (payload.url) fd.append('url', payload.url);
+    if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+    const resp = await fetch('/share-target', { method: 'POST', body: fd });
+    const out = await resp.json().catch(() => ([]));
+    // try flush queued writes for known entity type (current SW uses "bonus")
+    await pushPendingToFS(entityType).catch(console.warn.bind(console));
+    return out;
+};
 
 //
 const fileSystemChannel = new BroadcastChannel('rs-fs');

@@ -4,9 +4,7 @@
 //
 import { H, M, getDirectoryHandle, remove } from "fest/lure";
 import { makeReactive, ref } from "fest/object";
-import { openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/Upload";
-import { pasteIntoDir } from "@rs-frontend/utils/Paste";
-import { bindDropToDir } from "@rs-frontend/utils/Drop";
+import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/workers/WebDavSync";
 
 //
