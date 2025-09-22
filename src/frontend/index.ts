@@ -1,7 +1,7 @@
 import { AppLayout } from "./layout/AppLayout";
 import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
-import { clearAllInDirectory, dropFile } from "fest/lure";
+import { dropFile } from "fest/lure";
 
 //
 import "fest/fl-ui";
@@ -40,10 +40,6 @@ export default async function frontend(mountElement) {
     const currentView = ref([...views?.keys?.()]?.[0]);
     const layout = AppLayout(views, currentView, Sidebar(currentView));
     mountElement?.append?.(layout);
-
-    //
-    const tabbed = layout?.querySelector?.('ui-tabbed-box');
-    tabbed?.openTab?.('timeline');
 
     //
     mountElement?.addEventListener?.("dragover", (event) => {

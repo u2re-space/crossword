@@ -1,7 +1,7 @@
 import { ref } from "fest/object";
 import { H } from "fest/lure";
-import { ContactItem, PERSONS_DIR } from "./items/ContactItem";
-import { $ShowItemsByType, renderTabName } from "./format/Formatted";
+import { ContactItem, PERSONS_DIR } from "../items/ContactItem";
+import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 
 //
 const tabs = new Map<string, HTMLElement | null | string | any>([

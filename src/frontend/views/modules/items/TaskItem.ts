@@ -1,7 +1,5 @@
 import { H } from "fest/lure";
-import { makeEvents, makePropertyDesc } from "../format/Formatted";
-
-
+import { isDate, makeEvents, makePropertyDesc } from "../../../utils/Formatted";
 
 //
 const _LOG_ = (data: any) => {
@@ -10,18 +8,21 @@ const _LOG_ = (data: any) => {
 }
 
 //
-export const bindTaskWithElement = (task: any, element: HTMLElement) => {
-    console.log("bindTaskWithElement", task, element);
+export const insideOfDay = (item: any, dayDesc: any) => {
+    return (
+        new Date(item.properties?.begin_time) >= new Date(dayDesc.properties?.begin_time) &&
+        new Date(item.properties?.end_time) <= new Date(dayDesc.properties?.end_time)
+    ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
 }
 
 // Card-like task item with avatar, variant colors and tap-to-expand
-export const TaskItem = (task: any, byKind: string | null = null) => {
+export const TaskItem = (task: any, dayDesc: any | null = null) => {
     if (!task) return null;
 
     //
     const title = task?.desc?.title || "Task";
     const kind = task?.kind || "";
-    if (!(byKind && byKind == kind || !byKind || byKind == "all" || !kind)) return;
+    if (dayDesc && !insideOfDay(task, dayDesc)) return;
 
     //
     const path = (task as any)?.__path || `/timeline/${(task?.desc?.name || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;

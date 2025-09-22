@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import { makeEvents, makePropertyDesc } from "../format/Formatted";
+import { makeEvents, makePropertyDesc } from "../../../utils/Formatted";
 
 //
 export const SERVICES_DIR = "/data/service/";
