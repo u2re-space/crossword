@@ -3,6 +3,70 @@
 //
 @layer rs-layout {
 
+    nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        background-color: var(--c2-surface);
+        box-shadow: 0 0 0.125rem 0 rgba(0, 0, 0, 0.1);
+        user-select: none;
+
+        ul {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            padding: 0px;
+            border-radius: 0.25rem;
+            background-color: var(--c2-surface);
+            inline-size: stretch;
+            user-select: none;
+        }
+
+        li {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            padding: 0px;
+            border-radius: 0.25rem;
+            inline-size: stretch;
+            user-select: none;
+        }
+
+        a {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            color: --c2-on-surface(0.0, var(--current, currentColor));
+            background-color: --c2-surface(0.0, var(--current, currentColor));
+            inline-size: stretch;
+            user-select: none;
+        }
+
+        a:visited {
+            background-color: --c2-surface(0.0, var(--current, currentColor));
+        }
+
+        a:link {
+            background-color: --c2-surface(0.0, var(--current, currentColor));
+        }
+
+        a:focus {
+            background-color: --c2-surface(0.02, var(--current, currentColor));
+        }
+
+        a:hover {
+            background-color: --c2-surface(0.05, var(--current, currentColor));
+        }
+
+        a:active {
+            background-color: --c2-surface(0.08, var(--current, currentColor));
+        }
+    }
+
     //
     ui-box-with-sidebar {
         & {
