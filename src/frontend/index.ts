@@ -1,7 +1,6 @@
 import { AppLayout } from "./layout/AppLayout";
 import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./views/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
-import { dropFile } from "fest/lure";
 
 //
 import "fest/fl-ui";
@@ -12,6 +11,30 @@ import { sampleDays } from "@rs-core/$test/Days";
 import { sampleTasks, writeSampleTask } from "@rs-core/$test/Tasks";
 import { Sidebar } from "./views/Sidebar";
 import { ref } from "fest/object";
+
+//
+import { dropFile } from "fest/lure";
+
+//
+const implementTestDrop = (mountElement: HTMLElement) => {
+    //
+    mountElement?.addEventListener?.("dragover", (event) => {
+        const eventTarget = event?.target as HTMLElement;
+        if (eventTarget?.matches?.("#app") || eventTarget?.querySelector?.("#app")) {
+            event.preventDefault();
+        }
+    });
+
+    //
+    mountElement?.addEventListener?.("drop", (event) => {
+        const eventTarget = event?.target as HTMLElement;
+        if (eventTarget?.matches?.("#app") || eventTarget?.querySelector?.("#app")) {
+            event.preventDefault();
+            const file = event.dataTransfer?.files[0];
+            if (file && file.type.startsWith("image/")) { dropFile(file, "/images/")?.catch?.(console.warn.bind(console)); }
+        }
+    });
+}
 
 //
 export default async function frontend(mountElement) {
@@ -40,20 +63,5 @@ export default async function frontend(mountElement) {
     const currentView = ref([...views?.keys?.()]?.[0]);
     const layout = AppLayout(views, currentView, Sidebar(currentView));
     mountElement?.append?.(layout);
-
-    //
-    mountElement?.addEventListener?.("dragover", (event) => {
-        if (event?.target?.matches?.("#app") || event?.target?.querySelector?.("#app")) {
-            event.preventDefault();
-        }
-    });
-
-    //
-    mountElement?.addEventListener?.("drop", (event) => {
-        if (event?.target?.matches?.("#app") || event?.target?.querySelector?.("#app")) {
-            event.preventDefault();
-            const file = event.dataTransfer.files[0];
-            if (file) { dropFile(file, "/images/"); }
-        }
-    });
+    implementTestDrop(mountElement);
 }

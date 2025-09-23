@@ -1,8 +1,8 @@
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeEntityType } from "@rs-core/service/recognize/EntityTypeDetect";
-import { recognizeKindOfEntity } from "@rs-core/service/recognize/KindOfEntity";
-import { resolveEntity } from "@rs-core/service/recognize/EntityItemResolve";
-import { idbStorage } from "./lib/idbQueue";
+import { recognizeEntityType } from "@rs-core/service/recognize/entity/EntityTypeDetect";
+import { recognizeKindOfEntity } from "@rs-core/service/recognize/entity/KindOfEntity";
+import { resolveEntity } from "@rs-core/service/recognize/entity/EntityItemResolve";
+import { idbStorage } from "./lib/IDBQueue";
 import { dataCategories } from "@rs-core/service/Cache";
 import { idbGet } from "@rs-core/store/IDBStorage";
 

@@ -1,16 +1,16 @@
-import { idbStorage } from "./idbQueue";
+import { idbStorage } from "./IDBQueue";
 
 //
 const boardcastChannel = new BroadcastChannel('geolocation');
 
 //
 export const startTrackingRemote = () => {
-    boardcastChannel.postMessage({type: 'start'});
+    boardcastChannel.postMessage({ type: 'start' });
 }
 
 //
 export const stopTrackingRemote = () => {
-    boardcastChannel.postMessage({type: 'stop'});
+    boardcastChannel.postMessage({ type: 'stop' });
 }
 
 //
