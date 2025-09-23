@@ -1,6 +1,7 @@
 export const PHONE_CANDIDATE_RE = /\+?\d[\d\s().\-]{4,}\d/g;
 export const EXT_CUT_RE = /(доб\.?|доп\.?|ext\.?|extension)\s*[:#\-x]*\s*\d+.*/i;
 
+//
 export const normalizeOne = (input: string, options: any = {}) => {
     if (input == null) return null;
     let s = String(input).trim();

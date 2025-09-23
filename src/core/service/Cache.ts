@@ -1,7 +1,6 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
 import { idbDelete, idbGet, idbGetAll, idbPut } from "@rs-core/store/IDBStorage";
-import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
-import type { shareTargetFormData } from "@rs-frontend/utils/HookEvent";
+import { readJSONs, writeJSON, type shareTargetFormData } from "@rs-core/workers/FileSystem";
 
 //
 export const TIMELINE_DIR = "/timeline/";

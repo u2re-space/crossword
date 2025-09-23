@@ -108,7 +108,7 @@ export const formatByCondition = (label: string | any, text: string | string[] |
 }
 
 //
-const isNotEmpty = (frag: any) => {
+export const isNotEmpty = (frag: any) => {
     return !!(typeof frag == "string" ? frag?.trim?.() : frag);
 }
 

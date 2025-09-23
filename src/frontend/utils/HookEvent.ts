@@ -1,17 +1,4 @@
-//
-export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    if (typeof item === 'string') {
-        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
-            const arrayBuffer = Uint8Array.fromBase64(text.split(';base64,')[1]);
-            const type = item.split(';')[0].split(':')[1];
-            await handler({ file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
-            return;
-        }
-    } else
-        if (item instanceof File || item instanceof Blob) {
-            await handler({ file: item } as any);
-        }
-}
+import { handleDataByType, type shareTargetFormData } from "@rs-core/workers/FileSystem";
 
 //
 export const handleDataTransferFiles = async (files: (File | Blob)[] | FileList, handler: (payload: shareTargetFormData) => Promise<void>) => {
@@ -27,13 +14,6 @@ export const handleDataTransferItemList = async (items: DataTransferItemList, ha
     for (const item of items) {
         handleDataByType(item, handler);
     }
-}
-
-//
-export interface shareTargetFormData {
-    text?: string;
-    url?: string;
-    file?: File | Blob;
 }
 
 //

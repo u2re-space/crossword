@@ -1,7 +1,4 @@
-import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
-import { safe } from "fest/object";
-import { writeFile, getDir, getDirectoryHandle } from "fest/lure";
-
+import { getDirectoryHandle } from "fest/lure";
 
 //
 export const getMarkDownFromFile = async (handle: any) => {
@@ -82,4 +79,26 @@ export const writeMarkDown = async (dir: any | null, data: any) => {
     const fileWriter = await handle?.createWritable?.();
     await fileWriter?.write?.(new Blob([data], { type: 'text/markdown' }));
     await fileWriter?.close?.();
+}
+
+//
+export interface shareTargetFormData {
+    text?: string;
+    url?: string;
+    file?: File | Blob;
+}
+
+//
+export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    if (typeof item === 'string') {
+        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
+            const arrayBuffer = Uint8Array.fromBase64(text.split(';base64,')[1]);
+            const type = item.split(';')[0].split(':')[1];
+            return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
+        } else
+            if (URL.canParse(item)) { return handler({ url: item } as any); }
+    } else
+        if (item instanceof File || item instanceof Blob) {
+            return handler({ file: item } as any);
+        }
 }
