@@ -102,6 +102,12 @@ export const formatPhoneList = (label: string | any, phones: string | string[] |
 //
 export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
     if (typeof text == "object" && key && text?.[key] != null) { text = text?.[key] ?? text; }
+
+    if (key == "begin_time") { return; }
+    if (key == "end_time") {
+        return;
+    }
+
     if (key == "phone") {
         return formatPhoneList(label, text);
     }

@@ -4,11 +4,10 @@ import { makeReactive, ref } from "fest/object";
 //
 import "@rs-core/$test/Tasks";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
-import { TaskItem, insideOfDay } from "../../display/items/TaskItem";
+import { TaskItem } from "../../display/items/TaskItem";
+import { insideOfDay } from "../../display/typed/Cards";
 import { SplitTimelinesByDays } from "./Splitter";
-
-//
-const TIMELINE_DIR = "/timeline/";
+import { TIMELINE_DIR } from "@rs-core/service/Cache";
 
 //
 const loadAllTimelines = async (DIR: string) => {
