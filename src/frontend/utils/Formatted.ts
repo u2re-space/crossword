@@ -1,6 +1,6 @@
 import { openFormModal } from "@rs-frontend/elements/display/edits/Modal";
 import { MOCElement } from "fest/dom";
-import { makeReactive } from "fest/object";
+import { makeReactive, observableByMap, observableBySet } from "fest/object";
 import { getDirectoryHandle, H, M, remove, writeFile } from "fest/lure";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 
@@ -67,36 +67,40 @@ export const wrapAsListItem = (label: string | any, item: any) => {
     return H`<li>${item}</li>`;
 }
 
+//
+export const listFormatter = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, formatter: (frag: any) => any) => {
+    if (Array.isArray(text)) {
+        return wrapAsListItem(label, M(text, (frag: any) => formatter(frag)));
+    }
+    if (text instanceof Map) {
+        return wrapAsListItem(label, M(observableByMap(text), (frag: any) => formatter(frag)));
+    }
+    if (text instanceof Set) {
+        return wrapAsListItem(label, M(observableBySet(text), (frag: any) => formatter(frag)));
+    }
+    return wrapAsListItem(label, formatter(text));
+}
 
 
 //
-export const formatTextList = (label: string | any, text: string | string[] | any[]) => {
-    if (typeof text == "string") {
-        return wrapAsListItem(label, formatText(text));
-    }
-    return M(text, (frag: any) => wrapAsListItem(label, formatText(frag)));
+export const formatTextList = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>) => {
+    return listFormatter(label, text, formatText);
 };
 
 //
-export const formatEmailList = (label: string | any, emails: string | string[] | any[]) => {
-    if (typeof emails == "string") {
-        return wrapAsListItem(label, formatEmail(emails));
-    }
-    return M(emails, (email: string) => wrapAsListItem(label, formatEmail(email)));
+export const formatEmailList = (label: string | any, emails: string | string[] | Set<any> | any[] | Map<any, any>) => {
+    return listFormatter(label, emails, formatEmail);
 }
 
 //
-export const formatPhoneList = (label: string | any, phones: string | string[] | any[]) => {
-    if (typeof phones == "string") {
-        return wrapAsListItem(label, formatPhone(phones));
-    }
-    return M(phones, (phone: string) => wrapAsListItem(label, formatPhone(phone)));
+export const formatPhoneList = (label: string | any, phones: string | string[] | Set<any> | any[] | Map<any, any>) => {
+    return listFormatter(label, phones, formatPhone);
 }
 
 
 
 //
-export const formatByCondition = (label: string | any, text: string | string[] | any[], key: string | null = null) => {
+export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
     if (typeof text == "object" && key && text?.[key] != null) { text = text?.[key] ?? text; }
     if (key == "phone") {
         return formatPhoneList(label, text);
@@ -117,21 +121,6 @@ export const makePropertyDesc = (label: string | any, property: any, key?: strin
     let basis = (key ? property?.[key] : property);
     if (!isNotEmpty(basis) && typeof property != "object") { basis = property; }
     if (!isNotEmpty(basis)) return;
-    if (Array.isArray(basis)) {
-        return M(basis, (frag) => {
-            return isNotEmpty(frag) ? (formatByCondition(label, frag, key)) : null;
-        });
-    }
-    if (basis instanceof Map) {
-        return M([...basis?.entries?.()], ([prop, frag]) => {
-            return isNotEmpty(frag) ? (formatByCondition(label || prop, frag, key)) : null;
-        });
-    }
-    if (typeof basis == "object") {
-        return M([...Object.entries(basis)], ([prop, frag]) => {
-            return isNotEmpty(frag) ? (formatByCondition(label || prop, frag, key)) : null;
-        });
-    }
     return formatByCondition(label, basis, key);
 }
 
