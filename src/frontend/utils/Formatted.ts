@@ -1,4 +1,4 @@
-import { openFormModal } from "@rs-frontend/views/edits/Modal";
+import { openFormModal } from "@rs-frontend/elements/display/edits/Modal";
 import { MOCElement } from "fest/dom";
 import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove, writeFile } from "fest/lure";

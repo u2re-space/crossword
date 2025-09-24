@@ -13,6 +13,12 @@ export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob
 }
 
 //
+export const ableToShowJPEG = async (data_url: string) => { // @ts-ignore
+    const bitmap: any = await createImageBitmap(new Blob([Uint8Array.fromBase64(data_url?.replace?.('data:image/jpeg;base64,', ""), { alphabet: "base64" })], { type: "image/png" }))?.catch?.(e => { console.warn(e); return null; });
+    return bitmap?.width > 0 && bitmap?.height > 0;
+}
+
+//
 export const recognizeEntityType = async (gptResponses: GPTResponses) => {
     //
     const firstStep = [

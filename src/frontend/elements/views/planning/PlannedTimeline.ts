@@ -3,8 +3,8 @@ import { makeReactive, ref } from "fest/object";
 
 //
 import "@rs-core/$test/Tasks";
-import { bindDropToDir } from "@rs-frontend/utils/Drop";
-import { TaskItem, insideOfDay } from "../items/TaskItem";
+import { bindDropToDir } from "@rs-frontend/utils/FileOps";
+import { TaskItem, insideOfDay } from "../../display/items/TaskItem";
 import { SplitTimelinesByDays } from "./Splitter";
 
 //

@@ -1,4 +1,4 @@
-import { H, I, getDirectoryHandle } from "fest/lure";
+import { getDirectoryHandle, H, I } from "fest/lure";
 import { postShareTarget } from "@rs-core/service/Cache";
 import { handleClipboardItems } from "@rs-frontend/utils/HookEvent";
 

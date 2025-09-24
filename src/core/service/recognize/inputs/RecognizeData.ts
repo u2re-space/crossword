@@ -95,19 +95,11 @@ export const recognizeByInstructions = async (msg, settings, instructions: strin
 }; // async response
 
 //
-export const recognizeImage = async (msg, settings, sendResponse?) => {
+export const recognizeImageData = async (msg, settings, sendResponse?) => {
     return recognizeByInstructions(msg, settings, IMAGE_INSTRUCTION, sendResponse);
 };
 
 //
-export const convertDataToMarkdown = async (msg, settings, sendResponse?) => {
+export const convertTextualData = async (msg, settings, sendResponse?) => {
     return recognizeByInstructions(msg, settings, DATA_CONVERSION_INSTRUCTION, sendResponse);
 };
-
-
-
-// TODO: more to another file...
-export const ableToShowJPEG = async (data_url: string) => { // @ts-ignore
-    const bitmap: any = await createImageBitmap(new Blob([Uint8Array.fromBase64(data_url?.replace?.('data:image/jpeg;base64,', ""), { alphabet: "base64" })], { type: "image/png" }))?.catch?.(e => { console.warn(e); return null; });
-    return bitmap?.width > 0 && bitmap?.height > 0;
-}

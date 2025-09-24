@@ -1,5 +1,5 @@
-import { AppLayout } from "./layout/AppLayout";
-import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./views/Views";
+import { AppLayout } from "./elements/layouts/AppLayout";
+import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 
 //
@@ -9,7 +9,7 @@ import "fest/fl-ui";
 import style from "./index.scss?inline";
 import { sampleDays } from "@rs-core/$test/Days";
 import { sampleTasks, writeSampleTask } from "@rs-core/$test/Tasks";
-import { Sidebar } from "./views/Sidebar";
+import { Sidebar } from "./elements/layouts/Sidebar";
 import { ref } from "fest/object";
 
 //
