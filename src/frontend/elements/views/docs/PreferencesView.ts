@@ -8,14 +8,6 @@ import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from 
 import { currentWebDav } from "@rs-core/workers/WebDavSync";
 
 //
-const PLANS_DIR = "/docs/plans/";
-const IDEAS_DIR = "/docs/ideas/";
-const NOTES_DIR = "/docs/notes/";
-const PREFERENCES_DIR = "/docs/preferences/";
-
-
-
-//
 const isDate = (date: any) => {
     return date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
 }
@@ -93,12 +85,8 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
 }
 
 //
-const tabs = new Map<string, HTMLElement | null | string | any>([
-    ["plans", $ShowPreferencesByDir(PLANS_DIR, "plans")],
-    ["ideas", $ShowPreferencesByDir(IDEAS_DIR, "ideas")],
-    ["notes", $ShowPreferencesByDir(NOTES_DIR, "notes")],
-    ["all", $ShowPreferencesByDir(PREFERENCES_DIR, "all")]
-]);
+const kinds = ["plans", "ideas", "notes", "preferences", "all"] as const;
+const tabs = new Map<string, HTMLElement | null | string | any>(kinds?.map?.(kind => [kind, $ShowPreferencesByDir("/docs/" + kind, kind)]));
 
 //
 const renderTabName = (tabName: string) => {
@@ -148,7 +136,7 @@ export const PreferencesView = (currentTab?: any | null) => {
     </div>
     </section>` as HTMLElement;
 
-    const tabDirOf = (name: string) => ({ plans: PLANS_DIR, ideas: IDEAS_DIR, notes: NOTES_DIR, all: PREFERENCES_DIR } as any)[name] || PREFERENCES_DIR;
+    const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "plans"));
     const getCurrentDir = () => tabDirOf((currentTab?.value || 'plans'));
 
     section.addEventListener('paste', async (ev: ClipboardEvent) => {
@@ -170,7 +158,7 @@ export const PreferencesView = (currentTab?: any | null) => {
         } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-mount')?.addEventListener('click', async () => {
-        try { for (const d of [PLANS_DIR, IDEAS_DIR, NOTES_DIR, PREFERENCES_DIR]) await getDirectoryHandle(null, d, { create: true } as any); } catch (e) { console.warn(e); }
+        try { for (const d of kinds.map(kind => "/docs/" + kind)) { await getDirectoryHandle(null, d, { create: true } as any); } } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-sync')?.addEventListener('click', async () => {
         try {
@@ -183,3 +171,4 @@ export const PreferencesView = (currentTab?: any | null) => {
 
     return section;
 }
+

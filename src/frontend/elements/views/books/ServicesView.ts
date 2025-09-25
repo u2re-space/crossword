@@ -4,15 +4,8 @@ import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { ServiceItem, SERVICES_DIR } from ".././../display/items/ServiceItem";
 
 //
-const tabs = new Map<string, HTMLElement | null | string | any>([
-    ["digital", $ShowItemsByType(SERVICES_DIR, "digital", ServiceItem)],
-    ["supporting", $ShowItemsByType(SERVICES_DIR, "supporting", ServiceItem)],
-    ["medical", $ShowItemsByType(SERVICES_DIR, "medical", ServiceItem)],
-    ["education", $ShowItemsByType(SERVICES_DIR, "education", ServiceItem)],
-    ["delivery", $ShowItemsByType(SERVICES_DIR, "delivery", ServiceItem)],
-    ["other", $ShowItemsByType(SERVICES_DIR, "other", ServiceItem)],
-    ["all", $ShowItemsByType(SERVICES_DIR, "all", ServiceItem)],
-]);
+const kinds = ["digital", "supporting", "medical", "education", "delivery", "other", "all"] as const;
+const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(SERVICES_DIR, kind, ServiceItem)]));
 
 //
 export const ServicesView = (currentTab?: any | null) => {

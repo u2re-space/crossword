@@ -4,12 +4,8 @@ import { ContactItem, PERSONS_DIR } from "../../display/items/ContactItem";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 
 //
-const tabs = new Map<string, HTMLElement | null | string | any>([
-    ["specialist", $ShowItemsByType(PERSONS_DIR, "specialist", ContactItem)],
-    ["delivery", $ShowItemsByType(PERSONS_DIR, "delivery", ContactItem)],
-    ["other", $ShowItemsByType(PERSONS_DIR, "other", ContactItem)],
-    ["all", $ShowItemsByType(PERSONS_DIR, "all", ContactItem)]
-]);
+const kinds = ["specialist", "delivery", "other", "all"] as const;
+const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(PERSONS_DIR, kind, ContactItem)]));
 
 //
 export const ContactsView = (currentTab?: any | null) => {

@@ -6,12 +6,6 @@ import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
-const SOLUTIONS_DIR = "/docs/solutions/";
-const QUEST_DIR = "/docs/quests/";
-const CODING_DIR = "/docs/questions/coding/";
-const MATH_DIR = "/docs/questions/math/";
-
-//
 const makeEvents = (path: string, name: string) => {
     return {
         doDelete: async (ev: Event) => {
@@ -87,13 +81,8 @@ const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
 }
 
 //
-const tabs = new Map<string, HTMLElement | null | string | any>([
-    ["questions", $ShowQuestsByType(QUEST_DIR, "questions")],
-    ["quests", $ShowQuestsByType(QUEST_DIR, "quests")],
-    ["coding", $ShowQuestsByType(CODING_DIR, "coding")],
-    ["math", $ShowQuestsByType(MATH_DIR, "math")],
-    ["solutions", $ShowQuestsByType(SOLUTIONS_DIR, "solutions")],
-]);
+const kinds = ["questions", "quests", "coding", "math", "solutions", "all"] as const;
+const tabs = new Map<string, HTMLElement | null | string | any>(kinds?.map?.(kind => [kind, $ShowQuestsByType("/docs/" + kind, kind)]));
 
 //
 const renderTabName = (tabName: string) => {
@@ -128,7 +117,7 @@ export const QuestsView = (currentTab?: any | null) => {
     </div>
     </section>` as HTMLElement;
 
-    const tabDirOf = (name: string) => ({ questions: QUEST_DIR, quests: QUEST_DIR, coding: CODING_DIR, math: MATH_DIR, solutions: SOLUTIONS_DIR } as any)[name] || QUEST_DIR;
+    const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "quests"));
     const getCurrentDir = () => tabDirOf((currentTab?.value || 'quests'));
 
     section.addEventListener('paste', async (ev: ClipboardEvent) => {
@@ -149,7 +138,7 @@ export const QuestsView = (currentTab?: any | null) => {
         } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-mount')?.addEventListener('click', async () => {
-        try { for (const d of [SOLUTIONS_DIR, QUEST_DIR, CODING_DIR, MATH_DIR]) await getDirectoryHandle(null, d, { create: true } as any); } catch (e) { console.warn(e); }
+        try { for (const d of kinds.map(kind => "/docs/" + kind)) { await getDirectoryHandle(null, d, { create: true } as any); } } catch (e) { console.warn(e); }
     });
     section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();

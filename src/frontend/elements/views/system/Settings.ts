@@ -22,7 +22,7 @@ const DEFAULTS: AppSettings = {
     ai: {
         apiKey: "",
         baseUrl: "",
-        model: "gpt-5",
+        model: "gpt-5-mini",
         customModel: ""
     },
     webdav: {
