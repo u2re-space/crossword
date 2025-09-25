@@ -2,6 +2,14 @@ import { insideOfDay, makePropertyDesc } from "@rs-frontend/utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/display/edits/EntityEdit";
 import { getLinkedEntities } from "@rs-frontend/utils/Links";
 import { H, M } from "fest/lure";
+import { marked } from "marked"
+import markedKatex from "marked-katex-extension";
+
+//
+marked.use(markedKatex({
+    throwOnError: false,
+    nonStandard: true
+}) as any);
 
 //
 export const _LOG_ = (data: any) => {
@@ -26,6 +34,19 @@ const makeObjectEntries = (object: any) => {
     return [];
 }
 
+function countLines(text) {
+    if (!text) {
+        return 0; // Handle empty or null input
+    }
+    return text.split(/\r\n|\r|\n/).length;
+}
+
+//
+const wrapBySpan = (text: string) => {
+    if (!text) return "";
+    return `<span>${text}</span>`;
+}
+
 //
 export const MakeCardElement = (label: string, item: any, events: any) => {
     if (!item) return null;
@@ -33,7 +54,12 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
     const begin_time = item?.properties?.begin_time || "";
     const end_time = item?.properties?.end_time || "";
     const variant = item?.desc?.variant || "default";
-    const desc = item?.desc?.description || "";
+    let description = item?.description || item?.desc?.description || "";
+
+    //
+    if (countLines(description) <= 1) {
+        description = description?.split?.(",");
+    }
 
     let linkedList: any = null;
     const renderLinks = (links: any[]) => {
@@ -72,7 +98,8 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
     </div>
     ${linksPlaceholder}
     <div class="card-description">
-        <span class="card-label">Description: </span><ul>${makePropertyDesc("", item?.desc, "description")}</ul>
+        <span class="card-label">Description: </span>
+        ${H(marked.parse((Array.isArray(description) ? description?.map?.((frag) => wrapBySpan(frag?.trim?.()))?.join("<br>") : wrapBySpan(description?.trim?.()))?.trim?.() || ""))}
     </div>
 </div>`;
     return card;

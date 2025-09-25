@@ -3,12 +3,12 @@
 //
 
 // Shared primitives
-export type Id = string;
-export type IdArray = Id[];
+export type Id = string | number;
+export type IdArray = Id[] | number | number[];
 export type Tags = string[];
 export type Images = string[]; // URIs
 export type Timestamp = number | string; // ISO date-time string allowed
-export type DescriptionValue = string | string[] | unknown | unknown[];
+export type DescriptionValue = string | string[] | any | any[] | unknown | unknown[];
 
 export interface Coordinates {
     latitude: number;
@@ -87,7 +87,7 @@ export interface TaskProperties {
     rewards?: IdArray;
     bonuses?: IdArray;
     actions?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
 }
 
 export interface Task extends EntityBase<TaskKind, TaskProperties> { }
@@ -115,10 +115,10 @@ export interface LocationProperties {
     floor?: number;
     room?: number;
     square?: number;
-    price?: number;
     members?: IdArray;
     services?: IdArray;
     rewards?: IdArray;
+    prices?: IdArray;
 }
 
 export interface LocationEntity extends EntityBase<LocationKind, LocationProperties> { }
@@ -158,7 +158,7 @@ export interface MarketProperties {
     feedbacks?: IdArray;
     bonuses?: IdArray;
     rewards?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
     purpose: MarketPurpose;
     permissions?: Permissions;
     availability?: Availability;
@@ -177,7 +177,7 @@ export interface PlaceProperties {
     feedbacks?: IdArray;
     bonuses?: IdArray;
     rewards?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
     purpose?: MarketPurpose;
     permissions?: Permissions;
     availability?: Availability;
@@ -198,9 +198,8 @@ export interface ServiceProperties {
     actions?: IdArray;
     bonuses?: IdArray;
     rewards?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
     feedbacks?: IdArray;
-    price?: number;
     quantity?: number;
 }
 
@@ -247,7 +246,7 @@ export interface VehicleProperties {
     rewards?: IdArray;
     feedbacks?: IdArray;
     description?: DescriptionValue;
-    price?: number;
+    prices?: IdArray;
     quantity?: number;
 }
 
@@ -264,7 +263,7 @@ export interface EventProperties {
     actions?: IdArray;
     bonuses?: IdArray;
     rewards?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
 }
 
 export interface EventEntity extends EntityBase<EventKind, EventProperties> { }
@@ -277,7 +276,7 @@ export interface ItemProperties {
     contacts?: Contact;
     suitableFor?: IdArray;
     feedbacks?: IdArray;
-    price?: number;
+    prices?: IdArray;
     quantity?: number;
 }
 
@@ -293,7 +292,7 @@ export interface ActionProperties {
     whatUsed?: IdArray;
     bonuses?: IdArray;
     rewards?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
 }
 
 export interface ActionEntity extends EntityBase<ActionKind, ActionProperties> { }
@@ -352,7 +351,7 @@ export interface LotteryProperties {
     timeLimit?: Timestamp;
     rewards?: IdArray;
     bonuses?: IdArray;
-    costs?: IdArray;
+    prices?: IdArray;
 }
 
 export interface LotteryEntity extends EntityBase<LotteryKind, LotteryProperties> { }

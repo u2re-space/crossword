@@ -51,11 +51,11 @@ Such idea used for make simpler search, filtering and sorting of entities.
 
 //
 export const NAME_SCHEME = { type: "string", minLength: 1 };
-export const DESCRIPTION_SCHEME = { type: "string|string[]|any|any[]" };
-export const ICON_SCHEME = { type: "string" };
-export const TAGS_SCHEME = { type: "array", items: { type: "string" } };
+export const DESCRIPTION_SCHEME = { type: "MARKDOWN_TEXT|MARKDOWN_TEXT[]", format: "markdown" };
+export const ICON_SCHEME = { type: "string|number" };
+export const TAGS_SCHEME = { type: "array", items: { type: "string|number" } };
 export const IMAGE_SCHEME = { type: "array", items: { type: "string", format: "uri" } };
-export const WHERE_IS_SCHEME = { type: "array", items: { type: "string" } };
+export const WHERE_IS_SCHEME = { type: "array", items: { type: "string|number" } };
 export const SERVICES_SCHEME = { type: "array", items: { type: "string" } };
 export const MEMBERS_SCHEME = { type: "array", items: { type: "string" } };
 export const TASKS_SCHEME = { type: "array", items: { type: "string" } };
@@ -65,7 +65,7 @@ export const DURATION_SCHEME = { type: "number", minimum: 0 };
 export const LEVEL_SCHEME = { type: "number", minimum: 0, maximum: 100 };
 export const USAGE_SCHEME = { type: "string" };
 export const PERSON_SCHEME = { type: "array", items: { type: "string" } };
-export const BONUSES_SCHEME = { type: "array", items: { type: "string" } };
+export const BONUSES_SCHEME = { type: "array|number", items: { type: "string|number" } };
 export const FEEDBACKS_SCHEME = { type: "array", items: { type: "string" } };
 export const TITLE_SCHEME = { type: "string" };
 
@@ -130,8 +130,8 @@ export const SHARED_DEFS = {
     Contact: CONTACT_SCHEME,
     Tags: TAGS_SCHEME,
     Images: IMAGE_SCHEME,
-    Id: { type: "string" },
-    IdArray: { type: "array", items: { type: "string" } },
+    Id: { type: "string|number" },
+    IdArray: { type: "string|number|array", items: { type: "string|number" } },
     LocationRef: {
         anyOf: [
             { $ref: "#/$defs/Coordinates" },
@@ -366,7 +366,6 @@ export const JSON_SCHEMES = {
                 feedbacks: FEEDBACKS_SCHEME,
 
                 //
-                price: { type: "number" },
                 quantity: { type: "number" }
             },
             required: ["kind", "location"]
@@ -384,7 +383,6 @@ export const JSON_SCHEMES = {
                 tasks: { $ref: "#/$defs/IdArray" },
 
                 //
-                price: { type: "number" },
                 contacts: { $ref: "#/$defs/Contact" },
                 services: { $ref: "#/$defs/IdArray" },
                 location: { $ref: "#/$defs/LocationRef" },
@@ -398,6 +396,7 @@ export const JSON_SCHEMES = {
                 },
 
                 //
+                prices: BONUSES_SCHEME,
                 actions: ACTIONS_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
             },
@@ -433,10 +432,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME,
-                description: DESCRIPTION_SCHEME,
-
-                //
-                price: { type: "number" },
+                prices: BONUSES_SCHEME,
                 quantity: { type: "number" }
             },
             required: ["kind", "location"]
@@ -465,8 +461,6 @@ export const JSON_SCHEMES = {
 
                 //
                 actions: ACTIONS_SCHEME,
-
-                //
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
                 prices: BONUSES_SCHEME
@@ -496,7 +490,7 @@ export const JSON_SCHEMES = {
                 feedbacks: FEEDBACKS_SCHEME,
 
                 //
-                price: { type: "number" }, // if currency, used for exchange (RUB/EUR/USD)
+                prices: BONUSES_SCHEME, // if currency, used for exchange (RUB/EUR/USD)
                 quantity: { type: "number" } // if currency, how many money you has, negative value is used for debt
             },
             required: ["location"]
@@ -525,9 +519,9 @@ export const JSON_SCHEMES = {
                 whatUsed: { $ref: "#/$defs/IdArray" },
 
                 //
+                prices: BONUSES_SCHEME,
                 bonuses: BONUSES_SCHEME,
-                rewards: BONUSES_SCHEME,
-                prices: BONUSES_SCHEME
+                rewards: BONUSES_SCHEME
             },
             required: ["location"]
         },
@@ -558,6 +552,7 @@ export const JSON_SCHEMES = {
                 tasks: { $ref: "#/$defs/IdArray" },
 
                 //
+                prices: BONUSES_SCHEME,
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
@@ -615,6 +610,7 @@ export const JSON_SCHEMES = {
                 actions: ACTIONS_SCHEME,
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
+                prices: BONUSES_SCHEME,
 
                 //
                 contacts: { $ref: "#/$defs/Contact" }
@@ -654,6 +650,7 @@ export const JSON_SCHEMES = {
                 usageLimit: { type: "number" },
                 timeLimit: { $ref: "#/$defs/Timestamp" },
                 image: { $ref: "#/$defs/Images" },
+                prices: BONUSES_SCHEME,
                 entityLocation: { $ref: "#/$defs/LocationRef" }
             },
             required: ["entity", "location"]
@@ -665,6 +662,7 @@ export const JSON_SCHEMES = {
             kind: { enum: KIND_MAP.reward },
             description: DESCRIPTION_SCHEME,
             properties: {
+                prices: BONUSES_SCHEME,
                 requirements: { $ref: "#/$defs/IdArray" },
                 location: { $ref: "#/$defs/LocationRef" },
                 usageLimit: { type: "number" },
