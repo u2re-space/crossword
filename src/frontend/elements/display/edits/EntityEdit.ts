@@ -68,7 +68,7 @@ export const makeEvents = (label: string, path: string, title: string, basis: an
 
             //
             const initials = objectExcludeNotExists({
-                title, kind, price: properties?.price || 0,
+                title, kind, price: properties?.price || null,
                 description: basis?.desc?.description || "",
                 begin_time: properties?.begin_time || "",
                 end_time: properties?.end_time || "",

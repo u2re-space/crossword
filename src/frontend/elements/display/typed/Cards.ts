@@ -16,6 +16,18 @@ export const insideOfDay = (item: any, dayDesc: any) => {
     ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
 }
 
+
+
+//
+export const MAKE_LABEL = (label: string) => {
+    //return label?.replace?.(/_/g, " ");
+
+    // by default, just capitalize first letter and replace `_` with ` `
+    return label?.charAt?.(0)?.toUpperCase?.() + label?.slice?.(1)?.replace?.(/_/g, " ");
+}
+
+
+
 //
 export const MakeCardElement = (label: string, item: any, events: any) => {
     if (!item) return null;
@@ -47,7 +59,7 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
-        <span class="card-label">Properties:</span><ul>${M([...Object.entries(objectExcludeNotExists(item?.properties))], (frag: any) => makePropertyDesc("", frag?.[1], frag?.[0]))}</ul>
+        <span class="card-label">Properties:</span><ul>${M([...Object.entries(objectExcludeNotExists(item?.properties))], (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
     <div class="card-description">
         <span class="card-label">Description: </span><ul class="card-desc">${makePropertyDesc("", desc, "")}</ul >
