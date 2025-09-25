@@ -58,11 +58,11 @@ const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
         dataRef.length = 0;
 
         //
-        const handle = await getDirectoryHandle(null, DIR).catch(() => null as any);
-        const entries = handle ? await Array.fromAsync(handle?.entries?.() ?? []) : [];
-        await Promise.all(entries?.map?.(async ([fname, fhandle]: any) => {
+        const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
+        const entries = dirHandle ? await Array.fromAsync(dirHandle?.entries?.() ?? []) : [];
+        await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
             try {
-                const file = await fhandle.getFile();
+                const file = await fileHandle.getFile();
                 const text = await file?.text?.();
                 const quest = JSON.parse(text || "{}");
                 (quest as any).__name = fname;

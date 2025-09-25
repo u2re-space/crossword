@@ -1,4 +1,5 @@
-import { writeFile, getDirectoryHandle } from "fest/lure";
+import { getDirectoryHandle } from "fest/lure";
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
 export const sanitizeFileName = (name: string, fallbackExt = "") => {
@@ -12,10 +13,9 @@ export const sanitizeFileName = (name: string, fallbackExt = "") => {
 export const writeFilesToDir = async (dir: string, files: File[] | FileList) => {
     const items = Array.from(files as any as File[]);
     for (const file of items) {
-        const fileName = sanitizeFileName(file.name || 'uploaded');
-        const path = `${dir}${fileName}`;
-        console.log("Writing file: " + path);
-        await writeFile(null, path, file);
+        dir = dir?.trim?.();
+        dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+        await writeFileSmart(null, dir, file);
     }
     return items.length;
 }
@@ -33,8 +33,9 @@ export const bindDropToDir = (host: HTMLElement, dir: string) => {
         try {
             const files: File[] = Array.from(ev.dataTransfer?.files ?? []);
             for (const file of files) {
-                const name = sanitizeFileName(file.name || `dropped-${Date.now()}`);
-                await writeFile(null, `${dir}${name}`, file);
+                dir = dir?.trim?.();
+                dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+                await writeFileSmart(null, dir, file);
             }
             host.dispatchEvent(new CustomEvent('dir-dropped', { detail: { count: files.length }, bubbles: true }));
         } catch (e) { console.warn(e); }
@@ -57,6 +58,8 @@ export const openPickerAndWrite = async (dir: string, accept = "*/*", multiple =
     (input as any).multiple = multiple;
     const result = await new Promise<number>((resolve) => {
         input.onchange = async () => {
+            dir = dir?.trim?.();
+            dir = dir?.endsWith?.('/') ? dir : (dir + '/');
             try { resolve(await writeFilesToDir(dir, input.files || ([] as any))); }
             catch { resolve(0); }
         };
@@ -90,7 +93,9 @@ export const pasteIntoDir = async (dir: string) => {
                     const blob = await item.getType(type);
                     const ext = type.split('/').pop() || '';
                     const file = new File([blob], sanitizeFileName(`pasted-${Date.now()}.${ext}`), { type });
-                    await writeFile(null, `${dir}${file.name}`, file);
+                    dir = dir?.trim?.();
+                    dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+                    await writeFileSmart(null, dir, file);
                 }
             }
             return true;
@@ -100,7 +105,9 @@ export const pasteIntoDir = async (dir: string) => {
         const text = await navigator.clipboard.readText();
         if (text && text.trim()) {
             const file = new File([text], sanitizeFileName(`pasted-${Date.now()}.txt`), { type: 'text/plain' });
-            await writeFile(null, `${dir}${file.name}`, file);
+            dir = dir?.trim?.();
+            dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+            await writeFileSmart(null, dir, file);
             return true;
         }
     } catch (e) { console.warn(e); }

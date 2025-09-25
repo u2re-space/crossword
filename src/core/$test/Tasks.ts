@@ -1,4 +1,4 @@
-import { writeFile } from "fest/lure";
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
 export const sampleTasks = [
@@ -11,5 +11,5 @@ export const sampleTasks = [
 export const writeSampleTask = async (task: any) => {
     const fileName = `${task?.desc?.name}.json`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    return writeFile(null, `/timeline/${fileName}`, file)?.catch?.(console.warn.bind(console));
+    return writeFileSmart(null, `/timeline/`, file, { ensureJson: true })?.catch?.(console.warn.bind(console));
 }

@@ -7,7 +7,7 @@ export default async function loadApp(mountElement) {
 
     //
     const app = await import("./src/index.mjs")?.catch?.(console.error.bind(console));
-    app.default(mountElement);
+    app?.default?.(mountElement);
 }
 
 //

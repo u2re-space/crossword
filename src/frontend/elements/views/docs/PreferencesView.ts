@@ -69,9 +69,9 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
         //
         const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
         const entries = dirHandle ? await Array.fromAsync(await dirHandle?.entries?.() ?? []) : [];
-        await Promise.all(entries?.map?.(async ([fname, handle]: any) => {
+        await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
             try {
-                const file = await handle.getFile();
+                const file = await fileHandle.getFile();
                 const text = await file.text();
                 dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
             } catch { }

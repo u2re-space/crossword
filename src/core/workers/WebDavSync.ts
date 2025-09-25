@@ -1,5 +1,6 @@
 import { idbGet } from "@rs-core/store/IDBStorage";
-import { getDirectoryHandle, readFile, writeFile } from "fest/lure"
+import { getDirectoryHandle, readFile } from "fest/lure"
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
 import { AuthType, createClient, type FileStat } from "webdav/web";
 
 //
@@ -12,7 +13,7 @@ const downloadContentsToOPFS = async (webDavClient, path = "/") => {
             if (new Date(file?.lastmod).getTime() > new Date((await readFile(null, fullPath))?.lastModified).getTime()) {
                 const contents = await webDavClient.getFileContents(fullPath)?.catch?.((e) => { console.warn(e); return null; });
                 if (!contents || contents?.byteLength == 0) return;
-                return writeFile(null, fullPath, new File([contents], file.filename, { type: file.type }));
+                return writeFileSmart(null, fullPath, new File([contents], file.filename, { type: file.type }));
             }
         };
     }));

@@ -13,7 +13,7 @@ import { Sidebar } from "./elements/layouts/Sidebar";
 import { ref } from "fest/object";
 
 //
-import { dropFile } from "fest/lure";
+import { clearAllInDirectory, dropFile } from "fest/lure";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -44,7 +44,7 @@ export default async function frontend(mountElement) {
     //
     await (async () => {
         //await clearAllInDirectory()?.catch?.(console.warn.bind(console));
-        await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));
+        //await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));
     })();
 
     //

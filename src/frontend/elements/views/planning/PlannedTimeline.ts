@@ -13,8 +13,8 @@ import { TIMELINE_DIR } from "@rs-core/service/Cache";
 const loadAllTimelines = async (DIR: string) => {
     const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
     const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(timelines?.map?.(async ([name, handle]: any) => {
-        const file = await handle.getFile();
+    return Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
+        const file = await fileHandle.getFile();
         const item = JSON.parse(await file?.text?.() || "{}");
         (item as any).__name = name;
         (item as any).__path = `${DIR}${name}`;

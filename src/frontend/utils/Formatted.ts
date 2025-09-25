@@ -1,7 +1,5 @@
-import { openFormModal } from "@rs-frontend/elements/display/edits/Modal";
-import { MOCElement } from "fest/dom";
 import { makeReactive, observableByMap, observableBySet } from "fest/object";
-import { getDirectoryHandle, H, M, remove, writeFile } from "fest/lure";
+import { getDirectoryHandle, H, M } from "fest/lure";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
@@ -17,25 +15,27 @@ export const beginDragAsText = (ev: DragEvent) => {
 }
 
 //
-export const copyPhoneClick = (ev) => {
-    const isPhoneElement = (ev.currentTarget as HTMLElement)?.matches?.('.phone') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.phone');
+export const copyPhoneClick = (ev: Event) => {
+    const element = (ev.currentTarget as any);
+    const isPhoneElement = (element as HTMLElement)?.matches?.('.phone') ? element : element?.querySelector?.('.phone');
 
     if (isPhoneElement) {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
-        const phone = isPhoneElement?.textContent?.trim?.();
+        const phone = isPhoneElement?.textContent?.trim?.() ?? '';
         if (phone) { navigator.clipboard.writeText(phone); }
     }
 }
 
 //
-export const copyEmailClick = (ev) => {
-    const isEmailElement = (ev.currentTarget as HTMLElement)?.matches?.('.email') ? ev.currentTarget : ev.currentTarget?.querySelector?.('.email');
+export const copyEmailClick = (ev: Event) => {
+    const element = (ev.currentTarget as any);
+    const isEmailElement = (element as HTMLElement)?.matches?.('.email') ? element : element?.querySelector?.('.email');
 
     if (isEmailElement) {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
-        const email = isEmailElement?.textContent?.trim?.();
+        const email = isEmailElement?.textContent?.trim?.() ?? '';
         if (email) { navigator.clipboard.writeText(email); }
     }
 }
@@ -131,76 +131,6 @@ export const makePropertyDesc = (label: string | any, property: any, key?: strin
 }
 
 //
-export const makeEvents = (label: string, path: string, title: string, basis: any, kind: string) => {
-    const properties = basis?.properties || {};
-
-    //
-    return {
-        doDelete: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            if (!confirm(`Delete ${label} "${title}"?`)) return;
-            try { await remove(null, path); } catch (e) { console.warn(e); }
-            const el = MOCElement(ev.target as HTMLElement, '.task-item, .card');
-            el?.remove?.();
-        },
-        doEdit: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            const result = await openFormModal('Edit ' + label, [
-                { name: 'title', label: 'Title' },
-                { name: 'kind', label: 'Kind' },
-                { name: 'price', label: 'Price' },
-                { name: 'description', label: 'Description' },
-                { name: 'begin_time', label: 'Begin time', placeholder: 'YYYY-MM-DD or HH:MM' },
-                { name: 'end_time', label: 'End time', placeholder: 'YYYY-MM-DD or HH:MM' },
-                properties?.contacts?.email ? { name: 'email', label: 'Email' } : null,
-                properties?.contacts?.phone ? { name: 'phone', label: 'Phone' } : null
-            ]?.map(f => f ? f : null)?.filter(f => f), {
-                title, kind, price: properties?.price || 0,
-                description: basis?.desc?.description || "",
-                begin_time: properties?.begin_time || "",
-                end_time: properties?.end_time || "",
-                email: properties?.contacts?.email?.[0] || '',
-                phone: properties?.contacts?.phone?.[0] || '',
-            });
-            if (!result) return;
-
-            //
-            const updated = Object.assign(basis, {
-                kind: result.kind || kind,
-                desc: {
-                    ...(basis?.desc || {}),
-                    title: result.title,
-                    description: result.description
-                },
-                properties: {
-                    ...(basis?.properties || {}),
-                    price: result.price,
-                    begin_time: result.begin_time,
-                    end_time: result.end_time,
-                    contacts: {
-                        ...(basis?.properties?.contacts || {}),
-                        email: result.email ? [result.email] : [],
-                        phone: result.phone ? [result.phone] : []
-                    }
-                }
-            });
-
-            //
-            try {
-                const fileName = path?.split?.('/')?.pop?.() || `${label}.json`;
-                const file = new File([JSON.stringify(updated)], fileName, { type: 'application/json' });
-                await writeFile(null, path, file);
-            } catch (e) { console.warn(e); }
-
-            //
-            MOCElement(ev.target as HTMLElement, '.task-item, .card')?.querySelector?.('.card-title')?.replaceChildren?.(document.createTextNode(result.title));
-            MOCElement(ev.target as HTMLElement, '.task-item, .card')?.querySelector?.('.card-desc')?.replaceChildren?.(document.createTextNode(result.description));
-            MOCElement(ev.target as HTMLElement, '.task-item, .card')?.querySelector?.('.card-time')?.replaceChildren?.(document.createTextNode(`${result.begin_time} - ${result.end_time}`));
-        }
-    }
-}
-
-//
 export const $ShowItemsByType = (DIR: string, byKind: string | null = null, ItemRenderer: (item: any, byKind: string | null) => any) => {
     const dataRef: any = makeReactive([]);
     const load = async () => {
@@ -209,14 +139,14 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
         //
         const dHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
         const entries = await Array.fromAsync(dHandle?.entries?.() ?? []);
-        return Promise.all(entries?.map?.(async ([name, handle]: any) => {
-            const file = await handle.getFile();
+        return Promise.all(entries?.map?.(async ([name, fileHandle]: any) => {
+            const file = await fileHandle.getFile();
             const obj = JSON.parse(await file?.text?.() || "{}");
             (obj as any).__name = name;
             (obj as any).__path = `${DIR}${name}`;
             if (obj.kind === byKind || !byKind || byKind == "all" || !obj.kind) { dataRef.push(obj); }
             return obj;
-        })?.filter?.((e) => e));
+        })?.filter?.((e: any) => e));
     }
 
     //

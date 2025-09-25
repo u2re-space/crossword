@@ -1,4 +1,4 @@
-import { getDirectoryHandle } from "fest/lure";
+import { getDirectoryHandle, writeFile } from "fest/lure";
 
 //
 export const getMarkDownFromFile = async (handle: any) => {
@@ -102,3 +102,103 @@ export const handleDataByType = async (item: File | string | Blob, handler: (pay
             return handler({ file: item } as any);
         }
 }
+
+//
+// Unified file/path helpers
+//
+
+// sanitize one path/token to safe slug
+const toSlug = (input: string, toLower = true) => {
+    let s = String(input || "").trim();
+    if (toLower) s = s.toLowerCase();
+    // replace whitespace with '-'
+    s = s.replace(/\s+/g, '-');
+    // keep only safe chars
+    s = s.replace(/[^a-z0-9_.\-+#&]/g, '-');
+    // collapse repeats
+    s = s.replace(/-+/g, '-');
+    return s;
+};
+
+const inferExtFromMime = (mime = "") => {
+    if (!mime) return "";
+    if (mime.includes("json")) return "json";
+    if (mime.includes("markdown")) return "md";
+    if (mime.includes("plain")) return "txt";
+    if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
+    if (mime === "image/png") return "png";
+    if (mime.startsWith("image/")) return mime.split('/').pop() || "";
+    if (mime.includes("html")) return "html";
+    return "";
+};
+
+const splitPath = (path: string) => String(path || "").split('/').filter(Boolean);
+const joinPath = (parts: string[], absolute = true) => (absolute ? '/' : '') + parts.filter(Boolean).join('/') + '';
+
+const sanitizePathSegments = (path: string) => {
+    const parts = splitPath(path);
+    return joinPath(parts.map((p) => toSlug(p)));
+};
+
+const ensureDir = (p: string) => (p.endsWith('/') ? p : p + '/');
+
+export type WriteSmartOptions = {
+    forceExt?: string;        // e.g. 'json'
+    ensureJson?: boolean;     // if true, enforce .json
+    toLower?: boolean;        // default true
+    sanitize?: boolean;       // default true
+};
+
+// Always writes by full sanitized path. Accepts a directory or a full path.
+export const writeFileSmart = async (
+    root: any | null,
+    dirOrPath: string,
+    file: File | Blob,
+    options: WriteSmartOptions = {}
+) => {
+    const { forceExt, ensureJson, toLower = true, sanitize = true } = options;
+
+    // Determine desired base name and directory
+    let raw = String(dirOrPath || "").trim();
+    const isDirHint = raw.endsWith('/');
+    const hasFileToken = !isDirHint && splitPath(raw).length > 0 && raw.includes('.');
+
+    let dirPath = isDirHint ? raw : (hasFileToken ? raw.split('/').slice(0, -1).join('/') : raw);
+    let desiredName = hasFileToken ? raw.split('/').pop() || '' : (file as any)?.name || '';
+
+    // Fallbacks
+    dirPath = dirPath || '/';
+    desiredName = desiredName || (Date.now() + '');
+
+    // Extract name/ext
+    const lastDot = desiredName.lastIndexOf('.');
+    let base = lastDot > 0 ? desiredName.slice(0, lastDot) : desiredName;
+    let ext = (forceExt || (ensureJson ? 'json' : (lastDot > 0 ? desiredName.slice(lastDot + 1) : inferExtFromMime((file as any)?.type || '')))) || '';
+
+    if (sanitize) {
+        dirPath = sanitizePathSegments(dirPath);
+        base = toSlug(base, toLower);
+    }
+
+    const finalName = ext ? `${base}.${ext}` : base;
+    const fullPath = ensureDir(dirPath) + finalName;
+
+    // Ensure File object with correct name
+    let toWrite: File;
+    if (file instanceof File) {
+        // If name matches and type present, keep; else recreate with corrected name
+        if (file.name === finalName) {
+            toWrite = file;
+        } else {
+            const type = (file as any).type || (ext ? `application/${ext}` : 'application/octet-stream');
+            const buf = await file.arrayBuffer();
+            toWrite = new File([buf], finalName, { type });
+        }
+    } else {
+        const type = (file as any).type || (ext ? `application/${ext}` : 'application/octet-stream');
+        const blob = file as Blob;
+        toWrite = new File([await blob.arrayBuffer()], finalName, { type });
+    }
+
+    return writeFile(root, fullPath, toWrite);
+};

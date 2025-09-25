@@ -109,10 +109,16 @@ const filterEvents = (events: any[], currentTime: Date) => {
 
 //
 export const writeTimelineTask = async (task: any) => {
-    const name = `${TIMELINE_DIR}/${task?.desc?.name}`;
-    const fileName = name?.endsWith?.(".json") ? name : (name + ".json");
-    const file = new File([JSON.stringify(task)], fileName?.split?.("/")?.pop?.() || "timeline.json", { type: 'application/json' });
-    return writeFile(null, fileName, file)?.catch?.(console.error.bind(console));
+    const name = task?.desc?.name || task?.name || task?.id || `${Date.now()}`;
+
+    //
+    let fileName = name?.split?.("/")?.pop?.() || "timeline.json"
+    fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
+
+    //
+    const filePath = `${TIMELINE_DIR}/${fileName}`;
+    const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
+    return writeFile(null, filePath, file)?.catch?.(console.error.bind(console));
 }
 
 
