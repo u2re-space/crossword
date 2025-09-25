@@ -3,6 +3,7 @@ import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
 import { safe } from "fest/object";
 import { readJSONs } from "@rs-core/workers/FileSystem";
+import type { BonusEntity, EntityDesc } from "@rs-core/service/template/EntitiesTyped";
 
 //
 const makeRelatedListPerEntity = async (entityKind: any, shortForm: any[]) => {
@@ -10,6 +11,7 @@ const makeRelatedListPerEntity = async (entityKind: any, shortForm: any[]) => {
     return JSON.stringify(safe(related));
 }
 
+//
 function deepMergeObj(target: any, source: any): any {
     const output = { ...target }; // Start with a shallow copy of the target
     if (target && typeof target === 'object' && source && typeof source === 'object') {
@@ -37,75 +39,50 @@ const deepMergeExistsAndPotential = (exists: any, potential: any): any => {
 
 
 
-const getRelated = async (entityKinds: {
-    kinds: string[];
-    usabilityKinds: {
-        forEntity: string[];
-        inEntity: string[];
-    }[];
-}[], entityDesc: {
-    entityType: string;
-    potentialName: string;
-}[]) => {
+const getRelated = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) => {
     const shortForm = await getShortFormFromEntities(entityDesc);
     const relatedList: any[] = [];
-    const forRelatedList: any[] = [];
-    const inRelatedList: any[] = [];
+    const forEntity: any[] = [];
+    const inEntity: any[] = [];
 
     //
-    {
-        let mainIndex = 0;
-        for (const entityKind of entityKinds) {
-            let subIndex = 0;
-            for (const subKind of entityKind?.kinds ?? []) {
-                relatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
-                subIndex++;
-            }
-            mainIndex++;
-        }
-    }
+    for (const entityKind of entityKinds) {
 
-    {
-        let mainIndex = 0;
-        for (const entityKind of entityKinds) {
-            let subIndex = 0;
-            for (const subKind of entityKind?.usabilityKinds?.[subIndex]?.forEntity ?? []) {
-                forRelatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
-                subIndex++;
-            }
-            mainIndex++;
-        }
-    }
-
-    {
-        let mainIndex = 0;
-        for (const entityKind of entityKinds) {
-            let subIndex = 0;
-            for (const subKind of entityKind?.usabilityKinds?.[subIndex]?.inEntity ?? []) {
-                inRelatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
-                subIndex++;
-            }
-            mainIndex++;
+        // multiple
+        if (Array.isArray(entityKind?.kind)) {
+            relatedList.push(...(await entityKind?.kind?.map?.(async (kind) => (await makeRelatedListPerEntity(kind ?? "unknown", shortForm)))))
+        } else { // single
+            relatedList.push(await makeRelatedListPerEntity(entityKind?.kind ?? "unknown", shortForm))
         }
     }
 
     //
-    return [relatedList, forRelatedList, inRelatedList]
+    const handleUsabilityKind = (usabilityKind: any, forEntity: any[], inEntity: any[]) => {
+        forEntity.push(...(usabilityKind?.forEntity ?? [])?.map?.(async (kind) => (await makeRelatedListPerEntity(kind ?? "unknown", shortForm))))
+        inEntity.push(...(usabilityKind?.inEntity ?? [])?.map?.(async (kind) => (await makeRelatedListPerEntity(kind ?? "unknown", shortForm))))
+    }
+
+    //
+    for (const entityKind of entityKinds) {
+        if (Array.isArray(entityKind?.usabilityKind)) {
+            // multiple
+            for (const usabilityKind of entityKind?.usabilityKind ?? []) {
+                handleUsabilityKind(usabilityKind, forEntity, inEntity)
+            }
+        } else {
+            // single
+            handleUsabilityKind(entityKind?.usabilityKind, forEntity, inEntity)
+        }
+    }
+
+    //
+    return [relatedList, forEntity, inEntity]
 }
 
 
 
 //
-export const resolveEntity = async (entityDesc: {
-    entityType: string;
-    potentialName: string;
-}[], entityKinds: {
-    kinds: string[];
-    usabilityKinds: {
-        forEntity: string[];
-        inEntity: string[];
-    }[];
-}[], gptResponses: GPTResponses) => {
+export const resolveEntity = async (entityDesc: EntityDesc[], entityKinds: BonusEntity[], gptResponses: GPTResponses) => {
     // - get entity type items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === entityType)`
     // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
     // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`

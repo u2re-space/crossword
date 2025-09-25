@@ -60,10 +60,16 @@ export type ActionKind = "thinking" | "imagination" | "remembering" | "speaking"
 export type EntertainmentKind = "entertainment" | "sport" | "education" | "cinema" | "museum" | "hobby" | "drawing" | "reading" | "shopping" | "other";
 export type UnknownKind = "unspecified" | "unknown" | "other";
 
+//
+export interface EntityDesc<K = string, P = string> {
+    entityType: K;
+    potentialName: P;
+}
+
 // Base entity
-export interface EntityBase<K, P> {
+export interface EntityBase<K extends string, P = any> {
     desc?: PrimaryDesc;
-    kind: K;
+    kind: K | K[];
     description?: DescriptionValue;
     properties: P;
 }
@@ -333,7 +339,7 @@ export interface BonusProperties {
 }
 
 export interface BonusEntity extends EntityBase<BonusKind, BonusProperties> {
-    usabilityKind?: BonusUsabilityKind;
+    usabilityKind?: BonusUsabilityKind[] | BonusUsabilityKind;
 }
 
 // Lottery

@@ -45,8 +45,8 @@ usabilityKind: [...{
 === BEGIN:ENTITY_KIND_REQUEST_OUTPUT ===
 Output in JSON format: \`\`\`json
 [...{
-    kinds: string[],
-    usabilityKinds: [...{ forEntity: string[], inEntity: string[] }] or []
+    kind: string[],
+    usabilityKind: [...{ forEntity: string[], inEntity: string[] }] or []
 }]\`\`\`
 === END:ENTITY_KIND_REQUEST_OUTPUT ===
 `?.trim?.();
