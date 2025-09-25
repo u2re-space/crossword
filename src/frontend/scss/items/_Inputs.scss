@@ -30,4 +30,23 @@
     .btn:hover { background: --c2-surface(0.08, var(--current, currentColor)); }
     .btn.save { background: --c2-surface(0.12, var(--current, currentColor)); }
     .btn.save:hover { background: --c2-surface(0.16, var(--current, currentColor)); }
+    .modal-section {
+        display: grid;
+        gap: 0.5rem;
+        padding-block: 0.5rem;
+        border-block-end: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+    }
+    .modal-section:last-of-type {
+        border-block-end: none;
+    }
+    .modal-section-title {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: rgba(17,24,39,0.7);
+    }
+    .modal-section-fields {
+        display: grid;
+        gap: 0.5rem;
+    }
 }

@@ -1,5 +1,6 @@
 import { isDate, makePropertyDesc } from "@rs-frontend/utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/display/edits/EntityEdit";
+import { getLinkedEntities } from "@rs-frontend/utils/Links";
 import { H, M } from "fest/lure";
 
 //
@@ -32,19 +33,30 @@ export const MAKE_LABEL = (label: string) => {
 export const MakeCardElement = (label: string, item: any, events: any) => {
     if (!item) return null;
 
-    //
     const begin_time = item?.properties?.begin_time || "";
     const end_time = item?.properties?.end_time || "";
     const variant = item?.desc?.variant || "default";
     const desc = item?.desc?.description || "";
 
-    //
-    let timeRangeElement = null
+    let linkedList: any = null;
+    const renderLinks = (links: any[]) => {
+        if (!links?.length) return null;
+        return H`<div class="card-links"><span class="card-label">Links:</span><ul>${M(links, (link) => H`<li><a href=${`#${link.type}-${link.id}`} data-link-type=${link.type}>${link.title || link.id}</a></li>`)}</ul></div>`;
+    };
+
+    (async () => {
+        const links = await getLinkedEntities(item);
+        linkedList?.replaceChildren?.(renderLinks(links) ?? "");
+    })().catch(console.warn);
+
+    let timeRangeElement = null;
     if (begin_time && end_time) {
         timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
     }
 
-    //
+    const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
+    linkedList = linksPlaceholder;
+
     const card = H`<div data-id=${item?.id || item?.name || item?.desc?.name} data-variant="${variant}" data-type="${label}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
         <div class="avatar-inner">${item?.desc?.icon ? H`<ui-icon icon=${item.desc.icon}></ui-icon>` : (item?.desc?.title?.[0] ?? label?.[0] ?? "C")}</div>
@@ -61,6 +73,7 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
     <div class="card-content">
         <span class="card-label">Properties:</span><ul>${M([...Object.entries(objectExcludeNotExists(item?.properties))], (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
+    ${linksPlaceholder}
     <div class="card-description">
         <span class="card-label">Description: </span><ul class="card-desc">${makePropertyDesc("", desc, "")}</ul >
     </div>

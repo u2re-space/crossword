@@ -42,27 +42,34 @@ export const copyEmailClick = (ev: Event) => {
 
 //
 export const formatText = (text: string) => {
-    return H`<span draggable="true" data-action="copy-text" class="text">${text?.trim?.()}</span>`;
+    const normalized = text?.trim?.();
+    if (!normalized) return null;
+    return H`<span draggable="true" data-action="copy-text" class="text">${normalized}</span>`;
 }
 
 //
 export const formatEmail = (email: string) => {
-    return H`<a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-email" class="email" href="mailto:${email?.trim?.()}" on:click=${copyEmailClick}>${email?.trim?.()}</a>`;
+    const normalized = email?.trim?.();
+    if (!normalized) return null;
+    return H`<a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-email" class="email" href="mailto:${normalized}" on:click=${copyEmailClick}>${normalized}</a>`;
 }
 
 //
 export const formatPhone = (phone: string) => {
-    // needs to replace +7 into 8, remove spaces and non-digits, remove parentheses
-    let text = phone?.replace?.(/\+7/g, '8').replace?.(/\s+/g, '').replace?.(/[^0-9]/g, '');
-    text = text?.replace?.(/\(/g, '').replace?.(/\)/g, '');
-    text = text?.replace?.(/\s+/g, '').replace?.(/[^0-9]/g, '');
-    return H`<a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-phone" class="phone" href="tel:${text?.trim?.()}" on:click=${copyPhoneClick}>${text?.trim?.()}</a>`;
+    let text = phone ?? "";
+    text = text.replace(/\+7/g, '8').replace(/\s+/g, '').replace(/[^0-9]/g, '');
+    text = text.replace(/\(/g, '').replace(/\)/g, '');
+    text = text.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+    const normalized = text.trim();
+    if (!normalized) return null;
+    return H`<a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-phone" class="phone" href="tel:${normalized}" on:click=${copyPhoneClick}>${normalized}</a>`;
 }
 
 //
 export const wrapAsListItem = (label: string | any, item: any) => {
+    if (!item) return null;
     if (label) {
-        return H`<li>${label}: ${item}</li>`;
+        return H`<li><span class="item-label">${label}:</span> ${item}</li>`;
     }
     return H`<li>${item}</li>`;
 }
@@ -70,13 +77,16 @@ export const wrapAsListItem = (label: string | any, item: any) => {
 //
 export const listFormatter = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, formatter: (frag: any) => any) => {
     if (Array.isArray(text)) {
-        return wrapAsListItem(label, M(text, (frag: any) => formatter(frag)));
+        const collection = text.map?.((frag: any) => formatter(frag))?.filter(Boolean);
+        return collection?.length ? wrapAsListItem(label, M(collection, (item: any) => item)) : null;
     }
     if (text instanceof Map) {
-        return wrapAsListItem(label, M(observableByMap(text), (frag: any) => formatter(frag)));
+        const mapped = M(observableByMap(text), (frag: any) => formatter(frag));
+        return wrapAsListItem(label, mapped);
     }
     if (text instanceof Set) {
-        return wrapAsListItem(label, M(observableBySet(text), (frag: any) => formatter(frag)));
+        const mapped = M(observableBySet(text), (frag: any) => formatter(frag));
+        return wrapAsListItem(label, mapped);
     }
     return wrapAsListItem(label, formatter(text));
 }
@@ -124,9 +134,11 @@ export const isNotEmpty = (frag: any) => {
 
 //
 export const makePropertyDesc = (label: string | any, property: any, key?: string | null) => {
-    let basis = (key ? property?.[key] : property);
-    if (!isNotEmpty(basis) && typeof property != "object") { basis = property; }
-    if (!isNotEmpty(basis)) return;
+    let basis = key ? property?.[key] : property;
+    if (!isNotEmpty(basis) && typeof property !== "object") {
+        basis = property;
+    }
+    if (!isNotEmpty(basis)) return null;
     return formatByCondition(label, basis, key);
 }
 
