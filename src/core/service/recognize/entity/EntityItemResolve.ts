@@ -5,15 +5,9 @@ import { safe } from "fest/object";
 import { readJSONs } from "@rs-core/workers/FileSystem";
 
 //
-const makeRelatedListPerEntity = (entityKind: any, entityType: any) => {
-    const items: any[] = [];
-    const itemsOfInEntities: any[] = [];
-    const itemsOfForEntities: any[] = [];
-    return `{
-        existing: ${JSON.stringify(safe(items?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))},
-        inEntities: ${JSON.stringify(safe(itemsOfInEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))},
-        forEntities: ${JSON.stringify(safe(itemsOfForEntities?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown"))))}
-    }`;
+const makeRelatedListPerEntity = async (entityKind: any, shortForm: any[]) => {
+    const related = shortForm?.filter?.((item) => (item?.kind === entityKind || !entityKind || entityKind === "unknown" || entityKind === "all"))
+    return JSON.stringify(safe(related));
 }
 
 function deepMergeObj(target: any, source: any): any {
@@ -41,8 +35,77 @@ const deepMergeExistsAndPotential = (exists: any, potential: any): any => {
     return deepMergeObj(exists, potential);
 }
 
+
+
+const getRelated = async (entityKinds: {
+    kinds: string[];
+    usabilityKinds: {
+        forEntity: string[];
+        inEntity: string[];
+    }[];
+}[], entityDesc: {
+    entityType: string;
+    potentialName: string;
+}[]) => {
+    const shortForm = await getShortFormFromEntities(entityDesc);
+    const relatedList: any[] = [];
+    const forRelatedList: any[] = [];
+    const inRelatedList: any[] = [];
+
+    //
+    {
+        let mainIndex = 0;
+        for (const entityKind of entityKinds) {
+            let subIndex = 0;
+            for (const subKind of entityKind?.kinds ?? []) {
+                relatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
+                subIndex++;
+            }
+            mainIndex++;
+        }
+    }
+
+    {
+        let mainIndex = 0;
+        for (const entityKind of entityKinds) {
+            let subIndex = 0;
+            for (const subKind of entityKind?.usabilityKinds?.[subIndex]?.forEntity ?? []) {
+                forRelatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
+                subIndex++;
+            }
+            mainIndex++;
+        }
+    }
+
+    {
+        let mainIndex = 0;
+        for (const entityKind of entityKinds) {
+            let subIndex = 0;
+            for (const subKind of entityKind?.usabilityKinds?.[subIndex]?.inEntity ?? []) {
+                inRelatedList.push(await makeRelatedListPerEntity(subKind?.[0] ?? "unknown", shortForm))
+                subIndex++;
+            }
+            mainIndex++;
+        }
+    }
+
+    //
+    return [relatedList, forRelatedList, inRelatedList]
+}
+
+
+
 //
-export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptResponses: GPTResponses, potentialNames?: string[]) => {
+export const resolveEntity = async (entityDesc: {
+    entityType: string;
+    potentialName: string;
+}[], entityKinds: {
+    kinds: string[];
+    usabilityKinds: {
+        forEntity: string[];
+        inEntity: string[];
+    }[];
+}[], gptResponses: GPTResponses) => {
     // - get entity type items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === entityType)`
     // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.forEntity)`
     // - get related items by criteria: `gptResponses.categoriesCache?.find?.((category)=> category?.id === usabilityKind?.inEntity)`
@@ -50,17 +113,11 @@ export const resolveEntity = async (entityTypes: any[], entityKinds: any[], gptR
 
     //
     const shortlistOfItems = [`=== BEGIN:PREPARE_RELATED_ITEMS ===
-Shortlist of existing items in ${JSON.stringify(entityTypes)} registry.
+Shortlist of existing items in ${JSON.stringify(entityDesc)} registry.
 
 And related entities, for making compatible resolve:
 \`\`\`json
-${JSON.stringify(entityTypes?.map?.((entityType, index) => {
-    const relatedList: any[] = [];
-    for (const entityKind of entityKinds?.[index]?.kinds ?? []) {
-        relatedList.push(makeRelatedListPerEntity(entityKind || "", entityType?.entityType ?? "unknown"))
-    }
-    return relatedList
-}) ?? [])}
+${JSON.stringify(await getRelated(entityKinds, entityDesc))}
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 
@@ -82,21 +139,22 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
         "Also, search potentially related items (names, IDs)...",
         "Resolve entity items, by following schemes (according of entity types): ",
         `\`\`\`json
-${JSON.stringify(await getShortFormFromEntities(entityTypes), null, 2)}
+${JSON.stringify(await getShortFormFromEntities(entityDesc), null, 2)}
 \`\`\``, "=== END:RESOLVE_STEP ===",
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //
     await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
     const parsed = JSON.parse(await gptResponses.sendRequest() || "{}");
-    console.log("resolve entity response", parsed);
+    console.log("Step 3 response - resolve entity response: ", parsed);
 
     // additional phase - merge from duplicates
     let i = 0;
-    for (const entityType of entityTypes) {
-        const potentialName = potentialNames?.[i++];
+    for (const desc of entityDesc) {
+        const potentialName = parsed?.[i]?.desc?.name ?? desc?.potentialName;
+        const entityType = desc?.entityType;
         const exists = (await readJSONs(`/data/${entityType}/`))?.find?.((json: any) => (json?.desc?.name == potentialName));
-        parsed[i] = deepMergeExistsAndPotential?.(parsed[i], exists) ?? parsed[i];
+        parsed[i] = deepMergeExistsAndPotential?.(parsed[i], exists) ?? parsed[i]; i++;
     }
     return parsed;
 }

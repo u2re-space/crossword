@@ -147,12 +147,13 @@ export const getEntitiesByType = (types: string[]) => {
 }
 
 //
-export const getShortFormFromEntities = async (entityTypes: any[]) => {
+export const getShortFormFromEntities = async (entityTypes: { entityType: string; }[]) => {
     const entities = await Promise.all(entityTypes?.flatMap?.((type) => {
-        return [type, getEntitiesFromFS(`/data/${type}/`)];
+        return [type?.entityType, getEntitiesFromFS(`/data/${type?.entityType}/`)];
     }) ?? []);
 
-    return entityTypes?.map?.(async ([entityType]) => {
+    //
+    return entityTypes?.map?.(async ({ entityType }) => {
         return (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
     })?.map(async (item) => {
         const w: any = await item;

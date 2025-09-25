@@ -4,7 +4,7 @@ import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 
 
 //
-export const ASK_ABOUT_KIND_OF_ENTITY = (entityTypes: any[]) => `
+export const ASK_ABOUT_KIND_OF_ENTITY = (entityTypes: { entityType: string; }[]) => `
 === BEGIN:EXPLAIN_KINDS_ENUMS ===
 This is the enums of kinds of scheme by entity types (enums values):
 
@@ -52,9 +52,9 @@ Output in JSON format: \`\`\`json
 `?.trim?.();
 
 //
-export const recognizeKindOfEntity = async (entityTypes: any[], gptResponses: GPTResponses) => {
+export const recognizeKindOfEntity = async (entityTypes: { entityType: string; }[], gptResponses: GPTResponses) => {
     await gptResponses.askToDoAction(ASK_ABOUT_KIND_OF_ENTITY(entityTypes));
     const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
-    console.log("kind of entity response", parsed);
+    console.log("Second step response: ", parsed);
     return parsed;
 }

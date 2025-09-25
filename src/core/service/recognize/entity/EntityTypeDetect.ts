@@ -46,8 +46,11 @@ ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
     // use same context for first step...
     await gptResponses.askToDoAction(firstStep?.join?.("\n"))
     const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
-    console.log("first step response", parsed);
-    return Array.isArray(parsed) ? parsed : [{ "entityType": "unknown" }];
+    console.log("First step response: ", parsed);
+    return Array.isArray(parsed) ? parsed : [{
+        "entityType": parsed?.["entityType"] || "unknown",
+        "potentialName": parsed?.["potentialName"] || "unknown"
+    }];
 }
 
 //
