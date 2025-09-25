@@ -8,15 +8,15 @@ export type DataInput = {
 export const PROMPT_COMPUTE_EFFORT = (data: DataInput) => {
     if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
         if (data.dataKind === "image") return "medium";
-        return "low";
+        return "medium";
     }
     if (typeof data.dataSource === "string") {
         if (data.dataSource.includes("math")) return "high";
         if (data.dataSource.includes("url")) return "medium";
         if (data.dataSource.includes("input_text")) return "medium";
-        return "low";
+        return "medium";
     }
-    return "low";
+    return "medium";
 }
 
 //

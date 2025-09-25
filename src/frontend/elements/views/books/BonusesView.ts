@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 import { ref } from "fest/object";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
-import { BonusItem, BONUSES_DIR } from ".././../display/items/BonusItem";
+import { BONUSES_DIR, BonusItem } from ".././../display/items/BonusItem";
 
 //
 export const BonusesView = (currentTab?: any | null) => {

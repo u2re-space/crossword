@@ -3,6 +3,14 @@ import { getDirectoryHandle, H, M } from "fest/lure";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
+export const insideOfDay = (item: any, dayDesc: any) => {
+    return (
+        new Date(item.properties?.begin_time) >= new Date(dayDesc.properties?.begin_time) &&
+        new Date(item.properties?.end_time) <= new Date(dayDesc.properties?.end_time)
+    ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
+}
+
+//
 export const beginDragAsText = (ev: DragEvent) => {
     //ev?.preventDefault?.();
     //ev?.stopPropagation?.();
@@ -69,7 +77,7 @@ export const formatPhone = (phone: string) => {
 export const wrapAsListItem = (label: string | any, item: any) => {
     if (!item) return null;
     if (label) {
-        return H`<li><span class="item-label">${label}:</span> ${item}</li>`;
+        return H`<li><span class="item-label">${label}: </span> ${item}</li>`;
     }
     return H`<li>${item}</li>`;
 }
@@ -111,19 +119,23 @@ export const formatPhoneList = (label: string | any, phones: string | string[] |
 
 //
 export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
-    if (typeof text == "object" && key && text?.[key] != null) { text = text?.[key] ?? text; }
+    if (!text) return null;
+    if (key == "begin_time" || key == "end_time") { return; }
+    if (key == "phone") { return formatPhoneList(label, text); }
+    if (key == "email") { return formatEmailList(label, text); }
 
-    if (key == "begin_time") { return; }
-    if (key == "end_time") {
-        return;
+    //
+    if (typeof text != "object") return formatTextList(label, text);
+    if (typeof text == "object" && key && text?.[key] != null && typeof text?.[key] != "object") { return formatTextList(label, text?.[key]);; }
+
+    //
+    if (typeof text == "object") {
+        return [...Object.entries(text)].map(([K, Sb]: any) => {
+            return formatByCondition("", Sb, K || key);
+        })?.filter?.((e: any) => e);
     }
 
-    if (key == "phone") {
-        return formatPhoneList(label, text);
-    }
-    if (key == "email") {
-        return formatEmailList(label, text);
-    }
+    //
     return formatTextList(label, text);
 }
 
@@ -134,11 +146,10 @@ export const isNotEmpty = (frag: any) => {
 
 //
 export const makePropertyDesc = (label: string | any, property: any, key?: string | null) => {
-    let basis = key ? property?.[key] : property;
-    if (!isNotEmpty(basis) && typeof property !== "object") {
-        basis = property;
-    }
+    let basis = property;
     if (!isNotEmpty(basis)) return null;
+
+    // handle lists, maps, sets, etc.
     return formatByCondition(label, basis, key);
 }
 
@@ -151,14 +162,15 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
         //
         const dHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
         const entries = await Array.fromAsync(dHandle?.entries?.() ?? []);
-        return Promise.all(entries?.map?.(async ([name, fileHandle]: any) => {
+        return (await Promise.all(entries))?.map?.(async ([name, fileHandle]: any) => {
+            if (name?.endsWith?.(".crswap")) return;
             const file = await fileHandle.getFile();
             const obj = JSON.parse(await file?.text?.() || "{}");
             (obj as any).__name = name;
             (obj as any).__path = `${DIR}${name}`;
             if (obj.kind === byKind || !byKind || byKind == "all" || !obj.kind) { dataRef.push(obj); }
             return obj;
-        })?.filter?.((e: any) => e));
+        })?.filter?.((e: any) => e);
     }
 
     //
@@ -179,6 +191,64 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
     //
     return root;
 }
+
+//
+export const loadAllTimelines = async (DIR: string) => {
+    const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
+    const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return (await Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
+        if (name?.endsWith?.(".crswap")) return;
+        const file = await fileHandle.getFile();
+        const item = JSON.parse(await file?.text?.() || "{}");
+        (item as any).__name = name;
+        (item as any).__path = `${DIR}${name}`;
+        return item;
+    })))?.filter?.((e) => e);
+}
+
+//
+export const $ShowItemsByDay = (DIR: string, dayDesc: any | null = null, ItemRenderer: (item: any, dayDesc: any | null) => any) => {
+    const dataRef: any = makeReactive([]);
+
+    //
+    const load = async () => {
+        dataRef.length = 0;
+
+        //
+        const timelines = await loadAllTimelines(DIR)?.catch?.(console.warn.bind(console));
+        for (const timeline of (timelines ?? [])) {
+            if (insideOfDay(timeline, dayDesc) && timeline) { dataRef.push(timeline); }
+        }
+    }
+
+    //
+    const items = M(dataRef, (item) => {
+        const itemEl = ItemRenderer(item, dayDesc ?? null);
+        return itemEl;
+    });
+
+    //
+    const toggleOpen = (ev: any) => {
+        const el = ev.currentTarget as HTMLElement;
+        if (el?.matches?.('.day-item')) el.toggleAttribute?.('data-open');
+    }
+
+    //
+    const root = H`<div data-type="day" style="gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${dayDesc.variant} on:click=${toggleOpen}>${items}</div>`;
+
+    //
+    items.boundParent = root;
+    (root as any).reloadList = load;
+
+    //
+    load().catch(console.warn.bind(console));
+    bindDropToDir(root as any, DIR);
+
+    //
+    return root;
+}
+
+
 
 //
 export const isDate = (date: any) => {

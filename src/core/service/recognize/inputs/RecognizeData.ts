@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = 'gpt-5-mini';
+const DEFAULT_MODEL = 'gpt-5';
 const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1/';
 const ENDPOINT = 'responses';
 
@@ -74,7 +74,7 @@ export const recognizeByInstructions = async (msg, settings, instructions: strin
         body: JSON.stringify({
             model: settings?.model || DEFAULT_MODEL, // ваш
             input,
-            reasoning: { effort: "low" },
+            reasoning: { effort: "medium" },
             instructions
         })
     })?.catch?.(e => {

@@ -1,4 +1,4 @@
-import { isDate, makePropertyDesc } from "@rs-frontend/utils/Formatted";
+import { insideOfDay, makePropertyDesc } from "@rs-frontend/utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/display/edits/EntityEdit";
 import { getLinkedEntities } from "@rs-frontend/utils/Links";
 import { H, M } from "fest/lure";
@@ -10,16 +10,6 @@ export const _LOG_ = (data: any) => {
 }
 
 //
-export const insideOfDay = (item: any, dayDesc: any) => {
-    return (
-        new Date(item.properties?.begin_time) >= new Date(dayDesc.properties?.begin_time) &&
-        new Date(item.properties?.end_time) <= new Date(dayDesc.properties?.end_time)
-    ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
-}
-
-
-
-//
 export const MAKE_LABEL = (label: string) => {
     //return label?.replace?.(/_/g, " ");
 
@@ -27,7 +17,14 @@ export const MAKE_LABEL = (label: string) => {
     return label?.charAt?.(0)?.toUpperCase?.() + label?.slice?.(1)?.replace?.(/_/g, " ");
 }
 
-
+//
+const makeObjectEntries = (object: any) => {
+    if (!object) return [];
+    if (typeof object == "object" || typeof object == "function") {
+        return [...Object.entries(object)];
+    }
+    return [];
+}
 
 //
 export const MakeCardElement = (label: string, item: any, events: any) => {
@@ -62,8 +59,8 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
         <div class="avatar-inner">${item?.desc?.icon ? H`<ui-icon icon=${item.desc.icon}></ui-icon>` : (item?.desc?.title?.[0] ?? label?.[0] ?? "C")}</div>
     </div>
     <div class="card-props">
-        <ul class="card-title"><li>${item?.desc?.title || item?.desc?.name || item?.name || label}</li></ul>
-        <ul class="card-kind">${makePropertyDesc("", item, "kind")}</ul>
+        <ul class="card-title"><li>${item?.desc?.title || item?.name || label}</li></ul>
+        <ul class="card-kind"><li>${item?.desc?.kind || item?.kind}</li></ul>
     </div>
     ${timeRangeElement}
     <div class="card-actions">
@@ -71,11 +68,11 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
-        <span class="card-label">Properties:</span><ul>${M([...Object.entries(objectExcludeNotExists(item?.properties))], (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+        <span class="card-label">Properties: </span><ul>${M(makeObjectEntries(objectExcludeNotExists(item?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
     ${linksPlaceholder}
     <div class="card-description">
-        <span class="card-label">Description: </span><ul class="card-desc">${makePropertyDesc("", desc, "")}</ul >
+        <span class="card-label">Description: </span><ul>${makePropertyDesc("", item?.desc, "description")}</ul>
     </div>
 </div>`;
     return card;
@@ -88,7 +85,7 @@ export const MakeCardByKind = (label: string, dir: string, item: any, byKind: an
     //
     const title = item?.desc?.title || item?.desc?.name || item?.name || label;
     const kind = item?.kind || "";
-    if (!(byKind && byKind == kind || !byKind || byKind == "all" || !kind)) return;
+    if (!(!byKind || byKind == "all" || !kind || byKind == kind)) return;
 
     //
     const fileId = item?.id || item?.name || item?.desc?.name;

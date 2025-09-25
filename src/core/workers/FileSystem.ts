@@ -92,7 +92,7 @@ export interface shareTargetFormData {
 export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
     if (typeof item === 'string') {
         if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
-            const arrayBuffer = Uint8Array.fromBase64(text.split(';base64,')[1]);
+            const arrayBuffer = Uint8Array.fromBase64(item.split(';base64,')[1]);
             const type = item.split(';')[0].split(':')[1];
             return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
         } else

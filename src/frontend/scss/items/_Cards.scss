@@ -73,8 +73,17 @@
             user-select: none;
         }
 
-        &:not([data-variant]) {
+        & {
+            background-color: --c2-surface(0.02, var(--current, currentColor));
+            --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1);
+        }
+
+        &[data-variant] {
             background-color: --c2-surface(0.1, var(--current, currentColor));
+        }
+
+        &:not([data-variant]), &[data-variant="default"] {
+            background-color: --c2-surface(0.02, var(--current, currentColor));
             --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1);
         }
 

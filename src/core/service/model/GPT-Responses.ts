@@ -48,7 +48,7 @@ export class GPTResponses {
 
     //
     private apiUrl: string = "https://api.proxyapi.ru/openai/v1";
-    private model: string = "gpt-5-mini";
+    private model: string = "gpt-5";
     private responseId?: string | null = null;
 
     //
@@ -130,7 +130,7 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "low" },
+                reasoning: { "effort": "medium" },
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),

@@ -202,7 +202,7 @@ export const JSON_SCHEMES = {
             rewards: BONUSES_SCHEME,
             bonuses: BONUSES_SCHEME,
             actions: ACTIONS_SCHEME,
-            costs: BONUSES_SCHEME
+            prices: BONUSES_SCHEME
         },
         required: ["kind", "status", "location"]
     },
@@ -298,7 +298,7 @@ export const JSON_SCHEMES = {
                 feedbacks: FEEDBACKS_SCHEME,
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME,
+                prices: BONUSES_SCHEME,
 
                 //
                 purpose: { enum: ["entertainment", "food", "services", "medical", "electronics", "furniture", "specialized", "professional", "other"] },
@@ -327,7 +327,7 @@ export const JSON_SCHEMES = {
                 feedbacks: FEEDBACKS_SCHEME,
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME,
+                prices: BONUSES_SCHEME,
 
                 //
                 purpose: { enum: ["entertainment", "food", "services", "medical", "electronics", "furniture", "specialized", "professional", "other"] },
@@ -362,7 +362,7 @@ export const JSON_SCHEMES = {
                 //
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME,
+                prices: BONUSES_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME,
 
                 //
@@ -384,6 +384,7 @@ export const JSON_SCHEMES = {
                 tasks: { $ref: "#/$defs/IdArray" },
 
                 //
+                price: { type: "number" },
                 contacts: { $ref: "#/$defs/Contact" },
                 services: { $ref: "#/$defs/IdArray" },
                 location: { $ref: "#/$defs/LocationRef" },
@@ -468,7 +469,7 @@ export const JSON_SCHEMES = {
                 //
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME
+                prices: BONUSES_SCHEME
             },
             required: ["begin_time", "location"]
         },
@@ -526,7 +527,7 @@ export const JSON_SCHEMES = {
                 //
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME
+                prices: BONUSES_SCHEME
             },
             required: ["location"]
         },
@@ -635,7 +636,7 @@ export const JSON_SCHEMES = {
                 timeLimit: { $ref: "#/$defs/Timestamp" },
                 rewards: BONUSES_SCHEME,
                 bonuses: BONUSES_SCHEME,
-                costs: BONUSES_SCHEME
+                prices: BONUSES_SCHEME
             },
             required: ["chance", "rewards", "requirements", "location"]
         },

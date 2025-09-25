@@ -242,7 +242,11 @@ export const makeEntityEdit = async (
 
 //
 export const objectExcludeNotExists = (object: any) => {
-    return Object.fromEntries([...Object.entries(object)].filter(([key, value]) => value !== null && value !== undefined));
+    if (!object) return object;
+    if (typeof object == "object" || typeof object == "function") {
+        return Object.fromEntries([...Object.entries(object)].filter(([key, value]) => value !== null && value !== undefined));
+    }
+    return object;
 }
 
 //

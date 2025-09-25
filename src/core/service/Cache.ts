@@ -147,26 +147,27 @@ export const getEntitiesByType = (types: string[]) => {
 }
 
 //
-export const getShortFormFromEntities = async (entityTypes: { entityType: string; }[]) => {
-    const entities = await Promise.all(entityTypes?.flatMap?.((type) => {
-        return [type?.entityType, getEntitiesFromFS(`/data/${type?.entityType}/`)];
-    }) ?? []);
-
-    //
-    return entityTypes?.map?.(async ({ entityType }) => {
-        return (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
-    })?.map(async (item) => {
-        const w: any = await item;
-        return (w?.id || w?.name || w?.desc?.name)
-    });
-}
-
-//
 export const getEntitiesFromFS = (dir: string) => {
     return readJSONs(dir);
 }
 
+//
+export const getShortFormFromEntities = async (entityTypes: { entityType: string; }[]) => {
+    const entities = await Promise.all(entityTypes?.flatMap?.(async (type) => {
+        return [type?.entityType, await getEntitiesFromFS(`/data/${type?.entityType}/`)];
+    }) ?? []);
 
+    //
+    return entityTypes?.map?.(async ({ entityType }) => {
+        const neededEntityType = (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
+        return entities
+            ?.filter?.(([eType, entity]) => (eType == neededEntityType))
+            ?.map(async (item) => {
+                const w: any = await item;
+                return (w?.id || w?.name || w?.desc?.name)
+            });
+    }) ?? [];
+}
 
 //
 export const pushPendingToFS = async (entityType: string = "") => {

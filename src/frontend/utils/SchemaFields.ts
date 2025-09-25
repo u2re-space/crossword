@@ -156,6 +156,15 @@ const descriptorFromSpec = (spec: FieldSpec): FieldDescriptor => {
     };
 };
 
+//
+const makeObjectEntries = (object: any) => {
+    if (!object) return [];
+    if (typeof object == "object" || typeof object == "function") {
+        return [...Object.entries(object)];
+    }
+    return [];
+}
+
 export const collectDescriptors = (entityType: string, extras: (FieldSpec | null)[], allowLinks: boolean): FieldDescriptor[] => {
     const descriptors = new Map<string, FieldDescriptor>();
     const addDescriptor = (descriptor: FieldDescriptor) => descriptors.set(descriptor.name, descriptor);
@@ -168,7 +177,7 @@ export const collectDescriptors = (entityType: string, extras: (FieldSpec | null
     }
 
     const properties = schema?.properties ?? {};
-    Object.entries(properties).forEach(([propName, propSchema]: [string, any]) => {
+    makeObjectEntries(properties).forEach(([propName, propSchema]: [string, any]) => {
         if (propName === "contacts") {
             CONTACT_DESCRIPTORS.forEach(addDescriptor);
             return;

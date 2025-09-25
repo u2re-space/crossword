@@ -1,68 +1,13 @@
-import { getDirectoryHandle, H, M } from "fest/lure";
-import { makeReactive, ref } from "fest/object";
+import { H } from "fest/lure";
+import { ref } from "fest/object";
 
 //
 import "@rs-core/$test/Tasks";
-import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { TaskItem } from "../../display/items/TaskItem";
-import { insideOfDay } from "../../display/typed/Cards";
 import { SplitTimelinesByDays } from "./Splitter";
 import { TIMELINE_DIR } from "@rs-core/service/Cache";
-
-//
-const loadAllTimelines = async (DIR: string) => {
-    const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
-    const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
-        const file = await fileHandle.getFile();
-        const item = JSON.parse(await file?.text?.() || "{}");
-        (item as any).__name = name;
-        (item as any).__path = `${DIR}${name}`;
-        return item;
-    })?.filter?.((e) => e));
-}
-
-//
-const $ShowItemsByDay = (DIR: string, dayDesc: any | null = null, ItemRenderer: (item: any, dayDesc: any | null) => any) => {
-    const dataRef: any = makeReactive([]);
-
-    //
-    const load = async () => {
-        dataRef.length = 0;
-
-        //
-        const timelines = await loadAllTimelines(DIR)?.catch?.(console.warn.bind(console));
-        for (const timeline of (timelines ?? [])) {
-            if (insideOfDay(timeline, dayDesc) && timeline) { dataRef.push(timeline); }
-        }
-    }
-
-    //
-    const items = M(dataRef, (item) => {
-        const itemEl = ItemRenderer(item, dayDesc ?? null);
-        return itemEl;
-    });
-
-    //
-    const toggleOpen = (ev: any) => {
-        const el = ev.currentTarget as HTMLElement;
-        if (el?.matches?.('.day-item')) el.toggleAttribute?.('data-open');
-    }
-
-    //
-    const root = H`<div data-type="day" style="gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${dayDesc.variant} on:click=${toggleOpen}>${items}</div>`;
-
-    //
-    items.boundParent = root;
-    (root as any).reloadList = load;
-
-    //
-    load().catch(console.warn.bind(console));
-    bindDropToDir(root as any, DIR);
-
-    //
-    return root;
-}
+import { loadAllTimelines } from "@rs-frontend/utils/Formatted";
+import { $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
 
 // Render the timeline
 export const PlannedTimeline = async (currentTab?: any | null, daysDesc?: any[] | null) => {

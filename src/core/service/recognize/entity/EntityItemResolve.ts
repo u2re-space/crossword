@@ -37,15 +37,10 @@ const deepMergeExistsAndPotential = (exists: any, potential: any): any => {
     return deepMergeObj(exists, potential);
 }
 
-
-
-const getRelated = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) => {
+//
+const getEntityShortFormList = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) => {
     const shortForm = await getShortFormFromEntities(entityDesc);
     const relatedList: any[] = [];
-    const forEntity: any[] = [];
-    const inEntity: any[] = [];
-
-    //
     for (const entityKind of entityKinds) {
 
         // multiple
@@ -57,7 +52,17 @@ const getRelated = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) 
     }
 
     //
-    const handleUsabilityKind = (usabilityKind: any, forEntity: any[], inEntity: any[]) => {
+    return relatedList;
+}
+
+//
+const getRelatedShortFormList = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) => {
+    const forEntity: any[] = [];
+    const inEntity: any[] = [];
+
+    //
+    const shortForm = await getShortFormFromEntities(entityDesc);
+    const handleUsabilityKind = async (usabilityKind: any, forEntity: any[], inEntity: any[]) => {
         forEntity.push(...(usabilityKind?.forEntity ?? [])?.map?.(async (kind) => (await makeRelatedListPerEntity(kind ?? "unknown", shortForm))))
         inEntity.push(...(usabilityKind?.inEntity ?? [])?.map?.(async (kind) => (await makeRelatedListPerEntity(kind ?? "unknown", shortForm))))
     }
@@ -67,16 +72,16 @@ const getRelated = async (entityKinds: BonusEntity[], entityDesc: EntityDesc[]) 
         if (Array.isArray(entityKind?.usabilityKind)) {
             // multiple
             for (const usabilityKind of entityKind?.usabilityKind ?? []) {
-                handleUsabilityKind(usabilityKind, forEntity, inEntity)
+                await handleUsabilityKind(usabilityKind, forEntity, inEntity)
             }
         } else {
             // single
-            handleUsabilityKind(entityKind?.usabilityKind, forEntity, inEntity)
+            await handleUsabilityKind(entityKind?.usabilityKind, forEntity, inEntity)
         }
     }
 
     //
-    return [relatedList, forEntity, inEntity]
+    return Promise.all([forEntity, inEntity])
 }
 
 
@@ -90,11 +95,14 @@ export const resolveEntity = async (entityDesc: EntityDesc[], entityKinds: Bonus
 
     //
     const shortlistOfItems = [`=== BEGIN:PREPARE_RELATED_ITEMS ===
-Shortlist of existing items in ${JSON.stringify(entityDesc)} registry.
+Shortlist of existing items in registry.
+\`\`\`json
+${JSON.stringify(await getEntityShortFormList(entityKinds, entityDesc), null, 2)}
+\`\`\`
 
 And related entities, for making compatible resolve:
 \`\`\`json
-${JSON.stringify(await getRelated(entityKinds, entityDesc))}
+${JSON.stringify(await getRelatedShortFormList(entityKinds, entityDesc), null, 2)}
 \`\`\`
 === END:PREPARE_RELATED_ITEMS ===`];
 
@@ -116,7 +124,11 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
         "Also, search potentially related items (names, IDs)...",
         "Resolve entity items, by following schemes (according of entity types): ",
         `\`\`\`json
-${JSON.stringify(await getShortFormFromEntities(entityDesc), null, 2)}
+${JSON.stringify(safe(entityDesc?.map?.(({ entityType }) => {
+    return Object.entries(JSON_SCHEMES.$entities)
+        ?.filter?.((entity) => (entityType ?? "unknown") == (entity?.[0] ?? "unknown"))
+        ?.map?.((entity) => entity?.[1] ?? {}) ?? [];
+}) ?? []), null, 2)}
 \`\`\``, "=== END:RESOLVE_STEP ===",
     ]?.map?.((instruction) => instruction?.trim?.());
 
@@ -130,7 +142,7 @@ ${JSON.stringify(await getShortFormFromEntities(entityDesc), null, 2)}
     for (const desc of entityDesc) {
         const potentialName = parsed?.[i]?.desc?.name ?? desc?.potentialName;
         const entityType = desc?.entityType;
-        const exists = (await readJSONs(`/data/${entityType}/`))?.find?.((json: any) => (json?.desc?.name == potentialName));
+        const exists = (await readJSONs(`/data/${entityType}/`))?.find?.((json: any) => (json?.desc?.name == potentialName)) ?? {};
         parsed[i] = deepMergeExistsAndPotential?.(parsed[i], exists) ?? parsed[i]; i++;
     }
     return parsed;
