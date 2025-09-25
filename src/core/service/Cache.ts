@@ -138,8 +138,26 @@ export const getShortFormFromEntity = (entity: any) => {
 }
 
 //
-export const getShortFormFromEntities = (entities: any[]) => {
-    return entities?.map?.((entity) => getShortFormFromEntity(entity));
+export const getEntitiesByType = (types: string[]) => {
+    return Promise.all(types?.flatMap?.((type) => {
+        return readJSONs(`/data/${type}/`).then((entry) => {
+            return [type, getShortFormFromEntity(entry ?? [])];
+        });
+    }) ?? []);
+}
+
+//
+export const getShortFormFromEntities = async (entityTypes: any[]) => {
+    const entities = await Promise.all(entityTypes?.flatMap?.((type) => {
+        return [type, getEntitiesFromFS(`/data/${type}/`)];
+    }) ?? []);
+
+    return entityTypes?.map?.(async ([entityType]) => {
+        return (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
+    })?.map(async (item) => {
+        const w: any = await item;
+        return (w?.id || w?.name || w?.desc?.name)
+    });
 }
 
 //

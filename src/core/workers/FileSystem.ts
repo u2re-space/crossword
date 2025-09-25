@@ -7,7 +7,7 @@ export const getMarkDownFromFile = async (handle: any) => {
 }
 
 //
-export const getJSONFromFile = async (handle: any) => {
+export const getJSONFromFile = async ([handle]: any) => {
     const json = await handle.getFile();
     return JSON.parse(await json.text());
 }
@@ -21,15 +21,15 @@ export const hasCriteriaInText = async (text: string, criteria: string[]) => {
 export const readJSONs = async (dir: any | null) => {
     const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
     const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor?.[1])));
-}
+    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
 
 //
 export const readJSONsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
     const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
     const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor?.[1])));
-}
+    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
 
 //
 export const readMarkDownsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
