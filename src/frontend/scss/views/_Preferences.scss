@@ -1,32 +1,171 @@
 @layer rs-preferences {
     .preferences-view {
-        display: block;
-        border-radius: 0.5rem;
+        display: grid;
+        gap: clamp(0.75rem, 1vw, 1.25rem);
+        border-radius: clamp(0.75rem, 1vw, 1.1rem);
+        padding: 0px;//clamp(0.75rem, 1vw + 0.5rem, 1.25rem);
+        background: color-mix(in oklab, var(--current, transparent) 4%, transparent);
 
-        & > h2 {
-            margin: 0 0 0.5rem 0;
-            font-weight: 700;
-            font-size: 1.125rem;
-            letter-spacing: 0.01em;
-        }
-
-        [data-type="preferences"] {
-            inline-size: stretch;
-            block-size: stretch;
+        .view-toolbar {
+            position: sticky;
+            inset-block-start: 0;
+            z-index: 4;
             display: flex;
-            grid-template-columns: minmax(0px, 1fr);
-            background-color: --c2-contrast(0.0, var(--current, currentColor));
-            border-radius: 0.5rem;
+            justify-content: flex-end;
+            padding-block-end: clamp(0.35rem, 0.8vw, 0.6rem);
+            backdrop-filter: blur(12px) saturate(120%);
 
-            & > * {
-                inline-size: stretch;
+            .button-set {
+                display: flex;
+                flex-wrap: wrap;
+                gap: clamp(0.35rem, 0.8vw, 0.6rem);
+
+                button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    padding: 0.4rem 0.75rem;
+                    border-radius: 999px;
+                    border: 0;
+                    background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+                    color: --c2-on-surface(0.0, var(--current, currentColor));
+                    cursor: pointer;
+                    transition: background 140ms ease, transform 140ms ease;
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--current, currentColor) 12%, transparent);
+                        transform: translateY(-1px);
+                    }
+
+                    &:active {
+                        transform: translateY(0);
+                    }
+
+                    span {
+                        font-size: 0.85rem;
+                        font-weight: 500;
+                    }
+                }
             }
         }
 
-        md-view {
-            inline-size: stretch;
-            block-size: stretch;
-            color-scheme: light only;
+        [data-type="preferences"] {
+            display: grid;
+            gap: clamp(0.45rem, 1vw, 0.8rem);
+        }
+
+        .preference-accordion {
+            border-radius: clamp(0.75rem, 1vw, 1rem);
+            border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
+            background: color-mix(in oklab, currentColor 6%, transparent);
+            overflow: hidden;
+            transition: border-color 160ms ease, background 160ms ease;
+
+            &[open] {
+                border-color: color-mix(in oklab, currentColor 28%, transparent);
+                background: color-mix(in oklab, currentColor 12%, transparent);
+            }
+
+            summary {
+                display: grid;
+                grid-template-columns: auto 1fr auto auto;
+                gap: clamp(0.4rem, 0.8vw, 0.6rem);
+                align-items: center;
+                padding: clamp(0.75rem, 1vw + 0.5rem, 1rem);
+                cursor: pointer;
+                color: --c2-on-surface(0.0, var(--current, currentColor));
+
+                ui-icon {
+                    --icon-size: 1.25rem;
+                    --icon-color: color-mix(in oklab, currentColor 48%, white 60%);
+                }
+
+                span {
+                    font-weight: 600;
+                    font-size: clamp(0.92rem, 0.6cqi + 0.8rem, 1.02rem);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                button.plain {
+                    inline-size: 2rem;
+                    block-size: 2rem;
+                    border-radius: 999px;
+                    display: inline-grid;
+                    place-content: center;
+                    border: none;
+                    background: transparent;
+                    color: inherit;
+                    cursor: pointer;
+                    transition: background 140ms ease;
+
+                    &:hover {
+                        background: color-mix(in oklab, currentColor 18%, transparent);
+                    }
+                }
+            }
+
+            .spoiler-content {
+                padding: clamp(0rem, 0.5vw, 0.35rem) clamp(0.75rem, 1vw + 0.5rem, 1rem) clamp(0.9rem, 1vw + 0.7rem, 1.15rem);
+                display: grid;
+                gap: clamp(0.6rem, 1vw, 0.9rem);
+                scrollbar-width: thin;
+
+                md-view {
+                    inline-size: 100%;
+                    min-block-size: 4rem;
+                    color-scheme: light only;
+                }
+
+                .ai-spoiler {
+                    border-radius: clamp(0.6rem, 1vw, 0.85rem);
+                    border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
+                    background: color-mix(in oklab, currentColor 8%, transparent);
+
+                    summary {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.45rem;
+                        cursor: pointer;
+                        padding: clamp(0.6rem, 0.8vw, 0.75rem) clamp(0.8rem, 1vw, 1rem);
+                        ui-icon { --icon-size: 1.1rem; }
+                        span { font-weight: 600; }
+                    }
+
+                    .ai-answer {
+                        padding: clamp(0.6rem, 0.9vw, 0.85rem) clamp(0.8rem, 1vw, 1.1rem) clamp(0.8rem, 1vw, 1.25rem);
+                        background: color-mix(in oklab, currentColor 12%, transparent);
+                        border-radius: clamp(0.45rem, 0.8vw, 0.6rem);
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 720px) {
+            padding: clamp(0.65rem, 4vw, 1.1rem);
+
+            .view-toolbar {
+                justify-content: stretch;
+
+                .button-set {
+                    justify-content: stretch;
+
+                    button {
+                        flex: 1 1 calc(50% - 0.5rem);
+                        justify-content: center;
+                    }
+                }
+            }
+
+            .preference-accordion summary {
+                grid-template-columns: auto 1fr auto;
+                gap: 0.45rem;
+
+                button.plain span {
+                    display: none;
+                }
+            }
         }
     }
 }

@@ -118,7 +118,7 @@ export const ModalForm = (
     const form = H`<form class="modal-form" on:submit=${confirm}>
         <h3 class="modal-title">${title}</h3>
         ${description ? H`<p class="modal-description">${description}</p>` : null}
-        <div class="modal-fields"></div>
+        <div class="modal-fields" role="group"></div>
         <div class="modal-actions">
             <div class="modal-actions-left"></div>
             <div class="modal-actions-right">
@@ -158,6 +158,7 @@ export const ModalForm = (
         form.toggleAttribute('data-busy', busy);
         saveBtn.disabled = busy;
         cancelBtn.disabled = busy;
+        document.body.toggleAttribute('data-modal-open', busy || document.querySelectorAll('.rs-modal-backdrop').length > 1);
     };
 
     const setValue = (name: string, value: any) => {
