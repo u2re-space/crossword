@@ -9,6 +9,8 @@
         pointer-events: none;
         z-index: 10000;
         max-inline-size: min(92vw, 420px);
+        place-content: center;
+        place-items: center;
     }
 
     .rs-toast {
