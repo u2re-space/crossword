@@ -1,6 +1,7 @@
 import { makeReactive, observableByMap, observableBySet } from "fest/object";
 import { getDirectoryHandle, H, M } from "fest/lure";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
+import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
 
 //
 export const insideOfDay = (item: any, dayDesc: any) => {
@@ -156,6 +157,7 @@ export const makePropertyDesc = (label: string | any, property: any, key?: strin
 //
 export const $ShowItemsByType = (DIR: string, byKind: string | null = null, ItemRenderer: (item: any, byKind: string | null) => any) => {
     const dataRef: any = makeReactive([]);
+    let stopWatch: (() => void) | null = null;
     const load = async () => {
         dataRef.length = 0;
 
@@ -184,9 +186,40 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
     items.boundParent = root;
     (root as any).reloadList = load;
 
-    //
+    const ensureWatcher = () => {
+        if (stopWatch) return;
+        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
+    };
+
+    const cancelWatcher = () => {
+        stopWatch?.();
+        stopWatch = null;
+    };
+
+    root.addEventListener('dir-dropped', () => load().catch(console.warn));
+
+    let observer: MutationObserver | null = null;
+    ensureWatcher();
     load().catch(console.warn.bind(console));
     bindDropToDir(root as any, DIR);
+
+    if (!observer && typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+        observer = new MutationObserver(() => {
+            if (root.isConnected) ensureWatcher();
+            else {
+                cancelWatcher();
+                observer?.disconnect();
+                observer = null;
+            }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    (root as any).dispose = () => {
+        cancelWatcher();
+        observer?.disconnect();
+        observer = null;
+    };
 
     //
     return root;
@@ -209,6 +242,7 @@ export const loadAllTimelines = async (DIR: string) => {
 //
 export const $ShowItemsByDay = (DIR: string, dayDesc: any | null = null, ItemRenderer: (item: any, dayDesc: any | null) => any) => {
     const dataRef: any = makeReactive([]);
+    let stopWatch: (() => void) | null = null;
 
     //
     const load = async () => {
@@ -240,9 +274,40 @@ export const $ShowItemsByDay = (DIR: string, dayDesc: any | null = null, ItemRen
     items.boundParent = root;
     (root as any).reloadList = load;
 
-    //
+    const ensureWatcher = () => {
+        if (stopWatch) return;
+        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
+    };
+
+    const cancelWatcher = () => {
+        stopWatch?.();
+        stopWatch = null;
+    };
+
+    root.addEventListener('dir-dropped', () => load().catch(console.warn));
+
+    let observer: MutationObserver | null = null;
+    ensureWatcher();
     load().catch(console.warn.bind(console));
     bindDropToDir(root as any, DIR);
+
+    if (!observer && typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+        observer = new MutationObserver(() => {
+            if (root.isConnected) ensureWatcher();
+            else {
+                cancelWatcher();
+                observer?.disconnect();
+                observer = null;
+            }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    (root as any).dispose = () => {
+        cancelWatcher();
+        observer?.disconnect();
+        observer = null;
+    };
 
     //
     return root;

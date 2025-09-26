@@ -6,6 +6,7 @@ import { H, M, getDirectoryHandle, remove } from "fest/lure";
 import { makeReactive, ref } from "fest/object";
 import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/workers/WebDavSync";
+import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
 
 //
 const isDate = (date: any) => {
@@ -76,6 +77,29 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
     preferences.boundParent = root;
     (root as any).reloadList = load;
 
+    let stopWatch: (() => void) | null = null;
+    const ensureWatcher = () => {
+        if (stopWatch) return;
+        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
+    };
+    const cancelWatcher = () => {
+        stopWatch?.();
+        stopWatch = null;
+    };
+
+    const observer = typeof MutationObserver !== 'undefined' && typeof document !== 'undefined'
+        ? new MutationObserver(() => {
+            if (root.isConnected) ensureWatcher();
+            else {
+                cancelWatcher();
+                observer.disconnect();
+            }
+        })
+        : null;
+    observer?.observe(document.documentElement, { childList: true, subtree: true });
+
+    ensureWatcher();
+
     //
     load().catch(console.warn.bind(console));
     bindDropToDir(root as any, DIR);
@@ -142,6 +166,9 @@ export const PreferencesView = (currentTab?: any | null) => {
     section.addEventListener('paste', async (ev: ClipboardEvent) => {
         ev.stopPropagation();
         await pasteIntoDir(getCurrentDir());
+        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    });
+    section.addEventListener('dir-dropped', () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
     });
 

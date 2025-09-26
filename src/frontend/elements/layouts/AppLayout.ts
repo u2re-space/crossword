@@ -1,6 +1,6 @@
 import { getDirectoryHandle, H, I } from "fest/lure";
-import { postShareTarget } from "@rs-core/service/Cache";
 import { handleClipboardItems } from "@rs-frontend/utils/HookEvent";
+import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
 
 //
 export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value: string }, sidebar: HTMLElement) => {
@@ -14,17 +14,18 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
     //
     const $layout = H`<ui-box-with-sidebar>${[TOOLBAR, I({ mapped: views, current: currentView }), sidebar]}</ui-box-with-sidebar>`;
 
+    const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
+
     // wire: Paste and Recognize
     TOOLBAR.querySelector('#paste-and-recognize')?.addEventListener?.('click', async () => {
         try {
-            // Attempt rich clipboard read
             if (navigator.clipboard && (navigator.clipboard as any).read) {
                 const items = await (navigator.clipboard as any).read();
-                handleClipboardItems(items, postShareTarget);
+                await handleClipboardItems(items, (payload) => intake(payload));
+                return;
             }
-            // Fallback to text
             const text = await navigator.clipboard.readText();
-            if (text && text.trim()) { await postShareTarget({ text }, 'bonus'); return; }
+            if (text && text.trim()) { await intake({ text }); }
         } catch (e) { console.warn(e); }
     });
 
@@ -37,7 +38,7 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
             input.multiple = false;
             input.onchange = async () => {
                 const file = input.files?.[0];
-                if (file) await postShareTarget({ file }, 'bonus');
+                if (file) await intake({ file });
             };
             input.click();
         } catch (e) { console.warn(e); }

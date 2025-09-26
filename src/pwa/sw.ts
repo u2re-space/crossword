@@ -51,6 +51,9 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     //
     if (!settings) return { resultEntities: [], entityTypes: [] };
     const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+    if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
+        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey);
+    }
     console.log(gptResponses);
 
     // phase 0 - prepare data

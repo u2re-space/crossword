@@ -4,6 +4,7 @@
 import { makeReactive, ref } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
+import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
 
 //
 const makeEvents = (path: string, name: string) => {
@@ -72,6 +73,29 @@ const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
     const root = H`<div data-name="${byKind}" data-type="quests" class="tab">${quests}</div>`;
     quests.boundParent = root; (root as any).reloadList = load;
 
+    let stopWatch: (() => void) | null = null;
+    const ensureWatcher = () => {
+        if (stopWatch) return;
+        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
+    };
+    const cancelWatcher = () => {
+        stopWatch?.();
+        stopWatch = null;
+    };
+
+    const observer = typeof MutationObserver !== 'undefined' && typeof document !== 'undefined'
+        ? new MutationObserver(() => {
+            if (root.isConnected) ensureWatcher();
+            else {
+                cancelWatcher();
+                observer.disconnect();
+            }
+        })
+        : null;
+    observer?.observe(document.documentElement, { childList: true, subtree: true });
+
+    ensureWatcher();
+
     //
     load().catch(console.warn.bind(console));
     bindDropToDir(root as any, DIR);
@@ -123,6 +147,9 @@ export const QuestsView = (currentTab?: any | null) => {
     section.addEventListener('paste', async (ev: ClipboardEvent) => {
         ev.stopPropagation();
         await pasteIntoDir(getCurrentDir());
+        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    });
+    section.addEventListener('dir-dropped', () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
     });
     section.querySelector('#btn-upload')?.addEventListener('click', async () => {

@@ -112,16 +112,15 @@ export const MakeCardByKind = (label: string, dir: string, item: any, byKind: an
     //
     const title = item?.desc?.title || item?.desc?.name || item?.name || label;
     const kind = item?.kind || "";
-    if (!(!byKind || byKind == "all" || !kind || byKind == kind)) return;
+    if (!kind || !byKind || byKind == kind || byKind == "all" || kind == "all") {
+        const fileId = item?.id || item?.name || item?.desc?.name;
+        const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+        if (!path) return null;
 
-    //
-    const fileId = item?.id || item?.name || item?.desc?.name;
-    const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-    if (!path) return null;
-
-    //
-    const events = makeEvents(label, path, title, item, kind);
-    return MakeCardElement(label, item, events);
+        //
+        const events = makeEvents(label, path, title, item, kind);
+        return MakeCardElement(label, item, events);
+    }
 }
 
 //

@@ -2,15 +2,17 @@ import { ref } from "fest/object";
 import { H } from "fest/lure";
 import { ContactItem, PERSONS_DIR } from "../../display/items/ContactItem";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
-
-//
-const kinds = ["specialist", "delivery", "other", "all"] as const;
-const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(PERSONS_DIR, kind, ContactItem)]));
+import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
+import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
 
 //
 export const ContactsView = (currentTab?: any | null) => {
-    currentTab ??= ref("specialist");
-    if (currentTab != null) { currentTab.value = "specialist"; }
+    currentTab ??= ref("all");
+    if (currentTab != null) { currentTab.value = "all"; }
+
+    //
+    const kinds = ["specialist", "delivery", "other", "all"] as const;
+    const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(PERSONS_DIR, kind, ContactItem)]));
 
     //
     const tabbed = H`<ui-tabbed-box
@@ -21,8 +23,7 @@ export const ContactsView = (currentTab?: any | null) => {
         class="all"
     ></ui-tabbed-box>`;
 
-    //
-    return H`<section id="contacts" class="all-view">
+    const section = H`<section id="contacts" class="all-view">
     ${tabbed}
     <div class="view-toolbar">
         <div class="button-set">
@@ -31,5 +32,11 @@ export const ContactsView = (currentTab?: any | null) => {
             <span>Add Contact</span>
         </button>
     </div>
-    </section>`;
+    </section>` as HTMLElement;
+
+    const intake = (payload) => sendToEntityPipeline(payload, { entityType: "person" });
+    implementDropEvent(section, intake);
+    implementPasteEvent(section, intake);
+
+    return section;
 }

@@ -2,15 +2,17 @@ import { H } from "fest/lure";
 import { ref } from "fest/object";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { ServiceItem, SERVICES_DIR } from ".././../display/items/ServiceItem";
-
-//
-const kinds = ["digital", "supporting", "medical", "education", "delivery", "other", "all"] as const;
-const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(SERVICES_DIR, kind, ServiceItem)]));
+import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
+import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
 
 //
 export const ServicesView = (currentTab?: any | null) => {
-    currentTab ??= ref("digital");
-    if (currentTab != null) { currentTab.value = "digital"; }
+    currentTab ??= ref("all");
+    if (currentTab != null) { currentTab.value = "all"; }
+
+    //
+    const kinds = ["digital", "consultation", "supporting", "medical", "education", "delivery", "other", "all"] as const;
+    const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(SERVICES_DIR, kind, ServiceItem)]));
 
     //
     const tabbed = H`<ui-tabbed-box
@@ -21,8 +23,7 @@ export const ServicesView = (currentTab?: any | null) => {
         class="all"
     ></ui-tabbed-box>`;
 
-    //
-    return H`<section id="services" class="all-view">
+    const section = H`<section id="services" class="all-view">
     ${tabbed}
     <div class="view-toolbar">
         <div class="button-set">
@@ -32,5 +33,11 @@ export const ServicesView = (currentTab?: any | null) => {
         </button>
         </div>
     </div>
-    </section>`;
+    </section>` as HTMLElement;
+
+    const intake = (payload) => sendToEntityPipeline(payload, { entityType: "service" });
+    implementDropEvent(section, intake);
+    implementPasteEvent(section, intake);
+
+    return section;
 }

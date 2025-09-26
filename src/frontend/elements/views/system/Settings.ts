@@ -8,6 +8,12 @@ type AppSettings = {
         baseUrl: string;
         model: string; // 'gpt-5' | 'gpt-5-mini' | custom id
         customModel?: string;
+        mcp?: {
+            serverLabel: string;
+            origin: string;
+            clientKey: string;
+            secretKey: string;
+        };
     };
     webdav: {
         url: string;
@@ -23,7 +29,13 @@ const DEFAULTS: AppSettings = {
         apiKey: "",
         baseUrl: "",
         model: "gpt-5",
-        customModel: ""
+        customModel: "",
+        mcp: {
+            serverLabel: "",
+            origin: "",
+            clientKey: "",
+            secretKey: ""
+        }
     },
     webdav: {
         url: "http://localhost:6065",
@@ -41,6 +53,7 @@ const loadSettings = async (): Promise<AppSettings> => {
                 ai: { ...DEFAULTS.ai, ...(stored as any)?.ai },
                 webdav: { ...DEFAULTS.webdav, ...(stored as any)?.webdav }
             };
+            merged.ai.mcp = { ...DEFAULTS.ai.mcp, ...(stored as any)?.ai?.mcp };
             if (!["gpt-5", "gpt-5-mini"].includes(merged.ai.model)) {
                 merged.ai.customModel = merged.ai.model;
                 merged.ai.model = "custom";
@@ -74,6 +87,10 @@ export const Settings = async () => {
         <option value="custom">custom...</option>
     </select>` as HTMLSelectElement;
     const customModel = H`<input name="ai_custom_model" type="text" placeholder="model id (e.g. provider/model)" />` as HTMLInputElement;
+    const mcpServerLabel = H`<input name="ai_mcp_label" type="text" placeholder="label" />` as HTMLInputElement;
+    const mcpOrigin = H`<input name="ai_mcp_origin" type="text" placeholder="https://mcp.example" />` as HTMLInputElement;
+    const mcpClientKey = H`<input name="ai_mcp_client" type="text" placeholder="client key" />` as HTMLInputElement;
+    const mcpSecretKey = H`<input name="ai_mcp_secret" type="password" placeholder="secret" />` as HTMLInputElement;
 
     const wdUrl = H`<input name="webdav_url" type="text" placeholder="http://localhost:8080" />` as HTMLInputElement;
     const wdUser = H`<input name="webdav_username" type="text" placeholder="login" />` as HTMLInputElement;
@@ -91,11 +108,32 @@ export const Settings = async () => {
     // Build groups
     const customField = field("Custom model", customModel) as HTMLElement;
     (customField as HTMLElement).style.display = "none";
+    const mcpGroup = H`<fieldset class="group"><legend>MCP (Optional)</legend>${[
+        field("Label", mcpServerLabel),
+        field("Origin", mcpOrigin),
+        field("Client Key", mcpClientKey),
+        field("Secret Key", mcpSecretKey)
+    ]}</fieldset>` as HTMLElement;
+    mcpGroup.toggleAttribute('hidden', true);
+
+    const toggleMCP = () => {
+        const anyFilled = [mcpServerLabel, mcpOrigin, mcpClientKey, mcpSecretKey].some((input) => input.value.trim().length);
+        mcpGroup.toggleAttribute('hidden', !anyFilled && !mcpGroup.hasAttribute('data-open'));
+    };
+
+    const mcpToggleButton = H`<button type="button" class="btn" data-role="toggle-mcp"><ui-icon icon="gear"></ui-icon><span>MCP Settings</span></button>` as HTMLButtonElement;
+    mcpToggleButton.addEventListener('click', () => {
+        const isOpen = mcpGroup.toggleAttribute('data-open');
+        mcpGroup.toggleAttribute('hidden', !isOpen && [mcpServerLabel, mcpOrigin, mcpClientKey, mcpSecretKey].every((input) => !input.value.trim().length));
+    });
+
     const aiGroup = H`<fieldset class="group"><legend>AI</legend>${[
         field("API key", aiApiKey),
         field("Base URL", aiBaseUrl),
         field("Model", modelSelect),
-        customField
+        customField,
+        mcpToggleButton,
+        mcpGroup
     ]}</fieldset>` as HTMLElement;
 
     const wdHint = H`<div class="hint">Use either login/password or a token.</div>` as HTMLElement;
@@ -130,6 +168,16 @@ export const Settings = async () => {
     }
     toggleCustom();
 
+    mcpServerLabel.value = settings.ai.mcp?.serverLabel || "";
+    mcpOrigin.value = settings.ai.mcp?.origin || "";
+    mcpClientKey.value = settings.ai.mcp?.clientKey || "";
+    mcpSecretKey.value = settings.ai.mcp?.secretKey || "";
+
+    if ([mcpServerLabel, mcpOrigin, mcpClientKey, mcpSecretKey].some((input) => input.value.trim().length)) {
+        mcpGroup.setAttribute('data-open', 'true');
+        mcpGroup.removeAttribute('hidden');
+    }
+
     wdUrl.value = settings.webdav.url || DEFAULTS.webdav.url;
     wdUser.value = settings.webdav.username || "";
     wdPass.value = settings.webdav.password || "";
@@ -144,7 +192,13 @@ export const Settings = async () => {
                 apiKey: aiApiKey.value.trim(),
                 baseUrl: aiBaseUrl.value.trim(),
                 model: chosenModel,
-                customModel: modelSelect.value === 'custom' ? customModel.value.trim() : ""
+                customModel: modelSelect.value === 'custom' ? customModel.value.trim() : "",
+                mcp: {
+                    serverLabel: mcpServerLabel.value.trim(),
+                    origin: mcpOrigin.value.trim(),
+                    clientKey: mcpClientKey.value.trim(),
+                    secretKey: mcpSecretKey.value.trim()
+                }
             },
             webdav: {
                 url: wdUrl.value.trim() || DEFAULTS.webdav.url,
@@ -163,6 +217,9 @@ export const Settings = async () => {
             setTimeout(() => { status.textContent = ""; }, 2000);
         }
     });
+
+    [mcpServerLabel, mcpOrigin, mcpClientKey, mcpSecretKey].forEach((input) => input.addEventListener('input', toggleMCP));
+    toggleMCP();
 
     return container;
 }
