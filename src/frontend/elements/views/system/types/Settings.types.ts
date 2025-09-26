@@ -35,25 +35,25 @@ export type SectionConfig = {
 
 export type AppSettings = {
     ai: {
-        apiKey: string;
-        baseUrl: string;
-        model: string;
+        apiKey?: string;
+        baseUrl?: string;
+        model?: string;
         customModel?: string;
         mcp?: {
-            serverLabel: string;
-            origin: string;
-            clientKey: string;
-            secretKey: string;
+            serverLabel?: string;
+            origin?: string;
+            clientKey?: string;
+            secretKey?: string;
         };
     };
     webdav: {
-        url: string;
-        username: string;
-        password: string;
-        token: string;
+        url?: string;
+        username?: string;
+        password?: string;
+        token?: string;
     };
     timeline: {
-        source: string;
+        source?: string;
     };
 };
 

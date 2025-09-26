@@ -1,4 +1,4 @@
-import type { SectionConfig } from "./Settings.types";
+import type { SectionConfig } from "../types/Settings.types";
 
 export const AISettingsView: SectionConfig = {
     key: "ai",
@@ -10,8 +10,8 @@ export const AISettingsView: SectionConfig = {
             key: "ai-credentials",
             label: "Credentials",
             fields: [
-                { path: "ai.apiKey", label: "API key", type: "password", placeholder: "sk-..." },
                 { path: "ai.baseUrl", label: "Base URL", type: "text", placeholder: "https://api.openai.com/v1" },
+                { path: "ai.apiKey", label: "API key", type: "password", placeholder: "sk-..." },
                 {
                     path: "ai.model",
                     label: "Model",

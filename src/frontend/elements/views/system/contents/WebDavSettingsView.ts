@@ -1,4 +1,4 @@
-import type { SectionConfig } from "./Settings.types";
+import type { SectionConfig } from "../types/Settings.types";
 
 export const WebDavSettingsView: SectionConfig = {
     key: "webdav",

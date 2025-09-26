@@ -1,0 +1,53 @@
+{
+    "manifest_version": 3,
+    "name": "CrossWord",
+    "description": "CrossWord Chrome Extension",
+    "version": "1.0.0",
+    "action": {
+        "default_popup": "popup/index.html"
+    },
+    "options_ui": {
+        "page": "settings/index.html",
+        "open_in_tab": true
+    },
+    "background": {
+        "service_worker": "sw.ts",
+        "type": "module"
+    },
+    "icons": {
+        "512": "assets/512x.png"
+    },
+    "permissions": [
+        "tabs",
+        "storage",
+        "activeTab",
+        "scripting",
+        "background",
+        "clipboardWrite",
+        "clipboardRead",
+        "contextMenus",
+        "nativeMessaging",
+        "tabCapture",
+        "downloads"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' 'wasm-eval' http://**/* https://**/* file://**/*; child-src 'self';"
+    },
+    "host_permissions": [
+        "<all_urls>",
+        "file://**/*",
+        "file:///**/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>",
+                "file:///**/*",
+                "file://**/*"
+            ],
+            "js": ["content/main.ts"],
+            "run_at": "document_idle"
+        }
+    ]
+}

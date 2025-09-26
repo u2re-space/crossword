@@ -1,114 +1,49 @@
 import { H } from "fest/lure";
-import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
-import { updateWebDavSettings } from "@rs-core/workers/WebDavSync";
-import { getDirectoryHandle } from "fest/lure";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "./Settings.types";
-import { DEFAULT_SETTINGS } from "./Settings.types";
-import { AISettingsView } from "./AISettingsView";
-import { MCPSettingsView } from "./MCPSettingsView";
-import { WebDavSettingsView } from "./WebDavSettingsView";
+//
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "./types/Settings.types";
+import { DEFAULT_SETTINGS } from "./types/Settings.types";
+import { AISettingsView } from "./contents/AISettingsView";
+import { MCPSettingsView } from "./contents/MCPSettingsView";
+import { WebDavSettingsView } from "./contents/WebDavSettingsView";
 import { renderTabName } from "@rs-frontend/utils/Formatted";
+import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "./utils/Utils";
 
-const TIMELINE_SECTION: SectionConfig = {
-    key: "timeline",
-    title: "Timeline Planner",
-    icon: "calendar-plus",
-    description: "Choose which preference note should seed generated plans.",
-    groups: [
-        {
-            key: "timeline-source",
-            label: "Preference note",
-            fields: [
-                {
-                    path: "timeline.source",
-                    label: "Source file",
-                    type: "select",
-                    helper: "Files inside /docs/preferences appear in this list.",
-                    options: [{ value: "", label: "(auto)" }]
-                }
-            ]
-        }
-    ]
-};
-
-const SETTINGS_SECTIONS: SectionConfig[] = [
+//
+export const SETTINGS_SECTIONS: SectionConfig[] = [
     AISettingsView,
     MCPSettingsView,
     WebDavSettingsView,
     TIMELINE_SECTION
 ];
 
-const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as SectionKey[];
+//
+export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as SectionKey[];
 
-const SETTINGS_KEY = "rs-settings";
-
-const splitPath = (path: string) => path.split(".");
-const getByPath = (source: any, path: string) => splitPath(path).reduce<any>((acc, key) => (acc == null ? acc : acc[key]), source);
-const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
-
-const loadSettings = async (): Promise<AppSettings> => {
-    try {
-        const raw = await idbGet(SETTINGS_KEY);
-        const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
-        if (stored && typeof stored === "object") {
-            return {
-                ai: { ...DEFAULT_SETTINGS.ai, ...(stored as any)?.ai, mcp: { ...DEFAULT_SETTINGS.ai.mcp, ...(stored as any)?.ai?.mcp } },
-                webdav: { ...DEFAULT_SETTINGS.webdav, ...(stored as any)?.webdav },
-                timeline: { ...DEFAULT_SETTINGS.timeline, ...(stored as any)?.timeline }
-            };
-        }
-    } catch (e) {
-        console.warn(e);
-    }
-    return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-};
-
-const saveSettings = async (settings: AppSettings) => {
-    const current = await loadSettings();
-    const merged: AppSettings = {
-        ai: { ...current.ai, ...settings.ai, mcp: { ...current.ai.mcp, ...settings.ai.mcp } },
-        webdav: { ...current.webdav, ...settings.webdav },
-        timeline: { ...current.timeline, ...settings.timeline }
-    };
-    await idbPut(SETTINGS_KEY, merged);
-    updateWebDavSettings(merged)?.catch(console.warn.bind(console));
-    return merged;
-};
-
-const loadTimelineSources = async () => {
-    try {
-        const root = await getDirectoryHandle(null, "/docs/preferences")?.catch(() => null);
-        if (!root) return [] as string[];
-        const entries = await Array.fromAsync(root.entries?.() ?? []);
-        return entries
-            .map((entry: any) => entry?.[0])
-            .filter((name: string) => typeof name === "string" && name.trim().length)
-            .map((name: string) => name.replace(/\.md$/i, ""));
-    } catch (e) {
-        console.warn(e);
-        return [];
-    }
-};
-
+//
 export const Settings = async () => {
     const container = H`<section id="settings" class="settings-view" style="padding: 0px; inline-size: stretch; block-size: stretch; background-color: transparent;"></section>` as HTMLElement;
     const tabsState: { value: SectionKey } = { value: SETTINGS_SECTIONS[0].key };
 
+    //
     const fieldRefs = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
     const fieldMeta = new Map<string, FieldConfig>();
     const groupRefs = new Map<string, HTMLElement>();
     const navButtons = new Map<SectionKey, HTMLButtonElement>();
     const panelRefs = new Map<SectionKey, HTMLElement>();
+    const tabbed = new Map<SectionKey, HTMLElement>();
 
+    //
     const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
     const saveBtn = H`<button type="submit" class="btn save"><ui-icon icon="check"></ui-icon><span>Save changes</span></button>` as HTMLButtonElement;
     const actions = H`<div class="settings-actions">${[status, saveBtn]}</div>` as HTMLElement;
 
+    //
     const form = H`<form style="inline-size: stretch; block-size: stretch; background-color: transparent;" class="settings-form" on:submit=${(ev: SubmitEvent) => ev.preventDefault()}></form>` as HTMLFormElement;
     container.append(form);
 
+    //
     const createField = (config: FieldConfig) => {
         const id = `settings-${slugify(config.path)}-${fieldRefs.size}`;
         let control: HTMLInputElement | HTMLSelectElement;
@@ -132,6 +67,7 @@ export const Settings = async () => {
         return field;
     };
 
+    //
     const createGroup = (sectionKey: SectionKey, config: SectionConfig["groups"][number]) => {
         if (config.collapsible) {
             const details = H`<details class="settings-group is-collapsible" ${config.startOpen ? "open" : ""}></details>` as HTMLDetailsElement;
@@ -155,7 +91,7 @@ export const Settings = async () => {
         return { root: section, body };
     };
 
-    const tabbed = new Map<SectionKey, HTMLElement>();
+    //
     SETTINGS_SECTIONS.forEach((section) => {
         const button = H`<button type="button" class="settings-tab" role="tab" id=${`tab-${section.key}`} aria-controls=${`panel-${section.key}`} aria-selected="false">
             <ui-icon icon=${section.icon}></ui-icon>
@@ -225,7 +161,7 @@ export const Settings = async () => {
         }
     });
 
-    const setControlValue = (control: HTMLInputElement | HTMLSelectElement | HTMLTextareaElement, value: unknown) => {
+    const setControlValue = (control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, value: unknown) => {
         const stringValue = value == null ? "" : String(value);
         if (control instanceof HTMLSelectElement) {
             const option = Array.from(control.options).find((opt) => opt.value === stringValue);
@@ -251,8 +187,8 @@ export const Settings = async () => {
 
     const applyModelSelection = (settings: AppSettings) => {
         if (!modelSelectEl) return;
-        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai.model;
-        const storedCustom = settings.ai?.customModel ?? "";
+        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai.model ?? "gpt-5";
+        const storedCustom = settings.ai?.customModel ?? DEFAULT_SETTINGS.ai.customModel ?? "";
         if (["gpt-5", "gpt-5-mini"].includes(storedModel)) {
             modelSelectEl.value = storedModel;
             if (customModelInput) customModelInput.value = storedCustom ?? "";
@@ -310,8 +246,8 @@ export const Settings = async () => {
     applyModelSelection(settings);
     syncCustomVisibility();
 
+    //
     form.addEventListener("input", () => { status.textContent = ""; });
-
     form.addEventListener("submit", async () => {
         const modelSelection = modelSelectEl?.value ?? DEFAULT_SETTINGS.ai.model;
         const customIdentifier = customModelInput?.value.trim() ?? "";

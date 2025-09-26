@@ -48,7 +48,11 @@ const wrapBySpan = (text: string) => {
 }
 
 //
-export const MakeCardElement = (label: string, item: any, events: any) => {
+export interface CardRenderOptions {
+    order?: number | null | undefined;
+}
+
+export const MakeCardElement = (label: string, item: any, events: any, options: CardRenderOptions = {}) => {
     if (!item) return null;
 
     const begin_time = item?.properties?.begin_time || "";
@@ -102,6 +106,17 @@ export const MakeCardElement = (label: string, item: any, events: any) => {
         ${H(marked.parse((Array.isArray(description) ? description?.map?.((frag) => wrapBySpan(frag?.trim?.()))?.join("<br>") : wrapBySpan(description?.trim?.()))?.trim?.() || ""))}
     </div>
 </div>`;
+    const orderValue = options?.order;
+    if (typeof orderValue === "number" && Number.isFinite(orderValue)) {
+        try {
+            card.style.order = Math.trunc(orderValue).toString();
+            card.dataset.order = card.style.order;
+            card.style.setProperty("--card-order", card.style.order);
+        } catch (e) {
+            console.warn("Failed to set card order", e);
+        }
+    }
+
     return card;
 }
 
@@ -124,6 +139,43 @@ export const MakeCardByKind = (label: string, dir: string, item: any, byKind: an
 }
 
 //
+const getComparableTimeValue = (value: any): number => {
+    if (value == null) return Number.NaN;
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+        return date.getTime();
+    }
+
+    const match = String(value).match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?/);
+    if (match) {
+        const hours = Number(match[1]) || 0;
+        const minutes = Number(match[2]) || 0;
+        const seconds = Number(match[3]) || 0;
+        return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+    }
+
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : Number.NaN;
+};
+
+const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | null => {
+    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null);
+    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null);
+    const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
+    if (!Number.isFinite(fallback)) {
+        return null;
+    }
+
+    const dayStart = getComparableTimeValue(dayDesc?.properties?.begin_time ?? null);
+    const normalized = Number.isFinite(dayStart) ? fallback - dayStart : fallback;
+    return Math.round(normalized / 60000); // normalize to minutes to keep values small
+};
+
 export const MakeCardByDayDesc = (label: string, dir: string, item: any, dayDesc: any | null = null) => {
     if (!item) return null;
 
@@ -139,5 +191,6 @@ export const MakeCardByDayDesc = (label: string, dir: string, item: any, dayDesc
 
     //
     const events = makeEvents(label, path, title, item, kind);
-    return MakeCardElement(label, item, events);
+    const order = computeTimelineOrder(item, dayDesc);
+    return MakeCardElement(label, item, events, { order });
 }
