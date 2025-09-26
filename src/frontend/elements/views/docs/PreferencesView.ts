@@ -118,13 +118,10 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const PreferencesView = (currentTab?: any | null) => {
-    currentTab ??= ref("plans");
-    if (currentTab != null) { currentTab.value = "plans"; }
-
+export const PreferencesView = () => {
     //
     const tabbed = H`<ui-tabbed-box
-        prop:currentTab=${currentTab}
+        currentTab=${"all"}
         prop:tabs=${tabs}
         prop:renderTabName=${renderTabName}
         style="background-color: transparent;"

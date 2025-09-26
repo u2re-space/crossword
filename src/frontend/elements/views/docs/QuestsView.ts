@@ -114,14 +114,11 @@ const renderTabName = (tabName: string) => {
 }
 
 //
-export const QuestsView = (currentTab?: any | null) => {
-    currentTab ??= ref("quests");
-    if (currentTab != null) { currentTab.value = "quests"; }
-
+export const QuestsView = () => {
     //
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
-        prop:currentTab=${currentTab}
+        currentTab=${"all"}
         prop:renderTabName=${renderTabName}
         style="background-color: transparent;"
         class="quests"

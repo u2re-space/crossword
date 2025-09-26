@@ -49,7 +49,7 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", await PlannedTimeline(null, sampleDays)],
+        ["timeline", await PlannedTimeline(sampleDays)],
         ["contacts", await ContactsView()],
         ["bonuses", await BonusesView()],
         ["services", await ServicesView()],

@@ -6,11 +6,7 @@ import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/Hook
 import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
 
 //
-export const BonusesView = (currentTab?: any | null) => {
-    currentTab ??= ref("all");
-    if (currentTab != null) { currentTab.value = "all"; }
-
-    //
+export const BonusesView = () => {
     const kinds = ["discount", "cashback", "reward", "all"] as const;
     const tabs = new Map<string, HTMLElement | null | string | any>(kinds.map((kind) => [kind, $ShowItemsByType(BONUSES_DIR, kind, BonusItem)]));
 
@@ -18,7 +14,7 @@ export const BonusesView = (currentTab?: any | null) => {
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabs}
         prop:renderTabName=${renderTabName}
-        prop:currentTab=${currentTab}
+        currentTab=${"all"}
         style="background-color: transparent;"
         class="all"
     ></ui-tabbed-box>`;

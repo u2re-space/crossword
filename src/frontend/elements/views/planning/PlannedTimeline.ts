@@ -6,16 +6,13 @@ import "@rs-core/$test/Tasks";
 import { TaskItem } from "../../display/items/TaskItem";
 import { SplitTimelinesByDays } from "./Splitter";
 import { TIMELINE_DIR } from "@rs-core/service/Cache";
-import { loadAllTimelines } from "@rs-frontend/utils/Formatted";
+import { loadAllTimelines, renderTabName } from "@rs-frontend/utils/Formatted";
 import { $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
 
 // Render the timeline
-export const PlannedTimeline = async (currentTab?: any | null, daysDesc?: any[] | null) => {
-    currentTab ??= ref("");
-
-    //
+export const PlannedTimeline = async ($daysDesc?: any[] | null) => {
     const timelines = await loadAllTimelines(TIMELINE_DIR)?.catch?.(console.warn.bind(console));
-    daysDesc ??= await SplitTimelinesByDays(timelines, daysDesc);
+    const daysDesc = $daysDesc ?? (await SplitTimelinesByDays(timelines));
 
     //
     const daysTabs = new Map<string, HTMLElement | null | string | any>();
@@ -26,13 +23,14 @@ export const PlannedTimeline = async (currentTab?: any | null, daysDesc?: any[] 
     //
     const tabbed = H`<ui-tabbed-box
     prop:tabs=${daysTabs}
-    prop:currentTab=${currentTab}
+    prop:renderTabName=${renderTabName}
+    currentTab=${""}
     style="background-color: transparent;"
     class="days"
 ></ui-tabbed-box>`;
 
     //
-    if (currentTab != null && !currentTab.value) { currentTab.value = daysDesc?.[0]?.id; }
+    if (!tabbed.currentTab) { tabbed.currentTab = daysDesc?.[0]?.id; }
 
     //
     tabbed.renderTabName = (tabName: string) => { return (daysDesc)?.find((day: any) => day.id == tabName)?.title || tabName; };
