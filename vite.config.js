@@ -44,13 +44,33 @@ const crxInputs = {
     background: resolve(__dirname, "./src/crx/sw.ts")
 };
 
-const crxPlugin = crx({ manifest, browser: "chrome" });
+const createCrxConfig = () => {
+    const crxPlugin = crx({ manifest, browser: "chrome" });
+    const basePlugins = (baseConfig?.plugins || []).filter((plugin) => plugin?.name !== "vite:singlefile");
+    const baseRollup = baseConfig?.build?.rollupOptions ?? {};
+    const baseOutput = Array.isArray(baseRollup.output) ? baseRollup.output[0] : (baseRollup.output ?? {});
+    const crxOutput = objectAssign({}, baseOutput, {
+        inlineDynamicImports: false,
+        entryFileNames: "[name].js",
+        chunkFileNames: "chunks/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]"
+    });
 
-export default objectAssign(baseConfig, {
-    plugins: [...(baseConfig?.plugins || []), crxPlugin],
-    build: objectAssign({}, baseConfig?.build, {
-        rollupOptions: objectAssign({}, baseConfig?.build?.rollupOptions, {
-            input: crxInputs
+    return objectAssign({}, baseConfig, {
+        plugins: [...basePlugins, crxPlugin],
+        build: objectAssign({}, baseConfig?.build, {
+            lib: undefined,
+            rollupOptions: objectAssign({}, baseRollup, {
+                input: crxInputs,
+                output: crxOutput
+            })
         })
-    })
-});
+    });
+};
+
+export default async ({ mode } = {}) => {
+    if (mode === "crx") {
+        return createCrxConfig();
+    }
+    return baseConfig;
+};

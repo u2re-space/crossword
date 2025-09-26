@@ -166,7 +166,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             if (source.startsWith("/externals") || source.startsWith("fest")) return true;
             return false;
         },
-
         output: {
             compact: true,
             globals: {},
