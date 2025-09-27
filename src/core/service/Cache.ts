@@ -1,5 +1,5 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
-import { idbDelete, idbGet, idbGetAll, idbPut } from "@rs-core/store/IDBStorage";
+import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 import { readJSONs, writeJSON, type shareTargetFormData } from "@rs-core/workers/FileSystem";
 
 //
@@ -169,34 +169,14 @@ export const getShortFormFromEntities = async (entityTypes: { entityType: string
     }) ?? [];
 }
 
-//
-export const pushPendingToFS = async (entityType: string = "") => {
-    const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
-    return Promise.all(allEntries.map(async (entry) => {
-        try {
-            const path = entry?.value?.path || entry?.path || entry?.key;
-            const data = entry?.value?.data ?? entry?.data ?? entry?.value;
-            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            await writeJSON(path?.trim?.(), jsonData);
-            console.log("Written file: " + path, jsonData);
-        } finally {
-            await new Promise((res) => setTimeout(res, 250));
-            await idbDelete(entry?.key);
-        }
-    }));
-}
-
 // one of handler
-export const postShareTarget = async (payload: shareTargetFormData, entityType: string = "") => {
+export const postShareTarget = async (payload: shareTargetFormData) => {
     const fd = new FormData();
     if (payload.text) fd.append('text', payload.text);
     if (payload.url) fd.append('url', payload.url);
     if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
     const resp = await fetch('/share-target', { method: 'POST', body: fd });
-    const out = await resp.json().catch(() => ([]));
-    // try flush queued writes for known entity type (current SW uses "bonus")
-    await pushPendingToFS(entityType).catch(console.warn.bind(console));
-    return out;
+    return resp.json().catch(() => console.warn.bind(console));;
 };
 
 //
@@ -211,6 +191,3 @@ fileSystemChannel.addEventListener('message', (event) => {
         });
     }
 });
-
-//
-pushPendingToFS();

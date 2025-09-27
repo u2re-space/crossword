@@ -49,12 +49,13 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const settings = await idbGet("rs-settings");
 
     //
-    if (!settings) return { resultEntities: [], entityTypes: [] };
+    if (!settings) return { resultEntities: [], entityTypedDesc: [] };
     const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+
+    //
     if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
         await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey);
     }
-    console.log(gptResponses);
 
     // phase 0 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze...
@@ -65,16 +66,16 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const cacheFileName = "recognized_cache_" + Date.now();
     writeToFS("rawDataset", rawDataset, "/cache/", cacheFileName, Date.now());
 
-    // phase 1 - recognize entity type
-    let entityTypes: any[] = (await recognizeEntityType(gptResponses)) || [{ entityType: "unknown" }];
+    // phase 1 - recognize entity type, make basic description
+    let entityTypedDesc: any[] = (await recognizeEntityType(gptResponses)) || [{ entityType: "unknown" }];
 
-    // phase 2 - recognize kind of entity
-    let entityKinds: any[] = (await recognizeKindOfEntity(entityTypes, gptResponses)) || [{ kinds: ["unknown"] }];
+    // phase 2 - recognize kind of entity, make relations
+    let entityRelations: any[] = (await recognizeKindOfEntity(entityTypedDesc, gptResponses)) || [{ kinds: ["unknown"] }];
 
-    // phase 3 - convert data to target format
-    const resultEntity = await resolveEntity(entityTypes, entityKinds, gptResponses);
+    // phase 3 - convert data to target format, make final description
+    const resultEntity = await resolveEntity(entityTypedDesc, entityRelations, gptResponses);
     resultEntity?.forEach((resultEntity: any, i: number) => {
-        const resolvedType = entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown';
+        const resolvedType = entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown';
 
         //
         const timeStamp = Date.now();
@@ -85,13 +86,13 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
             ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || timeStamp;
         const outDir = "/data/" + resolvedType + "/";
 
-        //
+        // prepare for phase 4 - consolidate
         writeToFS(resolvedType, resultEntity, outDir, fileName, timeStamp);
     });
 
     //
     const resultEntities = Array.isArray(resultEntity) ? resultEntity : [resultEntity];
-    return { resultEntities, entityTypes };
+    return { resultEntities, entityTypedDesc };
 }
 
 
@@ -102,15 +103,9 @@ const _LOG = (a) => {
     return a;
 }
 
-// lifecycle
-self.addEventListener('install', (e) => {
-    // @ts-ignore
-    e.waitUntil(self.skipWaiting());
-});
-self.addEventListener('activate', (e) => {
-    // @ts-ignore
-    e.waitUntil(self.clients.claim());
-});
+// @ts-ignore // lifecycle
+self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); }); // @ts-ignore
+self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
 
 //
 setDefaultHandler(new NetworkFirst())
@@ -143,9 +138,9 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         const source = file || inputs?.text || inputs?.url;
         if (!source) continue;
         try {
-            const { resultEntities, entityTypes } = await initiateConversionProcedure(source);
+            const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
             resultEntities.forEach((resultEntity, i) => {
-                const resolvedType = (entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown')?.trim?.();
+                const resolvedType = (entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown')?.trim?.();
                 let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
                     ?.trim?.()
                     ?.toString?.()
@@ -182,10 +177,10 @@ registerRoute(({ url }) => url?.pathname == "/share-target-json", async (e: any)
     try {
         const body = await e.request.json().catch(() => ({}));
         const source = body?.file || body?.text || body?.url || JSON.stringify(body || {});
-        const { resultEntities, entityTypes } = await initiateConversionProcedure(source);
+        const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
         const results: any[] = [];
         resultEntities.forEach((resultEntity, i) => {
-            const resolvedType = (entityTypes?.[i]?.entityType || entityTypes?.[0]?.entityType || 'unknown')?.trim?.();
+            const resolvedType = (entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown')?.trim?.();
             let name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()}_${i}`)?.trim?.()
                 ?.toString?.()
                 ?.toLowerCase?.()
