@@ -109,7 +109,7 @@
             order: var(--card-order, initial);
         }
 
-        & *:not(ui-icon, br):empty {
+        & *:not(ui-icon, br, ui-longtext, input):empty {
             display: none;
         }
 
