@@ -202,3 +202,26 @@ export const writeFileSmart = async (
 
     return writeFile(root, fullPath, toWrite);
 };
+
+// one of handler
+export const postShareTarget = async (payload: shareTargetFormData) => {
+    const fd = new FormData();
+    if (payload.text) fd.append('text', payload.text);
+    if (payload.url) fd.append('url', payload.url);
+    if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+    const resp = await fetch('/share-target', { method: 'POST', body: fd });
+    return resp.json().catch(() => console.warn.bind(console));;
+};
+
+//
+const fileSystemChannel = new BroadcastChannel('rs-fs');
+fileSystemChannel.addEventListener('message', (event) => {
+    if (event.data.type === 'pending-write') {
+        event.data.results?.forEach?.((result) => {
+            const { entityType, data, name, path, key, idx } = result;
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            console.log("Written file: " + path, jsonData);
+            writeJSON(path?.trim?.(), jsonData);
+        });
+    }
+});

@@ -1,5 +1,5 @@
 import "./index.scss";
-import { loadSettings, saveSettings } from "@rs-frontend/utils/Settings";
+import { loadSettings, saveSettings } from "@rs-core/config/Settings";
 
 // TODO! replace by indexedDB settings!
 const implementSettings = () => {

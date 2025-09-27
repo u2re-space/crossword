@@ -2,9 +2,11 @@ import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 import { updateWebDavSettings } from "@rs-core/workers/WebDavSync";
 import { getDirectoryHandle } from "fest/lure";
 
-import type { AppSettings, SectionConfig } from "../elements/views/types/SettingsTypes";
-import { DEFAULT_SETTINGS } from "../elements/views/types/SettingsTypes";
+//
+import type { AppSettings, SectionConfig } from "@rs-core/config/SettingsTypes";
+import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
 
+//
 export const TIMELINE_SECTION: SectionConfig = {
     key: "timeline",
     title: "Timeline Planner",
@@ -27,12 +29,14 @@ export const TIMELINE_SECTION: SectionConfig = {
     ]
 };
 
+//
 export const SETTINGS_KEY = "rs-settings";
 
 export const splitPath = (path: string) => path.split(".");
 export const getByPath = (source: any, path: string) => splitPath(path).reduce<any>((acc, key) => (acc == null ? acc : acc[key]), source);
 export const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
 
+//
 export const loadSettings = async (): Promise<AppSettings> => {
     try {
         const raw = await idbGet(SETTINGS_KEY);
@@ -50,6 +54,7 @@ export const loadSettings = async (): Promise<AppSettings> => {
     return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 };
 
+//
 export const saveSettings = async (settings: AppSettings) => {
     const current = await loadSettings();
     const merged: AppSettings = {
@@ -79,6 +84,7 @@ export const saveSettings = async (settings: AppSettings) => {
     return merged;
 };
 
+//
 export const loadTimelineSources = async () => {
     try {
         const root = await getDirectoryHandle(null, "/docs/preferences")?.catch(() => null);

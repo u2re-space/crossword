@@ -4,12 +4,14 @@ import { H } from "fest/lure";
 import "@rs-core/$test/Tasks";
 import { TaskItem } from "../../display/items/TaskItem";
 import { SplitTimelinesByDays } from "./Splitter";
-import { TIMELINE_DIR } from "@rs-core/service/Cache";
-import { loadAllTimelines, renderTabName } from "@rs-frontend/utils/Formatted";
-import { $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
+import { renderTabName, $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 import { idbGet } from "@rs-core/store/IDBStorage";
 
+//
+import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
+
+//
 const SETTINGS_KEY = "rs-settings";
 
 const loadPlanSource = async (): Promise<string | null> => {

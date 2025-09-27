@@ -1,14 +1,16 @@
 import { H } from "fest/lure";
-import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
 //
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "../types/SettingsTypes";
-import { DEFAULT_SETTINGS } from "../types/SettingsTypes";
-import { AISettingsView } from "./contents/AISettingsView";
-import { MCPSettingsView } from "./contents/MCPSettingsView";
-import { WebDavSettingsView } from "./contents/WebDavSettingsView";
+import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 import { renderTabName } from "@rs-frontend/utils/Formatted";
-import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "../../../utils/Settings";
+
+//
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "@rs-core/config/SettingsTypes";
+import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
+import { AISettingsView } from "@rs-core/config/sections/AISettings";
+import { MCPSettingsView } from "@rs-core/config/sections/MCPSettings";
+import { WebDavSettingsView } from "@rs-core/config/sections/WebDavSettings";
+import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "@rs-core/config/Settings";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [

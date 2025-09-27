@@ -1,7 +1,10 @@
 import { makeReactive, observableByMap, observableBySet } from "fest/object";
 import { getDirectoryHandle, H, M } from "fest/lure";
-import { bindDropToDir } from "@rs-frontend/utils/FileOps";
-import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
+
+//
+import { bindDropToDir } from "@rs-core/workers/FileOps";
+import { watchFsDirectory } from "@rs-core/workers/FsWatch";
+import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
 
 //
 export const insideOfDay = (item: any, dayDesc: any) => {
@@ -226,21 +229,7 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
 }
 
 //
-export const loadAllTimelines = async (DIR: string) => {
-    const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
-    const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return (await Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
-        if (name?.endsWith?.(".crswap")) return;
-        const file = await fileHandle.getFile();
-        const item = JSON.parse(await file?.text?.() || "{}");
-        (item as any).__name = name;
-        (item as any).__path = `${DIR}${name}`;
-        return item;
-    })))?.filter?.((e) => e);
-}
-
-//
-export const $ShowItemsByDay = (DIR: string, dayDesc: any | null = null, ItemRenderer: (item: any, dayDesc: any | null) => any) => {
+export const $ShowItemsByDay = (DIR: string = TIMELINE_DIR, dayDesc: any | null = null, ItemRenderer: (item: any, dayDesc: any | null) => any) => {
     const dataRef: any = makeReactive([]);
     let stopWatch: (() => void) | null = null;
 

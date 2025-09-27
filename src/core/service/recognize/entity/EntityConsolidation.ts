@@ -4,12 +4,38 @@
  */
 
 //
-import { getShortFormFromEntities } from "@rs-core/service/Cache";
-import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { safe } from "fest/object";
-import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
+
+//
+import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import type { BonusEntity, EntityDesc } from "@rs-core/service/template/EntitiesTyped";
+import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
 import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
+
+
+
+//
+export const pushPendingToFS = async (entityType: string = "") => {
+    const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
+    return Promise.all(allEntries.map(async (entry) => {
+        try {
+            const path = entry?.value?.path || entry?.path || entry?.key;
+            const data = entry?.value?.data ?? entry?.data ?? entry?.value;
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            await writeJSON(path?.trim?.(), jsonData);
+            console.log("Written file: " + path, jsonData);
+        } finally {
+            await new Promise((res) => setTimeout(res, 250));
+            await idbDelete(entry?.key);
+        }
+    }));
+}
+
+//
+pushPendingToFS();
+
+
+
 
 //
 const makeRelatedListPerEntity = async (entityKind: any, shortForm: any[]) => {
@@ -146,21 +172,118 @@ Consolidate entity items, unify, deduplicate, reorganize, make links, etc.
 }
 
 //
-export const pushPendingToFS = async (entityType: string = "") => {
-    const allEntries = await idbGetAll("pending-fs-write_" + entityType + "_");
-    return Promise.all(allEntries.map(async (entry) => {
-        try {
-            const path = entry?.value?.path || entry?.path || entry?.key;
-            const data = entry?.value?.data ?? entry?.data ?? entry?.value;
-            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            await writeJSON(path?.trim?.(), jsonData);
-            console.log("Written file: " + path, jsonData);
-        } finally {
-            await new Promise((res) => setTimeout(res, 250));
-            await idbDelete(entry?.key);
-        }
-    }));
+export const getShortFormFromEntity = (entity: any) => {
+    return [
+        entity?.type?.toLowerCase?.()?.replace?.(" ", "-"),
+        entity?.kind?.toLowerCase?.()?.replace?.(" ", "-"),
+        entity?.desc?.name?.toLowerCase?.()?.replace?.(" ", "-")
+    ]?.filter?.((item) => (!!item))?.join?.(":");
 }
 
 //
-pushPendingToFS();
+export const getEntitiesByType = (types: string[]) => {
+    return Promise.all(types?.flatMap?.((type) => {
+        return readJSONs(`/data/${type}/`).then((entry) => {
+            return [type, getShortFormFromEntity(entry ?? [])];
+        });
+    }) ?? []);
+}
+
+//
+export const getEntitiesFromFS = (dir: string) => {
+    return readJSONs(dir);
+}
+
+//
+export const getShortFormFromEntities = async (entityTypes: { entityType: string; }[]) => {
+    const entities = await Promise.all(entityTypes?.flatMap?.(async (type) => {
+        return [type?.entityType, await getEntitiesFromFS(`/data/${type?.entityType}/`)];
+    }) ?? []);
+
+    //
+    return entityTypes?.map?.(async ({ entityType }) => {
+        const neededEntityType = (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
+        return entities
+            ?.filter?.(([eType, entity]) => (eType == neededEntityType))
+            ?.map(async (item) => {
+                const w: any = await item;
+                return (w?.id || w?.name || w?.desc?.name)
+            });
+    }) ?? [];
+}
+
+
+export type LinkedEntity = {
+    id: string;
+    title: string;
+    type: string;
+    path: string;
+};
+
+export const suggestShortNames = async () => {
+    const kinds = ["bonus", "person", "service", "timeline", "task", "event"];
+    const entries = await Promise.all(
+        kinds.map(async (kind) => {
+            const dir = `/data/${kind}/`;
+            const entities = await getEntitiesFromFS(dir).catch(() => []);
+            return (entities as any[]).map((entity) => {
+                const id = entity?.id || entity?.name || entity?.desc?.name || "";
+                if (!id) return null;
+                const name = id.toString().toLowerCase().replace(/\s+/g, '-');
+                const ref = `${kind}:${entity?.kind || "unknown"}:${name}`;
+                return ref;
+            }).filter(Boolean);
+        })
+    );
+    return entries.flat();
+};
+
+export const collectLinksByRefs = async (refs: string[] = []) => {
+    const normalized = refs
+        .map((ref) => ref.trim())
+        .filter(Boolean);
+    const grouped = new Map<string, string[]>();
+
+    normalized.forEach((ref) => {
+        const [type, ...rest] = ref.split(":");
+        const key = type || "unknown";
+        const value = rest.join(":") || key;
+        const bucket = grouped.get(key) ?? [];
+        bucket.push(value);
+        grouped.set(key, bucket);
+    });
+
+    const results = await Promise.all(
+        Array.from(grouped.entries(), async ([type, values]) => {
+            const dir = `/data/${type}/`;
+            const entities = await getEntitiesFromFS(dir).catch(() => []);
+            return entities
+                ?.filter((entity: any) => {
+                    const id = entity?.id || entity?.name || entity?.desc?.name;
+                    if (!id) return false;
+                    return values.some((v) => id?.toLowerCase?.().includes?.((v || "").toLowerCase?.()));
+                })
+                .map((entity: any) => ({
+                    id: entity?.id || entity?.name || entity?.desc?.name,
+                    title: entity?.desc?.title || entity?.desc?.name || entity?.name,
+                    type,
+                    path: entity?.__path
+                })) ?? [];
+        })
+    );
+
+    return results.flat().filter(Boolean) as LinkedEntity[];
+};
+
+export const getLinkedEntities = async (item: any) => {
+    const refs = [
+        ...(item?.properties?.links ?? []),
+        ...(item?.links ?? []),
+        ...(item?.desc?.links ?? [])
+    ]
+        .flat()
+        .filter(Boolean)
+        .map(String);
+
+    return collectLinksByRefs(refs);
+};

@@ -4,9 +4,9 @@
 //
 import { H, M, getDirectoryHandle, remove } from "fest/lure";
 import { makeReactive, ref } from "fest/object";
-import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
+import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-core/workers/FileOps";
 import { currentWebDav } from "@rs-core/workers/WebDavSync";
-import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
+import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { closeToastLayer, toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
 const SCROLL_TARGET_ATTR = "data-accordion";

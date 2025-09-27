@@ -1,4 +1,3 @@
-
 const watchers = new Map<string, Set<() => void>>();
 const channel = new BroadcastChannel('rs-fs');
 

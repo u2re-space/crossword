@@ -17,12 +17,15 @@
 //
 import type { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readMarkDowns } from "@rs-core/workers/FileSystem";
-import { TIMELINE_DIR, realtimeStates } from "../Cache";
+import { realtimeStates } from "../Cache";
 import { JSON_SCHEMES } from "../template/Entities";
-import { safe } from "fest/object";
-import { writeFile } from "fest/lure";
 
 //
+import { safe } from "fest/object";
+import { getDirectoryHandle, writeFile } from "fest/lure";
+
+//
+export const TIMELINE_DIR = "/timeline/";
 export const PREFERENCES_DIR = "/docs/preferences/";
 export const FACTORS_DIR = "/data/factors/";
 export const PLANS_DIR = "/docs/plans/";
@@ -116,7 +119,7 @@ export const writeTimelineTask = async (task: any) => {
     fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
 
     //
-    const filePath = `${TIMELINE_DIR}/${fileName}`;
+    const filePath = `${TIMELINE_DIR}${fileName}`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
     return writeFile(null, filePath, file)?.catch?.(console.error.bind(console));
 }
@@ -170,4 +173,18 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
 
     // return timeline
     return timeline;
+}
+
+//
+export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {
+    const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
+    const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return (await Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
+        if (name?.endsWith?.(".crswap")) return;
+        const file = await fileHandle.getFile();
+        const item = JSON.parse(await file?.text?.() || "{}");
+        (item as any).__name = name;
+        (item as any).__path = `${DIR}${name}`;
+        return item;
+    })))?.filter?.((e) => e);
 }

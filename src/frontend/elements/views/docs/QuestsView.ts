@@ -3,8 +3,8 @@
 
 import { makeReactive, ref } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
-import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
-import { watchFsDirectory } from "@rs-frontend/utils/FsWatch";
+import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-core/workers/FileOps";
+import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { makeEntityEdit } from "../../display/edits/EntityEdit";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 

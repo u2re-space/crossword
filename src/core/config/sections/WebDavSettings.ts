@@ -1,4 +1,4 @@
-import type { SectionConfig } from "../../types/SettingsTypes";
+import type { SectionConfig } from "@rs-core/config/SettingsTypes";
 
 export const WebDavSettingsView: SectionConfig = {
     key: "webdav",

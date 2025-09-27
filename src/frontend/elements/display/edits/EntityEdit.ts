@@ -1,6 +1,5 @@
 import { H, remove, removeFile } from "fest/lure";
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
-import { suggestShortNames } from "@rs-frontend/utils/Links";
 import { ModalForm, type FieldSpec } from "./Modal";
 import {
     collectDescriptors,
@@ -9,6 +8,7 @@ import {
     ensureSectionHost,
     cloneEntity
 } from "@rs-frontend/utils/SchemaFields";
+import { suggestShortNames } from "@rs-core/service/recognize/entity/EntityConsolidation";
 
 //
 export type EntityEditOptions = {

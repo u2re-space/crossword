@@ -2,6 +2,7 @@ import { JSON_SCHEMES } from "@rs-core/service/template/Entities";
 import { H } from "fest/lure";
 import type { FieldSpec } from "@rs-frontend/elements/display/edits/Modal";
 
+//
 export type SectionKey = "main" | "description" | "schedule" | "properties" | "contacts" | "relations" | "meta";
 
 export type FieldDescriptor = FieldSpec & {
@@ -12,6 +13,7 @@ export type FieldDescriptor = FieldSpec & {
     json?: boolean;
 };
 
+//
 export const SECTION_ORDER: SectionKey[] = ["main", "description", "schedule", "properties", "contacts", "relations", "meta"];
 export const SECTION_LABELS: Record<string, string> = {
     main: "Main information",
@@ -23,6 +25,7 @@ export const SECTION_LABELS: Record<string, string> = {
     meta: "Metadata"
 };
 
+//
 const LEGACY_FIELD_PATHS: Record<string, string> = {
     title: "desc.title",
     "desc.title": "desc.title",
@@ -39,11 +42,13 @@ const LEGACY_FIELD_PATHS: Record<string, string> = {
     "contacts.phone": "properties.contacts.phone"
 };
 
+//
 export const cloneEntity = <T>(value: T): T => {
     try { return structuredClone(value); }
     catch { return JSON.parse(JSON.stringify(value)); }
 };
 
+//
 export const startCase = (value: string) =>
     value.replace(/[_\-]+/g, " ")
         .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -51,8 +56,11 @@ export const startCase = (value: string) =>
         .trim()
         .replace(/^./, (char) => char.toUpperCase());
 
+//
 export const splitPath = (path: string) => path.split(".").filter(Boolean);
 export const getByPath = (source: any, path: string) => splitPath(path).reduce((acc, key) => (acc == null ? acc : acc[key]), source);
+
+//
 export const setByPath = (target: any, path: string, value: any) => {
     const keys = splitPath(path);
     if (!keys.length) return;
@@ -64,6 +72,8 @@ export const setByPath = (target: any, path: string, value: any) => {
     }
     current[keys[keys.length - 1]] = value;
 };
+
+//
 export const unsetByPath = (target: any, path: string) => {
     const keys = splitPath(path);
     if (!keys.length) return;
@@ -88,16 +98,20 @@ export const unsetByPath = (target: any, path: string) => {
     }
 };
 
+//
 export const toMultiline = (value: unknown): string => {
     if (!value) return "";
     if (Array.isArray(value)) return value.map((item) => (item ?? "").toString().trim()).filter(Boolean).join("\n");
     return String(value ?? "");
 };
+
+//
 export const fromMultiline = (value: string): string[] => {
     if (!value) return [];
     return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 };
 
+//
 const BASE_DESCRIPTORS: FieldDescriptor[] = [
     { name: "desc.title", label: "Title", path: "desc.title", section: "main", placeholder: "Human readable name", helper: "Shown in cards and lists" },
     { name: "kind", label: "Kind", path: "kind", section: "main", placeholder: "e.g. meeting, discount", helper: "Determines category specific behaviour" },
@@ -105,6 +119,8 @@ const BASE_DESCRIPTORS: FieldDescriptor[] = [
     { name: "desc.tags", label: "Tags", path: "desc.tags", section: "meta", textarea: true, helper: "One tag per line", multi: true },
     { name: "desc.icon", label: "Icon", path: "desc.icon", section: "meta", placeholder: "Icon id (e.g. phosphor/name)" }
 ];
+
+//
 const CONTACT_DESCRIPTORS: FieldDescriptor[] = [
     { name: "contacts.email", label: "Emails", path: "properties.contacts.email", section: "contacts", textarea: true, helper: "One email per line", multi: true },
     { name: "contacts.phone", label: "Phones", path: "properties.contacts.phone", section: "contacts", textarea: true, helper: "One phone per line", multi: true }

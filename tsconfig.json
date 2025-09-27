@@ -18,38 +18,21 @@
             "fest/polyfill/*": ["./shared/fest/polyfill/*"],
             "polyfill/*": ["./shared/fest/polyfill/*"],
             "shared/*": ["./shared/*"],
-            "@fl-ui/*": [
-                "./shared/fest/fl-ui/ui/*"
-            ],
-            "@fl-src/*": [
-                "./shared/fest/fl-ui/*"
-            ],
-            "@fl-design/*": [
-                "./shared/fest/fl-ui/design/*"
-            ],
-            "@rs-pwa/*": [
-                "./src/pwa/*"
-            ],
-            "@rs-core/*": [
-                "./src/core/*"
-            ],
-            "@rs-frontend/*": [
-                "./src/frontend/*"
-            ],
-            "@rs-shared/*": [
-                "./shared/*"
-            ],
-            "@rs-test/*": [
-                "./test/*"
-            ]
+            "@fl-ui/*": ["./shared/fest/fl-ui/ui/*"],
+            "@fl-src/*": ["./shared/fest/fl-ui/*"],
+            "@fl-design/*": ["./shared/fest/fl-ui/design/*"],
+            "@rs-pwa/*": ["./src/pwa/*"],
+            "@rs-crx/*": ["./src/crx/*"],
+            "@rs-core/*": ["./src/core/*"],
+            "@rs-frontend/*": ["./src/frontend/*"],
+            "@rs-shared/*": ["./shared/*"],
+            "@rs-test/*": ["./test/*"]
         },
         "target": "ESNext",
         "module": "ESNext",
         "moduleResolution": "bundler",
         "lib": ["ESNext", "DOM", "WebWorker"],
-        "types": [
-            "chrome"
-        ],
+        "types": ["chrome"],
         "esModuleInterop": true,
         "strict": true,
         "forceConsistentCasingInFileNames": true,
