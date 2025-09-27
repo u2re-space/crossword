@@ -3,7 +3,7 @@ import { ref } from "fest/object";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { BONUSES_DIR, BonusItem } from ".././../display/items/BonusItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
+import { sendToEntityPipeline } from "@rs-core/workers/EntityIntake";
 
 //
 export const BonusesView = () => {

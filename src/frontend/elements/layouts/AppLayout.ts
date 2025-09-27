@@ -1,6 +1,6 @@
 import { getDirectoryHandle, H, I } from "fest/lure";
 import { handleClipboardItems } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-frontend/utils/EntityIntake";
+import { sendToEntityPipeline } from "@rs-core/workers/EntityIntake";
 
 //
 export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value: string }, sidebar: HTMLElement) => {
