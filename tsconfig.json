@@ -47,6 +47,9 @@
         "module": "ESNext",
         "moduleResolution": "bundler",
         "lib": ["ESNext", "DOM", "WebWorker"],
+        "types": [
+            "chrome"
+        ],
         "esModuleInterop": true,
         "strict": true,
         "forceConsistentCasingInFileNames": true,

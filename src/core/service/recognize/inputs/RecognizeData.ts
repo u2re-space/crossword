@@ -57,7 +57,7 @@ Needs to convert or reformat presented data to target format (Markdown string).
 Return handled data as Markdown string, without any additional comments.
 `;
 
-//
+// used directly fetch to API
 export const recognizeByInstructions = async (msg, settings, instructions: string, sendResponse?) => {
     const { input } = msg;
     const token = settings?.apiKey;

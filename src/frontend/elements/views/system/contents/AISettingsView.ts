@@ -1,4 +1,4 @@
-import type { SectionConfig } from "../types/Settings.types";
+import type { SectionConfig } from "../../types/SettingsTypes";
 
 export const AISettingsView: SectionConfig = {
     key: "ai",

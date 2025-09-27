@@ -1,77 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CrossWord Actions</title>
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
-        }
-
-        .actions {
-            display: grid;
-            gap: 0.5rem;
-            padding: 1rem;
-            width: 320px;
-        }
-
-        button {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            border: 0;
-            border-radius: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: rgba(148, 163, 184, 0.18);
-            color: inherit;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: background 150ms ease;
-        }
-
-        button:hover {
-            background: rgba(148, 163, 184, 0.3);
-        }
-
-        button span {
-            font-weight: 600;
-        }
-
-        button small {
-            display: block;
-            font-size: 0.75rem;
-            opacity: 0.7;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrossWord</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
 </head>
 
 <body>
-    <div class="actions">
-        <button id="open-settings">
-            <span>Open Settings</span>
-            <small>Configure AI, WebDAV and timeline</small>
-        </button>
-        <button id="paste-recognize">
-            <span>Paste & Recognize</span>
-            <small>Detect data from clipboard text or image</small>
-        </button>
-        <button id="snip-recognize">
-            <span>Snip & Recognize</span>
-            <small>Upload screenshot and auto classify</small>
-        </button>
-        <button id="open-timeline">
-            <span>Open Timeline</span>
-            <small>Jump to current planning view</small>
-        </button>
+    <div id="app">
+        <h1>CrossWord</h1>
+        <section>
+            <h2>Actions</h2>
+            <ul>
+                <li style="display: flex; justify-content: space-around;">
+                    <button style="grid-column: 1 / -1;" type="button" id="snip-and-recognize">Snip and Recognize</button>
+                </li>
+            </ul>
+        </section>
+        <section>
+            <h2>Settings</h2>
+            <ul>
+                <li>
+                    <label for="api-url">API URL</label>
+                    <input keyboard-type="url" type="url" id="api-url" />
+                </li>
+                <li>
+                    <label for="api-key">API Key</label>
+                    <input keyboard-type="password" type="password" id="api-key" />
+                    <!-- needs icon with eye icon -->
+                    <input type="checkbox" id="show-api-key"
+                        style="--for-hide-icon: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1leWUtaWNvbiBsdWNpZGUtZXllIj48cGF0aCBkPSJNMi4wNjIgMTIuMzQ4YTEgMSAwIDAgMSAwLS42OTYgMTAuNzUgMTAuNzUgMCAwIDEgMTkuODc2IDAgMSAxIDAgMCAxIDAgLjY5NiAxMC43NSAxMC43NSAwIDAgMS0xOS44NzYgMCIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiLz48L3N2Zz4=');--for-show-icon: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWV5ZS1jbG9zZWQtaWNvbiBsdWNpZGUtZXllLWNsb3NlZCI+PHBhdGggZD0ibTE1IDE4LS43MjItMy4yNSIvPjxwYXRoIGQ9Ik0yIDhhMTAuNjQ1IDEwLjY0NSAwIDAgMCAyMCAwIi8+PHBhdGggZD0ibTIwIDE1LTEuNzI2LTIuMDUiLz48cGF0aCBkPSJtNCAxNSAxLjcyNi0yLjA1Ii8+PHBhdGggZD0ibTkgMTggLjcyMi0zLjI1Ii8+PC9zdmc+');" />
+                </li>
+                <li style="display: flex; justify-content: space-around;">
+                    <button type="button" id="save-settings">Save</button>
+                </li>
+            </ul>
+        </section>
     </div>
-    <script type="module" src="./main.ts"></script>
+    <script src="./index.ts" type="module" async defer></script>
 </body>
-
 </html>

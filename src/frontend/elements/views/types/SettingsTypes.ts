@@ -34,7 +34,7 @@ export type SectionConfig = {
 };
 
 export type AppSettings = {
-    ai: {
+    ai?: {
         apiKey?: string;
         baseUrl?: string;
         model?: string;
@@ -46,13 +46,13 @@ export type AppSettings = {
             secretKey?: string;
         };
     };
-    webdav: {
+    webdav?: {
         url?: string;
         username?: string;
         password?: string;
         token?: string;
     };
-    timeline: {
+    timeline?: {
         source?: string;
     };
 };

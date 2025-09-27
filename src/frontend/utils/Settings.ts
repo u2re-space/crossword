@@ -2,8 +2,8 @@ import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 import { updateWebDavSettings } from "@rs-core/workers/WebDavSync";
 import { getDirectoryHandle } from "fest/lure";
 
-import type { AppSettings, SectionConfig } from "../types/Settings.types";
-import { DEFAULT_SETTINGS } from "../types/Settings.types";
+import type { AppSettings, SectionConfig } from "../elements/views/types/SettingsTypes";
+import { DEFAULT_SETTINGS } from "../elements/views/types/SettingsTypes";
 
 export const TIMELINE_SECTION: SectionConfig = {
     key: "timeline",
@@ -39,7 +39,7 @@ export const loadSettings = async (): Promise<AppSettings> => {
         const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
         if (stored && typeof stored === "object") {
             return {
-                ai: { ...DEFAULT_SETTINGS.ai, ...(stored as any)?.ai, mcp: { ...DEFAULT_SETTINGS.ai.mcp, ...(stored as any)?.ai?.mcp } },
+                ai: { ...DEFAULT_SETTINGS.ai, ...(stored as any)?.ai, mcp: { ...DEFAULT_SETTINGS.ai?.mcp, ...(stored as any)?.ai?.mcp } },
                 webdav: { ...DEFAULT_SETTINGS.webdav, ...(stored as any)?.webdav },
                 timeline: { ...DEFAULT_SETTINGS.timeline, ...(stored as any)?.timeline }
             };
@@ -54,14 +54,25 @@ export const saveSettings = async (settings: AppSettings) => {
     const current = await loadSettings();
     const merged: AppSettings = {
         ai: {
-            ...current.ai, ...settings.ai,
+            ...(DEFAULT_SETTINGS.ai || {}),
+            ...(current.ai || {}),
+            ...(settings.ai || {}),
             mcp: {
-                ...(current.ai.mcp || {}),
-                ...(settings.ai.mcp || {})
+                ...(DEFAULT_SETTINGS.ai?.mcp || {}),
+                ...(current.ai?.mcp || {}),
+                ...(settings.ai?.mcp || {})
             }
         },
-        webdav: { ...current.webdav, ...settings.webdav },
-        timeline: { ...current.timeline, ...settings.timeline }
+        webdav: {
+            ...(DEFAULT_SETTINGS.webdav || {}),
+            ...(current.webdav || {}),
+            ...(settings.webdav || {})
+        },
+        timeline: {
+            ...(DEFAULT_SETTINGS.timeline || {}),
+            ...(current.timeline || {}),
+            ...(settings.timeline || {})
+        }
     };
     await idbPut(SETTINGS_KEY, merged);
     updateWebDavSettings(merged)?.catch(console.warn.bind(console));

@@ -2,13 +2,13 @@ import { H } from "fest/lure";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
 //
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "./types/Settings.types";
-import { DEFAULT_SETTINGS } from "./types/Settings.types";
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "../types/SettingsTypes";
+import { DEFAULT_SETTINGS } from "../types/SettingsTypes";
 import { AISettingsView } from "./contents/AISettingsView";
 import { MCPSettingsView } from "./contents/MCPSettingsView";
 import { WebDavSettingsView } from "./contents/WebDavSettingsView";
 import { renderTabName } from "@rs-frontend/utils/Formatted";
-import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "./utils/Utils";
+import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "../../../utils/Settings";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
@@ -187,8 +187,8 @@ export const Settings = async () => {
 
     const applyModelSelection = (settings: AppSettings) => {
         if (!modelSelectEl) return;
-        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai.model ?? "gpt-5";
-        const storedCustom = settings.ai?.customModel ?? DEFAULT_SETTINGS.ai.customModel ?? "";
+        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai?.model ?? "gpt-5";
+        const storedCustom = settings.ai?.customModel ?? DEFAULT_SETTINGS.ai?.customModel ?? "";
         if (["gpt-5", "gpt-5-mini"].includes(storedModel)) {
             modelSelectEl.value = storedModel;
             if (customModelInput) customModelInput.value = storedCustom ?? "";
@@ -249,7 +249,7 @@ export const Settings = async () => {
     //
     form.addEventListener("input", () => { status.textContent = ""; });
     form.addEventListener("submit", async () => {
-        const modelSelection = modelSelectEl?.value ?? DEFAULT_SETTINGS.ai.model;
+        const modelSelection = modelSelectEl?.value ?? DEFAULT_SETTINGS.ai?.model;
         const customIdentifier = customModelInput?.value.trim() ?? "";
         const isCustomSelected = modelSelection === "custom";
 
@@ -273,7 +273,7 @@ export const Settings = async () => {
                 }
             },
             webdav: {
-                url: readValue("webdav.url") || DEFAULT_SETTINGS.webdav.url,
+                url: readValue("webdav.url") || DEFAULT_SETTINGS.webdav?.url,
                 username: readValue("webdav.username"),
                 password: readValue("webdav.password"),
                 token: readValue("webdav.token")
