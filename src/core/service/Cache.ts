@@ -2,11 +2,6 @@ import { Promised, makeReactive, observe, safe } from "fest/object";
 import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 
 //
-
-export const DATASET_DIR = "/data/";
-export const DOCUMENTS_DIR = "/docs/";
-
-//
 export const realtimeStates = makeReactive({
     time: new Date(),
     location: null,

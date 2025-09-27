@@ -12,6 +12,15 @@ import type { BonusEntity, EntityDesc } from "@rs-core/service/template/Entities
 import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
 import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
 
+//
+export type LinkedEntity = {
+    id: string;
+    title: string;
+    type: string;
+    path: string;
+};
+
+
 
 
 //
@@ -30,12 +39,6 @@ export const pushPendingToFS = async (entityType: string = "") => {
         }
     }));
 }
-
-//
-pushPendingToFS();
-
-
-
 
 //
 const makeRelatedListPerEntity = async (entityKind: any, shortForm: any[]) => {
@@ -212,14 +215,7 @@ export const getShortFormFromEntities = async (entityTypes: { entityType: string
     }) ?? [];
 }
 
-
-export type LinkedEntity = {
-    id: string;
-    title: string;
-    type: string;
-    path: string;
-};
-
+//
 export const suggestShortNames = async () => {
     const kinds = ["bonus", "person", "service", "timeline", "task", "event"];
     const entries = await Promise.all(
@@ -238,6 +234,7 @@ export const suggestShortNames = async () => {
     return entries.flat();
 };
 
+//
 export const collectLinksByRefs = async (refs: string[] = []) => {
     const normalized = refs
         .map((ref) => ref.trim())
@@ -275,6 +272,7 @@ export const collectLinksByRefs = async (refs: string[] = []) => {
     return results.flat().filter(Boolean) as LinkedEntity[];
 };
 
+//
 export const getLinkedEntities = async (item: any) => {
     const refs = [
         ...(item?.properties?.links ?? []),
@@ -287,3 +285,6 @@ export const getLinkedEntities = async (item: any) => {
 
     return collectLinksByRefs(refs);
 };
+
+//
+pushPendingToFS();
