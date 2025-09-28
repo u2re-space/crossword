@@ -1,7 +1,7 @@
 export type DataKind = "math" | "url" | "output_text" | "input_text" | "image" | "image_url" | "text" | "input_image" | "input_url";
 export type DataInput = {
     dataSource: string | Blob | File | any,
-    dataKind: DataKind
+    dataKind?: DataKind | null
 }
 
 //
@@ -72,7 +72,7 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 
 //
 export const actionWithDataType = (data: DataInput): string => {
-    switch (typesForKind?.[data?.dataKind]) {
+    switch (typesForKind?.[data?.dataKind || "input_text"]) {
         case "input_image":
             return `Recognize data from image, also preferred to orient by fonts in image.
 

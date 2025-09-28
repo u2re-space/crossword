@@ -3,7 +3,7 @@ import { DataInput, DataKind, GLOBAL_PROMPT_INSTRUCTIONS, actionWithDataType, ge
 //
 export const getUsableData = async (data: DataInput) => {
     if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
-        if (typesForKind?.[data?.dataKind] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
+        if (typesForKind?.[data?.dataKind || "input_text"] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
             const BASE64URL = `data:${data?.dataSource?.type};base64,`; // @ts-ignore
             const URL = BASE64URL + await (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64" }));
             return {
@@ -36,7 +36,7 @@ export const getUsableData = async (data: DataInput) => {
 
     //
     return {
-        "type": typesForKind?.[data?.dataKind] || "text",
+        "type": typesForKind?.[data?.dataKind || "input_text"] || "text",
         "text": result
     }
 }
@@ -85,7 +85,7 @@ export class GPTResponses {
 
     //
     async convertPlainToInput(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, additionalAction: string | null = null): Promise<any> {
-        dataKind ??= getDataKindByMIMEType(dataSource?.type) || "text";
+        dataKind ??= getDataKindByMIMEType(dataSource?.type) || "input_text";
         return {
             type: "message",
             role: "user",
@@ -101,7 +101,7 @@ export class GPTResponses {
 
     //
     async attachToRequest(dataSource: (string | Blob | File | any), dataKind: DataKind | null = null, firstAction: string | null = null) {
-        this.pending.push(await this.convertPlainToInput(dataSource, dataKind ??= getDataKindByMIMEType(dataSource?.type)));
+        this.pending.push(await this.convertPlainToInput(dataSource, dataKind ??= getDataKindByMIMEType(dataSource?.type) || "input_text"));
         if (firstAction) { this.pending.push(await this.askToDoAction(firstAction)); }
         return this.pending[this.pending.length - 1];
     }
@@ -130,7 +130,7 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "medium" },
+                reasoning: { "effort": "low" },
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),

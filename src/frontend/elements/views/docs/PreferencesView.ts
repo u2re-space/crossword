@@ -4,7 +4,7 @@
 //
 import { H, M, getDirectoryHandle, remove } from "fest/lure";
 import { makeReactive } from "fest/object";
-import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
+import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 import { currentWebDav } from "@rs-core/config/Settings";
@@ -37,8 +37,8 @@ const makeEvents = (path: string, name: string) => {
 //
 const PreferenceItem = (item: any, byKind: string | null = null) => {
     if (item == null) return;
-    if (byKind && byKind != item?.kind && byKind !== "all") return;
 
+    //
     const text = typeof item === 'string' ? item : (item?.text || '');
     const path = (item as any)?.__path || '';
     const name = (item as any)?.__name || '';
@@ -46,10 +46,10 @@ const PreferenceItem = (item: any, byKind: string | null = null) => {
     const blob = new Blob([text], { type: "text/plain" });
     const events = makeEvents(path, name);
 
+    //
     return H`<details class="preference-accordion" ${SCROLL_TARGET_ATTR}>
         <summary>
             <ui-icon icon="note"></ui-icon>
-            <span>${summary}</span>
             <button class="plain" on:click=${(ev: Event) => { ev.preventDefault(); ev.stopPropagation(); events.doDownload(ev); }}>
                 <ui-icon icon="download"></ui-icon>
             </button>
@@ -64,19 +64,30 @@ const PreferenceItem = (item: any, byKind: string | null = null) => {
 //
 const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
     const dataRef: any = makeReactive([]);
+
+    //
+    let loadLocked = false;
     const load = async () => {
         dataRef.length = 0;
 
         //
+        if (loadLocked) return;
+        loadLocked = true;
+
+        //
         const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
         const entries = dirHandle ? await Array.fromAsync(await dirHandle?.entries?.() ?? []) : [];
-        await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
+        const $tmp = await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
             try {
                 const file = await fileHandle.getFile();
                 const text = await file.text();
                 dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
             } catch { }
-        }));
+        }))?.catch?.(console.warn.bind(console));
+
+        //
+        loadLocked = false;
+        return $tmp;
     };
 
     //
@@ -85,16 +96,20 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
     preferences.boundParent = root;
     (root as any).reloadList = load;
 
+    //
     let stopWatch: (() => void) | null = null;
     const ensureWatcher = () => {
         if (stopWatch) return;
         stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
     };
+
+    //
     const cancelWatcher = () => {
         stopWatch?.();
         stopWatch = null;
     };
 
+    //
     const observer = typeof MutationObserver !== 'undefined' && typeof document !== 'undefined'
         ? new MutationObserver(() => {
             if (root.isConnected) ensureWatcher();
@@ -104,13 +119,19 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
             }
         })
         : null;
-    observer?.observe(document.documentElement, { childList: true, subtree: true });
 
+    //
+    observer?.observe(document.documentElement, { childList: true, subtree: true });
     ensureWatcher();
 
     //
     load().catch(console.warn.bind(console));
     bindDropToDir(root as any, DIR);
+
+    //
+    document?.addEventListener?.('rs-fs-changed', (ev) => {
+        load().catch(console.warn.bind(console));
+    });
 
     //
     return root;
@@ -125,6 +146,7 @@ const renderTabName = (tabName: string) => {
     return tabName;
 }
 
+//
 const scrollToAccordion = (container: HTMLElement) => {
     const openEl = container.querySelector(`details[open]`);
     if (!openEl) return;
@@ -137,7 +159,7 @@ const scrollToAccordion = (container: HTMLElement) => {
 //
 export const PreferencesView = () => {
     const tabbed = H`<ui-tabbed-box
-        currentTab=${"all"}
+        currentTab=${"preferences"}
         prop:tabs=${tabs}
         prop:renderTabName=${renderTabName}
         style="background-color: transparent;"
@@ -172,13 +194,15 @@ export const PreferencesView = () => {
 
     //
     const section = H`<section id="preferences" class="preferences-view">${tabbed}${toolbar}</section>` as HTMLElement;
-    const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "plans"));
-    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'plans') as string);
+    const tabDirOf = (name: string) => ("/docs/" + (name as any || "preferences"));
+    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'preferences') as string);
 
+    //
     const reloadTabs = () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
     };
 
+    //
     section.addEventListener('paste', async (ev: ClipboardEvent) => {
         ev.stopPropagation();
         try {
@@ -190,14 +214,17 @@ export const PreferencesView = () => {
             toastError("Failed to paste content");
         }
     });
+
+    //
     section.addEventListener('dir-dropped', () => {
         toastSuccess("Directory imported");
         reloadTabs();
     });
 
+    //
     section.querySelector('#btn-upload')?.addEventListener('click', async () => {
         try {
-            await openPickerAndWrite(getCurrentDir(), 'text/markdown,text/plain,.md', true);
+            await openPickerAndRecognize(getCurrentDir(), 'text/markdown,text/plain,.md,image/*', true);
             toastSuccess("Files uploaded");
             reloadTabs();
         } catch (e) {
@@ -205,6 +232,8 @@ export const PreferencesView = () => {
             toastError("Upload failed");
         }
     });
+
+    //
     section.querySelector('#btn-download')?.addEventListener('click', async () => {
         try {
             const dir = getCurrentDir();
@@ -217,9 +246,13 @@ export const PreferencesView = () => {
             toastError("Download failed");
         }
     });
+
+    //
     section.querySelector('#btn-mount')?.addEventListener('click', async () => {
         try { for (const d of kinds.map(kind => "/docs/" + kind)) { await getDirectoryHandle(null, d, { create: true } as any); } toastSuccess("Directories mounted"); } catch (e) { console.warn(e); toastError("Mount failed"); }
     });
+
+    //
     section.querySelector('#btn-sync')?.addEventListener('click', async () => {
         try {
             await currentWebDav?.sync?.download?.();
@@ -229,6 +262,8 @@ export const PreferencesView = () => {
             toastError("Sync failed");
         }
     });
+
+    //
     section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
         toastSuccess("Refreshing");
         reloadTabs();

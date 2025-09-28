@@ -1,4 +1,4 @@
-import { AppLayout } from "./elements/layouts/AppLayout";
+import { AppLayout, CURRENT_VIEW } from "./elements/layouts/AppLayout";
 import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 
@@ -8,12 +8,10 @@ import "fest/fl-ui";
 // @ts-ignore
 import style from "./index.scss?inline";
 import { sampleDays } from "@rs-core/$test/Days";
-import { sampleTasks, writeSampleTask } from "@rs-core/$test/Tasks";
 import { Sidebar } from "./elements/layouts/Sidebar";
-import { ref } from "fest/object";
 
 //
-import { clearAllInDirectory, dropFile } from "fest/lure";
+import { dropFile } from "fest/lure";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -60,8 +58,8 @@ export default async function frontend(mountElement) {
     ]);
 
     //
-    const currentView = ref([...views?.keys?.()]?.[0]);
-    const layout = AppLayout(views, currentView, Sidebar(currentView));
+    CURRENT_VIEW.value = [...views?.keys?.()]?.[0] || CURRENT_VIEW.value;
+    const layout = AppLayout(views, CURRENT_VIEW, Sidebar(CURRENT_VIEW));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
 }

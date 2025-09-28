@@ -1,5 +1,5 @@
 import { getDirectoryHandle } from "fest/lure";
-import { handleDataTransferFiles, postShareTarget, sanitizeFileName, writeFileSmart, writeFilesToDir } from "@rs-core/workers/FileSystem";
+import { handleDataTransferFiles, postShareTarget, postShareTargetRecognize, sanitizeFileName, writeFileSmart, writeFilesToDir } from "@rs-core/workers/FileSystem";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {
@@ -43,6 +43,24 @@ export const openPickerAndWrite = async (dir: string, accept = "*/*", multiple =
             dir = dir?.endsWith?.('/') ? dir : (dir + '/');
             try { resolve(await writeFilesToDir(dir, input.files || ([] as any))); }
             catch { resolve(0); }
+        };
+        input.click();
+    });
+    return result;
+}
+
+//
+export const openPickerAndRecognize = async (dir: string, accept = "*/*", multiple = true) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    (input as any).multiple = multiple;
+    const result = await new Promise<void>((resolve) => {
+        input.onchange = async () => {
+            dir = dir?.trim?.();
+            dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postShareTargetRecognize)); }
+            catch { resolve(); }
         };
         input.click();
     });

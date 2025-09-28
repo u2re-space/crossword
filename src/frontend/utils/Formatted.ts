@@ -155,13 +155,20 @@ export const makePropertyDesc = (label: string | any, property: any, key?: strin
 export const $ShowItemsByType = (DIR: string, byKind: string | null = null, ItemRenderer: (item: any, byKind: string | null) => any) => {
     const dataRef: any = makeReactive([]);
     let stopWatch: (() => void) | null = null;
+
+    //
+    let loadLocked = false;
     const load = async () => {
         dataRef.length = 0;
 
         //
+        if (loadLocked) return;
+        loadLocked = true;
+
+        //
         const dHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
         const entries = await Array.fromAsync(dHandle?.entries?.() ?? []);
-        return (await Promise.all(entries))?.map?.(async ([name, fileHandle]: any) => {
+        const $tmp = (await Promise.all(entries)?.catch?.(console.warn.bind(console)))?.map?.(async ([name, fileHandle]: any) => {
             if (name?.endsWith?.(".crswap")) return;
             const file = await fileHandle.getFile();
             const obj = JSON.parse(await file?.text?.() || "{}");
@@ -170,7 +177,14 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
             if (obj.kind === byKind || !byKind || byKind == "all" || !obj.kind) { dataRef.push(obj); }
             return obj;
         })?.filter?.((e: any) => e);
+
+        //
+        loadLocked = false;
+        return $tmp;
     }
+
+    //
+    document.addEventListener("rs-fs-changed", (ev) => load().catch(console.warn.bind(console)));
 
     //
     const items = M(dataRef, (item) => {
@@ -228,15 +242,26 @@ export const $ShowItemsByDay = (DIR: string = TIMELINE_DIR, dayDesc: any | null 
     let stopWatch: (() => void) | null = null;
 
     //
+    let loadLocked = false;
     const load = async () => {
         dataRef.length = 0;
+
+        //
+        if (loadLocked) return;
+        loadLocked = true;
 
         //
         const timelines = await loadAllTimelines(DIR)?.catch?.(console.warn.bind(console));
         for (const timeline of (timelines ?? [])) {
             if (insideOfDay(timeline, dayDesc) && timeline) { dataRef.push(timeline); }
         }
+
+        //
+        loadLocked = false;
     }
+
+    //
+    document.addEventListener("rs-fs-changed", (ev) => load().catch(console.warn.bind(console)));
 
     //
     const items = M(dataRef, (item) => {

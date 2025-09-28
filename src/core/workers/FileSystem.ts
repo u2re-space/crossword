@@ -11,188 +11,6 @@ export const sanitizeFileName = (name: string, fallbackExt = "") => {
     return base || `${Date.now()}`;
 }
 
-//
-export const writeFilesToDir = async (dir: string, files: File[] | FileList) => {
-    const items = Array.from(files as any as File[]);
-    for (const file of items) {
-        dir = dir?.trim?.();
-        dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-        await writeFileSmart(null, dir, file);
-    }
-    return items.length;
-}
-
-//
-export const getMarkDownFromFile = async (handle: any) => {
-    const markdown = await handle.getFile();
-    return await markdown.text();
-}
-
-//
-export const getJSONFromFile = async ([handle]: any) => {
-    const json = await handle.getFile();
-    return JSON.parse(await json.text());
-}
-
-//
-export const hasCriteriaInText = async (text: string, criteria: string[]) => {
-    return criteria?.some?.(async (criterion) => text?.includes?.(criterion));
-}
-
-//
-export const readJSONs = async (dir: any | null) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
-};
-
-//
-export const readJSONsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
-};
-
-//
-export const readMarkDownsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(preferences?.map?.(async (preferences) => (await getMarkDownFromFile(preferences)))
-        ?.filter?.(async (fileData) => (!filterFiles || await hasCriteriaInText(await fileData, filterFiles))));
-}
-
-//
-export const readMarkDowns = async (dir: any | null) => {
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
-    const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return Promise.all(preferences?.map?.((preference) => getMarkDownFromFile(preference?.[1])));
-}
-
-//
-export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
-    return entityTypes?.map?.((entityType) => {
-        return (entityType != "timeline" && entityType != "task") ? `/data/${entityType}/` : "/timeline/";
-    });
-}
-
-//
-export const writeJSON = async (data: any | any[], entityDesc: EntityDesc[] | EntityDesc | null = null, dir: any | null = null) => {
-    if (!data) return;
-    const writeOne = async (obj: any, index = 0) => {
-        if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
-
-        // if entity type is not registered, trying to detect it
-        const entityType = entityDesc?.[index]?.entityType ?? (entityDesc as EntityDesc)?.entityType ?? detectEntityTypeByJSON(obj);
-
-        // if directory is not provided, using default directory
-        if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
-
-        //
-        const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
-
-        //
-        let base = (obj?.id || obj?.name || obj?.desc?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
-        base = base?.trim?.();
-        const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
-        const handle = await dirHandle?.getFileHandle?.(fileName?.trim?.(), { create: true });
-        const fileWriter = await handle?.createWritable?.();
-        await fileWriter?.write?.(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
-        await fileWriter?.close?.();
-
-        //
-        dirHandle?.close?.();
-    };
-
-    //
-    if (Array.isArray(data)) { for (let i = 0; i < data.length; i++) await writeOne(data[i], i); return; }
-    await writeOne(data, 0);
-}
-
-//
-export const writeMarkDown = async (data: any, dir: any | null = null) => {
-    if (!data) return; dir = dir?.trim?.();
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
-
-    //
-    let fileName = (data?.name || data?.id || data?.desc?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
-    fileName = fileName?.trim?.();
-
-    //
-    const handle = await dirHandle?.getFileHandle?.(fileName?.endsWith?.(".md") ? fileName : (fileName + ".md")?.trim?.(), { create: true });
-    const fileWriter = await handle?.createWritable?.();
-    await fileWriter?.write?.(new Blob([data], { type: 'text/markdown' }));
-    await fileWriter?.close?.();
-}
-
-//
-export interface shareTargetFormData {
-    text?: string;
-    url?: string;
-    file?: File | Blob;
-}
-
-//
-export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    if (typeof item === 'string') {
-        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
-            const arrayBuffer = Uint8Array.fromBase64(item.split(';base64,')[1]);
-            const type = item.split(';')[0].split(':')[1];
-            return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
-        } else
-            if (URL.canParse(item)) { return handler({ url: item } as any); }
-    } else
-        if (item instanceof File || item instanceof Blob) {
-            return handler({ file: item } as any);
-        }
-}
-
-//
-export const handleDataTransferFiles = async (files: (File | Blob)[] | FileList, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    // @ts-ignore
-    for (const file of files) {
-        handleDataByType(file, handler);
-    }
-}
-
-//
-export const handleDataTransferItemList = async (items: DataTransferItemList, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    // @ts-ignore
-    for (const item of items) {
-        handleDataByType(item, handler);
-    }
-}
-
-//
-export const handleClipboardItems = async (items: ClipboardItem[], handler: (payload: shareTargetFormData) => Promise<void>) => {
-    for (const item of items) {
-        for (const type of item?.types ?? []) {
-            if (type.startsWith('text/')) {
-                const text = await (await item?.getType?.(type))?.text?.();
-                return handleDataByType(text, handler);
-            }
-            if (type.startsWith('image/')) {
-                const blob = await item?.getType?.(type);
-                return handleDataByType(blob, handler);
-            }
-        }
-    }
-}
-
-//
-export const handleDataTransferInputEvent = (dataTransfer: DataTransfer | null, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    const items = dataTransfer?.items;
-    const files = dataTransfer?.files ?? [];
-
-    if (items) {
-        handleDataTransferItemList(items, handler);
-    }
-
-    if (files && (files?.length > 0)) {
-        handleDataTransferFiles(files, handler);
-    }
-}
-
-
 
 //
 // Unified file/path helpers
@@ -294,8 +112,185 @@ export const writeFileSmart = async (
         toWrite = new File([await blob.arrayBuffer()], finalName, { type });
     }
 
-    return writeFile(root, fullPath, toWrite);
+    //
+    const promised = writeFile(root, fullPath, toWrite);
+    if (typeof document !== "undefined")
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: await promised?.catch?.(console.warn.bind(console)), bubbles: true, composed: true, cancelable: true, }));
+    return promised;
 };
+
+//
+export const writeFilesToDir = async (dir: string, files: File[] | FileList) => {
+    const items = Array.from(files as any as File[]);
+    for (const file of items) {
+        dir = dir?.trim?.();
+        dir = dir?.endsWith?.('/') ? dir : (dir + '/');
+        await writeFileSmart(null, dir, file);
+    }
+    return items.length;
+}
+
+//
+export const getMarkDownFromFile = async (handle: any) => {
+    const markdown = await handle.getFile();
+    return await markdown.text();
+}
+
+//
+export const getJSONFromFile = async ([handle]: any) => {
+    const json = await handle.getFile();
+    return JSON.parse(await json.text());
+}
+
+//
+export const hasCriteriaInText = async (text: string, criteria: string[]) => {
+    return criteria?.some?.(async (criterion) => text?.includes?.(criterion));
+}
+
+//
+export const readJSONs = async (dir: any | null) => {
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+    const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
+
+//
+export const readJSONsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+    const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
+
+//
+export const readMarkDownsFiltered = async (dir: any | null, filterFiles?: string[] | null) => {
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+    const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return Promise.all(preferences?.map?.(async (preferences) => (await getMarkDownFromFile(preferences)))
+        ?.filter?.(async (fileData) => (!filterFiles || await hasCriteriaInText(await fileData, filterFiles))));
+}
+
+//
+export const readMarkDowns = async (dir: any | null) => {
+    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+    const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+    return Promise.all(preferences?.map?.((preference) => getMarkDownFromFile(preference?.[1])));
+}
+
+//
+export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
+    return entityTypes?.map?.((entityType) => {
+        return (entityType != "timeline" && entityType != "task") ? `/data/${entityType}/` : "/timeline/";
+    });
+}
+
+//
+export const writeJSON = async (data: any | any[], entityDesc: EntityDesc[] | EntityDesc | null = null, dir: any | null = null) => {
+    if (!data) return;
+    const writeOne = async (obj: any, index = 0) => {
+        if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
+
+        // if entity type is not registered, trying to detect it
+        const entityType = entityDesc?.[index]?.entityType ?? (entityDesc as EntityDesc)?.entityType ?? detectEntityTypeByJSON(obj);
+
+        // if directory is not provided, using default directory
+        if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
+        let base = (obj?.id || obj?.name || obj?.desc?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'); base = base?.trim?.();
+        const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
+        return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }));
+    };
+
+    //
+    let promised: Promise<any[] | any> | null = null;
+    if (Array.isArray(data)) promised = Promise.all(data.map((item, index) => writeOne(item, index))); else promised = writeOne(data, 0);
+    if (typeof document !== "undefined")
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: await promised?.catch?.(console.warn.bind(console)), bubbles: true, composed: true, cancelable: true, }));
+    return promised;
+}
+
+//
+export const writeMarkDown = async (data: any, path: any | null = null) => {
+    if (!data) return; path = path?.trim?.();
+    if (!path) {
+        path = "/docs/preferences/";
+        path += (`${Date.now()}`?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'))?.trim?.() + ".md"
+    }
+
+    //
+    let promised: Promise<any[] | any> | null = writeFileSmart(null, path, data instanceof File ? data : new File([data], path?.split?.('/')?.pop?.() || `${Date.now()}.md`, { type: 'text/markdown' }));
+    if (typeof document !== "undefined")
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: data, bubbles: true, composed: true, cancelable: true, }));
+    return promised;
+}
+
+//
+export interface shareTargetFormData {
+    text?: string;
+    url?: string;
+    file?: File | Blob;
+}
+
+//
+export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    if (typeof item === 'string') {
+        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
+            const arrayBuffer = Uint8Array.fromBase64(item.split(';base64,')[1]);
+            const type = item.split(';')[0].split(':')[1];
+            return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
+        } else
+            if (URL.canParse(item)) { return handler({ url: item } as any); }
+    } else
+        if (item instanceof File || item instanceof Blob) {
+            return handler({ file: item } as any);
+        }
+}
+
+//
+export const handleDataTransferFiles = async (files: (File | Blob)[] | FileList, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    // @ts-ignore
+    for (const file of files) {
+        handleDataByType(file, handler);
+    }
+}
+
+//
+export const handleDataTransferItemList = async (items: DataTransferItemList, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    // @ts-ignore
+    for (const item of items) {
+        handleDataByType(item, handler);
+    }
+}
+
+//
+export const handleClipboardItems = async (items: ClipboardItem[], handler: (payload: shareTargetFormData) => Promise<void>) => {
+    for (const item of items) {
+        for (const type of item?.types ?? []) {
+            if (type.startsWith('text/')) {
+                const text = await (await item?.getType?.(type))?.text?.();
+                return handleDataByType(text, handler);
+            }
+            if (type.startsWith('image/')) {
+                const blob = await item?.getType?.(type);
+                return handleDataByType(blob, handler);
+            }
+        }
+    }
+}
+
+//
+export const handleDataTransferInputEvent = (dataTransfer: DataTransfer | null, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    const items = dataTransfer?.items;
+    const files = dataTransfer?.files ?? [];
+
+    if (items) {
+        handleDataTransferItemList(items, handler);
+    }
+
+    if (files && (files?.length > 0)) {
+        handleDataTransferFiles(files, handler);
+    }
+}
+
+
 
 // one of handler
 export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target') => {
@@ -310,6 +305,22 @@ export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT
         return json?.results?.map?.((res) => res?.data)?.filter?.((data) => data != null);
     });
 };
+
+//
+export const postShareTargetRecognize = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target-recognize') => {
+    const fd = new FormData();
+    if (payload.text) fd.append('text', payload.text);
+    if (payload.url) fd.append('url', payload.url);
+    if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+
+    //
+    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
+    return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
+        return json?.results?.filter?.((data) => (!!data?.data?.trim?.()))?.map?.((res) => res?.data);
+    });
+}
+
+
 
 //
 export type IntakeOptions = {
@@ -369,16 +380,24 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
 };
 
 
+//?.filter?.((result) => (!!result?.data?.trim?.() && result.status == 'queued'))?
 
 //
-const fileSystemChannel = new BroadcastChannel('rs-fs');
-fileSystemChannel.addEventListener('message', (event) => {
+const controlChannel = new BroadcastChannel('rs-sw');
+controlChannel.addEventListener('message', (event) => {
+    console.log(event);
     if (event.data.type === 'pending-write') {
         event.data.results?.forEach?.((result) => {
-            const { entityType, data, name, path, key, idx } = result;
-            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            console.log("Written file: " + path, jsonData);
-            writeJSON(jsonData, { entityType }, path?.trim?.());
+            console.log(result);
+            const { entityDesc, data, name, path, key, idx, type } = result;
+            if (type === "json") {
+                const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+                console.log("Written file: " + path, jsonData);
+                writeJSON(jsonData, entityDesc, path?.trim?.());
+            } else {
+                console.log("Written file: " + path, data);
+                writeMarkDown(data, path?.trim?.());
+            }
         });
     }
 });

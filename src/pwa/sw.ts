@@ -21,19 +21,24 @@ import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
 import { detectEntityTypesByJSONs } from "@rs-core/template/TypeDetector";
+import { analyzeRecognizeUnified } from "@rs-core/service/recognize/inputs/RecognizeData";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
+const DOC_DIR = "/docs/preferences/";
+const PLAIN_DIR = "/docs/plain/";
+
+//
 const controlChannel = new BroadcastChannel('rs-sw');
-const fileSystemChannel = new BroadcastChannel('rs-fs');
 
 //
 const getKey = (resolvedType: string, idx: number | null = null) => {
     return `${resolvedType}_${idx || Date.now()}`;
 }
 
-//
-const writeToFS = (resolvedType: string, resultEntity: any, outDir: any | null = null, name: string | null = null, idx: number | null = null) => {
+// for caches
+const fileSystemChannel = new BroadcastChannel('rs-fs');
+const writeToFS = (resolvedType: string, resultEntity: any, outDir: any | null = null, name: string | null = null, idx: number | null = null, type: string | null = null) => {
     idx ||= Date.now();
     name ??= (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || idx);
     name = name?.endsWith?.(".json") ? name : (name + ".json");
@@ -41,9 +46,29 @@ const writeToFS = (resolvedType: string, resultEntity: any, outDir: any | null =
     const fullPath = outDir + name;
     const idKey = getKey(resolvedType, idx);
     idbStorage.put("pending-fs-write_" + idKey, { path: fullPath, data: resultEntity });
-    fileSystemChannel.postMessage({ type: 'pending-write', results: [{ status: 'queued', entityType: resolvedType, data: resultEntity, name, path: fullPath, idKey, idx }] });
+    fileSystemChannel.postMessage({
+        type: 'pending-write',
+        results: [{
+            status: 'queued',
+            entityType: resolvedType,
+            data: resultEntity,
+            name,
+            path: fullPath,
+            idKey,
+            idx,
+            type
+        }]
+    });
     return { path: fullPath, name };
 }
+
+//
+const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File | any) => {
+    return analyzeRecognizeUnified(dataSource, (response) => {
+        console.log(response);
+    });
+}
+
 
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
@@ -90,15 +115,42 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 
         //
         console.log(resolvedType, resultEntity);
-
-        // prepare for phase 4 - consolidate
-        writeToFS(resolvedType, resultEntity, outDir, fileName, timeStamp);
     });
 
     //
     const resultEntities = Array.isArray(resultEntity) ? resultEntity : [resultEntity];
     return { resultEntities, entityTypedDesc };
 }
+
+//
+const queueEntityForWriting = (resultEntity, entityDesc, idx: number = 0, type: string | null = "json"): any => {
+    const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
+
+    //
+    let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
+        ?.trim?.()
+        ?.toString?.()
+        ?.toLowerCase?.()
+        ?.replace?.(/\s+/g, '-')
+        ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
+        || `${Date.now()}_${idx}`;
+
+    // prepare to writing into database (for phase 4 - consolidate)
+    const path = `/data/${resolvedType}/`?.trim?.();
+
+    // get preview versions of resolved entity to show in UI
+    (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
+    return { status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now(), type };
+}
+
+//
+const isMarkdown = (text: string, source: string | File | Blob) => {
+    if (source instanceof File && source?.name?.endsWith?.(".md")) return true;
+    if (source instanceof File || source instanceof Blob) if (source?.type?.includes?.("markdown")) return true;
+    if (typeof source == "string") if (source?.startsWith?.("---") && source?.endsWith?.("---")) return true;
+    return false;
+}
+
 
 
 
@@ -116,32 +168,63 @@ self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); })
 setDefaultHandler(new NetworkFirst())
 
 //
-registerRoute(
-    ({ request }) => request.mode === 'navigate',
-    new NetworkFirst({ cacheName: 'html-cache' })
-)
-
-//
-const queueEntityForWriting = (resultEntity, entityDesc, idx: number = 0): any => {
-    const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
+registerRoute(({ request }) => request.mode === 'navigate', new NetworkFirst({ cacheName: 'html-cache' }))
+registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e: any) => {
+    const url = new URL(e.request.url);
+    const fd = await e.request.formData();
+    const inputs = {
+        title: fd.get('title'),
+        text: fd.get('text'),
+        url: fd.get('url'),
+        files: fd.getAll('files') // File[]
+    };
 
     //
-    let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
-        ?.trim?.()
-        ?.toString?.()
-        ?.toLowerCase?.()
-        ?.replace?.(/\s+/g, '-')
-        ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
-        || `${Date.now()}_${idx}`;
+    const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
+    const results: any[] = [];
+    let idx = 0;
 
-    // prepare to writing into database (for phase 4 - consolidate)
-    const path = `/data/${resolvedType}/`?.trim?.();
-    writeToFS(resolvedType, resultEntity, path, name = name?.trim?.(), idx);
+    //
+    for (const file of files) {
+        const source = file || inputs?.text || inputs?.url;
+        if (!source) continue;
 
-    // get preview versions of resolved entity to show in UI
-    (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-    return { status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now() };
-}
+        //
+        const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
+            (source == inputs?.text ? inputs.text :
+                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
+
+        // try avoid using AI when data structure is known
+        if (text && isMarkdown(text, source)) {
+            const dir = DOC_DIR;
+            const name = source instanceof File ? source?.name : `pasted-${Date.now()}.md`;
+            const path = `${dir}${name}`;
+            results.push({ status: 'queued', data: text, path, name, idx: idx++, type: "markdown" });
+            continue;
+        }
+
+        //
+        try {
+            console.log(source);
+            const { data, ok, error } = await initiateAnalyzeAndRecognizeData(source);
+            console.log(data);
+            const dir = DOC_DIR;
+            const name = `pasted-${Date.now()}.md`;
+            const path = `${dir}${name}`;
+            results.push({ status: ok ? 'queued' : 'error', error, data, path, name, idx: idx++, type: "markdown" });
+        } catch (err) {
+            results.push({ status: 'error', error: String(err) });
+        }
+    }
+
+    // @ts-ignore
+    const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
+    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
+
+    //
+    try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
+    return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
+}, "POST")
 
 //
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
@@ -165,7 +248,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         if (!source) continue;
 
         //
-        const text: string = (source instanceof File || source instanceof Blob) ? (file?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
+        const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
                 (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
 
@@ -176,7 +259,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
             if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
                 json?.map?.((resultEntity, i) => {
                     const type = entityTypes[i];
-                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++));
+                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++, "json"));
                 }); continue;
             }
         }
@@ -185,54 +268,20 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         try {
             const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
             resultEntities.forEach((resultEntity, i) => {
-                results.push(queueEntityForWriting(resultEntity, entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc), idx++);
+                results.push(queueEntityForWriting(resultEntity, entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc, idx++, "json"));
             });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });
         }
     }
 
-    //
-    console.log(results);
-
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
     if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
-    try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
 
     //
+    try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
-}, "POST")
-
-//
-registerRoute(({ url }) => url?.pathname == "/share-target-json", async (e: any) => {
-    const url = new URL(e.request.url);
-    try {
-        const body = await e.request.json().catch(() => ({}));
-        const source = body?.file || body?.text || body?.url || JSON.stringify(body || {});
-        const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
-        const results: any[] = [];
-        resultEntities.forEach((resultEntity, i) => {
-            const resolvedType = (entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown')?.trim?.();
-            let name = (resultEntity?.id || resultEntity?.desc?.name || `${Date.now()}_${i}`)?.trim?.()
-                ?.toString?.()
-                ?.toLowerCase?.()
-                ?.replace?.(/\s+/g, '-')
-                ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || `${Date.now()}_${i}`;
-            name = name?.trim?.();
-            const path = (`/data/${resolvedType}/`)?.trim?.();
-            const fileName = name?.endsWith?.(".json") ? name : (name + ".json")?.trim?.();
-            const fullPath = path + fileName;
-            const key = getKey(resolvedType, i);
-            idbStorage.put(key, { path: fullPath, data: resultEntity });
-            (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-            results.push({ status: 'queued', entityType: resolvedType, name, path: fullPath, key, idx: i || Date.now() });
-        });
-        try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
-        return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
-    } catch (err) {
-        return new Response(JSON.stringify({ ok: false, error: String(err) }, null, 2), { status: 500, headers: { 'Content-Type': 'application/json' } });
-    }
 }, "POST")
 
 // fallback to app-shell for document request

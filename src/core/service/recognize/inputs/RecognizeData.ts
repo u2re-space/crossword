@@ -1,6 +1,10 @@
+import { loadSettings } from "@rs-core/config/Settings";
+import { getUsableData } from "@rs-core/service/model/GPT-Responses";
+
+//
 const DEFAULT_MODEL = 'gpt-5';
-const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1/';
-const ENDPOINT = 'responses';
+const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
+const ENDPOINT = '/responses';
 
 //
 export const IMAGE_INSTRUCTION = `
@@ -58,8 +62,10 @@ Return handled data as Markdown string, without any additional comments.
 `;
 
 // used directly fetch to API
-export const recognizeByInstructions = async (msg, settings, instructions: string, sendResponse?) => {
-    const { input } = msg;
+export const recognizeByInstructions = async (input, instructions: string, sendResponse?) => {
+    const settings = (await loadSettings())?.ai;
+
+    //
     const token = settings?.apiKey;
     if (!token) return sendResponse?.({ ok: false, error: "No API key or input" });
     if (!input) return sendResponse?.({ ok: false, error: "No input provided" });
@@ -83,23 +89,34 @@ export const recognizeByInstructions = async (msg, settings, instructions: strin
     });
 
     //
-    const data = await r?.json?.()?.catch?.((e) => {
+    const res = await r?.json?.()?.catch?.((e) => {
         console.warn(e);
         return { ok: false, error: String(e) };
-    }) || {}; console.log(data);
+    }) || {};
 
     //
-    const output = { ok: r?.ok, data };
+    const output = { ok: r?.ok, data: res?.output?.at?.(-1)?.content?.[0]?.text?.trim?.() };
     sendResponse?.(output);
     return output;
 }; // async response
 
 //
-export const recognizeImageData = async (msg, settings, sendResponse?) => {
-    return recognizeByInstructions(msg, settings, IMAGE_INSTRUCTION, sendResponse);
+export const recognizeImageData = async (input, sendResponse?) => {
+    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse);
 };
 
 //
-export const convertTextualData = async (msg, settings, sendResponse?) => {
-    return recognizeByInstructions(msg, settings, DATA_CONVERSION_INSTRUCTION, sendResponse);
+export const convertTextualData = async (input, sendResponse?) => {
+    return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse);
+};
+
+//
+export const analyzeRecognizeUnified = async (rawData: File | Blob | string, sendResponse?) => {
+    const content = await getUsableData({ dataSource: rawData });
+    const input = [{
+        type: "message",
+        role: "user",
+        content: [content]
+    }];
+    return content?.type == "input_image" ? recognizeImageData(input, sendResponse) : convertTextualData(input, sendResponse);
 };
