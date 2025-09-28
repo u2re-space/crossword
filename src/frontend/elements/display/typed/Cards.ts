@@ -1,9 +1,10 @@
-import { insideOfDay, makePropertyDesc } from "@rs-frontend/utils/Formatted";
+import { makePropertyDesc } from "@rs-frontend/utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/display/edits/EntityEdit";
 import { H, M } from "fest/lure";
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
 import { getLinkedEntities } from "@rs-core/service/manage/EntityConsolidation";
+import { insideOfDay } from "@rs-core/utils/TimeUtils";
 
 //
 marked.use(markedKatex({

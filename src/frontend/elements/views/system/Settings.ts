@@ -10,7 +10,8 @@ import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
 import { AISettingsView } from "@rs-core/config/sections/AISettings";
 import { MCPSettingsView } from "@rs-core/config/sections/MCPSettings";
 import { WebDavSettingsView } from "@rs-core/config/sections/WebDavSettings";
-import { getByPath, loadSettings, loadTimelineSources, saveSettings, slugify, TIMELINE_SECTION } from "@rs-core/config/Settings";
+import { getByPath, loadSettings, saveSettings, slugify, TIMELINE_SECTION } from "@rs-core/config/Settings";
+import { loadTimelineSources } from "@rs-core/workers/FileSystem";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
