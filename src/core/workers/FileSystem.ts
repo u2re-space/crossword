@@ -312,7 +312,9 @@ export const postShareTarget = async (payload: shareTargetFormData) => {
 
     //
     const resp = await fetch('/share-target', { method: 'POST', body: fd });
-    return resp.json().catch(() => console.warn.bind(console));;
+    return resp.json().catch(() => console.warn.bind(console))?.then?.((json) => {
+        return json?.results?.[0]?.data;
+    });
 };
 
 //
@@ -327,3 +329,19 @@ fileSystemChannel.addEventListener('message', (event) => {
         });
     }
 });
+
+//
+export const loadTimelineSources = async (dir: string = "/docs/preferences") => {
+    try {
+        const root = await getDirectoryHandle(null, dir)?.catch(() => null);
+        if (!root) return [] as string[];
+        const entries = await Array.fromAsync(root.entries?.() ?? []);
+        return entries
+            .map((entry: any) => entry?.[0])
+            .filter((name: string) => typeof name === "string" && name.trim().length)
+            .map((name: string) => name.replace(/\.md$/i, ""));
+    } catch (e) {
+        console.warn(e);
+        return [];
+    }
+};

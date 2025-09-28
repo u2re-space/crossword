@@ -1,19 +1,18 @@
 import { H } from "fest/lure";
+import "@rs-core/$test/Tasks";
 
 //
-import "@rs-core/$test/Tasks";
 import { TaskItem } from "../../display/items/TaskItem";
-import { SplitTimelinesByDays } from "./Splitter";
 import { renderTabName, $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 import { idbGet } from "@rs-core/store/IDBStorage";
 
 //
 import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
+import { SplitTimelinesByDays } from "@rs-core/utils/TimeUtils";
 
 //
 const SETTINGS_KEY = "rs-settings";
-
 const loadPlanSource = async (): Promise<string | null> => {
     try {
         const stored = await idbGet(SETTINGS_KEY);

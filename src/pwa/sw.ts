@@ -119,8 +119,6 @@ registerRoute(
 //
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     const url = new URL(e.request.url);
-    console.log(url);
-
     const fd = await e.request.formData();
     const inputs = {
         title: fd.get('title'),
@@ -129,18 +127,22 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         files: fd.getAll('files') // File[]
     };
 
-
-    const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [null];
+    //
+    const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
     const results: any[] = [];
     let idx = 0;
 
+    //
     for (const file of files) {
         const source = file || inputs?.text || inputs?.url;
         if (!source) continue;
         try {
             const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
             resultEntities.forEach((resultEntity, i) => {
-                const resolvedType = (entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown')?.trim?.();
+                const entityDesc = entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc;
+                const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
+
+                //
                 let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
                     ?.trim?.()
                     ?.toString?.()
@@ -149,13 +151,13 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                     ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
                     || `${Date.now()}_${idx}`;
 
-                //
+                // prepare to writing into database (for phase 4 - consolidate)
                 const path = `/data/${resolvedType}/`?.trim?.();
                 writeToFS(resolvedType, resultEntity, path, name = name?.trim?.(), idx);
 
-                //
+                // get preview versions of resolved entity to show in UI
                 (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-                results.push({ status: 'queued', entityType: resolvedType, data: resultEntity, name, path, idx: idx || Date.now() });
+                results.push({ status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now() });
                 idx++;
             });
         } catch (err) {
@@ -167,7 +169,6 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
     if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
     try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
-
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }, "POST")
 
