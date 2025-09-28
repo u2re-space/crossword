@@ -78,8 +78,8 @@ export const detectEntityTypeByJSON = (unknownJSON: any) => {
     return (mostSuitableType || "unknown");
 }
 
-
-//
+// for multiple entities (array)
 export const detectEntityTypesByJSONs = (unknownJSONs: any[] | any) => {
+    unknownJSONs = typeof unknownJSONs == "string" ? JSON.parse(unknownJSONs) : unknownJSONs;
     return Array.isArray(unknownJSONs) ? unknownJSONs?.map?.((unknownJSON) => detectEntityTypeByJSON(unknownJSON)) || [] : [detectEntityTypeByJSON(unknownJSONs)];
 }
