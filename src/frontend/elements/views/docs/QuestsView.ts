@@ -1,13 +1,13 @@
 /* Here will be math, coding, etc. questions (and answers by AI) */
 /* Used for solving problems and questions by AI */
 
-import { makeReactive, ref } from "fest/object";
+import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
-import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-core/workers/FileOps";
+import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { makeEntityEdit } from "../../display/edits/EntityEdit";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
+//
 const AI_PLACEHOLDER = "Awaiting AI answer...";
 
 //
@@ -104,7 +104,7 @@ const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
             if (root.isConnected) ensureWatcher();
             else {
                 cancelWatcher();
-                observer.disconnect();
+                observer?.disconnect();
             }
         })
         : null;
@@ -168,7 +168,7 @@ export const QuestsView = () => {
     </section>` as HTMLElement;
 
     const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "quests"));
-    const getCurrentDir = () => tabDirOf((currentTab?.value || 'quests'));
+    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'quests') as string);
 
     const reloadTabs = () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
@@ -221,7 +221,7 @@ export const QuestsView = () => {
     });
 
     section.querySelector('#btn-ask')?.addEventListener('click', async () => {
-        const currentTabPane = tabs.get(currentTab?.value || 'all') as HTMLElement;
+        const currentTabPane = tabs.get(tabbed?.currentTab || 'all') as HTMLElement;
         if (!currentTabPane) {
             toastError("Open a quest to request help");
             return;

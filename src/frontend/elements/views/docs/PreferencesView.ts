@@ -3,12 +3,13 @@
 
 //
 import { H, M, getDirectoryHandle, remove } from "fest/lure";
-import { makeReactive, ref } from "fest/object";
-import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-core/workers/FileOps";
+import { makeReactive } from "fest/object";
+import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/workers/WebDavSync";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { closeToastLayer, toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
 
+//
 const SCROLL_TARGET_ATTR = "data-accordion";
 
 //
@@ -99,7 +100,7 @@ const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
             if (root.isConnected) ensureWatcher();
             else {
                 cancelWatcher();
-                observer.disconnect();
+                observer?.disconnect();
             }
         })
         : null;
@@ -172,7 +173,7 @@ export const PreferencesView = () => {
     </section>` as HTMLElement;
 
     const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "plans"));
-    const getCurrentDir = () => tabDirOf((currentTab?.value || 'plans'));
+    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'plans') as string);
 
     const reloadTabs = () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();

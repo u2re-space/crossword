@@ -1,24 +1,5 @@
 import { getDirectoryHandle } from "fest/lure";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
-
-//
-export const sanitizeFileName = (name: string, fallbackExt = "") => {
-    const parts = String(name || "").split("/").pop() || "";
-    const base = parts.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_.\-+#&]/g, '-');
-    if (fallbackExt && !base.includes('.')) return `${base || Date.now()}${fallbackExt.startsWith('.') ? '' : '.'}${fallbackExt}`;
-    return base || `${Date.now()}`;
-}
-
-//
-export const writeFilesToDir = async (dir: string, files: File[] | FileList) => {
-    const items = Array.from(files as any as File[]);
-    for (const file of items) {
-        dir = dir?.trim?.();
-        dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-        await writeFileSmart(null, dir, file);
-    }
-    return items.length;
-}
+import { sanitizeFileName, writeFileSmart, writeFilesToDir } from "@rs-core/workers/FileSystem";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {

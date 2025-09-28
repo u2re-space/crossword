@@ -2,7 +2,7 @@ import { makeReactive, observableByMap, observableBySet } from "fest/object";
 import { getDirectoryHandle, H, M } from "fest/lure";
 
 //
-import { bindDropToDir } from "@rs-core/workers/FileOps";
+import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
 import { insideOfDay } from "@rs-core/utils/TimeUtils";
