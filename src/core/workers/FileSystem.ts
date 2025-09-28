@@ -48,17 +48,18 @@ export const readMarkDowns = async (dir: any | null) => {
     return Promise.all(preferences?.map?.((preference) => getMarkDownFromFile(preference?.[1])));
 }
 
-
 //
 export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
-    return entityTypes?.map?.((entityType) => `/data/${entityType}/`);
+    return entityTypes?.map?.((entityType) => {
+        return (entityType != "timeline" && entityType != "task") ? `/data/${entityType}/` : "/timeline/";
+    });
 }
 
 //
 export const writeJSON = async (data: any | any[], entityDesc: EntityDesc[] | EntityDesc | null = null, dir: any | null = null) => {
     if (!data) return;
     const writeOne = async (obj: any, index = 0) => {
-        if (!obj) return;
+        if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
 
         // if entity type is not registered, trying to detect it
         const entityType = entityDesc?.[index]?.entityType ?? (entityDesc as EntityDesc)?.entityType ?? detectEntityTypeByJSON(obj);
@@ -124,6 +125,54 @@ export const handleDataByType = async (item: File | string | Blob, handler: (pay
             return handler({ file: item } as any);
         }
 }
+
+//
+export const handleDataTransferFiles = async (files: (File | Blob)[] | FileList, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    // @ts-ignore
+    for (const file of files) {
+        handleDataByType(file, handler);
+    }
+}
+
+//
+export const handleDataTransferItemList = async (items: DataTransferItemList, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    // @ts-ignore
+    for (const item of items) {
+        handleDataByType(item, handler);
+    }
+}
+
+//
+export const handleClipboardItems = async (items: ClipboardItem[], handler: (payload: shareTargetFormData) => Promise<void>) => {
+    for (const item of items) {
+        for (const type of item?.types ?? []) {
+            if (type.startsWith('text/')) {
+                const text = await (await item?.getType?.(type))?.text?.();
+                return handleDataByType(text, handler);
+            }
+            if (type.startsWith('image/')) {
+                const blob = await item?.getType?.(type);
+                return handleDataByType(blob, handler);
+            }
+        }
+    }
+}
+
+//
+export const handleDataTransferInputEvent = (dataTransfer: DataTransfer | null, handler: (payload: shareTargetFormData) => Promise<void>) => {
+    const items = dataTransfer?.items;
+    const files = dataTransfer?.files ?? [];
+
+    if (items) {
+        handleDataTransferItemList(items, handler);
+    }
+
+    if (files && (files?.length > 0)) {
+        handleDataTransferFiles(files, handler);
+    }
+}
+
+
 
 //
 // Unified file/path helpers

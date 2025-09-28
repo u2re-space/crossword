@@ -16,13 +16,13 @@
 
 //
 import type { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readMarkDowns } from "@rs-core/workers/FileSystem";
+import { readJSONs, readMarkDowns, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 import { JSON_SCHEMES } from "../../template/Entities";
 
 //
 import { safe } from "fest/object";
-import { getDirectoryHandle, writeFile } from "fest/lure";
+import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 
 //
@@ -88,7 +88,7 @@ export const writeTimelineTask = async (task: any) => {
     //
     const filePath = `${TIMELINE_DIR}${fileName}`;
     const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    return writeFile(null, filePath, file)?.catch?.(console.error.bind(console));
+    return writeFileSmart(null, filePath, file)?.catch?.(console.error.bind(console));
 }
 
 
