@@ -1,4 +1,4 @@
-import { ableToShowImage, encodeWithJSquash } from "@rs-core/workers/EntityIntake";
+import { ableToShowImage, encodeWithJSquash } from "@rs-core/utils/ImageProcess";
 import { postShareTarget } from "@rs-core/workers/FileSystem";
 
 // send to any available content script to trigger copy text

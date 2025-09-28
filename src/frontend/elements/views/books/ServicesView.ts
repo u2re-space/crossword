@@ -2,10 +2,9 @@ import { H } from "fest/lure";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { ServiceItem, SERVICES_DIR } from ".././../display/items/ServiceItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-core/workers/EntityIntake";
 import { makeEntityEdit } from "../../display/edits/EntityEdit";
 import { toastSuccess, toastError } from "@rs-frontend/utils/Toast";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
+import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
 export const ServicesView = () => {
@@ -56,9 +55,9 @@ export const ServicesView = () => {
     </div>
     </section>` as HTMLElement;
 
+    //
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: "service" });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
-
     return section;
 }

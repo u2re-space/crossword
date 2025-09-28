@@ -1,12 +1,10 @@
-import { ref } from "fest/object";
 import { H } from "fest/lure";
 import { ContactItem, PERSONS_DIR } from "../../display/items/ContactItem";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-core/workers/EntityIntake";
 import { makeEntityEdit } from "../../display/edits/EntityEdit";
 import { toastSuccess, toastError } from "@rs-frontend/utils/Toast";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
+import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
 export const ContactsView = () => {
@@ -59,6 +57,5 @@ export const ContactsView = () => {
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: "person" });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
-
     return section;
 }

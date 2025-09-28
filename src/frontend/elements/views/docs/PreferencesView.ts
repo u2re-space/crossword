@@ -5,9 +5,9 @@
 import { H, M, getDirectoryHandle, remove } from "fest/lure";
 import { makeReactive } from "fest/object";
 import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath } from "@rs-frontend/utils/FileOps";
-import { currentWebDav } from "@rs-core/workers/WebDavSync";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { currentWebDav } from "@rs-core/config/Settings";
 
 //
 const SCROLL_TARGET_ATTR = "data-accordion";

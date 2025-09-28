@@ -1,6 +1,7 @@
 import type { SectionConfig } from "@rs-core/config/SettingsTypes";
 
-export const MCPSettingsView: SectionConfig = {
+//
+export const MCPSection: SectionConfig = {
     key: "mcp",
     title: "Model Context Protocol",
     icon: "plugs",

@@ -11,7 +11,7 @@
         display: grid;
         gap: var(--settings-gap);
         padding: var(--settings-gap);
-        border-radius: 0px;//var(--settings-radius);
+        border-radius: 0px;
         background: --c2-surface(0.01, var(--current, currentColor));
         min-inline-size: 0;
 

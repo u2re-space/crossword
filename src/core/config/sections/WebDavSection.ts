@@ -1,6 +1,7 @@
 import type { SectionConfig } from "@rs-core/config/SettingsTypes";
 
-export const WebDavSettingsView: SectionConfig = {
+//
+export const WebDavSection: SectionConfig = {
     key: "webdav",
     title: "WebDAV Synchronization",
     icon: "cloud-arrow-down",

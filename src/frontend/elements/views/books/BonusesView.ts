@@ -1,9 +1,8 @@
 import { H } from "fest/lure";
-import { ref } from "fest/object";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { BONUSES_DIR, BonusItem } from ".././../display/items/BonusItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-core/workers/EntityIntake";
+import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 
 //
 export const BonusesView = () => {
@@ -29,11 +28,8 @@ export const BonusesView = () => {
     </div>
     </section>` as HTMLElement;
 
-    const intake = (payload) => {
-        sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
-    };
+    const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
-
     return section;
 }

@@ -1,6 +1,7 @@
 import type { SectionConfig } from "@rs-core/config/SettingsTypes";
 
-export const AISettingsView: SectionConfig = {
+//
+export const AISection: SectionConfig = {
     key: "ai",
     title: "AI Integration",
     icon: "cpu",

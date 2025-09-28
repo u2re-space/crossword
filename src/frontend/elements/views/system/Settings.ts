@@ -7,18 +7,23 @@ import { renderTabName } from "@rs-frontend/utils/Formatted";
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
-import { AISettingsView } from "@rs-core/config/sections/AISettings";
-import { MCPSettingsView } from "@rs-core/config/sections/MCPSettings";
-import { WebDavSettingsView } from "@rs-core/config/sections/WebDavSettings";
-import { getByPath, loadSettings, saveSettings, slugify, TIMELINE_SECTION } from "@rs-core/config/Settings";
+
+//
+import { getByPath, loadSettings, saveSettings, slugify } from "@rs-core/config/Settings";
 import { loadTimelineSources } from "@rs-core/workers/FileSystem";
 
 //
+import { AISection } from "@rs-core/config/sections/AISection";
+import { MCPSection } from "@rs-core/config/sections/MCPSection";
+import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
+import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
+
+//
 export const SETTINGS_SECTIONS: SectionConfig[] = [
-    AISettingsView,
-    MCPSettingsView,
-    WebDavSettingsView,
-    TIMELINE_SECTION
+    AISection,
+    MCPSection,
+    WebDavSection,
+    TimelineSection
 ];
 
 //

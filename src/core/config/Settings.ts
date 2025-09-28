@@ -1,32 +1,13 @@
+import { createClient, type FileStat } from "webdav/web"
+import { getDirectoryHandle, readFile } from "fest/lure"
+
+//
 import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
-import { updateWebDavSettings } from "@rs-core/workers/WebDavSync";
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
-import type { AppSettings, SectionConfig } from "@rs-core/config/SettingsTypes";
+import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
-
-//
-export const TIMELINE_SECTION: SectionConfig = {
-    key: "timeline",
-    title: "Timeline Planner",
-    icon: "calendar-plus",
-    description: "Choose which preference note should seed generated plans.",
-    groups: [
-        {
-            key: "timeline-source",
-            label: "Preference note",
-            fields: [
-                {
-                    path: "timeline.source",
-                    label: "Source file",
-                    type: "select",
-                    helper: "Files inside /docs/preferences appear in this list.",
-                    options: [{ value: "", label: "(auto)" }]
-                }
-            ]
-        }
-    ]
-};
 
 //
 export const SETTINGS_KEY = "rs-settings";
@@ -86,3 +67,91 @@ export const saveSettings = async (settings: AppSettings) => {
     updateWebDavSettings(merged)?.catch(console.warn.bind(console));
     return merged;
 };
+
+//
+const downloadContentsToOPFS = async (webDavClient, path = "/") => {
+    const files = await Array.fromAsync(await webDavClient.getDirectoryContents(path)?.catch?.((e) => { console.log(e); return []; }) as any);
+    return Promise.all(files.map(async (file: FileStat) => {
+        const fullPath = path + file.filename + (file?.type == "directory" ? "/" : "");
+        if (file?.type == "directory") { return downloadContentsToOPFS(webDavClient, fullPath); };
+        if (file?.type == "file") {
+            if (new Date(file?.lastmod).getTime() > new Date((await readFile(null, fullPath))?.lastModified).getTime()) {
+                const contents = await webDavClient.getFileContents(fullPath)?.catch?.((e) => { console.warn(e); return null; });
+                if (!contents || contents?.byteLength == 0) return;
+                return writeFileSmart(null, fullPath, new File([contents], file.filename, { type: file.type }));
+            }
+        };
+    }));
+}
+
+//
+const uploadOPFSToWebDav = async (webDavClient, dirHandle: FileSystemDirectoryHandle | null = null, path = "/") => {
+    const files = await Array.fromAsync(dirHandle ?? (await getDirectoryHandle(null, path))?.entries?.() ?? []);
+    await Promise.all((files as [string, FileSystemDirectoryHandle | FileSystemFileHandle][])?.map(async ([name, fileOrDir]) => {
+        const fullPath = path + fileOrDir.name + (fileOrDir instanceof FileSystemDirectoryHandle ? "/" : "");
+        if (fileOrDir instanceof FileSystemDirectoryHandle) {
+            let suffixLessPath = path + fileOrDir.name;
+            if (!(await webDavClient.exists(suffixLessPath)?.catch?.((e) => { console.warn(e); return false; }))) {
+                await webDavClient.createDirectory(suffixLessPath, { recursive: true });
+            }
+            await uploadOPFSToWebDav(webDavClient, fileOrDir, fullPath)
+        }
+        if (fileOrDir instanceof FileSystemFileHandle) {
+            const fileContent = await (await fileOrDir)?.getFile?.();
+            if (!fileContent || fileContent?.size == 0) return;
+
+            //
+            if (!(await webDavClient.exists(fullPath)?.catch?.((e) => { console.warn(e); return false; }))) {
+                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true })?.catch?.((e) => { console.warn(e); return null; });
+                return;
+            }
+            if (new Date(await fileContent?.lastModified).getTime() > new Date((await webDavClient.stat(fullPath)?.catch?.((e) => { console.warn(e); return null; }) as FileStat)?.lastmod).getTime()) {
+                await webDavClient.putFileContents(fullPath, await fileContent?.arrayBuffer(), { overwrite: true })?.catch?.((e) => { console.warn(e); return null; });
+                return;
+            }
+        }
+    }));
+}
+
+//
+export const WebDavSync = (address, options: any = {}) => {
+    const client = createClient(address, options);
+    return {
+        client,
+        upload() { return uploadOPFSToWebDav(client)?.catch?.((e) => { console.warn(e); return []; }) },
+        download() { return downloadContentsToOPFS(client)?.catch?.((e) => { console.warn(e); return []; }) },
+    }
+}
+
+//
+export const currentWebDav: { sync: any } = { sync: null };
+(async () => {
+    const settings = await loadSettings();
+    if (!settings?.webdav?.url) return;
+    const client = WebDavSync(settings.webdav.url, {
+        //authType: AuthType.Digest,
+        withCredentials: true,
+        username: settings.webdav.username,
+        password: settings.webdav.password,
+        token: settings.webdav.token
+    });
+    currentWebDav.sync = client ?? currentWebDav.sync;
+    currentWebDav?.sync?.upload?.();
+})();
+
+//
+export const updateWebDavSettings = async (settings: any) => {
+    settings ||= await loadSettings();
+    if (!settings?.webdav?.url) return;
+    currentWebDav.sync = WebDavSync(settings.webdav.url, {
+        //authType: AuthType.Digest,
+        withCredentials: true,
+        username: settings.webdav.username,
+        password: settings.webdav.password,
+        token: settings.webdav.token
+    }) ?? currentWebDav.sync;
+    currentWebDav?.sync?.upload?.();
+}
+
+//
+export default WebDavSync;

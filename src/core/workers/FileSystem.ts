@@ -1,5 +1,6 @@
 import type { EntityDesc } from "@rs-core/template/EntitiesTyped";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector";
+import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
 import { getDirectoryHandle, writeFile } from "fest/lure";
 
 //
@@ -308,6 +309,47 @@ export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT
     return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
         return json?.results?.map?.((res) => res?.data)?.filter?.((data) => data != null);
     });
+};
+
+//
+export type IntakeOptions = {
+    entityType?: string;
+    beforeSend?: (payload: shareTargetFormData) => Promise<shareTargetFormData> | shareTargetFormData;
+};
+
+//
+export const normalizePayload = async (payload: shareTargetFormData): Promise<shareTargetFormData> => {
+    if (payload.file instanceof File || payload.file instanceof Blob) {
+        if (payload.file instanceof File && payload.file.size > MAX_BASE64_SIZE && payload.file.type.startsWith("image/")) {
+            return { ...payload, file: await convertImageToJPEG(payload.file) };
+        }
+        return payload;
+    }
+
+    const text = payload.text || payload.url;
+    if (typeof text === "string") {
+        const match = text.match(BASE64_PREFIX);
+        if (match && match.groups) {
+            const { mime, data } = match.groups;
+            const byteLen = Math.ceil((data.length * 3) / 4);
+            if (byteLen > MAX_BASE64_SIZE) {
+                const binary = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+                const blob = new Blob([binary], { type: mime });
+                const converted = await convertImageToJPEG(blob);
+                return { file: converted };
+            }
+        }
+    }
+
+    return payload;
+};
+
+//
+export const sendToEntityPipeline = async (payload: shareTargetFormData, options: IntakeOptions = {}) => {
+    const entityType = options.entityType || DEFAULT_ENTITY_TYPE;
+    const normalized = await normalizePayload(payload);
+    const next = options.beforeSend ? await options.beforeSend(normalized) : normalized;
+    return postShareTarget(next);
 };
 
 //

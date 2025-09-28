@@ -6,7 +6,7 @@ import temml from "temml";
 import { marked, type MarkedExtension } from 'marked';
 import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFromTextSelection } from './DocTools';
 import { MathMLToLaTeX } from 'mathml-to-latex';
-import { deAlphaChannel } from './EntityIntake';
+import { deAlphaChannel } from '../utils/ImageProcess';
 
 //
 const turndownService = new TurndownService();
