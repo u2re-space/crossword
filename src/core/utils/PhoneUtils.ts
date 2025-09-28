@@ -7,32 +7,32 @@ export const normalizeOne = (input: string, options: any = {}) => {
     let s = String(input).trim();
     if (!s) return null;
 
-    // Срезаем добавочные
+    // Strip off extensions
     if (options.stripExtensions) {
         s = s.replace(EXT_CUT_RE, '');
     }
 
-    // Флаг, был ли плюс в начале (важно для +7 → 8)
+    // Flag indicating whether there was a leading plus (important for +7 → 8)
     const hasPlusInStart = /^\+/.test(s);
 
-    // Убираем всё не-цифровое
+    // Remove all non-digit characters
     let digits = s.replace(/\D/g, '');
     if (!digits) return null;
 
-    // Нормализация под РФ
+    // Normalization for Russia (RF)
     // +7xxxxxxxxxx → 8xxxxxxxxxx
     if (hasPlusInStart && digits.startsWith(options.countryCode)) {
         digits = options.defaultTrunk + digits.slice(options.countryCode.length);
     }
-    // 7xxxxxxxxxx (11 знаков) → 8xxxxxxxxxx
+        // 7xxxxxxxxxx (11 digits) → 8xxxxxxxxxx
     else if (digits.length === 11 && digits.startsWith(options.countryCode)) {
         digits = options.defaultTrunk + digits.slice(1);
     }
-    // 10 знаков (мобильный/городской с кодом) → 8 + 10зн
+        // 10 digits (mobile/local with area code) → prepend defaultTrunk + 10 digits
     else if (digits.length === 10) {
         digits = options.defaultTrunk + digits;
     }
-    // 5–7 знаков (локальный городской) → 8 + cityCode + локальный
+        // 5–7 digits (local city numbers) → prepend defaultTrunk + cityCode + local
     else if (
         options.cityCode &&
         digits.length >= options.minLocal &&
@@ -40,11 +40,11 @@ export const normalizeOne = (input: string, options: any = {}) => {
     ) {
         digits = options.defaultTrunk + options.cityCode + digits;
     }
-    // Уже 11 знаков и начинается с 8 — оставляем
+        // Already 11 digits and starts with defaultTrunk (8) — leave as is
     else if (digits.length === 11 && digits.startsWith(options.defaultTrunk)) {
         // ok
     }
-    // Попытка: если длина = cityCode+local (нет 8 в начале) — добавим 8
+        // Attempt: if length == cityCode+local (no leading 8) — prepend defaultTrunk
     else if (
         options.cityCode &&
         digits.length === (options.cityCode as string).length + 7
@@ -52,11 +52,11 @@ export const normalizeOne = (input: string, options: any = {}) => {
         digits = options.defaultTrunk + digits;
     }
     else {
-        // Не удалось уверенно привести к формату 11 цифр РФ — игнорируем
+        // Could not confidently convert to 11-digit RF format — ignore
         return null;
     }
 
-    // В этот момент ожидаем 11 цифр, начинающихся с 8
+    // At this point we expect 11 digits starting with defaultTrunk (8)
     return /^\d{11}$/.test(digits) ? digits : null;
 };
 
@@ -68,7 +68,7 @@ export const splitCandidates = (value: string) => {
     const s = String(value);
     const matches = s.match(PHONE_CANDIDATE_RE);
     if (matches && matches.length) return matches;
-    // fallback: разрезаем по типовым разделителям
+    // fallback: split by common delimiters
     return s.split(/[;,/|]+/).map((x) => x.trim()).filter(Boolean);
 };
 
@@ -100,20 +100,20 @@ export const normalizePhones = (value: string) => {
 };
 
 export const getIndexForRow = (row: any, pos: number) => {
-    // приоритет: если второй элемент — число, считаем его индексом
+    // priority: if the second array element is a number, treat it as the index
     if (Array.isArray(row) && typeof row[1] === 'number') return row[1];
-    // если объект с index
+    // if the object has an index
     if (row && typeof row === 'object' && typeof row.index === 'number') return row.index;
-    // иначе — позиция в массиве
+    // otherwise use the position in the array
     return pos;
 };
 
 export const getPhonesFromRow = (row: any) => {
     if (Array.isArray(row)) return row[0];
     if (row && typeof row === 'object') {
-        // поддержка {phone}, {phones}
+        // support {phone} and {phones} keys
         if ('phones' in row) return row.phones;
         if ('phone' in row) return row.phone;
     }
-    return row; // на крайний случай
+    return row; // as a last resort
 };

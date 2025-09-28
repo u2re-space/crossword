@@ -18,11 +18,12 @@
 import type { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readMarkDowns } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
-import { JSON_SCHEMES } from "../template/Entities";
+import { JSON_SCHEMES } from "../../template/Entities";
 
 //
 import { safe } from "fest/object";
 import { getDirectoryHandle, writeFile } from "fest/lure";
+import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -57,54 +58,20 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 
 
 
-//
-const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
-    // after begins and before ends
-    if (beginTime && endTime) {
-        return new Date(beginTime) < currentTime && currentTime < new Date(endTime);
-    }
-    // after begins
-    if (beginTime) {
-        return new Date(beginTime) < currentTime;
-    }
-    // before ends
-    if (endTime) {
-        return currentTime < new Date(endTime);
-    }
-    return false;
-}
-
-//
-const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Date) => {
-    // utils begins and before ends
-    if (beginTime && endTime) {
-        return new Date(beginTime) > currentTime && currentTime < new Date(endTime);
-    }
-    // utils begins
-    if (beginTime) {
-        return new Date(beginTime) > currentTime;
-    }
-    // before ends
-    if (endTime) {
-        return currentTime < new Date(endTime);
-    }
-    return false;
-}
-
 
 
 // get only today and future tasks, and tasks in the past, but not ended (not finished)
-const filterTasks = (timeline: any[], currentTime: Date) => {
+export const filterTasks = (timeline: any[], currentTime: Date) => {
     return timeline?.filter?.((task) => checkRemainsTime(task?.properties?.begin_time, task?.properties?.end_time, currentTime));
 }
 
 // get only today and future factors, and factors in the past, but not ended (not finished)
-const filterFactors = (factors: any[], currentTime: Date) => {
+export const filterFactors = (factors: any[], currentTime: Date) => {
     return factors?.filter?.((factor) => checkRemainsTime(factor?.properties?.begin_time, factor?.properties?.end_time, currentTime));
 }
 
 // get only today and future events, and events in the past, but not ended (not finished)
-const filterEvents = (events: any[], currentTime: Date) => {
+export const filterEvents = (events: any[], currentTime: Date) => {
     return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime));
 }
 

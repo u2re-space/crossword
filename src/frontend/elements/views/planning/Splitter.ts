@@ -1,4 +1,4 @@
-import { isDate } from "@rs-frontend/utils/Formatted";
+import { isDate } from "@rs-core/utils/TimeUtils";
 import { makeReactive } from "fest-src/fest/object/index";
 
 //

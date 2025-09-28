@@ -8,7 +8,7 @@ import { safe } from "fest/object";
 
 //
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import type { BonusEntity, EntityDesc } from "@rs-core/service/template/EntitiesTyped";
+import type { BonusEntity, EntityDesc } from "@rs-core/template/EntitiesTyped";
 import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
 import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
 
@@ -31,7 +31,7 @@ export const pushPendingToFS = async (entityType: string = "") => {
             const path = entry?.value?.path || entry?.path || entry?.key;
             const data = entry?.value?.data ?? entry?.data ?? entry?.value;
             const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            await writeJSON(path?.trim?.(), jsonData);
+            await writeJSON(jsonData, { entityType }, path?.trim?.());
             console.log("Written file: " + path, jsonData);
         } finally {
             await new Promise((res) => setTimeout(res, 250));
@@ -198,13 +198,13 @@ export const getEntitiesFromFS = (dir: string) => {
 }
 
 //
-export const getShortFormFromEntities = async (entityTypes: { entityType: string; }[]) => {
+export const getShortFormFromEntities = async (entityTypes: { entityType?: string; }[] | EntityDesc[]) => {
     const entities = await Promise.all(entityTypes?.flatMap?.(async (type) => {
         return [type?.entityType, await getEntitiesFromFS(`/data/${type?.entityType}/`)];
     }) ?? []);
 
     //
-    return entityTypes?.map?.(async ({ entityType }) => {
+    return entityTypes?.map?.(async ({ entityType }: { entityType?: string; } | EntityDesc) => {
         const neededEntityType = (entities)?.find?.(([eType, entity]) => (eType == entityType || (entityType ?? "unknown") == (eType ?? "unknown")))?.[0]
         return entities
             ?.filter?.(([eType, entity]) => (eType == neededEntityType))

@@ -1,4 +1,4 @@
-import { JSON_SCHEMES } from "@rs-core/service/template/Entities";
+import { JSON_SCHEMES } from "@rs-core/template/Entities";
 import { H } from "fest/lure";
 import type { FieldSpec } from "@rs-frontend/elements/display/edits/Modal";
 

@@ -3,7 +3,7 @@ import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/displa
 import { H, M } from "fest/lure";
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
-import { getLinkedEntities } from "@rs-core/service/recognize/entity/EntityConsolidation";
+import { getLinkedEntities } from "@rs-core/service/manage/EntityConsolidation";
 
 //
 marked.use(markedKatex({

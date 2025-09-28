@@ -62,8 +62,8 @@ export type UnknownKind = "unspecified" | "unknown" | "other";
 
 //
 export interface EntityDesc<K = string, P = string> {
-    entityType: K;
-    potentialName: P;
+    entityType?: K;
+    potentialName?: P;
 }
 
 // Base entity

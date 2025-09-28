@@ -8,7 +8,7 @@ import {
     ensureSectionHost,
     cloneEntity
 } from "@rs-frontend/utils/SchemaFields";
-import { suggestShortNames } from "@rs-core/service/recognize/entity/EntityConsolidation";
+import { suggestShortNames } from "@rs-core/service/manage/EntityConsolidation";
 
 //
 export type EntityEditOptions = {

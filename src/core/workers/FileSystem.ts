@@ -1,3 +1,5 @@
+import type { EntityDesc } from "@rs-core/template/EntitiesTyped";
+import { detectEntityTypeByJSON, detectEntityTypesByJSONs } from "@rs-core/template/TypeDetector";
 import { getDirectoryHandle, writeFile } from "fest/lure";
 
 //
@@ -46,13 +48,28 @@ export const readMarkDowns = async (dir: any | null) => {
     return Promise.all(preferences?.map?.((preference) => getMarkDownFromFile(preference?.[1])));
 }
 
+
 //
-export const writeJSON = async (dir: any | null, data: any) => {
+export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
+    return entityTypes?.map?.((entityType) => `/data/${entityType}/`);
+}
+
+//
+export const writeJSON = async (data: any | any[], entityDesc: EntityDesc[] | EntityDesc | null = null, dir: any | null = null) => {
     if (!data) return;
-    dir = dir?.trim?.();
-    const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
     const writeOne = async (obj: any, index = 0) => {
         if (!obj) return;
+
+        // if entity type is not registered, trying to detect it
+        const entityType = entityDesc?.[index]?.entityType ?? (entityDesc as EntityDesc)?.entityType ?? detectEntityTypeByJSON(obj);
+
+        // if directory is not provided, using default directory
+        if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
+
+        //
+        const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
+
+        //
         let base = (obj?.id || obj?.name || obj?.desc?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
         base = base?.trim?.();
         const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
@@ -60,21 +77,26 @@ export const writeJSON = async (dir: any | null, data: any) => {
         const fileWriter = await handle?.createWritable?.();
         await fileWriter?.write?.(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
         await fileWriter?.close?.();
+
+        //
+        dirHandle?.close?.();
     };
-    if (Array.isArray(data)) {
-        for (let i = 0; i < data.length; i++) await writeOne(data[i], i);
-        return;
-    }
+
+    //
+    if (Array.isArray(data)) { for (let i = 0; i < data.length; i++) await writeOne(data[i], i); return; }
     await writeOne(data, 0);
 }
 
 //
-export const writeMarkDown = async (dir: any | null, data: any) => {
-    if (!data) return;
-    dir = dir?.trim?.();
+export const writeMarkDown = async (data: any, dir: any | null = null) => {
+    if (!data) return; dir = dir?.trim?.();
     const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir?.trim?.(), { create: true }) : dir;
+
+    //
     let fileName = (data?.name || data?.id || data?.desc?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
     fileName = fileName?.trim?.();
+
+    //
     const handle = await dirHandle?.getFileHandle?.(fileName?.endsWith?.(".md") ? fileName : (fileName + ".md")?.trim?.(), { create: true });
     const fileWriter = await handle?.createWritable?.();
     await fileWriter?.write?.(new Blob([data], { type: 'text/markdown' }));
@@ -209,6 +231,37 @@ export const postShareTarget = async (payload: shareTargetFormData) => {
     if (payload.text) fd.append('text', payload.text);
     if (payload.url) fd.append('url', payload.url);
     if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+
+    //
+    if (payload.text != null) {
+        let entityTypes = payload.text ? detectEntityTypesByJSONs(payload.text) : "unknown";
+        if (entityTypes != null) {
+            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
+            if (suitable?.length) return JSON.parse(payload.text);
+        }
+    }
+
+    //
+    if (payload.file != null) {
+        const text = await payload.file?.text?.() || "";
+        let entityTypes = text ? detectEntityTypesByJSONs(text) : "unknown";
+        if (entityTypes != null) {
+            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
+            if (suitable?.length) return JSON.parse(text);
+        }
+    }
+
+    //
+    if (payload.url != null) {
+        const json = await fetch(payload.url)?.then?.((res) => res.json())?.catch?.(console.warn.bind(console)) || null;
+        let entityTypes = json ? detectEntityTypesByJSONs(json) : "unknown";
+        if (entityTypes != null) {
+            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
+            if (suitable?.length) return json;
+        }
+    }
+
+    //
     const resp = await fetch('/share-target', { method: 'POST', body: fd });
     return resp.json().catch(() => console.warn.bind(console));;
 };
@@ -221,7 +274,7 @@ fileSystemChannel.addEventListener('message', (event) => {
             const { entityType, data, name, path, key, idx } = result;
             const jsonData = typeof data === "string" ? JSON.parse(data) : data;
             console.log("Written file: " + path, jsonData);
-            writeJSON(path?.trim?.(), jsonData);
+            writeJSON(jsonData, { entityType }, path?.trim?.());
         });
     }
 });

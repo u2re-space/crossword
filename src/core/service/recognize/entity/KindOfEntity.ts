@@ -4,7 +4,7 @@
  */
 
 //
-import { JSON_SCHEMES } from "@rs-core/service/template/Entities";
+import { JSON_SCHEMES } from "@rs-core/template/Entities";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 
 //

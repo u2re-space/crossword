@@ -319,7 +319,7 @@ export const JSON_SCHEMES = {
                 image: { $ref: "#/$defs/Images" },
 
                 //
-                coordinates: { $ref: "#/$defs/LocationRef" },
+                location: { $ref: "#/$defs/LocationRef" },
                 members: { $ref: "#/$defs/IdArray" },
                 services: { $ref: "#/$defs/IdArray" },
 

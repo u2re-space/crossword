@@ -5,14 +5,8 @@ import { getDirectoryHandle, H, M } from "fest/lure";
 import { bindDropToDir } from "@rs-core/workers/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
+import { insideOfDay } from "@rs-core/utils/TimeUtils";
 
-//
-export const insideOfDay = (item: any, dayDesc: any) => {
-    return (
-        new Date(item.properties?.begin_time) >= new Date(dayDesc.properties?.begin_time) &&
-        new Date(item.properties?.end_time) <= new Date(dayDesc.properties?.end_time)
-    ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
-}
 
 //
 export const beginDragAsText = (ev: DragEvent) => {
@@ -300,20 +294,6 @@ export const $ShowItemsByDay = (DIR: string = TIMELINE_DIR, dayDesc: any | null 
 
     //
     return root;
-}
-
-
-
-//
-export const isDate = (date: any) => {
-    const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
-    let secondStep = false;
-    try {
-        secondStep = new Date(date).getTime() > 0;
-    } catch (e) {
-        secondStep = false;
-    }
-    return firstStep && secondStep;
 }
 
 //

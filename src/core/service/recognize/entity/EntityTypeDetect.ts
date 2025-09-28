@@ -6,7 +6,7 @@
 
 //
 import type { GPTResponses } from '@rs-core/service/model/GPT-Responses';
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/template/Entities';
 
 // for optimize images before sending to GPT
 import { decode } from '@jsquash/png';

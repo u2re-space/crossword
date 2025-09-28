@@ -26,7 +26,7 @@ const objectAssign = (target, ...sources) => {
 }
 
 //
-export const NAME = "ras-klad";
+export const NAME = "crossword";
 export const __dirname = resolve(import.meta.dirname, "./");
 const baseConfig = await importConfig(
     resolve(__dirname, "./shared/vite.config.js"),

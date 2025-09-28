@@ -6,9 +6,9 @@
 
 //
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/service/template/Entities';
+import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/template/Entities';
 import { safe } from "fest/object";
-import type { BonusEntity, EntityDesc } from "@rs-core/service/template/EntitiesTyped";
+import type { BonusEntity, EntityDesc } from "@rs-core/template/EntitiesTyped";
 
 //
 export const resolveEntity = async (
