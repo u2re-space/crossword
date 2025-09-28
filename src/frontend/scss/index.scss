@@ -1,9 +1,8 @@
+@use "./views/Layout";
+@use "./views/Preferences";
+@use "./views/Docs";
+@use "./views/Toolbars";
+@use "./views/Settings";
 @use "./items/Cards";
 @use "./items/Inputs";
 @use "./items/Feedback";
-
-//
-@use "./views/Preferences";
-@use "./views/Toolbars";
-@use "./views/Layout";
-@use "./views/Settings";

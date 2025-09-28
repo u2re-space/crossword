@@ -1,282 +1,177 @@
-/* Here is will be preferences view, which used Markdown notes in directory /user/preferences/ */
-/* Used for making plans, goals, etc. by AI */
-
-//
-import { H, M, getDirectoryHandle, remove } from "fest/lure";
-import { makeReactive } from "fest/object";
-import { bindDropToDir, pasteIntoDir, openPickerAndWrite, downloadByPath, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
-import { watchFsDirectory } from "@rs-core/workers/FsWatch";
+import { DocWorkspace, type DocCollection, type WorkspaceAction, type DocWorkspaceController } from "./DocWorkspace";
 import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { getDirectoryHandle } from "fest/lure";
+import { pasteIntoDir, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/config/Settings";
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
 
-//
-const SCROLL_TARGET_ATTR = "data-accordion";
-
-//
-const isDate = (date: any) => {
-    return date instanceof Date || typeof date == "string" && date.match(/^(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})$/);
-}
-
-//
-const makeEvents = (path: string, name: string) => {
-    return {
-        doDelete: async (ev: Event) => {
-            ev?.stopPropagation?.(); if (!path) return;
-            if (!confirm(`Delete \"${name}\"?`)) return; if (isDate(name)) return; if (name === 'all') return;
-            try { await remove(null, path); } catch (e) { console.warn(e); }
-            (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
-        },
-        doDownload: async (ev: Event) => {
-            ev?.stopPropagation?.(); if (!path) return;
-            if (isDate(name)) return; if (name === 'all') return;
-            try { await downloadByPath(path); } catch (e) { console.warn(e); }
-        }
+const COLLECTIONS: DocCollection[] = [
+    { id: "plans", label: "Plans", dir: "/docs/plans/", description: "Strategic roadmaps and day-to-day plans." },
+    { id: "ideas", label: "Ideas", dir: "/docs/ideas/", description: "Inspirations and captured thoughts." },
+    { id: "notes", label: "Notes", dir: "/docs/notes/", description: "Scratchpad and quick notes." },
+    { id: "preferences", label: "Preferences", dir: "/docs/preferences/", description: "Personal preferences and guardrails." },
+    {
+        id: "all",
+        label: "Archive",
+        dirs: [
+            "/docs/plans/",
+            "/docs/ideas/",
+            "/docs/notes/",
+            "/docs/preferences/"
+        ],
+        description: "Combined view across all notebooks."
     }
-}
+];
 
-//
-const PreferenceItem = (item: any, byKind: string | null = null) => {
-    if (item == null) return;
-
-    //
-    const text = typeof item === 'string' ? item : (item?.text || '');
-    const path = (item as any)?.__path || '';
-    const name = (item as any)?.__name || '';
-    const summary = text?.trim?.()?.split?.("\n")?.[0] || name || "Untitled";
-    const blob = new Blob([text], { type: "text/plain" });
-    const events = makeEvents(path, name);
-
-    //
-    return H`<details class="preference-accordion" ${SCROLL_TARGET_ATTR}>
-        <summary>
-            <ui-icon icon="note"></ui-icon>
-            <button class="plain" on:click=${(ev: Event) => { ev.preventDefault(); ev.stopPropagation(); events.doDownload(ev); }}>
-                <ui-icon icon="download"></ui-icon>
-            </button>
-            <button class="plain" on:click=${(ev: Event) => { ev.preventDefault(); ev.stopPropagation(); events.doDelete(ev); }}>
-                <ui-icon icon="trash"></ui-icon>
-            </button>
-        </summary>
-        <div class="spoiler-content"><md-view src=${URL.createObjectURL(blob)}></md-view></div>
-    </details>`;
-}
-
-//
-const $ShowPreferencesByDir = (DIR: string, byKind: string | null = null) => {
-    const dataRef: any = makeReactive([]);
-
-    //
-    let loadLocked = false;
-    const load = async () => {
-        dataRef.length = 0;
-
-        //
-        if (loadLocked) return;
-        loadLocked = true;
-
-        //
-        const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
-        const entries = dirHandle ? await Array.fromAsync(await dirHandle?.entries?.() ?? []) : [];
-        const $tmp = await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
+const ensureCollections = async () => {
+    for (const collection of COLLECTIONS) {
+        const dirs = collection.dirs ?? (collection.dir ? [collection.dir] : []);
+        for (const dir of dirs) {
             try {
-                const file = await fileHandle.getFile();
-                const text = await file.text();
-                dataRef.push({ text, __name: fname, __path: `${DIR}${fname}` });
-            } catch { }
-        }))?.catch?.(console.warn.bind(console));
-
-        //
-        loadLocked = false;
-        return $tmp;
-    };
-
-    //
-    const preferences = M(dataRef, (preference) => PreferenceItem(preference, byKind));
-    const root = H`<div data-name="${byKind}" data-type="preferences" class="content">${preferences}</div>`;
-    preferences.boundParent = root;
-    (root as any).reloadList = load;
-
-    //
-    let stopWatch: (() => void) | null = null;
-    const ensureWatcher = () => {
-        if (stopWatch) return;
-        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
-    };
-
-    //
-    const cancelWatcher = () => {
-        stopWatch?.();
-        stopWatch = null;
-    };
-
-    //
-    const observer = typeof MutationObserver !== 'undefined' && typeof document !== 'undefined'
-        ? new MutationObserver(() => {
-            if (root.isConnected) ensureWatcher();
-            else {
-                cancelWatcher();
-                observer?.disconnect();
+                await getDirectoryHandle(null, dir, { create: true } as any);
+            } catch (error) {
+                console.warn("Failed to ensure directory", dir, error);
             }
-        })
-        : null;
-
-    //
-    observer?.observe(document.documentElement, { childList: true, subtree: true });
-    ensureWatcher();
-
-    //
-    load().catch(console.warn.bind(console));
-    bindDropToDir(root as any, DIR);
-
-    //
-    document?.addEventListener?.('rs-fs-changed', (ev) => {
-        load().catch(console.warn.bind(console));
-    });
-
-    //
-    return root;
-}
-
-//
-const kinds = ["plans", "ideas", "notes", "preferences", "all"] as const;
-const tabs = new Map<string, HTMLElement | null | string | any>(kinds?.map?.(kind => [kind, $ShowPreferencesByDir("/docs/" + kind, kind)]));
-
-//
-const renderTabName = (tabName: string) => {
-    return tabName;
-}
-
-//
-const scrollToAccordion = (container: HTMLElement) => {
-    const openEl = container.querySelector(`details[open]`);
-    if (!openEl) return;
-    const rect = openEl.getBoundingClientRect();
-    if (rect.top < 0 || rect.bottom > window.innerHeight) {
-        openEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
     }
-}
+};
 
-//
-export const PreferencesView = () => {
-    const tabbed = H`<ui-tabbed-box
-        currentTab=${"preferences"}
-        prop:tabs=${tabs}
-        prop:renderTabName=${renderTabName}
-        style="background-color: transparent;"
-        class="all"
-    ></ui-tabbed-box>`;
-
-    //
-    const toolbar = H`<div class="view-toolbar">
-        <div class="button-set">
-        <button id="btn-upload">
-            <ui-icon icon="upload"></ui-icon>
-            <span>Upload</span>
-        </button>
-        <button id="btn-download">
-            <ui-icon icon="download"></ui-icon>
-            <span>Download</span>
-        </button>
-        <button id="btn-mount">
-            <ui-icon icon="screwdriver"></ui-icon>
-            <span>Mount</span>
-        </button>
-        <button id="btn-sync">
-            <ui-icon icon="arrows-clockwise"></ui-icon>
-            <span>Sync</span>
-        </button>
-        <button id="btn-refresh">
-            <ui-icon icon="arrows-clockwise"></ui-icon>
-            <span>Refresh</span>
-        </button>
-        </div>
-    </div>`
-
-    //
-    const section = H`<section id="preferences" class="preferences-view">${tabbed}${toolbar}</section>` as HTMLElement;
-    const tabDirOf = (name: string) => ("/docs/" + (name as any || "preferences"));
-    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'preferences') as string);
-
-    //
-    const reloadTabs = () => {
-        for (const el of tabs.values()) (el as any)?.reloadList?.();
-    };
-
-    //
-    section.addEventListener('paste', async (ev: ClipboardEvent) => {
-        ev.stopPropagation();
-        try {
-            await pasteIntoDir(getCurrentDir());
-            toastSuccess("Content pasted");
-            reloadTabs();
-        } catch (e) {
-            console.warn(e);
-            toastError("Failed to paste content");
+const makePrimaryActions = (ctx: DocWorkspaceController): WorkspaceAction[] => [
+    {
+        id: "upload",
+        label: "Import",
+        icon: "upload",
+        primary: true,
+        onClick: async () => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) {
+                toastError("Select a destination first");
+                return;
+            }
+            try {
+                await openPickerAndRecognize(dir, "text/markdown,text/plain,.md,image/*", true);
+                toastSuccess("Files imported");
+                await ctx.reloadCurrent();
+            } catch (error) {
+                console.warn(error);
+                toastError("Import failed");
+            }
         }
-    });
-
-    //
-    section.addEventListener('dir-dropped', () => {
-        toastSuccess("Directory imported");
-        reloadTabs();
-    });
-
-    //
-    section.querySelector('#btn-upload')?.addEventListener('click', async () => {
-        try {
-            await openPickerAndRecognize(getCurrentDir(), 'text/markdown,text/plain,.md,image/*', true);
-            toastSuccess("Files uploaded");
-            reloadTabs();
-        } catch (e) {
-            console.warn(e);
-            toastError("Upload failed");
+    },
+    {
+        id: "paste",
+        label: "Paste",
+        icon: "clipboard",
+        onClick: async () => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) {
+                toastError("Select a collection first");
+                return;
+            }
+            try {
+                const ok = await pasteIntoDir(dir);
+                if (ok) {
+                    toastSuccess("Clipboard saved");
+                    await ctx.reloadCurrent();
+                } else {
+                    toastError("Clipboard empty");
+                }
+            } catch (error) {
+                console.warn(error);
+                toastError("Paste failed");
+            }
         }
-    });
-
-    //
-    section.querySelector('#btn-download')?.addEventListener('click', async () => {
-        try {
-            const dir = getCurrentDir();
-            const handle = await getDirectoryHandle(null, dir);
-            const entries = await Array.fromAsync(handle?.entries?.() ?? []);
-            for (const it of (entries as any[])) { const name = it?.[0]; if (name) await downloadByPath(`${dir}${name}`, name); }
-            toastSuccess("Archive downloaded");
-        } catch (e) {
-            console.warn(e);
-            toastError("Download failed");
+    },
+    {
+        id: "refresh",
+        label: "Refresh",
+        icon: "arrows-clockwise",
+        onClick: async () => {
+            await ctx.reloadCurrent();
+            toastSuccess("View refreshed");
         }
-    });
+    }
+];
 
-    //
-    section.querySelector('#btn-mount')?.addEventListener('click', async () => {
-        try { for (const d of kinds.map(kind => "/docs/" + kind)) { await getDirectoryHandle(null, d, { create: true } as any); } toastSuccess("Directories mounted"); } catch (e) { console.warn(e); toastError("Mount failed"); }
-    });
-
-    //
-    section.querySelector('#btn-sync')?.addEventListener('click', async () => {
+const makeSecondaryActions = (ctx: DocWorkspaceController): WorkspaceAction[] => [
+    {
+        id: "mount",
+        label: "Mount",
+        icon: "screwdriver",
+        onClick: async () => {
+            try {
+                await ensureCollections();
+                toastSuccess("Directories ready");
+            } catch (error) {
+                console.warn(error);
+                toastError("Mount failed");
+            }
+        }
+    },
+    {
+        id: "sync",
+        label: "Sync",
+        icon: "arrows-in-line-vertical",
+        onClick: async () => {
         try {
             await currentWebDav?.sync?.download?.();
             toastSuccess("Sync requested");
-        } catch (e) {
-            console.warn(e);
+        } catch (error) {
+            console.warn(error);
             toastError("Sync failed");
         }
-    });
+        },
+        disabled: () => !currentWebDav?.sync
+    }
+];
 
-    //
-    section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
-        toastSuccess("Refreshing");
-        reloadTabs();
-    });
-
-    section.addEventListener('toggle', (ev: Event) => {
-        const target = ev.target as HTMLDetailsElement;
-        if (!target?.hasAttribute(SCROLL_TARGET_ATTR)) return;
-        if (target.open) {
-            scrollToAccordion(section);
+export const PreferencesView = () => {
+    const workspace = DocWorkspace({
+        title: "Personal Knowledge",
+        subtitle: "Plans, ideas and notes managed as Markdown documents.",
+        collections: COLLECTIONS,
+        defaultCollectionId: "preferences",
+        searchPlaceholder: "Search across notes…",
+        actions: [],
+        secondaryActions: [],
+        enableDrop: true,
+        enablePaste: true,
+        onPaste: async (_event, ctx) => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) return;
+            try {
+                const ok = await pasteIntoDir(dir);
+                if (ok) {
+                    toastSuccess("Clipboard saved");
+                    await ctx.reloadCurrent();
+                }
+            } catch (error) {
+                console.warn(error);
+                toastError("Paste failed");
+            }
+        },
+        onDrop: async (event, ctx) => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) return;
+            const files = Array.from(event.dataTransfer?.files ?? []);
+            if (!files.length) return;
+            try {
+                for (const file of files) {
+                    await writeFileSmart(null, dir, file, { sanitize: true });
+                }
+                toastSuccess(`${files.length} file${files.length > 1 ? "s" : ""} added`);
+                await ctx.reloadCurrent();
+            } catch (error) {
+                console.warn(error);
+                toastError("Drop failed");
+            }
         }
     });
 
-    return section;
-}
+    const controller = (workspace as any).controller as DocWorkspaceController;
+    controller.setActions(makePrimaryActions(controller));
+    controller.setSecondaryActions(makeSecondaryActions(controller));
+
+    return workspace;
+};
 

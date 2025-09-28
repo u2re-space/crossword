@@ -5,247 +5,280 @@ import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { toastError, toastSuccess, toastWarning } from "@rs-frontend/utils/Toast";
+import { writeFileSmart } from "@rs-core/workers/FileSystem";
+import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory } from "./DocWorkspace";
 
-//
-const AI_PLACEHOLDER = "Awaiting AI answer...";
-
-//
-const makeEvents = (path: string, name: string) => {
-    return {
-        doDelete: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            if (!path) return;
-            if (!confirm(`Delete \"${name}\"?`)) return;
-            try { await remove(null, path); } catch (e) { console.warn(e); }
-            (ev.target as HTMLElement)?.closest?.('.preference-item')?.remove?.();
-        },
-        doDownload: async (ev: Event) => {
-            ev?.stopPropagation?.();
-            if (!path) return;
-            try { await downloadByPath(path); } catch (e) { console.warn(e); }
-        }
+const QUEST_COLLECTIONS: DocCollection[] = [
+    { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },
+    { id: "quests", label: "Quests", dir: "/docs/quests/", description: "Active quests across domains." },
+    { id: "coding", label: "Coding", dir: "/docs/coding/", description: "Programming problems and drafts." },
+    { id: "math", label: "Math", dir: "/docs/math/", description: "Mathematics tasks and proofs." },
+    { id: "solutions", label: "Solutions", dir: "/docs/solutions/", description: "Completed answers and walkthroughs." },
+    {
+        id: "all",
+        label: "Archive",
+        dirs: [
+            "/docs/questions/",
+            "/docs/quests/",
+            "/docs/coding/",
+            "/docs/math/",
+            "/docs/solutions/"
+        ],
+        description: "Everything in one timeline view."
     }
-}
+];
 
-//
-const QuestItem = (item: any, byKind: string | null = null) => {
-    if (byKind && byKind != item?.kind && byKind !== "all") return;
-
-    const text = typeof item === 'string' ? item : (item?.text || '');
-    const path = (item as any)?.__path || '';
-    const name = (item as any)?.__name || '';
-    const summary = text?.trim?.()?.split?.("\n")?.[0] || name || "Untitled";
-    const blob = new Blob([text], { type: "text/plain" });
-    const events = makeEvents(path, name);
-
-    const aiResult = item?.aiAnswer ? H`<div class="ai-answer" data-kind="ai"><md-view src=${URL.createObjectURL(new Blob([item.aiAnswer], { type: "text/plain" }))}></md-view></div>` : null;
-
-    return H`<details class="preference-accordion" data-accordion>
-        <summary>
-            <ui-icon icon="question"></ui-icon>
-            <span>${summary}</span>
-            <button class="plain" on:click=${(ev: Event) => { ev.preventDefault(); ev.stopPropagation(); events.doDownload(ev); }}>
-                <ui-icon icon="download"></ui-icon>
-            </button>
-            <button class="plain" on:click=${(ev: Event) => { ev.preventDefault(); ev.stopPropagation(); events.doDelete(ev); }}>
-                <ui-icon icon="trash"></ui-icon>
-            </button>
-        </summary>
-        <div class="spoiler-content">
-            <md-view src=${URL.createObjectURL(blob)}></md-view>
-            ${aiResult ? H`<details class="ai-spoiler" open>
-                <summary><ui-icon icon="sparkle"></ui-icon><span>AI Solution</span></summary>
-                ${aiResult}
-            </details>` : null}
-        </div>
-    </details>`;
-}
-
-//
-const $ShowQuestsByType = (DIR: string, byKind: string | null = null) => {
-    const dataRef: any = makeReactive([]);
-    const load = async () => {
-        dataRef.length = 0;
-
-        //
-        const dirHandle = await getDirectoryHandle(null, DIR).catch(() => null as any);
-        const entries = dirHandle ? await Array.fromAsync(dirHandle?.entries?.() ?? []) : [];
-        await Promise.all(entries?.map?.(async ([fname, fileHandle]: any) => {
+const ensureCollections = async () => {
+    for (const collection of QUEST_COLLECTIONS) {
+        const dirs = collection.dirs ?? (collection.dir ? [collection.dir] : []);
+        for (const dir of dirs) {
             try {
-                const file = await fileHandle.getFile();
-                const text = await file?.text?.();
-                const quest = JSON.parse(text || "{}");
-                (quest as any).__name = fname;
-                (quest as any).__path = `${DIR}${fname}`;
-                if (byKind === 'all' || quest.kind === byKind || !byKind) { dataRef.push(quest); }
-                return quest;
-            } catch { }
-        }));
-    };
-
-    //
-    const quests = M(dataRef, (quests) => QuestItem(quests, byKind));
-    const root = H`<div data-name="${byKind}" data-type="quests" class="tab">${quests}</div>`;
-    quests.boundParent = root; (root as any).reloadList = load;
-
-    let stopWatch: (() => void) | null = null;
-    const ensureWatcher = () => {
-        if (stopWatch) return;
-        stopWatch = watchFsDirectory(DIR, () => load().catch(console.warn));
-    };
-    const cancelWatcher = () => {
-        stopWatch?.();
-        stopWatch = null;
-    };
-
-    const observer = typeof MutationObserver !== 'undefined' && typeof document !== 'undefined'
-        ? new MutationObserver(() => {
-            if (root.isConnected) ensureWatcher();
-            else {
-                cancelWatcher();
-                observer?.disconnect();
+                await getDirectoryHandle(null, dir, { create: true } as any);
+            } catch (error) {
+                console.warn("Failed to ensure directory", dir, error);
             }
-        })
-        : null;
-    observer?.observe(document.documentElement, { childList: true, subtree: true });
-
-    ensureWatcher();
-
-    //
-    load().catch(console.warn.bind(console));
-    bindDropToDir(root as any, DIR);
-
-    //
-    return root;
-}
-
-const scrollToAccordion = (container: HTMLElement) => {
-    const openEl = container.querySelector(`details[open]`);
-    if (!openEl) return;
-    const rect = openEl.getBoundingClientRect();
-    if (rect.top < 0 || rect.bottom > window.innerHeight) {
-        openEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
     }
-}
+};
 
-//
-const kinds = ["questions", "quests", "coding", "math", "solutions", "all"] as const;
-const tabs = new Map<string, HTMLElement | null | string | any>(kinds?.map?.(kind => [kind, $ShowQuestsByType("/docs/" + kind, kind)]));
+const parseQuestEntry: DocParser = async ({ collection, file, directory, filePath }) => {
+    const text = await file.text();
+    let json: any = null;
+    let rawContent = text;
+    try {
+        json = JSON.parse(text);
+    } catch {
+        json = null;
+    }
 
-//
-const renderTabName = (tabName: string) => {
-    return tabName;
-}
+    const baseTitle = file.name.replace(/\.[^.]+$/, "");
+    const title = json?.title ?? json?.question?.slice?.(0, 120) ?? rawContent.split(/\r?\n/)[0] ?? baseTitle;
+    const summarySource = json?.question ?? rawContent;
+    const summary = (summarySource ?? "").trim().split(/\r?\n/).slice(0, 4).join(" ").slice(0, 220);
+    const answerText = json?.aiAnswer ?? json?.answer ?? null;
+    const blob = new Blob([json ? JSON.stringify(json, null, 2) : rawContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
 
-const getAIAnswer = async (question: any) => {
-    // Placeholder for AI integration - currently returns null.
-    console.info("AI helper not yet implemented", question);
-    return null;
-}
-
-//
-export const QuestsView = () => {
-    const tabbed = H`<ui-tabbed-box
-        prop:tabs=${tabs}
-        currentTab=${"all"}
-        prop:renderTabName=${renderTabName}
-        style="background-color: transparent;"
-        class="quests"
-    ></ui-tabbed-box>`;
+    const $setter = (el) => {
+        el?.renderMarkdown?.(json ? JSON.stringify(json, null, 2) : rawContent);
+    }
 
     //
-    const toolbar = H`<div class="view-toolbar">
-        <div class="button-set">
-        <button id="btn-upload"><ui-icon icon="upload"></ui-icon><span>Upload</span></button>
-        <button id="btn-download"><ui-icon icon="download"></ui-icon><span>Download</span></button>
-        <button id="btn-mount"><ui-icon icon="screwdriver"></ui-icon><span>Mount</span></button>
-        <button id="btn-refresh"><ui-icon icon="arrows-clockwise"></ui-icon><span>Refresh</span></button>
-        <button id="btn-ask"><ui-icon icon="magic-wand"></ui-icon><span>Ask AI</span></button>
-        </div>
-    </div>`;
+    const $question = (el) => {
+        el?.renderMarkdown?.(json?.question ?? rawContent);
+    }
 
-    const section = H`<section id="quests" class="quests-view quests">${tabbed}${toolbar}</section>` as HTMLElement;
-    const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "quests"));
-    const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'quests') as string);
+    //
+    const $answer = (el) => {
+        el?.renderMarkdown?.(answerText);
+    }
 
-    const reloadTabs = () => {
-        for (const el of tabs.values()) (el as any)?.reloadList?.();
+    const entry: DocEntry = {
+        id: `${collection.id}:${filePath}`,
+        title: title || baseTitle,
+        subtitle: json?.kind ? `${json.kind} • ${new Date(file.lastModified).toLocaleString()}` : new Date(file.lastModified).toLocaleString(),
+        summary,
+        description: json?.kind,
+        path: filePath,
+        fileName: file.name,
+        collectionId: collection.id,
+        modifiedAt: file.lastModified,
+        wordCount: (summarySource ?? "").split(/\s+/).filter(Boolean).length,
+        searchText: [title, summary, rawContent, json?.kind, json?.tags?.join?.(" ")].filter(Boolean).join(" \n").toLowerCase(),
+        renderPreview: (container) => {
+            container.replaceChildren(
+                H`<div class="doc-preview-frame quest-preview">
+                    <header class="doc-preview-header">
+                        <div>
+                            <h2>${title || baseTitle}</h2>
+                            <p class="doc-subtitle">${json?.kind ? `${json.kind} • ` : ""}${new Date(file.lastModified).toLocaleString()}</p>
+                        </div>
+                        <div class="doc-preview-meta">
+                            ${json?.tags?.length ? H`<div class="doc-tag-pile">${json.tags.map((tag: string) => H`<span class="doc-meta-tag">${tag}</span>`)}</div>` : null}
+                            <span class="doc-meta-tag">${file.name}</span>
+                        </div>
+                    </header>
+                    <div class="quest-preview-columns">
+                        <section>
+                            <h3>Problem</h3>
+                            <md-view ref=${$question} src=${URL.createObjectURL(new Blob([(json?.question ?? rawContent)], { type: "text/markdown" }))}></md-view>
+                        </section>
+                        ${answerText ? H`<section>
+                            <h3>Answer</h3>
+                            <details class="ai-answer" open>
+                                <summary><ui-icon icon="sparkle"></ui-icon><span>AI Solution</span></summary>
+                                <md-view ref=${$answer} src=${URL.createObjectURL(new Blob([answerText], { type: "text/markdown" }))}></md-view>
+                            </details>
+                        </section>` : null}
+                    </div>
+                </div>`
+            );
+        },
+        //dispose: () => URL.revokeObjectURL(url),
+        raw: json ?? rawContent
     };
 
-    section.addEventListener('paste', async (ev: ClipboardEvent) => {
-        ev.stopPropagation();
-        try {
-            await pasteIntoDir(getCurrentDir());
-            toastSuccess("Content pasted");
-            reloadTabs();
-        } catch (e) {
-            console.warn(e);
-            toastError("Failed to paste content");
+    return entry;
+};
+
+const makePrimaryActions = (ctx: ReturnType<typeof DocWorkspace>["controller"]): WorkspaceAction[] => [
+    {
+        id: "upload",
+        label: "Upload",
+        icon: "upload",
+        primary: true,
+        onClick: async () => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) {
+                toastError("Select a destination first");
+                return;
+            }
+            try {
+                await openPickerAndWrite(dir, "application/json,text/markdown,text/plain,.json,.md", true);
+                toastSuccess("Files uploaded");
+                await ctx.reloadCurrent();
+            } catch (error) {
+                console.warn(error);
+                toastError("Upload failed");
+            }
         }
-    });
-    section.addEventListener('dir-dropped', () => {
-        toastSuccess("Directory imported");
-        reloadTabs();
+    },
+    {
+        id: "paste",
+        label: "Paste",
+        icon: "clipboard",
+        onClick: async () => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) {
+                toastError("Select a collection first");
+                return;
+            }
+            try {
+                const ok = await pasteIntoDir(dir);
+                if (ok) {
+                    toastSuccess("Clipboard saved");
+                    await ctx.reloadCurrent();
+                } else {
+                    toastError("Clipboard empty");
+                }
+            } catch (error) {
+                console.warn(error);
+                toastError("Paste failed");
+            }
+        }
+    },
+    {
+        id: "refresh",
+        label: "Refresh",
+        icon: "arrows-clockwise",
+        onClick: async () => {
+            await ctx.reloadCurrent();
+            toastSuccess("View refreshed");
+        }
+    }
+];
+
+const makeSecondaryActions = (): WorkspaceAction[] => [
+    {
+        id: "mount",
+        label: "Mount",
+        icon: "screwdriver",
+        onClick: async () => {
+            try {
+                await ensureCollections();
+                toastSuccess("Directories ready");
+            } catch (error) {
+                console.warn(error);
+                toastError("Mount failed");
+            }
+        }
+    },
+    {
+        id: "download",
+        label: "Export",
+        icon: "download",
+        onClick: async (ctx) => {
+            const entry = ctx.getCurrentEntry();
+            if (!entry) {
+                toastWarning("Open a quest before exporting");
+                return;
+            }
+            try {
+                const file = new File([JSON.stringify(entry.raw ?? {}, null, 2)], `${entry.title.replace(/\s+/g, "-") || "quest"}.json`, {
+                    type: "application/json"
+                });
+                await writeFileSmart(null, "/docs/solutions/", file, { ensureJson: true, sanitize: true });
+                toastSuccess("Quest exported to solutions");
+            } catch (error) {
+                console.warn(error);
+                toastError("Export failed");
+            }
+        }
+    }
+];
+
+const makeEntryActions = (): EntryActionFactory[] => [
+    (entry) => {
+        const button = H`<button type="button" class="doc-entry-chip" title="Copy ID">
+            <ui-icon icon="copy"></ui-icon>
+        </button>` as HTMLButtonElement;
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const id = entry.fileName.replace(/\.[^.]+$/, "");
+            navigator.clipboard.writeText(id).then(() => toastSuccess("Quest ID copied"));
+        });
+        return button;
+    }
+];
+
+export const QuestsView = () => {
+    const workspace = DocWorkspace({
+        title: "Problem Workspace",
+        subtitle: "Collect prompts, annotate solutions, and iterate across domains.",
+        collections: QUEST_COLLECTIONS.map((collection) => ({ ...collection, parser: parseQuestEntry })),
+        defaultCollectionId: "quests",
+        searchPlaceholder: "Search quests or solutions…",
+        actions: [],
+        secondaryActions: [],
+        entryActions: makeEntryActions(),
+        enableDrop: true,
+        enablePaste: true,
+        onDrop: async (event, ctx) => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) return;
+            const files = Array.from(event.dataTransfer?.files ?? []);
+            if (!files.length) return;
+            try {
+                for (const file of files) {
+                    await writeFileSmart(null, dir, file, { sanitize: true });
+                }
+                toastSuccess(`${files.length} file${files.length > 1 ? "s" : ""} added`);
+                await ctx.reloadCurrent();
+            } catch (error) {
+                console.warn(error);
+                toastError("Drop failed");
+            }
+        },
+        onPaste: async (_event, ctx) => {
+            const dir = ctx.getCollectionDirs()[0];
+            if (!dir) return;
+            try {
+                const ok = await pasteIntoDir(dir);
+                if (ok) {
+                    toastSuccess("Clipboard saved");
+                    await ctx.reloadCurrent();
+                }
+            } catch (error) {
+                console.warn(error);
+                toastError("Paste failed");
+            }
+        }
     });
 
-    section.querySelector('#btn-upload')?.addEventListener('click', async () => {
-        try {
-            await openPickerAndWrite(getCurrentDir(), 'text/markdown,text/plain,.md', true);
-            toastSuccess("Files uploaded");
-            reloadTabs();
-        } catch (e) {
-            console.warn(e);
-            toastError("Upload failed");
-        }
-    });
-    section.querySelector('#btn-download')?.addEventListener('click', async () => {
-        try {
-            const dir = getCurrentDir();
-            const handle = await getDirectoryHandle(null, dir);
-            const entries = await Array.fromAsync(handle?.entries?.() ?? []);
-            for (const it of (entries as any[])) { const name = it?.[0]; if (name) await downloadByPath(`${dir}${name}`, name); }
-            toastSuccess("Archive downloaded");
-        } catch (e) {
-            console.warn(e);
-            toastError("Download failed");
-        }
-    });
-    section.querySelector('#btn-mount')?.addEventListener('click', async () => {
-        try { for (const d of kinds.map(kind => "/docs/" + kind)) { await getDirectoryHandle(null, d, { create: true } as any); } toastSuccess("Directories mounted"); } catch (e) { console.warn(e); toastError("Mount failed"); }
-    });
-    section.querySelector('#btn-refresh')?.addEventListener('click', async () => {
-        toastSuccess("Refreshing");
-        reloadTabs();
-    });
+    const controller = (workspace as any).controller;
+    controller.setActions(makePrimaryActions(controller));
+    controller.setSecondaryActions(makeSecondaryActions());
 
-    section.querySelector('#btn-ask')?.addEventListener('click', async () => {
-        const currentTabPane = tabs.get(tabbed?.currentTab || 'all') as HTMLElement;
-        if (!currentTabPane) {
-            toastError("Open a quest to request help");
-            return;
-        }
-        const openDetails = currentTabPane.querySelector('details[open]');
-        if (!openDetails) {
-            toastError("Open a quest before asking AI");
-            return;
-        }
-        toastSuccess("AI helper is thinking...");
-        const question = openDetails.querySelector('md-view');
-        const answer = await getAIAnswer(question);
-        if (!answer) {
-            toastError("AI helper not available yet");
-            return;
-        }
-    });
-
-    section.addEventListener('toggle', (ev: Event) => {
-        const target = ev.target as HTMLDetailsElement;
-        if (!target?.hasAttribute('data-accordion')) return;
-        if (target.open) {
-            scrollToAccordion(section);
-        }
-    });
-
-    return section;
-}
+    return workspace;
+};

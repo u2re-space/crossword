@@ -13,7 +13,7 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
     </div>`;
 
     //
-    const $layout = H`<ui-box-with-sidebar>${[TOOLBAR, I({ mapped: views, current: currentView }), sidebar]}</ui-box-with-sidebar>`;
+    const $layout = H`<ui-box-with-sidebar class="app-layout">${[TOOLBAR, I({ mapped: views, current: currentView }), sidebar]}</ui-box-with-sidebar>`;
 
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
 
