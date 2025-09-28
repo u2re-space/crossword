@@ -8,23 +8,6 @@
 import type { GPTResponses } from '@rs-core/service/model/GPT-Responses';
 import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/template/Entities';
 
-// for optimize images before sending to GPT
-import { decode } from '@jsquash/png';
-import { encode } from '@jsquash/jpeg';
-
-// for optimize images before sending to GPT
-export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob> => {
-    const decoded = await decode(await image.arrayBuffer());
-    const encoded = await encode(decoded, { quality: 90, progressive: false, color_space: 2, optimize_coding: true, auto_subsample: true, arithmetic: true, baseline: true });
-    return new Blob([encoded], { type: 'image/jpeg' });
-}
-
-//
-export const ableToShowJPEG = async (data_url: string) => { // @ts-ignore
-    const bitmap: any = await createImageBitmap(new Blob([Uint8Array.fromBase64(data_url?.replace?.('data:image/jpeg;base64,', ""), { alphabet: "base64" })], { type: "image/png" }))?.catch?.(e => { console.warn(e); return null; });
-    return bitmap?.width > 0 && bitmap?.height > 0;
-}
-
 //
 export const recognizeEntityType = async (gptResponses: GPTResponses) => {
 
