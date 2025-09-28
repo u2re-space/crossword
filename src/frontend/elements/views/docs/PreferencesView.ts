@@ -144,9 +144,8 @@ export const PreferencesView = () => {
         class="all"
     ></ui-tabbed-box>`;
 
-    const section = H`<section id="preferences" class="preferences-view">
-    ${tabbed}
-    <div class="view-toolbar">
+    //
+    const toolbar = H`<div class="view-toolbar">
         <div class="button-set">
         <button id="btn-upload">
             <ui-icon icon="upload"></ui-icon>
@@ -169,9 +168,10 @@ export const PreferencesView = () => {
             <span>Refresh</span>
         </button>
         </div>
-    </div>
-    </section>` as HTMLElement;
+    </div>`
 
+    //
+    const section = H`<section id="preferences" class="preferences-view">${tabbed}${toolbar}</section>` as HTMLElement;
     const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "plans"));
     const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'plans') as string);
 

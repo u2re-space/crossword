@@ -154,9 +154,8 @@ export const QuestsView = () => {
         class="quests"
     ></ui-tabbed-box>`;
 
-    const section = H`<section id="quests" class="quests-view quests">
-    ${tabbed}
-    <div class="view-toolbar">
+    //
+    const toolbar = H`<div class="view-toolbar">
         <div class="button-set">
         <button id="btn-upload"><ui-icon icon="upload"></ui-icon><span>Upload</span></button>
         <button id="btn-download"><ui-icon icon="download"></ui-icon><span>Download</span></button>
@@ -164,9 +163,9 @@ export const QuestsView = () => {
         <button id="btn-refresh"><ui-icon icon="arrows-clockwise"></ui-icon><span>Refresh</span></button>
         <button id="btn-ask"><ui-icon icon="magic-wand"></ui-icon><span>Ask AI</span></button>
         </div>
-    </div>
-    </section>` as HTMLElement;
+    </div>`;
 
+    const section = H`<section id="quests" class="quests-view quests">${tabbed}${toolbar}</section>` as HTMLElement;
     const tabDirOf = (name: string) => ("/docs/" + (kinds as any || "quests"));
     const getCurrentDir = () => tabDirOf((tabbed?.currentTab || 'quests') as string);
 

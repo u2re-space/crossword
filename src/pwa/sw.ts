@@ -52,15 +52,16 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     //
     if (!settings) return { resultEntities: [], entityTypedDesc: [] };
     const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+    console.log(gptResponses);
 
     //
     if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
-        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey);
+        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey)?.catch?.(console.warn.bind(console));
     }
 
     // phase 0 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze...
-    await gptResponses.attachToRequest(dataSource);
+    await gptResponses.attachToRequest(dataSource)?.catch?.(console.warn.bind(console));
     const rawDataset = JSON.parse(await gptResponses.sendRequest() || "[]"); // for use in first step...
 
     // write to FS raw cache
@@ -68,13 +69,13 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     writeToFS("rawDataset", rawDataset, "/cache/", cacheFileName, Date.now());
 
     // phase 1 - recognize entity type, make basic description
-    let entityTypedDesc: any[] = (await recognizeEntityType(gptResponses)) || [{ entityType: "unknown" }];
+    let entityTypedDesc: any[] = (await (recognizeEntityType(gptResponses))?.catch?.(console.warn.bind(console))) || [{ entityType: "unknown" }];
 
     // phase 2 - recognize kind of entity, make relations
-    let entityRelations: any[] = (await recognizeKindOfEntity(entityTypedDesc, gptResponses)) || [{ kinds: ["unknown"] }];
+    let entityRelations: any[] = (await recognizeKindOfEntity(entityTypedDesc, gptResponses)?.catch?.(console.warn.bind(console))) || [{ kinds: ["unknown"] }];
 
     // phase 3 - convert data to target format, make final description
-    const resultEntity = await resolveEntity(entityTypedDesc, entityRelations, gptResponses);
+    const resultEntity = (await resolveEntity(entityTypedDesc, entityRelations, gptResponses)?.catch?.(console.warn.bind(console))) || [];
     resultEntity?.forEach((resultEntity: any, i: number) => {
         const resolvedType = entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown';
 
@@ -86,6 +87,9 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
             ?.replace?.(/\s+/g, '-')
             ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || timeStamp;
         const outDir = "/data/" + resolvedType + "/";
+
+        //
+        console.log(resolvedType, resultEntity);
 
         // prepare for phase 4 - consolidate
         writeToFS(resolvedType, resultEntity, outDir, fileName, timeStamp);
@@ -161,18 +165,20 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         if (!source) continue;
 
         //
-        const text: string = (source instanceof File || source instanceof Blob) ? (await source?.text?.() || "") :
+        const text: string = (source instanceof File || source instanceof Blob) ? (file?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
                 (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
 
         // try avoid using AI when data structure is known
-        const json: any = text ? JSON.parse(text) : [];
-        let entityTypes = json ? detectEntityTypesByJSONs(json) : [];
-        if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
-            json?.map?.((resultEntity, i) => {
-                const type = entityTypes[i];
-                if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++));
-            }); continue;
+        if (text) {
+            const json: any = text ? JSON.parse(text) : [];
+            let entityTypes = json ? detectEntityTypesByJSONs(json) : [];
+            if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
+                json?.map?.((resultEntity, i) => {
+                    const type = entityTypes[i];
+                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++));
+                }); continue;
+            }
         }
 
         //
@@ -186,11 +192,16 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         }
     }
 
+    //
+    console.log(results);
+
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
     if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
     try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
-    return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+    //
+    return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
 }, "POST")
 
 //
@@ -218,7 +229,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target-json", async (e: any)
             results.push({ status: 'queued', entityType: resolvedType, name, path: fullPath, key, idx: i || Date.now() });
         });
         try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
-        return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
     } catch (err) {
         return new Response(JSON.stringify({ ok: false, error: String(err) }, null, 2), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
