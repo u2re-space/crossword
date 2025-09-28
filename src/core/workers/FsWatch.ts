@@ -1,11 +1,12 @@
-const watchers = new Map<string, Set<() => void>>();
-const channel = new BroadcastChannel('rs-fs');
-
+//
 const matchPath = (path = "", dir = "") => {
     const normalizedDir = dir.endsWith('/') ? dir : `${dir}/`;
     return path.startsWith(normalizedDir);
-};
+}
 
+//
+const channel = new BroadcastChannel('rs-fs'), watchers = new Map<string, Set<() => void>>();
+channel.addEventListener('close', () => watchers.clear());
 channel.addEventListener('message', (event: MessageEvent) => {
     const payload = event?.data;
     if (!payload || payload.type !== 'pending-write') return;
@@ -21,12 +22,8 @@ channel.addEventListener('message', (event: MessageEvent) => {
     }
 });
 
-channel.addEventListener('close', () => watchers.clear());
-
-export const stopAllWatchers = () => {
-    watchers.clear();
-};
-
+//
+export const stopAllWatchers = () => watchers.clear();
 export const watchFsDirectory = (dir: string, listener: () => void) => {
     if (!dir || typeof listener !== 'function') return () => void 0;
     const normalized = dir.endsWith('/') ? dir : `${dir}/`;

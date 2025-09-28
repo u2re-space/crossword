@@ -1,7 +1,9 @@
 import { idbGet } from "@rs-core/store/IDBStorage";
-import { getDirectoryHandle, readFile } from "fest/lure"
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
-import { AuthType, createClient, type FileStat } from "webdav/web";
+
+//
+import { createClient, type FileStat } from "webdav/web"
+import { getDirectoryHandle, readFile } from "fest/lure"
 
 //
 const downloadContentsToOPFS = async (webDavClient, path = "/") => {
@@ -51,16 +53,10 @@ const uploadOPFSToWebDav = async (webDavClient, dirHandle: FileSystemDirectoryHa
 //
 export const WebDavSync = (address, options: any = {}) => {
     const client = createClient(address, options);
-
-    //
     return {
         client,
-        download: async () => {
-            return downloadContentsToOPFS(client)?.catch?.((e) => { console.warn(e); return []; });
-        },
-        upload: async () => {
-            return uploadOPFSToWebDav(client)?.catch?.((e) => { console.warn(e); return []; });
-        }
+        upload() { return uploadOPFSToWebDav(client)?.catch?.((e) => { console.warn(e); return []; }) },
+        download() { return downloadContentsToOPFS(client)?.catch?.((e) => { console.warn(e); return []; }) },
     }
 }
 
@@ -68,7 +64,6 @@ export const WebDavSync = (address, options: any = {}) => {
 export const currentWebDav: { sync: any } = { sync: null };
 (async () => {
     const settings = await idbGet("rs-settings");
-    console.log(settings);
     if (!settings?.webdav?.url) return;
     const client = WebDavSync(settings.webdav.url, {
         //authType: AuthType.Digest,

@@ -1,20 +1,8 @@
-import { idbGet } from "@rs-core/store/IDBStorage";
-import { encodeWithJSquash } from "./compress";
-import { recognizeImageData } from "@rs-core/service/recognize/inputs/RecognizeData";
-
-//
-const removeAnyPrefix = (data_url: string) => {
-    return data_url?.replace?.('data:image/jpeg;base64,', "").replace?.('data:image/png;base64,', "");
-}
-
-//
-const ableToShowJPEG = async (data_url: string) => { // @ts-ignore
-    const bitmap: any = await createImageBitmap(new Blob([Uint8Array.fromBase64(removeAnyPrefix(data_url), { alphabet: "base64" })], { type: "image/png" }))?.catch?.(e => { console.warn(e); return null; });
-    return bitmap?.width > 0 && bitmap?.height > 0;
-}
+import { ableToShowImage, encodeWithJSquash } from "@rs-core/workers/EntityIntake";
+import { postShareTarget } from "@rs-core/workers/FileSystem";
 
 // send to any available content script to trigger copy text
-const COPY_HACK = (ext, data, tabId?) => {
+export const COPY_HACK = (ext, data, tabId?) => {
     return ext.tabs.query({
         currentWindow: true,
         lastFocusedWindow: true,
@@ -51,26 +39,20 @@ export const enableCapture = (ext) => {
                     }
 
                     //
-                    if (!dataUrl || !(await ableToShowJPEG(dataUrl))) {
+                    if (!dataUrl || !(await ableToShowImage(dataUrl))) {
                         dataUrl = $dataUrl;
                     }
 
                     //
-                    recognizeImageData({
-                        input: [{ role: "user", content: [{ type: "input_image", image_url: dataUrl, detail: "high" }] }]
-                    }, await idbGet("rs-settings"))?.then(async (res) => {
-                        //
-                        if (res?.ok) {
-                            await COPY_HACK(ext, {
-                                data: res?.data?.output?.at?.(-1)?.content?.[0]?.text?.trim?.(),
-                                ok: res?.ok,
-                                error: res?.error
-                            }, sender?.tab?.id)?.catch?.(console.warn.bind(console));
-                        }
+                    let error: any = null;
+                    const data = await postShareTarget({ url: dataUrl })?.catch?.(e => { error = e; return null; });
+                    const res = { data, ok: !!data, error };
 
-                        //
-                        sendResponse(res); //return res;
-                    })?.catch?.(console.warn.bind(console));
+                    //
+                    if (data != null) { await COPY_HACK(ext, res, sender?.tab?.id)?.catch?.(console.warn.bind(console)); }
+
+                    //
+                    sendResponse(res);
                 }
             });
         }

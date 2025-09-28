@@ -20,6 +20,7 @@ import {
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
+import { detectEntityTypesByJSONs } from "@rs-core/template/TypeDetector";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
@@ -117,6 +118,28 @@ registerRoute(
 )
 
 //
+const queueEntityForWriting = (resultEntity, entityDesc, idx: number = 0): any => {
+    const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
+
+    //
+    let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
+        ?.trim?.()
+        ?.toString?.()
+        ?.toLowerCase?.()
+        ?.replace?.(/\s+/g, '-')
+        ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
+        || `${Date.now()}_${idx}`;
+
+    // prepare to writing into database (for phase 4 - consolidate)
+    const path = `/data/${resolvedType}/`?.trim?.();
+    writeToFS(resolvedType, resultEntity, path, name = name?.trim?.(), idx);
+
+    // get preview versions of resolved entity to show in UI
+    (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
+    return { status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now() };
+}
+
+//
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     const url = new URL(e.request.url);
     const fd = await e.request.formData();
@@ -136,29 +159,27 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     for (const file of files) {
         const source = file || inputs?.text || inputs?.url;
         if (!source) continue;
+
+        //
+        const text: string = (source instanceof File || source instanceof Blob) ? (await source?.text?.() || "") :
+            (source == inputs?.text ? inputs.text :
+                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
+
+        // try avoid using AI when data structure is known
+        const json: any = text ? JSON.parse(text) : [];
+        let entityTypes = json ? detectEntityTypesByJSONs(json) : [];
+        if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
+            json?.map?.((resultEntity, i) => {
+                const type = entityTypes[i];
+                if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++));
+            }); continue;
+        }
+
+        //
         try {
             const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
             resultEntities.forEach((resultEntity, i) => {
-                const entityDesc = entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc;
-                const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
-
-                //
-                let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
-                    ?.trim?.()
-                    ?.toString?.()
-                    ?.toLowerCase?.()
-                    ?.replace?.(/\s+/g, '-')
-                    ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
-                    || `${Date.now()}_${idx}`;
-
-                // prepare to writing into database (for phase 4 - consolidate)
-                const path = `/data/${resolvedType}/`?.trim?.();
-                writeToFS(resolvedType, resultEntity, path, name = name?.trim?.(), idx);
-
-                // get preview versions of resolved entity to show in UI
-                (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-                results.push({ status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now() });
-                idx++;
+                results.push(queueEntityForWriting(resultEntity, entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc), idx++);
             });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });

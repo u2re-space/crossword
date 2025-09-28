@@ -1,5 +1,5 @@
 import type { EntityDesc } from "@rs-core/template/EntitiesTyped";
-import { detectEntityTypeByJSON, detectEntityTypesByJSONs } from "@rs-core/template/TypeDetector";
+import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector";
 import { getDirectoryHandle, writeFile } from "fest/lure";
 
 //
@@ -210,6 +210,7 @@ const toSlug = (input: string, toLower = true) => {
     return s;
 };
 
+//
 const inferExtFromMime = (mime = "") => {
     if (!mime) return "";
     if (mime.includes("json")) return "json";
@@ -222,16 +223,18 @@ const inferExtFromMime = (mime = "") => {
     return "";
 };
 
+//
 const splitPath = (path: string) => String(path || "").split('/').filter(Boolean);
+const ensureDir = (p: string) => (p.endsWith('/') ? p : p + '/');
 const joinPath = (parts: string[], absolute = true) => (absolute ? '/' : '') + parts.filter(Boolean).join('/') + '';
 
+//
 const sanitizePathSegments = (path: string) => {
     const parts = splitPath(path);
     return joinPath(parts.map((p) => toSlug(p)));
 };
 
-const ensureDir = (p: string) => (p.endsWith('/') ? p : p + '/');
-
+//
 export type WriteSmartOptions = {
     forceExt?: string;        // e.g. 'json'
     ensureJson?: boolean;     // if true, enforce .json
@@ -294,60 +297,18 @@ export const writeFileSmart = async (
 };
 
 // one of handler
-export const postShareTarget = async (payload: shareTargetFormData) => {
+export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target') => {
     const fd = new FormData();
     if (payload.text) fd.append('text', payload.text);
     if (payload.url) fd.append('url', payload.url);
     if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
 
     //
-    if (payload.text != null) {
-        let entityTypes = payload.text ? detectEntityTypesByJSONs(payload.text) : "unknown";
-        if (entityTypes != null) {
-            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
-            if (suitable?.length) return JSON.parse(payload.text);
-        }
-    }
-
-    //
-    if (payload.file != null) {
-        const text = await payload.file?.text?.() || "";
-        let entityTypes = text ? detectEntityTypesByJSONs(text) : "unknown";
-        if (entityTypes != null) {
-            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
-            if (suitable?.length) return JSON.parse(text);
-        }
-    }
-
-    //
-    if (payload.url != null) {
-        const json = await fetch(payload.url)?.then?.((res) => res.json())?.catch?.(console.warn.bind(console)) || null;
-        let entityTypes = json ? detectEntityTypesByJSONs(json) : "unknown";
-        if (entityTypes != null) {
-            const suitable = (Array.isArray(entityTypes) ? entityTypes : [entityTypes])?.filter?.((entityType) => entityType != "unknown");
-            if (suitable?.length) return json;
-        }
-    }
-
-    //
-    const resp = await fetch('/share-target', { method: 'POST', body: fd });
-    return resp.json().catch(() => console.warn.bind(console))?.then?.((json) => {
-        return json?.results?.[0]?.data;
+    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
+    return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
+        return json?.results?.map?.((res) => res?.data)?.filter?.((data) => data != null);
     });
 };
-
-//
-const fileSystemChannel = new BroadcastChannel('rs-fs');
-fileSystemChannel.addEventListener('message', (event) => {
-    if (event.data.type === 'pending-write') {
-        event.data.results?.forEach?.((result) => {
-            const { entityType, data, name, path, key, idx } = result;
-            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            console.log("Written file: " + path, jsonData);
-            writeJSON(jsonData, { entityType }, path?.trim?.());
-        });
-    }
-});
 
 //
 export const loadTimelineSources = async (dir: string = "/docs/preferences") => {
@@ -364,3 +325,18 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
         return [];
     }
 };
+
+
+
+//
+const fileSystemChannel = new BroadcastChannel('rs-fs');
+fileSystemChannel.addEventListener('message', (event) => {
+    if (event.data.type === 'pending-write') {
+        event.data.results?.forEach?.((result) => {
+            const { entityType, data, name, path, key, idx } = result;
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            console.log("Written file: " + path, jsonData);
+            writeJSON(jsonData, { entityType }, path?.trim?.());
+        });
+    }
+});

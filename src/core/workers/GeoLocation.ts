@@ -1,12 +1,12 @@
 //
-let watchId: number|null = null;
-const boardcastChannel = new BroadcastChannel('geolocation');
+const broadcastChannel = new BroadcastChannel('geolocation');
 const broadcast = (coords: GeolocationPosition) => {
     //navigator.sendBeacon('/api/geo', JSON.stringify(coords));
-    boardcastChannel.postMessage(coords);
+    broadcastChannel.postMessage(coords);
 }
 
 //
+let watchId: number | null = null;
 export const startTracking = () => {
     if (!('geolocation' in navigator)) return;
     watchId = navigator.geolocation.watchPosition(
@@ -19,17 +19,17 @@ export const startTracking = () => {
 //
 export const stopTracking = () => {
     if (watchId) navigator.geolocation.clearWatch(watchId);
-    boardcastChannel.postMessage({type: 'stop'});
+    broadcastChannel.postMessage({ type: 'stop' });
 }
 
 //
-boardcastChannel.onmessage = (e) => {
+broadcastChannel.addEventListener('message', (e) => {
     if (e.data.type === 'start') {
         startTracking();
     } else if (e.data.type === 'stop') {
         stopTracking();
     }
-}
+});
 
 //
 export const getGeolocation = async () => {
