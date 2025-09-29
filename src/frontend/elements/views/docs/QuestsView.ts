@@ -5,9 +5,9 @@ import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { toastError, toastSuccess, toastWarning } from "@rs-frontend/utils/Toast";
+import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/display/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
-import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory } from "./DocWorkspace";
+import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },
@@ -52,10 +52,11 @@ const parseQuestEntry: DocParser = async ({ collection, file, directory, filePat
         json = null;
     }
 
-    const baseTitle = file.name.replace(/\.[^.]+$/, "");
-    const title = json?.title ?? json?.question?.slice?.(0, 120) ?? rawContent.split(/\r?\n/)[0] ?? baseTitle;
+    const baseTitle = sanitizeDocSnippet(file.name.replace(/\.[^.]+$/, "")) || file.name;
+    const titleSource = json?.title ?? json?.question ?? rawContent.split(/\r?\n/)[0] ?? baseTitle;
+    const title = sanitizeDocSnippet(titleSource) || baseTitle;
     const summarySource = json?.question ?? rawContent;
-    const summary = (summarySource ?? "").trim().split(/\r?\n/).slice(0, 4).join(" ").slice(0, 220);
+    const summary = truncateDocSnippet(sanitizeDocSnippet(summarySource), 220);
     const answerText = json?.aiAnswer ?? json?.answer ?? null;
     const blob = new Blob([json ? JSON.stringify(json, null, 2) : rawContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -85,7 +86,16 @@ const parseQuestEntry: DocParser = async ({ collection, file, directory, filePat
         collectionId: collection.id,
         modifiedAt: file.lastModified,
         wordCount: (summarySource ?? "").split(/\s+/).filter(Boolean).length,
-        searchText: [title, summary, rawContent, json?.kind, json?.tags?.join?.(" ")].filter(Boolean).join(" \n").toLowerCase(),
+        searchText: [
+            title,
+            summary,
+            sanitizeDocSnippet(rawContent),
+            json?.kind,
+            (json?.tags ?? []).map((tag: string) => sanitizeDocSnippet(tag)).join(" ")
+        ]
+            .filter(Boolean)
+            .join(" \n")
+            .toLowerCase(),
         renderPreview: (container) => {
             container.replaceChildren(
                 H`<div class="doc-preview-frame quest-preview">
@@ -95,7 +105,7 @@ const parseQuestEntry: DocParser = async ({ collection, file, directory, filePat
                             <p class="doc-subtitle">${json?.kind ? `${json.kind} • ` : ""}${new Date(file.lastModified).toLocaleString()}</p>
                         </div>
                         <div class="doc-preview-meta">
-                            ${json?.tags?.length ? H`<div class="doc-tag-pile">${json.tags.map((tag: string) => H`<span class="doc-meta-tag">${tag}</span>`)}</div>` : null}
+                            ${json?.tags?.length ? H`<div class="doc-tag-pile">${json.tags.map((tag: string) => H`<span class="doc-meta-tag">${sanitizeDocSnippet(tag)}</span>`)}</div>` : null}
                             <span class="doc-meta-tag">${file.name}</span>
                         </div>
                     </header>
@@ -229,7 +239,12 @@ const makeEntryActions = (): EntryActionFactory[] => [
             navigator.clipboard.writeText(id).then(() => toastSuccess("Quest ID copied"));
         });
         return button;
-    }
+    },
+    createDeleteEntryAction({
+        tooltip: "Delete quest",
+        className: "is-danger",
+        confirmMessage: (entry) => `Delete "${entry.title}"?`
+    })
 ];
 
 export const QuestsView = () => {

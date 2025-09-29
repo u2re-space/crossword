@@ -307,19 +307,21 @@ export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT
 };
 
 //
-export const postShareTargetRecognize = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target-recognize') => {
-    const fd = new FormData();
-    if (payload.text) fd.append('text', payload.text);
-    if (payload.url) fd.append('url', payload.url);
-    if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+export const postShareTargetRecognize = (targetDir: string = "/docs/preferences/") => {
+    return async (payload: shareTargetFormData, API_ENDPOINT = '/share-target-recognize') => {
+        const fd = new FormData();
+        if (payload.text) fd.append('text', payload.text);
+        if (payload.url) fd.append('url', payload.url);
+        if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+        fd.append('targetDir', targetDir);
 
-    //
-    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
-    return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
-        return json?.results?.filter?.((data) => (!!data?.data?.trim?.()))?.map?.((res) => res?.data);
-    });
+        //
+        const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
+        return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
+            return json?.results?.filter?.((data) => (!!data?.data?.trim?.()))?.map?.((res) => res?.data);
+        });
+    }
 }
-
 
 
 //
@@ -385,18 +387,14 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
 //
 const controlChannel = new BroadcastChannel('rs-sw');
 controlChannel.addEventListener('message', (event) => {
-    console.log(event);
     if (event.data.type === 'pending-write') {
         event.data.results?.forEach?.((result) => {
-            console.log(result);
-            const { entityDesc, data, name, path, key, idx, type } = result;
+            const { entityDesc, data, name, path, key, idx, type, targetDir } = result;
             if (type === "json") {
                 const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-                console.log("Written file: " + path, jsonData);
                 writeJSON(jsonData, entityDesc, path?.trim?.());
             } else {
-                console.log("Written file: " + path, data);
-                writeMarkDown(data, path?.trim?.());
+                writeMarkDown(data, targetDir + name?.trim?.());
             }
         });
     }

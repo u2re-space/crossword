@@ -4,7 +4,7 @@ import { BONUSES_DIR, BonusItem } from ".././../display/items/BonusItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/utils/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/elements/display/overlays/Toast";
 import { makeEntityEdit } from "@rs-frontend/elements/display/edits/EntityEdit";
 
 //

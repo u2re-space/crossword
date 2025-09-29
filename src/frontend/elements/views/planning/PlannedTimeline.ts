@@ -4,7 +4,7 @@ import "@rs-core/$test/Tasks";
 //
 import { TaskItem } from "../../display/items/TaskItem";
 import { renderTabName, $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
-import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
 import { idbGet } from "@rs-core/store/IDBStorage";
 
 //

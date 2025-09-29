@@ -176,7 +176,8 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
         title: fd.get('title'),
         text: fd.get('text'),
         url: fd.get('url'),
-        files: fd.getAll('files') // File[]
+        files: fd.getAll('files'), // File[]
+        targetDir: fd.get('targetDir')
     };
 
     //
@@ -196,10 +197,10 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
 
         // try avoid using AI when data structure is known
         if (text && isMarkdown(text, source)) {
-            const dir = DOC_DIR;
+            const dir = inputs.targetDir || DOC_DIR;
             const name = source instanceof File ? source?.name : `pasted-${Date.now()}.md`;
             const path = `${dir}${name}`;
-            results.push({ status: 'queued', data: text, path, name, idx: idx++, type: "markdown" });
+            results.push({ status: 'queued', data: text, path, name, idx: idx++, type: "markdown", targetDir: inputs.targetDir });
             continue;
         }
 
@@ -208,10 +209,10 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
             console.log(source);
             const { data, ok, error } = await initiateAnalyzeAndRecognizeData(source);
             console.log(data);
-            const dir = DOC_DIR;
+            const dir = inputs.targetDir || DOC_DIR;
             const name = `pasted-${Date.now()}.md`;
             const path = `${dir}${name}`;
-            results.push({ status: ok ? 'queued' : 'error', error, data, path, name, idx: idx++, type: "markdown" });
+            results.push({ status: ok ? 'queued' : 'error', error, data, path, name, idx: idx++, type: "markdown", targetDir: inputs.targetDir });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });
         }

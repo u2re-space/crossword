@@ -1,5 +1,5 @@
-import { DocWorkspace, type DocCollection, type WorkspaceAction, type DocWorkspaceController } from "./DocWorkspace";
-import { toastError, toastSuccess } from "@rs-frontend/utils/Toast";
+import { DocWorkspace, type DocCollection, type WorkspaceAction, type DocWorkspaceController, createDeleteEntryAction } from "./DocWorkspace";
+import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
 import { getDirectoryHandle } from "fest/lure";
 import { pasteIntoDir, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/config/Settings";
@@ -171,6 +171,13 @@ export const PreferencesView = () => {
     const controller = (workspace as any).controller as DocWorkspaceController;
     controller.setActions(makePrimaryActions(controller));
     controller.setSecondaryActions(makeSecondaryActions(controller));
+    controller.setEntryActions([
+        createDeleteEntryAction({
+            tooltip: "Delete document",
+            className: "is-danger",
+            confirmMessage: (entry) => `Delete "${entry.title}" permanently?`
+        })
+    ]);
 
     return workspace;
 };

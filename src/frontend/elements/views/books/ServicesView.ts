@@ -3,7 +3,7 @@ import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { ServiceItem, SERVICES_DIR } from ".././../display/items/ServiceItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 import { makeEntityEdit } from "../../display/edits/EntityEdit";
-import { toastSuccess, toastError } from "@rs-frontend/utils/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/elements/display/overlays/Toast";
 import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
 

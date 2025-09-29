@@ -231,6 +231,7 @@
 
         @media (max-width: 960px) {
             grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(0, max-content) minmax(0, 1fr);
         }
     }
 
@@ -273,6 +274,20 @@
             background-color: --c2-surface(0.04, var(--current, transparent));
             //box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
         }
+
+        @media (max-width: 960px) {
+            &.is-sidebar {
+                padding: 0.125rem;
+                grid-column: 1 / -1;
+                grid-row: 1 / 1 span;
+            }
+
+            &.is-preview {
+                padding: 0.125rem;
+                grid-column: 1 / -1;
+                grid-row: 2 / 2 span;
+            }
+        }
     }
 
     .doc-search {
@@ -309,7 +324,10 @@
     .doc-listing {
         display: grid;
         gap: clamp(0.6rem, 0.9vw, 0.85rem);
-        overflow: hidden;
+        overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.4) transparent;
+        block-size: stretch;
 
         .doc-list {
             display: grid;
@@ -317,9 +335,11 @@
             padding: 0;
             margin: 0;
             list-style: none;
-            max-block-size: clamp(40vh, 52vh, 60vh);
-            overflow: auto;
-            scrollbar-width: thin;
+            overflow: visible;
+            scrollbar-width: none;
+
+            max-block-size: none;
+            block-size: max-content;
 
             &::-webkit-scrollbar {
                 inline-size: 8px;
@@ -360,6 +380,7 @@
 
         justify-content: space-between;
         text-align: start;
+        block-size: max-content;
 
 
         &:hover {
@@ -409,28 +430,50 @@
 
         .doc-entry-actions {
             display: inline-flex;
-            gap: 0.35rem;
+            gap: clamp(0.3rem, 0.8vw, 0.5rem);
 
             .doc-entry-chip {
-                inline-size: clamp(2.1rem, 3vw, 2.4rem);
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                inline-size: auto;
                 block-size: clamp(2.1rem, 3vw, 2.4rem);
-                display: grid;
-                place-items: center;
-                border-radius: 50%;
+                aspect-ratio: 1 / 1;
+                padding-inline: clamp(0.4rem, 0.5vw, 0.5rem);
+                padding-block: clamp(0.25rem, 0.3vw, 0.35rem);
+                border-radius: 999px;
                 border: 0px solid color-mix(in oklab, var(--current, #2563eb) 24%, transparent);
                 background: color-mix(in oklab, var(--current, #0f172a) 14%, transparent);
                 color: --c2-on-surface(-0.08, var(--current, currentColor));
                 cursor: pointer;
-                transition: transform 140ms ease, background 140ms ease;
+                transition: transform 140ms ease, background 140ms ease, color 140ms ease;
 
                 &:hover {
                     transform: translateY(-1px) scale(1.02);
                     background: color-mix(in oklab, var(--current, #2563eb) 38%, transparent);
+                    color: --c2-surface(0, var(--current, currentColor));
+                }
+
+                &.is-danger {
+                    border-color: color-mix(in oklab, var(--current, #dc2626) 34%, transparent);
+                    background: color-mix(in oklab, var(--current, #dc2626) 16%, transparent);
+                    color: --c2-on-surface(-0.12, var(--current, currentColor));
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--current, #dc2626) 28%, transparent);
+                        border-color: color-mix(in oklab, var(--current, #dc2626) 48%, transparent);
+                    }
                 }
 
                 ui-icon {
-                    --icon-size: clamp(1rem, 1.2cqi, 1.1rem);
+                    --icon-size: clamp(1rem, 1.2cqi, 1.15rem);
                     --icon-color: currentColor;
+                }
+
+                span {
+                    font-size: clamp(0.72rem, 0.4cqi + 0.66rem, 0.82rem);
+                    font-weight: 600;
+                    white-space: nowrap;
                 }
             }
         }
@@ -476,7 +519,8 @@
         .doc-preview-header {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.6rem;
+            gap: 0px;
+            padding: 0.5rem;
 
             place-content: center;
             place-items: center;

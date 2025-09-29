@@ -1,4 +1,4 @@
-import { H, getDirectoryHandle } from "fest/lure";
+import { H, getDirectoryHandle, removeFile } from "fest/lure";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 
 //
@@ -85,6 +85,7 @@ export type DocWorkspaceController = {
     setActions: (actions: WorkspaceAction[]) => void;
     setSecondaryActions: (actions: WorkspaceAction[]) => void;
     setEntryActions: (actions: EntryActionFactory[]) => void;
+    deleteEntry: (entry: DocEntry | string) => Promise<boolean>;
 };
 
 const normalizeCollections = (collections: DocCollection[]): DocCollection[] => {
@@ -116,10 +117,120 @@ const formatDateTime = (timestamp: number) => {
     });
 };
 
+const toStringSafe = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
+
+const collapseWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const stripMarkdown = (value: unknown): string => {
+    const input = toStringSafe(value);
+    if (!input) return "";
+    return input
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/!\[[^\]]*\]\([^\)]+\)/g, " ")
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+        .replace(/(^|\n)\s{0,3}>\s?/g, "$1")
+        .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, "$1")
+        .replace(/(^|\n)\s{0,3}[-*+]\s+/g, "$1")
+        .replace(/(^|\n)\s{0,3}\d+\.\s+/g, "$1")
+        .replace(/(^|\n)---[\s\S]*?---(?=\n|$)/g, "$1")
+        .replace(/[\\*_~]/g, "")
+        .replace(/`/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/<\/?[^>]+>/g, " ");
+};
+
+export const sanitizeDocSnippet = (value: unknown): string => collapseWhitespace(stripMarkdown(value));
+
+export const truncateDocSnippet = (value: string, limit = 260): string => {
+    const trimmed = value.trim();
+    if (!limit || trimmed.length <= limit) return trimmed;
+    return `${trimmed.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+};
+
+export type DeleteEntryActionOptions = {
+    icon?: string;
+    tooltip?: string;
+    label?: string;
+    className?: string;
+    confirm?: (entry: DocEntry, ctx: DocWorkspaceController) => boolean | Promise<boolean>;
+    confirmMessage?: string | ((entry: DocEntry, ctx: DocWorkspaceController) => string);
+    onSuccess?: (entry: DocEntry, ctx: DocWorkspaceController) => void;
+    onError?: (entry: DocEntry, ctx: DocWorkspaceController, error?: unknown) => void;
+};
+
+export const createDeleteEntryAction = (options: DeleteEntryActionOptions = {}): EntryActionFactory => {
+    const {
+        icon = "trash",
+        tooltip = "Delete document",
+        label,
+        className = "is-danger",
+        confirm,
+        confirmMessage,
+        onSuccess,
+        onError
+    } = options;
+
+    return (entry, ctx) => {
+        const classes = ["doc-entry-chip", className].filter(Boolean).join(" ");
+        const button = H`<button type="button" class=${classes}>
+            <ui-icon icon=${icon}></ui-icon>
+            ${label ? H`<span>${label}</span>` : null}
+        </button>` as HTMLButtonElement;
+        if (tooltip) {
+            button.title = tooltip;
+            button.setAttribute("aria-label", tooltip);
+        }
+
+        button.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            try {
+                let proceed = true;
+                if (typeof confirm === "function") {
+                    proceed = await confirm(entry, ctx);
+                } else {
+                    const message = typeof confirmMessage === "function"
+                        ? confirmMessage(entry, ctx)
+                        : confirmMessage ?? `Delete "${entry.title}"?`;
+                    if (message) {
+                        const canConfirm = typeof window !== "undefined" && typeof window.confirm === "function";
+                        proceed = canConfirm ? window.confirm(message) : true;
+                    }
+                }
+
+                if (!proceed) return;
+
+                button.disabled = true;
+                const ok = await ctx.deleteEntry(entry);
+                if (ok) {
+                    onSuccess?.(entry, ctx);
+                } else {
+                    button.disabled = false;
+                    onError?.(entry, ctx);
+                }
+            } catch (error) {
+                button.disabled = false;
+                console.warn("delete-entry-action", error);
+                onError?.(entry, ctx, error);
+            } finally {
+                if (!button.isConnected) return;
+                button.disabled = false;
+            }
+        });
+
+        return button;
+    };
+};
+
 const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => {
     const text = await file.text();
-    const title = text.trim().split(/\r?\n/).find((line) => line.trim().length) || file.name.replace(/\.[^.]+$/, "");
-    const summary = text.trim().split(/\r?\n/).slice(0, 6).join(" ").slice(0, 260);
+    const rawTitleLine = text.trim().split(/\r?\n/).find((line) => line.trim().length) || "";
+    const sanitizedTitle = sanitizeDocSnippet(rawTitleLine);
+    const fallbackTitle = sanitizeDocSnippet(file.name.replace(/\.[^.]+$/, "")) || file.name;
+    const title = sanitizedTitle || fallbackTitle;
+    const summarySource = text.trim().split(/\r?\n/).slice(0, 6).join(" ");
+    const summary = truncateDocSnippet(sanitizeDocSnippet(summarySource));
+    const sanitizedBody = sanitizeDocSnippet(text);
     const blob = new Blob([text], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const wordCount = text.split(/\s+/).filter(Boolean).length;
@@ -130,21 +241,21 @@ const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => 
 
     const entry: DocEntry = {
         id: `${collection.id}:${filePath}`,
-        title: title.trim() || file.name,
+        title,
         subtitle: formatDateTime(file.lastModified),
-        summary,
+        summary: summary || undefined,
         path: filePath,
         fileName: file.name,
         collectionId: collection.id,
         modifiedAt: file.lastModified,
         wordCount,
-        searchText: [title, summary, text].filter(Boolean).join(" \n").toLowerCase(),
+        searchText: [title, summary, truncateDocSnippet(sanitizedBody, 20000)].filter(Boolean).join(" \n").toLowerCase(),
         renderPreview: (container) => {
             container.replaceChildren(
                 H`<div class="doc-preview-frame">
                     <header class="doc-preview-header">
                         <div>
-                            <h2>${title.trim() || file.name}</h2>
+                            <h2>${title || file.name}</h2>
                             <p class="doc-subtitle">Updated ${formatDateTime(file.lastModified)}</p>
                         </div>
                         ${wordCount ? H`<span class="doc-meta-tag">${wordCount} words</span>` : null}
@@ -301,6 +412,23 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
             entryActionFactories = actions ? actions.slice() : [];
             options.entryActions = entryActionFactories;
             renderList();
+        },
+        deleteEntry: async (target) => {
+            const entry = typeof target === "string" ? entries.get(target) ?? null : target;
+            if (!entry) return false;
+            try {
+                await removeFile(null, entry.path);
+            } catch (error) {
+                console.warn("Failed to delete", entry.path, error);
+                return false;
+            }
+            entry.dispose?.();
+            entries.delete(entry.id);
+            if (activeEntryId === entry.id) {
+                activeEntryId = null;
+            }
+            await controller.reload(entry.collectionId);
+            return true;
         }
     };
 

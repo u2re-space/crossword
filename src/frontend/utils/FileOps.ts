@@ -59,7 +59,7 @@ export const openPickerAndRecognize = async (dir: string, accept = "*/*", multip
         input.onchange = async () => {
             dir = dir?.trim?.();
             dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postShareTargetRecognize)); }
+            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postShareTargetRecognize(dir))); }
             catch { resolve(); }
         };
         input.click();
