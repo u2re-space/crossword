@@ -1,4 +1,4 @@
-import { JSON_SCHEMES } from "@rs-core/template/Entities";
+import { JSON_SCHEMES } from "@rs-core/template/deprecated/Entities";
 import { H } from "fest/lure";
 import type { FieldSpec } from "@rs-frontend/elements/display/edits/Modal";
 
@@ -27,11 +27,9 @@ export const SECTION_LABELS: Record<string, string> = {
 
 //
 const LEGACY_FIELD_PATHS: Record<string, string> = {
-    title: "desc.title",
-    "desc.title": "desc.title",
+    title: "title",
     kind: "kind",
-    description: "desc.description",
-    "desc.description": "desc.description",
+    description: "description",
     price: "properties.price",
     quantity: "properties.quantity",
     begin_time: "properties.begin_time",
@@ -113,11 +111,11 @@ export const fromMultiline = (value: string): string[] => {
 
 //
 const BASE_DESCRIPTORS: FieldDescriptor[] = [
-    { name: "desc.title", label: "Title", path: "desc.title", section: "main", placeholder: "Human readable name", helper: "Shown in cards and lists" },
+    { name: "title", label: "Title", path: "title", section: "main", placeholder: "Human readable name", helper: "Shown in cards and lists" },
     { name: "kind", label: "Kind", path: "kind", section: "main", placeholder: "e.g. meeting, discount", helper: "Determines category specific behaviour" },
-    { name: "desc.description", label: "Description", path: "desc.description", section: "description", textarea: true, helper: "Optional details" },
-    { name: "desc.tags", label: "Tags", path: "desc.tags", section: "meta", textarea: true, helper: "One tag per line", multi: true },
-    { name: "desc.icon", label: "Icon", path: "desc.icon", section: "meta", placeholder: "Icon id (e.g. phosphor/name)" }
+    { name: "description", label: "Description", path: "description", section: "description", textarea: true, helper: "Optional details" },
+    { name: "tags", label: "Tags", path: "tags", section: "meta", textarea: true, helper: "One tag per line", multi: true },
+    { name: "icon", label: "Icon", path: "icon", section: "meta", placeholder: "Icon id (e.g. phosphor/name)" }
 ];
 
 //

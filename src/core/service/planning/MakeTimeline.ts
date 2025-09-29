@@ -18,7 +18,9 @@
 import type { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readMarkDowns, readOneMarkDown, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
-import { JSON_SCHEMES } from "../../template/Entities";
+
+// @ts-ignore
+import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 
 //
 import { safe, unwrap } from "fest/object";
@@ -31,29 +33,6 @@ export const PREFERENCES_DIR = "/docs/preferences/";
 export const FACTORS_DIR = "/data/factors/";
 export const PLANS_DIR = "/docs/plans/";
 export const EVENTS_DIR = "/data/events/";
-
-
-//
-const OUTPUT_RESULTS_IN_JSON = `
-=== BEGIN:EXPLAIN_TYPES_OF_PROPERTIES ===
-\`\`\`json
-[...${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}]
-\`\`\`
-=== END:EXPLAIN_TYPES_OF_PROPERTIES ===
-
-=== BEGIN:OUTPUT_RESULTS_IN_JSON ===
-Follow by our preferences...
-
-Write and output new timeline (plans) in JSON format: \`\`\`json
-[...${JSON.stringify(JSON_SCHEMES.$task, null, 2)}]
-\`\`\`
-
-Give in results (outputs) only code or JSON string, without any additional comments.
-
-Don't write anything else, just the JSON format, do not write comments, do not write anything else.
-=== END:OUTPUT_RESULTS_IN_JSON ===
-`;
-
 
 
 
@@ -90,7 +69,7 @@ export const writeTimelineTask = async (task: any) => {
 
 //
 export const writeTimelineTasks = async (tasks: any[]) => {
-    return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)));
+    return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)) || []);
 }
 
 
@@ -144,8 +123,14 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
         await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
     }
 
+    //
+    await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
+
     // get timeline in results
-    await gptResponses.askToDoAction(OUTPUT_RESULTS_IN_JSON);
+    await gptResponses.askToDoAction([
+        "Make timeline plan in JSON format, according to given schema. Follow by our preferences is was presented...",
+        "Write in JSON format, \`[ array of entity of \"task\" type ]\`"
+    ].join?.("\n"));
     const timelines = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
 
     // log timeline

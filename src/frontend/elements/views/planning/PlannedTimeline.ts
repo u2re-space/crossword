@@ -91,7 +91,9 @@ export const PlannedTimeline = async ($daysDesc?: any[] | null) => {
         //
         try {
             const source = await loadPlanSource();
-            toastSuccess(source ? `Using ${source} for magic plan...` : "Using default preferences for plan...");
+            toastSuccess(source ? `Using ${source} for magic plan...` : [
+                "Using default preferences for plan...",
+            ]?.join?.("\n"));
             console.info("Magic plan requested", source);
 
             //

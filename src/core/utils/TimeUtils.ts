@@ -63,8 +63,8 @@ export const insideOfDay = (item: any, dayDesc: any) => {
 
 //
 export const notInPast = (item: any, dayDesc?: any) => {
-    return true;
-    //return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
+    //return true;
+    return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
 }
 
 //
@@ -138,7 +138,6 @@ export function parseDateCorrectly(str: any | Date | null = null): Date | null {
         const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
         return new Date(str * multiplier);
     }
-    if (str instanceof Date) return new Date(str?.getTime?.());
     if (typeof str == "string" && isPureHHMM(str)) {
         const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(str?.trim?.());
         if (!m) return new Date();
@@ -154,6 +153,9 @@ export function parseDateCorrectly(str: any | Date | null = null): Date | null {
             0
         );
     }
+    if (str instanceof Date) return new Date(str?.getTime?.());
+    if (typeof str == "object" && str?.timestamp) { return new Date(str?.timestamp); }
+    if (typeof str == "object" && str?.iso_date) { return new Date(str?.iso_date); }
     return new Date(str);
 }
 

@@ -8,7 +8,7 @@ import { safe } from "fest/object";
 
 //
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import type { BonusEntity, EntityDesc } from "@rs-core/template/EntitiesTyped";
+import type { BonusEntity, EntityDesc } from "@rs-core/template/deprecated/EntitiesTyped";
 import { readJSONs, writeJSON } from "@rs-core/workers/FileSystem";
 import { idbDelete, idbGetAll } from "@rs-core/store/IDBStorage";
 

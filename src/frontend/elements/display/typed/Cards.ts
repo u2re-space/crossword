@@ -3,7 +3,6 @@ import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/displa
 import { H, M } from "fest/lure";
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
-import { getLinkedEntities } from "@rs-core/service/manage/EntityConsolidation";
 import { insideOfDay, notInPast, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 
 //
@@ -60,30 +59,24 @@ export interface CardRenderOptions {
 }
 
 //
+const cropFirstLetter = (text: string | any) => {
+    return text?.charAt?.(0)?.toUpperCase?.() /*+ text?.slice?.(1) ||*/ || "C";
+}
+
+//
 export const MakeCardElement = (label: string, item: any, events: any, options: CardRenderOptions = {}) => {
     if (!item) return null;
 
     //
     const begin_time = formatAsTime(item?.properties?.begin_time) || "";
     const end_time = formatAsTime(item?.properties?.end_time) || "";
-    const variant = item?.desc?.variant || "default";
-    let description = item?.description || item?.desc?.description || "";
+    const variant = item?.variant || "default";
+    let description = item?.description || "";
 
     //
     if (countLines(description) <= 1) {
         description = description?.split?.(",");
     }
-
-    let linkedList: any = null;
-    const renderLinks = (links: any[]) => {
-        if (!links?.length) return null;
-        return H`<div class="card-links"><span class="card-label">Links:</span><ul>${M(links, (link) => H`<li><a href=${`#${link.type}-${link.id}`} data-link-type=${link.type}>${link.title || link.id}</a></li>`)}</ul></div>`;
-    };
-
-    (async () => {
-        const links = await getLinkedEntities(item);
-        linkedList?.replaceChildren?.(renderLinks(links) ?? "");
-    })().catch(console.warn.bind(console));
 
     let timeRangeElement = null;
     if (begin_time && end_time) {
@@ -91,15 +84,13 @@ export const MakeCardElement = (label: string, item: any, events: any, options: 
     }
 
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
-    linkedList = linksPlaceholder;
-
-    const card = H`<div data-id=${item?.id || item?.name || item?.desc?.name} data-variant="${variant}" data-type="${label}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
+    const card = H`<div data-id=${item?.id || item?.name} data-variant="${variant}" data-type="${label}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
-        <div class="avatar-inner">${item?.desc?.icon ? H`<ui-icon icon=${item.desc.icon}></ui-icon>` : (item?.desc?.title?.[0] ?? label?.[0] ?? "C")}</div>
+        <div class="avatar-inner">${item?.icon ? H`<ui-icon icon=${item?.icon}></ui-icon>` : cropFirstLetter(item?.title ?? label ?? "C")}</div>
     </div>
     <div class="card-props">
-        <ul class="card-title"><li>${item?.desc?.title || item?.name || label}</li></ul>
-        <ul class="card-kind"><li>${item?.desc?.kind || item?.kind}</li></ul>
+        <ul class="card-title"><li>${item?.title || item?.name || label}</li></ul>
+        <ul class="card-kind"><li>${item?.kind || item?.kind}</li></ul>
     </div>
     ${timeRangeElement}
     <div class="card-actions">
@@ -134,10 +125,10 @@ export const MakeCardByKind = (label: string, dir: string, item: any, byKind: an
     if (!item) return null;
 
     //
-    const title = item?.desc?.title || item?.desc?.name || item?.name || label;
+    const title = item?.title || item?.name || item?.id || label;
     const kind = item?.kind || "";
     if (!kind || !byKind || byKind == kind || byKind == "all" || kind == "all") {
-        const fileId = item?.id || item?.name || item?.desc?.name;
+        const fileId = item?.id || item?.name;
         const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
         if (!path) return null;
 
@@ -189,12 +180,12 @@ export const MakeCardByDayDesc = (label: string, dir: string, item: any, dayDesc
     if (!item) return null;
 
     //
-    const title = item?.desc?.title || item?.desc?.name || item?.name || label;
+    const title = item?.title || item?.name || label;
     const kind = item?.kind || "";
     if (dayDesc && (!insideOfDay(item, dayDesc) || !notInPast(item, dayDesc))) return;
 
     //
-    const fileId = item?.id || item?.name || item?.desc?.name;
+    const fileId = item?.id || item?.name;
     const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     if (!path) return null;
 

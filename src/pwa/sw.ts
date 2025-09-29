@@ -1,6 +1,4 @@
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeEntityType } from "@rs-core/service/recognize/entity/EntityTypeDetect";
-import { recognizeKindOfEntity } from "@rs-core/service/recognize/entity/KindOfEntity";
 import { resolveEntity } from "@rs-core/service/recognize/entity/EntityItemResolve";
 import { idbStorage } from "./lib/IDBQueue";
 import { dataCategories } from "@rs-core/service/Cache";
@@ -20,7 +18,7 @@ import {
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
-import { detectEntityTypesByJSONs } from "@rs-core/template/TypeDetector";
+import { detectEntityTypesByJSONs } from "@rs-core/template/deprecated/TypeDetector";
 import { analyzeRecognizeUnified } from "@rs-core/service/recognize/inputs/RecognizeData";
 
 // TODO! needs to debug completely and complex and make it more robust
@@ -31,51 +29,19 @@ const PLAIN_DIR = "/docs/plain/";
 //
 const controlChannel = new BroadcastChannel('rs-sw');
 
-//
-const getKey = (resolvedType: string, idx: number | null = null) => {
-    return `${resolvedType}_${idx || Date.now()}`;
-}
-
 // for caches
-const fileSystemChannel = new BroadcastChannel('rs-fs');
-const writeToFS = (resolvedType: string, resultEntity: any, outDir: any | null = null, name: string | null = null, idx: number | null = null, type: string | null = null) => {
-    idx ||= Date.now();
-    name ??= (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || idx);
-    name = name?.endsWith?.(".json") ? name : (name + ".json");
-    outDir ||= ("/data/" + resolvedType + "/");
-    const fullPath = outDir + name;
-    const idKey = getKey(resolvedType, idx);
-    idbStorage.put("pending-fs-write_" + idKey, { path: fullPath, data: resultEntity });
-    fileSystemChannel.postMessage({
-        type: 'pending-write',
-        results: [{
-            status: 'queued',
-            entityType: resolvedType,
-            data: resultEntity,
-            name,
-            path: fullPath,
-            idKey,
-            idx,
-            type
-        }]
-    });
-    return { path: fullPath, name };
-}
-
-//
 const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File | any) => {
     return analyzeRecognizeUnified(dataSource, (response) => {
         console.log(response);
     });
 }
 
-
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const settings = await idbGet("rs-settings");
 
     //
-    if (!settings) return { resultEntities: [], entityTypedDesc: [] };
+    if (!settings) return { entities: [] };
     const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
     console.log(gptResponses);
 
@@ -86,44 +52,37 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 
     // phase 0 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze...
-    await gptResponses.attachToRequest(dataSource)?.catch?.(console.warn.bind(console));
-    const rawDataset = JSON.parse(await gptResponses.sendRequest() || "[]"); // for use in first step...
+    await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
 
-    // write to FS raw cache
-    const cacheFileName = "recognized_cache_" + Date.now();
-    writeToFS("rawDataset", rawDataset, "/cache/", cacheFileName, Date.now());
-
-    // phase 1 - recognize entity type, make basic description
-    let entityTypedDesc: any[] = (await (recognizeEntityType(gptResponses))?.catch?.(console.warn.bind(console))) || [{ entityType: "unknown" }];
-
-    // phase 2 - recognize kind of entity, make relations
-    let entityRelations: any[] = (await recognizeKindOfEntity(entityTypedDesc, gptResponses)?.catch?.(console.warn.bind(console))) || [{ kinds: ["unknown"] }];
+    // load into context
+    await gptResponses?.sendRequest()?.catch?.(console.warn.bind(console));
 
     // phase 3 - convert data to target format, make final description
-    const resultEntity = (await resolveEntity(entityTypedDesc, entityRelations, gptResponses)?.catch?.(console.warn.bind(console))) || [];
-    const resultEntities = Array.isArray(resultEntity) ? resultEntity : [resultEntity];
-    return { resultEntities, entityTypedDesc };
+    const resultsRaw = (await resolveEntity(gptResponses)?.catch?.(console.warn.bind(console))) || [];
+    const results = Array.isArray(resultsRaw) ? resultsRaw : [resultsRaw];
+    return { entities: results?.flatMap?.((result) => (result?.entities || [])) };
 }
 
 //
-const queueEntityForWriting = (resultEntity, entityDesc, idx: number = 0, type: string | null = "json"): any => {
-    const resolvedType = (entityDesc.entityType || 'unknown')?.trim?.();
+const queueEntityForWriting = (entity, entityType, dataType: string | null = "json"): any => {
+    const resolvedType = (entityType || 'unknown')?.trim?.();
 
     //
-    let name = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || `${Date.now()}_${idx}`)
+    let subId = `${Date.now()}`;
+    let name = (entity?.id || subId)
         ?.trim?.()
         ?.toString?.()
         ?.toLowerCase?.()
         ?.replace?.(/\s+/g, '-')
         ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
-        || `${Date.now()}_${idx}`;
+        || subId;
 
     // prepare to writing into database (for phase 4 - consolidate)
-    const path = `/data/${resolvedType}/`?.trim?.();
+    const directory = `/data/${resolvedType}/`?.trim?.();
 
     // get preview versions of resolved entity to show in UI
     (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-    return { status: 'queued', entityDesc, data: resultEntity, name, path, idx: idx || Date.now(), type };
+    return { status: 'queued', entityType, data: entity, name, directory, subId, dataType };
 }
 
 //
@@ -180,22 +139,22 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
 
         // try avoid using AI when data structure is known
         if (text && isMarkdown(text, source)) {
-            const dir = inputs.targetDir || DOC_DIR;
-            const name = source instanceof File ? source?.name : `pasted-${Date.now()}.md`;
-            const path = `${dir}${name}`;
-            results.push({ status: 'queued', data: text, path, name, idx: idx++, type: "markdown", targetDir: inputs.targetDir });
+            const subId = Date.now();
+            const directory = inputs?.targetDir || DOC_DIR;
+            const name = source instanceof File ? source?.name : `pasted-${subId}.md`;
+            const path = `${directory}${name}`;
+            results.push({ status: 'queued', data: text, path, name, subId, directory, dataType: "markdown" });
             continue;
         }
 
         //
         try {
-            console.log(source);
+            const subId = Date.now();
             const { data, ok, error } = await initiateAnalyzeAndRecognizeData(source);
-            console.log(data);
-            const dir = inputs.targetDir || DOC_DIR;
-            const name = `pasted-${Date.now()}.md`;
-            const path = `${dir}${name}`;
-            results.push({ status: ok ? 'queued' : 'error', error, data, path, name, idx: idx++, type: "markdown", targetDir: inputs.targetDir });
+            const directory = inputs?.targetDir || DOC_DIR;
+            const name = `pasted-${subId}.md`;
+            const path = `${directory}${name}`;
+            results.push({ status: ok ? 'queued' : 'error', error, directory, data, path, name, subId, dataType: "markdown" });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });
         }
@@ -232,27 +191,29 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         if (!source) continue;
 
         //
-        const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
+        /*const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
-                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
+                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));*/
 
         // try avoid using AI when data structure is known
-        if (text) {
+        // UNSUPPORTED! - for now...
+        /*if (text) {
             const json: any = text ? JSON.parse(text) : [];
             let entityTypes = json ? detectEntityTypesByJSONs(json) : [];
             if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
                 json?.map?.((resultEntity, i) => {
                     const type = entityTypes[i];
-                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, { entityType: type }, idx++, "json"));
+                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, type, "json"));
+                    idx++;
                 }); continue;
             }
-        }
+        }*/
 
         //
         try {
-            const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
-            resultEntities.forEach((entityDesc) => {
-                results.push(queueEntityForWriting(entityDesc?.entity, entityDesc, idx++, "json"));
+            const resultsRaw = await initiateConversionProcedure(source);
+            resultsRaw?.entities?.forEach((entity) => {
+                results.push(queueEntityForWriting(entity, entity?.type, "json"));
             });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });

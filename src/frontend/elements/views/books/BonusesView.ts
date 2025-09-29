@@ -28,7 +28,7 @@ export const BonusesView = () => {
             if (!result) return;
 
             //
-            const fileName = (result?.desc?.title || `bonus-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
+            const fileName = (result?.title || `bonus-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
             const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });
             await writeFileSmart(null, BONUSES_DIR, file, { ensureJson: true, sanitize: true });
             toastSuccess("Bonus saved");

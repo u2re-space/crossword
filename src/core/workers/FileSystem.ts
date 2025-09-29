@@ -1,5 +1,5 @@
-import type { EntityDesc } from "@rs-core/template/EntitiesTyped";
-import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector";
+import type { EntityDesc } from "@rs-core/template/deprecated/EntitiesTyped";
+import { detectEntityTypeByJSON } from "@rs-core/template/deprecated/TypeDetector";
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
 import { getDirectoryHandle, writeFile } from "fest/lure";
 
@@ -192,17 +192,17 @@ export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
 }
 
 //
-export const writeJSON = async (data: any | any[], entityDesc: EntityDesc[] | EntityDesc | null = null, dir: any | null = null) => {
+export const writeJSON = async (data: any | any[], dir: any | null = null) => {
     if (!data) return;
     const writeOne = async (obj: any, index = 0) => {
         if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
 
         // if entity type is not registered, trying to detect it
-        const entityType = entityDesc?.[index]?.entityType ?? (entityDesc as EntityDesc)?.entityType ?? detectEntityTypeByJSON(obj);
+        const entityType = obj?.type ?? "unknown"; //?? detectEntityTypeByJSON(obj);
 
         // if directory is not provided, using default directory
         if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
-        let base = (obj?.id || obj?.name || obj?.desc?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'); base = base?.trim?.();
+        let base = (obj?.id || obj?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'); base = base?.trim?.();
         const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
         return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }));
     };
@@ -397,12 +397,14 @@ const controlChannel = new BroadcastChannel('rs-sw');
 controlChannel.addEventListener('message', (event) => {
     if (event.data.type === 'pending-write') {
         event.data.results?.forEach?.((result) => {
-            const { entityDesc, data, name, path, key, idx, type, targetDir } = result;
-            if (type === "json") {
+            const { data, name, path, subId, dataType, directory } = result;
+            if (dataType === "json") {
                 const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-                writeJSON(jsonData, entityDesc, path?.trim?.());
+                console.log(directory?.trim?.(), jsonData);
+                writeJSON(jsonData, directory?.trim?.());
             } else {
-                writeMarkDown(data, targetDir + name?.trim?.());
+                console.log(directory?.trim?.() + name?.trim?.(), data);
+                writeMarkDown(data, directory?.trim?.() + name?.trim?.());
             }
         });
     }

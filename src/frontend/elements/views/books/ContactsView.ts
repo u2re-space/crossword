@@ -28,7 +28,7 @@ export const ContactsView = () => {
             if (!result) return;
 
             //
-            const fileName = (result?.desc?.title || `contact-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
+            const fileName = (result?.title || `contact-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
             const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });
             await writeFileSmart(null, PERSONS_DIR, file, { ensureJson: true, sanitize: true });
             toastSuccess("Contact saved");

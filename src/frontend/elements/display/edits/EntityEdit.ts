@@ -8,7 +8,6 @@ import {
     ensureSectionHost,
     cloneEntity
 } from "@rs-frontend/utils/SchemaFields";
-import { suggestShortNames } from "@rs-core/service/manage/EntityConsolidation";
 
 //
 export type EntityEditOptions = {
@@ -220,16 +219,8 @@ export const makeEntityEdit = async (
                 else if (typeof options.initialLinks === "string") linkField.value = options.initialLinks;
 
                 requestAnimationFrame(async () => {
-                    const suggestions = await suggestShortNames();
-                    if (!suggestions.length) return;
                     const datalist = document.createElement('datalist');
                     datalist.id = 'links-suggestions';
-                    suggestions.forEach((opt: any) => {
-                        const option = document.createElement('option');
-                        option.value = typeof opt === 'string' ? opt : opt.value;
-                        if (typeof opt !== 'string' && opt.label) option.label = opt.label;
-                        datalist.appendChild(option);
-                    });
                     linkField.setAttribute('list', datalist.id);
                     linkField.parentElement?.appendChild(datalist);
                 });
@@ -274,10 +265,9 @@ export const makeEvents = (label: string, path: string, title: string, basis: an
 
             const updated = cloneEntity(result);
             Object.assign(basis, updated);
-            if (updated.desc) basis.desc = updated.desc;
-            if (updated.properties) basis.properties = updated.properties;
+            Object.assign(basis.properties, updated.properties || {});
 
-            const fileId = basis?.id || basis?.name || basis?.desc?.name;
+            const fileId = basis?.id || basis?.name;
 
             try {
                 const fileName = (path?.split?.('/')?.pop?.() || `${fileId}.json`).replace(/\s+/g, '-');
@@ -287,11 +277,11 @@ export const makeEvents = (label: string, path: string, title: string, basis: an
             } catch (e) { console.warn(e); }
 
             const card = document.querySelector(`.card[data-id="${fileId}"]`);
-            if (basis?.desc?.title) {
-                card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(basis.desc.title));
+            if (basis?.title) {
+                card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(basis.title));
             }
-            if (basis?.desc?.description) {
-                card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(basis.desc.description));
+            if (basis?.description) {
+                card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(basis.description));
             }
             if (basis?.properties?.begin_time && basis?.properties?.end_time) {
                 card?.querySelector?.('.card-time li')?.replaceChildren?.(document.createTextNode(`${basis.properties.begin_time} - ${basis.properties.end_time}`));
