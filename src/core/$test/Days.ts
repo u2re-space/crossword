@@ -1,5 +1,5 @@
 export const sampleDays = [
-    { id: 'd1', title: 'Monday', variant: 'purple', icon: 'calendar' },
-    { id: 'd2', title: 'Tuesday', variant: 'green', icon: 'calendar' },
-    { id: 'd3', title: 'Wednesday', variant: 'purple', icon: 'calendar' }
+    { id: 'pn', title: 'Planned', variant: 'purple', icon: 'calendar' },
+    { id: 'cp', title: 'Completed', variant: 'green', icon: 'calendar' },
+    { id: 'cn', title: 'Canceled', variant: 'purple', icon: 'calendar' }
 ];

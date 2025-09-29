@@ -28,25 +28,43 @@ const loadPlanSource = async (): Promise<string | null> => {
 // Render the timeline
 // TODO! Upload timeline plans into service workers!
 export const PlannedTimeline = async ($daysDesc?: any[] | null) => {
+
     //
     const daysTabs = new Map<string, HTMLElement | null | string | any>();
     let daysDesc: any[] | null = [];
+
+    //
+    let loadLocked = false;
     const reload = async () => {
+        if (loadLocked) return;
+
+        //
+        daysTabs?.clear?.();
+        loadLocked = true;
+
+        //
         const timelines = await loadAllTimelines(TIMELINE_DIR)?.catch?.(console.warn.bind(console));
-        daysDesc = $daysDesc ?? (await SplitTimelinesByDays(timelines));
+        daysDesc = [
+            ...($daysDesc ?? []),
+            ...(await SplitTimelinesByDays(timelines)?.catch?.(console.warn.bind(console)) ?? [])
+        ];
+
+        //
         for (const day of (daysDesc ?? [])) {
-            daysTabs.set(day.id, $ShowItemsByDay(TIMELINE_DIR, day, TaskItem));
+            const suc = $ShowItemsByDay(TIMELINE_DIR, day, TaskItem);
+            if (suc && typeof day.id == "string") { daysTabs?.set?.(day.id, suc); };
         }
+
+        //
+        loadLocked = false;
+        return daysTabs;
     }
 
     //
-    reload?.();
-
-    //
     const tabbed = H`<ui-tabbed-box
-    prop:tabs=${daysTabs}
+    prop:tabs=${await reload?.()}
     prop:renderTabName=${renderTabName}
-    currentTab=${""}
+    currentTab=${"pn"}
     style="background-color: transparent;"
     class="days"
 ></ui-tabbed-box>`;

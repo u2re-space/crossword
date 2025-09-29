@@ -55,6 +55,9 @@
         flex-direction: column;
         gap: 0.25rem;
         background-color: --c2-surface(0.0, var(--current, currentColor));
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
     }
 
     [data-type="tasks"],
@@ -68,6 +71,10 @@
         column-fill: balance;
         gap: var(--card-gap);
         align-items: start;
+
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
     }
 
 
@@ -77,6 +84,10 @@
         flex-direction: column;
         gap: 0.25rem;
         background-color: --c2-surface(0.0, var(--current, currentColor));
+
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
     }
 
     .card {

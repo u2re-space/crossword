@@ -52,7 +52,7 @@ Such idea used for make simpler search, filtering and sorting of entities.
 //
 export const NAME_SCHEME = { type: "string", minLength: 1 };
 export const DESCRIPTION_SCHEME = { type: "MARKDOWN_TEXT|MARKDOWN_TEXT[]", format: "markdown" };
-export const ICON_SCHEME = { type: "string|number" };
+export const ICON_SCHEME = { type: "string|number", note: "used phosphor icons set" };
 export const TAGS_SCHEME = { type: "array", items: { type: "string|number" } };
 export const IMAGE_SCHEME = { type: "array", items: { type: "string", format: "uri" } };
 export const WHERE_IS_SCHEME = { type: "array", items: { type: "string|number" } };
@@ -97,8 +97,8 @@ export const CONTACT_SCHEME = {
 //
 export const TIMESTAMP_SCHEME = {
     anyOf: [
-        { type: "number" },
-        { type: "string", format: "date-time" }
+        { type: "number", note: "timestamp in milliseconds" },
+        { type: "string", format: "date-time", note: "ISO 8601 format" }
     ]
 };
 
@@ -125,7 +125,14 @@ export const PERMISSIONS_SCHEME = {
 };
 
 //
+export const COLOR_VARIANT_SCHEME = {
+    enum: ["blur", "purple", "green", "orange", "red", "blue", "yellow", "pink", "brown", "gray", "black", "white", "other"]
+};
+
+
+//
 export const SHARED_DEFS = {
+    Icon: ICON_SCHEME,
     Coordinates: COORDINATES_SCHEME,
     Contact: CONTACT_SCHEME,
     Tags: TAGS_SCHEME,
@@ -180,13 +187,16 @@ export const JSON_SCHEMES = {
     $defs: SHARED_DEFS,
     $task: {
         desc: PRIMARY_PROPS,
+        variant: { $ref: "#/$defs/ColorVariant" },
         kind: { enum: KIND_MAP.task },
         description: DESCRIPTION_SCHEME,
+        image: { $ref: "#/$defs/Images" },
+        icon: { $ref: "#/$defs/Icon" },
         properties: {
-            status: { enum: ["under_consideration", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"] },
-
-            //
-            image: { $ref: "#/$defs/Images" },
+            status: {
+                enum: ["under_consideration", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"],
+                default: "pending",
+            },
 
             //
             begin_time: { $ref: "#/$defs/Timestamp" },
@@ -204,19 +214,20 @@ export const JSON_SCHEMES = {
             actions: ACTIONS_SCHEME,
             prices: BONUSES_SCHEME
         },
-        required: ["kind", "status", "location"]
+        required: ["kind", "status", "location", "begin_time", "end_time"]
     },
 
     $entities: {
         //
         factor: {
             desc: PRIMARY_PROPS,
+            variant: { $ref: "#/$defs/ColorVariant" },
             kind: { enum: KIND_MAP.factor },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
                 affect: { enum: ["positive", "negative", "neutral"] },
                 actions: { $ref: "#/$defs/IdArray" },
-                image: { $ref: "#/$defs/Images" },
                 location: { $ref: "#/$defs/LocationRef" },
                 begin_time: { $ref: "#/$defs/Timestamp" },
                 end_time: { $ref: "#/$defs/Timestamp" },
@@ -228,10 +239,11 @@ export const JSON_SCHEMES = {
         //
         location: {
             desc: PRIMARY_PROPS,
+            variant: { $ref: "#/$defs/ColorVariant" },
             kind: { enum: KIND_MAP.location },
+            image: { $ref: "#/$defs/Images" },
             description: DESCRIPTION_SCHEME,
             properties: {
-                image: { $ref: "#/$defs/Images" },
                 coordinates: { $ref: "#/$defs/Coordinates" },
                 street: { type: "string" },
                 house: { type: "string" },
@@ -250,10 +262,11 @@ export const JSON_SCHEMES = {
         //
         skill: {
             desc: PRIMARY_PROPS,
+            variant: { $ref: "#/$defs/ColorVariant" },
             kind: { enum: KIND_MAP.skill },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
                 level: LEVEL_SCHEME,
                 tasks: { $ref: "#/$defs/IdArray" },
                 actions: ACTIONS_SCHEME,
@@ -261,16 +274,17 @@ export const JSON_SCHEMES = {
                 results: { type: "array", items: { type: "string" } },
                 profession_related: { $ref: "#/$defs/IdArray" }, // professions related to this skill
             },
-            required: ["kind", "profession_related"]
+            required: ["kind", "level"]
         },
 
         //
         vendor: {
             desc: PRIMARY_PROPS,
+            variant: { $ref: "#/$defs/ColorVariant" },
             kind: { enum: KIND_MAP.vendor },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
                 coordinates: { $ref: "#/$defs/Coordinates" },
                 members: { $ref: "#/$defs/IdArray" },
                 services: { $ref: "#/$defs/IdArray" },
@@ -278,18 +292,17 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME
             },
-            required: ["kind", "coordinates"]
+            required: ["kind"]
         },
 
         //
         market: {
             desc: PRIMARY_PROPS,
+            variant: { $ref: "#/$defs/ColorVariant" },
             kind: { enum: KIND_MAP.market },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 location: { $ref: "#/$defs/LocationRef" },
                 members: { $ref: "#/$defs/IdArray" },
                 services: { $ref: "#/$defs/IdArray" },
@@ -314,11 +327,10 @@ export const JSON_SCHEMES = {
         place: {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.place },
+            variant: { $ref: "#/$defs/ColorVariant" },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 location: { $ref: "#/$defs/LocationRef" },
                 members: { $ref: "#/$defs/IdArray" },
                 services: { $ref: "#/$defs/IdArray" },
@@ -336,18 +348,17 @@ export const JSON_SCHEMES = {
                 availabilityTime: AVAILABILITY_TIME_SCHEME,
                 availabilityDays: AVAILABILITY_DAYS_SCHEME,
             },
-            required: ["kind", "coordinates"]
+            required: ["kind", "location"]
         },
 
         //
         service: {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.service },
+            variant: { $ref: "#/$defs/ColorVariant" },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 whereIs: WHERE_IS_SCHEME,
 
                 //
@@ -368,7 +379,7 @@ export const JSON_SCHEMES = {
                 //
                 quantity: { type: "number" }
             },
-            required: ["kind", "location"]
+            required: ["kind", "contacts"]
         },
 
         //
@@ -376,8 +387,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.person },
             description: DESCRIPTION_SCHEME,
+            variant: { $ref: "#/$defs/ColorVariant" },
+            image: { $ref: "#/$defs/Images" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
                 home: { $ref: "#/$defs/LocationRef" },
                 jobs: { type: "array", items: { $ref: "#/$defs/LocationRef" } },
                 tasks: { $ref: "#/$defs/IdArray" },
@@ -388,11 +400,11 @@ export const JSON_SCHEMES = {
                 location: { $ref: "#/$defs/LocationRef" },
                 biography: {
                     firstName: { type: "string" },
-                    lastName: { type: "string" },
-                    middleName: { type: "string" },
-                    nickName: { type: "string" },
-                    birthdate: { type: "string", format: "date" },
-                    gender: { enum: ["male", "female", "other"] }
+                    lastName: { type: "string", optional: true },
+                    middleName: { type: "string", optional: true },
+                    nickName: { type: "string", optional: true },
+                    birthdate: { type: "string", format: "date", optional: true },
+                    gender: { enum: ["male", "female", "other"], optional: true }
                 },
 
                 //
@@ -400,7 +412,7 @@ export const JSON_SCHEMES = {
                 actions: ACTIONS_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
             },
-            required: ["kind", "location"]
+            required: ["kind", "contacts", "biography"]
         },
 
         // it's your car, transport, bike, or rented transport, or ride on bus, train, etc.
@@ -408,10 +420,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.vehicle },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 role: { enum: ["driver", "passenger", "other"] },
                 rights: { enum: ["own", "rented", "borrowed", "service", "free", "other"] },
                 destination: { $ref: "#/$defs/LocationRef" },
@@ -435,7 +446,7 @@ export const JSON_SCHEMES = {
                 prices: BONUSES_SCHEME,
                 quantity: { type: "number" }
             },
-            required: ["kind", "location"]
+            required: ["kind"]
         },
 
         //
@@ -443,10 +454,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.event },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 location: { $ref: "#/$defs/LocationRef" },
 
                 //
@@ -473,11 +483,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.item },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-
-                //
-                image: { $ref: "#/$defs/Images" },
-
                 //
                 markets: { $ref: "#/$defs/IdArray" },
 
@@ -493,7 +501,7 @@ export const JSON_SCHEMES = {
                 prices: BONUSES_SCHEME, // if currency, used for exchange (RUB/EUR/USD)
                 quantity: { type: "number" } // if currency, how many money you has, negative value is used for debt
             },
-            required: ["location"]
+            required: ["kind"]
         },
 
         //
@@ -501,10 +509,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.action },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 difficulty: DIFFICULTY_SCHEME,
                 duration: DURATION_SCHEME,
 
@@ -523,7 +530,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME
             },
-            required: ["location"]
+            required: ["kind"]
         },
 
         //
@@ -531,10 +538,9 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.entertainment },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
-                //
                 actions: ACTIONS_SCHEME,
                 persons: PERSON_SCHEME,
 
@@ -557,7 +563,7 @@ export const JSON_SCHEMES = {
                 rewards: BONUSES_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
             },
-            required: ["location"]
+            required: ["location", "kind"]
         },
 
         //
@@ -565,6 +571,8 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.bonus },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
 
             // used for request, along with kind details
             usabilityKind: {
@@ -586,8 +594,6 @@ export const JSON_SCHEMES = {
 
             //
             properties: {
-                image: { $ref: "#/$defs/Images" },
-
                 // items, services, entertainment, actions, events
                 usableFor: { $ref: "#/$defs/IdArray" },
 
@@ -615,7 +621,7 @@ export const JSON_SCHEMES = {
                 //
                 contacts: { $ref: "#/$defs/Contact" }
             },
-            required: ["location"]
+            required: ["kind"]
         },
 
         //
@@ -623,10 +629,11 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.lottery },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
                 requirements: { $ref: "#/$defs/IdArray" },
                 chance: { type: "number", minimum: 0, maximum: 100 },
-                image: { $ref: "#/$defs/Images" },
                 location: { $ref: "#/$defs/LocationRef" },
                 usageLimit: { type: "number" },
                 timeLimit: { $ref: "#/$defs/Timestamp" },
@@ -634,7 +641,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 prices: BONUSES_SCHEME
             },
-            required: ["chance", "rewards", "requirements", "location"]
+            required: ["kind", "chance", "rewards", "requirements"]
         },
 
         // also, may means debt, receipt, etc.
@@ -642,6 +649,8 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.fine },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
                 // what needs to give in case of fine (time is may be arrest or sentence, or job), but not for reward
                 reasonsToGive: { $ref: "#/$defs/IdArray" },
@@ -649,11 +658,10 @@ export const JSON_SCHEMES = {
                 entity: { $ref: "#/$defs/Id" },
                 usageLimit: { type: "number" },
                 timeLimit: { $ref: "#/$defs/Timestamp" },
-                image: { $ref: "#/$defs/Images" },
                 prices: BONUSES_SCHEME,
                 entityLocation: { $ref: "#/$defs/LocationRef" }
             },
-            required: ["entity", "location"]
+            required: ["kind", "entity", "reasonsToGive"]
         },
 
         //
@@ -661,16 +669,17 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.reward },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
                 prices: BONUSES_SCHEME,
                 requirements: { $ref: "#/$defs/IdArray" },
                 location: { $ref: "#/$defs/LocationRef" },
                 usageLimit: { type: "number" },
                 timeLimit: { $ref: "#/$defs/Timestamp" },
-                image: { $ref: "#/$defs/Images" },
                 entityLocation: { $ref: "#/$defs/LocationRef" }
             },
-            required: ["location"]
+            required: ["kind"]
         },
 
         // if entity is not specified, it's unknown
@@ -678,11 +687,13 @@ export const JSON_SCHEMES = {
             desc: PRIMARY_PROPS,
             kind: { enum: KIND_MAP.unknown },
             description: DESCRIPTION_SCHEME,
+            image: { $ref: "#/$defs/Images" },
+            variant: { $ref: "#/$defs/ColorVariant" },
             properties: {
-                image: { $ref: "#/$defs/Images" },
                 location: { $ref: "#/$defs/LocationRef" },
                 suggestedKind: { type: "string" }
-            }
+            },
+            required: ["description"]
         }
     },
 };

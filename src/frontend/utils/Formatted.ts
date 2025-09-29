@@ -159,7 +159,8 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
     //
     let loadLocked = false;
     const load = async () => {
-        dataRef.length = 0;
+        //dataRef.length = 0; // TODO: fix in reactive library
+        dataRef?.splice?.(0, dataRef?.length ?? 0);
 
         //
         if (loadLocked) return;
@@ -167,16 +168,20 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
 
         //
         const dHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
-        const entries = await Array.fromAsync(dHandle?.entries?.() ?? []);
-        const $tmp = (await Promise.all(entries)?.catch?.(console.warn.bind(console)))?.map?.(async ([name, fileHandle]: any) => {
-            if (name?.endsWith?.(".crswap")) return;
-            const file = await fileHandle.getFile();
-            const obj = JSON.parse(await file?.text?.() || "{}");
-            (obj as any).__name = name;
-            (obj as any).__path = `${DIR}${name}`;
-            if (obj.kind === byKind || !byKind || byKind == "all" || !obj.kind) { dataRef.push(obj); }
-            return obj;
-        })?.filter?.((e: any) => e);
+        const entries = await Array.fromAsync(dHandle?.entries?.() ?? [])?.catch?.(console.warn.bind(console));
+        const $tmp = (await Promise.all(entries || [])?.catch?.(console.warn.bind(console)))
+            ?.map?.(async ([name, fileHandle]: any) => {
+                if (name?.endsWith?.(".crswap")) return;
+                const file = await fileHandle?.getFile?.();
+                if (!file) return;
+
+                //
+                const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+                (obj as any).__name = name;
+                (obj as any).__path = `${DIR}${name}`;
+                if (obj.kind === byKind || !byKind || byKind == "all" || !obj.kind) { dataRef.push(obj); }
+                return obj;
+            })?.filter?.((e: any) => e);
 
         //
         loadLocked = false;
@@ -244,7 +249,8 @@ export const $ShowItemsByDay = (DIR: string = TIMELINE_DIR, dayDesc: any | null 
     //
     let loadLocked = false;
     const load = async () => {
-        dataRef.length = 0;
+        //dataRef.length = 0; // TODO: fix in reactive library
+        dataRef?.splice?.(0, dataRef?.length ?? 0);
 
         //
         if (loadLocked) return;

@@ -125,7 +125,6 @@ export const dataCategories = makeReactive([
 //
 const broadcastChannel = new BroadcastChannel('geolocation');
 broadcastChannel.addEventListener('message', (e) => {
-    console.log(e.data.coords);
     if (e.data.coords) {
         (realtimeStates as any).coords = (typeof e.data.coords == "string" ? JSON.parse(e.data.coords) : e.data.coords) || {};
         (realtimeStates as any).timestamp = e.data.timestamp || Date.now();
