@@ -48,7 +48,7 @@ export class GPTResponses {
 
     //
     private apiUrl: string = "https://api.proxyapi.ru/openai/v1";
-    private model: string = "gpt-5";
+    private model: string = "gpt-5-mini";
     private responseId?: string | null = null;
 
     //
@@ -130,13 +130,15 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "medium" },
+                reasoning: { "effort": "high" },
+                max_output_tokens: 400000,
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
         if (!response) return null;
 
+        //
         if (response.status !== 200) {
             const error = await response?.json?.()?.catch?.((e) => { console.warn(e); return null; });
             console.warn(error);

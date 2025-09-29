@@ -102,8 +102,17 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
         await gptResponses.attachToRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
     }
 
+    //
+    const encodedRealtimeState = JSON.stringify({
+        time: (realtimeStates as any).time?.toISOString?.(),
+        timestamp: (realtimeStates as any).timestamp,
+        coords: (realtimeStates as any).coords?.toJSON?.(),
+        otherProps: (realtimeStates as any).otherProps,
+        cards: (realtimeStates as any).cards,
+    });
+
     // use real-time state (oriented on current time and location)
-    await gptResponses.attachToRequest("current_states: \`" + JSON.stringify(safe(unwrap(realtimeStates))) + "\`\n");
+    await gptResponses.attachToRequest("current_states: \`" + encodedRealtimeState + "\`\n");
 
     // attach some factors (except finished)
     await gptResponses.attachToRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");

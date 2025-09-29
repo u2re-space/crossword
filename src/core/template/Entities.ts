@@ -214,7 +214,7 @@ export const JSON_SCHEMES = {
             actions: ACTIONS_SCHEME,
             prices: BONUSES_SCHEME
         },
-        required: ["kind", "status", "location", "begin_time", "end_time"]
+        required: ["kind", "status", "location", "begin_time", "end_time", "properties"]
     },
 
     $entities: {
@@ -233,7 +233,7 @@ export const JSON_SCHEMES = {
                 end_time: { $ref: "#/$defs/Timestamp" },
                 members: { $ref: "#/$defs/IdArray" }
             },
-            required: ["kind", "affect"]
+            required: ["kind", "affect", "properties"]
         },
 
         //
@@ -256,7 +256,7 @@ export const JSON_SCHEMES = {
                 services: { $ref: "#/$defs/IdArray" },
                 rewards: BONUSES_SCHEME
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -274,7 +274,7 @@ export const JSON_SCHEMES = {
                 results: { type: "array", items: { type: "string" } },
                 profession_related: { $ref: "#/$defs/IdArray" }, // professions related to this skill
             },
-            required: ["kind", "level"]
+            required: ["kind", "level", "properties"]
         },
 
         //
@@ -292,7 +292,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -320,7 +320,7 @@ export const JSON_SCHEMES = {
                 availabilityTime: AVAILABILITY_TIME_SCHEME,
                 availabilityDays: AVAILABILITY_DAYS_SCHEME,
             },
-            required: ["kind", "purpose"]
+            required: ["kind", "purpose", "properties"]
         },
 
         //
@@ -348,7 +348,7 @@ export const JSON_SCHEMES = {
                 availabilityTime: AVAILABILITY_TIME_SCHEME,
                 availabilityDays: AVAILABILITY_DAYS_SCHEME,
             },
-            required: ["kind", "location"]
+            required: ["kind", "location", "properties"]
         },
 
         //
@@ -379,7 +379,7 @@ export const JSON_SCHEMES = {
                 //
                 quantity: { type: "number" }
             },
-            required: ["kind", "contacts"]
+            required: ["kind", "contacts", "properties"]
         },
 
         //
@@ -412,7 +412,7 @@ export const JSON_SCHEMES = {
                 actions: ACTIONS_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
             },
-            required: ["kind", "contacts", "biography"]
+            required: ["kind", "contacts", "biography", "properties"]
         },
 
         // it's your car, transport, bike, or rented transport, or ride on bus, train, etc.
@@ -446,7 +446,7 @@ export const JSON_SCHEMES = {
                 prices: BONUSES_SCHEME,
                 quantity: { type: "number" }
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -475,7 +475,7 @@ export const JSON_SCHEMES = {
                 rewards: BONUSES_SCHEME,
                 prices: BONUSES_SCHEME
             },
-            required: ["begin_time", "location"]
+            required: ["begin_time", "location", "properties"]
         },
 
         //
@@ -501,7 +501,7 @@ export const JSON_SCHEMES = {
                 prices: BONUSES_SCHEME, // if currency, used for exchange (RUB/EUR/USD)
                 quantity: { type: "number" } // if currency, how many money you has, negative value is used for debt
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -530,7 +530,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 rewards: BONUSES_SCHEME
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -563,7 +563,7 @@ export const JSON_SCHEMES = {
                 rewards: BONUSES_SCHEME,
                 feedbacks: FEEDBACKS_SCHEME
             },
-            required: ["location", "kind"]
+            required: ["location", "kind", "properties"]
         },
 
         //
@@ -621,7 +621,7 @@ export const JSON_SCHEMES = {
                 //
                 contacts: { $ref: "#/$defs/Contact" }
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         //
@@ -641,7 +641,7 @@ export const JSON_SCHEMES = {
                 bonuses: BONUSES_SCHEME,
                 prices: BONUSES_SCHEME
             },
-            required: ["kind", "chance", "rewards", "requirements"]
+            required: ["kind", "chance", "rewards", "requirements", "properties"]
         },
 
         // also, may means debt, receipt, etc.
@@ -661,7 +661,7 @@ export const JSON_SCHEMES = {
                 prices: BONUSES_SCHEME,
                 entityLocation: { $ref: "#/$defs/LocationRef" }
             },
-            required: ["kind", "entity", "reasonsToGive"]
+            required: ["kind", "entity", "reasonsToGive", "properties"]
         },
 
         //
@@ -679,7 +679,7 @@ export const JSON_SCHEMES = {
                 timeLimit: { $ref: "#/$defs/Timestamp" },
                 entityLocation: { $ref: "#/$defs/LocationRef" }
             },
-            required: ["kind"]
+            required: ["kind", "properties"]
         },
 
         // if entity is not specified, it's unknown
@@ -693,7 +693,7 @@ export const JSON_SCHEMES = {
                 location: { $ref: "#/$defs/LocationRef" },
                 suggestedKind: { type: "string" }
             },
-            required: ["description"]
+            required: ["description", "properties"]
         }
     },
 };

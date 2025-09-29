@@ -1,5 +1,5 @@
 export const sampleDays = [
-    { id: 'pn', title: 'Planned', variant: 'purple', icon: 'calendar' },
-    { id: 'cp', title: 'Completed', variant: 'green', icon: 'calendar' },
-    { id: 'cn', title: 'Canceled', variant: 'purple', icon: 'calendar' }
+    { id: 'pn', filter: 'pending', title: 'Pending', variant: 'purple', icon: 'calendar' },
+    { id: 'cp', filter: 'completed', title: 'Completed', variant: 'green', icon: 'calendar' },
+    { id: 'cn', filter: 'canceled', title: 'Canceled', variant: 'purple', icon: 'calendar' }
 ];

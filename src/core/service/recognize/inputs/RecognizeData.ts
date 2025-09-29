@@ -2,7 +2,7 @@ import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 
 //
-const DEFAULT_MODEL = 'gpt-5';
+const DEFAULT_MODEL = 'gpt-5-mini';
 const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
 const ENDPOINT = '/responses';
 
@@ -80,7 +80,8 @@ export const recognizeByInstructions = async (input, instructions: string, sendR
         body: JSON.stringify({
             model: settings?.model || DEFAULT_MODEL, // ваш
             input,
-            reasoning: { effort: "medium" },
+            reasoning: { effort: "high" },
+            max_output_tokens: 400000,
             instructions
         })
     })?.catch?.(e => {

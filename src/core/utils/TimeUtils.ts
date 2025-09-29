@@ -4,16 +4,16 @@ import { makeReactive } from "fest/object";
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
     // after begins and before ends
     if (beginTime && endTime) { // optional, used for notification or alarm
-        return new Date(beginTime) < currentTime && currentTime < new Date(endTime);
-    }
+        return parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(currentTime) && parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
+    };
     // after begins
     if (beginTime) { // optional, used for notification or alarm
-        return new Date(beginTime) < currentTime;
-    }
+        return parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(currentTime);
+    };
     // before ends
     if (endTime) { // optional, used for notification or alarm
-        return currentTime < new Date(endTime);
-    }
+        return parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
+    };
     return false;
 }
 
@@ -23,18 +23,18 @@ export const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Da
 
     // utils begins
     if (beginTime) { // optional, used for notification or alarm
-        factorMasked &&= currentTime <= new Date(beginTime);
+        factorMasked &&= parseAndGetCorrectTime(currentTime) <= parseAndGetCorrectTime(beginTime);
     }
 
     // utils ends
     if (endTime) { // optional, used for notification or alarm
-        factorMasked &&= currentTime < new Date(endTime);
+        factorMasked &&= parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
     }
 
     // if maxDays is set, check if the time is within the next maxDays days
     if (maxDays) {
-        const dateLimit = new Date(currentTime.getTime() + maxDays * 24 * 60 * 60 * 1000);
-        factorMasked &&= new Date(beginTime) < dateLimit;
+        const dateLimit = parseAndGetCorrectTime(currentTime) + maxDays * 24 * 60 * 60 * 1000;
+        factorMasked &&= parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(dateLimit);
     }
 
     //
@@ -46,7 +46,7 @@ export const isDate = (date: any) => {
     const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
     let secondStep = false;
     try {
-        secondStep = new Date(date).getTime() > 0;
+        secondStep = parseAndGetCorrectTime(date) > 0;
     } catch (e) {
         secondStep = false;
     }
@@ -56,11 +56,16 @@ export const isDate = (date: any) => {
 //
 export const insideOfDay = (item: any, dayDesc: any) => {
     return (
-        new Date(item.properties?.begin_time) >= new Date(dayDesc.properties?.begin_time) &&
-        new Date(item.properties?.end_time) <= new Date(dayDesc.properties?.end_time)
-    ) || (!isDate(item.properties?.begin_time) || !isDate(item.properties?.end_time));
+        parseAndGetCorrectTime(item?.properties?.begin_time) >= parseAndGetCorrectTime(dayDesc?.begin_time) &&
+        parseAndGetCorrectTime(item?.properties?.end_time) <= parseAndGetCorrectTime(dayDesc?.end_time)
+    ) || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
 }
 
+//
+export const notInPast = (item: any, dayDesc?: any) => {
+    return true;
+    //return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
+}
 
 //
 export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | null = null) => {
@@ -72,21 +77,45 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
     // get available days from timelines
     for (const timeline of (await timelineMap) ?? []) {
         if (timeline?.properties?.begin_time && timeline?.properties?.end_time) {
-            const beginTime = new Date(timeline?.properties?.begin_time);
-            const endTime = new Date(timeline?.properties?.end_time);
-            const TODAY = new Date();
+            const beginTime = parseDateCorrectly(timeline?.properties?.begin_time);
+            const endTime = parseDateCorrectly(timeline?.properties?.end_time);
 
             // search same day
             let day = daysDesc?.find?.(day => {
-                return beginTime >= new Date(day?.properties?.begin_time) && endTime <= new Date(day?.properties?.end_time);
+                //day.filter == timeline.status ||
+                return parseAndGetCorrectTime(beginTime) >= parseAndGetCorrectTime(day?.begin_time) &&
+                    parseAndGetCorrectTime(endTime) <= parseAndGetCorrectTime(day?.end_time);
             }) ?? null;
 
             // if day not found and isn't past
-            if (!day && (endTime >= TODAY || !isDate(endTime))) {
+            if (!day && (parseAndGetCorrectTime(endTime) >= parseAndGetCorrectTime())) {
+                // create day (floor and ceiling times into day)
+                const dayBeginTime = parseDateCorrectly(beginTime); dayBeginTime?.setHours?.(0, 0, 0, 0);
+                const dayEndTime = parseDateCorrectly(beginTime); dayEndTime?.setHours?.(23, 59, 59, 999);
+
+                // make ID by [dd_mm_yyyy]
+                // make title by [dd Month Weekday]
+                const dayDay = dayBeginTime?.toLocaleDateString?.("en-US", { day: "numeric" });
+                const dayWeekday = dayBeginTime?.toLocaleDateString?.("en-US", { weekday: "short" });
+                const dayMonth = dayBeginTime?.toLocaleDateString?.("en-US", { month: "short" });
+                const dayTitle = `${dayDay} ${dayMonth} ${dayWeekday}`;
+
+                //
+                const dayDayForId = dayBeginTime?.toLocaleDateString?.("en-US", { day: "numeric" });
+                const dayMonthForId = dayBeginTime?.toLocaleDateString?.("en-US", { month: "numeric" });
+                const dayYearForId = dayBeginTime?.toLocaleDateString?.("en-US", { year: "numeric" });
+                const dayId = `${dayDayForId}_${dayMonthForId}_${dayYearForId}`;
+
+                // unused for named with day title
+                const dayFilter = "";
+
+            // create day
                 daysDesc?.push?.(day ??= {
-                    id: isDate(beginTime) ? beginTime.toISOString()?.split?.("T")?.[0] : (beginTime || "unknown"),
-                    title: isDate(beginTime) ? beginTime.toISOString()?.split?.("T")?.[0] : (beginTime || "unknown"),
-                    properties: { begin_time: beginTime || "unknown", end_time: endTime || "unknown" }
+                    id: dayId,
+                    filter: dayFilter,
+                    title: dayTitle,
+                    begin_time: dayBeginTime?.toISOString(),
+                    end_time: dayEndTime?.toISOString()
                 });
             }
         }
@@ -94,4 +123,47 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
 
     //
     return daysDesc;
+}
+
+//
+export function isPureHHMM(str: any) {
+    if (!str) return false;
+    return /^([01]\d|2[0-3]):([0-5]\d)$/?.test?.(String(str)?.trim?.());
+}
+
+//
+export function parseDateCorrectly(str: any | Date | null = null): Date | null {
+    if (!str) return new Date();
+    if (typeof str == "number") {
+        const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
+        return new Date(str * multiplier);
+    }
+    if (str instanceof Date) return new Date(str?.getTime?.());
+    if (typeof str == "string" && isPureHHMM(str)) {
+        const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(str?.trim?.());
+        if (!m) return new Date();
+        const [, hh, mm] = m;
+        const now = new Date();
+        return new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            Number(hh),
+            Number(mm),
+            0,
+            0
+        );
+    }
+    return new Date(str);
+}
+
+//
+export function parseAndGetCorrectTime(str: any | Date | null = null): number {
+    if (!str) return Date.now();
+    if (typeof str == "number") {
+        const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
+        return str * multiplier;
+    }
+    if (str instanceof Date) return str.getTime();
+    return parseDateCorrectly(str)?.getTime?.() ?? Date.now();
 }

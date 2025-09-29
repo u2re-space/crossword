@@ -195,7 +195,7 @@ export const Settings = async () => {
 
     const applyModelSelection = (settings: AppSettings) => {
         if (!modelSelectEl) return;
-        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai?.model ?? "gpt-5";
+        const storedModel = settings.ai?.model ?? DEFAULT_SETTINGS.ai?.model ?? "gpt-5-mini";
         const storedCustom = settings.ai?.customModel ?? DEFAULT_SETTINGS.ai?.customModel ?? "";
         if (["gpt-5", "gpt-5-mini"].includes(storedModel)) {
             modelSelectEl.value = storedModel;

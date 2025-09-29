@@ -4,7 +4,13 @@ import { H, M } from "fest/lure";
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
 import { getLinkedEntities } from "@rs-core/service/manage/EntityConsolidation";
-import { insideOfDay } from "@rs-core/utils/TimeUtils";
+import { insideOfDay, notInPast, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
+
+//
+const formatAsTime = (time: any) => {
+    if (!time) return "";
+    return parseDateCorrectly(time)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
 
 //
 marked.use(markedKatex({
@@ -57,8 +63,9 @@ export interface CardRenderOptions {
 export const MakeCardElement = (label: string, item: any, events: any, options: CardRenderOptions = {}) => {
     if (!item) return null;
 
-    const begin_time = item?.properties?.begin_time || "";
-    const end_time = item?.properties?.end_time || "";
+    //
+    const begin_time = formatAsTime(item?.properties?.begin_time) || "";
+    const end_time = formatAsTime(item?.properties?.end_time) || "";
     const variant = item?.desc?.variant || "default";
     let description = item?.description || item?.desc?.description || "";
 
@@ -76,11 +83,11 @@ export const MakeCardElement = (label: string, item: any, events: any, options: 
     (async () => {
         const links = await getLinkedEntities(item);
         linkedList?.replaceChildren?.(renderLinks(links) ?? "");
-    })().catch(console.warn);
+    })().catch(console.warn.bind(console));
 
     let timeRangeElement = null;
     if (begin_time && end_time) {
-        timeRangeElement = H`<div class="card-time">${begin_time?.toString?.() || begin_time} - ${end_time?.toString?.() || end_time}</div>`;
+        timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
     }
 
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
@@ -148,9 +155,9 @@ const getComparableTimeValue = (value: any): number => {
         return value;
     }
 
-    const date = new Date(value);
-    if (!Number.isNaN(date.getTime())) {
-        return date.getTime();
+    const date = parseDateCorrectly(value);
+    if (date && !Number.isNaN(date?.getTime())) {
+        return date?.getTime() ?? 0;
     }
 
     const match = String(value).match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?/);
@@ -184,7 +191,7 @@ export const MakeCardByDayDesc = (label: string, dir: string, item: any, dayDesc
     //
     const title = item?.desc?.title || item?.desc?.name || item?.name || label;
     const kind = item?.kind || "";
-    if (dayDesc && !insideOfDay(item, dayDesc)) return;
+    if (dayDesc && (!insideOfDay(item, dayDesc) || !notInPast(item, dayDesc))) return;
 
     //
     const fileId = item?.id || item?.name || item?.desc?.name;

@@ -75,7 +75,7 @@ export const formatPhone = (phone: string) => {
 export const wrapAsListItem = (label: string | any, item: any) => {
     if (!item) return null;
     if (label) {
-        return H`<li><span class="item-label">${label}: </span> ${item}</li>`;
+        return H`<li><span class="item-label">${label}</span>: ${item}</li>`;
     }
     return H`<li>${item}</li>`;
 }
@@ -118,7 +118,7 @@ export const formatPhoneList = (label: string | any, phones: string | string[] |
 //
 export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
     if (!text) return null;
-    if (key == "begin_time" || key == "end_time") { return; }
+    if (key == "begin_time" || key == "end_time" || key == "status") { return; }
     if (key == "phone") { return formatPhoneList(label, text); }
     if (key == "email") { return formatEmailList(label, text); }
 
