@@ -16,12 +16,12 @@
 
 //
 import type { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readMarkDowns, writeFileSmart } from "@rs-core/workers/FileSystem";
+import { readJSONs, readMarkDowns, readOneMarkDown, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 import { JSON_SCHEMES } from "../../template/Entities";
 
 //
-import { safe } from "fest/object";
+import { safe, unwrap } from "fest/object";
 import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 
@@ -33,20 +33,18 @@ export const PLANS_DIR = "/docs/plans/";
 export const EVENTS_DIR = "/data/events/";
 
 
-
-//
-const MAKE_TIMELINE_REQUEST = `
-=== BEGIN:MAKE_TIMELINE_REQUEST ===
-You are given factors, preferences, events and exists timeline and you need to be ready to make a new timeline.
-Also, you need to return keywords for timeline, which will be used for search and filter timeline (also, needed for debugging).
-If you got attached data, return \`\`\`json{ ready: true, keywords: string[] }\`\`\`, else return \`\`\`json{ ready: false, reason: string }\`\`\`.
-=== END:MAKE_TIMELINE_REQUEST ===
-`;
-
 //
 const OUTPUT_RESULTS_IN_JSON = `
+=== BEGIN:EXPLAIN_TYPES_OF_PROPERTIES ===
+\`\`\`json
+[...${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}]
+\`\`\`
+=== END:EXPLAIN_TYPES_OF_PROPERTIES ===
+
 === BEGIN:OUTPUT_RESULTS_IN_JSON ===
-Output new timelines in JSON format: \`\`\`json
+Follow by our preferences...
+
+Write and output new timeline (plans) in JSON format: \`\`\`json
 [...${JSON.stringify(JSON_SCHEMES.$task, null, 2)}]
 \`\`\`
 
@@ -59,20 +57,19 @@ Don't write anything else, just the JSON format, do not write comments, do not w
 
 
 
-
 // get only today and future tasks, and tasks in the past, but not ended (not finished)
-export const filterTasks = (timeline: any[], currentTime: Date) => {
-    return timeline?.filter?.((task) => checkRemainsTime(task?.properties?.begin_time, task?.properties?.end_time, currentTime));
+export const filterTasks = (timeline: any[], currentTime: Date, maxDays: number = 7) => {
+    return timeline?.filter?.((task) => checkRemainsTime(task?.properties?.begin_time, task?.properties?.end_time, currentTime, maxDays));
 }
 
 // get only today and future factors, and factors in the past, but not ended (not finished)
-export const filterFactors = (factors: any[], currentTime: Date) => {
-    return factors?.filter?.((factor) => checkRemainsTime(factor?.properties?.begin_time, factor?.properties?.end_time, currentTime));
+export const filterFactors = (factors: any[], currentTime: Date, maxDays: number = 7) => {
+    return factors?.filter?.((factor) => checkRemainsTime(factor?.properties?.begin_time, factor?.properties?.end_time, currentTime, maxDays));
 }
 
 // get only today and future events, and events in the past, but not ended (not finished)
-export const filterEvents = (events: any[], currentTime: Date) => {
-    return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime));
+export const filterEvents = (events: any[], currentTime: Date, maxDays: number = 7) => {
+    return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime, maxDays));
 }
 
 
@@ -91,56 +88,68 @@ export const writeTimelineTask = async (task: any) => {
     return writeFileSmart(null, filePath, file)?.catch?.(console.error.bind(console));
 }
 
+//
+export const writeTimelineTasks = async (tasks: any[]) => {
+    return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)));
+}
+
 
 
 //
-export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimeline: any | null = null) => {
-    gptResponses.attachToRequest(MAKE_TIMELINE_REQUEST);
-
+export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath: string | null = null, existsTimeline: any | null = null) => {
     // attach exists timeline
     if (existsTimeline) {
-        gptResponses.attachToRequest("current timeline: " + JSON.stringify(existsTimeline) + "\n");
+        await gptResponses.attachToRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
     }
 
     // use real-time state (oriented on current time and location)
-    gptResponses.attachToRequest("realtime states: " + JSON.stringify(safe(realtimeStates)) + "\n");
-
-    // attach some plans (except finished)
-    const plans = await readMarkDowns(PLANS_DIR);
-    gptResponses.attachToRequest("plans: " + JSON.stringify(filterTasks(plans, (realtimeStates as any)?.time)) + "\n");
-
-    // attach some preferences (except finished)
-    const preferences = await readMarkDowns(PREFERENCES_DIR);
-    gptResponses.attachToRequest("preferences: " + JSON.stringify(filterTasks(preferences, (realtimeStates as any)?.time)) + "\n");
+    await gptResponses.attachToRequest("current_states: \`" + JSON.stringify(safe(unwrap(realtimeStates))) + "\`\n");
 
     // attach some factors (except finished)
-    const factors = await readJSONs(FACTORS_DIR);
-    gptResponses.attachToRequest("factors: " + JSON.stringify(filterFactors(factors, (realtimeStates as any)?.time)) + "\n");
+    await gptResponses.attachToRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
 
     // attach some events (except finished)
-    const events = await readJSONs(EVENTS_DIR);
-    gptResponses.attachToRequest("events: " + JSON.stringify(filterEvents(events, (realtimeStates as any)?.time)) + "\n");
+    await gptResponses.attachToRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
 
-    // load into context
-    const readyStatus = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: 'No attached data', keywords: [] }");
+    // attach some plans (except finished)
+    //gptResponses.attachToRequest("plans: " + JSON.stringify(await readMarkDowns(PLANS_DIR)) + "\n");
+    //gptResponses.attachToRequest("preferences: " + JSON.stringify(await readMarkDowns(PREFERENCES_DIR)) + "\n");
+
+    //
+    await gptResponses.askToDoAction(["primary_request:",
+        "- Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
+        "- Give answer in JSON format: \`{ ready: boolean, reason: string }\`"
+    ]?.join?.("\n"));
+
+    // load all of those into context
+    const readyStatus = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
     if (!readyStatus?.ready) {
         console.error("timeline", readyStatus);
         return { timeline: [], keywords: [] };
     }
 
+    //
+    if (sourcePath) {
+        await gptResponses.attachToRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
+    } else {
+        await gptResponses.attachToRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
+    }
+
     // get timeline in results
     await gptResponses.askToDoAction(OUTPUT_RESULTS_IN_JSON);
-    const timeline = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: 'No attached data', keywords: [] }");
+    const timelines = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
 
     // log timeline
-    console.log("timeline", timeline);
+    console.log("timeline", timelines);
 
     // write timeline
-    await writeTimelineTask(timeline);
+    await writeTimelineTasks(timelines);
 
     // return timeline
-    return timeline;
+    return timelines;
 }
+
+
 
 //
 export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {

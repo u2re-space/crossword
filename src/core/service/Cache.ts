@@ -4,8 +4,8 @@ import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 //
 export const realtimeStates = makeReactive({
     time: new Date(),
-    location: null,
-    coordinates: null,
+    timestamp: Date.now(),
+    coords: {},
     otherProps: new Map([]),
 
     // for payments, id is card id, value is card balance (if available), or additional info
@@ -121,3 +121,19 @@ export const dataCategories = makeReactive([
         id: "lottery"
     })
 ]);
+
+//
+const broadcastChannel = new BroadcastChannel('geolocation');
+broadcastChannel.addEventListener('message', (e) => {
+    console.log(e.data.coords);
+    if (e.data.coords) {
+        (realtimeStates as any).coords = (typeof e.data.coords == "string" ? JSON.parse(e.data.coords) : e.data.coords) || {};
+        (realtimeStates as any).timestamp = e.data.timestamp || Date.now();
+        (realtimeStates as any).time = new Date();
+    }
+});
+
+//
+setInterval(() => {
+    (realtimeStates as any).time = new Date();
+}, 1000);

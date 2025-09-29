@@ -2,36 +2,43 @@
 const broadcastChannel = new BroadcastChannel('geolocation');
 const broadcast = (coords: GeolocationPosition) => {
     //navigator.sendBeacon('/api/geo', JSON.stringify(coords));
-    broadcastChannel.postMessage(coords);
+    broadcastChannel.postMessage({
+        timestamp: coords?.timestamp || Date.now(),
+        coords: coords?.toJSON?.() || "{}"
+    });
 }
 
 //
-let watchId: number | null = null;
-export const startTracking = () => {
+export let watchId: number | null = null;
+export const startTracking = async () => {
     if (!('geolocation' in navigator)) return;
-    watchId = navigator.geolocation.watchPosition(
+    watchId = navigator?.geolocation?.watchPosition?.(
         pos => broadcast(pos),
         err => console.error(err),
         { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 }
     );
+    return getGeolocation();
 }
 
 //
-export const stopTracking = () => {
-    if (watchId) navigator.geolocation.clearWatch(watchId);
+export const stopTracking = async () => {
+    if (watchId) navigator?.geolocation?.clearWatch?.(watchId);
     broadcastChannel.postMessage({ type: 'stop' });
+    return getGeolocation();
 }
 
 //
 broadcastChannel.addEventListener('message', (e) => {
     if (e.data.type === 'start') {
-        startTracking();
+        startTracking?.()?.catch?.(console.warn.bind(console));
     } else if (e.data.type === 'stop') {
-        stopTracking();
+        stopTracking?.()?.catch?.(console.warn.bind(console));
     }
 });
 
 //
 export const getGeolocation = async () => {
-    return new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+    const location = new Promise<GeolocationPosition>((resolve, reject) => navigator?.geolocation?.getCurrentPosition?.(resolve, reject));
+    location?.then?.(broadcast)?.catch?.(console.warn.bind(console));
+    return location;
 }

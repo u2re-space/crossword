@@ -3,35 +3,42 @@ import { makeReactive } from "fest/object";
 //
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
     // after begins and before ends
-    if (beginTime && endTime) {
+    if (beginTime && endTime) { // optional, used for notification or alarm
         return new Date(beginTime) < currentTime && currentTime < new Date(endTime);
     }
     // after begins
-    if (beginTime) {
+    if (beginTime) { // optional, used for notification or alarm
         return new Date(beginTime) < currentTime;
     }
     // before ends
-    if (endTime) {
+    if (endTime) { // optional, used for notification or alarm
         return currentTime < new Date(endTime);
     }
     return false;
 }
 
 //
-export const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Date) => {
-    // utils begins and before ends
-    if (beginTime && endTime) {
-        return new Date(beginTime) > currentTime && currentTime < new Date(endTime);
-    }
+export const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Date, maxDays: number = 7) => {
+    let factorMasked = true;
+
     // utils begins
-    if (beginTime) {
-        return new Date(beginTime) > currentTime;
+    if (beginTime) { // optional, used for notification or alarm
+        factorMasked &&= currentTime <= new Date(beginTime);
     }
-    // before ends
-    if (endTime) {
-        return currentTime < new Date(endTime);
+
+    // utils ends
+    if (endTime) { // optional, used for notification or alarm
+        factorMasked &&= currentTime < new Date(endTime);
     }
-    return false;
+
+    // if maxDays is set, check if the time is within the next maxDays days
+    if (maxDays) {
+        const dateLimit = new Date(currentTime.getTime() + maxDays * 24 * 60 * 60 * 1000);
+        factorMasked &&= new Date(beginTime) < dateLimit;
+    }
+
+    //
+    return factorMasked;
 }
 
 //

@@ -177,6 +177,14 @@ export const readMarkDowns = async (dir: any | null) => {
 }
 
 //
+export const readOneMarkDown = async (path: string) => {
+    const handle = await getDirectoryHandle(null, path);
+    const markdown = await handle?.getFile?.();
+    if (!markdown) return null;
+    return await markdown?.text?.();
+}
+
+//
 export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
     return entityTypes?.map?.((entityType) => {
         return (entityType != "timeline" && entityType != "task") ? `/data/${entityType}/` : "/timeline/";

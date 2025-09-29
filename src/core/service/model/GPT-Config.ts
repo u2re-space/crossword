@@ -6,14 +6,14 @@ export type DataInput = {
 
 //
 export const PROMPT_COMPUTE_EFFORT = (data: DataInput) => {
-    if (data.dataSource instanceof Blob || data.dataSource instanceof File) {
-        if (data.dataKind === "image") return "medium";
+    if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
+        if (data?.dataKind === "image") return "medium";
         return "medium";
     }
-    if (typeof data.dataSource === "string") {
-        if (data.dataSource.includes("math")) return "high";
-        if (data.dataSource.includes("url")) return "medium";
-        if (data.dataSource.includes("input_text")) return "medium";
+    if (typeof data?.dataSource === "string") {
+        if (data?.dataSource?.includes?.("math")) return "high";
+        if (data?.dataSource?.includes?.("url")) return "medium";
+        if (data?.dataSource?.includes?.("input_text")) return "medium";
         return "medium";
     }
     return "medium";
@@ -22,16 +22,16 @@ export const PROMPT_COMPUTE_EFFORT = (data: DataInput) => {
 //
 export const COMPUTE_TEMPERATURE = (data: DataInput) => {
     // math needs more reasoning than creativity
-    if (data.dataKind === "math") return 0.2;
+    if (data?.dataKind === "math") return 0.2;
 
     // don't know...
-    if (data.dataKind === "url") return 0.4;
+    if (data?.dataKind === "url") return 0.4;
 
     // needs to some working for better understanding of image
-    if (data.dataKind === "input_image") return 0.5;
+    if (data?.dataKind === "input_image") return 0.5;
 
     // texts needs to be bit creative
-    if (data.dataKind === "input_text") return 0.6;
+    if (data?.dataKind === "input_text") return 0.6;
 
     // default level
     return 0.5;
@@ -52,8 +52,8 @@ export const typesForKind: Record<DataKind, "input_text" | "image_url" | "input_
 
 //
 export const getDataKindByMIMEType = (mime: string): DataKind => {
-    if (mime.includes("image")) return "input_image";
-    if (mime.includes("url")) return "input_url";
+    if (mime?.includes?.("image")) return "input_image";
+    if (mime?.includes?.("url")) return "input_url";
     return "input_text";
 }
 

@@ -35,17 +35,17 @@ const makeObjectEntries = (object: any) => {
     return [];
 }
 
-function countLines(text) {
+function countLines(text: string | any) {
     if (!text) {
         return 0; // Handle empty or null input
     }
-    return text.split(/\r\n|\r|\n/).length;
+    return Array.isArray(text) ? text?.length : text?.split?.(/\r\n|\r|\n/)?.length;
 }
 
 //
-const wrapBySpan = (text: string) => {
+const wrapBySpan = (text: string | any) => {
     if (!text) return "";
-    return `<span>${text}</span>`;
+    return `<span>${Array.isArray(text) ? text?.join?.(",") : text}</span>`;
 }
 
 //
@@ -79,7 +79,7 @@ export const MakeCardElement = (label: string, item: any, events: any, options: 
 
     let timeRangeElement = null;
     if (begin_time && end_time) {
-        timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
+        timeRangeElement = H`<div class="card-time">${begin_time?.toString?.() || begin_time} - ${end_time?.toString?.() || end_time}</div>`;
     }
 
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
