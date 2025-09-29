@@ -36,6 +36,58 @@ Such idea used for make simpler search, filtering and sorting of entities.
 `;
 
 
+export const AI_OUTPUT_GUIDE = `
+=== BEGIN:AI_OUTPUT_GUIDE ===
+Goal: produce a JSON object that always contains a "task" description plus a single "entity" description.
+
+1. Always return a JSON object with two top-level fields: { "task": {...}, "entity": {...} }.
+2. Fill "task" using the schema noted as $task. It describes the related task context.
+   - Use "desc" for display properties: { "name", "icon", "title", "tags" }.
+   - Use "kind" from the allowed values for tasks and set "status" inside "properties.status".
+   - Provide timing values using ISO-8601 strings when unsure of exact timestamps.
+   - Put location references by ID or coordinates inside "properties.location".
+3. Fill "entity" with exactly one entity block from $entities.
+   - Choose the block whose "kind" matches the real-world thing you are describing.
+   - Every entity must include: { "desc", "kind", "variant" (if allowed), "properties": {...} }.
+   - Keep "properties" focused on structured facts. Use arrays or IDs where the schema expects them.
+4. Prefer IDs that can exist in the user's system. Reuse task IDs and entity IDs to keep relations consistent.
+5. When a field is optional and information is unknown, omit it completely instead of guessing.
+6. Do not invent extra top-level keys (no "meta", "notes", etc.). Use only the names defined in the schema.
+7. Return compact JSON without markdown, code fences, or commentary.
+
+Example skeleton:
+{
+  "task": {
+    "desc": { "name": "...", "icon": "...", "title": "...", "tags": ["..."] },
+    "kind": "target",
+    "variant": "green",
+    "description": "Plain text or markdown",
+    "image": ["https://..."],
+    "properties": {
+      "status": "in_progress",
+      "location": "entity-id-or-coordinates",
+      "members": ["entity-id"],
+      "actions": ["entity-id"]
+    }
+  },
+  "entity": {
+    "desc": { "name": "..." },
+    "kind": "service",
+    "variant": "purple",
+    "description": "...",
+    "image": [],
+    "properties": {
+      "location": "entity-id-or-coordinates",
+      "contacts": { "name": "...", "phone": ["..."] },
+      "tasks": ["task-id"]
+    }
+  }
+}
+
+=== END:AI_OUTPUT_GUIDE ===
+`;
+
+
 
 
 
@@ -133,6 +185,7 @@ export const COLOR_VARIANT_SCHEME = {
 //
 export const SHARED_DEFS = {
     Icon: ICON_SCHEME,
+    ColorVariant: COLOR_VARIANT_SCHEME,
     Coordinates: COORDINATES_SCHEME,
     Contact: CONTACT_SCHEME,
     Tags: TAGS_SCHEME,
@@ -700,8 +753,9 @@ export const JSON_SCHEMES = {
 
 //
 export const AI_OUTPUT_SCHEMA = {
+    description: "AI responses must follow the guide in AI_OUTPUT_GUIDE: always reply with { task, entity }.",
     task: JSON_SCHEMES.$task,
-    oneOf: [
+    entityOneOf: [
         JSON_SCHEMES.$entities.location,
         JSON_SCHEMES.$entities.vendor,
         JSON_SCHEMES.$entities.market,

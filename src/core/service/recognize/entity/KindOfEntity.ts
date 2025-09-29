@@ -62,7 +62,9 @@ Output in JSON format: \`\`\`json
     }
 
     //
-    await gptResponses.askToDoAction([askAboutRelated()?.trim?.(), explainAboutAvailableKindsPerType()?.trim?.(), askAboutKind()?.trim?.()].join?.("\n")?.trim?.());
+    await gptResponses.giveForRequest(explainAboutAvailableKindsPerType()?.trim?.());
+    await gptResponses.giveForRequest(askAboutRelated()?.trim?.());
+    await gptResponses.askToDoAction(askAboutKind()?.trim?.());
     const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
     console.log("Second step response: ", parsed);
     return parsed;

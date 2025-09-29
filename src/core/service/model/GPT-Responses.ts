@@ -106,7 +106,15 @@ export class GPTResponses {
         return this.pending[this.pending.length - 1];
     }
 
-
+    //
+    async giveForRequest(whatIsIt: string) {
+        this.pending.push({
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "Additional data for request: " }, { type: "input_text", text: whatIsIt }]
+        });
+        return this.pending[this.pending.length - 1];
+    }
 
     // for responses (not first requests)
     async askToDoAction(action: string) {

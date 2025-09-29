@@ -101,23 +101,6 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 
     // phase 3 - convert data to target format, make final description
     const resultEntity = (await resolveEntity(entityTypedDesc, entityRelations, gptResponses)?.catch?.(console.warn.bind(console))) || [];
-    resultEntity?.forEach((resultEntity: any, i: number) => {
-        const resolvedType = entityTypedDesc?.[i]?.entityType || entityTypedDesc?.[0]?.entityType || 'unknown';
-
-        //
-        const timeStamp = Date.now();
-        const fileName = (resultEntity?.id || resultEntity?.name || resultEntity?.desc?.name || timeStamp)
-            ?.toString?.()
-            ?.toLowerCase?.()
-            ?.replace?.(/\s+/g, '-')
-            ?.replace?.(/[^a-z0-9_\-+#&]/g, '-') || timeStamp;
-        const outDir = "/data/" + resolvedType + "/";
-
-        //
-        console.log(resolvedType, resultEntity);
-    });
-
-    //
     const resultEntities = Array.isArray(resultEntity) ? resultEntity : [resultEntity];
     return { resultEntities, entityTypedDesc };
 }
@@ -268,8 +251,8 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         //
         try {
             const { resultEntities, entityTypedDesc } = await initiateConversionProcedure(source);
-            resultEntities.forEach((resultEntity, i) => {
-                results.push(queueEntityForWriting(resultEntity, entityTypedDesc?.[i] ?? entityTypedDesc?.[0] ?? entityTypedDesc, idx++, "json"));
+            resultEntities.forEach((entityDesc) => {
+                results.push(queueEntityForWriting(entityDesc?.entity, entityDesc, idx++, "json"));
             });
         } catch (err) {
             results.push({ status: 'error', error: String(err) });

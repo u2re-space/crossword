@@ -18,7 +18,7 @@ export const recognizeEntityType = async (gptResponses: GPTResponses) => {
         "Choice most suitable entity types from following list of schemes: ",
         `\`\`\`json
 ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
-\`\`\``, "=== END:EXPLAIN_SCHEMES ==="]
+\`\`\``, "=== END:EXPLAIN_SCHEMES ==="]?.map?.((instruction) => instruction?.trim?.());
 
     //
     const explainSharedTypes = [
@@ -28,25 +28,20 @@ ${JSON.stringify(JSON_SCHEMES.$entities, null, 2)}
 ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 \`\`\``,
         "=== END:EXPLAIN_SHARED_TYPES ==="
-    ]
+    ]?.map?.((instruction) => instruction?.trim?.());
 
     //
     const askRequestMsg = [
         "=== BEGIN:ASK_REQUEST_MSG ===",
         "Request: Output in JSON format: \`[...{ entityType: string, potentialName: string }]\`.",
         "=== END:ASK_REQUEST_MSG ==="
-    ]
-
-    //
-    const firstStep = [
-        `${ABOUT_NAME_ID_GENERATION}`,
-        "", "", ...explainSchemes,
-        "", "", ...explainSharedTypes,
-        "", "", ...askRequestMsg
     ]?.map?.((instruction) => instruction?.trim?.());
 
     // use same context for first step...
-    await gptResponses.askToDoAction(firstStep?.join?.("\n"))
+    await gptResponses.giveForRequest(ABOUT_NAME_ID_GENERATION);
+    await gptResponses.giveForRequest(explainSchemes?.join?.("\n"));
+    await gptResponses.giveForRequest(explainSharedTypes?.join?.("\n"));
+    await gptResponses.askToDoAction(askRequestMsg?.join?.("\n"))
     const parsed = JSON.parse(await gptResponses.sendRequest() || "[]");
     console.log("First step response: ", parsed);
     return Array.isArray(parsed) ? parsed : [{

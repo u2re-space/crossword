@@ -6,7 +6,7 @@
 
 //
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { ABOUT_NAME_ID_GENERATION, JSON_SCHEMES } from '@rs-core/template/Entities';
+import { ABOUT_NAME_ID_GENERATION, AI_OUTPUT_GUIDE, JSON_SCHEMES } from '@rs-core/template/Entities';
 import { safe } from "fest/object";
 import type { BonusEntity, EntityDesc } from "@rs-core/template/EntitiesTyped";
 
@@ -43,7 +43,7 @@ export const resolveEntity = async (
 ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
 \`\`\``,
             "=== END:EXPLAIN_TYPES ===",
-        ]
+        ]?.map?.((instruction) => instruction?.trim?.());
     }
 
     //
@@ -57,7 +57,7 @@ ${JSON.stringify(JSON_SCHEMES.$defs, null, 2)}
             `\`\`\`json
 ${preloadShortNames()}
 \`\`\``, "=== END:RESOLVE_STEP ==="
-        ]
+        ]?.map?.((instruction) => instruction?.trim?.());
     }
 
     //
@@ -74,15 +74,16 @@ ${preloadShortNames()}
         }*/
 
     //
-    const resolveStep = [
-        "", "", `${ABOUT_NAME_ID_GENERATION}`,
-        "", "", ...explainTypes(),
-        "", "", ...askResolveStep(),
+    const explainStep = [
+        "", "", ABOUT_NAME_ID_GENERATION,
+        "", "", AI_OUTPUT_GUIDE,
+        "", "", ...explainTypes()
     //"", "", ...howPackResolvedEntities(),
     ]?.map?.((instruction) => instruction?.trim?.());
 
     //
-    await gptResponses.askToDoAction(resolveStep?.join?.("\n"));
+    await gptResponses.giveForRequest(explainStep?.join?.("\n"));
+    await gptResponses.askToDoAction(askResolveStep()?.join?.("\n"));
     const parsed = JSON.parse(await gptResponses.sendRequest() || "{}");
     console.log("Step 3 response - resolve entity response: ", parsed);
     return parsed;

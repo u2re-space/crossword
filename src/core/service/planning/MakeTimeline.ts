@@ -99,7 +99,7 @@ export const writeTimelineTasks = async (tasks: any[]) => {
 export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath: string | null = null, existsTimeline: any | null = null) => {
     // attach exists timeline
     if (existsTimeline) {
-        await gptResponses.attachToRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
+        await gptResponses.giveForRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
     }
 
     //
@@ -112,17 +112,17 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
     });
 
     // use real-time state (oriented on current time and location)
-    await gptResponses.attachToRequest("current_states: \`" + encodedRealtimeState + "\`\n");
+    await gptResponses.giveForRequest("current_states: \`" + encodedRealtimeState + "\`\n");
 
     // attach some factors (except finished)
-    await gptResponses.attachToRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+    await gptResponses.giveForRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
 
     // attach some events (except finished)
-    await gptResponses.attachToRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+    await gptResponses.giveForRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
 
     // attach some plans (except finished)
-    //gptResponses.attachToRequest("plans: " + JSON.stringify(await readMarkDowns(PLANS_DIR)) + "\n");
-    //gptResponses.attachToRequest("preferences: " + JSON.stringify(await readMarkDowns(PREFERENCES_DIR)) + "\n");
+    //gptResponses.giveForRequest("plans: " + JSON.stringify(await readMarkDowns(PLANS_DIR)) + "\n");
+    //gptResponses.giveForRequest("preferences: " + JSON.stringify(await readMarkDowns(PREFERENCES_DIR)) + "\n");
 
     //
     await gptResponses.askToDoAction(["primary_request:",
@@ -139,9 +139,9 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
 
     //
     if (sourcePath) {
-        await gptResponses.attachToRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
+        await gptResponses.giveForRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
     } else {
-        await gptResponses.attachToRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
+        await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
     }
 
     // get timeline in results
