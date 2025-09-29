@@ -1,4 +1,4 @@
-import { H, getDirectoryHandle, removeFile } from "fest/lure";
+import { H, Q, getDirectoryHandle, removeFile } from "fest/lure";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 
 //
@@ -310,13 +310,29 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
     const list = H`<ul class="doc-list" role="list"></ul>` as HTMLElement;
     const emptyState = H`<div class="doc-empty-state"></div>` as HTMLElement;
 
+    const sidebarId = `doc-sidebar-${Math.random().toString(36).slice(2, 10)}`;
+    listContainer.id = sidebarId;
+
+    const sidebarToggleLabel = H`<span>Browse documents</span>` as HTMLSpanElement;
+    const sidebarToggle = H`<button type="button" class="doc-sidebar-toggle" aria-expanded="false" aria-controls=${sidebarId}>
+        <ui-icon icon="list-bullets"></ui-icon>
+        ${sidebarToggleLabel}
+        <ui-icon class="doc-sidebar-toggle-chev" icon="caret-down"></ui-icon>
+    </button>` as HTMLButtonElement;
+
     const preview = H`<section class="doc-preview" aria-live="polite"></section>` as HTMLElement;
     preview.append(H`<div class="doc-preview-placeholder">Select a document to preview it.</div>`);
 
+    //const sidebar = Q((el) => { return el; }); ref=${sidebar}
+    const sidebarPaneId = `${sidebarId}-pane`;
     const main = H`<div class="doc-body">
-        <div class="doc-pane is-sidebar">${[searchField, listContainer]}</div>
+        ${sidebarToggle}
+        <div class="doc-pane is-sidebar" id=${sidebarPaneId} >${[searchField, listContainer]}</div>
         <div class="doc-pane is-preview">${preview}</div>
     </div>` as HTMLElement;
+
+    const sidebarPane = main.querySelector<HTMLElement>(".doc-pane.is-sidebar")!;
+    sidebarToggle.setAttribute("aria-controls", sidebarPane.id || sidebarPaneId);
 
     listContainer.append(list, emptyState);
     root.append(tabsNav, main, header);
@@ -325,6 +341,36 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
     const primaryBar = H`<div class="doc-actions primary"></div>` as HTMLElement;
     const secondaryBar = H`<div class="doc-actions secondary"></div>` as HTMLElement;
     actionArea.append(primaryBar, secondaryBar);
+
+    const setSidebarExpanded = (expanded: boolean) => {
+        sidebarToggle.setAttribute("aria-expanded", String(expanded));
+        sidebarToggle.classList.toggle("is-open", expanded);
+        sidebarToggleLabel.textContent = expanded ? "Hide documents" : "Browse documents";
+        root.toggleAttribute("data-sidebar-open", expanded);
+        sidebarPane.toggleAttribute("data-open", expanded);
+    };
+
+    const toggleSidebar = () => {
+        const expanded = sidebarToggle.getAttribute("aria-expanded") === "true";
+        setSidebarExpanded(!expanded);
+    };
+
+    sidebarToggle.addEventListener("click", toggleSidebar);
+
+    let disposeSidebarMedia: (() => void) | null = null;
+    if (typeof window !== "undefined") {
+        const mediaQuery = window.matchMedia("(max-width: 960px)");
+        const handleChange = (event: MediaQueryList | MediaQueryListEvent) => {
+            const matches = "matches" in event ? event.matches : (event as MediaQueryList).matches;
+            setSidebarExpanded(!matches);
+        };
+        handleChange(mediaQuery);
+        const listener = (event: MediaQueryListEvent) => handleChange(event);
+        mediaQuery.addEventListener("change", listener);
+        disposeSidebarMedia = () => mediaQuery.removeEventListener("change", listener);
+    } else {
+        setSidebarExpanded(true);
+    }
 
     const renderPrimaryActions = () => {
         primaryBar.replaceChildren();
@@ -500,7 +546,12 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
             </div>
             <div class="doc-entry-actions"></div>
         </button>` as HTMLButtonElement;
-        button.addEventListener("click", () => openEntry(entry));
+        button.addEventListener("click", () => {
+            openEntry(entry);
+            if (typeof window !== "undefined" && window.matchMedia("(max-width: 960px)").matches) {
+                setSidebarExpanded(false);
+            }
+        });
         const actionsHost = button.querySelector<HTMLElement>(".doc-entry-actions");
         if (actionsHost && entryActionFactories.length) {
             entryActionFactories.forEach((factory) => {
@@ -667,6 +718,8 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
             document.removeEventListener("rs-fs-changed", fsChangedHandler);
             fsChangedHandler = null;
         }
+        disposeSidebarMedia?.();
+        disposeSidebarMedia = null;
         stopAllWatchers();
         entries.forEach((entry) => entry.dispose?.());
         entries.clear();

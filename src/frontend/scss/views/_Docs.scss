@@ -231,7 +231,54 @@
 
         @media (max-width: 960px) {
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: minmax(0, max-content) minmax(0, 1fr);
+            grid-template-rows: minmax(0, max-content) minmax(0, max-content) minmax(0, 1fr);
+        }
+    }
+
+    .doc-sidebar-toggle {
+        //display: none;
+        grid-column: 1 / -1;
+        inline-size: 100%;
+        justify-self: stretch;
+        border: 0;
+        background: color-mix(in oklab, var(--current, #0f172a) 12%, transparent);
+        color: --c2-on-surface(0, var(--current, currentColor));
+        font: inherit;
+        padding: clamp(0.55rem, 0.8vw, 0.9rem) clamp(0.75rem, 1vw, 1.15rem);
+        border-radius: clamp(0.7rem, 0.8vw, 0.95rem);
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: clamp(0.4rem, 0.8vw, 0.7rem);
+        cursor: pointer;
+        transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+
+        &:hover {
+            background: color-mix(in oklab, var(--current, #2563eb) 18%, transparent);
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+
+        ui-icon {
+            --icon-size: clamp(1.05rem, 1.3cqi, 1.15rem);
+            --icon-color: currentColor;
+            transition: transform 180ms ease;
+        }
+
+        &.is-open .doc-sidebar-toggle-chev {
+            transform: rotate(180deg);
+        }
+
+        span {
+            font-weight: 600;
+            font-size: clamp(0.88rem, 0.5cqi + 0.8rem, 0.98rem);
+        }
+
+        @media (min-width: 961px) {
+            display: none !important;
         }
     }
 
@@ -254,6 +301,7 @@
         &.is-sidebar {
             position: relative;
             overflow: hidden;
+            max-block-size: stretch;
 
             grid-template-rows: minmax(0px, max-content) minmax(0px, 1fr);
             background-color: --c2-surface(0.04, var(--current, transparent));
@@ -272,6 +320,7 @@
         &.is-preview {
             background: color-mix(in oklab, var(--current, #0f172a) 12%, transparent);
             background-color: --c2-surface(0.04, var(--current, transparent));
+            max-block-size: stretch;
             //box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
         }
 
@@ -279,13 +328,31 @@
             &.is-sidebar {
                 padding: 0.125rem;
                 grid-column: 1 / -1;
-                grid-row: 1 / 1 span;
+                grid-row: 2;
+                transition: max-block-size 220ms ease, opacity 180ms ease;
+                max-block-size: clamp(18rem, 60vh, 24rem);
+                overflow: hidden;
+                opacity: 1;
+                box-shadow: none;
+
+                &:not([data-open]) {
+                    transition: max-block-size 220ms ease, opacity 180ms ease;
+                    max-block-size: 0;
+                    opacity: 0;
+                }
             }
 
             &.is-preview {
                 padding: 0.125rem;
                 grid-column: 1 / -1;
-                grid-row: 2 / 2 span;
+                grid-row: 3;
+
+                /*
+                &:not([data-open]) {
+                    transition: max-block-size 220ms ease, opacity 180ms ease;
+                    max-block-size: 0;
+                    opacity: 0;
+                }*/
             }
         }
     }
