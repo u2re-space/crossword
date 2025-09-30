@@ -8,7 +8,7 @@ export const getUsableData = async (data: DataInput) => {
             const URL = BASE64URL + await (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64" }));
             return {
                 "type": "input_image",
-                "detail": "high",
+                "detail": "auto",
                 "image_url": URL
             }
         }
@@ -19,7 +19,7 @@ export const getUsableData = async (data: DataInput) => {
                 return {
                     "type": "input_image",
                     "image_url": data?.dataSource,// @ts-ignore
-                    "detail": "high"
+                    "detail": "auto"
                 }
             }
 

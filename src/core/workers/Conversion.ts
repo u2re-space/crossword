@@ -120,9 +120,7 @@ export const copyAsTeX = async (target: HTMLElement) => {
                 type: "gpt:recognize",
                 input: [{
                     role: "user",
-                    content: [
-                        { type: "input_image", image_url: dataUrl, detail: "high" }
-                    ]
+                    content: [{ type: "input_image", image_url: dataUrl, detail: "auto" }]
                 }]
             });
             LaTeX = res?.data?.output?.at?.(-1)?.content?.[0]?.text || LaTeX;

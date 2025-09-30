@@ -50,14 +50,110 @@
         --card-avatar-size: 40px;
     }
 
-    [data-type="day"] {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
+    .timeline-day {
+        display: grid;
+        gap: clamp(0.6rem, 1vw, 0.85rem);
+        padding: clamp(0.45rem, 0.8vw, 0.75rem);
+        border-radius: clamp(0.6rem, 0.9vw, 0.85rem);
         background-color: --c2-surface(0.0, var(--current, currentColor));
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+        color: --c2-on-surface(0.0, var(--current, currentColor));
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        inline-size: stretch;
+        block-size: max-content;
+
+        &, & * {
+            line-height: normal;
+        }
+
+        &[data-variant="purple"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 0) / 1); }
+        &[data-variant="green"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 60) / 1); }
+        &[data-variant="blur"] { --current: oklch(from var(--primary, currentColor) l c calc(h + 120) / 1); }
+
+        .timeline-day-header {
+            display: grid;
+            gap: clamp(0.3rem, 0.6vw, 0.5rem);
+            cursor: pointer;
+
+            .timeline-day-divider {
+                display: grid;
+                place-items: center;
+                gap: clamp(0.3rem, 0.5vw, 0.45rem);
+                position: relative;
+                inline-size: 100%;
+                block-size: max-content;
+                padding-block: clamp(0.35rem, 0.6vw, 0.5rem);
+
+                &::before,
+                &::after {
+                    content: "";
+                    inline-size: 100%;
+                    block-size: 1px;
+                    background: color-mix(in oklab, var(--current, currentColor) 24%, transparent);
+                    position: relative;
+                }
+
+                span {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0.2rem 0.6rem;
+                    border-radius: 999px;
+                    background: color-mix(in oklab, var(--current, currentColor) 16%, transparent);
+                    color: --c2-on-surface(-0.08, var(--current, currentColor));
+                    font-weight: 600;
+                    font-size: clamp(0.85rem, 0.5cqi + 0.78rem, 0.95rem);
+                    text-transform: capitalize;
+                }
+
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                place-items: center;
+                gap: clamp(0.35rem, 0.7vw, 0.6rem);
+
+                span {
+                    grid-column: 2;
+                    white-space: nowrap;
+                }
+
+                &::before { grid-column: 1; }
+                &::after { grid-column: 3; }
+            }
+
+            .timeline-day-meta {
+                margin: 0;
+                text-align: center;
+                color: --c2-on-surface(0.12, var(--current, currentColor));
+                font-size: clamp(0.78rem, 0.4cqi + 0.7rem, 0.9rem);
+                letter-spacing: 0.01em;
+            }
+        }
+
+        .timeline-day-body {
+            display: grid;
+            gap: clamp(0.4rem, 0.8vw, 0.6rem);
+            padding: clamp(0.35rem, 0.6vw, 0.5rem);
+            border-radius: clamp(0.45rem, 0.7vw, 0.65rem);
+            background: color-mix(in oklab, var(--current, currentColor) 6%, transparent);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+            min-block-size: max-content;
+            block-size: max-content;
+            line-height: normal;
+
+            &:focus-visible {
+                outline: 2px solid color-mix(in oklab, var(--current, currentColor) 32%, transparent);
+                outline-offset: 2px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            padding: clamp(0.35rem, 3vw, 0.5rem);
+
+            .timeline-day-body {
+                gap: clamp(0.3rem, 1vw, 0.45rem);
+            }
+        }
     }
 
     [data-type="tasks"],
@@ -97,6 +193,13 @@
             padding: 0;
             margin: 0;
             display: inline;
+            text-overflow: ellipsis;
+            //white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .card-title {
+            white-space: nowrap;
         }
 
         & {

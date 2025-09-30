@@ -55,10 +55,12 @@ export const isDate = (date: any) => {
 
 //
 export const insideOfDay = (item: any, dayDesc: any) => {
-    return (
+    const inRange = (
         parseAndGetCorrectTime(item?.properties?.begin_time) >= parseAndGetCorrectTime(dayDesc?.begin_time) &&
         parseAndGetCorrectTime(item?.properties?.end_time) <= parseAndGetCorrectTime(dayDesc?.end_time)
-    ) || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
+    );
+    const matchesFilter = dayDesc?.filter ? item?.properties?.status == dayDesc?.filter : true;
+    return Boolean(inRange && matchesFilter);
 }
 
 //
@@ -68,6 +70,54 @@ export const notInPast = (item: any, dayDesc?: any) => {
 }
 
 //
+export const getISOWeekNumber = (input: Date | null | undefined): number | null => {
+    if (!input) return null;
+    const target = new Date(Date.UTC(input.getFullYear(), input.getMonth(), input.getDate()));
+    const dayNumber = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+};
+
+export const createDayDescriptor = (input: Date | null | undefined, partial: Record<string, any> = {}) => {
+    if (!input) return null;
+
+    const dayBegin = new Date(input.getTime());
+    dayBegin.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(input.getTime());
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dayDay = dayBegin.toLocaleDateString("en-US", { day: "numeric" });
+    const dayWeekday = dayBegin.toLocaleDateString("en-US", { weekday: "short" });
+    const dayMonth = dayBegin.toLocaleDateString("en-US", { month: "short" });
+    const dayTitle = `${dayDay} ${dayMonth} ${dayWeekday}`;
+
+    const dayDayForId = dayBegin.toLocaleDateString("en-US", { day: "numeric" });
+    const dayMonthForId = dayBegin.toLocaleDateString("en-US", { month: "numeric" });
+    const dayYearForId = dayBegin.toLocaleDateString("en-US", { year: "numeric" });
+    const dayId = `${dayDayForId}_${dayMonthForId}_${dayYearForId}`;
+
+    const fullDay = dayBegin.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+    const weekNumber = getISOWeekNumber(dayBegin);
+    const separatorTitle = weekNumber ? `${fullDay} · Week ${weekNumber}` : fullDay;
+
+    return {
+        id: dayId,
+        title: dayTitle,
+        begin_time: dayBegin.toISOString(),
+        end_time: dayEnd.toISOString(),
+        separatorTitle,
+        weekNumber,
+        ...partial
+    };
+};
+
 export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | null = null) => {
     daysDesc ??= makeReactive([] as any[]) as any[];
 
@@ -90,33 +140,10 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
             // if day not found and isn't past
             if (!day && (parseAndGetCorrectTime(endTime) >= parseAndGetCorrectTime())) {
                 // create day (floor and ceiling times into day)
-                const dayBeginTime = parseDateCorrectly(beginTime); dayBeginTime?.setHours?.(0, 0, 0, 0);
-                const dayEndTime = parseDateCorrectly(beginTime); dayEndTime?.setHours?.(23, 59, 59, 999);
-
-                // make ID by [dd_mm_yyyy]
-                // make title by [dd Month Weekday]
-                const dayDay = dayBeginTime?.toLocaleDateString?.("en-US", { day: "numeric" });
-                const dayWeekday = dayBeginTime?.toLocaleDateString?.("en-US", { weekday: "short" });
-                const dayMonth = dayBeginTime?.toLocaleDateString?.("en-US", { month: "short" });
-                const dayTitle = `${dayDay} ${dayMonth} ${dayWeekday}`;
-
-                //
-                const dayDayForId = dayBeginTime?.toLocaleDateString?.("en-US", { day: "numeric" });
-                const dayMonthForId = dayBeginTime?.toLocaleDateString?.("en-US", { month: "numeric" });
-                const dayYearForId = dayBeginTime?.toLocaleDateString?.("en-US", { year: "numeric" });
-                const dayId = `${dayDayForId}_${dayMonthForId}_${dayYearForId}`;
-
-                // unused for named with day title
-                const dayFilter = "";
-
-            // create day
-                daysDesc?.push?.(day ??= {
-                    id: dayId,
-                    filter: dayFilter,
-                    title: dayTitle,
-                    begin_time: dayBeginTime?.toISOString(),
-                    end_time: dayEndTime?.toISOString()
-                });
+                const dayDescriptor = createDayDescriptor(beginTime, { filter: "" });
+                if (dayDescriptor) {
+                    daysDesc?.push?.(day ??= dayDescriptor);
+                }
             }
         }
     }

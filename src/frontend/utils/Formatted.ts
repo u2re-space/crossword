@@ -5,7 +5,7 @@ import { getDirectoryHandle, H, M } from "fest/lure";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
-import { insideOfDay } from "@rs-core/utils/TimeUtils";
+import { insideOfDay, parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
 
 
 //
@@ -79,6 +79,59 @@ export const wrapAsListItem = (label: string | any, item: any) => {
     }
     return H`<li>${item}</li>`;
 }
+
+//
+const ensureDate = (value: any): Date | null => {
+    if (!value) return null;
+    const parsed = parseDateCorrectly(value);
+    if (!parsed) return null;
+    const time = parsed.getTime?.();
+    return Number.isFinite(time) ? parsed : null;
+};
+
+const resolveBeginDate = (dayDesc: any): Date | null => {
+    return ensureDate(dayDesc?.begin_time ?? dayDesc?.properties?.begin_time ?? dayDesc?.start);
+};
+
+const buildPrimaryDayTitle = (dayDesc: any): string => {
+    const preset = dayDesc?.separatorTitle;
+    if (typeof preset === "string" && preset.trim()) {
+        return preset;
+    }
+
+    const date = resolveBeginDate(dayDesc);
+    if (!date) {
+        return dayDesc?.title || dayDesc?.id || "Day";
+    }
+
+    const formatted = date.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+    const week = dayDesc?.weekNumber ?? getISOWeekNumber(date);
+    if (week && formatted) {
+        return `${formatted} · Week ${week}`;
+    }
+    return formatted;
+};
+
+const buildSecondaryDayTitle = (dayDesc: any, primary: string): string | null => {
+    const label = dayDesc?.title;
+    if (!label) return null;
+    if (!primary) return label;
+    return label.trim() === primary.trim() ? null : label;
+};
+
+const makeDayHeader = (dayDesc: any, onToggle: (ev: Event) => void) => {
+    const primary = buildPrimaryDayTitle(dayDesc);
+    const secondary = buildSecondaryDayTitle(dayDesc, primary);
+    return H`<header class="timeline-day-header" on:click=${onToggle}>
+        <div class="timeline-day-divider"><span>${primary}</span></div>
+        ${secondary ? H`<p class="timeline-day-meta">${secondary}</p>` : null}
+    </header>`;
+};
 
 //
 export const listFormatter = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, formatter: (frag: any) => any) => {
@@ -322,13 +375,18 @@ export const $ShowItemsByDay = (DIR: string = TIMELINE_DIR, dayDesc: any | null 
     });
 
     //
-    const toggleOpen = (ev: any) => {
-        const el = ev.currentTarget as HTMLElement;
-        if (el?.matches?.('.day-item')) el.toggleAttribute?.('data-open');
+    const toggleOpen = (ev: Event) => {
+        const el = ev.currentTarget as HTMLElement | null;
+        const section = el?.closest?.('.timeline-day');
+        if (section) section.toggleAttribute?.('data-open');
     }
 
     //
-    const root = H`<div data-type="day" style="gap: 0.25rem; background-color: --c2-surface(0.0, var(--current, currentColor));" class="day-item" data-variant=${dayDesc.variant} on:click=${toggleOpen}>${items}</div>`;
+    const header = makeDayHeader(dayDesc, toggleOpen);
+    const root = H`<section class="timeline-day" data-type="day" data-status=${dayDesc?.filter ?? "all"} data-variant=${dayDesc?.variant}>
+        ${header}
+        <div class="timeline-day-body">${items}</div>
+    </section>`;
 
     //
     items.boundParent = root;

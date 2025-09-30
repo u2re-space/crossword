@@ -9,20 +9,72 @@
 
     .app-layout {
 
-        .tab, .day-item {
-            display: flex;
+        .timeline-tab {
+            overflow: hidden auto;
+            scrollbar-width: thin;
+            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+            gap: 1rem;
+            margin-inline: 0px;
+            padding-inline: 0px;
             border-radius: 0.5rem;
-            flex-direction: column;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            background-color: --c2-surface(0.0, var(--current, currentColor));
-            color: --c2-on-surface(0.0, var(--current, currentColor));
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            transition: box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
             touch-action: manipulation;
-            user-select: none;
+            pointer-events: auto;
+        }
+
+        .timeline-day {
+            margin-block-end: 1rem;
+            pointer-events: auto;
+            touch-action: manipulation;
+        }
+
+        section {
+            pointer-events: auto;
+            overflow: hidden auto;
+            scrollbar-width: thin;
+            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+            touch-action: manipulation;
+        }
+
+        header {
+            min-block-size: max-content;
+            block-size: max-content;
+            line-height: normal;
+            touch-action: manipulation;
+            pointer-events: auto;
+
+            * {
+                pointer-events: none;
+            }
+        }
+
+        &, & * {
+            line-height: normal;
+        }
+
+        .tab {
+            display: grid;
+            grid-auto-flow: row;
+            gap: 0.75rem;
+            padding: 0.25rem;
+            background-color: transparent;
             inline-size: stretch;
             block-size: stretch;
+            overflow: hidden auto;
+            scrollbar-width: thin;
+            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+
+            &::-webkit-scrollbar {
+                inline-size: 6px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                background: color-mix(in oklab, var(--current, currentColor) 28%, transparent);
+                border-radius: 999px;
+            }
+
+            &::-webkit-scrollbar-track {
+                background: transparent;
+            }
         }
 
         .view {
@@ -240,6 +292,9 @@
             block-size: stretch;
             gap: 0.25rem;
             background-color: transparent;
+            overflow: hidden auto;
+            scrollbar-width: thin;
+            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
         }
 
         & > .toolbar {

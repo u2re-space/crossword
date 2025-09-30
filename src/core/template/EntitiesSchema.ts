@@ -506,5 +506,3 @@ export const LEGACY_PROPERTY_RULES: Record<string, EntityFieldRule> = {
     jobs: arrayField("jobs", "Jobs", "properties.jobs", "relations", "Job IDs, one per line"),
     coordinates: jsonField("coordinates", "Coordinates", "properties.coordinates", "properties", "JSON object with latitude and longitude")
 };
-
-
