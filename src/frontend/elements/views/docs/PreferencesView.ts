@@ -4,6 +4,7 @@ import { getDirectoryHandle } from "fest/lure";
 import { pasteIntoDir, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/config/Settings";
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
+import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 
 const COLLECTIONS: DocCollection[] = [
     { id: "plans", label: "Plans", dir: "/docs/plans/", description: "Strategic roadmaps and day-to-day plans." },
@@ -156,9 +157,17 @@ export const PreferencesView = () => {
             const files = Array.from(event.dataTransfer?.files ?? []);
             if (!files.length) return;
             try {
-                for (const file of files) {
-                    await writeFileSmart(null, dir, file, { sanitize: true });
-                }
+                await Promise.all(files.map(async (file) => {
+                    if (file?.name?.endsWith?.(".md") || file?.type?.includes?.("markdown")) {
+                        return writeFileSmart(null, dir, new File([file], `pasted-${Date.now()}.md`, { type: "text/markdown" }));
+                    }
+
+                    //
+                    const recognized = (await analyzeRecognizeUnified(file)?.catch?.(console.warn.bind(console)))?.data;
+                    if (recognized) {
+                        return writeFileSmart(null, dir, new File([recognized], file.name, { type: "text/markdown" }));
+                    }
+                }));
                 toastSuccess(`${files.length} file${files.length > 1 ? "s" : ""} added`);
                 await ctx.reloadCurrent();
             } catch (error) {

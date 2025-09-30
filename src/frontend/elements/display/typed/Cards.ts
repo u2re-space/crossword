@@ -6,9 +6,18 @@ import markedKatex from "marked-katex-extension";
 import { insideOfDay, notInPast, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 
 //
+const normalizeSchedule = (value: any): any => {
+    if (!value) return null;
+    if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
+        return value;
+    }
+    return { iso_date: value };
+};
+
 const formatAsTime = (time: any) => {
-    if (!time) return "";
-    return parseDateCorrectly(time)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const normalized = normalizeSchedule(time);
+    if (!normalized) return "";
+    return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 //

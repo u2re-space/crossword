@@ -138,7 +138,7 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "high" },
+                reasoning: { "effort": "medium" },
                 max_output_tokens: 400000,
                 previous_response_id: this.responseId,
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS

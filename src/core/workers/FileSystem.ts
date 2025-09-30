@@ -1,7 +1,8 @@
 import type { EntityDesc } from "@rs-core/template/deprecated/EntitiesTyped";
 import { detectEntityTypeByJSON } from "@rs-core/template/deprecated/TypeDetector";
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
-import { getDirectoryHandle, writeFile } from "fest/lure";
+import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
+import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
 
 //
 export const sanitizeFileName = (name: string, fallbackExt = "") => {
@@ -178,9 +179,9 @@ export const readMarkDowns = async (dir: any | null) => {
 
 //
 export const readOneMarkDown = async (path: string) => {
-    const handle = await getDirectoryHandle(null, path);
-    const markdown = await handle?.getFile?.();
-    if (!markdown) return null;
+    const markdown = await getFileHandle(null, path);
+    if (!markdown) return "";
+    if (markdown?.type?.startsWith?.("image/")) return "";
     return await markdown?.text?.();
 }
 
@@ -366,11 +367,28 @@ export const normalizePayload = async (payload: shareTargetFormData): Promise<sh
 };
 
 //
+const writeTextDependsByPossibleType = async (payload: string | null | undefined, entityType: string) => {
+    if (!payload) return;
+    if (URL.canParse(payload)) payload = (await fetch(payload).then(res => res.text())?.catch?.(console.warn.bind(console))) || "";
+    if (!payload) return;
+
+    //
+    try {
+        const json = JSON.parse(payload || "{}");
+        if (!entityType) entityType = detectEntityTypeByJSON(json);
+        return writeJSON(json, entityType == 'timeline' ? '/timeline/' : `data/${entityType}/`);
+    } catch (e) {
+        return writeMarkDown(payload, `docs/${entityType}/`);
+    }
+}
+
+//
 export const sendToEntityPipeline = async (payload: shareTargetFormData, options: IntakeOptions = {}) => {
     const entityType = options.entityType || DEFAULT_ENTITY_TYPE;
     const normalized = await normalizePayload(payload);
     const next = options.beforeSend ? await options.beforeSend(normalized) : normalized;
-    return postShareTarget(next);
+    if (!next.file && (next.text || next.url)) return writeTextDependsByPossibleType(next.text || next.url, entityType);
+    return handleDataTransferFiles(next.file ? [next.file] : [], postShareTarget);
 };
 
 //

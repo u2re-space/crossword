@@ -80,7 +80,7 @@ export const recognizeByInstructions = async (input, instructions: string, sendR
         body: JSON.stringify({
             model: settings?.model || DEFAULT_MODEL, // ваш
             input,
-            reasoning: { effort: "high" },
+            reasoning: { effort: "medium" },
             max_output_tokens: 400000,
             instructions
         })

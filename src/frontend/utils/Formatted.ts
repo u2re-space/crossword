@@ -4,7 +4,7 @@ import { getDirectoryHandle, H, M } from "fest/lure";
 //
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
+import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { insideOfDay } from "@rs-core/utils/TimeUtils";
 
 
@@ -97,6 +97,40 @@ export const listFormatter = (label: string | any, text: string | string[] | Set
     return wrapAsListItem(label, formatter(text));
 }
 
+//
+export const renderAddress = (address: any) => {
+    if (typeof address == "string") return H`<span class="address">${address}</span>`;
+
+    //
+    const parts: any[] = [];
+    if (address?.street)
+        parts.push(H`<span class="address street">${address.street}</span>`);
+    if (address?.square)
+        parts.push(H`<span class="address square">${address.square}</span>`);
+    if (address?.house)
+        parts.push(H`<span class="address house">${address.house}</span>`);
+    if (address?.flat)
+        parts.push(H`<span class="address flat">${address.flat}</span>`);
+    if (address?.floor)
+        parts.push(H`<span class="address floor">${address.floor}</span>`);
+    if (address?.room)
+        parts.push(H`<span class="address room">${address.room}</span>`);
+
+    //
+    return parts;
+}
+
+//
+export const formatLocation = (location: any) => {
+    if (location?.address)
+        return H`<span class="location">${renderAddress(location.address)}</span>`;
+}
+
+//
+export const formatBiography = (biography: any) => {
+    return H`<span class="biography">${biography.firstName?.join?.(" ") || ((biography.firstName || "") + " ")} ${biography.lastName?.join?.(" ") || ((biography.lastName || "") + " ")} ${biography.nickName?.join?.(" ") || ((biography.nickName || "") + " ")}</span>`;
+}
+
 
 //
 export const formatTextList = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>) => {
@@ -113,14 +147,25 @@ export const formatPhoneList = (label: string | any, phones: string | string[] |
     return listFormatter(label, phones, formatPhone);
 }
 
+//
+export const formatBiographyList = (label: string | any, biography: any | any[] | Map<any, any>) => {
+    return listFormatter(label, biography, formatBiography);
+}
+
+//
+export const formatLocationList = (label: string | any, location: any | any[] | Map<any, any>) => {
+    return listFormatter(label, location, formatLocation);
+}
 
 
 //
 export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
     if (!text) return null;
     if (key == "begin_time" || key == "end_time" || key == "status") { return; }
-    if (key == "phone") { return formatPhoneList(label, text); }
-    if (key == "email") { return formatEmailList(label, text); }
+    if (key == "phone") { return formatPhoneList(label || "Phone", text); }
+    if (key == "email") { return formatEmailList(label || "Email", text); }
+    if (key == "biography") { return formatBiographyList(label || "Biography", text); }
+    if (key == "location") { return formatLocationList(label || "Location", text); }
 
     //
     if (typeof text != "object") return formatTextList(label, text);
@@ -172,7 +217,8 @@ export const $ShowItemsByType = (DIR: string, byKind: string | null = null, Item
         const $tmp = (await Promise.all(entries || [])?.catch?.(console.warn.bind(console)))
             ?.map?.(async ([name, fileHandle]: any) => {
                 if (name?.endsWith?.(".crswap")) return;
-                const file = await fileHandle?.getFile?.();
+                if (!name?.trim?.()?.endsWith?.(".json")) return;
+                const file = await fileHandle?.getFile?.()?.catch?.(console.warn.bind(console));
                 if (!file) return;
 
                 //

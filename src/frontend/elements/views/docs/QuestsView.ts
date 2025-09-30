@@ -8,6 +8,7 @@ import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/display/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
 import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
+import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },
@@ -265,9 +266,17 @@ export const QuestsView = () => {
             const files = Array.from(event.dataTransfer?.files ?? []);
             if (!files.length) return;
             try {
-                for (const file of files) {
-                    await writeFileSmart(null, dir, file, { sanitize: true });
-                }
+                await Promise.all(files.map(async (file) => {
+                    if (file?.name?.endsWith?.(".md") || file?.type?.includes?.("markdown")) {
+                        return writeFileSmart(null, dir, new File([file], `pasted-${Date.now()}.md`, { type: "text/markdown" }));
+                    }
+
+                    //
+                    const recognized = (await analyzeRecognizeUnified(file)?.catch?.(console.warn.bind(console)))?.data;
+                    if (recognized) {
+                        return writeFileSmart(null, dir, new File([recognized], file.name, { type: "text/markdown" }));
+                    }
+                }));
                 toastSuccess(`${files.length} file${files.length > 1 ? "s" : ""} added`);
                 await ctx.reloadCurrent();
             } catch (error) {

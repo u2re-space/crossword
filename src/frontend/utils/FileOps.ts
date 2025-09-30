@@ -1,5 +1,6 @@
 import { getDirectoryHandle } from "fest/lure";
 import { handleDataTransferFiles, postShareTarget, postShareTargetRecognize, sanitizeFileName, writeFileSmart, writeFilesToDir } from "@rs-core/workers/FileSystem";
+import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {
@@ -99,6 +100,23 @@ export const downloadByPath = async (path: string, suggestedName?: string) => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+
+//
+export const writeWithTryRecognize = async (dir: string, file: File) => {
+    if (file?.name?.endsWith?.(".md") || file?.type?.includes?.("markdown")) {
+        return writeFileSmart(null, dir, file, { sanitize: true });
+    }
+
+    //
+    const recognized = (await analyzeRecognizeUnified(file)?.catch?.(console.warn.bind(console)))?.data;
+    if (recognized) {
+        return writeFileSmart(null, dir, new File([recognized], file.name));
+    }
+}
+
+
+
 //
 export const pasteIntoDir = async (dir: string) => {
     try {
@@ -112,7 +130,7 @@ export const pasteIntoDir = async (dir: string) => {
                     const file = new File([blob], sanitizeFileName(`pasted-${Date.now()}.${ext}`), { type });
                     dir = dir?.trim?.();
                     dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-                    await writeFileSmart(null, dir, file);
+                    await writeWithTryRecognize(dir, file);
                 }
             }
             return true;
@@ -124,7 +142,7 @@ export const pasteIntoDir = async (dir: string) => {
             const file = new File([text], sanitizeFileName(`pasted-${Date.now()}.txt`), { type: 'text/plain' });
             dir = dir?.trim?.();
             dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-            await writeFileSmart(null, dir, file);
+            await writeWithTryRecognize(dir, file);
             return true;
         }
     } catch (e) { console.warn(e); }

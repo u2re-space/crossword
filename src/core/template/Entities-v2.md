@@ -92,6 +92,8 @@ PROPERTIES=MAPPED_BY[TYPE][
 
 ### Task
 
+Important: Task can't be recognized directly from data source, but can be created by preference or user/prompt desire.
+
 ```
 TASK_STRUCTURE={
     "status": ENUM:TASK_STATUS,

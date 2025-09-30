@@ -16,14 +16,13 @@
 
 //
 import type { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readMarkDowns, readOneMarkDown, writeFileSmart } from "@rs-core/workers/FileSystem";
+import { readJSONs, readOneMarkDown, writeFileSmart } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 
 //
-import { safe, unwrap } from "fest/object";
 import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 
@@ -52,7 +51,6 @@ export const filterEvents = (events: any[], currentTime: Date, maxDays: number =
 }
 
 
-
 //
 export const writeTimelineTask = async (task: any) => {
     const name = task?.desc?.name || task?.name || task?.id || `${Date.now()}`;
@@ -71,7 +69,6 @@ export const writeTimelineTask = async (task: any) => {
 export const writeTimelineTasks = async (tasks: any[]) => {
     return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)) || []);
 }
-
 
 
 //
@@ -151,6 +148,9 @@ export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {
     const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
     return (await Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
         if (name?.endsWith?.(".crswap")) return;
+        if (!name?.trim?.()?.endsWith?.(".json")) return;
+
+        //
         const file = await fileHandle.getFile();
         const item = JSON.parse(await file?.text?.() || "{}");
         (item as any).__name = name;

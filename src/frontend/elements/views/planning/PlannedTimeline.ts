@@ -8,7 +8,7 @@ import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays
 import { idbGet } from "@rs-core/store/IDBStorage";
 
 //
-import { loadAllTimelines, requestNewTimeline, TIMELINE_DIR } from "@rs-core/service/planning/MakeTimeline";
+import { loadAllTimelines, requestNewTimeline, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { SplitTimelinesByDays } from "@rs-core/utils/TimeUtils";
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { startTracking } from "@rs-core/workers/GeoLocation";

@@ -1,5 +1,5 @@
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { resolveEntity } from "@rs-core/service/recognize/entity/EntityItemResolve";
+import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
 import { idbStorage } from "./lib/IDBQueue";
 import { dataCategories } from "@rs-core/service/Cache";
 import { idbGet } from "@rs-core/store/IDBStorage";
@@ -19,7 +19,8 @@ import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
 import { detectEntityTypesByJSONs } from "@rs-core/template/deprecated/TypeDetector";
-import { analyzeRecognizeUnified } from "@rs-core/service/recognize/inputs/RecognizeData";
+import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
@@ -89,7 +90,7 @@ const queueEntityForWriting = (entity, entityType, dataType: string | null = "js
 const isMarkdown = (text: string, source: string | File | Blob) => {
     if (source instanceof File && source?.name?.endsWith?.(".md")) return true;
     if (source instanceof File || source instanceof Blob) if (source?.type?.includes?.("markdown")) return true;
-    if (typeof source == "string") if (source?.startsWith?.("---") && source?.endsWith?.("---")) return true;
+    if (text?.startsWith?.("---") && text?.endsWith?.("---")) return true;
     return false;
 }
 
@@ -125,7 +126,6 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
     //
     const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
     const results: any[] = [];
-    let idx = 0;
 
     //
     for (const file of files) {
@@ -141,7 +141,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
         if (text && isMarkdown(text, source)) {
             const subId = Date.now();
             const directory = inputs?.targetDir || DOC_DIR;
-            const name = source instanceof File ? source?.name : `pasted-${subId}.md`;
+            const name = `pasted-${subId}.md`;//source instanceof File ? source?.name : `pasted-${subId}.md`;
             const path = `${directory}${name}`;
             results.push({ status: 'queued', data: text, path, name, subId, directory, dataType: "markdown" });
             continue;
@@ -183,7 +183,6 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     //
     const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
     const results: any[] = [];
-    let idx = 0;
 
     //
     for (const file of files) {
@@ -191,23 +190,22 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         if (!source) continue;
 
         //
-        /*const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
+        const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
-                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));*/
+                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
 
         // try avoid using AI when data structure is known
-        // UNSUPPORTED! - for now...
-        /*if (text) {
-            const json: any = text ? JSON.parse(text) : [];
-            let entityTypes = json ? detectEntityTypesByJSONs(json) : [];
-            if (entityTypes != null && entityTypes?.length && entityTypes?.filter?.((type) => (type && type != "unknown"))?.length) {
-                json?.map?.((resultEntity, i) => {
-                    const type = entityTypes[i];
-                    if (type && type != "unknown") results.push(queueEntityForWriting(resultEntity, type, "json"));
-                    idx++;
+        if (text) {
+            let json: any = text ? JSON.parse(text) : [];
+            json = json?.entities || json;
+            let types = json ? detectEntityTypeByJSON(json) : [];
+            if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {
+                json?.map?.((entity, i) => {
+                    const type = types[i];
+                    if (type && type != "unknown") results.push(queueEntityForWriting(entity, type, "json"));
                 }); continue;
             }
-        }*/
+        }
 
         //
         try {
