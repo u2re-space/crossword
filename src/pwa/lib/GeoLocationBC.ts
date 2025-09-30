@@ -1,4 +1,4 @@
-import { idbStorage } from "./IDBQueue";
+import { idbStorage } from "../../core/store/IDBQueue";
 
 //
 const boardcastChannel = new BroadcastChannel('geolocation');

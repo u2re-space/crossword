@@ -241,7 +241,7 @@ export const Settings = async () => {
         panelRefs.forEach((panel, sectionKey) => {
             const selected = sectionKey === key;
             panel.hidden = !selected;
-            panel.setAttribute("aria-hidden", selected ? "false" : "true");
+            //panel.setAttribute("aria-hidden", selected ? "false" : "true");
             panel.tabIndex = selected ? 0 : -1;
         });
     }

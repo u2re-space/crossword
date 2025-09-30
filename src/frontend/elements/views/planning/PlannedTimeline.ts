@@ -5,7 +5,6 @@ import "@rs-core/$test/Tasks";
 import { TaskItem } from "../../display/items/TaskItem";
 import { renderTabName, $ShowItemsByDay } from "@rs-frontend/utils/Formatted";
 import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
-import { idbGet } from "@rs-core/store/IDBStorage";
 
 //
 import { loadAllTimelines, requestNewTimeline, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
@@ -14,10 +13,12 @@ import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { startTracking } from "@rs-core/workers/GeoLocation";
 
 //
-const SETTINGS_KEY = "rs-settings";
+import { loadSettings } from "@rs-core/config/Settings";
+
+//
 const loadPlanSource = async (): Promise<string | null> => {
     try {
-        const stored = await idbGet(SETTINGS_KEY);
+        const stored = await loadSettings();
         return stored?.timeline?.source || null;
     } catch (e) {
         console.warn(e);
@@ -75,9 +76,11 @@ export const PlannedTimeline = async ($daysDesc?: any[] | null) => {
 
     //
     const onMagicPlan = async () => {
-        const settings = await idbGet("rs-settings");
-        if (!settings) return { resultEntities: [], entityTypedDesc: [] };
-        const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+        const settings = await loadSettings();
+        if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
+
+        //
+        const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
         console.log(gptResponses);
 
         //

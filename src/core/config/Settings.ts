@@ -2,7 +2,6 @@ import { createClient, type FileStat } from "webdav/web"
 import { getDirectoryHandle, readFile } from "fest/lure"
 
 //
-import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
 import { writeFileSmart } from "@rs-core/workers/FileSystem";
 
 //
@@ -17,10 +16,49 @@ export const splitPath = (path: string) => path.split(".");
 export const getByPath = (source: any, path: string) => splitPath(path).reduce<any>((acc, key) => (acc == null ? acc : acc[key]), source);
 export const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
 
+
+//
+export const DB_NAME = 'req-store';
+export const STORE = 'settings';
+
+//
+async function idbOpen(): Promise<IDBDatabase> {
+    console.log("idbOpen");
+    return new Promise<IDBDatabase>((res, rej) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'key' });
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+    });
+}
+
+//
+export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> => {
+    const db = await idbOpen();
+    return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = () => { res(req.result?.value); db.close(); }
+        req.onerror = () => { rej(req.error); db.close(); };
+    });
+}
+
+//
+export const idbPutSettings = async (value: any, key: string = SETTINGS_KEY): Promise<void> => {
+    const db = await idbOpen();
+    return new Promise((res, rej) => {
+        console.log("idbPutSettings", key, value);
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put({ key, value });
+        tx.oncomplete = () => { res(void 0); db.close(); };
+        tx.onerror = () => { rej(tx.error); db.close(); };
+    });
+}
+
 //
 export const loadSettings = async (): Promise<AppSettings> => {
     try {
-        const raw = await idbGet(SETTINGS_KEY);
+        const raw = await idbGetSettings();
         const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
         if (stored && typeof stored === "object") {
             return {
@@ -63,7 +101,7 @@ export const saveSettings = async (settings: AppSettings) => {
             ...(settings.timeline || {})
         }
     };
-    await idbPut(SETTINGS_KEY, merged);
+    await idbPutSettings(merged);
     updateWebDavSettings(merged)?.catch(console.warn.bind(console));
     return merged;
 };

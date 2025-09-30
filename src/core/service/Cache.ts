@@ -1,5 +1,37 @@
 import { Promised, makeReactive, observe, safe } from "fest/object";
-import { idbGet, idbPut } from "@rs-core/store/IDBStorage";
+
+//
+const STORE = "cache";
+const idbOpen = async () => {
+    return new Promise<IDBDatabase>((res, rej) => {
+        const req = indexedDB.open(STORE, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'key' });
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+    });
+}
+
+//
+const idbGet = async (key: string): Promise<any> => {
+    const db = await idbOpen();
+    return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = () => { res(req.result?.value); db.close(); }
+        req.onerror = () => { rej(req.error); db.close(); };
+    });
+}
+
+//
+const idbPut = async (key: string, value: any): Promise<void> => {
+    const db = await idbOpen();
+    return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put({ key, value });
+        tx.oncomplete = () => { res(void 0); db.close(); };
+        tx.onerror = () => { rej(tx.error); db.close(); };
+    });
+}
 
 //
 export const realtimeStates = makeReactive({
@@ -15,7 +47,7 @@ export const realtimeStates = makeReactive({
 //
 const editableArray = (category: any, items: any[]) => {
     const wrapped = makeReactive(items);
-    observe(wrapped, (item, index) => idbPut(category?.id, JSON.stringify(safe(wrapped))));
+    observe(wrapped, (item, index) => idbPut(category?.id, JSON.stringify(safe(wrapped)))?.catch?.(console.warn.bind(console)));
     return wrapped;
 }
 
@@ -26,7 +58,7 @@ const observeCategory = (category: any) => {
             return Promised((async () => editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]")))());
         },
         set: (value: any) => {
-            idbPut(category?.id, JSON.stringify(safe(value)));
+            idbPut(category?.id, JSON.stringify(safe(value)))?.catch?.(console.warn.bind(console));
         }
     });
     return category;

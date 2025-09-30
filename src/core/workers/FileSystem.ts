@@ -1,7 +1,6 @@
-import type { EntityDesc } from "@rs-core/template/deprecated/EntitiesTyped";
 import { detectEntityTypeByJSON } from "@rs-core/template/deprecated/TypeDetector";
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
-import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
+import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
 import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
 
 //
@@ -414,16 +413,25 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
 const controlChannel = new BroadcastChannel('rs-sw');
 controlChannel.addEventListener('message', (event) => {
     if (event.data.type === 'pending-write') {
-        event.data.results?.forEach?.((result) => {
-            const { data, name, path, subId, dataType, directory } = result;
-            if (dataType === "json") {
-                const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-                console.log(directory?.trim?.(), jsonData);
-                writeJSON(jsonData, directory?.trim?.());
-            } else {
-                console.log(directory?.trim?.() + name?.trim?.(), data);
-                writeMarkDown(data, directory?.trim?.() + name?.trim?.());
-            }
-        });
+        flushQueueIntoOPFS();
     }
 });
+
+//
+export async function flushQueueIntoOPFS() {
+    const results = await dumpAndClear();
+    return Promise.all(results.map((result) => {
+        const { data, name, path, subId, dataType, directory } = result as any;
+        if (dataType === "json") {
+            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            console.log(directory?.trim?.(), jsonData);
+            return writeJSON(jsonData, directory?.trim?.());
+        } else {
+            console.log(directory?.trim?.() + name?.trim?.(), data);
+            return writeMarkDown(data, directory?.trim?.() + name?.trim?.());
+        }
+    }));
+}
+
+//
+flushQueueIntoOPFS();

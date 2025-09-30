@@ -1,8 +1,7 @@
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
-import { idbStorage } from "./lib/IDBQueue";
+import { pushMany } from "@rs-core/store/IDBQueue";
 import { dataCategories } from "@rs-core/service/Cache";
-import { idbGet } from "@rs-core/store/IDBStorage";
 
 //Import routing modules for registering routes and setting default and catch handlers
 import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routing'
@@ -14,13 +13,13 @@ import {
     StaleWhileRevalidate
 } from 'workbox-strategies'
 
-
+//
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { BackgroundSyncPlugin } from 'workbox-background-sync'
-import { detectEntityTypesByJSONs } from "@rs-core/template/deprecated/TypeDetector";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
+import { loadSettings } from "@rs-core/config/Settings";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
@@ -39,16 +38,16 @@ const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File 
 
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
-    const settings = await idbGet("rs-settings");
+    const settings = await loadSettings();
+    if (!settings || !settings?.ai || !settings.ai?.apiKey) return { entities: [] };
 
     //
-    if (!settings) return { entities: [] };
-    const gptResponses = new GPTResponses(settings.ai.apiKey, settings.ai.baseUrl, settings.ai.apiSecret, settings.ai.model);
+    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
     console.log(gptResponses);
 
     //
-    if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
-        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey)?.catch?.(console.warn.bind(console));
+    if (settings?.ai?.mcp?.serverLabel && settings.ai?.mcp.origin && settings.ai?.mcp.clientKey && settings.ai?.mcp.secretKey) {
+        await gptResponses.useMCP(settings.ai?.mcp.serverLabel, settings.ai?.mcp.origin, settings.ai?.mcp.clientKey, settings.ai?.mcp.secretKey)?.catch?.(console.warn.bind(console));
     }
 
     // phase 0 - prepare data
@@ -94,6 +93,10 @@ const isMarkdown = (text: string, source: string | File | Blob) => {
     return false;
 }
 
+//
+const pushToIDBQueue = (results: any[]) => {
+    return pushMany(results)?.catch?.(console.warn.bind(console));
+}
 
 
 
@@ -160,12 +163,15 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
         }
     }
 
+    //
+    await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
+    try { controlChannel.postMessage({ type: 'pending-write' }); } catch (e) { console.warn(e); }
+
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
     if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
 
     //
-    try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
 }, "POST")
 
@@ -218,12 +224,15 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         }
     }
 
+    //
+    await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
+    try { controlChannel.postMessage({ type: 'pending-write' }); } catch (e) { console.warn(e); }
+
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
     if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
 
     //
-    try { controlChannel.postMessage({ type: 'pending-write', results }); } catch { }
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
 }, "POST")
 
