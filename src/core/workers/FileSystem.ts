@@ -1,7 +1,7 @@
-import { detectEntityTypeByJSON } from "@rs-core/template/deprecated/TypeDetector";
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
 import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
 import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
+import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
 
 //
 export const sanitizeFileName = (name: string, fallbackExt = "") => {

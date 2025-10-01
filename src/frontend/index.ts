@@ -7,12 +7,12 @@ import "fest/fl-ui";
 
 // @ts-ignore
 import style from "./index.scss?inline";
-import { sampleDays } from "@rs-core/$test/Days";
+import { sampleDays } from "../$test/Days";
 import { Sidebar } from "./elements/layouts/Sidebar";
 
 //
 import { dropFile } from "fest/lure";
-import { sampleTasks, writeSampleTask } from "@rs-core/$test/Tasks";
+import { sampleTasks, writeSampleTask } from "../$test/Tasks";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {

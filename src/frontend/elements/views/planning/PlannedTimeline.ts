@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import "@rs-core/$test/Tasks";
+import "../../../../$test/Tasks";
 
 //
 import { TaskItem } from "../../display/items/TaskItem";
