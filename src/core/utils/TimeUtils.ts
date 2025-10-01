@@ -161,6 +161,10 @@ export function isPureHHMM(str: any) {
 //
 export function parseDateCorrectly(str: any | Date | null = null): Date | null {
     if (!str) return new Date();
+    if (str instanceof Date) return new Date(str);
+    if (typeof str == "object" && str?.timestamp) { return new Date(str?.timestamp); }
+    if (typeof str == "object" && str?.iso_date) { return new Date(str?.iso_date); }
+    if (typeof str == "object" && str?.date) { return new Date(str?.date); }
     if (typeof str == "number") {
         const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
         return new Date(str * multiplier);
@@ -180,9 +184,6 @@ export function parseDateCorrectly(str: any | Date | null = null): Date | null {
             0
         );
     }
-    if (str instanceof Date) return new Date(str?.getTime?.());
-    if (typeof str == "object" && str?.timestamp) { return new Date(str?.timestamp); }
-    if (typeof str == "object" && str?.iso_date) { return new Date(str?.iso_date); }
     return new Date(str);
 }
 

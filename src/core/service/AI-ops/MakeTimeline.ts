@@ -52,12 +52,14 @@ export const filterEvents = (events: any[], currentTime: Date, maxDays: number =
     return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime, maxDays));
 }
 
+//?.split?.("/")?.pop?.()
+
 //
 export const writeTimelineTask = async (task: any) => {
-    const name = task?.desc?.name || task?.name || task?.id || `${Date.now()}`;
+    const name = task?.id || task?.name || task?.desc?.name || `${Date.now()}`;
 
     //
-    let fileName = name?.split?.("/")?.pop?.() || "timeline.json"
+    let fileName = name || "timeline.json"
     fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
 
     //
@@ -121,14 +123,14 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
         await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
     }
 
-    //
-    await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
-
     // get timeline in results
+    await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
     await gptResponses.askToDoAction([
         "Make timeline plan in JSON format, according to given schema. Follow by our preferences is was presented...",
         "Write in JSON format, \`[ array of entity of \"task\" type ]\`"
     ].join?.("\n"));
+
+    //
     const timelines = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
     timelines?.forEach?.((entity: any) => fixEntityId(entity));
 
@@ -137,6 +139,9 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
 
     // write timeline
     await writeTimelineTasks(timelines);
+
+    if (typeof document !== "undefined")
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: timelines, bubbles: true, composed: true, cancelable: true, }));
 
     // return timeline
     return timelines;

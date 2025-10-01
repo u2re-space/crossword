@@ -1,3 +1,5 @@
+import { parseAndGetCorrectTime, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
+
 export type EntityLike = {
     id?: string | null;
     type?: string | null;
@@ -17,6 +19,7 @@ export type GenerateEntityIdOptions = {
 
 export type FixEntityIdOptions = GenerateEntityIdOptions & {
     mutate?: boolean;
+    rebuild?: boolean; // <- добавляем
 };
 
 const DEFAULT_MAX_LENGTH = 96;
@@ -210,6 +213,20 @@ const collectBaseSegments = (entity: EntityLike, options?: GenerateEntityIdOptio
         pushSegment(segments, options?.fallback ?? entity.type ?? "entity");
     }
 
+    pushSegment(segments, entity.properties?.begin_time ? (parseDateCorrectly?.(entity.properties?.begin_time)?.toLocaleString?.("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    })?.trim()?.toLowerCase?.()
+        ?.replace?.(/\s+/g, '_')
+        ?.replace?.(/[\,\-\_\:\.\\\/]/g, '-')
+        ?.replace?.(/[\"\'\(\)\[\]]/g, '')
+        ?.replace?.(/\-\-/g, '_')) : null);
+
+    //
     return Array.from(segments).filter((segment) => segment.length > 0);
 };
 
@@ -234,29 +251,38 @@ export const generateEntityId = (entity: EntityLike, options: GenerateEntityIdOp
     return candidate;
 };
 
-export const fixEntityId = <T extends EntityLike>(entity: T, options: FixEntityIdOptions = { mutate: true }): string => {
+export const fixEntityId = <T extends EntityLike>(
+    entity: T,
+    options: FixEntityIdOptions = { mutate: true, rebuild: true }
+): string => {
     const maxLength = options.maxLength ?? DEFAULT_MAX_LENGTH;
     const allowCodeSuffix = isCodeSuffixAllowed(entity);
     const existingSet = prepareExistingSet(options.existingIds);
 
+    const forceRebuild = options.rebuild === true;
+
     let currentId = toStringOrNull(entity?.id) ?? "";
     let sanitizedId = sanitizeExistingIdValue(currentId, allowCodeSuffix, maxLength);
 
-    if (!sanitizedId) {
-        sanitizedId = generateEntityId(entity, { ...options, existingIds: existingSet });
-    } else if (!isValidEntityId(sanitizedId, allowCodeSuffix)) {
+    // Если просили пересобрать или текущий id пуст/невалидный — генерим заново
+    if (forceRebuild || !sanitizedId || !isValidEntityId(sanitizedId, allowCodeSuffix)) {
         sanitizedId = generateEntityId(entity, { ...options, existingIds: existingSet });
     }
 
+    // Гарантируем уникальность
     if (existingSet && existingSet.has(sanitizedId)) {
-        sanitizedId = ensureUniqueId(sanitizedId.replace(/(?:-[0-9]+)?$/, ""), allowCodeSuffix ? sanitizeCodeSuffix((entity.properties as any)?.code) : "", existingSet, maxLength);
+        const baseWithoutNumeric = sanitizedId.replace(/(?:-[0-9]+)?$/, "");
+        const baseWithoutCode = allowCodeSuffix ? baseWithoutNumeric.replace(/_CODE[0-9A-Z]*$/i, "") : baseWithoutNumeric;
+        sanitizedId = ensureUniqueId(
+            baseWithoutCode,
+            allowCodeSuffix ? sanitizeCodeSuffix((entity.properties as any)?.code) : "",
+            existingSet,
+            maxLength
+        );
     }
 
     if (options.mutateExistingIds && existingSet) existingSet.add(sanitizedId);
-
-    if (options.mutate !== false && entity) {
-        (entity as any).id = sanitizedId;
-    }
+    if (options.mutate !== false && entity) (entity as any).id = sanitizedId;
 
     return sanitizedId;
 };

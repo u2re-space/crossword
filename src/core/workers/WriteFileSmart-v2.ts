@@ -169,7 +169,7 @@ async function blobToText(blob: Blob): Promise<string> {
 async function readFileAsJson(root: any | null, fullPath: string): Promise<any | null> {
     try {
         // Предположим, что readFile есть и возвращает Blob/File
-        const existing: any = await readFile(root, fullPath);
+        const existing: any = await readFile(root, fullPath)?.catch?.(console.warn.bind(console));
         if (!existing) return null;
         const text = await blobToText(existing);
         if (!text?.trim()) return null;
@@ -191,7 +191,7 @@ export const writeFileSmart = async (
         ensureJson,
         toLower = true,
         sanitize = true,
-        mergeJson,                 // новое
+        mergeJson,
         arrayStrategy = 'union',
         arrayKey,
         jsonSpace = 2,
@@ -237,7 +237,7 @@ export const writeFileSmart = async (
             }
 
             // Существующий JSON (если есть)
-            const existingJson = await readFileAsJson(root, fullPath);
+            const existingJson = await readFileAsJson(root, fullPath)?.catch?.(console.warn.bind(console));
 
             let merged = existingJson != null
                 ? mergeDeepUnique(existingJson, incomingJson, { arrayStrategy, arrayKey })

@@ -35,15 +35,18 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
     } = options;
     assertOpfs();
 
-    //
     const root = await navigator.storage.getDirectory();
-    const dir = await getDirByPath(root, dirPath);
+
+    // Нормализуем путь один раз
+    const normDirPath = normalizePath(dirPath);
+
+    const dir = await getDirByPath(root, normDirPath);
 
     let processed = 0;
     let changed = 0;
     let errors = 0;
 
-    for await (const { handle, name, fullPath } of walk(dir, dirPath)) {
+    for await (const { handle, name, fullPath } of walk(dir, normDirPath)) {
         if (handle.kind !== 'file' || !name.toLowerCase().endsWith('.json')) continue;
         if (filter && !filter(name, fullPath)) continue;
 
@@ -60,9 +63,8 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
                 continue;
             }
 
-            const result = await transform(data, { path: dirPath, name, fullPath });
+            const result = await transform(data, { path: normDirPath, name, fullPath });
 
-            // Если трансформер вернул undefined — считаем, что записывать не нужно
             if (typeof result === 'undefined') {
                 processed++;
                 continue;
@@ -70,7 +72,6 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
 
             const newText = serializeJson(result, { indent, prettyStable });
 
-            // Если текст идентичен — писать не будем
             if (normalizeEol(newText) === normalizeEol(originalText)) {
                 processed++;
                 continue;
@@ -94,6 +95,11 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
     }
 
     return { processed, changed, errors };
+}
+
+function normalizePath(p?: string): string {
+    if (!p || p === '/' || p === '.') return '';
+    return p.split('/').filter(Boolean).join('/');
 }
 
 // ===== Helpers =====

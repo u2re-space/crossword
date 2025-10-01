@@ -3,20 +3,13 @@ import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
 import { pushMany } from "@rs-core/store/IDBQueue";
 import { dataCategories } from "@rs-core/service/Cache";
 
-//Import routing modules for registering routes and setting default and catch handlers
+//
 import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routing'
 import {
-    NetworkFirst, //Cache the network response first and return it if it succeeds, otherwise return the cached response
-    NetworkOnly, //Fetch the resource from the network and don't cache it
-    Strategy, //Base class for caching strategies
-    StrategyHandler, //Base class for caching strategy handlers
-    StaleWhileRevalidate
+    NetworkFirst
 } from 'workbox-strategies'
 
 //
-import { clientsClaim } from 'workbox-core'
-import { precacheAndRoute } from 'workbox-precaching'
-import { BackgroundSyncPlugin } from 'workbox-background-sync'
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
 import { loadSettings } from "@rs-core/config/Settings";
@@ -51,14 +44,12 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
         await gptResponses.useMCP(settings.ai?.mcp.serverLabel, settings.ai?.mcp.origin, settings.ai?.mcp.clientKey, settings.ai?.mcp.secretKey)?.catch?.(console.warn.bind(console));
     }
 
-    // phase 0 - prepare data
-    // upload dataset to GPT for recognize, and get response for analyze...
+    // phase 1 - prepare data
+    // upload dataset to GPT for recognize, and get response for analyze... and load into context
     await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
-
-    // load into context
     await gptResponses?.sendRequest()?.catch?.(console.warn.bind(console));
 
-    // phase 3 - convert data to target format, make final description
+    // phase 2 - convert data to target format, make final description
     const resultsRaw = (await resolveEntity(gptResponses)?.catch?.(console.warn.bind(console))) || [];
     const results = Array.isArray(resultsRaw) ? resultsRaw : [resultsRaw];
     return { entities: results?.flatMap?.((result) => (result?.entities || [])) };
