@@ -4,8 +4,9 @@ import { ServiceItem, SERVICES_DIR } from ".././../display/items/ServiceItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 import { makeEntityEdit } from "../../display/edits/EntityEdit";
 import { toastSuccess, toastError } from "@rs-frontend/elements/display/overlays/Toast";
-import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
+import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const ServicesView = () => {

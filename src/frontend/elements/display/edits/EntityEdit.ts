@@ -1,5 +1,4 @@
 import { removeFile } from "fest/lure";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
 import { ModalForm, type FieldSpec } from "./Modal";
 import {
     collectDescriptors,
@@ -9,6 +8,7 @@ import {
     cloneEntity,
     fieldDescriptorToSpec
 } from "@rs-frontend/elements/display/edits/SchemaFields";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 export type EntityEditOptions = {
     allowLinks?: boolean;

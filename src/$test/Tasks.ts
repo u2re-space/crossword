@@ -1,4 +1,4 @@
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const sampleTasks = [

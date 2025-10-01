@@ -20,6 +20,7 @@ import { BackgroundSyncPlugin } from 'workbox-background-sync'
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
 import { loadSettings } from "@rs-core/config/Settings";
+import { fixEntityId } from "@rs-core/template/EntityId";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
@@ -69,7 +70,7 @@ const queueEntityForWriting = (entity, entityType, dataType: string | null = "js
 
     //
     let subId = `${Date.now()}`;
-    let name = (entity?.id || subId)
+    let name = (fixEntityId(entity) || subId)
         ?.trim?.()
         ?.toString?.()
         ?.toLowerCase?.()

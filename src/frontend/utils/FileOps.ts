@@ -1,6 +1,7 @@
 import { getDirectoryHandle } from "fest/lure";
-import { handleDataTransferFiles, postShareTarget, postShareTargetRecognize, sanitizeFileName, writeFileSmart, writeFilesToDir } from "@rs-core/workers/FileSystem";
+import { handleDataTransferFiles, postShareTarget, postShareTargetRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { sanitizeFileName, writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {

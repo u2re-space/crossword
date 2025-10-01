@@ -3,8 +3,8 @@ import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays
 import { getDirectoryHandle } from "fest/lure";
 import { pasteIntoDir, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/config/Settings";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 const COLLECTIONS: DocCollection[] = [
     { id: "plans", label: "Plans", dir: "/docs/plans/", description: "Strategic roadmaps and day-to-day plans." },

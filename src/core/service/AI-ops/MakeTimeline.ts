@@ -16,7 +16,7 @@
 
 //
 import type { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readOneMarkDown, writeFileSmart } from "@rs-core/workers/FileSystem";
+import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 
 // @ts-ignore
@@ -25,6 +25,8 @@ import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 //
 import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
+import { fixEntityId } from "@rs-core/template/EntityId";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -49,7 +51,6 @@ export const filterFactors = (factors: any[], currentTime: Date, maxDays: number
 export const filterEvents = (events: any[], currentTime: Date, maxDays: number = 7) => {
     return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime, maxDays));
 }
-
 
 //
 export const writeTimelineTask = async (task: any) => {
@@ -129,6 +130,7 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
         "Write in JSON format, \`[ array of entity of \"task\" type ]\`"
     ].join?.("\n"));
     const timelines = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
+    timelines?.forEach?.((entity: any) => fixEntityId(entity));
 
     // log timeline
     console.log("timeline", timelines);

@@ -2,11 +2,9 @@ import { createClient, type FileStat } from "webdav/web"
 import { getDirectoryHandle, readFile } from "fest/lure"
 
 //
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
-
-//
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const SETTINGS_KEY = "rs-settings";

@@ -6,9 +6,9 @@ import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/display/overlays/Toast";
-import { writeFileSmart } from "@rs-core/workers/FileSystem";
 import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },

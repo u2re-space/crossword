@@ -2,10 +2,11 @@ import { H } from "fest/lure";
 import { $ShowItemsByType, renderTabName } from "../../../utils/Formatted";
 import { BONUSES_DIR, BonusItem } from ".././../display/items/BonusItem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
-import { sendToEntityPipeline, writeFileSmart } from "@rs-core/workers/FileSystem";
+import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { openPickerAndAnalyze } from "@rs-frontend/utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/display/overlays/Toast";
 import { makeEntityEdit } from "@rs-frontend/elements/display/edits/EntityEdit";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 export const BonusesView = () => {

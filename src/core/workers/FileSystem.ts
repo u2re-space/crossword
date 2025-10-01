@@ -2,65 +2,12 @@ import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE
 import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
 import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
+import { fixEntityId } from "@rs-core/template/EntityId";
+import { opfsModifyJson } from "./OPFSMod";
+import { writeFileSmart } from "./WriteFileSmart-v2";
 
 //
-export const sanitizeFileName = (name: string, fallbackExt = "") => {
-    const parts = String(name || "").split("/").pop() || "";
-    const base = parts.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_.\-+#&]/g, '-');
-    if (fallbackExt && !base.includes('.')) return `${base || Date.now()}${fallbackExt.startsWith('.') ? '' : '.'}${fallbackExt}`;
-    return base || `${Date.now()}`;
-}
-
-
-//
-// Unified file/path helpers
-//
-
-// sanitize one path/token to safe slug
-const toSlug = (input: string, toLower = true) => {
-    let s = String(input || "").trim();
-    if (toLower) s = s.toLowerCase();
-    // replace whitespace with '-'
-    s = s.replace(/\s+/g, '-');
-    // keep only safe chars
-    s = s.replace(/[^a-z0-9_.\-+#&]/g, '-');
-    // collapse repeats
-    s = s.replace(/-+/g, '-');
-    return s;
-};
-
-//
-const inferExtFromMime = (mime = "") => {
-    if (!mime) return "";
-    if (mime.includes("json")) return "json";
-    if (mime.includes("markdown")) return "md";
-    if (mime.includes("plain")) return "txt";
-    if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
-    if (mime === "image/png") return "png";
-    if (mime.startsWith("image/")) return mime.split('/').pop() || "";
-    if (mime.includes("html")) return "html";
-    return "";
-};
-
-//
-const splitPath = (path: string) => String(path || "").split('/').filter(Boolean);
-const ensureDir = (p: string) => (p.endsWith('/') ? p : p + '/');
-const joinPath = (parts: string[], absolute = true) => (absolute ? '/' : '') + parts.filter(Boolean).join('/') + '';
-
-//
-const sanitizePathSegments = (path: string) => {
-    const parts = splitPath(path);
-    return joinPath(parts.map((p) => toSlug(p)));
-};
-
-//
-export type WriteSmartOptions = {
-    forceExt?: string;        // e.g. 'json'
-    ensureJson?: boolean;     // if true, enforce .json
-    toLower?: boolean;        // default true
-    sanitize?: boolean;       // default true
-};
-
+/*
 // Always writes by full sanitized path. Accepts a directory or a full path.
 export const writeFileSmart = async (
     root: any | null,
@@ -117,7 +64,7 @@ export const writeFileSmart = async (
     if (typeof document !== "undefined")
         document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: await promised?.catch?.(console.warn.bind(console)), bubbles: true, composed: true, cancelable: true, }));
     return promised;
-};
+};*/
 
 //
 export const writeFilesToDir = async (dir: string, files: File[] | FileList) => {
@@ -198,12 +145,12 @@ export const writeJSON = async (data: any | any[], dir: any | null = null) => {
         if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
 
         // if entity type is not registered, trying to detect it
-        const entityType = obj?.type ?? "unknown"; //?? detectEntityTypeByJSON(obj);
+        const entityType = obj?.type ?? detectEntityTypeByJSON(obj) ?? "unknown";
 
         // if directory is not provided, using default directory
         if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
-        let base = (obj?.id || obj?.name || `${Date.now()}_${index}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'); base = base?.trim?.();
-        const fileName = base?.endsWith?.(".json") ? base : (base + ".json");
+        let fileName = (fixEntityId(obj) || obj?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
+        fileName = fileName?.trim?.(); fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
         return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }));
     };
 
@@ -218,13 +165,14 @@ export const writeJSON = async (data: any | any[], dir: any | null = null) => {
 //
 export const writeMarkDown = async (data: any, path: any | null = null) => {
     if (!data) return; path = path?.trim?.();
-    if (!path) {
-        path = "/docs/preferences/";
-        path += (`${Date.now()}`?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-'))?.trim?.() + ".md"
-    }
+    let filename = (`${Date.now()}`?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')?.trim?.() || `${Date.now()}`) + ".md";
 
     //
-    let promised: Promise<any[] | any> | null = writeFileSmart(null, path, data instanceof File ? data : new File([data], path?.split?.('/')?.pop?.() || `${Date.now()}.md`, { type: 'text/markdown' }));
+    if (!path) { path = "/docs/preferences/"; } else { filename = path?.split?.('/')?.pop?.() || filename; }
+    filename = filename?.endsWith?.(".md") ? filename : (filename + ".md");
+
+    //
+    let promised: Promise<any[] | any> | null = writeFileSmart(null, path, data instanceof File ? data : new File([data], filename, { type: 'text/markdown' }));
     if (typeof document !== "undefined")
         document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: data, bubbles: true, composed: true, cancelable: true, }));
     return promised;
@@ -435,3 +383,21 @@ export async function flushQueueIntoOPFS() {
 
 //
 flushQueueIntoOPFS();
+
+//
+opfsModifyJson({
+    dirPath: "/data/",
+    transform: (data) => {
+        if (data && typeof data === "object") { fixEntityId(data, { mutate: true }); };
+        return data;
+    }
+});
+
+//
+opfsModifyJson({
+    dirPath: "/timeline/",
+    transform: (data) => {
+        if (data && typeof data === "object") { fixEntityId(data, { mutate: true }); };
+        return data;
+    }
+});

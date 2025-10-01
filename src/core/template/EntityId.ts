@@ -234,7 +234,7 @@ export const generateEntityId = (entity: EntityLike, options: GenerateEntityIdOp
     return candidate;
 };
 
-export const fixEntityId = <T extends EntityLike>(entity: T, options: FixEntityIdOptions = {}): string => {
+export const fixEntityId = <T extends EntityLike>(entity: T, options: FixEntityIdOptions = { mutate: true }): string => {
     const maxLength = options.maxLength ?? DEFAULT_MAX_LENGTH;
     const allowCodeSuffix = isCodeSuffixAllowed(entity);
     const existingSet = prepareExistingSet(options.existingIds);
@@ -260,5 +260,3 @@ export const fixEntityId = <T extends EntityLike>(entity: T, options: FixEntityI
 
     return sanitizedId;
 };
-
-
