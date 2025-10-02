@@ -440,7 +440,83 @@
             /*.card-time { display:none; }*/
             .card-actions > .action span { display:none; }
         }
+
+
+        .card-description-content, .card-properties {
+            display: block;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            font-size: 0.8rem;
+            line-height: 1.8;
+
+            p {
+                font-size: 1em;
+                font-weight: 400;
+                color: --c2-on-surface(0.0, var(--current, currentColor));
+                margin-block-start: 0;
+                margin-block-end: 0;
+                margin-inline-start: 0;
+                margin-inline-end: 0;
+                padding-inline-start: 0;
+                padding-inline-end: 0;
+                display: block;
+                flex-direction: row;
+                gap: 0.25rem;
+                list-style: none;
+                line-height: inherit;
+
+                li {
+                    padding: 0;
+                    margin: 0;
+                }
+
+                &::first-letter {
+                    text-transform: uppercase;
+                }
+            }
+
+            span {
+                font-size: 1em;
+                font-weight: 400;
+                color: --c2-on-surface(0.0, var(--current, currentColor));
+                margin-block-start: 0;
+                margin-block-end: 0;
+                margin-inline-start: 0;
+                margin-inline-end: 0;
+                padding-inline-start: 0;
+                padding-inline-end: 0;
+                display: block;
+                flex-direction: row;
+                gap: 0.25rem;
+                list-style: none;
+                line-height: inherit;
+
+                &::first-letter {
+                    text-transform: uppercase;
+                }
+
+                li {
+                    padding: 0;
+                    margin: 0;
+                }
+
+                &:first-of-type {
+                    font-weight: 600;
+                }
+            }
+
+            li {
+                line-height: inherit;
+                padding: 0;
+                margin: 0;
+            }
+
+
+        }
+
+        .card-description-content {
+            font-size: 0.7rem;
+        }
     }
 }
-
-
