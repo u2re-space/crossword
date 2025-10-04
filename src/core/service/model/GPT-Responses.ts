@@ -127,7 +127,17 @@ export class GPTResponses {
     }
 
     //
-    async sendRequest() {
+    beginFromResponseId(responseId: string | null = null) {
+        this.responseId = (this.responseId = (responseId || this.responseId));
+        return this;
+    }
+
+    //
+    async sendRequest(effort: "low" | "medium" | "high" = "low", verbosity: "low" | "medium" | "high" = "low", prevResponseId: string | null = null) {
+        effort ??= "low";
+        verbosity ??= "low";
+
+    //
         const response = await fetch(`${this.apiUrl}/responses`, {
             method: "POST",
             headers: {
@@ -138,9 +148,10 @@ export class GPTResponses {
                 model: this.model,
                 tools: this.tools?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
-                reasoning: { "effort": "medium" },
+                reasoning: { "effort": effort },
+                text: { verbosity: verbosity },
                 max_output_tokens: 400000,
-                previous_response_id: this.responseId,
+                previous_response_id: (this.responseId = (prevResponseId || this.responseId)),
                 instructions: GLOBAL_PROMPT_INSTRUCTIONS
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
@@ -194,6 +205,9 @@ export class GPTResponses {
         try { return JSON.parse(resp?.output ?? resp); } catch { /* noop */ }
         return "";
     }
+
+    //
+    getResponseId() { return this.responseId; }
 
     //
     getMessages() { return this.messages; }

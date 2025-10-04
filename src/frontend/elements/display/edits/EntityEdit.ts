@@ -90,8 +90,6 @@ export const makeEvents = (label: string, path: string, title: string, basis: an
     return {
         doDelete: async (ev: Event) => {
             ev?.stopPropagation?.();
-            if (!confirm(`Delete ${label} "${title}"?`)) return;
-
             try { await removeFile(null, path); } catch (e) { console.warn(e); }
 
             const fileId = basis?.id || basis?.name;

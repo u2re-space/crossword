@@ -152,6 +152,29 @@
         }
     }
 
+    .timeline-empty {
+        display: grid;
+        place-items: center;
+        padding: clamp(1rem, 2vw, 1.6rem);
+        border-radius: clamp(0.6rem, 1vw, 0.9rem);
+        background: color-mix(in oklab, var(--current, currentColor) 6%, transparent);
+        color: --c2-on-surface(0.16, var(--current, currentColor));
+        font-size: clamp(0.9rem, 0.4cqi + 0.85rem, 1rem);
+        text-align: center;
+        border: 1px dashed color-mix(in oklab, var(--current, currentColor) 18%, transparent);
+        min-block-size: clamp(3rem, 5vw, 4.5rem);
+        gap: 0.4rem;
+
+        &::before {
+            content: "";
+            inline-size: clamp(1.5rem, 2.5cqi, 2rem);
+            block-size: clamp(1.5rem, 2.5cqi, 2rem);
+            border-radius: 50%;
+            border: 2px dashed currentColor;
+            opacity: 0.35;
+        }
+    }
+
     [data-type="tasks"],
     [data-type="contacts"],
     [data-type="bonuses"],

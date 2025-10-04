@@ -28,7 +28,7 @@ export const resolveEntity = async (gptResponses: GPTResponses) => {
     //
     await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
     await gptResponses.askToDoAction(askResolveStep()?.join?.("\n"));
-    const parsed = JSON.parse(await gptResponses.sendRequest() || "{}");
+    const parsed = JSON.parse(await gptResponses.sendRequest("low", "low") || "{}");
     parsed?.entities?.forEach?.((entity: any) => fixEntityId(entity));
     console.log("Step 3 response - resolve entity response: ", parsed);
     return parsed;

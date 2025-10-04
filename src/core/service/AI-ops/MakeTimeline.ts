@@ -15,7 +15,7 @@
  */
 
 //
-import type { GPTResponses } from "../model/GPT-Responses";
+import { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 
@@ -27,6 +27,7 @@ import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { loadSettings } from "@rs-core/config/Settings";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -74,8 +75,57 @@ export const writeTimelineTasks = async (tasks: any[]) => {
 }
 
 
+
 //
-export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath: string | null = null, existsTimeline: any | null = null) => {
+export const createTimelineGenerator = async (sourcePath: string | null = null) => {
+    const settings = await loadSettings();
+    if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
+
+    //
+    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
+    console.log(gptResponses);
+
+    //
+    if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
+        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey)?.catch?.(console.warn.bind(console));
+    }
+
+    // attach some factors (except finished)
+    await gptResponses.giveForRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+
+    // attach some events (except finished)
+    await gptResponses.giveForRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+
+    //
+    if (sourcePath) {
+        await gptResponses.giveForRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
+    } else {
+        await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
+    }
+
+    //
+    await gptResponses.askToDoAction(["primary_request:",
+        "- Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
+        "- Give ready status in JSON format: \`{ ready: boolean, reason: string }\`"
+    ]?.join?.("\n"));
+
+    // load all of those into context
+    const readyStatus = JSON.parse(await gptResponses.sendRequest("high", "high") || "{ ready: false, reason: \"No attached data\", keywords: [] }");
+    if (!readyStatus?.ready) {
+        console.error("timeline", readyStatus);
+        return { timeline: [], keywords: [] };
+    }
+
+    //
+    return gptResponses;
+}
+
+
+
+//
+export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimeline: any | null = null) => {
+    if (!gptResponses) return { timeline: [], keywords: [] };
+
     // attach exists timeline
     if (existsTimeline) {
         await gptResponses.giveForRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
@@ -92,38 +142,6 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
 
     // use real-time state (oriented on current time and location)
     await gptResponses.giveForRequest("current_states: \`" + encodedRealtimeState + "\`\n");
-
-    // attach some factors (except finished)
-    await gptResponses.giveForRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
-
-    // attach some events (except finished)
-    await gptResponses.giveForRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
-
-    // attach some plans (except finished)
-    //gptResponses.giveForRequest("plans: " + JSON.stringify(await readMarkDowns(PLANS_DIR)) + "\n");
-    //gptResponses.giveForRequest("preferences: " + JSON.stringify(await readMarkDowns(PREFERENCES_DIR)) + "\n");
-
-    //
-    await gptResponses.askToDoAction(["primary_request:",
-        "- Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
-        "- Give answer in JSON format: \`{ ready: boolean, reason: string }\`"
-    ]?.join?.("\n"));
-
-    // load all of those into context
-    const readyStatus = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
-    if (!readyStatus?.ready) {
-        console.error("timeline", readyStatus);
-        return { timeline: [], keywords: [] };
-    }
-
-    //
-    if (sourcePath) {
-        await gptResponses.giveForRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
-    } else {
-        await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
-    }
-
-    // get timeline in results
     await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
     await gptResponses.askToDoAction([
         "Make timeline plan in JSON format, according to given schema. Follow by our preferences is was presented...",
@@ -131,7 +149,12 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
     ].join?.("\n"));
 
     //
-    const timelines = JSON.parse(await gptResponses.sendRequest() || "{ ready: false, reason: \"No attached data\", keywords: [] }");
+    const existsResponseId = gptResponses.getResponseId();
+    const raw = await gptResponses.sendRequest()?.catch?.(console.warn.bind(console));
+    const timelines = raw ? JSON.parse(raw) : "{ ready: false, reason: \"No attached data\", keywords: [] }";
+    gptResponses.beginFromResponseId(existsResponseId);
+
+    //
     timelines?.forEach?.((entity: any) => fixEntityId(entity));
 
     // log timeline
@@ -139,9 +162,6 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, sourcePath:
 
     // write timeline
     await writeTimelineTasks(timelines);
-
-    if (typeof document !== "undefined")
-        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: timelines, bubbles: true, composed: true, cancelable: true, }));
 
     // return timeline
     return timelines;

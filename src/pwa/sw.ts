@@ -30,6 +30,52 @@ const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File 
     });
 }
 
+// needs to implement DataSourceCache by IndexedDB
+const dataSourceCacheBinary = new WeakMap<File | Blob | ArrayBuffer, string>();
+const dataSourceCacheString = new Map<string, string>();
+
+//
+const hasInDataSourceCache = (dataSource: string | Blob | File | any) => {
+    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
+        return dataSourceCacheBinary?.has(dataSource) && dataSourceCacheBinary?.get?.(dataSource);
+    } else {
+        return dataSourceCacheString?.has(dataSource) && dataSourceCacheString?.get?.(dataSource);
+    }
+}
+
+//
+const getFromDataSourceCache = (dataSource: string | Blob | File | any) => {
+    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
+        return dataSourceCacheBinary?.get?.(dataSource);
+    } else {
+        return dataSourceCacheString?.get?.(dataSource);
+    }
+}
+
+//
+const setToDataSourceCache = (dataSource: string | Blob | File | any, responseId: string) => {
+    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
+        dataSourceCacheBinary?.set?.(dataSource, responseId);
+    } else {
+        dataSourceCacheString?.set?.(dataSource, responseId);
+    }
+}
+
+//
+const getOrDefaultComputedOfDataSourceCache = (dataSource: string | Blob | File | any, defaultValueCb: (dataSource: string | Blob | File | any) => string | null | Promise<string | null> = () => null) => {
+    if (hasInDataSourceCache(dataSource)) {
+        return getFromDataSourceCache(dataSource);
+    } else {
+        const value = defaultValueCb?.(dataSource);
+        if (value instanceof Promise) {
+            value?.then?.((v) => setToDataSourceCache(dataSource, v || ""));
+        } else {
+            setToDataSourceCache(dataSource, value || "");
+        }
+        return value;
+    }
+}
+
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const settings = await loadSettings();
@@ -37,17 +83,19 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 
     //
     const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
-    console.log(gptResponses);
+
+    // phase 1 - prepare data
+    // upload dataset to GPT for recognize, and get response for analyze... and load into context
+    gptResponses.beginFromResponseId(await getOrDefaultComputedOfDataSourceCache(dataSource, async (dataSource) => {
+        await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
+        await gptResponses?.sendRequest("high", "high")?.catch?.(console.warn.bind(console));
+        return gptResponses.getResponseId() || "";
+    }));
 
     //
     if (settings?.ai?.mcp?.serverLabel && settings.ai?.mcp.origin && settings.ai?.mcp.clientKey && settings.ai?.mcp.secretKey) {
         await gptResponses.useMCP(settings.ai?.mcp.serverLabel, settings.ai?.mcp.origin, settings.ai?.mcp.clientKey, settings.ai?.mcp.secretKey)?.catch?.(console.warn.bind(console));
     }
-
-    // phase 1 - prepare data
-    // upload dataset to GPT for recognize, and get response for analyze... and load into context
-    await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
-    await gptResponses?.sendRequest()?.catch?.(console.warn.bind(console));
 
     // phase 2 - convert data to target format, make final description
     const resultsRaw = (await resolveEntity(gptResponses)?.catch?.(console.warn.bind(console))) || [];

@@ -1,9 +1,4 @@
-import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
-import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
-import { getDirectoryHandle, getFileHandle, readFile, writeFile } from "fest/lure";
-import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
-import { fixEntityId } from "@rs-core/template/EntityId";
-import { opfsModifyJson } from "./OPFSMod";
+import { readFile, writeFile } from "fest/lure";
 
 //
 export const sanitizeFileName = (name: string, fallbackExt = "") => {
@@ -12,6 +7,7 @@ export const sanitizeFileName = (name: string, fallbackExt = "") => {
     if (fallbackExt && !base.includes('.')) return `${base || Date.now()}${fallbackExt.startsWith('.') ? '' : '.'}${fallbackExt}`;
     return base || `${Date.now()}`;
 }
+
 
 
 //
@@ -246,15 +242,15 @@ export const writeFileSmart = async (
             // Нормализуем undefined -> null/удаление ключей (JSON.stringify не поддерживает undefined)
             const jsonString = JSON.stringify(merged, null, jsonSpace);
 
+            //
             const toWrite = new File([jsonString], finalName, { type: 'application/json' });
-
-            const promised = writeFile(root, fullPath, toWrite);
+            const rs = await writeFile(root, fullPath, toWrite)?.catch?.(console.warn.bind(console));
             if (typeof document !== "undefined")
                 document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", {
-                    detail: await promised?.catch?.(console.warn.bind(console)),
+                    detail: rs,
                     bubbles: true, composed: true, cancelable: true,
                 }));
-            return promised;
+            return rs;
         } catch (err) {
             console.warn('writeFileSmart JSON merge failed, falling back to raw write:', err);
             // если не удалось распарсить/слить — ниже будет обычная запись
@@ -277,11 +273,11 @@ export const writeFileSmart = async (
         toWrite = new File([await blob.arrayBuffer()], finalName, { type });
     }
 
-    const promised = writeFile(root, fullPath, toWrite);
+    const rs = await writeFile(root, fullPath, toWrite)?.catch?.(console.warn.bind(console));
     if (typeof document !== "undefined")
         document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", {
-            detail: await promised?.catch?.(console.warn.bind(console)),
+            detail: rs,
             bubbles: true, composed: true, cancelable: true,
         }));
-    return promised;
+    return rs;
 };
