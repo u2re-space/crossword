@@ -1,19 +1,17 @@
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
-import { pushMany } from "@rs-core/store/IDBQueue";
-import { dataCategories } from "@rs-core/service/Cache";
 
 //
 import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routing'
-import {
-    NetworkFirst
-} from 'workbox-strategies'
+import { NetworkFirst } from 'workbox-strategies'
 
 //
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
 import { loadSettings } from "@rs-core/config/Settings";
-import { fixEntityId } from "@rs-core/template/EntityId";
+import { pushToIDBQueue, queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
+import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
+import { dataSourceCacheBinary, dataSourceCacheString, getOrDefaultComputedOfDataSourceCache, hasInDataSourceCache, setToDataSourceCache } from "./lib/DataSourceCache";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
@@ -30,52 +28,6 @@ const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File 
     });
 }
 
-// needs to implement DataSourceCache by IndexedDB
-const dataSourceCacheBinary = new WeakMap<File | Blob | ArrayBuffer, string>();
-const dataSourceCacheString = new Map<string, string>();
-
-//
-const hasInDataSourceCache = (dataSource: string | Blob | File | any) => {
-    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
-        return dataSourceCacheBinary?.has(dataSource) && dataSourceCacheBinary?.get?.(dataSource);
-    } else {
-        return dataSourceCacheString?.has(dataSource) && dataSourceCacheString?.get?.(dataSource);
-    }
-}
-
-//
-const getFromDataSourceCache = (dataSource: string | Blob | File | any) => {
-    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
-        return dataSourceCacheBinary?.get?.(dataSource);
-    } else {
-        return dataSourceCacheString?.get?.(dataSource);
-    }
-}
-
-//
-const setToDataSourceCache = (dataSource: string | Blob | File | any, responseId: string) => {
-    if (dataSource instanceof File || dataSource instanceof Blob || dataSource instanceof ArrayBuffer) {
-        dataSourceCacheBinary?.set?.(dataSource, responseId);
-    } else {
-        dataSourceCacheString?.set?.(dataSource, responseId);
-    }
-}
-
-//
-const getOrDefaultComputedOfDataSourceCache = (dataSource: string | Blob | File | any, defaultValueCb: (dataSource: string | Blob | File | any) => string | null | Promise<string | null> = () => null) => {
-    if (hasInDataSourceCache(dataSource)) {
-        return getFromDataSourceCache(dataSource);
-    } else {
-        const value = defaultValueCb?.(dataSource);
-        if (value instanceof Promise) {
-            value?.then?.((v) => setToDataSourceCache(dataSource, v || ""));
-        } else {
-            setToDataSourceCache(dataSource, value || "");
-        }
-        return value;
-    }
-}
-
 //
 const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     const settings = await loadSettings();
@@ -86,7 +38,7 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 
     // phase 1 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze... and load into context
-    gptResponses.beginFromResponseId(await getOrDefaultComputedOfDataSourceCache(dataSource, async (dataSource) => {
+    gptResponses.beginFromResponseId(await getOrDefaultComputedOfDataSourceCache(dataSource, async (dataSource: string | Blob | File | any) => {
         await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
         await gptResponses?.sendRequest("high", "high")?.catch?.(console.warn.bind(console));
         return gptResponses.getResponseId() || "";
@@ -104,38 +56,11 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
 }
 
 //
-const queueEntityForWriting = (entity, entityType, dataType: string | null = "json"): any => {
-    const resolvedType = (entityType || 'unknown')?.trim?.();
-
-    //
-    let subId = `${Date.now()}`;
-    let name = (fixEntityId(entity) || subId)
-        ?.trim?.()
-        ?.toString?.()
-        ?.toLowerCase?.()
-        ?.replace?.(/\s+/g, '-')
-        ?.replace?.(/[^a-z0-9_\-+#&]/g, '-')
-        || subId;
-
-    // prepare to writing into database (for phase 4 - consolidate)
-    const directory = `/data/${resolvedType}/`?.trim?.();
-
-    // get preview versions of resolved entity to show in UI
-    (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);
-    return { status: 'queued', entityType, data: entity, name, directory, subId, dataType };
-}
-
-//
 const isMarkdown = (text: string, source: string | File | Blob) => {
     if (source instanceof File && source?.name?.endsWith?.(".md")) return true;
     if (source instanceof File || source instanceof Blob) if (source?.type?.includes?.("markdown")) return true;
     if (text?.startsWith?.("---") && text?.endsWith?.("---")) return true;
     return false;
-}
-
-//
-const pushToIDBQueue = (results: any[]) => {
-    return pushMany(results)?.catch?.(console.warn.bind(console));
 }
 
 
@@ -155,6 +80,44 @@ setDefaultHandler(new NetworkFirst())
 
 //
 registerRoute(({ request }) => request.mode === 'navigate', new NetworkFirst({ cacheName: 'html-cache' }))
+
+
+
+//
+let timelineGenerator: any = null;
+
+//
+registerRoute(({ url }) => url?.pathname == "/make-timeline", async (e: any) => {
+    const url = new URL(e.request.url);
+    const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
+    const inputs = {
+        source: fd?.get?.('source')
+    };
+
+    //
+    timelineGenerator ||= await createTimelineGenerator(inputs.source);
+    console.log(timelineGenerator);
+
+    const timelines = await requestNewTimeline(timelineGenerator);
+    console.log(timelines);
+
+    //
+    const results: any[] = [];
+    results.push(queueEntityForWriting(timelines, "timeline", "json"));
+
+    //
+    await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
+    try { controlChannel.postMessage({ type: 'pending-write' }); } catch (e) { console.warn(e); }
+
+    // @ts-ignore
+    const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
+    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
+
+    //
+    return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
+}, "POST");
+
+//
 registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e: any) => {
     const url = new URL(e.request.url);
     const fd = await e.request.formData();

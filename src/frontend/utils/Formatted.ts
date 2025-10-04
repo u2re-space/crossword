@@ -4,9 +4,9 @@ import { getDirectoryHandle, H, M } from "fest/lure";
 //
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { loadAllTimelines, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { insideOfDay, parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
-
+import { loadAllTimelines } from "@rs-core/workers/FileSystem";
+import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 
 //
 export const beginDragAsText = (ev: DragEvent) => {

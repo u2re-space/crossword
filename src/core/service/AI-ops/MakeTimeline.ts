@@ -53,27 +53,6 @@ export const filterEvents = (events: any[], currentTime: Date, maxDays: number =
     return events?.filter?.((event) => checkRemainsTime(event?.properties?.begin_time, event?.properties?.end_time, currentTime, maxDays));
 }
 
-//?.split?.("/")?.pop?.()
-
-//
-export const writeTimelineTask = async (task: any) => {
-    const name = task?.id || task?.name || task?.desc?.name || `${Date.now()}`;
-
-    //
-    let fileName = name || "timeline.json"
-    fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
-
-    //
-    const filePath = `${TIMELINE_DIR}${fileName}`;
-    const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
-    return writeFileSmart(null, filePath, file)?.catch?.(console.error.bind(console));
-}
-
-//
-export const writeTimelineTasks = async (tasks: any[]) => {
-    return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)) || []);
-}
-
 
 
 //
@@ -161,27 +140,8 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     console.log("timeline", timelines);
 
     // write timeline
-    await writeTimelineTasks(timelines);
+    //await writeTimelineTasks(timelines);
 
     // return timeline
     return timelines;
-}
-
-
-
-//
-export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {
-    const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
-    const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
-    return (await Promise.all(timelines?.map?.(async ([name, fileHandle]: any) => {
-        if (name?.endsWith?.(".crswap")) return;
-        if (!name?.trim?.()?.endsWith?.(".json")) return;
-
-        //
-        const file = await fileHandle.getFile();
-        const item = JSON.parse(await file?.text?.() || "{}");
-        (item as any).__name = name;
-        (item as any).__path = `${DIR}${name}`;
-        return item;
-    })))?.filter?.((e) => e);
 }

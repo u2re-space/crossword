@@ -5,7 +5,6 @@ import { TaskItem } from "../../display/items/TaskItem";
 import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
 
 //
-import { loadAllTimelines, requestNewTimeline, TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { SplitTimelinesByDays, createDayDescriptor, parseDateCorrectly, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { startTracking } from "@rs-core/workers/GeoLocation";
@@ -15,6 +14,8 @@ import { loadSettings } from "@rs-core/config/Settings";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { makeReactive } from "fest/object";
 import { parseAndGetCorrectTime } from "@rs-core/utils/TimeUtils";
+import { loadAllTimelines } from "@rs-core/workers/FileSystem";
+import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 
 //
 const loadPlanSource = async (): Promise<string | null> => {
@@ -198,7 +199,18 @@ export const PlannedTimeline = async ($daysDesc?: any[] | null) => {
             toastSuccess(source ? `Using ${source} for magic plan...` : [
                 "Using default preferences for plan...",
             ]?.join?.("\n"));
-            await requestNewTimeline(gptResponses, source);
+
+            //
+            const timelineForm = new FormData();
+            if (source) { timelineForm.append("source", source); };
+
+            //
+            const response = await fetch("/make-timeline", {
+                method: "POST",
+                body: timelineForm,
+            })?.catch?.(console.warn.bind(console));
+
+            //
             await reload();
         } catch (e) {
             console.warn(e);
