@@ -524,7 +524,7 @@
                 &.is-danger {
                     border-color: color-mix(in oklab, var(--current, #dc2626) 34%, transparent);
                     background: color-mix(in oklab, var(--current, #dc2626) 16%, transparent);
-                    color: --c2-on-surface(-0.12, var(--current, currentColor));
+                    color: --c2-on-surface(0.12, var(--current, currentColor));
 
                     &:hover {
                         background: color-mix(in oklab, var(--current, #dc2626) 28%, transparent);
