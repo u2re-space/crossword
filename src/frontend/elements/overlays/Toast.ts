@@ -3,9 +3,11 @@ import { H } from "fest/lure";
 //
 type ToastKind = "info" | "success" | "warning" | "error";
 
+//
 const TOAST_LAYER_ID = "rs-toast-layer";
 const HIDE_TIMEOUT = 3200;
 
+//
 const ensureLayer = () => {
     let layer = document.getElementById(TOAST_LAYER_ID);
     if (layer) return layer;
@@ -14,12 +16,14 @@ const ensureLayer = () => {
     return layer;
 };
 
+//
 export const closeToastLayer = () => {
     const layer = document.getElementById(TOAST_LAYER_ID);
     if (!layer) return;
     layer.remove();
 };
 
+//
 export const showToast = (message: string, kind: ToastKind = "info") => {
     if (!message) return;
     const layer = ensureLayer();
@@ -28,6 +32,7 @@ export const showToast = (message: string, kind: ToastKind = "info") => {
 
     requestAnimationFrame(() => toast.setAttribute("data-visible", "true"));
 
+    //
     const removeToast = () => {
         toast.removeEventListener("transitionend", removeToast);
         toast.remove();
@@ -35,11 +40,13 @@ export const showToast = (message: string, kind: ToastKind = "info") => {
         if (!document.body.querySelector('.rs-toast-layer')) document.body.removeAttribute('data-toast-open');
     };
 
+    //
     const hideTimer = window.setTimeout(() => {
         toast.removeAttribute("data-visible");
         toast.addEventListener("transitionend", removeToast, { once: true });
     }, HIDE_TIMEOUT);
 
+    //
     toast.addEventListener("pointerdown", () => {
         window.clearTimeout(hideTimer);
         toast.removeAttribute("data-visible");
@@ -47,7 +54,7 @@ export const showToast = (message: string, kind: ToastKind = "info") => {
     }, { once: true });
 };
 
+//
 export const toastSuccess = (message: string) => showToast(message, "success");
 export const toastError = (message: string) => showToast(message, "error");
 export const toastWarning = (message: string) => showToast(message, "warning");
-

@@ -1,4 +1,4 @@
-import { parseAndGetCorrectTime, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
+import { parseAndGetCorrectTime, parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
 
 export type EntityLike = {
     id?: string | null;

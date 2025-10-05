@@ -24,7 +24,7 @@ import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 
 //
 import { getDirectoryHandle } from "fest/lure";
-import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
+import { checkRemainsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { loadSettings } from "@rs-core/config/Settings";

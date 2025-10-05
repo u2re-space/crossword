@@ -6,7 +6,7 @@ import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/ov
 import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import { openPickerAndWrite, pasteIntoDir } from "../entities/utils/FileOps";
+import { openPickerAndWrite, pasteIntoDir } from "../../entities/utils/FileOps";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },

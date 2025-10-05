@@ -1,82 +1,15 @@
-import { makePropertyDesc } from "../utils/Formatted";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/views/entities/edits/EntityEdit";
+import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePath, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
+import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { H, M } from "fest/lure";
+import { formatAsTime, insideOfDay, notInPast, parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
+
+//
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
-import { insideOfDay, notInPast, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
-
-//
-const normalizeSchedule = (value: any): any => {
-    if (!value) return null;
-    if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
-        return value;
-    }
-    return { iso_date: value };
-};
-
-const formatAsTime = (time: any) => {
-    const normalized = normalizeSchedule(time);
-    if (!normalized) return "";
-    return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-}
-
-//
 marked.use(markedKatex({
     throwOnError: false,
     nonStandard: true
 }) as any);
-
-//
-export const _LOG_ = (data: any) => {
-    console.log("LOG_", data);
-    return data;
-}
-
-//
-export const MAKE_LABEL = (label: string) => {
-    //return label?.replace?.(/_/g, " ");
-
-    // by default, just capitalize first letter and replace `_` with ` `
-    return label?.charAt?.(0)?.toUpperCase?.() + label?.slice?.(1)?.replace?.(/_/g, " ");
-}
-
-//
-const makeObjectEntries = (object: any) => {
-    if (!object) return [];
-    if (typeof object == "object" || typeof object == "function") {
-        return [...Object.entries(object)];
-    }
-    return [];
-}
-
-function countLines(text: string | any) {
-    if (!text) {
-        return 0; // Handle empty or null input
-    }
-    return Array.isArray(text) ? text?.length : text?.split?.(/\r\n|\r|\n/)?.length;
-}
-
-//
-const wrapBySpan = (text: string | any) => {
-    if (!text) return "";
-    return `<span>${Array.isArray(text) ? text?.join?.(",") : text}</span>`;
-}
-
-//
-export interface CardRenderOptions {
-    order?: number | null | undefined;
-}
-
-//
-const cropFirstLetter = (text: string | any) => {
-    return text?.charAt?.(0)?.toUpperCase?.() /*+ text?.slice?.(1) ||*/ || "C";
-}
-
-//
-const makePath = (item: any, entityDesc: any) => {
-    const fileId = item?.id || item?.name;
-    return (item as any)?.__path || `${entityDesc.DIR}${(fileId || item?.title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-}
 
 //
 export const MakeCardElement = (item: any, entityDesc: any, options: CardRenderOptions = {}) => {

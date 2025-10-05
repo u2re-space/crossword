@@ -1,5 +1,12 @@
-export type SectionKey = "main" | "schedule" | "properties" | "contacts" | "relations" | "meta";
+/*
+ *
+ * Needs for direct uploading JSON files to IndexedDB and Cache.
+ * Not always AI may be needed for sorting into database, so we need to detect type of data.
+ * Detects by fields, such as 'kind', some 'properties', structure, keywords, etc.
+ */
 
+//
+export type SectionKey = "main" | "schedule" | "properties" | "contacts" | "relations" | "meta";
 export type EntityFieldRule = {
     name: string;
     label: string;
@@ -17,96 +24,13 @@ export type EntityFieldRule = {
     required?: boolean;
 };
 
+//
 export type EntitySchema = {
     kind?: string[];
     fields: EntityFieldRule[];
 };
 
-export const COLOR_OPTIONS = [
-    "red",
-    "green",
-    "blue",
-    "yellow",
-    "orange",
-    "purple",
-    "brown",
-    "gray",
-    "black",
-    "white"
-];
 
-export const TASK_STATUS_OPTIONS = [
-    "under_consideration",
-    "pending",
-    "in_progress",
-    "completed",
-    "failed",
-    "delayed",
-    "canceled",
-    "other"
-];
-
-export const AFFECT_OPTIONS = ["positive", "negative", "neutral"];
-export const GENDER_OPTIONS = ["male", "female", "other"];
-
-export const ENTITY_KIND_MAP: Record<string, string[]> = {
-    task: ["job", "action", "other"],
-    event: [
-        "education",
-        "lecture",
-        "conference",
-        "meeting",
-        "seminar",
-        "workshop",
-        "presentation",
-        "celebration",
-        "opening",
-        "other"
-    ],
-    action: [
-        "thinking",
-        "imagination",
-        "remembering",
-        "speaking",
-        "learning",
-        "listening",
-        "reading",
-        "writing",
-        "moving",
-        "traveling",
-        "speech",
-        "physically",
-        "crafting",
-        "following",
-        "other"
-    ],
-    service: ["product", "consultation", "advice", "medical", "mentoring", "training", "item", "thing", "other"],
-    item: ["currency", "book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"],
-    skill: ["skill", "knowledge", "ability", "trait", "experience", "other"],
-    vendor: ["vendor", "company", "organization", "institution", "other"],
-    place: [
-        "placement",
-        "place",
-        "school",
-        "university",
-        "service",
-        "clinic",
-        "pharmacy",
-        "hospital",
-        "library",
-        "market",
-        "location",
-        "shop",
-        "restaurant",
-        "cafe",
-        "bar",
-        "hotel",
-        "other"
-    ],
-    factor: ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "news", "other"],
-    person: ["specialist", "consultant", "coach", "mentor", "dear", "helper", "assistant", "friend", "family", "relative", "other"],
-    bonus: []
-};
 
 const optionize = (values: string[] | undefined): string[] => (values ?? []).map((value) => value);
 
@@ -148,6 +72,45 @@ const contactFields = (basePath: string): EntityFieldRule[] => [
         multi: true
     }
 ];
+
+export const selectField = (name: string, label: string, path: string, options: string[], section: SectionKey = "properties", helper?: string): EntityFieldRule => ({
+    name,
+    label,
+    path,
+    section,
+    helper,
+    options: optionize(options)
+});
+
+//
+export const COLOR_OPTIONS = [
+    "red",
+    "green",
+    "blue",
+    "yellow",
+    "orange",
+    "purple",
+    "brown",
+    "gray",
+    "black",
+    "white"
+];
+
+export const TASK_STATUS_OPTIONS = [
+    "under_consideration",
+    "pending",
+    "in_progress",
+    "completed",
+    "failed",
+    "delayed",
+    "canceled",
+    "other"
+];
+
+//
+export const AFFECT_OPTIONS = ["positive", "negative", "neutral"];
+export const GENDER_OPTIONS = ["male", "female", "other"];
+
 
 const dateStructFields = (
     name: string,
@@ -211,15 +174,6 @@ const jsonField = (
     json: true,
     textarea: true,
     helper
-});
-
-const selectField = (name: string, label: string, path: string, options: string[], section: SectionKey = "properties", helper?: string): EntityFieldRule => ({
-    name,
-    label,
-    path,
-    section,
-    helper,
-    options: optionize(options)
 });
 
 const stringField = (
@@ -355,6 +309,113 @@ export const BASE_ENTITY_FIELD_RULES: EntityFieldRule[] = [
     }
 ];
 
+//
+export const FIELD_ALIASES: Record<string, string> = {
+    title: "title",
+    kind: "kind",
+    name: "name",
+    id: "id",
+    price: "properties.price",
+    quantity: "properties.quantity",
+    begin_time: "properties.begin_time",
+    end_time: "properties.end_time",
+    email: "properties.contacts.email",
+    phone: "properties.contacts.phone",
+    links: "properties.contacts.links",
+    "contacts.email": "properties.contacts.email",
+    "contacts.phone": "properties.contacts.phone",
+    "contacts.links": "properties.contacts.links"
+};
+
+//
+export const LEGACY_PROPERTY_RULES: Record<string, EntityFieldRule> = {
+    price: numberField("price", "Price", "properties.price", "properties", "Price as number"),
+    quantity: numberField("quantity", "Quantity", "properties.quantity"),
+    begin_time: stringField("begin_time", "Begin", "properties.begin_time", "schedule", "YYYY-MM-DD or ISO string"),
+    end_time: stringField("end_time", "End", "properties.end_time", "schedule", "YYYY-MM-DD or ISO string"),
+    location: locationField("location", "properties.location"),
+    services: arrayField("services", "Services", "properties.services", "relations", "Service IDs, one per line"),
+    members: arrayField("members", "Members", "properties.members", "relations", "Member IDs, one per line"),
+    actions: arrayField("actions", "Actions", "properties.actions", "relations", "Action IDs, one per line"),
+    bonuses: arrayField("bonuses", "Bonuses", "properties.bonuses", "properties", "Bonus IDs, one per line"),
+    rewards: arrayField("rewards", "Rewards", "properties.rewards", "properties", "Reward IDs, one per line"),
+    feedbacks: arrayField("feedbacks", "Feedbacks", "properties.feedbacks", "properties", "Feedback IDs, one per line"),
+    tasks: arrayField("tasks", "Tasks", "properties.tasks", "relations", "Task IDs, one per line"),
+    persons: arrayField("persons", "Persons", "properties.persons", "relations", "Person IDs, one per line"),
+    events: arrayField("events", "Events", "properties.events", "relations", "Event IDs, one per line"),
+    image: arrayField("image", "Images", "properties.image", "properties", "Image URLs, one per line"),
+    availability: stringField("availability", "Availability", "properties.availability", "properties"),
+    availabilityTime: arrayField("availabilityTime", "Availability time", "properties.availabilityTime", "properties", "Time ranges, one per line"),
+    availabilityDays: arrayField("availabilityDays", "Availability days", "properties.availabilityDays", "properties", "Day names, one per line"),
+    permissions: stringField("permissions", "Permissions", "properties.permissions", "properties"),
+    purpose: stringField("purpose", "Purpose", "properties.purpose", "properties"),
+    home: locationField("home", "properties.home"),
+    jobs: arrayField("jobs", "Jobs", "properties.jobs", "relations", "Job IDs, one per line"),
+    coordinates: jsonField("coordinates", "Coordinates", "properties.coordinates", "properties", "JSON object with latitude and longitude")
+};
+
+
+
+
+export const ENTITY_KIND_MAP: Record<string, string[]> = {
+    task: ["job", "action", "other"],
+    event: [
+        "education",
+        "lecture",
+        "conference",
+        "meeting",
+        "seminar",
+        "workshop",
+        "presentation",
+        "celebration",
+        "opening",
+        "other"
+    ],
+    action: [
+        "thinking",
+        "imagination",
+        "remembering",
+        "speaking",
+        "learning",
+        "listening",
+        "reading",
+        "writing",
+        "moving",
+        "traveling",
+        "speech",
+        "physically",
+        "crafting",
+        "following",
+        "other"
+    ],
+    service: ["product", "consultation", "advice", "medical", "mentoring", "training", "item", "thing", "other"],
+    item: ["currency", "book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"],
+    skill: ["skill", "knowledge", "ability", "trait", "experience", "other"],
+    vendor: ["vendor", "company", "organization", "institution", "other"],
+    place: [
+        "placement",
+        "place",
+        "school",
+        "university",
+        "service",
+        "clinic",
+        "pharmacy",
+        "hospital",
+        "library",
+        "market",
+        "location",
+        "shop",
+        "restaurant",
+        "cafe",
+        "bar",
+        "hotel",
+        "other"
+    ],
+    factor: ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "news", "other"],
+    person: ["specialist", "consultant", "coach", "mentor", "dear", "helper", "assistant", "friend", "family", "relative", "other"],
+    bonus: []
+};
+
 export const ENTITY_SCHEMAS: Record<string, EntitySchema> = {
     task: {
         kind: ENTITY_KIND_MAP.task,
@@ -464,45 +525,82 @@ export const ENTITY_SCHEMAS: Record<string, EntitySchema> = {
     }
 };
 
-export const FIELD_ALIASES: Record<string, string> = {
-    title: "title",
-    kind: "kind",
-    name: "name",
-    id: "id",
-    price: "properties.price",
-    quantity: "properties.quantity",
-    begin_time: "properties.begin_time",
-    end_time: "properties.end_time",
-    email: "properties.contacts.email",
-    phone: "properties.contacts.phone",
-    links: "properties.contacts.links",
-    "contacts.email": "properties.contacts.email",
-    "contacts.phone": "properties.contacts.phone",
-    "contacts.links": "properties.contacts.links"
-};
 
-export const LEGACY_PROPERTY_RULES: Record<string, EntityFieldRule> = {
-    price: numberField("price", "Price", "properties.price", "properties", "Price as number"),
-    quantity: numberField("quantity", "Quantity", "properties.quantity"),
-    begin_time: stringField("begin_time", "Begin", "properties.begin_time", "schedule", "YYYY-MM-DD or ISO string"),
-    end_time: stringField("end_time", "End", "properties.end_time", "schedule", "YYYY-MM-DD or ISO string"),
-    location: locationField("location", "properties.location"),
-    services: arrayField("services", "Services", "properties.services", "relations", "Service IDs, one per line"),
-    members: arrayField("members", "Members", "properties.members", "relations", "Member IDs, one per line"),
-    actions: arrayField("actions", "Actions", "properties.actions", "relations", "Action IDs, one per line"),
-    bonuses: arrayField("bonuses", "Bonuses", "properties.bonuses", "properties", "Bonus IDs, one per line"),
-    rewards: arrayField("rewards", "Rewards", "properties.rewards", "properties", "Reward IDs, one per line"),
-    feedbacks: arrayField("feedbacks", "Feedbacks", "properties.feedbacks", "properties", "Feedback IDs, one per line"),
-    tasks: arrayField("tasks", "Tasks", "properties.tasks", "relations", "Task IDs, one per line"),
-    persons: arrayField("persons", "Persons", "properties.persons", "relations", "Person IDs, one per line"),
-    events: arrayField("events", "Events", "properties.events", "relations", "Event IDs, one per line"),
-    image: arrayField("image", "Images", "properties.image", "properties", "Image URLs, one per line"),
-    availability: stringField("availability", "Availability", "properties.availability", "properties"),
-    availabilityTime: arrayField("availabilityTime", "Availability time", "properties.availabilityTime", "properties", "Time ranges, one per line"),
-    availabilityDays: arrayField("availabilityDays", "Availability days", "properties.availabilityDays", "properties", "Day names, one per line"),
-    permissions: stringField("permissions", "Permissions", "properties.permissions", "properties"),
-    purpose: stringField("purpose", "Purpose", "properties.purpose", "properties"),
-    home: locationField("home", "properties.home"),
-    jobs: arrayField("jobs", "Jobs", "properties.jobs", "relations", "Job IDs, one per line"),
-    coordinates: jsonField("coordinates", "Coordinates", "properties.coordinates", "properties", "JSON object with latitude and longitude")
-};
+//
+export const detectEntityTypeByJSON = (unknownJSON: any) => {
+    let mostSuitableType = "unknown";
+
+    //
+    unknownJSON = typeof unknownJSON == "string" ? JSON.parse(unknownJSON) : unknownJSON;
+    if (typeof unknownJSON != "object") { return mostSuitableType; }
+
+    // direct type detection
+    if (unknownJSON.type && unknownJSON.properties && unknownJSON.kind) return unknownJSON.type;
+
+    // attempt 1 - detect possible types by 'KIND_MAP' enums
+    let types: Set<any> = new Set();
+    for (const type in ENTITY_KIND_MAP) {
+        if (ENTITY_KIND_MAP[type].includes(unknownJSON.kind)) {
+            types.add(type);
+        }
+    }
+
+    // filter all entities, which has no required kinds
+    const allEntities = [...Object.entries(ENTITY_SCHEMAS)]?.filter?.(([key, _]: any) => types.has(key))
+
+    // attempt 2.1 - detect by specific fields and properties (events, time based)
+    let timeTypes: Set<any> = new Set();
+    if (unknownJSON?.properties?.begin_time != null || unknownJSON?.properties?.end_time != null) {
+        allEntities?.forEach(([type, scheme]: any) => {
+            if (scheme.properties?.begin_time != null && scheme.properties?.end_time != null) {
+                timeTypes.add(type);
+            }
+        });
+    }
+
+    // attempt 2.2 - detect by specific fields and properties (location based)
+    let locationTypes: Set<any> = new Set();
+    if (unknownJSON?.properties?.location != null) {
+        allEntities?.forEach(([type, scheme]: any) => {
+            if (scheme.properties?.location != null) {
+                locationTypes.add(type);
+            }
+        });
+    }
+
+    // attempt 2.3 - detect by specific fields and properties (prices factors)
+    let pricesTypes: Set<any> = new Set();
+    if (unknownJSON?.properties?.prices != null) {
+        allEntities?.forEach(([type, scheme]: any) => {
+            if (scheme.properties?.prices != null) {
+                pricesTypes.add(type);
+            }
+        });
+    }
+
+    // attempt 2.4 - detect by specific fields and properties (contacts factors)
+    let contactsTypes: Set<any> = new Set();
+    if (unknownJSON?.properties?.contacts != null) {
+        allEntities?.forEach(([type, scheme]: any) => {
+            if (scheme.properties?.contacts != null) {
+                contactsTypes.add(type);
+            }
+        });
+    }
+
+    //
+    const countMap = new Map<any, number>();
+    [...contactsTypes, ...locationTypes, ...pricesTypes, ...timeTypes].forEach((type) => {
+        countMap.set(type, (countMap.get(type) || 0) + 1);
+    });
+
+    //
+    mostSuitableType = countMap.size == 0 ? [...types]?.[0] : [...countMap.entries()].reduce((a, b) => a[1] > b[1] ? a : b)[0];
+    return (mostSuitableType || "unknown");
+}
+
+// for multiple entities (array)
+export const detectEntityTypesByJSONs = (unknownJSONs: any[] | any) => {
+    unknownJSONs = typeof unknownJSONs == "string" ? JSON.parse(unknownJSONs) : unknownJSONs;
+    return (Array.isArray(unknownJSONs) ? unknownJSONs?.map?.((unknownJSON) => detectEntityTypeByJSON(unknownJSON)) || [] : [detectEntityTypeByJSON(unknownJSONs)]);
+}

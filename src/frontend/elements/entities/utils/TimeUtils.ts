@@ -197,3 +197,19 @@ export function parseAndGetCorrectTime(str: any | Date | null = null): number {
     if (str instanceof Date) return str.getTime();
     return parseDateCorrectly(str)?.getTime?.() ?? Date.now();
 }
+
+//
+export const normalizeSchedule = (value: any): any => {
+    if (!value) return null;
+    if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
+        return value;
+    }
+    return { iso_date: value };
+};
+
+//
+export const formatAsTime = (time: any) => {
+    const normalized = normalizeSchedule(time);
+    if (!normalized) return "";
+    return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+}

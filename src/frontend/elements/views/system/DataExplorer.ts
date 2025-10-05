@@ -1,10 +1,10 @@
 import { openDirectory, H, M, getDirectoryHandle } from "fest/lure";
 import { dataCategories } from "@rs-core/service/Cache";
-import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { downloadByPath, openPickerAndWrite } from "@rs-frontend/utils/FileOps";
 import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
 import { currentWebDav } from "@rs-core/config/Settings";
+import { downloadByPath, openPickerAndWrite } from "@rs-frontend/elements/entities/utils/FileOps";
+import { implementDropEvent, implementPasteEvent } from "@rs-frontend/elements/entities/utils/HookEvent";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();

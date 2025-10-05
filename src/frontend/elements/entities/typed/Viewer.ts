@@ -3,10 +3,10 @@ import { implementDropEvent, implementPasteEvent } from "../utils/HookEvent";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
-import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/views/entities/edits/EntityEdit";
+import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { makeReactive } from "fest/object";
-import { insideOfDay } from "@rs-core/utils/TimeUtils";
+import { insideOfDay } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { MakeCardElement } from "./Cards";
 

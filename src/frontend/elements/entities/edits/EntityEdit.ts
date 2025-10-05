@@ -1,5 +1,6 @@
 import { removeFile } from "fest/lure";
-import { ModalForm, type FieldSpec } from "./Modal";
+import { ModalForm } from "./Modal";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import {
     collectDescriptors,
     buildInitialValues,
@@ -7,9 +8,9 @@ import {
     ensureSectionHost,
     cloneEntity,
     fieldDescriptorToSpec
-} from "@rs-frontend/elements/views/entities/edits/SchemaFields";
-import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+} from "@rs-frontend/elements/entities/edits/EntityFields";
 
+//
 export type EntityEditOptions = {
     allowLinks?: boolean;
     description?: string;
@@ -19,8 +20,7 @@ export type EntityEditOptions = {
     entityType?: string;
 };
 
-//fields: (FieldSpec | null)[]
-
+//
 export const makeEntityEdit = async (
     entityDesc: any,
     fieldDesc: any,

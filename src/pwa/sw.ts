@@ -7,7 +7,7 @@ import { NetworkFirst } from 'workbox-strategies'
 
 //
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
-import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
+import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { loadSettings } from "@rs-core/config/Settings";
 import { pushToIDBQueue, queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";

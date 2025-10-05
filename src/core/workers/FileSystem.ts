@@ -1,7 +1,7 @@
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
 import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
 import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
-import { detectEntityTypeByJSON } from "@rs-core/template/TypeDetector-v2";
+import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";

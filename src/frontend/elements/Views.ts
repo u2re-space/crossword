@@ -1,4 +1,4 @@
-export * from "./views/entities/typed/Viewer";
+export * from "./entities/typed/Viewer";
 export * from "./views/docs/PreferencesView";
 export * from "./views/docs/QuestsView";
 export * from "./views/system/DataExplorer";

@@ -1,6 +1,20 @@
 import { observableByMap, observableBySet } from "fest/object";
 import { H, M } from "fest/lure";
-import { parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
+import { parseDateCorrectly, getISOWeekNumber } from "@rs-frontend/elements/entities/utils/TimeUtils";
+
+
+
+
+/*
+//
+export const _LOG_ = (data: any) => {
+    console.log("LOG_", data);
+    return data;
+}
+*/
+
+
+
 
 //
 export const beginDragAsText = (ev: DragEvent) => {
@@ -73,7 +87,7 @@ export const wrapAsListItem = (label: string | any, item: any) => {
 }
 
 //
-const ensureDate = (value: any): Date | null => {
+export const ensureDate = (value: any): Date | null => {
     if (!value) return null;
     const parsed = parseDateCorrectly(value);
     if (!parsed) return null;
@@ -81,11 +95,11 @@ const ensureDate = (value: any): Date | null => {
     return Number.isFinite(time) ? parsed : null;
 };
 
-const resolveBeginDate = (dayDesc: any): Date | null => {
+export const resolveBeginDate = (dayDesc: any): Date | null => {
     return ensureDate(dayDesc?.begin_time ?? dayDesc?.properties?.begin_time ?? dayDesc?.start);
 };
 
-const buildPrimaryDayTitle = (dayDesc: any): string => {
+export const buildPrimaryDayTitle = (dayDesc: any): string => {
     const preset = dayDesc?.separatorTitle;
     if (typeof preset === "string" && preset.trim()) {
         return preset;
@@ -109,14 +123,14 @@ const buildPrimaryDayTitle = (dayDesc: any): string => {
     return formatted;
 };
 
-const buildSecondaryDayTitle = (dayDesc: any, primary: string): string | null => {
+export const buildSecondaryDayTitle = (dayDesc: any, primary: string): string | null => {
     const label = dayDesc?.title;
     if (!label) return null;
     if (!primary) return label;
     return label.trim() === primary.trim() ? null : label;
 };
 
-const makeDayHeader = (dayDesc: any, onToggle: (ev: Event) => void) => {
+export const makeDayHeader = (dayDesc: any, onToggle: (ev: Event) => void) => {
     const primary = buildPrimaryDayTitle(dayDesc);
     const secondary = buildSecondaryDayTitle(dayDesc, primary);
     return H`<header class="timeline-day-header" on:click=${onToggle}>
@@ -240,3 +254,112 @@ export const makePropertyDesc = (label: string | any, property: any, key?: strin
     // handle lists, maps, sets, etc.
     return formatByCondition(label, basis, key);
 }
+
+//
+export const MAKE_LABEL = (label: string) => {
+    //return label?.replace?.(/_/g, " ");
+
+    // by default, just capitalize first letter and replace `_` with ` `
+    return label?.charAt?.(0)?.toUpperCase?.() + label?.slice?.(1)?.replace?.(/_/g, " ");
+}
+
+//
+export const makeObjectEntries = (object: any) => {
+    if (!object) return [];
+    if (typeof object == "object" || typeof object == "function") {
+        return [...Object.entries(object)];
+    }
+    return [];
+}
+
+//
+export const countLines = (text: string | any) => {
+    if (!text) {
+        return 0; // Handle empty or null input
+    }
+    return Array.isArray(text) ? text?.length : text?.split?.(/\r\n|\r|\n/)?.length;
+}
+
+//
+export const wrapBySpan = (text: string | any) => {
+    if (!text) return "";
+    return `<span>${Array.isArray(text) ? text?.join?.(",") : text}</span>`;
+}
+
+//
+export interface CardRenderOptions {
+    order?: number | null | undefined;
+}
+
+//
+export const cropFirstLetter = (text: string | any) => {
+    return text?.charAt?.(0)?.toUpperCase?.() /*+ text?.slice?.(1) ||*/ || "C";
+}
+
+//
+export const makePath = (item: any, entityDesc: any) => {
+    const fileId = item?.id || item?.name;
+    return (item as any)?.__path || `${entityDesc.DIR}${(fileId || item?.title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+}
+
+
+//
+export const startCase = (value: string) =>
+    value.replace(/[_\-]+/g, " ")
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/^./, (char) => char.toUpperCase());
+
+//
+export const splitPath = (path: string) => path.split(".").filter(Boolean);
+export const getByPath = (source: any, path: string) => splitPath(path).reduce((acc, key) => (acc == null ? acc : acc[key]), source);
+export const setByPath = (target: any, path: string, value: any) => {
+    const keys = splitPath(path);
+    if (!keys.length) return;
+    let current = target;
+    for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        if (typeof current[key] !== "object" || current[key] === null) current[key] = {};
+        current = current[key];
+    }
+    current[keys[keys.length - 1]] = value;
+};
+
+//
+export const unsetByPath = (target: any, path: string) => {
+    const keys = splitPath(path);
+    if (!keys.length) return;
+    const parents: Array<[any, string]> = [];
+    let current = target;
+    for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        if (current?.[key] === undefined) return;
+        parents.push([current, key]);
+        current = current[key];
+        if (typeof current !== "object" || current === null) return;
+    }
+    const lastKey = keys[keys.length - 1];
+    if (current && Object.prototype.hasOwnProperty.call(current, lastKey)) {
+        delete current[lastKey];
+        for (let i = parents.length - 1; i >= 0; i--) {
+            const [parent, key] = parents[i];
+            const value = parent[key];
+            if (value && typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) delete parent[key];
+            else break;
+        }
+    }
+};
+
+//
+export const toMultiline = (value: unknown): string => {
+    if (!value) return "";
+    if (Array.isArray(value)) return value.map((item) => (item ?? "").toString().trim()).filter(Boolean).join("\n");
+    return String(value ?? "");
+};
+
+//
+export const fromMultiline = (value: string): string[] => {
+    if (!value) return [];
+    return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+};

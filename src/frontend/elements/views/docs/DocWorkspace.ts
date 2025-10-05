@@ -639,7 +639,7 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
             const normalizedDir = dir.endsWith("/") ? dir : `${dir}/`;
             ensureWatcher(normalizedDir);
             const handle = await controller.ensureDir(normalizedDir).catch(() => null);
-            if (!handle) continue;
+            if (!handle) continue; // @ts-ignore
             const dirEntries = await Array.fromAsync(handle.entries?.() ?? []).catch(() => [] as any);
             for (const [name, fileHandle] of dirEntries as [string, FileSystemFileHandle][]) {
                 if (!fileHandle || !(fileHandle as any).kind || name.endsWith(".crswap")) continue;
