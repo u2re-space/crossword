@@ -9,20 +9,31 @@ import { makeReactive } from "fest/object";
 import { insideOfDay } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { MakeCardElement } from "./Cards";
+import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types";
+import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //
-export const $filtered = (obj: any, desc: any | null) => {
+export const $filtered = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends ChapterDescriptor = ChapterDescriptor
+>(obj: E, desc: C) => {
     return true;
 }
 
 //
-export const $byKind = (obj: any, byKind: string | null = null) => {
-    return obj.kind === byKind || !byKind || byKind == "all" || !obj.kind;
+export const $byKind = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends ChapterDescriptor = ChapterDescriptor
+>(obj: E, desc: C) => {
+    return obj.kind === desc || !desc || desc == "all" || !obj.kind;
 }
 
 //
-export const $insideOfDay = (obj: any, dayDesc: any | null = null) => {
-    return insideOfDay(obj, dayDesc)
+export const $insideOfDay = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends DayDescriptor = DayDescriptor
+>(obj: E, dayDesc: C | null = null) => {
+    return insideOfDay(obj, dayDesc as C)
 }
 
 //
@@ -30,12 +41,15 @@ export const renderTabName = (tabName: string) => {
     return tabName;
 }
 
-
 //
-export const ItemsByType = <T = any>(
-    sourceRef: { DIR: string, desc: T },
-    filtered: (obj: any, desc: T | null) => boolean,
-    ItemRenderer: (item: any, desc: T | null) => any
+export const ItemsByType = <
+    T extends EntityDescriptor = EntityDescriptor,
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends ChapterDescriptor = ChapterDescriptor
+>(
+    sourceRef: T,
+    chapterRef: C, filtered: (item: E, desc: C) => boolean,
+    ItemRenderer: (item: E, desc: T) => any
 ) => {
     const dataRef: any = makeReactive([]);
     let stopWatch: (() => void) | null = null;
@@ -64,7 +78,7 @@ export const ItemsByType = <T = any>(
                 const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
                 (obj as any).__name = name;
                 (obj as any).__path = `${sourceRef.DIR}${name}`;
-                if (filtered(obj, sourceRef.desc) && obj) { dataRef.push(obj); }
+                if (filtered(obj as E, chapterRef as C) && obj) { dataRef.push(obj as E); }
                 return obj;
             })?.filter?.((e: any) => e);
 
@@ -78,12 +92,12 @@ export const ItemsByType = <T = any>(
 
     //
     const items = M(dataRef, (item) => {
-        const itemEl = ItemRenderer(item, sourceRef.desc ?? null);
+        const itemEl = ItemRenderer(item as E, sourceRef as T);
         return itemEl;
     });
 
     //
-    const root = H`<div data-name="${sourceRef.desc}" class="tab">${items}</div>`;
+    const root = H`<div data-name="${sourceRef}" class="tab">${items}</div>`;
     items.boundParent = root;
     (root as any).reloadList = load;
 
@@ -127,10 +141,10 @@ export const ItemsByType = <T = any>(
 }
 
 //
-export const MakeCardBy = <T>(
-    entityDesc: { label: string, type: string, DIR: string },
-    entityItem: any,
-    ItemMaker: (item: any, entityDesc: any, options?: any) => any = MakeCardElement,
+export const MakeItemBy = <E extends EntityInterface<any, any> = EntityInterface<any, any>, T extends EntityDescriptor = EntityDescriptor>(
+    entityItem: E,
+    entityDesc: T,
+    ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any = MakeCardElement,
     options: any = {}
 ) => {
     if (!entityItem) return null;
@@ -138,17 +152,22 @@ export const MakeCardBy = <T>(
 }
 
 //
-export const ViewPage = <T = any>(
-    entityDesc: { label: string, type: string, DIR: string },
-    chapters: T[] | (() => T[]),
-    filtered: (obj: any, desc: T | null) => boolean,
-    ItemMaker: (item: any, desc: T | null) => any
+export const ViewPage = <
+    T extends EntityDescriptor = EntityDescriptor,
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends ChapterDescriptor = ChapterDescriptor
+>(
+    entityDesc: T,
+    chapters: C[] | (() => C[]),
+    filtered: (item: E, desc: C) => boolean,
+    ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any
 ) => {
-    //const kinds = ["discount", "cashback", "reward", "all"] as const;
+    //
     const tabs = new Map<string, HTMLElement | null | string | any>(
-        (typeof chapters == "function" ? chapters() : chapters).map((chap) => ItemsByType<T>({ DIR: entityDesc.DIR, desc: chap }, filtered,
-            (entityItem) => MakeCardBy(entityDesc, entityItem, ItemMaker, {})
-        ))
+        (typeof chapters == "function" ? chapters() : chapters)
+            .map((chap: C) => ItemsByType<T, E, C>(entityDesc, chap, filtered,
+                (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
+            ))
     );
 
     //

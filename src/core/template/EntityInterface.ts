@@ -1,4 +1,4 @@
-enum ENTITY_TYPE {
+export enum ENTITY_TYPE {
     TASK = "task",
     EVENT = "event",
     ACTION = "action",
@@ -8,8 +8,8 @@ enum ENTITY_TYPE {
 }
 
 //
-enum ENTITY_KIND { };
-enum VENDOR_KIND {
+export enum ENTITY_KIND { };
+export enum VENDOR_KIND {
     VENDOR = "vendor",
     COMPANY = "company",
     ORGANIZATION = "organization",
@@ -17,7 +17,7 @@ enum VENDOR_KIND {
 }
 
 //
-enum PLACE_KIND {
+export enum PLACE_KIND {
     PLACEMENT = "placement",
     PLACE = "place",
     SCHOOL = "school",
@@ -25,7 +25,7 @@ enum PLACE_KIND {
 }
 
 //
-enum FACTOR_KIND {
+export enum FACTOR_KIND {
     WEATHER = "weather",
     HEALTH = "health",
     FAMILY = "family",
@@ -33,7 +33,7 @@ enum FACTOR_KIND {
 }
 
 //
-enum PERSON_KIND {
+export enum PERSON_KIND {
     SPECIALIST = "specialist",
     CONSULTANT = "consultant",
     COACH = "coach",
@@ -42,7 +42,7 @@ enum PERSON_KIND {
 }
 
 //
-enum SERVICE_KIND {
+export enum SERVICE_KIND {
     PRODUCT = "product",
     CONSULTATION = "consultation",
     ADVICE = "advice",
@@ -50,7 +50,7 @@ enum SERVICE_KIND {
 }
 
 //
-enum ITEM_KIND {
+export enum ITEM_KIND {
     CURRENCY = "currency",
     BOOK = "book",
     ELECTRONICS = "electronics",
@@ -58,7 +58,7 @@ enum ITEM_KIND {
 }
 
 //
-enum SKILL_KIND {
+export enum SKILL_KIND {
     SKILL = "skill",
     KNOWLEDGE = "knowledge",
     ABILITY = "ability",
@@ -68,26 +68,31 @@ enum SKILL_KIND {
 
 
 // unknown but base
-interface PropBase {
+export interface PropBase {
 }
 
 //
-interface EntityInterface<T extends PropBase, K extends (ENTITY_KIND | VENDOR_KIND | PLACE_KIND | FACTOR_KIND | PERSON_KIND | SERVICE_KIND | ITEM_KIND | SKILL_KIND)> {
+export interface EntityInterface<T extends PropBase, K extends (ENTITY_KIND | VENDOR_KIND | PLACE_KIND | FACTOR_KIND | PERSON_KIND | SERVICE_KIND | ITEM_KIND | SKILL_KIND)> {
     id: string;
     type: T;
     kind: K;
     name: string;
     title: string;
+    variant: string;
+    description: string | string[];
+    image: string;
+    icon: string;
+    tags: string[];
     properties: T;
 }
 
 //
-interface OtherInterface extends PropBase {
+export interface OtherInterface extends PropBase {
     [key: string]: Record<string, any>;
 }
 
 //
-interface PersonInterface extends PropBase {
+export interface PersonInterface extends PropBase {
     home: string;
     jobs: string[];
     biography: string;
@@ -95,11 +100,18 @@ interface PersonInterface extends PropBase {
     services: string[];
 }
 
+
+export interface TimeType {
+    date: string;
+    iso_date: string;
+    timestamp: number;
+}
+
 //
-interface TaskInterface extends PropBase {
+export interface TaskInterface extends PropBase {
     status: string;
-    begin_time: string;
-    end_time: string;
+    begin_time: TimeType;
+    end_time: TimeType;
     location: string;
     contacts: string;
     members: string[];
@@ -107,20 +119,20 @@ interface TaskInterface extends PropBase {
 }
 
 //
-interface EventInterface extends PropBase {
-    begin_time: string;
-    end_time: string;
+export interface EventInterface extends PropBase {
+    begin_time: TimeType;
+    end_time: TimeType;
     location: string;
     contacts: string;
 }
 
 //
-interface ActionInterface extends PropBase {
+export interface ActionInterface extends PropBase {
     affect: string;
 }
 
 //
-interface ServiceInterface extends PropBase {
+export interface ServiceInterface extends PropBase {
     location: string;
     persons: string[];
     specialization: string[];
@@ -128,14 +140,14 @@ interface ServiceInterface extends PropBase {
 }
 
 //
-interface SkillInterface extends PropBase {
+export interface SkillInterface extends PropBase {
     level: string;
     category: string[];
     related: string[];
 }
 
 //
-interface ItemInterface extends PropBase {
+export interface ItemInterface extends PropBase {
     price: number;
     quantity: number;
     availability: string[];
@@ -143,7 +155,7 @@ interface ItemInterface extends PropBase {
 }
 
 //
-interface BonusInterface extends PropBase {
+export interface BonusInterface extends PropBase {
     code: string;
     usableFor: string[];
     usableIn: string[];

@@ -1,4 +1,6 @@
 import { makeReactive } from "fest/object";
+import type { DayDescriptor } from "../typed/Types";
+import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
@@ -54,19 +56,24 @@ export const isDate = (date: any) => {
 }
 
 //
-export const insideOfDay = (item: any, dayDesc: any) => {
+export const insideOfDay = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    T extends DayDescriptor = DayDescriptor
+>(item: E, dayDesc: T) => {
     const inRange = (
         parseAndGetCorrectTime(item?.properties?.begin_time) >= parseAndGetCorrectTime(dayDesc?.begin_time) &&
         parseAndGetCorrectTime(item?.properties?.end_time) <= parseAndGetCorrectTime(dayDesc?.end_time)
     );
-    const matchesFilter = dayDesc?.filter ? item?.properties?.status == dayDesc?.filter : true;
+    const matchesFilter = dayDesc?.status ? item?.properties?.status == dayDesc?.status : true;
     return Boolean(inRange && matchesFilter);
 }
 
 //
-export const notInPast = (item: any, dayDesc?: any) => {
-    //return true;
-    return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.filter && item?.properties?.status == dayDesc?.filter);
+export const notInPast = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    T extends DayDescriptor = DayDescriptor
+>(item: E, dayDesc: T | null = null) => {
+    return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.status && item?.properties?.status == dayDesc?.status);
 }
 
 //
@@ -140,7 +147,7 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
             // if day not found and isn't past
             if (!day && (parseAndGetCorrectTime(endTime) >= parseAndGetCorrectTime())) {
                 // create day (floor and ceiling times into day)
-                const dayDescriptor = createDayDescriptor(beginTime, { filter: "" });
+                const dayDescriptor = createDayDescriptor(beginTime, { status: "" });
                 if (dayDescriptor) {
                     daysDesc?.push?.(day ??= dayDescriptor);
                 }
@@ -213,3 +220,42 @@ export const formatAsTime = (time: any) => {
     if (!normalized) return "";
     return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
+
+//
+export const getComparableTimeValue = (value: any): number => {
+    if (value == null) return Number.NaN;
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    const date = parseDateCorrectly(value);
+    if (date && !Number.isNaN(date?.getTime())) {
+        return date?.getTime() ?? 0;
+    }
+
+    const match = String(value).match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?/);
+    if (match) {
+        const hours = Number(match[1]) || 0;
+        const minutes = Number(match[2]) || 0;
+        const seconds = Number(match[3]) || 0;
+        return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+    }
+
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : Number.NaN;
+};
+
+//
+export const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | null => {
+    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null);
+    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null);
+    const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
+    if (!Number.isFinite(fallback)) {
+        return null;
+    }
+
+    const dayStart = getComparableTimeValue(dayDesc?.properties?.begin_time ?? null);
+    const normalized = Number.isFinite(dayStart) ? fallback - dayStart : fallback;
+    return Math.round(normalized / 60000); // normalize to minutes to keep values small
+};

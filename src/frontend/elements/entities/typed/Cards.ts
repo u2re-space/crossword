@@ -1,7 +1,9 @@
 import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePath, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { H, M } from "fest/lure";
-import { formatAsTime, insideOfDay, notInPast, parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { formatAsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import type { EntityDescriptor } from "./Types";
+import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //
 import { marked } from "marked"
@@ -12,18 +14,25 @@ marked.use(markedKatex({
 }) as any);
 
 //
-export const MakeCardElement = (item: any, entityDesc: any, options: CardRenderOptions = {}) => {
-    if (!item) return null;
+export const MakeCardElement = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    T extends EntityDescriptor = EntityDescriptor
+>(
+    entityItem: E,
+    entityDesc: T,
+    options: CardRenderOptions = {}
+) => {
+    if (!entityItem) return null;
 
     //
-    const begin_time = formatAsTime(item?.properties?.begin_time) || "";
-    const end_time = formatAsTime(item?.properties?.end_time) || "";
-    const variant = item?.variant || "default";
-    let description = item?.description || "";
+    const begin_time = formatAsTime(entityItem?.properties?.begin_time) || "";
+    const end_time = formatAsTime(entityItem?.properties?.end_time) || "";
+    const variant = entityItem?.variant || "default";
+    let description = entityItem?.description || "";
 
     //
-    if (countLines(description) <= 1) {
-        description = description?.split?.(",");
+    if (typeof description === "string" && countLines(description) <= 1) {
+        description = description?.split?.(",") ?? [];
     }
 
     let timeRangeElement = null;
@@ -32,24 +41,24 @@ export const MakeCardElement = (item: any, entityDesc: any, options: CardRenderO
     }
 
     //
-    const events = makeEvents(entityDesc, item, makePath(item, entityDesc));
+    const events = makeEvents(entityDesc, entityItem, makePath(entityItem, entityDesc));
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
-    const card = H`<div data-id=${item?.id || item?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
+    const card = H`<div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
-        <div class="avatar-inner">${item?.icon ? H`<ui-icon icon=${item?.icon}></ui-icon>` : cropFirstLetter(item?.title ?? entityDesc.label ?? "C")}</div>
+        <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div> // @ts-ignore
     </div>
     <div class="card-props">
-        <ul class="card-title"><li>${item?.title || item?.name || entityDesc.label}</li></ul>
-        <ul class="card-kind"><li>${item?.kind || item?.kind}</li></ul>
+        <ul class="card-title"><li>${entityItem?.title || entityItem?.name || entityDesc.label}</li></ul> // @ts-ignore
+        <ul class="card-kind"><li>${entityItem?.kind || entityItem?.kind}</li></ul>
     </div>
     ${timeRangeElement}
     <div class="card-actions">
-        <button class="action" on:click=${item.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
+        <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
-        <span class="card-label">Properties: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(item?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
-        <span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+        <span class="card-label">Properties: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityItem?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+        <span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul> // @ts-ignore
     </div>
     ${linksPlaceholder}
     <div class="card-description">
@@ -69,64 +78,5 @@ export const MakeCardElement = (item: any, entityDesc: any, options: CardRenderO
             console.warn("Failed to set card order", e);
         }
     }
-
     return card;
-}
-
-//
-const getComparableTimeValue = (value: any): number => {
-    if (value == null) return Number.NaN;
-
-    if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-    }
-
-    const date = parseDateCorrectly(value);
-    if (date && !Number.isNaN(date?.getTime())) {
-        return date?.getTime() ?? 0;
-    }
-
-    const match = String(value).match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?/);
-    if (match) {
-        const hours = Number(match[1]) || 0;
-        const minutes = Number(match[2]) || 0;
-        const seconds = Number(match[3]) || 0;
-        return ((hours * 60 + minutes) * 60 + seconds) * 1000;
-    }
-
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : Number.NaN;
-};
-
-//
-const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | null => {
-    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null);
-    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null);
-    const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
-    if (!Number.isFinite(fallback)) {
-        return null;
-    }
-
-    const dayStart = getComparableTimeValue(dayDesc?.properties?.begin_time ?? null);
-    const normalized = Number.isFinite(dayStart) ? fallback - dayStart : fallback;
-    return Math.round(normalized / 60000); // normalize to minutes to keep values small
-};
-
-//
-export const MakeCardByDayDesc = (entityDesc: any, item: any, dayDesc: any | null = null) => {
-    if (!item) return null;
-
-    //
-    const title = item?.title || item?.name || entityDesc.label;
-    const kind = item?.kind || "";
-    if (dayDesc && (!insideOfDay(item, dayDesc) || !notInPast(item, dayDesc))) return;
-
-    //
-    const fileId = item?.id || item?.name;
-    const path = (item as any)?.__path || `${entityDesc.DIR}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-    if (!path) return null;
-
-    //
-    const order = computeTimelineOrder(item, dayDesc);
-    return MakeCardElement(item, entityDesc, { order });
 }
