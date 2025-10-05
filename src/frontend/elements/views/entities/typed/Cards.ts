@@ -1,5 +1,5 @@
-import { makePropertyDesc } from "@rs-frontend/utils/Formatted";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/display/edits/EntityEdit";
+import { makePropertyDesc } from "../utils/Formatted";
+import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/views/entities/edits/EntityEdit";
 import { H, M } from "fest/lure";
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
@@ -73,7 +73,13 @@ const cropFirstLetter = (text: string | any) => {
 }
 
 //
-export const MakeCardElement = (label: string, item: any, events: any, options: CardRenderOptions = {}) => {
+const makePath = (item: any, entityDesc: any) => {
+    const fileId = item?.id || item?.name;
+    return (item as any)?.__path || `${entityDesc.DIR}${(fileId || item?.title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+}
+
+//
+export const MakeCardElement = (item: any, entityDesc: any, options: CardRenderOptions = {}) => {
     if (!item) return null;
 
     //
@@ -92,22 +98,25 @@ export const MakeCardElement = (label: string, item: any, events: any, options: 
         timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
     }
 
+    //
+    const events = makeEvents(entityDesc, item, makePath(item, entityDesc));
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
-    const card = H`<div data-id=${item?.id || item?.name} data-variant="${variant}" data-type="${label}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
+    const card = H`<div data-id=${item?.id || item?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
-        <div class="avatar-inner">${item?.icon ? H`<ui-icon icon=${item?.icon}></ui-icon>` : cropFirstLetter(item?.title ?? label ?? "C")}</div>
+        <div class="avatar-inner">${item?.icon ? H`<ui-icon icon=${item?.icon}></ui-icon>` : cropFirstLetter(item?.title ?? entityDesc.label ?? "C")}</div>
     </div>
     <div class="card-props">
-        <ul class="card-title"><li>${item?.title || item?.name || label}</li></ul>
+        <ul class="card-title"><li>${item?.title || item?.name || entityDesc.label}</li></ul>
         <ul class="card-kind"><li>${item?.kind || item?.kind}</li></ul>
     </div>
     ${timeRangeElement}
     <div class="card-actions">
-        <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
+        <button class="action" on:click=${item.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
         <span class="card-label">Properties: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(item?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+        <span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
     ${linksPlaceholder}
     <div class="card-description">
@@ -129,24 +138,6 @@ export const MakeCardElement = (label: string, item: any, events: any, options: 
     }
 
     return card;
-}
-
-//
-export const MakeCardByKind = (label: string, dir: string, item: any, byKind: any | null = null) => {
-    if (!item) return null;
-
-    //
-    const title = item?.title || item?.name || item?.id || label;
-    const kind = item?.kind || "";
-    if (!kind || !byKind || byKind == kind || byKind == "all" || kind == "all") {
-        const fileId = item?.id || item?.name;
-        const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-        if (!path) return null;
-
-        //
-        const events = makeEvents(label, path, title, item, kind);
-        return MakeCardElement(label, item, events);
-    }
 }
 
 //
@@ -174,6 +165,7 @@ const getComparableTimeValue = (value: any): number => {
     return Number.isFinite(numeric) ? numeric : Number.NaN;
 };
 
+//
 const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | null => {
     const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null);
     const endTime = getComparableTimeValue(item?.properties?.end_time ?? null);
@@ -187,21 +179,21 @@ const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | n
     return Math.round(normalized / 60000); // normalize to minutes to keep values small
 };
 
-export const MakeCardByDayDesc = (label: string, dir: string, item: any, dayDesc: any | null = null) => {
+//
+export const MakeCardByDayDesc = (entityDesc: any, item: any, dayDesc: any | null = null) => {
     if (!item) return null;
 
     //
-    const title = item?.title || item?.name || label;
+    const title = item?.title || item?.name || entityDesc.label;
     const kind = item?.kind || "";
     if (dayDesc && (!insideOfDay(item, dayDesc) || !notInPast(item, dayDesc))) return;
 
     //
     const fileId = item?.id || item?.name;
-    const path = (item as any)?.__path || `${dir}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+    const path = (item as any)?.__path || `${entityDesc.DIR}${(fileId || title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
     if (!path) return null;
 
     //
-    const events = makeEvents(label, path, title, item, kind);
     const order = computeTimelineOrder(item, dayDesc);
-    return MakeCardElement(label, item, events, { order });
+    return MakeCardElement(item, entityDesc, { order });
 }

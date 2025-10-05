@@ -1,5 +1,5 @@
 import { AppLayout, CURRENT_VIEW } from "./elements/layouts/AppLayout";
-import { PlannedTimeline, DataExplorer, ContactsView, BonusesView, ServicesView, PreferencesView, QuestsView, Settings } from "./elements/Views";
+import { DataExplorer, PreferencesView, QuestsView, Settings } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 
 //
@@ -48,10 +48,6 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map([
-        ["timeline", await PlannedTimeline(sampleDays)],
-        ["contacts", await ContactsView()],
-        ["bonuses", await BonusesView()],
-        ["services", await ServicesView()],
         ["preferences", await PreferencesView()],
         ["quests", await QuestsView()],
         ["explorer", await DataExplorer()],

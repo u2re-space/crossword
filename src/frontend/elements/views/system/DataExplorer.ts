@@ -3,7 +3,7 @@ import { dataCategories } from "@rs-core/service/Cache";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { downloadByPath, openPickerAndWrite } from "@rs-frontend/utils/FileOps";
-import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
 import { currentWebDav } from "@rs-core/config/Settings";
 
 //

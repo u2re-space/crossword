@@ -1,10 +1,10 @@
 import { DocWorkspace, type DocCollection, type WorkspaceAction, type DocWorkspaceController, createDeleteEntryAction } from "./DocWorkspace";
-import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
 import { getDirectoryHandle } from "fest/lure";
-import { pasteIntoDir, openPickerAndRecognize } from "@rs-frontend/utils/FileOps";
 import { currentWebDav } from "@rs-core/config/Settings";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { openPickerAndRecognize, pasteIntoDir } from "../entities/utils/FileOps";
 
 const COLLECTIONS: DocCollection[] = [
     { id: "plans", label: "Plans", dir: "/docs/plans/", description: "Strategic roadmaps and day-to-day plans." },

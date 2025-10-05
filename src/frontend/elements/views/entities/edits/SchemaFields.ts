@@ -7,7 +7,7 @@ import {
     LEGACY_PROPERTY_RULES
 } from "@rs-core/template/EntitiesSchema";
 import { H } from "fest/lure";
-import type { FieldSpec } from "@rs-frontend/elements/display/edits/Modal";
+import type { FieldSpec } from "@rs-frontend/elements/views/entities/edits/Modal";
 
 export type { SectionKey } from "@rs-core/template/EntitiesSchema";
 

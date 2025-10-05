@@ -7,7 +7,7 @@ import {
     ensureSectionHost,
     cloneEntity,
     fieldDescriptorToSpec
-} from "@rs-frontend/elements/display/edits/SchemaFields";
+} from "@rs-frontend/elements/views/entities/edits/SchemaFields";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 export type EntityEditOptions = {
@@ -19,23 +19,24 @@ export type EntityEditOptions = {
     entityType?: string;
 };
 
+//fields: (FieldSpec | null)[]
+
 export const makeEntityEdit = async (
-    label: string,
-    fields: (FieldSpec | null)[],
-    basis: any = {},
+    entityDesc: any,
+    fieldDesc: any,
     options: EntityEditOptions = {}
 ): Promise<Record<string, any> | null> => {
-    const entityType = (options.entityType || basis?.type || label || "").toString().toLowerCase();
-    const descriptors = collectDescriptors(entityType, fields, Boolean(options.allowLinks));
-    const initialValues = buildInitialValues(basis, descriptors);
+    const entityType = (options.entityType || fieldDesc.basis?.type || entityDesc.type || "").toString().toLowerCase();
+    const descriptors = collectDescriptors(entityType, fieldDesc.fields, Boolean(options.allowLinks));
+    const initialValues = buildInitialValues(fieldDesc.basis, descriptors);
 
     return new Promise((resolve) => {
-        const modal = ModalForm(`Edit ${label}`, async (out) => {
+        const modal = ModalForm(`Edit ${entityDesc.label}`, async (out) => {
             if (!out) {
                 resolve(null);
                 return;
             }
-            const applied = applyDescriptorValues(basis, descriptors, out as Record<string, any>);
+            const applied = applyDescriptorValues(fieldDesc.basis, descriptors, out as Record<string, any>);
             resolve(applied);
         }, {
             description: options.description,
@@ -86,31 +87,34 @@ export const objectExcludeNotExists = (object: any) => {
     return object;
 };
 
-export const makeEvents = (label: string, path: string, title: string, basis: any, kind: string) => {
+export const makeEvents = (
+    entityDesc: any,
+    fieldDesc: any,
+    path: string) => {
     return {
         doDelete: async (ev: Event) => {
             ev?.stopPropagation?.();
             try { await removeFile(null, path); } catch (e) { console.warn(e); }
 
-            const fileId = basis?.id || basis?.name;
+            const fileId = fieldDesc?.basis?.id || fieldDesc?.basis?.name;
             const card = document.querySelector(`.card[data-id="${fileId}"]`);
             card?.remove?.();
         },
         doEdit: async (ev: Event) => {
             ev?.stopPropagation?.();
 
-            const entityType = (basis?.type || label || "").toString().toLowerCase();
-            const result = await makeEntityEdit(label, [], basis, {
+            const entityType = (fieldDesc.basis?.type || entityDesc.type || "").toString().toLowerCase();
+            const result = await makeEntityEdit(entityDesc, fieldDesc, {
                 allowLinks: true,
                 entityType
             });
             if (!result) return;
 
             const updated = cloneEntity(result);
-            Object.assign(basis, updated);
-            Object.assign(basis.properties, updated.properties || {});
+            Object.assign(fieldDesc.basis, updated);
+            Object.assign(fieldDesc.basis.properties, updated.properties || {});
 
-            const fileId = basis?.id || basis?.name;
+            const fileId = fieldDesc?.basis?.id || fieldDesc?.basis?.name;
 
             try {
                 const fileName = (path?.split?.('/')?.pop?.() || `${fileId}.json`).replace(/\s+/g, '-');
@@ -120,14 +124,14 @@ export const makeEvents = (label: string, path: string, title: string, basis: an
             } catch (e) { console.warn(e); }
 
             const card = document.querySelector(`.card[data-id="${fileId}"]`);
-            if (basis?.title) {
-                card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(basis.title));
+            if (fieldDesc?.basis?.title) {
+                card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(fieldDesc.basis.title));
             }
-            if (basis?.description) {
-                card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(basis.description));
+            if (fieldDesc?.basis?.description) {
+                card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(fieldDesc.basis.description));
             }
-            const beginStruct = basis?.properties?.begin_time;
-            const endStruct = basis?.properties?.end_time;
+            const beginStruct = fieldDesc?.basis?.properties?.begin_time;
+            const endStruct = fieldDesc?.basis?.properties?.end_time;
             const beginTime = beginStruct?.iso_date || beginStruct?.date || beginStruct?.timestamp;
             const endTime = endStruct?.iso_date || endStruct?.date || endStruct?.timestamp;
             if (beginTime && endTime) {

@@ -1,0 +1,23 @@
+@layer rs-viewers {
+
+
+    [data-type="tasks"],
+    [data-type="contacts"],
+    [data-type="bonuses"],
+    [data-type="services"] {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-auto-rows: minmax(0px, max-content);
+        grid-auto-flow: row;
+        column-fill: balance;
+        gap: var(--card-gap);
+        align-items: start;
+
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+    }
+
+
+
+}

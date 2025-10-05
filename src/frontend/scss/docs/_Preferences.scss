@@ -1,4 +1,16 @@
 @layer rs-preferences {
+    [data-type="preferences"],
+    [data-type="quests"] {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        background-color: --c2-surface(0.0, var(--current, currentColor));
+
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+    }
+
     .preferences-view {
         display: grid;
         gap: clamp(0.75rem, 1vw, 1.25rem);

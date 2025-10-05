@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 //
-import { toastError, toastSuccess } from "@rs-frontend/elements/display/overlays/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
 import { renderTabName } from "@rs-frontend/utils/Formatted";
 
 //

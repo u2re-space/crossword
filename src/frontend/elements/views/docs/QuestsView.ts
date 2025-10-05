@@ -1,14 +1,12 @@
 /* Here will be math, coding, etc. questions (and answers by AI) */
 /* Used for solving problems and questions by AI */
 
-import { makeReactive } from "fest/object";
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
-import { openPickerAndWrite, downloadByPath, pasteIntoDir, bindDropToDir } from "@rs-frontend/utils/FileOps";
-import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/display/overlays/Toast";
+import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/overlays/Toast";
 import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { openPickerAndWrite, pasteIntoDir } from "../entities/utils/FileOps";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },
