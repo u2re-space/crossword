@@ -58,28 +58,18 @@ export const getDataKindByMIMEType = (mime: string): DataKind => {
 }
 
 //
-export const GLOBAL_PROMPT_INSTRUCTIONS = `
-You are a helpful assistant that can recognize data and organize it in needed formats.
-
-JSON Data schemes partially complains with: <https://json-schema.org/draft/2020-12/schema>
-
-You are given a data source, and needs to follow by requests...
-
-Give in results (outputs) only code or JSON string, without any additional comments.
-
-Don't write anything else, just the JSON format, do not write comments, do not write anything else.
-`;
-
-//
 export const actionWithDataType = (data: DataInput): string => {
     switch (typesForKind?.[data?.dataKind || "input_text"]) {
         case "input_image":
             return `Recognize data from image, also preferred to orient by fonts in image.
 
-In recognition result, do not include image itself.
+After recognition, do not include or remember image itself.
+
+---
+
+In (\`recognized_data\` key), can be written phone numbers, emails, URLs, dates, times, codes, etc. Additional formatting rules:
 
 In recognized from image data (what you seen in image), do:
-
 - If textual content, format as Markdown string (multiline).
 - If phone number, format as as correct phone number (in normalized format).
   - Also, if phone numbers (for example starts with +7, format as 8), replace to correct regional code.
@@ -97,24 +87,32 @@ In recognized from image data (what you seen in image), do:
 - If other, format as $text$.
 - If seen alike list, format as list (in markdown format).
 
-Also, collect special data tags and keywords (if any)...
+---
+
+Some additional actions:
+- Collect some special data tags and keywords (if has any).
+- Also, can you provide in markdown pre-formatted free-form analyzed or recognized verbose data (in \`verbose_data\` key).
+
+---
 
 Get results in JSON wrapped format:
 
 \`\`\`json
 [...{
     "keywords_and_tags": string[],
-    "additional_details": any[],
     "recognized_data": any[],
-    "requested_data": any[] // where to write output data of following requests
+    "verbose_data": string,
+    "using_ready": boolean
 }]
 \`\`\`
 `;
 
         case "input_text":
-            return `Needs to analyze text and extract specific or special data from it, also normalize data by those rules...
+            return `Analyze text and extract specific or special data from it, also normalize data by those rules...
 
-In additional details, can be written phone numbers, emails, URLs, dates, times, codes, etc.
+---
+
+In (\`recognized_data\` key), can be written phone numbers, emails, URLs, dates, times, codes, etc. Additional formatting rules:
 
 Normalize phone numbers, emails, URLs, dates, times, codes, etc for best efforts and by those rules.
 - If phone number, format as as correct phone number (in normalized format).
@@ -133,16 +131,22 @@ Normalize phone numbers, emails, URLs, dates, times, codes, etc for best efforts
 - If other, format as $text$.
 - If seen alike list, format as list (in markdown format).
 
-Also, collect special data tags and keywords (if any)...
+---
 
-Get result in JSON wrapped format:
+Some additional actions:
+- Collect some special data tags and keywords (if has any).
+- Also, can you provide in markdown pre-formatted free-form analyzed or recognized verbose data (in \`verbose_data\` key).
+
+---
+
+Get results in JSON wrapped format:
 
 \`\`\`json
 [...{
     "keywords_and_tags": string[],
-    "additional_details": any[],
     "recognized_data": any[],
-    "requested_data": any[] // where to write output data of following requests
+    "verbose_data": string,
+    "using_ready": boolean
 }]
 \`\`\`
 `;

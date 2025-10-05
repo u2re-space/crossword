@@ -85,7 +85,8 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
     //
     await gptResponses.askToDoAction(["primary_request:",
         "- Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
-        "- Give ready status in JSON format: \`{ ready: boolean, reason: string }\`"
+        "- Also, can you provide markdown pre-formatted verbose data about what you have analyzed and what you will do?",
+        "- Give ready status in JSON format: \`{ ready: boolean, reason: string, verbose_data: string }\`"
     ]?.join?.("\n"));
 
     // load all of those into context

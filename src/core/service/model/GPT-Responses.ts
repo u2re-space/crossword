@@ -1,4 +1,4 @@
-import { DataInput, DataKind, GLOBAL_PROMPT_INSTRUCTIONS, actionWithDataType, getDataKindByMIMEType, typesForKind } from "./GPT-Config";
+import { DataInput, DataKind, actionWithDataType, getDataKindByMIMEType, typesForKind } from "./GPT-Config";
 
 //
 export const getUsableData = async (data: DataInput) => {
@@ -151,8 +151,7 @@ export class GPTResponses {
                 reasoning: { "effort": effort },
                 text: { verbosity: verbosity },
                 max_output_tokens: 400000,
-                previous_response_id: (this.responseId = (prevResponseId || this.responseId)),
-                instructions: GLOBAL_PROMPT_INSTRUCTIONS
+                previous_response_id: (this.responseId = (prevResponseId || this.responseId))
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
         if (!response) return null;
@@ -208,8 +207,6 @@ export class GPTResponses {
 
     //
     getResponseId() { return this.responseId; }
-
-    //
     getMessages() { return this.messages; }
     getPending() { return this.pending; }
 }
