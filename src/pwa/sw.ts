@@ -11,7 +11,7 @@ import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { loadSettings } from "@rs-core/config/Settings";
 import { pushToIDBQueue, queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
-import { dataSourceCacheBinary, dataSourceCacheString, getOrDefaultComputedOfDataSourceCache, hasInDataSourceCache, setToDataSourceCache } from "./lib/DataSourceCache";
+import { getOrDefaultComputedOfDataSourceCache } from "./lib/DataSourceCache";
 
 // TODO! needs to debug completely and complex and make it more robust
 const SW_VERSION = '1.0.0';
