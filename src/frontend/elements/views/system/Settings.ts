@@ -2,7 +2,6 @@ import { H } from "fest/lure";
 
 //
 import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
-import { renderTabName } from "@rs-frontend/utils/Formatted";
 
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "@rs-core/config/SettingsTypes";
@@ -17,6 +16,7 @@ import { AISection } from "@rs-core/config/sections/AISection";
 import { MCPSection } from "@rs-core/config/sections/MCPSection";
 import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
 import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
+import { renderTabName } from "@rs-frontend/elements/Views";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [

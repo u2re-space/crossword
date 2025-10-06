@@ -162,12 +162,42 @@ export const ViewPage = <
     filtered: (item: E, desc: C) => boolean,
     ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any
 ) => {
+    console.log(chapters)
+
     //
+    // The original code attempted to use a Map<string, ...> with chapter objects as keys,
+    // but chapters are not guaranteed to be strings, causing a type error.
+    // To fix this, we need to use a string key for the Map, such as chap.id or chap.title.
+    // We'll preserve the original mapping logic, but use a string property as the key.
+
+    const chapterList: C[] = typeof chapters === "function" ? chapters() : chapters;
+
+    // Use a string property of C as the key. We'll try chap.id, then chap.title, then fallback to String(chap).
     const tabs = new Map<string, HTMLElement | null | string | any>(
-        (typeof chapters == "function" ? chapters() : chapters)
-            .map((chap: C) => ItemsByType<T, E, C>(entityDesc, chap, filtered,
-                (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
-            ))
+        chapterList.map((chap: C) => {
+            // Try to get a unique string key for the chapter
+            let key: string;
+            if (typeof chap == "object") {
+                if ('id' in chap && typeof (chap as any).id === 'string') {
+                    key = (chap as any).id;
+                } else if ('title' in chap && typeof (chap as any).title === 'string') {
+                    key = (chap as any).title;
+                } else {
+                    key = String(chap);
+                }
+            } else {
+                key = chap as string;
+            }
+            return [
+                key,
+                ItemsByType<T, E, C>(
+                    entityDesc,
+                    chap,
+                    filtered,
+                    (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
+                )
+            ];
+        })
     );
 
     //
