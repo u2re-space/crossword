@@ -135,7 +135,7 @@ export const readOneMarkDown = async (path: string) => {
 //
 export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
     return entityTypes?.map?.((entityType) => {
-        return (entityType != "timeline" && entityType != "task") ? `/data/${entityType}/` : "/timeline/";
+        return (entityType == "timeline" || entityType == "task") ? "/timeline/" : `/data/${entityType}/`;
     });
 }
 
@@ -324,7 +324,7 @@ const writeTextDependsByPossibleType = async (payload: string | null | undefined
     try {
         const json = JSON.parse(payload || "{}");
         if (!entityType) entityType = detectEntityTypeByJSON(json);
-        return writeJSON(json, entityType == 'timeline' ? '/timeline/' : `data/${entityType}/`);
+        return writeJSON(json, (entityType == 'task' || entityType == 'timeline') ? '/timeline/' : `data/${entityType}/`);
     } catch (e) {
         return writeMarkDown(payload, `docs/${entityType}/`);
     }
@@ -383,25 +383,38 @@ export async function flushQueueIntoOPFS() {
 }
 
 //
-flushQueueIntoOPFS();
+try {
+    flushQueueIntoOPFS()?.catch?.(console.warn.bind(console));
+} catch (e) {
+    console.warn(e);
+}
 
 //
-opfsModifyJson({
+try {
+    opfsModifyJson({
     dirPath: "/data/",
     transform: (data) => {
         if (data && typeof data === "object") { fixEntityId(data, { mutate: true }); };
         return data;
     }
-});
+    })?.catch?.(console.warn.bind(console));
+} catch (e) {
+    console.warn(e);
+}
+
 
 //
-opfsModifyJson({
-    dirPath: "/timeline/",
-    transform: (data) => {
-        if (data && typeof data === "object") { fixEntityId(data, { mutate: true }); };
-        return data;
-    }
-});
+try {
+    opfsModifyJson({
+        dirPath: "/timeline/",
+        transform: (data) => {
+            if (data && typeof data === "object") { fixEntityId(data, { mutate: true }); };
+            return data;
+        }
+    })?.catch?.(console.warn.bind(console));
+} catch (e) {
+    console.warn(e);
+}
 
 
 

@@ -136,8 +136,6 @@ export class GPTResponses {
     async sendRequest(effort: "low" | "medium" | "high" = "low", verbosity: "low" | "medium" | "high" = "low", prevResponseId: string | null = null) {
         effort ??= "low";
         verbosity ??= "low";
-
-    //
         const response = await fetch(`${this.apiUrl}/responses`, {
             method: "POST",
             headers: {
@@ -151,7 +149,8 @@ export class GPTResponses {
                 reasoning: { "effort": effort },
                 text: { verbosity: verbosity },
                 max_output_tokens: 400000,
-                previous_response_id: (this.responseId = (prevResponseId || this.responseId))
+                previous_response_id: (this.responseId = (prevResponseId || this.responseId)),
+                instructions: "Give results only in valid JSON formatted (\`https://json-schema.org/draft/2020-12/\`), no any additional text or comments. You may give in any other format only if explicitly stated in instructions."
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
         if (!response) return null;

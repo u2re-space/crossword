@@ -40,15 +40,17 @@ export const MakeCardElement = <
         timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
     }
 
+    //<span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+
     //
     const events = makeEvents(entityDesc, entityItem, makePath(entityItem, entityDesc));
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
     const card = H`<div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
-        <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div> // @ts-ignore
+        <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
     </div>
     <div class="card-props">
-        <ul class="card-title"><li>${entityItem?.title || entityItem?.name || entityDesc.label}</li></ul> // @ts-ignore
+        <ul class="card-title"><li>${entityItem?.title || entityItem?.name || entityDesc.label}</li></ul>
         <ul class="card-kind"><li>${entityItem?.kind || entityItem?.kind}</li></ul>
     </div>
     ${timeRangeElement}
@@ -57,8 +59,7 @@ export const MakeCardElement = <
         <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
     </div>
     <div class="card-content">
-        <span class="card-label">Properties: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityItem?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
-        <span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul> // @ts-ignore
+        <span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityItem?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
     ${linksPlaceholder}
     <div class="card-description">

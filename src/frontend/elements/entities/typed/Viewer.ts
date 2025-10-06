@@ -1,16 +1,17 @@
 import { getDirectoryHandle, H, M } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../utils/HookEvent";
-import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
+import { sendToEntityPipeline, writeTimelineTasks } from "@rs-core/workers/FileSystem";
 import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
 import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { makeReactive } from "fest/object";
-import { insideOfDay } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { getComparableTimeValue, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
 import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 
 //
 export const $filtered = <
@@ -38,21 +39,32 @@ export const $insideOfDay = <
 
 //
 export const renderTabName = (tabName: string) => {
+    if (!tabName) return "";
+
+    // split _ as spaces
+    tabName = tabName?.replace?.(/_/g, " ") || tabName;
+
+    // capitalize first word letter
+    tabName = (tabName?.charAt?.(0)?.toUpperCase?.() + tabName?.slice?.(1)) || tabName;
+
+    //
     return tabName;
 }
 
+
+
+
 //
-export const ItemsByType = <
+const MakeItemsLoaderForTabPage = <
     T extends EntityDescriptor = EntityDescriptor,
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends ChapterDescriptor = ChapterDescriptor
 >(
     sourceRef: T,
-    chapterRef: C, filtered: (item: E, desc: C) => boolean,
-    ItemRenderer: (item: E, desc: T) => any
+    chapterRef: C,
+    filtered: (item: E, desc: C) => boolean
 ) => {
-    const dataRef: any = makeReactive([]);
-    let stopWatch: (() => void) | null = null;
+    const dataRef: E[] = makeReactive([]) as E[];
 
     //
     let loadLocked = false;
@@ -82,42 +94,63 @@ export const ItemsByType = <
                 return obj;
             })?.filter?.((e: any) => e);
 
+        // do sorting by days abd time before rendering
+        dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
+
         //
         loadLocked = false;
         return $tmp;
     }
 
     //
-    document.addEventListener("rs-fs-changed", (ev) => load().catch(console.warn.bind(console)));
+    return { dataRef, load };
+}
 
+
+
+
+//
+export const CollectItemsForTabPage = <
+    T extends EntityDescriptor = EntityDescriptor,
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    C extends ChapterDescriptor = ChapterDescriptor
+>(
+    sourceRef: T,
+    chapterRef: C, filtered: (item: E, desc: C) => boolean,
+    ItemRenderer: (item: E, desc: T) => any
+) => {
     //
-    const items = M(dataRef, (item) => {
+    const loader = MakeItemsLoaderForTabPage(sourceRef, chapterRef, filtered);
+    const items = M(loader.dataRef, (item) => {
         const itemEl = ItemRenderer(item as E, sourceRef as T);
         return itemEl;
     });
 
+
     //
     const root = H`<div data-name="${sourceRef}" class="tab">${items}</div>`;
-    items.boundParent = root;
-    (root as any).reloadList = load;
+    root.addEventListener('dir-dropped', () => loader.load().catch(console.warn));
+    document.addEventListener("rs-fs-changed", (ev) => loader.load().catch(console.warn.bind(console)));
 
+    //
+    items.boundParent = root; (root as any).reloadList = loader.load;
+
+
+
+    //
+    let stopWatch: any = null;
+    const cancelWatcher = () => stopWatch?.();
     const ensureWatcher = () => {
-        if (stopWatch) return;
-        stopWatch = watchFsDirectory(sourceRef.DIR, () => load().catch(console.warn));
+        if (stopWatch) return true;
+        stopWatch = watchFsDirectory(sourceRef.DIR, () => loader.load().catch(console.warn)); return true;
     };
 
-    const cancelWatcher = () => {
-        stopWatch?.();
-        stopWatch = null;
-    };
-
-    root.addEventListener('dir-dropped', () => load().catch(console.warn));
-
-    let observer: MutationObserver | null = null;
-    ensureWatcher();
-    load().catch(console.warn.bind(console));
+    //
+    let observer: MutationObserver | null = null; ensureWatcher();
+    loader.load().catch(console.warn.bind(console));
     bindDropToDir(root as any, sourceRef.DIR);
 
+    //
     if (!observer && typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         observer = new MutationObserver(() => {
             if (root.isConnected) ensureWatcher();
@@ -130,6 +163,7 @@ export const ItemsByType = <
         observer.observe(document.documentElement, { childList: true, subtree: true });
     }
 
+    //
     (root as any).dispose = () => {
         cancelWatcher();
         observer?.disconnect();
@@ -151,6 +185,84 @@ export const MakeItemBy = <E extends EntityInterface<any, any> = EntityInterface
     return ItemMaker(entityItem, entityDesc, options);
 }
 
+
+
+//
+const iconsPerAction = new Map<string, string>([
+    ["add", "user-plus"],
+    ["upload", "upload"],
+    ["generate", "magic-wand"],
+]);
+
+//
+const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
+    ["add", (entityDesc: EntityDescriptor) => `Add ${entityDesc.label}`],
+    ["upload", (entityDesc: EntityDescriptor) => `Upload ${entityDesc.label}`],
+    ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
+]);
+
+//
+const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
+    ["generate", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        const response = await generateNewPlan();
+        viewPage?.$refresh?.();
+        if (!response) {
+            toastError(`Failed to generate ${entityDesc.label}`);
+            return;
+        };
+        toastSuccess(`Plan generated...`);
+    }],
+
+    //
+    ["add", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        try {
+            const result = await makeEntityEdit(entityDesc, { basis: {}, fields: [] }, {
+                allowLinks: true,
+                entityType: entityDesc.type,
+                description: `Describe the ${entityDesc.label} and link related entities (actions, bonuses, etc.).`
+            });
+            if (!result) return;
+
+            //
+            const fileName = (result?.title || `${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
+            const path = `${entityDesc.DIR}${(fileName || entityDesc.type)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+            (result as any).__path = path;
+            const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });
+            await writeFileSmart(null, entityDesc.DIR, file, { ensureJson: true, sanitize: true });
+            toastSuccess(`${entityDesc.label} saved`);
+        } catch (e) {
+            console.warn(e);
+            toastError(`Failed to save ${entityDesc.label}`);
+        }
+    }],
+
+    //
+    ["upload", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        try {
+            await openPickerAndAnalyze(entityDesc.DIR, 'text/markdown,text/plain,.json,image/*', true);
+            toastSuccess(`${entityDesc.label} uploaded`);
+        } catch (e) {
+            console.warn(e);
+            toastError(`Failed to upload ${entityDesc.label}`);
+        }
+    }],
+]);
+
+//
+const generateActionButton = (action: string, entityDesc: EntityDescriptor, viewPage?: any) => {
+    return H`<button type="button" on:click=${(e: any) => actionRegistry.get(action)?.(e, entityDesc, viewPage)}>
+        <ui-icon icon=${iconsPerAction.get(action)}></ui-icon>
+        <span>${labelsPerAction.get(action)?.(entityDesc)}</span>
+    </button>`;
+}
+
+//
+const makeActions = (actions: string[], entityDesc: EntityDescriptor, viewPage?: any) => {
+    return actions.map((action) => generateActionButton(action, entityDesc, viewPage));
+}
+
+
+
 //
 export const ViewPage = <
     T extends EntityDescriptor = EntityDescriptor,
@@ -160,9 +272,14 @@ export const ViewPage = <
     entityDesc: T,
     chapters: C[] | (() => C[]),
     filtered: (item: E, desc: C) => boolean,
+    availableActions: string[],
     ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any
 ) => {
-    console.log(chapters)
+
+    const viewPage: any = {
+        $section: null,
+        $refresh: () => { }
+    };
 
     //
     // The original code attempted to use a Map<string, ...> with chapter objects as keys,
@@ -188,54 +305,17 @@ export const ViewPage = <
             } else {
                 key = chap as string;
             }
-            return [
-                key,
-                ItemsByType<T, E, C>(
-                    entityDesc,
-                    chap,
-                    filtered,
-                    (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
-                )
-            ];
+            return [key, CollectItemsForTabPage<T, E, C>(
+                entityDesc,
+                chap,
+                filtered,
+                (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
+            )];
         })
     );
 
     //
-    const forAdd = async () => {
-        try {
-            const result = await makeEntityEdit(entityDesc, { basis: {}, fields: [] }, {
-                allowLinks: true,
-                entityType: entityDesc.type,
-                description: `Describe the ${entityDesc.label} and link related entities (actions, bonuses, etc.).`
-            });
-            if (!result) return;
-
-            //
-            const fileName = (result?.title || `${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
-            const path = `${entityDesc.DIR}${(fileName || entityDesc.type)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-            (result as any).__path = path;
-            const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });
-            await writeFileSmart(null, entityDesc.DIR, file, { ensureJson: true, sanitize: true });
-            toastSuccess(`${entityDesc.label} saved`);
-        } catch (e) {
-            console.warn(e);
-            toastError(`Failed to save ${entityDesc.label}`);
-        }
-    };
-
-    //
-    const forUpload = async () => {
-        try {
-            await openPickerAndAnalyze(entityDesc.DIR, 'text/markdown,text/plain,.json,image/*', true);
-            toastSuccess(`${entityDesc.label} uploaded`);
-        } catch (e) {
-            console.warn(e);
-            toastError(`Failed to upload ${entityDesc.label}`);
-        }
-    };
-
-    //
-    const reloadTabs = () => {
+    viewPage.$refresh = () => {
         for (const el of tabs.values()) (el as any)?.reloadList?.();
     };
 
@@ -249,20 +329,8 @@ export const ViewPage = <
     ></ui-tabbed-box>`;
 
     //
-    const toolbar = H`<div class="view-toolbar">
-        <div class="button-set">
-            <button type="button" on:click=${forAdd}>
-                <ui-icon icon="user-plus"></ui-icon>
-                <span>Add Item</span>
-            </button>
-            <button type="button" on:click=${forUpload}>
-                <ui-icon icon="upload"></ui-icon>
-                <span>Upload Item</span>
-            </button>
-        </div></div>`
-
-    //
-    const section = H`<section id="${entityDesc.type}" class="all-view">${tabbed}${toolbar}</section>` as HTMLElement;
+    const toolbar = H`<div class="view-toolbar"><div class="button-set">${makeActions(availableActions, entityDesc, viewPage)}</div></div>`
+    const section = H`<section id="${entityDesc.type}" class="all-view">${tabbed}${toolbar}</section>` as HTMLElement; viewPage.$section = section;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: entityDesc.type }).catch(console.warn);
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);

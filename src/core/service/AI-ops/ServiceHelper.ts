@@ -17,7 +17,7 @@ export const queueEntityForWriting = (entity, entityType, dataType: string | nul
         || subId;
 
     // prepare to writing into database (for phase 4 - consolidate)
-    const directory = resolvedType == "timeline" ? "/timeline/" : `/data/${resolvedType}/`?.trim?.();
+    const directory = (resolvedType == "timeline" || resolvedType == "task") ? "/timeline/" : `/data/${resolvedType}/`?.trim?.();
 
     // get preview versions of resolved entity to show in UI
     (dataCategories as any)?.find?.((category) => category?.id === resolvedType)?.items?.push?.(name);

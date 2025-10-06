@@ -95,15 +95,18 @@ registerRoute(({ url }) => url?.pathname == "/make-timeline", async (e: any) => 
     };
 
     //
-    timelineGenerator ||= await createTimelineGenerator(inputs.source);
+    timelineGenerator ||= await createTimelineGenerator(inputs.source)?.catch?.(console.warn.bind(console));
     console.log(timelineGenerator);
 
-    const timelines = await requestNewTimeline(timelineGenerator);
+    //
+    const timelines = await requestNewTimeline(timelineGenerator)?.catch?.(console.warn.bind(console));
     console.log(timelines);
 
     //
     const results: any[] = [];
-    results.push(queueEntityForWriting(timelines, "timeline", "json"));
+    timelines?.forEach?.((timeline) => {
+        results.push(queueEntityForWriting(timeline, "task", "json"));
+    });
 
     //
     await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
@@ -111,7 +114,7 @@ registerRoute(({ url }) => url?.pathname == "/make-timeline", async (e: any) => 
 
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
+    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
 
     //
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
@@ -120,7 +123,7 @@ registerRoute(({ url }) => url?.pathname == "/make-timeline", async (e: any) => 
 //
 registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e: any) => {
     const url = new URL(e.request.url);
-    const fd = await e.request.formData();
+    const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
     const inputs = {
         title: fd.get('title'),
         text: fd.get('text'),
@@ -141,7 +144,9 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
         //
         const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
-                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
+                (await fetch(source)
+                    ?.then?.((res) => res.text())
+                    ?.catch?.(console.warn.bind(console)) || ""));
 
         // try avoid using AI when data structure is known
         if (text && isMarkdown(text, source)) {
@@ -172,7 +177,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
 
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
+    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
 
     //
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
@@ -181,7 +186,7 @@ registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e:
 //
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
     const url = new URL(e.request.url);
-    const fd = await e.request.formData();
+    const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
     const inputs = {
         title: fd.get('title'),
         text: fd.get('text'),
@@ -201,7 +206,9 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
         //
         const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
             (source == inputs?.text ? inputs.text :
-                (await fetch(source)?.then?.((res) => res.text())?.catch?.(console.warn.bind(console)) || ""));
+                (await fetch(source)
+                    ?.then?.((res) => res.text())
+                    ?.catch?.(console.warn.bind(console)) || ""));
 
         // try avoid using AI when data structure is known
         if (text) {
@@ -229,11 +236,11 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
 
     //
     await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
-    try { controlChannel.postMessage({ type: 'pending-write' }); } catch (e) { console.warn(e); }
+    try { controlChannel.postMessage({ type: 'pending-write' }) } catch (e) { console.warn(e); }
 
     // @ts-ignore
     const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results });
+    if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
 
     //
     return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });

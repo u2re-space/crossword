@@ -26,7 +26,7 @@ export const generateNewPlan = async () => {
 
         //
         const timelineForm = new FormData();
-        if (source) { timelineForm.append("source", source); };
+        timelineForm.append("source", source || "");
 
         //
         return fetch("/make-timeline", {

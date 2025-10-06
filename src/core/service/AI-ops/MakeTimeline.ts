@@ -23,17 +23,19 @@ import { realtimeStates } from "../Cache";
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 
 //
-import { getDirectoryHandle } from "fest/lure";
 import { checkRemainsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
-import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { loadSettings } from "@rs-core/config/Settings";
 
 //
 export const TIMELINE_DIR = "/timeline/";
+
+//
 export const PREFERENCES_DIR = "/docs/preferences/";
-export const FACTORS_DIR = "/data/factors/";
 export const PLANS_DIR = "/docs/plans/";
+
+//
+export const FACTORS_DIR = "/data/factors/";
 export const EVENTS_DIR = "/data/events/";
 
 
@@ -65,9 +67,9 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
     console.log(gptResponses);
 
     //
-    if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
+    /*if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
         await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey)?.catch?.(console.warn.bind(console));
-    }
+    }*/
 
     // attach some factors (except finished)
     await gptResponses.giveForRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
@@ -84,9 +86,9 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
 
     //
     await gptResponses.askToDoAction(["primary_request:",
-        "- Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
-        "- Also, can you provide markdown pre-formatted verbose data about what you have analyzed and what you will do?",
-        "- Give ready status in JSON format: \`{ ready: boolean, reason: string, verbose_data: string }\`"
+        "Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
+        "Also, can you provide markdown pre-formatted verbose data about what you have analyzed and what you will do?",
+        "Give ready status in JSON format: \`{ ready: boolean, reason: string, verbose_data: string }\`"
     ]?.join?.("\n"));
 
     // load all of those into context
