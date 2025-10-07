@@ -67,13 +67,15 @@ export const insideOfDay = <
 
     //
     const inRange = (
-        ((getComparableTimeValue(item?.properties?.begin_time) >= getComparableTimeValue(begin_time)) || begin_time == "all" || !begin_time) &&
-        ((getComparableTimeValue(item?.properties?.end_time) <= getComparableTimeValue(end_time)) || end_time == "all" || !end_time)
+        (!begin_time || (getComparableTimeValue(item?.properties?.begin_time) >= getComparableTimeValue(begin_time)) || String(begin_time)?.toLowerCase?.()?.trim?.() == "all") &&
+        (!end_time || (getComparableTimeValue(item?.properties?.end_time) <= getComparableTimeValue(end_time)) || String(end_time)?.toLowerCase?.()?.trim?.() == "all")
     );
 
     //
     const kindMatch = (kind ? (item?.kind == kind || kind == "all") : false) || !item?.kind;
     const statusMatch = (status ? (item?.properties?.status == status || status == "all") : (!kindMatch)) || !item?.properties?.status;
+
+    //
     return inRange || statusMatch || kindMatch;
 }
 
@@ -89,7 +91,7 @@ export const notInPast = <
     const now_time = getComparableTimeValue();
 
     //
-    const inRange = getComparableTimeValue(end_time) >= now_time;
+    const inRange = !end_time || getComparableTimeValue(end_time) >= now_time;
     const kindMatch = (kind ? (item?.kind == kind || kind == "all") : false) || !item?.kind;
     const statusMatch = (status ? (item?.properties?.status == status || status == "all") : (!kindMatch)) || !item?.properties?.status;
     return inRange || statusMatch || kindMatch;

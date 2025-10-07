@@ -12,6 +12,7 @@ import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
+import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 
 //
 export const $unfiltered = <
@@ -94,6 +95,7 @@ const cachedPerFileName = new Map<string, any>();
 const GET_OR_CACHE = async (file: File | Blob | Promise<File | Blob> | null) => {
     try { file = await file; } catch (e) { file = null; console.warn(e); }; if (file == null) return null;
     if (cachedPerFile.has(file)) return cachedPerFile.get(file);
+    if (file?.type != "application/json") { return cachedPerFile.get(file); };
     const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
     if (file) { cachedPerFile.set(file, obj); }
     return obj;
@@ -103,10 +105,11 @@ const GET_OR_CACHE = async (file: File | Blob | Promise<File | Blob> | null) => 
 const GET_OR_CACHE_BY_NAME = async (fileName: string, file?: File | Blob | Promise<File | Blob> | null) => {
     try { file = await file; } catch (e) { file = null; console.warn(e); }; if (fileName == null) return null;
     if (cachedPerFileName.has(fileName)) return cachedPerFileName.get(fileName);;
-    const obj = file != null ? await GET_OR_CACHE(file) : null;
+    const obj = file != null ? await GET_OR_CACHE(file) : cachedPerFileName?.get(fileName);
     if (fileName) { cachedPerFileName.set(fileName, obj); }
     return obj;
 };
+
 
 
 //
@@ -132,43 +135,40 @@ const MakeItemsLoaderForTabPage = <
         const $remap = dHandle?.getMap?.();
         const $reactive = observableByMap($remap);
 
-        // crutch for possible new files notification
-        document.addEventListener("rs-fs-changed", () => {
-            $remap?.[$trigger]?.()
-            $reactive?.[$trigger]?.()
-        });
-
         // I don't know why, but new files isn't observable
         dataRef?.splice?.(0, dataRef?.length ?? 0); dataRef.length = 0; // TODO: fix in reactive library
         observe($reactive, (pair, index: number | string | symbol, old, $op?: string) => {
-            const forAddOrDelete = pair != null && (old == null || pair != old);
+            const forAddOrDelete = pair != null;
             const [name, fileHandle] = (pair ?? old) != null ? (pair ?? old) : [null, null];
 
             //
             Promise.try(async () => {
                 const obj = await GET_OR_CACHE_BY_NAME(name, fileHandle?.getFile?.()?.catch?.(console.warn.bind(console)))?.catch?.(console.warn.bind(console));
-                if (obj) {
-                    (obj as any).__name = name;
-                    (obj as any).__path = `${sourceRef.DIR}${name}`;
-
-                    // TODO? needs to replace push with splice adding with index saving order?
-                    if (!name?.trim?.()?.endsWith?.(".crswap") && name?.trim?.()?.endsWith?.(".json")) {
-                        if (forAddOrDelete && filtered(obj as E, chapterRef as C)) { SPLICE_INTO_ONCE(dataRef, obj as E, index); }
-                    }
-                }
 
                 //
                 if (!forAddOrDelete) {
-                    REMOVE_IF_HAS(dataRef, obj as E);
-
-                    // forcer version of REMOVE_IF_HAS (is needed if obj was lost in some reason, but we still need to remove it)
-                    if ($op == "@remove" && typeof index == "number" && index >= 0) {
+                    if (typeof index == "number" && index >= 0) {
                         REMOVE_IF_HAS_SIMILAR(dataRef, obj as E, index, old);
+                    } else {
+                        REMOVE_IF_HAS(dataRef, obj as E);
                     }
                 }
 
                 //
-                console.log(obj);
+                if (obj) {
+                    if (typeof obj == "object") {
+                        (obj as any).__name = name;
+                        (obj as any).__path = `${sourceRef.DIR}${name}`;
+                    }
+
+                    // TODO? needs to replace push with splice adding with index saving order?
+                    if (
+                        !name?.trim?.()?.endsWith?.(".crswap") &&
+                        name?.trim?.()?.endsWith?.(".json") &&
+                        filtered(obj as E, chapterRef as C) &&
+                        forAddOrDelete
+                    ) { SPLICE_INTO_ONCE(dataRef, obj as E, index); };
+                }
             })
         })
 
@@ -247,12 +247,19 @@ export const CollectItemsForTabPage = <
     //
     observe(loader.dataRef, (newItem, index, oldItem) => {
         const item = newItem ?? oldItem;
-        const forAddOrDelete = newItem != null && (oldItem == null || newItem != oldItem);
+        const forAddOrDelete = newItem != null;
 
         //
         const day = cleanToDay(item), kind = item?.kind;
         if (day && daysRef?.find((d) => d?.begin_time == day?.begin_time)) { PUSH_ONCE(daysRef, day); };
         if (kind && kindsRef?.find((d) => d?.kind == kind)) { PUSH_ONCE(kindsRef, kind); };
+
+        //
+        if (!forAddOrDelete) {
+            subgroups.forEach((d) => {
+                REMOVE_IF_HAS(d.items, item);
+            });
+        }
 
         //
         if (item?.type == "task" || item?.type == "event") {
@@ -285,13 +292,12 @@ export const CollectItemsForTabPage = <
                 if (forAddOrDelete) { PUSH_ONCE(foundSubgroup.items, item); } else { REMOVE_IF_HAS(foundSubgroup.items, item); }
                 if (foundSubgroup?.items?.length <= 0) { REMOVE_IF_HAS(subgroups, foundSubgroup); }
             }
+    });
 
-        //
-        if (!forAddOrDelete) {
-            subgroups.forEach((d) => {
-                REMOVE_IF_HAS(d.items, item);
-            });
-        }
+    //
+    document.addEventListener("rs-fs-changed", () => {
+        loader.dataRef?.[$trigger]?.();
+        subgroups.forEach((d) => d.items?.[$trigger]?.());
     });
 
     //
@@ -328,10 +334,10 @@ export const CollectItemsForTabPage = <
     bindDropToDir(root as any, sourceRef.DIR);
 
     //
-    (root as any).dispose = () => {
+    /*(root as any).dispose = () => {
         loader.dataRef?.splice?.(0, loader.dataRef?.length ?? 0);
         loader.dataRef.length = 0; // TODO: fix in reactive library
-    };
+    };*/
 
     //
     root.addEventListener('contentvisibilityautostatechange', (e: any) => { firstTimeLoad?.(); });
@@ -367,6 +373,7 @@ const iconsPerAction = new Map<string, string>([
     ["add", "user-plus"],
     ["upload", "upload"],
     ["generate", "magic-wand"],
+    ["debug-gen", "bug"],
 ]);
 
 //
@@ -374,13 +381,31 @@ const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string
     ["add", (entityDesc: EntityDescriptor) => `Add ${entityDesc.label}`],
     ["upload", (entityDesc: EntityDescriptor) => `Upload ${entityDesc.label}`],
     ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
+    ["debug-gen", (entityDesc: EntityDescriptor) => `Generate debug tasks for ${entityDesc.label}`],
 ]);
 
 //
 const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
+    ["debug-gen", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        try {
+            // Use debug task generation for immediate testing
+            const results = await triggerDebugTaskGeneration(3); // Generate 3 debug tasks
+            //viewPage?.$refresh?.();
+            if (results && results.length > 0) {
+                toastSuccess(`Generated ${results.length} debug tasks for testing`);
+            } else {
+                toastError(`Failed to generate debug tasks`);
+            }
+        } catch (error) {
+            console.warn("Debug task generation failed:", error);
+            toastError(`Failed to generate debug tasks`);
+        }
+    }],
+
+    //
     ["generate", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         const response = await generateNewPlan();
-        viewPage?.$refresh?.();
+        //viewPage?.$refresh?.();
         if (!response) {
             toastError(`Failed to generate ${entityDesc.label}`);
             return;

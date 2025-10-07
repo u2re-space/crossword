@@ -14,6 +14,7 @@ import { MakeCardElement } from "./elements/entities/typed/Cards";
 //
 import { dropFile, H } from "fest/lure";
 import { sampleTasks, writeSampleTask } from "../$test/Tasks";
+import { startDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -49,7 +50,7 @@ export default async function frontend(mountElement) {
 
     //
     const entityViews = new Map([
-        ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["pending", "in_progress", "completed", "failed", "delayed", "canceled", "other", "all"], availableActions: ["generate", "upload"] }],
+        ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["pending", "in_progress", "completed", "failed", "delayed", "canceled", "other", "all"], availableActions: ["generate", "debug-gen", "upload"] }],
         ["event", { icon: "calendar", label: "Event", groupedBy: "days", tabs: ["education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other", "all"], availableActions: ["upload", "add"] }],
         ["action", { icon: "island", label: "Action", tabs: ["other", "all"], availableActions: ["add", "upload"] }],
         ["service", { icon: "headset", label: "Service", tabs: ["medical", "education", "consultation", "advice", "mentoring", "training", "item", "thing", "other", "all"], availableActions: ["add", "upload"] }],
@@ -93,4 +94,7 @@ export default async function frontend(mountElement) {
     const layout = AppLayout(views, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
+
+    // Start debug task generation for testing
+    startDebugTaskGeneration();
 }

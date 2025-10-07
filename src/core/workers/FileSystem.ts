@@ -152,15 +152,14 @@ export const writeJSON = async (data: any | any[], dir: any | null = null) => {
         if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
         let fileName = (fixEntityId(obj) || obj?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
         fileName = fileName?.trim?.(); fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
-        return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }));
+        return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }))?.catch?.(console.warn.bind(console));
     };
 
     //
-    let promised: Promise<any[] | any> | null = null;
-    if (Array.isArray(data)) promised = Promise.all(data.map((item, index) => writeOne(item, index))); else promised = writeOne(data, 0);
+    let results: any = await (Array.isArray(data) ? Promise.all(data.map((item, index) => writeOne(item, index))) : writeOne(data, 0))?.catch?.(console.warn.bind(console));
     if (typeof document !== "undefined")
-        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: await promised?.catch?.(console.warn.bind(console)), bubbles: true, composed: true, cancelable: true, }));
-    return promised;
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: results, bubbles: true, composed: true, cancelable: true, }));
+    return results;
 }
 
 //
@@ -173,10 +172,10 @@ export const writeMarkDown = async (data: any, path: any | null = null) => {
     filename = filename?.endsWith?.(".md") ? filename : (filename + ".md");
 
     //
-    let promised: Promise<any[] | any> | null = writeFileSmart(null, path, data instanceof File ? data : new File([data], filename, { type: 'text/markdown' }));
+    let results: any = await writeFileSmart(null, path, data instanceof File ? data : new File([data], filename, { type: 'text/markdown' }))?.catch?.(console.warn.bind(console));
     if (typeof document !== "undefined")
-        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: data, bubbles: true, composed: true, cancelable: true, }));
-    return promised;
+        document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: results, bubbles: true, composed: true, cancelable: true, }));
+    return results;
 }
 
 //
@@ -373,10 +372,8 @@ export async function flushQueueIntoOPFS() {
         const { data, name, path, subId, dataType, directory } = result as any;
         if (dataType === "json") {
             const jsonData = typeof data === "string" ? JSON.parse(data) : data;
-            console.log(directory?.trim?.(), jsonData);
             return writeJSON(jsonData, directory?.trim?.());
         } else {
-            console.log(directory?.trim?.() + name?.trim?.(), data);
             return writeMarkDown(data, directory?.trim?.() + name?.trim?.());
         }
     }));
