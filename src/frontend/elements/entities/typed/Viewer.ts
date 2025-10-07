@@ -59,6 +59,17 @@ export const renderTabName = (tabName: string) => {
 }
 
 
+
+// more smarter and stronger version of REMOVE_IF_HAS
+const REMOVE_IF_HAS_SIMILAR = (array: any[], old: any, idx: number = -1, srcObj: any = null) => {
+    if (array?.indexOf?.(old) >= 0) { array.splice(array.indexOf(old), 1); } else
+        if (idx >= 0 && idx < array?.length) { array.splice(idx, 1); } else {
+            // TODO: other mechanisms of finding index
+        }
+}
+
+
+
 //
 const REMOVE_IF_HAS = (array: any[], item: any) => {
     if (array?.indexOf?.(item) >= 0) { array.splice(array.indexOf(item), 1); };
@@ -70,14 +81,32 @@ const PUSH_ONCE = (array: any[], item: any) => {
 };
 
 //
+const SPLICE_INTO_ONCE = (array: any[], item: any, index: number | string | symbol = -1) => {
+    if (typeof index != "number" || index < 0 || index >= array?.length) { PUSH_ONCE(array, item); } else
+        if (typeof index == "number" && array?.indexOf?.(item) < 0) { array.splice(index, 0, item); };
+};
+
+//
 const cachedPerFile = new WeakMap<File | Blob, any>();
-const GET_OR_CACHE = async (file: File | Blob) => {
+const cachedPerFileName = new Map<string, any>();
+
+//
+const GET_OR_CACHE = async (file: File | Blob | Promise<File | Blob> | null) => {
+    try { file = await file; } catch (e) { file = null; console.warn(e); }; if (file == null) return null;
     if (cachedPerFile.has(file)) return cachedPerFile.get(file);
     const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
-    cachedPerFile.set(file, obj);
+    if (file) { cachedPerFile.set(file, obj); }
     return obj;
 };
 
+// if any other argument isn't working, such as File object (for example, while exclusion)
+const GET_OR_CACHE_BY_NAME = async (fileName: string, file?: File | Blob | Promise<File | Blob> | null) => {
+    try { file = await file; } catch (e) { file = null; console.warn(e); }; if (fileName == null) return null;
+    if (cachedPerFileName.has(fileName)) return cachedPerFileName.get(fileName);;
+    const obj = file != null ? await GET_OR_CACHE(file) : null;
+    if (fileName) { cachedPerFileName.set(fileName, obj); }
+    return obj;
+};
 
 
 //
@@ -111,27 +140,36 @@ const MakeItemsLoaderForTabPage = <
 
         // I don't know why, but new files isn't observable
         dataRef?.splice?.(0, dataRef?.length ?? 0); dataRef.length = 0; // TODO: fix in reactive library
-        observe($reactive, (pair, _, old) => {
-            const forAddOrDelete = pair != null && old == null;
+        observe($reactive, (pair, index: number | string | symbol, old, $op?: string) => {
+            const forAddOrDelete = pair != null && (old == null || pair != old);
             const [name, fileHandle] = (pair ?? old) != null ? (pair ?? old) : [null, null];
-            if (name?.trim?.()?.endsWith?.(".crswap") || !name?.trim?.()?.endsWith?.(".json")) return;
 
             //
-            return fileHandle?.getFile?.()?.then?.(async (file) => {
-                const obj = await GET_OR_CACHE(file)?.catch?.(console.warn.bind(console));
+            Promise.try(async () => {
+                const obj = await GET_OR_CACHE_BY_NAME(name, fileHandle?.getFile?.()?.catch?.(console.warn.bind(console)))?.catch?.(console.warn.bind(console));
                 if (obj) {
                     (obj as any).__name = name;
                     (obj as any).__path = `${sourceRef.DIR}${name}`;
-                }
-                if (obj && filtered(obj as E, chapterRef as C)) {
-                    if (forAddOrDelete) {
-                        PUSH_ONCE(dataRef, obj as E);
-                    } else {
-                        REMOVE_IF_HAS(dataRef, obj as E);
+
+                    // TODO? needs to replace push with splice adding with index saving order?
+                    if (!name?.trim?.()?.endsWith?.(".crswap") && name?.trim?.()?.endsWith?.(".json")) {
+                        if (forAddOrDelete && filtered(obj as E, chapterRef as C)) { SPLICE_INTO_ONCE(dataRef, obj as E, index); }
                     }
                 }
-                return obj;
-            })?.catch?.(console.warn.bind(console));
+
+                //
+                if (!forAddOrDelete) {
+                    REMOVE_IF_HAS(dataRef, obj as E);
+
+                    // forcer version of REMOVE_IF_HAS (is needed if obj was lost in some reason, but we still need to remove it)
+                    if ($op == "@remove" && typeof index == "number" && index >= 0) {
+                        REMOVE_IF_HAS_SIMILAR(dataRef, obj as E, index, old);
+                    }
+                }
+
+                //
+                console.log(obj);
+            })
         })
 
         // do sorting by days abd time before rendering
@@ -209,7 +247,7 @@ export const CollectItemsForTabPage = <
     //
     observe(loader.dataRef, (newItem, index, oldItem) => {
         const item = newItem ?? oldItem;
-        const forAddOrDelete = newItem != null && oldItem == null;
+        const forAddOrDelete = newItem != null && (oldItem == null || newItem != oldItem);
 
         //
         const day = cleanToDay(item), kind = item?.kind;
@@ -217,7 +255,7 @@ export const CollectItemsForTabPage = <
         if (kind && kindsRef?.find((d) => d?.kind == kind)) { PUSH_ONCE(kindsRef, kind); };
 
         //
-        if (item?.type == "task" || item?.type == "event" || oldItem) {
+        if (item?.type == "task" || item?.type == "event") {
             const dayOf = createDayDescriptor(parseDateCorrectly(item?.properties?.begin_time));
             if (dayOf && insideOfDay(item, dayOf)) {
                 let foundSubgroup = subgroups.find((d) => d?.day == dayOf?.begin_time)
@@ -234,7 +272,7 @@ export const CollectItemsForTabPage = <
                 if (foundSubgroup?.items?.length <= 0) { REMOVE_IF_HAS(subgroups, foundSubgroup); }
             }
         } else
-            if (item?.kind || oldItem) {
+            if (item?.kind) {
                 let foundSubgroup = subgroups.find((d) => d?.kind == item?.kind)
                 if (!foundSubgroup) {
                     PUSH_ONCE(subgroups, foundSubgroup ||= {
@@ -247,6 +285,13 @@ export const CollectItemsForTabPage = <
                 if (forAddOrDelete) { PUSH_ONCE(foundSubgroup.items, item); } else { REMOVE_IF_HAS(foundSubgroup.items, item); }
                 if (foundSubgroup?.items?.length <= 0) { REMOVE_IF_HAS(subgroups, foundSubgroup); }
             }
+
+        //
+        if (!forAddOrDelete) {
+            subgroups.forEach((d) => {
+                REMOVE_IF_HAS(d.items, item);
+            });
+        }
     });
 
     //
