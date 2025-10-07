@@ -1,12 +1,12 @@
-import { getDirectoryHandle, H, M } from "fest/lure";
+import { getDirectoryHandle, H, M, openDirectory } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../utils/HookEvent";
 import { sendToEntityPipeline, writeTimelineTasks } from "@rs-core/workers/FileSystem";
 import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
 import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import { makeReactive, numberRef, observe, subscribe } from "fest/object";
-import { computeTimelineOrder, computeTimelineOrderForDay, createDayDescriptor, formatAsTime, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { $trigger, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
+import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, formatAsTime, getComparableTimeValue, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types";
@@ -14,7 +14,7 @@ import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 
 //
-export const $filtered = <
+export const $unfiltered = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends ChapterDescriptor = ChapterDescriptor
     >(obj: E, desc: C): boolean => {
@@ -26,7 +26,8 @@ export const $byKind = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends ChapterDescriptor = ChapterDescriptor
     >(obj: E, desc: C): boolean => {
-    return obj.kind === desc || !desc || desc == "all" || !obj.kind;
+    const kind = typeof desc == "string" ? desc : (desc as any)?.kind;
+    return (obj.kind === kind || !kind || kind == "all" || !obj.kind);
 }
 
 //
@@ -34,8 +35,13 @@ export const $insideOfDay = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends DayDescriptor = DayDescriptor
     >(obj: E, desc: C): boolean => {
-    const status = typeof desc == "string" ? desc : desc?.status
-    return insideOfDay(obj, desc) || (status == obj?.properties?.status || status == "all" || !status);
+    const kind = typeof desc == "string" ? desc : (desc as any)?.kind;
+    const status = typeof desc == "string" ? desc : desc?.status;
+    const begin_time = (typeof desc == "string" ? desc : (desc?.begin_time ?? desc)) as any;
+    const end_time = (typeof desc == "string" ? desc : (desc?.end_time ?? desc)) as any;
+    return insideOfDay(obj, { begin_time, end_time, status }) ||
+        (status == obj?.properties?.status || status == "all" || !status) ||
+        (kind == obj?.kind || kind == "all" || !obj.kind);
 }
 
 //
@@ -52,6 +58,25 @@ export const renderTabName = (tabName: string) => {
     return tabName;
 }
 
+
+//
+const REMOVE_IF_HAS = (array: any[], item: any) => {
+    if (array?.indexOf?.(item) >= 0) { array.splice(array.indexOf(item), 1); };
+};
+
+//
+const PUSH_ONCE = (array: any[], item: any) => {
+    if (array?.indexOf?.(item) < 0) { array.push(item); };
+};
+
+//
+const cachedPerFile = new WeakMap<File | Blob, any>();
+const GET_OR_CACHE = async (file: File | Blob) => {
+    if (cachedPerFile.has(file)) return cachedPerFile.get(file);
+    const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+    cachedPerFile.set(file, obj);
+    return obj;
+};
 
 
 
@@ -70,37 +95,49 @@ const MakeItemsLoaderForTabPage = <
     //
     let loadLocked = false;
     const load = async () => {
-        dataRef?.splice?.(0, dataRef?.length ?? 0);
-        dataRef.length = 0; // TODO: fix in reactive library
-
-        //
-        if (loadLocked) return;
+        if (loadLocked) return { dataRef, load };
         loadLocked = true;
 
         //
-        const dHandle = await getDirectoryHandle(null, sourceRef.DIR)?.catch?.(console.warn.bind(console));
-        const entries = await Array.fromAsync(dHandle?.entries?.() ?? [])?.catch?.(console.warn.bind(console));
-        const $tmp = (await Promise.all(entries || [])?.catch?.(console.warn.bind(console)))
-            ?.map?.(async ([name, fileHandle]: any) => {
-                if (name?.endsWith?.(".crswap")) return;
-                if (!name?.trim?.()?.endsWith?.(".json")) return;
-                const file = await fileHandle?.getFile?.()?.catch?.(console.warn.bind(console));
-                if (!file) return;
+        const dHandle = await openDirectory(null, sourceRef.DIR, { create: true })?.catch?.(console.warn.bind(console));
+        const $remap = dHandle?.getMap?.();
+        const $reactive = observableByMap($remap);
 
-                //
-                const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
-                (obj as any).__name = name;
-                (obj as any).__path = `${sourceRef.DIR}${name}`;
-                if (filtered(obj as E, chapterRef as C) && obj) { PUSH_ONCE(dataRef, obj as E); }
+        // crutch for possible new files notification
+        document.addEventListener("rs-fs-changed", () => {
+            $remap?.[$trigger]?.()
+            $reactive?.[$trigger]?.()
+        });
+
+        // I don't know why, but new files isn't observable
+        dataRef?.splice?.(0, dataRef?.length ?? 0); dataRef.length = 0; // TODO: fix in reactive library
+        observe($reactive, (pair, _, old) => {
+            const forAddOrDelete = pair != null && old == null;
+            const [name, fileHandle] = (pair ?? old) != null ? (pair ?? old) : [null, null];
+            if (name?.trim?.()?.endsWith?.(".crswap") || !name?.trim?.()?.endsWith?.(".json")) return;
+
+            //
+            return fileHandle?.getFile?.()?.then?.(async (file) => {
+                const obj = await GET_OR_CACHE(file)?.catch?.(console.warn.bind(console));
+                if (obj) {
+                    (obj as any).__name = name;
+                    (obj as any).__path = `${sourceRef.DIR}${name}`;
+                }
+                if (obj && filtered(obj as E, chapterRef as C)) {
+                    if (forAddOrDelete) {
+                        PUSH_ONCE(dataRef, obj as E);
+                    } else {
+                        REMOVE_IF_HAS(dataRef, obj as E);
+                    }
+                }
                 return obj;
-            })?.filter?.((e: any) => e);
+            })?.catch?.(console.warn.bind(console));
+        })
 
         // do sorting by days abd time before rendering
-        dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
-
-        //
+        //dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
         loadLocked = false;
-        return $tmp;
+        return { dataRef, load };
     }
 
     //
@@ -123,10 +160,6 @@ const closestOfKind = (item: EntityInterface<any, any>, subgroups: any[]) => {
     return subgroups?.find((d) => d?.kind == item?.kind);
 };
 
-//
-const PUSH_ONCE = (array: any[], item: any) => {
-    if (array?.indexOf?.(item) < 0) { array.push(item); };
-};
 
 
 
@@ -143,7 +176,6 @@ export const CollectItemsForTabPage = <
 ) => {
     //
     const loader = MakeItemsLoaderForTabPage(sourceRef, chapterRef, filtered);
-    document.addEventListener("rs-fs-changed", (ev) => loader.load().catch(console.warn.bind(console)));
 
     //
     let firstTimeLoaded = false;
@@ -158,78 +190,94 @@ export const CollectItemsForTabPage = <
 
     //
     subscribe([loader.dataRef, Symbol.iterator], (v, p, o) => {
-        minTimestampRef.value = Math.min(...loader.dataRef.map((item) => parseAndGetCorrectTime(item?.properties?.begin_time ?? 0)));
-        maxTimestampRef.value = Math.max(...loader.dataRef.map((item) => parseAndGetCorrectTime(item?.properties?.begin_time ?? 0)));
+        minTimestampRef.value = Math.min(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
+        maxTimestampRef.value = Math.max(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
     })
 
     //
     const makeItemEl = (item) => {
         const itemEl = ItemRenderer(item as E, sourceRef as T);
-        if (itemEl) { itemEl.style.order = computeTimelineOrder(item, chapterRef); };
+        if (itemEl) { itemEl.style.order = (computeTimelineOrderInsideOfDay(item, chapterRef) || 0); };
         return itemEl;
     };
 
     //
     const daysRef = makeReactive([]) as any[];
     const kindsRef = makeReactive([]) as any[];
-
-    //
-    observe(loader.dataRef, (newItem, index, oldItem) => {
-        const day = cleanToDay(newItem), kind = newItem?.kind;
-        if (day && daysRef?.find((d) => d?.begin_time == day?.begin_time)) { PUSH_ONCE(daysRef, day); };
-        if (kind && kindsRef?.find((d) => d?.kind == kind)) { PUSH_ONCE(kindsRef, kind); };
-    });
-
-    //
     const subgroups = makeReactive([]) as any[];
 
     //
     observe(loader.dataRef, (newItem, index, oldItem) => {
-        if (newItem?.type == "task" || newItem?.type == "event") {
-            const dayOf = createDayDescriptor(parseDateCorrectly(newItem?.properties?.begin_time));
-            if (dayOf && insideOfDay(newItem, dayOf)) {
+        const item = newItem ?? oldItem;
+        const forAddOrDelete = newItem != null && oldItem == null;
+
+        //
+        const day = cleanToDay(item), kind = item?.kind;
+        if (day && daysRef?.find((d) => d?.begin_time == day?.begin_time)) { PUSH_ONCE(daysRef, day); };
+        if (kind && kindsRef?.find((d) => d?.kind == kind)) { PUSH_ONCE(kindsRef, kind); };
+
+        //
+        if (item?.type == "task" || item?.type == "event" || oldItem) {
+            const dayOf = createDayDescriptor(parseDateCorrectly(item?.properties?.begin_time));
+            if (dayOf && insideOfDay(item, dayOf)) {
                 let foundSubgroup = subgroups.find((d) => d?.day == dayOf?.begin_time)
                 if (!foundSubgroup) {
                     PUSH_ONCE(subgroups, foundSubgroup ||= {
                         items: makeReactive([]),
                         day: dayOf?.begin_time,
-                        kind: newItem?.kind
+                        kind: item?.kind
                     });
                 }
-                if (newItem) { PUSH_ONCE(foundSubgroup.items, newItem); };
+
+                //
+                if (forAddOrDelete) { PUSH_ONCE(foundSubgroup.items, item); } else { REMOVE_IF_HAS(foundSubgroup.items, item); }
+                if (foundSubgroup?.items?.length <= 0) { REMOVE_IF_HAS(subgroups, foundSubgroup); }
             }
         } else
-            if (newItem?.kind) {
-                let foundSubgroup = subgroups.find((d) => d?.kind == newItem?.kind)
+            if (item?.kind || oldItem) {
+                let foundSubgroup = subgroups.find((d) => d?.kind == item?.kind)
                 if (!foundSubgroup) {
                     PUSH_ONCE(subgroups, foundSubgroup ||= {
                         items: makeReactive([]),
-                        kind: newItem?.kind
+                        kind: item?.kind
                     });
                 }
-                if (newItem) { PUSH_ONCE(foundSubgroup.items, newItem); };
+
+                //
+                if (forAddOrDelete) { PUSH_ONCE(foundSubgroup.items, item); } else { REMOVE_IF_HAS(foundSubgroup.items, item); }
+                if (foundSubgroup?.items?.length <= 0) { REMOVE_IF_HAS(subgroups, foundSubgroup); }
             }
     });
 
     //
     const subgroupsEl = M(subgroups, (subgroup) => {
         const itm = M(subgroup?.items ?? [], makeItemEl);
+        const cnt = H`<div class="subgroup-items">${itm}</div>`;
         const els = H`<div class="subgroup">
-            <div class="subgroup-header">${subgroup?.day ? formatAsTime(subgroup?.day) : subgroup?.kind}</div>
-            <div class="subgroup-items">${itm}</div>
+            <div class="subgroup-header">${subgroup?.day ? formatAsDate(subgroup?.day) : subgroup?.kind}</div>
+            ${cnt}
         </div>`
-        itm.boundParent = els;
+        itm.boundParent = cnt;
 
-        //
-        if (subgroup && els) { els.style.order = computeTimelineOrderForDay(subgroup?.day as any); };
+        // set order with small forming delay
+        const we = new WeakRef(els);
+        const usb = subscribe(minTimestampRef, (minVal) => {
+            const els = we?.deref?.();
+            if (els && subgroup?.day) { els.style.order = (computeTimelineOrderInGeneral(subgroup?.day as any, minVal) || 0); };
+            if (!els) { usb?.(); }
+        });
         return els;
     });
 
     //
-    const root = H`<div class="tab" data-name="${sourceRef?.type}">${subgroupsEl}</div>`;
-    root.addEventListener('dir-dropped', () => loader.load().catch(console.warn));
-    (root as any).reloadList = loader.load;
-    subgroupsEl.boundParent = root;
+    const subgroupBody = H`<div class="viewer-tab-content-body">${subgroupsEl}</div>`
+    const root = H`<div class="viewer-tab-content tab-content" data-name="${sourceRef?.type}">
+        <div class="viewer-tab-content-header">${sourceRef?.label || sourceRef?.type}</div>
+        ${subgroupBody}
+    </div>`;
+    root.addEventListener('dir-dropped', () => firstTimeLoad?.());
+    (root as any).reloadList = firstTimeLoad;
+    subgroupsEl.boundParent = subgroupBody;
 
     //
     bindDropToDir(root as any, sourceRef.DIR);
@@ -364,47 +412,32 @@ export const ViewPage = <
     };
 
     //
-    // The original code attempted to use a Map<string, ...> with chapter objects as keys,
-    // but chapters are not guaranteed to be strings, causing a type error.
-    // To fix this, we need to use a string key for the Map, such as chap.id or chap.title.
-    // We'll preserve the original mapping logic, but use a string property as the key.
-
-    const chapterList: C[] = typeof chapters === "function" ? chapters() : chapters;
-
-    // Use a string property of C as the key. We'll try chap.id, then chap.title, then fallback to String(chap).
-    const tabs = new Map<string, HTMLElement | null | string | any>(
-        chapterList.map((chap: C) => {
-            // Try to get a unique string key for the chapter
-            let key: string = "all";
-            if (chap == null) { key = "all"; } else
-            if (typeof chap == "object") {
-                if ('id' in chap && typeof (chap as any).id === 'string') {
-                    key = (chap as any)?.id;
-                } else if ('title' in chap && typeof (chap as any).title === 'string') {
-                    key = (chap as any)?.title;
-                } else {
-                    key = String(chap);
+    const tabsRef = makeReactive(new Map()) as Map<string, HTMLElement | null | string | any>;
+    const reloadTabs = () => {
+        // TODO: add reactive chapters support...
+        (typeof chapters === "function" ? chapters() : chapters).map((chap: C) => {
+            const key = (chap as any)?.id || (chap as any)?.title || String(chap);
+            if (key) {
+                if (tabsRef.has(key)) { /* currently, unknown action... */ } else {
+                    tabsRef.set(key, () => CollectItemsForTabPage<T, E, C>(
+                        entityDesc, chap, chap != null ? filtered : () => true,
+                        (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
+                    ))
                 }
-            } else {
-                key = chap as string;
             }
-            return [key, CollectItemsForTabPage<T, E, C>(
-                entityDesc,
-                chap,
-                chap != null ? filtered : () => true,
-                (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
-            )];
         })
-    );
+    }
 
     //
-    viewPage.$refresh = () => {
-        for (const el of tabs.values()) (el as any)?.reloadList?.();
-    };
+    viewPage.$refresh = () => { reloadTabs?.(); };
+    viewPage.$refresh?.();
 
     //
+    document.addEventListener("rs-fs-changed", (ev) => viewPage.$refresh?.());
+
+    // TODO: add support for reactive maps of tabs in `ui-tabbed-box`
     const tabbed = H`<ui-tabbed-box
-        prop:tabs=${tabs}
+        prop:tabs=${tabsRef}
         prop:renderTabName=${renderTabName}
         currentTab=${"all"}
         style="background-color: transparent;"
@@ -413,9 +446,24 @@ export const ViewPage = <
 
     //
     const toolbar = H`<div class="view-toolbar"><div class="button-set">${makeActions(availableActions, entityDesc, viewPage)}</div></div>`
-    const section = H`<section id="${entityDesc.type}" class="all-view">${tabbed}${toolbar}</section>` as HTMLElement; viewPage.$section = section;
+    const section = H`<section id="${entityDesc.type}" class="viewer-section">${tabbed}${toolbar}</section>` as HTMLElement; viewPage.$section = section;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: entityDesc.type }).catch(console.warn);
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
+
+    //
+    section.addEventListener('contentvisibilityautostatechange', (e: any) => { viewPage.$refresh?.(); });
+    section.addEventListener('visibilitychange', (e: any) => { viewPage.$refresh?.(); });
+    section.addEventListener('focusin', (e: any) => { viewPage.$refresh?.(); });
+    document.addEventListener("rs-fs-changed", () => { viewPage.$refresh?.(); });
+
+    // after append and appear in pages, try to first signal
+    requestAnimationFrame(() => {
+        if (section?.checkVisibility?.()) {
+            viewPage.$refresh?.();
+        }
+    });
+
+    //
     return section;
 }

@@ -6,15 +6,15 @@ import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterfac
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
     // after begins and before ends
     if (beginTime && endTime) { // optional, used for notification or alarm
-        return parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(currentTime) && parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
+        return getComparableTimeValue(beginTime) < getComparableTimeValue(currentTime) && getComparableTimeValue(currentTime) < getComparableTimeValue(endTime);
     };
     // after begins
     if (beginTime) { // optional, used for notification or alarm
-        return parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(currentTime);
+        return getComparableTimeValue(beginTime) < getComparableTimeValue(currentTime);
     };
     // before ends
     if (endTime) { // optional, used for notification or alarm
-        return parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
+        return getComparableTimeValue(currentTime) < getComparableTimeValue(endTime);
     };
     return false;
 }
@@ -25,18 +25,18 @@ export const checkRemainsTime = (beginTime: Date, endTime: Date, currentTime: Da
 
     // utils begins
     if (beginTime) { // optional, used for notification or alarm
-        factorMasked &&= parseAndGetCorrectTime(currentTime) <= parseAndGetCorrectTime(beginTime);
+        factorMasked &&= getComparableTimeValue(currentTime) <= getComparableTimeValue(beginTime);
     }
 
     // utils ends
     if (endTime) { // optional, used for notification or alarm
-        factorMasked &&= parseAndGetCorrectTime(currentTime) < parseAndGetCorrectTime(endTime);
+        factorMasked &&= getComparableTimeValue(currentTime) < getComparableTimeValue(endTime);
     }
 
     // if maxDays is set, check if the time is within the next maxDays days
     if (maxDays) {
-        const dateLimit = parseAndGetCorrectTime(currentTime) + maxDays * 24 * 60 * 60 * 1000;
-        factorMasked &&= parseAndGetCorrectTime(beginTime) < parseAndGetCorrectTime(dateLimit);
+        const dateLimit = getComparableTimeValue(currentTime) + maxDays * 24 * 60 * 60 * 1000;
+        factorMasked &&= getComparableTimeValue(beginTime) < getComparableTimeValue(dateLimit);
     }
 
     //
@@ -48,7 +48,7 @@ export const isDate = (date: any) => {
     const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
     let secondStep = false;
     try {
-        secondStep = parseAndGetCorrectTime(date) > 0;
+        secondStep = getComparableTimeValue(date) > 0;
     } catch (e) {
         secondStep = false;
     }
@@ -60,12 +60,21 @@ export const insideOfDay = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     T extends DayDescriptor = DayDescriptor
 >(item: E, dayDesc: T) => {
+    const kind = typeof dayDesc == "string" ? dayDesc : (dayDesc as any)?.kind;
+    const status = typeof dayDesc == "string" ? dayDesc : dayDesc?.status;
+    const begin_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.begin_time;
+    const end_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.end_time;
+
+    //
     const inRange = (
-        parseAndGetCorrectTime(item?.properties?.begin_time) >= parseAndGetCorrectTime(dayDesc?.begin_time) &&
-        parseAndGetCorrectTime(item?.properties?.end_time) <= parseAndGetCorrectTime(dayDesc?.end_time)
+        ((getComparableTimeValue(item?.properties?.begin_time) >= getComparableTimeValue(begin_time)) || begin_time == "all" || !begin_time) &&
+        ((getComparableTimeValue(item?.properties?.end_time) <= getComparableTimeValue(end_time)) || end_time == "all" || !end_time)
     );
-    const matchesFilter = dayDesc?.status ? item?.properties?.status == dayDesc?.status : true;
-    return Boolean(inRange && matchesFilter);
+
+    //
+    const kindMatch = (kind ? (item?.kind == kind || kind == "all") : false) || !item?.kind;
+    const statusMatch = (status ? (item?.properties?.status == status || status == "all") : (!kindMatch)) || !item?.properties?.status;
+    return inRange || statusMatch || kindMatch;
 }
 
 //
@@ -73,7 +82,17 @@ export const notInPast = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     T extends DayDescriptor = DayDescriptor
 >(item: E, dayDesc: T | null = null) => {
-    return parseAndGetCorrectTime(item?.properties?.end_time) >= parseAndGetCorrectTime() || (dayDesc?.status && item?.properties?.status == dayDesc?.status);
+    const kind = typeof dayDesc == "string" ? dayDesc : (dayDesc as any)?.kind;
+    const status = typeof dayDesc == "string" ? dayDesc : dayDesc?.status;
+    const begin_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.begin_time;
+    const end_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.end_time;
+    const now_time = getComparableTimeValue();
+
+    //
+    const inRange = getComparableTimeValue(end_time) >= now_time;
+    const kindMatch = (kind ? (item?.kind == kind || kind == "all") : false) || !item?.kind;
+    const statusMatch = (status ? (item?.properties?.status == status || status == "all") : (!kindMatch)) || !item?.properties?.status;
+    return inRange || statusMatch || kindMatch;
 }
 
 //
@@ -141,12 +160,12 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
             // search same day
             let day = daysDesc?.find?.(day => {
                 //day.filter == timeline.status ||
-                return parseAndGetCorrectTime(beginTime) >= parseAndGetCorrectTime(day?.begin_time) &&
-                    parseAndGetCorrectTime(endTime) <= parseAndGetCorrectTime(day?.end_time);
+                return getComparableTimeValue(beginTime) >= getComparableTimeValue(day?.begin_time) &&
+                    getComparableTimeValue(endTime) <= getComparableTimeValue(day?.end_time);
             }) ?? null;
 
             // if day not found and isn't past
-            if (!day && (parseAndGetCorrectTime(endTime) >= parseAndGetCorrectTime())) {
+            if (!day && (getComparableTimeValue(endTime) >= getComparableTimeValue())) {
                 // create day (floor and ceiling times into day)
                 const dayDescriptor = createDayDescriptor(beginTime, { status: "" });
                 if (dayDescriptor) {
@@ -170,10 +189,11 @@ export function isPureHHMM(str?: TimeType | string | number | null | undefined) 
 export function parseDateCorrectly(str?: Date | TimeType | string | number | null | undefined): Date | null {
     if (!str) return new Date();
     if (str instanceof Date) return new Date(str);
-    if (typeof str == "object" && str?.timestamp) { return new Date(str?.timestamp); }
-    if (typeof str == "object" && str?.iso_date) { return new Date(str?.iso_date); }
-    if (typeof str == "object" && str?.date) { return new Date(str?.date); }
+    if (typeof str == "object" && str?.timestamp) { return parseDateCorrectly(str?.timestamp); }
+    if (typeof str == "object" && str?.iso_date) { return parseDateCorrectly(str?.iso_date); }
+    if (typeof str == "object" && str?.date) { return parseDateCorrectly(str?.date); }
     if (typeof str == "number") {
+        if (str >= 1000000000000) { return new Date(str); }
         const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
         return new Date(str * multiplier);
     }
@@ -199,6 +219,7 @@ export function parseDateCorrectly(str?: Date | TimeType | string | number | nul
 export function parseAndGetCorrectTime(str?: Date | TimeType | string | number | null | undefined): number {
     if (!str) return Date.now();
     if (typeof str == "number") {
+        if (str >= 1000000000000) { return str; }
         const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
         return str * multiplier;
     }
@@ -223,7 +244,7 @@ export const formatAsTime = (time: TimeType | string | number | null | undefined
 }
 
 //
-export const getComparableTimeValue = (value: TimeType | string | number | null | undefined): number => {
+export const getComparableTimeValue = (value?: TimeType | Date | string | number | null | undefined): number => {
     if (value == null) return Number.NaN;
 
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -247,21 +268,30 @@ export const getComparableTimeValue = (value: TimeType | string | number | null 
     return Number.isFinite(numeric) ? numeric : Number.NaN;
 };
 
-//
-export const computeTimelineOrder = <C extends ChapterDescriptor = ChapterDescriptor>(item: EntityInterface<any, any>, dayDesc: C | null = null): number | null => {
-    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null) ?? null;
-    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null) ?? null;
-    const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
-    if (!Number.isFinite(fallback)) { return null; }
-
-    const dayStart = getComparableTimeValue(((dayDesc as DayDescriptor)?.begin_time as TimeType) ?? null) ?? null;
-    const normalized = Number.isFinite(dayStart) ? (fallback - dayStart) : fallback;
-    return Math.round(normalized / 60000); // normalize to minutes to keep values small
+// TODO: use min value of all days for get correctly small value
+export const computeTimelineOrderInGeneral = (timeOfDay: TimeType | string | number | null | undefined, minTimestamp?: number): number | null => {
+    const dayStart = getComparableTimeValue(timeOfDay) || 0;
+    const normalized = (Number.isFinite(dayStart) ? dayStart : 0) - (minTimestamp || 0);
+    return Math.round(normalized / (24 * 60 * 60 * 1000));
 };
 
-// TODO: use min value of all days for get correctly small value
-export const computeTimelineOrderForDay = <C extends ChapterDescriptor = ChapterDescriptor>(timeOfDay: C | null = null): number | null => {
-    const dayStart = getComparableTimeValue((timeOfDay as TimeType) ?? null) ?? null;
-    const normalized = Number.isFinite(dayStart) ? dayStart : 0;
-    return Math.round(normalized / (60000)); // normalize to minutes to keep values small
+//
+export const computeTimelineOrderInsideOfDay = (item: EntityInterface<any, any>, dayDesc?: ChapterDescriptor | null): number | null => {
+    const beginTime = getComparableTimeValue(item?.properties?.begin_time) || 0;
+    const endTime = getComparableTimeValue(item?.properties?.end_time) || 0;
+    const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
+    if (!Number.isFinite(fallback)) { return 0; }
+
+    // from today, if there is no day descriptor
+    if (!dayDesc || !(dayDesc as any)?.begin_time) { dayDesc = createDayDescriptor(parseDateCorrectly(fallback ?? null)); };
+
+    //
+    const dayStart = getComparableTimeValue((dayDesc as any)?.begin_time) || 0;
+    const normalized = (Number.isFinite(dayStart) ? (fallback - dayStart) : fallback);
+    return Math.round(normalized / (60 * 1000));
+};
+
+//
+export const formatAsDate = (date: TimeType | string | number | null | undefined) => {
+    return parseDateCorrectly(date)?.toLocaleDateString?.("en-US", { day: "numeric", month: "long", weekday: "long", year: "numeric" });
 };

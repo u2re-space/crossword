@@ -86,6 +86,7 @@
             inline-size: stretch;
             order: var(--card-order, initial);
             block-size: max-content;
+            pointer-events: auto;
         }
 
         & *:not(ui-icon, br, ui-longtext, input):empty {

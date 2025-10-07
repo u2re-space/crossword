@@ -19,5 +19,68 @@
     }
 
 
+    .viewer-section {
+        background-color: transparent;//
+    }
+
+    .viewer-tab-content {
+        background-color: --c2-surface(0.01, var(--current, currentColor));
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+        scrollbar-gutter: auto;
+        touch-action: manipulation;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+
+        .viewer-tab-content-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: --c2-on-surface(0.01, var(--current, currentColor));
+            text-align: center;
+            padding: 0.25rem;
+            border-radius: 0.5rem;
+            background-color: transparent;
+            pointer-events: none;
+        }
+
+        .viewer-tab-content-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            pointer-events: none;
+            block-size: max-content;
+        }
+    }
+
+    .subgroup-header {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--c2-on-surface);
+        text-align: center;
+        padding: 0.25rem;
+        border-radius: 0.5rem;
+        background-color: var(--c2-surface-container-high);
+        pointer-events: none;
+    }
+
+    .subgroup-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        pointer-events: none;
+    }
+
+    .subgroup {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        pointer-events: none;
+    }
+
 
 }
