@@ -5,9 +5,9 @@ import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
 import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import { makeReactive } from "fest/object";
-import { getComparableTimeValue, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
-import { watchFsDirectory } from "@rs-core/workers/FsWatch";
+import { makeReactive, numberRef, observe, subscribe } from "fest/object";
+import { computeTimelineOrder, computeTimelineOrderForDay, createDayDescriptor, formatAsTime, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
@@ -17,7 +17,7 @@ import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 export const $filtered = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends ChapterDescriptor = ChapterDescriptor
->(obj: E, desc: C) => {
+    >(obj: E, desc: C): boolean => {
     return true;
 }
 
@@ -25,7 +25,7 @@ export const $filtered = <
 export const $byKind = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends ChapterDescriptor = ChapterDescriptor
->(obj: E, desc: C) => {
+    >(obj: E, desc: C): boolean => {
     return obj.kind === desc || !desc || desc == "all" || !obj.kind;
 }
 
@@ -33,8 +33,9 @@ export const $byKind = <
 export const $insideOfDay = <
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
     C extends DayDescriptor = DayDescriptor
->(obj: E, dayDesc: C | null = null) => {
-    return insideOfDay(obj, dayDesc as C)
+    >(obj: E, desc: C): boolean => {
+    const status = typeof desc == "string" ? desc : desc?.status
+    return insideOfDay(obj, desc) || (status == obj?.properties?.status || status == "all" || !status);
 }
 
 //
@@ -69,8 +70,8 @@ const MakeItemsLoaderForTabPage = <
     //
     let loadLocked = false;
     const load = async () => {
-        //dataRef.length = 0; // TODO: fix in reactive library
         dataRef?.splice?.(0, dataRef?.length ?? 0);
+        dataRef.length = 0; // TODO: fix in reactive library
 
         //
         if (loadLocked) return;
@@ -90,7 +91,7 @@ const MakeItemsLoaderForTabPage = <
                 const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
                 (obj as any).__name = name;
                 (obj as any).__path = `${sourceRef.DIR}${name}`;
-                if (filtered(obj as E, chapterRef as C) && obj) { dataRef.push(obj as E); }
+                if (filtered(obj as E, chapterRef as C) && obj) { PUSH_ONCE(dataRef, obj as E); }
                 return obj;
             })?.filter?.((e: any) => e);
 
@@ -107,6 +108,26 @@ const MakeItemsLoaderForTabPage = <
 }
 
 
+//
+const cleanToDay = (item: EntityInterface<any, any>) => {
+    return createDayDescriptor(parseDateCorrectly(item?.properties?.begin_time));
+};
+
+//
+const closestOfDay = (item: EntityInterface<any, any>, days: any[]) => {
+    return days?.find((d) => insideOfDay(item, d));
+};
+
+//
+const closestOfKind = (item: EntityInterface<any, any>, subgroups: any[]) => {
+    return subgroups?.find((d) => d?.kind == item?.kind);
+};
+
+//
+const PUSH_ONCE = (array: any[], item: any) => {
+    if (array?.indexOf?.(item) < 0) { array.push(item); };
+};
+
 
 
 //
@@ -116,59 +137,120 @@ export const CollectItemsForTabPage = <
     C extends ChapterDescriptor = ChapterDescriptor
 >(
     sourceRef: T,
-    chapterRef: C, filtered: (item: E, desc: C) => boolean,
+    chapterRef: C,
+    filtered: (item: E, desc: C) => boolean,
     ItemRenderer: (item: E, desc: T) => any
 ) => {
     //
     const loader = MakeItemsLoaderForTabPage(sourceRef, chapterRef, filtered);
-    const items = M(loader.dataRef, (item) => {
-        const itemEl = ItemRenderer(item as E, sourceRef as T);
-        return itemEl;
-    });
-
-
-    //
-    const root = H`<div data-name="${sourceRef}" class="tab">${items}</div>`;
-    root.addEventListener('dir-dropped', () => loader.load().catch(console.warn));
     document.addEventListener("rs-fs-changed", (ev) => loader.load().catch(console.warn.bind(console)));
 
     //
-    items.boundParent = root; (root as any).reloadList = loader.load;
-
-
-
-    //
-    let stopWatch: any = null;
-    const cancelWatcher = () => stopWatch?.();
-    const ensureWatcher = () => {
-        if (stopWatch) return true;
-        stopWatch = watchFsDirectory(sourceRef.DIR, () => loader.load().catch(console.warn)); return true;
-    };
-
-    //
-    let observer: MutationObserver | null = null; ensureWatcher();
-    loader.load().catch(console.warn.bind(console));
-    bindDropToDir(root as any, sourceRef.DIR);
-
-    //
-    if (!observer && typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
-        observer = new MutationObserver(() => {
-            if (root.isConnected) ensureWatcher();
-            else {
-                cancelWatcher();
-                observer?.disconnect();
-                observer = null;
-            }
-        });
-        observer.observe(document.documentElement, { childList: true, subtree: true });
+    let firstTimeLoaded = false;
+    const firstTimeLoad = () => {
+        if (firstTimeLoaded) return; firstTimeLoaded = true;
+        loader.load().catch(console.warn.bind(console));
     }
 
     //
-    (root as any).dispose = () => {
-        cancelWatcher();
-        observer?.disconnect();
-        observer = null;
+    const minTimestampRef = numberRef(0);
+    const maxTimestampRef = numberRef(0);
+
+    //
+    subscribe([loader.dataRef, Symbol.iterator], (v, p, o) => {
+        minTimestampRef.value = Math.min(...loader.dataRef.map((item) => parseAndGetCorrectTime(item?.properties?.begin_time ?? 0)));
+        maxTimestampRef.value = Math.max(...loader.dataRef.map((item) => parseAndGetCorrectTime(item?.properties?.begin_time ?? 0)));
+    })
+
+    //
+    const makeItemEl = (item) => {
+        const itemEl = ItemRenderer(item as E, sourceRef as T);
+        if (itemEl) { itemEl.style.order = computeTimelineOrder(item, chapterRef); };
+        return itemEl;
     };
+
+    //
+    const daysRef = makeReactive([]) as any[];
+    const kindsRef = makeReactive([]) as any[];
+
+    //
+    observe(loader.dataRef, (newItem, index, oldItem) => {
+        const day = cleanToDay(newItem), kind = newItem?.kind;
+        if (day && daysRef?.find((d) => d?.begin_time == day?.begin_time)) { PUSH_ONCE(daysRef, day); };
+        if (kind && kindsRef?.find((d) => d?.kind == kind)) { PUSH_ONCE(kindsRef, kind); };
+    });
+
+    //
+    const subgroups = makeReactive([]) as any[];
+
+    //
+    observe(loader.dataRef, (newItem, index, oldItem) => {
+        if (newItem?.type == "task" || newItem?.type == "event") {
+            const dayOf = createDayDescriptor(parseDateCorrectly(newItem?.properties?.begin_time));
+            if (dayOf && insideOfDay(newItem, dayOf)) {
+                let foundSubgroup = subgroups.find((d) => d?.day == dayOf?.begin_time)
+                if (!foundSubgroup) {
+                    PUSH_ONCE(subgroups, foundSubgroup ||= {
+                        items: makeReactive([]),
+                        day: dayOf?.begin_time,
+                        kind: newItem?.kind
+                    });
+                }
+                if (newItem) { PUSH_ONCE(foundSubgroup.items, newItem); };
+            }
+        } else
+            if (newItem?.kind) {
+                let foundSubgroup = subgroups.find((d) => d?.kind == newItem?.kind)
+                if (!foundSubgroup) {
+                    PUSH_ONCE(subgroups, foundSubgroup ||= {
+                        items: makeReactive([]),
+                        kind: newItem?.kind
+                    });
+                }
+                if (newItem) { PUSH_ONCE(foundSubgroup.items, newItem); };
+            }
+    });
+
+    //
+    const subgroupsEl = M(subgroups, (subgroup) => {
+        const itm = M(subgroup?.items ?? [], makeItemEl);
+        const els = H`<div class="subgroup">
+            <div class="subgroup-header">${subgroup?.day ? formatAsTime(subgroup?.day) : subgroup?.kind}</div>
+            <div class="subgroup-items">${itm}</div>
+        </div>`
+        itm.boundParent = els;
+
+        //
+        if (subgroup && els) { els.style.order = computeTimelineOrderForDay(subgroup?.day as any); };
+        return els;
+    });
+
+    //
+    const root = H`<div class="tab" data-name="${sourceRef?.type}">${subgroupsEl}</div>`;
+    root.addEventListener('dir-dropped', () => loader.load().catch(console.warn));
+    (root as any).reloadList = loader.load;
+    subgroupsEl.boundParent = root;
+
+    //
+    bindDropToDir(root as any, sourceRef.DIR);
+
+    //
+    (root as any).dispose = () => {
+        loader.dataRef?.splice?.(0, loader.dataRef?.length ?? 0);
+        loader.dataRef.length = 0; // TODO: fix in reactive library
+    };
+
+    //
+    root.addEventListener('contentvisibilityautostatechange', (e: any) => { firstTimeLoad?.(); });
+    root.addEventListener('visibilitychange', (e: any) => { firstTimeLoad?.(); });
+    root.addEventListener('focusin', (e: any) => { firstTimeLoad?.(); });
+
+    // after append and appear in pages, try to first signal
+    requestAnimationFrame(() => {
+        if (root?.checkVisibility?.()) {
+            firstTimeLoad?.();
+        }
+    });
 
     //
     return root;
@@ -293,12 +375,13 @@ export const ViewPage = <
     const tabs = new Map<string, HTMLElement | null | string | any>(
         chapterList.map((chap: C) => {
             // Try to get a unique string key for the chapter
-            let key: string;
+            let key: string = "all";
+            if (chap == null) { key = "all"; } else
             if (typeof chap == "object") {
                 if ('id' in chap && typeof (chap as any).id === 'string') {
-                    key = (chap as any).id;
+                    key = (chap as any)?.id;
                 } else if ('title' in chap && typeof (chap as any).title === 'string') {
-                    key = (chap as any).title;
+                    key = (chap as any)?.title;
                 } else {
                     key = String(chap);
                 }
@@ -308,7 +391,7 @@ export const ViewPage = <
             return [key, CollectItemsForTabPage<T, E, C>(
                 entityDesc,
                 chap,
-                filtered,
+                chap != null ? filtered : () => true,
                 (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
             )];
         })

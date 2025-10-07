@@ -102,9 +102,9 @@ export interface PersonInterface extends PropBase {
 
 
 export interface TimeType {
-    date: string;
-    iso_date: string;
-    timestamp: number;
+    date?: string;
+    iso_date?: string;
+    timestamp?: number;
 }
 
 //

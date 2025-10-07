@@ -1,6 +1,6 @@
 import { makeReactive } from "fest/object";
-import type { DayDescriptor } from "../typed/Types";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { ChapterDescriptor, DayDescriptor } from "../typed/Types";
+import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
 
 //
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {
@@ -86,7 +86,8 @@ export const getISOWeekNumber = (input: Date | null | undefined): number | null 
     return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 };
 
-export const createDayDescriptor = (input: Date | null | undefined, partial: Record<string, any> = {}) => {
+//
+export const createDayDescriptor = (input: Date | null | undefined, partial: Record<string, any> = {}): DayDescriptor | null => {
     if (!input) return null;
 
     const dayBegin = new Date(input.getTime());
@@ -160,13 +161,13 @@ export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | n
 }
 
 //
-export function isPureHHMM(str: any) {
+export function isPureHHMM(str?: TimeType | string | number | null | undefined) {
     if (!str) return false;
     return /^([01]\d|2[0-3]):([0-5]\d)$/?.test?.(String(str)?.trim?.());
 }
 
 //
-export function parseDateCorrectly(str: any | Date | null = null): Date | null {
+export function parseDateCorrectly(str?: Date | TimeType | string | number | null | undefined): Date | null {
     if (!str) return new Date();
     if (str instanceof Date) return new Date(str);
     if (typeof str == "object" && str?.timestamp) { return new Date(str?.timestamp); }
@@ -191,11 +192,11 @@ export function parseDateCorrectly(str: any | Date | null = null): Date | null {
             0
         );
     }
-    return new Date(str);
+    return new Date(String(str));
 }
 
 //
-export function parseAndGetCorrectTime(str: any | Date | null = null): number {
+export function parseAndGetCorrectTime(str?: Date | TimeType | string | number | null | undefined): number {
     if (!str) return Date.now();
     if (typeof str == "number") {
         const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
@@ -206,23 +207,23 @@ export function parseAndGetCorrectTime(str: any | Date | null = null): number {
 }
 
 //
-export const normalizeSchedule = (value: any): any => {
+export const normalizeSchedule = (value: TimeType | string | number | null | undefined): TimeType | null => {
     if (!value) return null;
     if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
         return value;
     }
-    return { iso_date: value };
+    return { iso_date: String(value) };
 };
 
 //
-export const formatAsTime = (time: any) => {
+export const formatAsTime = (time: TimeType | string | number | null | undefined) => {
     const normalized = normalizeSchedule(time);
     if (!normalized) return "";
     return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 //
-export const getComparableTimeValue = (value: any): number => {
+export const getComparableTimeValue = (value: TimeType | string | number | null | undefined): number => {
     if (value == null) return Number.NaN;
 
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -247,15 +248,20 @@ export const getComparableTimeValue = (value: any): number => {
 };
 
 //
-export const computeTimelineOrder = (item: any, dayDesc: any | null = null): number | null => {
-    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null);
-    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null);
+export const computeTimelineOrder = <C extends ChapterDescriptor = ChapterDescriptor>(item: EntityInterface<any, any>, dayDesc: C | null = null): number | null => {
+    const beginTime = getComparableTimeValue(item?.properties?.begin_time ?? null) ?? null;
+    const endTime = getComparableTimeValue(item?.properties?.end_time ?? null) ?? null;
     const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
-    if (!Number.isFinite(fallback)) {
-        return null;
-    }
+    if (!Number.isFinite(fallback)) { return null; }
 
-    const dayStart = getComparableTimeValue(dayDesc?.properties?.begin_time ?? null);
-    const normalized = Number.isFinite(dayStart) ? fallback - dayStart : fallback;
+    const dayStart = getComparableTimeValue(((dayDesc as DayDescriptor)?.begin_time as TimeType) ?? null) ?? null;
+    const normalized = Number.isFinite(dayStart) ? (fallback - dayStart) : fallback;
     return Math.round(normalized / 60000); // normalize to minutes to keep values small
+};
+
+// TODO: use min value of all days for get correctly small value
+export const computeTimelineOrderForDay = <C extends ChapterDescriptor = ChapterDescriptor>(timeOfDay: C | null = null): number | null => {
+    const dayStart = getComparableTimeValue((timeOfDay as TimeType) ?? null) ?? null;
+    const normalized = Number.isFinite(dayStart) ? dayStart : 0;
+    return Math.round(normalized / (60000)); // normalize to minutes to keep values small
 };

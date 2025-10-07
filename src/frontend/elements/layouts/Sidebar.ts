@@ -11,6 +11,10 @@ export const Sidebar: any = (currentView: any, entityViews: any) => {
     <li><a target="_self" href="#settings" data-name="settings"><ui-icon icon="gear"></ui-icon><span>Settings</span></a></li>
 </ul></nav>`;
 
+    if (currentView) {
+        currentView.value = [...entityViews?.keys?.()]?.[0] || currentView.value;
+    }
+
     // navigation wiring for ui-tabbed-box
     sidebar.addEventListener?.("click", (ev: any) => {
         const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');

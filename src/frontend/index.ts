@@ -1,5 +1,5 @@
 import { AppLayout, CURRENT_VIEW } from "./elements/layouts/AppLayout";
-import { DataExplorer, PreferencesView, QuestsView, Settings, ViewPage } from "./elements/Views";
+import { $byKind, $insideOfDay, DataExplorer, PreferencesView, QuestsView, Settings, ViewPage } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 
 //
@@ -63,19 +63,15 @@ export default async function frontend(mountElement) {
     ])
 
     //
-    const makeEntityView = async (entityType: string, entityView?: any, viewPage?: any) => {
+    const makeEntityView = (entityType: string, entityView?: any) => {
         entityView ??= entityViews.get(entityType);
         if (!entityView) return null;
-
-        // TODO: viable tab organizer
-        const tabOrganizer = (item, tab) => true
-
-        // TODO: adding `groupedBy` separators support
-        return await ViewPage({
+        const tabOrganizer = entityType == "task" ? $insideOfDay : $byKind;//(item, tab) => true
+        return () => ViewPage({
             label: entityView?.label || entityType,
             type: entityType,
             DIR: (entityType == "task" || entityType == "timeline") ? `/timeline/` : `/data/${entityType}/`
-        }, entityView?.tabs || [], tabOrganizer, entityView?.availableActions || [], MakeCardElement);
+        }, entityView?.tabs || [], tabOrganizer as any, entityView?.availableActions || [], MakeCardElement);
     };
 
     //
@@ -83,18 +79,17 @@ export default async function frontend(mountElement) {
 
     //
     const views = new Map<any, any>([
-        ["preferences", await PreferencesView()],
-        ["quests", await QuestsView()],
-        ["explorer", await DataExplorer()],
+        ["preferences", () => PreferencesView()],
+        ["quests", () => QuestsView()],
+        ["explorer", () => DataExplorer()],
         ["settings", await Settings()],
         ...(await Promise.all(
             Array.from(entityViews.entries())
-                .map(async ([entityType, entityView]) => [entityType, await makeEntityView(entityType, entityView, viewPage)])
+                .map(async ([entityType, entityView]) => [entityType, await makeEntityView(entityType, entityView)])
         ))?.filter(([entityType, entityView]) => entityView) as [string, HTMLElement | null | string | any][]
     ]);
 
     //
-    CURRENT_VIEW.value = [...views?.keys?.()]?.[0] || CURRENT_VIEW.value;
     const layout = AppLayout(views, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
