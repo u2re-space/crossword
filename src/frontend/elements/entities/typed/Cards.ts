@@ -1,5 +1,4 @@
 import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/deprecated/EntityEdit";
 import { H, M } from "fest/lure";
 import { formatAsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import type { EntityDescriptor } from "./Types";
@@ -8,6 +7,7 @@ import type { EntityInterface } from "@rs-core/template/EntityInterface";
 //
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
+import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/editors/EntityEdit";
 marked.use(markedKatex({
     throwOnError: false,
     nonStandard: true

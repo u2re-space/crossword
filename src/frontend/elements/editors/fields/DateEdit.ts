@@ -92,6 +92,29 @@ const VALIDATE = (value: Date | string | number | object | null, format?: string
 //
 
 //
+const parseInitialDate = (value: any): Date | null => {
+    if (!value) return null;
+
+    // If already a Date
+    if (value instanceof Date) return value;
+
+    // If TimeType object
+    if (typeof value === "object") {
+        if (value.iso_date) return new Date(value.iso_date);
+        if (value.timestamp) return new Date(value.timestamp);
+        if (value.date) return new Date(value.date);
+    }
+
+    // If string or number
+    try {
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+        return null;
+    }
+};
+
+//
 export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
     if (!key) return { block: null, saveEvent: () => { } };
 
@@ -100,34 +123,52 @@ export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
     const rifEl = Q(($h) => $h);
 
     //
-    const dynamicIcon = stringRef("arrow-right");
-    const selectedFormat = stringRef(FIND_BY_EXISTS(object[key] ?? {}));
+    const initialValue = object[key];
+    const initialDate = parseInitialDate(initialValue);
+    const initialFormat = FIND_BY_EXISTS(initialValue ?? {});
 
-    // TODO: dynamic icons support...
+    const dynamicIcon = stringRef(iconsBy[initialFormat] || "calendar-check");
+    const selectedFormat = stringRef(initialFormat);
+
+    //
     const block = H`<div class="date-field-layout" data-key=${key}>
-<div class="date-field-layout-input"><input ref=${rifEl} type="datetime-local" prop:valueAsDate=${new Date(object[key]?.iso_date ?? object[key]?.date ?? object[key]?.timestamp ?? object[key])} data-invalid=${!VALIDATE(new Date(object[key]?.iso_date ?? object[key]?.date ?? object[key]?.timestamp ?? object[key]))} /></div>
-<label aria-hidden="true">JSON Output Type Format</label><ui-icon icon=${dynamicIcon}></ui-icon>
-<select ref=${refEl} prop:value=${selectedFormat}>
-    ${M(jsonOutputTypeFormat, (item) => H`<option value=${item.value}>${item.label}</option>`)}
-</select>
-</div>`
+        <div class="date-field-layout-input">
+            <input
+                ref=${rifEl}
+                type="datetime-local"
+                value=${initialDate ? initialDate.toISOString().slice(0, 16) : ""}
+                data-invalid=${!VALIDATE(initialDate, initialFormat)}
+            />
+        </div>
+        <div class="date-field-layout-format">
+            <label for=${"format-" + key}>Output Format</label>
+            <ui-icon icon=${dynamicIcon}></ui-icon>
+            <select ref=${refEl} prop:value=${selectedFormat} id=${"format-" + key}>
+                ${M(jsonOutputTypeFormat, (item) => H`<option value=${item.value}>${item.label}</option>`)}
+            </select>
+        </div>
+    </div>`
 
     // on save event
-    const saveEvent = (value: Date | null) => {
-        if (VALIDATE(value, refEl.value)) {
-            object[key] = { [refEl.value]: BY_FORMAT(refEl.value, value) };
+    const saveEvent = (value?: Date | null) => {
+        const dateValue = value ?? rifEl?.valueAsDate;
+        if (VALIDATE(dateValue, refEl.value)) {
+            const formatted = BY_FORMAT(refEl.value, dateValue);
+            object[key] = formatted;
         }
     }
 
     //
     rifEl?.addEventListener("change", (ev) => {
-        if (VALIDATE(rifEl?.valueAsDate, refEl.value)) { saveEvent(rifEl?.valueAsDate); }
+        if (VALIDATE(rifEl?.valueAsDate, refEl.value)) {
+            saveEvent(rifEl?.valueAsDate);
+        }
     });
 
     //
     refEl?.addEventListener("change", (ev) => {
         selectedFormat.value = ev.target.value;
-        dynamicIcon.value = iconsBy[ev.target.value];
+        dynamicIcon.value = iconsBy[ev.target.value] || "calendar-check";
         saveEvent(rifEl?.valueAsDate);
     });
 

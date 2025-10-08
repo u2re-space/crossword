@@ -3,7 +3,6 @@ import { implementDropEvent, implementPasteEvent } from "../utils/HookEvent";
 import { sendToEntityPipeline, writeTimelineTasks } from "@rs-core/workers/FileSystem";
 import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
-import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/deprecated/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { $trigger, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, formatAsTime, getComparableTimeValue, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
@@ -13,6 +12,7 @@ import type { ChapterDescriptor, DayDescriptor, EntityDescriptor } from "./Types
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
+import { makeEntityEdit } from "@rs-frontend/elements/editors/EntityEdit";
 
 //
 export const $unfiltered = <
@@ -424,7 +424,7 @@ const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, e
             if (!result) return;
 
             //
-            const fileName = (result?.title || `${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
+            const fileName = (`${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
             const path = `${entityDesc.DIR}${(fileName || entityDesc.type)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
             (result as any).__path = path;
             const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });

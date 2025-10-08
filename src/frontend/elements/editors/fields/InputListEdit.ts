@@ -36,9 +36,9 @@ HTMLInputTypeByVirtualType.set("url", "url");
 
 //
 const formattingRegistry = new Map<string, (value: any) => any>();
-const formatPhoneString = (phone: string) => { return phone.replace(/\+7/g, '8').replace(/\s+/g, '').replace(/[^0-9]/g, ''); }
-const formatEmailString = (email: string) => { return email.trim(); }
-const formatUrlString = (url: string) => { return url.trim(); }
+const formatPhoneString = (phone: string) => { return phone?.replace?.(/\+7/g, '8')?.replace?.(/\s+/g, '')?.replace?.(/[^0-9]/g, ''); }
+const formatEmailString = (email: string) => { return email?.trim?.(); }
+const formatUrlString = (url: string) => { return url?.trim?.(); }
 
 // default formatting functions
 formattingRegistry.set("phone", formatPhoneString);
@@ -60,7 +60,7 @@ const URL_BY_TYPE = (value: any, description: FieldDescription) => {
 
 //
 const IS_URL = (value: any) => {
-    if (URL.canParse(value, location.origin)) return true;
+    if (URL.canParse(value, location.origin ?? "")) return true;
     return (value.startsWith("http") || value.startsWith("//") || value.startsWith("www.") || value.startsWith("mailto:") || value.startsWith("tel:") || value.startsWith("https:") || value.startsWith("ftp:") || value.startsWith("file:") || value.startsWith("data:"));
 }
 
@@ -105,13 +105,13 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         // alternatively, can be used index of child-list element...
         const rawValue = ev.target.value;
         const value = (description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(rawValue) ?? rawValue;
-        saveEvent(value, parseInt(ev.target.dataset.index ?? "-1"));
+        saveEvent(value, parseInt(ev.target.dataset.index ?? "-1") ?? 0);
     }
 
     // if parts is just string, when adding part changes to array of strings
     const onPreviewEv = (ev: any) => {
         if (ev.target.tagName == "A") {
-            ev.target.href = FORMAT_AS_URL(parts[parseInt(ev.target.dataset.index ?? "-1")], description);
+            ev.target.href = FORMAT_AS_URL(parts[parseInt(ev.target.dataset.index ?? "-1") ?? 0], description);
 
             // DAMN, don't recurse and stuck browser to loops, if event is already is clicked...
             //ev.target.click();
@@ -178,7 +178,7 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     block?.addEventListener("click", (ev) => {
         if (ev.target.tagName == "BUTTON") { addPartEvent(); }
         if (ev.target.tagName == "INPUT") {
-            saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1"));
+            saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1") ?? 0);
         }
     });
 

@@ -4,7 +4,7 @@
 @use "./views/layout/Layout";
 @use "./views/layout/Settings";
 @use "./views/layout/Viewers";
-@use "./views/widgets/Toolbar";
+@use "./views/widgets/Toolbars";
 
 //
 @use "./views/docs/Preferences";
@@ -18,4 +18,6 @@
 @use "./editors/fields/Fields";
 @use "./editors/fields/Button";
 @use "./editors/fields/DateTime";
+@use "./editors/fields/DateField";
+@use "./editors/fields/DescriptorEdit";
 @use "./editors/overlays/Toast";

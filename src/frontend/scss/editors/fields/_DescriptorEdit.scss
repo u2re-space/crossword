@@ -1,0 +1,221 @@
+// Multi-part description editor with add/remove functionality
+
+@layer rs-fields-descriptor {
+
+    //
+    .descriptor-edit {
+        display: grid;
+        gap: clamp(0.4rem, 0.8cqi + 0.25rem, 0.6rem);
+        container-type: inline-size;
+        min-inline-size: 0;
+    }
+
+    //
+    .descriptor-edit-part {
+        display: grid;
+        gap: 0.25rem;
+        position: relative;
+        container-type: inline-size;
+
+        // Multi-line text input
+        textarea {
+            inline-size: 100%;
+            min-inline-size: 0;
+            min-block-size: 4rem;
+            padding: 0.6rem 0.7rem;
+            border-radius: 0.65rem;
+            border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+            background: color-mix(in oklab, var(--current, currentColor) 4%, transparent);
+            color: color-mix(in oklab, currentColor 80%, rgba(17, 24, 39, 0.9));
+            font-size: clamp(0.85rem, 0.5cqi + 0.75rem, 0.95rem);
+            font-family: inherit;
+            line-height: 1.5;
+            outline: none;
+            resize: vertical;
+            transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+
+            &:focus {
+                border-color: color-mix(in oklab, currentColor 28%, transparent);
+                background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+                box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 12%, transparent);
+            }
+
+            &:hover:not(:focus) {
+                border-color: color-mix(in oklab, currentColor 20%, transparent);
+            }
+
+            &::placeholder {
+                color: color-mix(in oklab, currentColor 32%, rgba(17, 24, 39, 0.5));
+            }
+        }
+
+        // Single-line input (for URLs, emails, phones, tags)
+        input {
+            inline-size: 100%;
+            min-inline-size: 0;
+            padding: 0.55rem 0.65rem;
+            border-radius: 0.65rem;
+            border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+            background: color-mix(in oklab, var(--current, currentColor) 4%, transparent);
+            color: color-mix(in oklab, currentColor 80%, rgba(17, 24, 39, 0.9));
+            font-size: clamp(0.85rem, 0.5cqi + 0.75rem, 0.95rem);
+            outline: none;
+            transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+
+            &:focus {
+                border-color: color-mix(in oklab, currentColor 28%, transparent);
+                background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+                box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 12%, transparent);
+            }
+
+            &:hover:not(:focus) {
+                border-color: color-mix(in oklab, currentColor 20%, transparent);
+            }
+
+            &::placeholder {
+                color: color-mix(in oklab, currentColor 32%, rgba(17, 24, 39, 0.5));
+            }
+        }
+
+        // Field label (aria-hidden decorative)
+        label[aria-hidden="true"] {
+            position: absolute;
+            inset-inline-start: 0.75rem;
+            inset-block-start: -0.65rem;
+            padding-inline: 0.4rem;
+            background: color-mix(in oklab, var(--current, currentColor) 2%, white);
+            color: color-mix(in oklab, currentColor 48%, rgba(17, 24, 39, 0.6));
+            font-size: clamp(0.7rem, 0.35cqi + 0.6rem, 0.8rem);
+            font-weight: 500;
+            pointer-events: none;
+            border-radius: 0.3rem;
+            backdrop-filter: blur(4px);
+            z-index: 1;
+        }
+
+        // Preview link (for URLs)
+        a[data-type="preview"] {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 0.5rem;
+            background: color-mix(in oklab, currentColor 6%, transparent);
+            color: color-mix(in oklab, currentColor 60%, rgba(17, 24, 39, 0.7));
+            font-size: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+
+            &:hover {
+                background: color-mix(in oklab, currentColor 12%, transparent);
+                color: color-mix(in oklab, currentColor 72%, rgba(17, 24, 39, 0.85));
+                transform: translateY(-1px);
+            }
+
+            &:active {
+                transform: translateY(0);
+            }
+
+            &::before {
+                content: "🔗";
+                font-size: 0.9em;
+            }
+        }
+
+        // Show/hide password/URL checkbox
+        input[type="checkbox"][data-type="show-password-or-url"] {
+            inline-size: auto;
+            accent-color: color-mix(in oklab, currentColor 48%, transparent);
+        }
+    }
+
+    // Add button
+    .descriptor-edit > button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.7rem;
+        border-radius: 0.65rem;
+        border: 1px dashed color-mix(in oklab, currentColor 20%, transparent);
+        background: color-mix(in oklab, var(--current, currentColor) 2%, transparent);
+        color: color-mix(in oklab, currentColor 56%, rgba(17, 24, 39, 0.75));
+        font-size: clamp(0.8rem, 0.5cqi + 0.7rem, 0.9rem);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 160ms ease;
+
+        &:hover {
+            border-style: solid;
+            border-color: color-mix(in oklab, currentColor 28%, transparent);
+            background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+            color: color-mix(in oklab, currentColor 70%, rgba(17, 24, 39, 0.85));
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+
+        &::before {
+            content: "+";
+            font-size: 1.2em;
+            line-height: 1;
+        }
+    }
+
+    // Type-specific styling
+    .descriptor-edit[data-type="phone"] {
+        .descriptor-edit-part input {
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .descriptor-edit[data-type="email"] {
+        .descriptor-edit-part input {
+            text-transform: lowercase;
+        }
+    }
+
+    .descriptor-edit[data-type="url"] {
+        .descriptor-edit-part input {
+            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+            font-size: 0.9em;
+        }
+    }
+
+    // Responsive adjustments
+    @container (max-inline-size: 400px) {
+        .descriptor-edit-part {
+            a[data-type="preview"] {
+                max-inline-size: 100%;
+            }
+        }
+    }
+
+    // Accessibility
+    @media (prefers-reduced-motion: reduce) {
+        .descriptor-edit-part textarea,
+        .descriptor-edit-part input,
+        .descriptor-edit-part a,
+        .descriptor-edit > button {
+            transition-duration: 0ms;
+        }
+    }
+
+    // High contrast mode
+    @media (prefers-contrast: high) {
+        .descriptor-edit-part textarea,
+        .descriptor-edit-part input {
+            border-width: 2px;
+        }
+
+        .descriptor-edit > button {
+            border-width: 2px;
+        }
+    }
+}
+
