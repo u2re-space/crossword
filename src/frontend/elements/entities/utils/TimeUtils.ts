@@ -108,8 +108,15 @@ export const getISOWeekNumber = (input: Date | null | undefined): number | null 
 };
 
 //
+export const getTimeZone = () => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
+//
 export const createDayDescriptor = (input: Date | null | undefined, partial: Record<string, any> = {}): DayDescriptor | null => {
     if (!input) return null;
+
+    const timeZone = getTimeZone();
 
     const dayBegin = new Date(input.getTime());
     dayBegin.setHours(0, 0, 0, 0);
@@ -117,17 +124,18 @@ export const createDayDescriptor = (input: Date | null | undefined, partial: Rec
     const dayEnd = new Date(input.getTime());
     dayEnd.setHours(23, 59, 59, 999);
 
-    const dayDay = dayBegin.toLocaleDateString("en-US", { day: "numeric" });
-    const dayWeekday = dayBegin.toLocaleDateString("en-US", { weekday: "short" });
-    const dayMonth = dayBegin.toLocaleDateString("en-US", { month: "short" });
+    const dayDay = dayBegin.toLocaleDateString("en-GB", { day: "numeric", timeZone });
+    const dayWeekday = dayBegin.toLocaleDateString("en-GB", { weekday: "short", timeZone });
+    const dayMonth = dayBegin.toLocaleDateString("en-GB", { month: "short", timeZone });
     const dayTitle = `${dayDay} ${dayMonth} ${dayWeekday}`;
 
-    const dayDayForId = dayBegin.toLocaleDateString("en-US", { day: "numeric" });
-    const dayMonthForId = dayBegin.toLocaleDateString("en-US", { month: "numeric" });
-    const dayYearForId = dayBegin.toLocaleDateString("en-US", { year: "numeric" });
+    const dayDayForId = dayBegin.toLocaleDateString("en-GB", { day: "numeric", timeZone });
+    const dayMonthForId = dayBegin.toLocaleDateString("en-GB", { month: "numeric", timeZone });
+    const dayYearForId = dayBegin.toLocaleDateString("en-GB", { year: "numeric", timeZone });
     const dayId = `${dayDayForId}_${dayMonthForId}_${dayYearForId}`;
 
-    const fullDay = dayBegin.toLocaleDateString("en-US", {
+    const fullDay = dayBegin.toLocaleDateString("en-GB", {
+        timeZone,
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -242,7 +250,7 @@ export const normalizeSchedule = (value: TimeType | string | number | null | und
 export const formatAsTime = (time: TimeType | string | number | null | undefined) => {
     const normalized = normalizeSchedule(time);
     if (!normalized) return "";
-    return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: getTimeZone() });
 }
 
 //
@@ -295,5 +303,5 @@ export const computeTimelineOrderInsideOfDay = (item: EntityInterface<any, any>,
 
 //
 export const formatAsDate = (date: TimeType | string | number | null | undefined) => {
-    return parseDateCorrectly(date)?.toLocaleDateString?.("en-US", { day: "numeric", month: "long", weekday: "long", year: "numeric" });
+    return parseDateCorrectly(date)?.toLocaleDateString?.("en-GB", { day: "numeric", month: "long", weekday: "long", year: "numeric", timeZone: getTimeZone() });
 };

@@ -79,5 +79,53 @@ export const MakeCardElement = <
             console.warn("Failed to set card order", e);
         }
     }
+
+
+    //
+    const updateCardInfo = ($entityItem: E = entityItem) => {
+        // Update card content
+        const titleEl = card.querySelector('.card-title');
+        if (titleEl && $entityItem.title) titleEl.textContent = $entityItem.title;
+
+        const nameEl = card.querySelector('.card-name');
+        if (nameEl && $entityItem.name) nameEl.textContent = $entityItem.name;
+
+        const descEl = card.querySelector('.card-description');
+        if (descEl && $entityItem.description) {
+            const desc = Array.isArray($entityItem.description)
+                ? $entityItem.description.join('\n')
+                : $entityItem.description;
+            descEl.textContent = desc;
+        }
+
+        const kindEl = card.querySelector('.card-kind');
+        if (kindEl && $entityItem.kind) kindEl.textContent = $entityItem.kind;
+
+        const timeRangeEl = card.querySelector('.card-time');
+        if (timeRangeEl && $entityItem.properties?.begin_time && $entityItem.properties?.end_time) timeRangeEl.textContent = `${formatAsTime($entityItem.properties?.begin_time)} - ${formatAsTime($entityItem.properties?.end_time)}`;
+
+        const linksEl = card.querySelector('.card-links');
+        if (linksEl && $entityItem.properties?.links) {
+            linksEl.textContent = $entityItem.properties?.links.join('\n');
+        }
+
+        const tagsEl = card.querySelector('.card-tags');
+        if (tagsEl && $entityItem.tags) {
+            tagsEl.textContent = $entityItem.tags.join('\n');
+        }
+
+        const imageEl = card.querySelector('.card-image');
+        if (imageEl && $entityItem.image) {
+            imageEl.src = $entityItem.image;
+        }
+
+        const variantEl = card.querySelector('.card-variant');
+        if (variantEl && $entityItem.variant) {
+            variantEl.textContent = $entityItem.variant;
+        }
+    }
+
+    //
+    card.$updateInfo = updateCardInfo;
     return card;
 }

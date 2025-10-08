@@ -1,4 +1,4 @@
-import { makeReactive } from "fest/object";
+import { makeReactive, propRef } from "fest/object";
 import { H, M } from "fest/lure";
 
 //
@@ -50,10 +50,17 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
         saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1"));
     }
 
+    //
+    const $partRender = (part, index) => {
+        if (index < 0 || index == null || typeof index != "number" || part == null) return;
+        const refByIndex = part;//propRef(parts, index);
+        return H`<div class="descriptor-edit-part" data-index=${index} style=${{ order: index, "--index": index }}><textarea name=${"part-" + index} on:change=${onChangeEv} prop:value=${refByIndex}></textarea></div>`
+    }
+
     // if parts is just string, when adding part changes to array of strings
     const block = H`<div class="descriptor-edit">
-        ${M(parts, (part, index) => H`<div class="descriptor-edit-part" data-index=${index} style=${{ order: index, "--index": index }}><textarea name=${"part-" + index} on:change=${onChangeEv} prop:value=${part}></textarea></div>`)}
-        <button>Add Part</button>
+        ${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}
+        <button type="button">Add Part</button>
     </div>`
 
     //

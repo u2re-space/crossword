@@ -120,30 +120,38 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
 
     //
     const onCheckboxEv = (ev: any) => {
-        if (ev.target.tagName == "INPUT") {
-            ev.target.checked = !ev.target.checked;
+        // Checkbox state is already toggled by browser, just update parent container state
+        if (ev.target.type === "checkbox") {
+            const partContainer = ev.target.closest('.field-list-edit-part');
+            if (partContainer) {
+                partContainer.toggleAttribute('data-show-preview', ev.target.checked);
+            }
         }
     }
 
     //
-    const $partRender = (part, index) => H`<div class="descriptor-edit-part" data-index=${index} style=${{ order: index, "--index": index }}><input
-        name=${"part-" + index}
-        on:change=${onChangeEv}
-        prop:value=${propRef(parts, index)}
-        data-index=${index}
-        type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
-        data-format=${description?.type ?? "text"}
-        value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
-    ></input><label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
-    <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(propRef(parts, index), (v) => FORMAT_AS_URL(v, description))} target="_blank">${propRef(parts, index)}</a>
-    <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
-    </div>`;
+    const $partRender = (part, index) => {
+        const refByIndex = propRef(parts, index);
+        if (index < 0 || index == null || typeof index != "number" || part == null) return;
+        return H`<div class="field-list-edit-part" data-index=${index} style=${{ order: index, "--index": index }}><input
+            name=${"part-" + index}
+            on:change=${onChangeEv}
+            prop:value=${refByIndex?.value}
+            data-index=${index}
+            type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
+            data-format=${description?.type ?? "text"}
+            value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
+        ></input><label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
+        <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
+        <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
+        </div>`
+    };
 
     //
     const aRefEl = Q(($a) => $a);
-    const block = H`<div class="descriptor-edit" data-type=${description?.type ?? "text"}>
-        ${M(parts, $partRender)}
-        <button>Add ${description?.label ?? "Part"}</button>
+    const block = H`<div class="field-list-edit" data-type=${description?.type ?? "text"}>
+        ${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}
+        <button type="button">Add ${description?.label ?? "Part"}</button>
     </div>`
 
     //
@@ -172,7 +180,7 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     }
 
     // add part event
-    const addPartEvent = () => { parts.value = [...parts.value, ""]; }
+    const addPartEvent = () => { parts.push(""); }
 
     //
     block?.addEventListener("click", (ev) => {

@@ -76,13 +76,13 @@ export interface EntityInterface<T extends PropBase, K extends (ENTITY_KIND | VE
     id: string;
     type: T;
     kind: K;
-    name: string;
-    title: string;
-    variant: string;
-    description: string | string[];
-    image: string;
-    icon: string;
-    tags: string[];
+    name?: string;
+    title?: string;
+    variant?: string;
+    description?: string | string[];
+    image?: string;
+    icon?: string;
+    tags?: string[];
     properties: T;
 }
 

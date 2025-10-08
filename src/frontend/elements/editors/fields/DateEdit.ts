@@ -1,5 +1,6 @@
 import { stringRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
+import { parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
 
 //
 const jsonOutputTypeFormat = [
@@ -53,20 +54,25 @@ const editBindings = new WeakMap<any, FieldWithKey>();
 const whichUsed = new WeakMap<any, ObjectAndKey>();
 
 //
-const BY_FORMAT = (format: string, value: Date | null) => {
+const getTimeZone = () => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
+//
+const BY_FORMAT = (value: Date | null, format: string) => {
     if (!value) return { iso_date: "" };
     if (format == "iso_date") return { iso_date: value?.toISOString() };
-    if (format == "date") return { date: value?.toLocaleDateString() };
+    if (format == "date") return { date: value?.toLocaleString("en-GB", { timeZone: getTimeZone(), }) };
     if (format == "timestamp") return { timestamp: value?.getTime() };
-    if (format == "text") return value?.toLocaleDateString();
-    return { timestamp: value?.getTime() };
+    if (format == "text") return value?.toLocaleString("en-GB", { timeZone: getTimeZone() });
+    return { iso_date: value?.toISOString() };
 }
 
 // Please, validate a time format! Okay, wait for the next version of the editor...
 const VALIDATE = (value: Date | string | number | object | null, format?: string | null) => {
     if (value instanceof Date) {
         if (!value) return false;
-        if (value.getTime() < 0) return false;
+        if (value.getTime() <= 0) return false;
         return true;
     } else {
         if (!format) return false;
@@ -84,14 +90,20 @@ const VALIDATE = (value: Date | string | number | object | null, format?: string
             return true;
         }
     }
+    return true;
 };
 
-//
-// looks like date picker with button, where drops menu of formats
-// later I describe in detail, in SCSS styles
-//
+// timezone fix for datetime-local input
+const normalizeISOByTimeZone = (date: Date): string => {
+    const time = date.toISOString();
+    date = new Date(time);
+    date.setHours(date.getHours() - date.getTimezoneOffset() / 60);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset() % 60);
+    return date.toISOString()?.trim?.()?.slice?.(0, 16) ?? "";
+}
 
 //
+// parse initial date
 const parseInitialDate = (value: any): Date | null => {
     if (!value) return null;
 
@@ -100,21 +112,34 @@ const parseInitialDate = (value: any): Date | null => {
 
     // If TimeType object
     if (typeof value === "object") {
-        if (value.iso_date) return new Date(value.iso_date);
-        if (value.timestamp) return new Date(value.timestamp);
-        if (value.date) return new Date(value.date);
+        if (value.iso_date) return parseDateCorrectly(value.iso_date);
+        if (value.timestamp) return parseDateCorrectly(value.timestamp);
+        if (value.date) return parseDateCorrectly(value.date);
     }
 
     // If string or number
     try {
-        const parsed = new Date(value);
-        return isNaN(parsed.getTime()) ? null : parsed;
+        const parsed = parseDateCorrectly(value);
+        return isNaN(parsed?.getTime() ?? NaN) ? null : parsed;
     } catch {
         return null;
     }
 };
 
 //
+const unshiftByLocalTimezone = (date: Date | null) => {
+    if (!date) return null;
+    return date;
+}
+
+//
+const GET_INPUT_DATE = (rifEl: any) => {
+    return rifEl?.valueAsDate ?? unshiftByLocalTimezone(parseDateCorrectly(rifEl?.value)) ?? null;
+}
+
+//
+// looks like date picker with button, where drops menu of formats
+// later I describe in detail, in SCSS styles
 export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
     if (!key) return { block: null, saveEvent: () => { } };
 
@@ -136,7 +161,8 @@ export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
             <input
                 ref=${rifEl}
                 type="datetime-local"
-                value=${initialDate ? initialDate.toISOString().slice(0, 16) : ""}
+                prop:valueAsDate=${initialDate}
+                value=${initialDate ? normalizeISOByTimeZone(initialDate) : ""}
                 data-invalid=${!VALIDATE(initialDate, initialFormat)}
             />
         </div>
@@ -151,17 +177,17 @@ export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
 
     // on save event
     const saveEvent = (value?: Date | null) => {
-        const dateValue = value ?? rifEl?.valueAsDate;
+        const dateValue = value ?? GET_INPUT_DATE(rifEl);
         if (VALIDATE(dateValue, refEl.value)) {
-            const formatted = BY_FORMAT(refEl.value, dateValue);
+            const formatted = BY_FORMAT(dateValue, refEl.value);
             object[key] = formatted;
         }
     }
 
     //
     rifEl?.addEventListener("change", (ev) => {
-        if (VALIDATE(rifEl?.valueAsDate, refEl.value)) {
-            saveEvent(rifEl?.valueAsDate);
+        if (VALIDATE(GET_INPUT_DATE(rifEl), refEl.value)) {
+            saveEvent(GET_INPUT_DATE(rifEl));
         }
     });
 
@@ -169,7 +195,7 @@ export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
     refEl?.addEventListener("change", (ev) => {
         selectedFormat.value = ev.target.value;
         dynamicIcon.value = iconsBy[ev.target.value] || "calendar-check";
-        saveEvent(rifEl?.valueAsDate);
+        saveEvent(GET_INPUT_DATE(rifEl));
     });
 
     //

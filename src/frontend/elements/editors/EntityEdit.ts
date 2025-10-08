@@ -45,23 +45,21 @@ export type EntityEditOptions = {
 interface FieldConfig {
     key: string;
     label: string;
-    type: "text" | "textarea" | "date" | "number" | "select" | "tags" | "list" | "phone" | "email" | "url";
+    type: "text" | "textarea" | "date" | "number" | "select" | "tags" | "list" | "phone" | "email" | "url" | "contacts";
     multiline?: boolean;
     options?: Array<{ value: string; label: string }>;
     format?: string;
     required?: boolean;
 }
 
-
 //
 const GENERAL_FIELDS: FieldConfig[] = [
     { key: "id", label: "ID", type: "text", required: true },
-    { key: "name", label: "Name", type: "text", required: true },
-    { key: "title", label: "Title", type: "text", required: true },
     { key: "description", label: "Description", type: "textarea", multiline: true },
+    { key: "title", label: "Title", type: "text" },
+    { key: "name", label: "Name", type: "text" },
     { key: "tags", label: "Tags", type: "tags" },
 ];
-
 
 //
 const PROPERTIES_FIELD_CONFIGS_BY_TYPE: Record<string, FieldConfig[]> = {
@@ -81,22 +79,22 @@ const PROPERTIES_FIELD_CONFIGS_BY_TYPE: Record<string, FieldConfig[]> = {
         { key: "begin_time", label: "Begin Time", type: "date" },
         { key: "end_time", label: "End Time", type: "date" },
         { key: "location", label: "Location", type: "text" },
-        { key: "contacts", label: "Contacts", type: "phone" }
+        { key: "contacts", label: "Contacts", type: "contacts" }
     ],
     event: [
         { key: "begin_time", label: "Begin Time", type: "date" },
         { key: "end_time", label: "End Time", type: "date" },
         { key: "location", label: "Location", type: "text" },
-        { key: "contacts", label: "Contacts", type: "phone" }
+        { key: "contacts", label: "Contacts", type: "contacts" }
     ],
     person: [
         { key: "home", label: "Home", type: "text" },
         { key: "biography", label: "Biography", type: "textarea", multiline: true },
-        { key: "contacts", label: "Contacts", type: "phone" }
+        { key: "contacts", label: "Contacts", type: "contacts" }
     ],
     service: [
         { key: "location", label: "Location", type: "text" },
-        { key: "contacts", label: "Contacts", type: "phone" }
+        { key: "contacts", label: "Contacts", type: "contacts" }
     ],
     item: [
         { key: "price", label: "Price", type: "number" },
@@ -140,6 +138,30 @@ const createFieldElement = (entityItem: any, config: FieldConfig) => {
     if (config.type === "tags") {
         entityItem[key] = entityItem[key] || [];
         return InputListEdit({ object: entityItem, key, parts: entityItem[key] }, { label: "Tag", type: "text" });
+    }
+
+    if (config.type === "contacts") {
+        entityItem[key] = entityItem[key] || {};
+        const contactsObj = entityItem[key];
+
+        contactsObj.email = contactsObj.email || [];
+        contactsObj.phone = contactsObj.phone || [];
+        contactsObj.links = contactsObj.links || [];
+
+        const emailEditor = InputListEdit({ object: contactsObj, key: "email", parts: contactsObj.email }, { label: "Email", type: "email" });
+        const phoneEditor = InputListEdit({ object: contactsObj, key: "phone", parts: contactsObj.phone }, { label: "Phone", type: "phone" });
+        const linksEditor = InputListEdit({ object: contactsObj, key: "links", parts: contactsObj.links }, { label: "Link", type: "url" });
+
+        const block = H`<div class="modal-field modal-field-contacts" data-key=${key}>
+            <label class="label">${config.label}</label>
+            <div class="contacts-group">
+                ${emailEditor.block}
+                ${phoneEditor.block}
+                ${linksEditor.block}
+            </div>
+        </div>`;
+
+        return { block, saveEvent: null };
     }
 
     // Select field
@@ -381,6 +403,8 @@ export const makeEvents = (
                     const entityAny = updatedEntity as any;
                     const card = document.querySelector(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
                     if (card) {
+                        (card as any)?.$updateInfo?.(entityAny);
+
                         // Update card content
                         const titleEl = card.querySelector('.card-title');
                         if (titleEl && entityAny.title) titleEl.textContent = entityAny.title;

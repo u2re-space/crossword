@@ -100,6 +100,11 @@ export const resolveBeginDate = (dayDesc: any): Date | null => {
     return ensureDate(dayDesc?.begin_time ?? dayDesc?.properties?.begin_time ?? dayDesc?.start);
 };
 
+//
+const getTimeZone = () => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
 export const buildPrimaryDayTitle = (dayDesc: any): string => {
     const preset = dayDesc?.separatorTitle;
     if (typeof preset === "string" && preset.trim()) {
@@ -111,7 +116,8 @@ export const buildPrimaryDayTitle = (dayDesc: any): string => {
         return dayDesc?.title || dayDesc?.id || "Day";
     }
 
-    const formatted = date.toLocaleDateString("en-US", {
+    const formatted = date.toLocaleDateString("en-GB", {
+        timeZone: getTimeZone(),
         weekday: "long",
         month: "long",
         day: "numeric",
