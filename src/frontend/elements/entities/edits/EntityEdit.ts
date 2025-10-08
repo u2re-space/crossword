@@ -11,6 +11,12 @@ import {
 } from "@rs-frontend/elements/entities/edits/EntityFields";
 
 //
+import { generateEntityId, fixEntityId, type EntityLike } from "@rs-core/template/EntityId";
+import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
+import { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { EntityDescriptor } from "../typed/Types";
+
+//
 export type EntityEditOptions = {
     allowLinks?: boolean;
     description?: string;
@@ -18,17 +24,28 @@ export type EntityEditOptions = {
     initialLinks?: string[] | string;
     onLinksChange?: (links: string[]) => void;
     entityType?: string;
+    autoGenerateId?: boolean;
+    validateEntity?: boolean;
 };
 
 //
 export const makeEntityEdit = async (
-    entityDesc: any,
-    fieldDesc: any,
+    entityItem: EntityInterface<any, any>,
+    entityDesc: EntityDescriptor,
     options: EntityEditOptions = {}
 ): Promise<Record<string, any> | null> => {
-    const entityType = (options.entityType || fieldDesc.basis?.type || entityDesc.type || "").toString().toLowerCase();
-    const descriptors = collectDescriptors(entityType, fieldDesc.fields, Boolean(options.allowLinks));
-    const initialValues = buildInitialValues(fieldDesc.basis, descriptors);
+    // Auto-detect entity type if not provided
+    let entityType = entityItem.type || entityDesc.type || options.entityType || "";
+    if (!entityType && entityItem) {
+        entityType = detectEntityTypeByJSON(entityItem);
+    }
+    entityType = entityType.toString().toLowerCase();
+
+    const descriptors = collectDescriptors(entityType, [],/*[{
+        name: "entity",
+        label: entityDesc.label
+    }],*/ Boolean(options.allowLinks));
+    const initialValues = buildInitialValues(entityItem, descriptors);
 
     return new Promise((resolve) => {
         const modal = ModalForm(`Edit ${entityDesc.label}`, async (out) => {
@@ -36,7 +53,40 @@ export const makeEntityEdit = async (
                 resolve(null);
                 return;
             }
-            const applied = applyDescriptorValues(fieldDesc.basis, descriptors, out as Record<string, any>);
+
+            // Validate all fields before submission
+            const allValid = Array.from(fieldValidation.values()).every(valid => valid);
+            if (!allValid) {
+                // Find first invalid field and focus it
+                const firstInvalidField = modal.fieldsContainer.querySelector('.modal-field.invalid');
+                if (firstInvalidField) {
+                    const input = firstInvalidField.querySelector('input, textarea, select') as HTMLElement;
+                    input?.focus();
+                }
+                return; // Don't submit if validation fails
+            }
+
+            const applied = applyDescriptorValues(entityItem, descriptors, out as Record<string, any>);
+
+            // Auto-generate ID if requested and not present
+            if (options.autoGenerateId !== false && (!applied.id || applied.id.trim() === '')) {
+                const entityLike: EntityLike = {
+                    id: applied.id,
+                    type: entityType,
+                    kind: applied.kind,
+                    name: applied.name,
+                    title: applied.title,
+                    properties: applied.properties
+                };
+                applied.id = generateEntityId(entityLike);
+            }
+
+            // Validate entity structure if requested
+            if (options.validateEntity !== false) {
+                applied.type = entityType;
+                if (!applied.properties) applied.properties = {};
+            }
+
             resolve(applied);
         }, {
             description: options.description,
@@ -44,12 +94,59 @@ export const makeEntityEdit = async (
         });
 
         const sectionHosts = new Map<string, HTMLElement>();
+        const fieldValidation = new Map<string, boolean>();
+
         descriptors.forEach((descriptor) => {
             const host = ensureSectionHost(modal, sectionHosts, descriptor.section);
             const field = modal.addField(fieldDescriptorToSpec(descriptor), initialValues[descriptor.name], host);
-            if (descriptor.multi && field) field.dataset.multiline = "true";
-            if (descriptor.numeric && field) field.dataset.numeric = "true";
-            if (descriptor.json && field) field.dataset.json = "true";
+
+            if (field) {
+                // Set data attributes for styling
+                if (descriptor.multi) field.dataset.multiline = "true";
+                if (descriptor.numeric) field.dataset.numeric = "true";
+                if (descriptor.json) field.dataset.json = "true";
+                if (descriptor.datetime) field.dataset.datetime = "true";
+
+                // Add real-time validation for fields with validators
+                if (descriptor.validator && entityItem) {
+                    const input = field.querySelector('input, textarea, select') as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+                    if (input) {
+                        const validateField = () => {
+                            const value = modal.getValue(descriptor.name);
+                            const result = descriptor.validator!(value);
+                            const isValid = result === true;
+                            fieldValidation.set(descriptor.name, isValid);
+
+                            // Update field styling
+                            field.classList.toggle('invalid', !isValid);
+                            field.classList.toggle('valid', isValid);
+
+                            // Show error message
+                            let errorElement = field.querySelector('.field-error') as HTMLElement;
+                            if (!isValid && typeof result === 'string') {
+                                if (!errorElement) {
+                                    errorElement = document.createElement('div');
+                                    errorElement.className = 'field-error';
+                                    errorElement.style.color = 'red';
+                                    errorElement.style.fontSize = '0.8em';
+                                    errorElement.style.marginTop = '4px';
+                                    field.appendChild(errorElement);
+                                }
+                                errorElement.textContent = result;
+                            } else if (errorElement) {
+                                errorElement.remove();
+                            }
+                        };
+
+                        input.addEventListener('input', validateField);
+                        input.addEventListener('change', validateField);
+                        input.addEventListener('blur', validateField);
+
+                        // Initial validation
+                        validateField();
+                    }
+                }
+            }
         });
 
         if (options.allowLinks) {
@@ -87,57 +184,39 @@ export const objectExcludeNotExists = (object: any) => {
     return object;
 };
 
+//
+export const makePath = (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor) => {
+    const fileId = entityItem?.id || entityItem?.name;
+    return (entityItem as any)?.__path || `${entityDesc.DIR}${(fileId || entityItem?.title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
+}
+
+//
 export const makeEvents = (
-    entityDesc: any,
-    fieldDesc: any,
-    path: string) => {
+    entityItem: EntityInterface<any, any>,
+    entityDesc: EntityDescriptor) => {
     return {
         doDelete: async (ev: Event) => {
             ev?.stopPropagation?.();
+            const path = makePath(entityItem, entityDesc);
             try { await removeFile(null, path); } catch (e) { console.warn(e); }
-
-            const fileId = fieldDesc?.basis?.id || fieldDesc?.basis?.name;
-            const card = document.querySelector(`.card[data-id="${fileId}"]`);
+            const card = document.querySelector(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
             card?.remove?.();
         },
         doEdit: async (ev: Event) => {
             ev?.stopPropagation?.();
-
-            const entityType = (fieldDesc.basis?.type || entityDesc.type || "").toString().toLowerCase();
-            const result = await makeEntityEdit(entityDesc, fieldDesc, {
-                allowLinks: true,
-                entityType
-            });
+            const path = makePath(entityItem, entityDesc);
+            const entityType = (entityItem?.type || entityDesc.type || "").toString().toLowerCase();
+            const result = await makeEntityEdit(entityItem, entityDesc, { allowLinks: true, entityType });
             if (!result) return;
-
-            const updated = cloneEntity(result);
-            Object.assign(fieldDesc.basis, updated);
-            Object.assign(fieldDesc.basis.properties, updated.properties || {});
-
-            const fileId = fieldDesc?.basis?.id || fieldDesc?.basis?.name;
-
-            try {
-                const fileName = (path?.split?.('/')?.pop?.() || `${fileId}.json`).replace(/\s+/g, '-');
-                const fileDir = path?.split?.('/')?.slice(0, -1)?.join?.('/') + (path?.endsWith?.('/') ? '' : '/');
-                const file = new File([JSON.stringify(updated, null, 2)], fileName, { type: 'application/json' });
-                await writeFileSmart(null, fileDir, file, { ensureJson: true });
-            } catch (e) { console.warn(e); }
-
-            const card = document.querySelector(`.card[data-id="${fileId}"]`);
-            if (fieldDesc?.basis?.title) {
-                card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(fieldDesc.basis.title));
-            }
-            if (fieldDesc?.basis?.description) {
-                card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(fieldDesc.basis.description));
-            }
-            const beginStruct = fieldDesc?.basis?.properties?.begin_time;
-            const endStruct = fieldDesc?.basis?.properties?.end_time;
+            try { await writeFileSmart(null, path, new File([JSON.stringify(result, null, 2)], `${entityItem?.id || entityItem?.name}.json`, { type: 'application/json' }), { ensureJson: true }); } catch (e) { console.warn(e); }
+            const card = document.querySelector(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
+            if (entityItem?.title) card?.querySelector?.('.card-title li')?.replaceChildren?.(document.createTextNode(entityItem.title));
+            if (entityItem?.description) card?.querySelector?.('.card-desc li')?.replaceChildren?.(document.createTextNode(entityItem?.description as string));
+            const beginStruct = entityItem?.properties?.begin_time;
+            const endStruct = entityItem?.properties?.end_time;
             const beginTime = beginStruct?.iso_date || beginStruct?.date || beginStruct?.timestamp;
             const endTime = endStruct?.iso_date || endStruct?.date || endStruct?.timestamp;
-            if (beginTime && endTime) {
-                const timeText = `${beginTime} - ${endTime}`;
-                card?.querySelector?.('.card-time li')?.replaceChildren?.(document.createTextNode(timeText));
-            }
+            if (beginTime && endTime) card?.querySelector?.('.card-time li')?.replaceChildren?.(document.createTextNode(`${beginTime} - ${endTime}`));
         }
     }
 }

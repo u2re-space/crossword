@@ -416,7 +416,7 @@ const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, e
     //
     ["add", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         try {
-            const result = await makeEntityEdit(entityDesc, { basis: {}, fields: [] }, {
+            const result = await makeEntityEdit(entityItem, entityDesc, {
                 allowLinks: true,
                 entityType: entityDesc.type,
                 description: `Describe the ${entityDesc.label} and link related entities (actions, bonuses, etc.).`

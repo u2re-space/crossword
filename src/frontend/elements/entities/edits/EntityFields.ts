@@ -2,7 +2,18 @@
 import { H } from "fest/lure";
 import type { FieldSpec } from "@rs-frontend/elements/entities/edits/Modal";
 import { fromMultiline, getByPath, setByPath, startCase, toMultiline, unsetByPath } from "../utils/Formatted";
-import { BASE_ENTITY_FIELD_RULES, ENTITY_SCHEMAS, FIELD_ALIASES, LEGACY_PROPERTY_RULES, type EntityFieldRule, type SectionKey } from "@rs-core/template/EntityUtils";
+import {
+    BASE_ENTITY_FIELD_RULES,
+    ENTITY_SCHEMAS,
+    FIELD_ALIASES,
+    LEGACY_PROPERTY_RULES,
+    type EntityFieldRule,
+    type SectionKey,
+    detectEntityTypeByJSON
+} from "@rs-core/template/EntityUtils";
+import { isValidEntityId, type EntityLike } from "@rs-core/template/EntityId";
+import { normalizeSchedule, parseDateCorrectly, getComparableTimeValue } from "../utils/TimeUtils";
+import type { TimeType } from "@rs-core/template/EntityInterface";
 
 //
 export type FieldDescriptor = FieldSpec & {
@@ -11,6 +22,11 @@ export type FieldDescriptor = FieldSpec & {
     multi?: boolean;
     numeric?: boolean;
     json?: boolean;
+    datetime?: boolean;
+    validator?: (value: any) => boolean | string;
+    transformer?: (value: any) => any;
+    customEditor?: 'datetime' | 'multiline' | 'json';
+    editorOptions?: Record<string, any>;
 };
 
 //
@@ -55,15 +71,27 @@ const resolveSection = (path: string, fallback: SectionKey | string = DEFAULT_SE
 };
 
 //
-const normalizeScheduleValue = (value: any) => {
-    if (!value) return {};
-    if (typeof value === "object") return value;
-    const text = String(value);
-    const timestamp = Number(text);
-    if (!Number.isNaN(timestamp) && timestamp > 0) {
-        return { timestamp };
+const normalizeScheduleValue = (value: any): TimeType | null => {
+    if (!value) return null;
+    if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
+        return value;
     }
-    return { iso_date: text };
+
+    const normalized = normalizeSchedule(value);
+    if (normalized) {
+        const parsed = parseDateCorrectly(normalized);
+        if (parsed && !Number.isNaN(parsed.getTime())) {
+            return normalized;
+        }
+    }
+
+    return null;
+};
+
+//
+const isDateTimeField = (path: string): boolean => {
+    const dateTimePatterns = ['begin_time', 'end_time', 'timestamp', 'date', 'time'];
+    return dateTimePatterns.some(pattern => path.includes(pattern));
 };
 
 //
@@ -72,6 +100,49 @@ const ruleToDescriptor = (rule: EntityFieldRule): FieldDescriptor => {
     const path = rule.path ?? FIELD_ALIASES[rule.name] ?? (rule.name.includes(".") ? rule.name : `properties.${rule.name}`);
     const section = rule.section ?? resolveSection(path);
     const textarea = Boolean(rule.textarea || rule.json);
+    const isDateTime = isDateTimeField(path);
+
+    // Add validators for specific field types
+    let validator: ((value: any) => boolean | string) | undefined;
+    if (rule.name === 'id') {
+        validator = (value: any) => {
+            if (!value || typeof value !== 'string') return 'ID is required';
+            if (!isValidEntityId(value)) return 'Invalid entity ID format';
+            return true;
+        };
+    } else if (isDateTime) {
+        validator = (value: any) => {
+            if (rule.required && !value) return 'This field is required';
+            if (value) {
+                const normalized = normalizeScheduleValue(value);
+                if (!normalized) return 'Invalid date/time format';
+                const parsed = parseDateCorrectly(normalized);
+                if (!parsed || Number.isNaN(parsed.getTime())) {
+                    return 'Invalid date/time value';
+                }
+            }
+            return true;
+        };
+    }
+
+    // Determine custom editor type
+    let customEditor: 'datetime' | 'multiline' | 'json' | undefined;
+    let editorOptions: Record<string, any> | undefined;
+
+    if (isDateTime) {
+        customEditor = 'datetime';
+        editorOptions = {
+            mode: path.includes('begin_time') || path.includes('end_time') ? 'datetime' :
+                path.includes('timestamp') ? 'timestamp' : 'date',
+            required: rule.required,
+            placeholder: rule.placeholder
+        };
+    } else if (rule.json) {
+        customEditor = 'json';
+    } else if (rule.multi || textarea) {
+        customEditor = 'multiline';
+    }
+
     const descriptor: FieldDescriptor = {
         name: rule.name,
         label,
@@ -83,10 +154,14 @@ const ruleToDescriptor = (rule: EntityFieldRule): FieldDescriptor => {
         multi: rule.multi ?? (textarea ? true : undefined),
         numeric: rule.numeric,
         json: rule.json,
+        datetime: isDateTime,
         type: rule.type ?? (rule.numeric ? "number" : undefined),
         options: toOptionList(rule.options),
         datalist: rule.datalist,
-        required: rule.required
+        required: rule.required,
+        validator,
+        customEditor,
+        editorOptions
     };
     return descriptor;
 };
@@ -178,6 +253,14 @@ export const buildInitialValues = (basis: any, descriptors: FieldDescriptor[]) =
     const values: Record<string, any> = {};
     descriptors.forEach((descriptor) => {
         const raw = getByPath(basis, descriptor.path);
+
+        if (descriptor.datetime) {
+            // Handle date/time fields with proper normalization
+            const normalized = normalizeScheduleValue(raw);
+            values[descriptor.name] = normalized;
+            return;
+        }
+
         if (descriptor.json) {
             values[descriptor.name] = raw ? JSON.stringify(raw, null, 2) : "";
             return;
@@ -200,6 +283,18 @@ export const applyDescriptorValues = (basis: any, descriptors: FieldDescriptor[]
     const next = cloneEntity(basis ?? {});
     descriptors.forEach((descriptor) => {
         const raw = formValues?.[descriptor.name];
+
+        if (descriptor.datetime) {
+            // Handle date/time fields with proper validation
+            const normalized = normalizeScheduleValue(raw);
+            if (normalized) {
+                setByPath(next, descriptor.path, normalized);
+            } else {
+                unsetByPath(next, descriptor.path);
+            }
+            return;
+        }
+
         if (descriptor.multi) {
             const list = Array.isArray(raw) ? raw : fromMultiline(String(raw ?? ""));
             if (list.length) setByPath(next, descriptor.path, list);
@@ -212,8 +307,14 @@ export const applyDescriptorValues = (basis: any, descriptors: FieldDescriptor[]
                 try {
                     setByPath(next, descriptor.path, JSON.parse(value));
                 } catch {
-                    if (descriptor.path.includes("begin_time") || descriptor.path.includes("end_time")) {
-                        setByPath(next, descriptor.path, normalizeScheduleValue(value));
+                    // Fallback for date/time fields in JSON
+                    if (isDateTimeField(descriptor.path)) {
+                        const normalized = normalizeScheduleValue(value);
+                        if (normalized) {
+                            setByPath(next, descriptor.path, normalized);
+                        } else {
+                            setByPath(next, descriptor.path, value);
+                        }
                     } else {
                         setByPath(next, descriptor.path, value);
                     }

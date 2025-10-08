@@ -18,6 +18,8 @@ export type FieldSpec = {
     step?: number | string;
     pattern?: string;
     autoComplete?: string;
+    customEditor?: 'datetime' | 'multiline' | 'json';
+    editorOptions?: Record<string, any>;
 };
 
 //
@@ -35,6 +37,7 @@ export type ModalHandle = {
     setOptions?: (name: string, options: FieldOption[]) => void;
     fieldsContainer: HTMLElement;
     actionsContainer: HTMLElement;
+    customEditors: Map<string, any>;
 };
 
 type ModalOptions = {
@@ -73,6 +76,7 @@ export const ModalForm = (
     let resolved = false;
     let busy = false;
     const entries = new Map<string, FieldEntry>();
+    const customEditors = new Map<string, any>();
 
     const handleResolve = (out: ModalResult) => {
         if (resolved) return;
@@ -86,6 +90,12 @@ export const ModalForm = (
     };
 
     const gatherValue = ({ element, spec }: FieldEntry) => {
+        // Check for custom editor first
+        const customEditor = customEditors.get(spec.name);
+        if (customEditor && typeof customEditor.getValue === 'function') {
+            return customEditor.getValue();
+        }
+
         if (element instanceof HTMLSelectElement) {
             if (spec.multi || element.multiple) {
                 return Array.from(element.selectedOptions).map((opt) => opt.value);
@@ -162,6 +172,13 @@ export const ModalForm = (
     };
 
     const setValue = (name: string, value: any) => {
+        // Check for custom editor first
+        const customEditor = customEditors.get(name);
+        if (customEditor && typeof customEditor.setValue === 'function') {
+            customEditor.setValue(value);
+            return;
+        }
+
         const entry = entries.get(name);
         if (!entry) return;
         const { element, spec } = entry;
@@ -209,6 +226,57 @@ export const ModalForm = (
     const addField = (spec: FieldSpec, value?: any, host?: HTMLElement) => {
         if (!spec?.name) return null;
         const fieldId = slugId(spec.name);
+
+        // Handle custom editors using factory
+        if (spec.customEditor) {
+            // Dynamic import for field editor factory
+            import('./FieldEditorFactory').then(({ createFieldEditor }) => {
+                // Convert FieldSpec to FieldDescriptor for the factory
+                const descriptor = {
+                    ...spec,
+                    path: spec.name,
+                    section: 'properties'
+                };
+                const editor = createFieldEditor(descriptor, value);
+                customEditors.set(spec.name, editor);
+
+                const helper = spec.helper ? H`<small class="field-helper">${spec.helper}</small>` : null;
+                const field = H`<label class="modal-field" data-field=${spec.name}>
+                    <span class="label">${spec.label}</span>
+                    ${editor.element}
+                    ${helper}
+                </label>` as HTMLElement;
+
+                (host ?? fieldsContainer).appendChild(field);
+            }).catch(() => {
+                // Fallback to standard input if factory fails to load
+                console.warn('Failed to load field editor factory, falling back to standard input');
+                const fallbackInput = H`<input type="text" name=${spec.name} placeholder=${spec.placeholder || 'Enter value'} value=${value || ''} />` as HTMLInputElement;
+                const fallbackField = H`<label class="modal-field" data-field=${spec.name}>
+                    <span class="label">${spec.label}</span>
+                    ${fallbackInput}
+                    ${spec.helper ? H`<small class="field-helper">${spec.helper}</small>` : null}
+                </label>` as HTMLElement;
+
+                (host ?? fieldsContainer).appendChild(fallbackField);
+                entries.set(spec.name, { element: fallbackInput, spec });
+            });
+
+            // Return a placeholder while loading
+            const placeholder = H`<div class="field-editor-placeholder" style="padding: 0.75rem; border: 2px dashed color-mix(in oklab, currentColor 16%, transparent); border-radius: 0.65rem; text-align: center; color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6)); background: color-mix(in oklab, currentColor 2%, transparent);">
+                Loading editor...
+            </div>` as HTMLElement;
+
+            const field = H`<label class="modal-field" data-field=${spec.name}>
+                <span class="label">${spec.label}</span>
+                ${placeholder}
+                ${spec.helper ? H`<small class="field-helper">${spec.helper}</small>` : null}
+            </label>` as HTMLElement;
+
+            (host ?? fieldsContainer).appendChild(field);
+            return field;
+        }
+
         let control: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
         let datalistEl: HTMLDataListElement | null = null;
 
@@ -305,6 +373,7 @@ export const ModalForm = (
         getValue,
         setOptions,
         fieldsContainer,
-        actionsContainer
+        actionsContainer,
+        customEditors
     };
 };

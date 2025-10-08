@@ -297,13 +297,6 @@ export const cropFirstLetter = (text: string | any) => {
 }
 
 //
-export const makePath = (item: any, entityDesc: any) => {
-    const fileId = item?.id || item?.name;
-    return (item as any)?.__path || `${entityDesc.DIR}${(fileId || item?.title)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')}.json`;
-}
-
-
-//
 export const startCase = (value: string) =>
     value.replace(/[_\-]+/g, " ")
         .replace(/([a-z0-9])([A-Z])/g, "$1 $2")

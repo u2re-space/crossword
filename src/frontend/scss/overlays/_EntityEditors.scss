@@ -1,0 +1,206 @@
+@layer rs-entity-editors {
+    /* Enhanced Field Validation States */
+    .modal-field.valid input,
+    .modal-field.valid textarea,
+    .modal-field.valid select {
+        border-color: color-mix(in oklab, #2CDA9D 40%, transparent);
+        background: color-mix(in oklab, #2CDA9D 4%, transparent);
+    }
+
+    .modal-field.invalid input,
+    .modal-field.invalid textarea,
+    .modal-field.invalid select {
+        border-color: color-mix(in oklab, #FF6B6B 40%, transparent);
+        background: color-mix(in oklab, #FF6B6B 4%, transparent);
+        box-shadow: 0 0 0 3px color-mix(in oklab, #FF6B6B 12%, transparent);
+    }
+
+    .field-error {
+        color: color-mix(in oklab, #FF6B6B 80%, transparent);
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        &::before {
+            content: "⚠";
+            font-size: 0.8em;
+        }
+    }
+
+    .field-helper {
+        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Date/Time Editor Styles */
+    .datetime-editor {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .datetime-inputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .datetime-inputs input {
+        min-inline-size: 0;
+    }
+
+    .datetime-error {
+        color: color-mix(in oklab, #FF6B6B 80%, transparent);
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        &::before {
+            content: "⚠";
+            font-size: 0.8em;
+        }
+    }
+
+    .datetime-format {
+        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        font-size: 0.7rem;
+        font-style: italic;
+        padding: 0.25rem 0.5rem;
+        background: color-mix(in oklab, currentColor 4%, transparent);
+        border-radius: 0.25rem;
+        border: 1px solid color-mix(in oklab, currentColor 8%, transparent);
+    }
+
+    .datetime-editor-placeholder,
+    .field-editor-placeholder {
+        padding: 0.75rem;
+        border: 2px dashed color-mix(in oklab, currentColor 16%, transparent);
+        border-radius: 0.65rem;
+        text-align: center;
+        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        background: color-mix(in oklab, currentColor 2%, transparent);
+    }
+
+    /* Field Type Indicators */
+    .modal-field[data-multiline="true"] textarea {
+        min-block-size: 5rem;
+        resize: vertical;
+    }
+
+    .modal-field[data-numeric="true"] input {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .modal-field[data-json="true"] textarea {
+        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+        font-size: 0.85em;
+        min-block-size: 6rem;
+        line-height: 1.4;
+    }
+
+    .modal-field[data-datetime="true"] {
+        position: relative;
+    }
+
+    /* Links Field Enhancement */
+    .modal-field textarea[name="links"] {
+        min-block-size: 4rem;
+        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+        font-size: 0.85em;
+        line-height: 1.4;
+    }
+
+    /* Responsive Design */
+    @container (max-inline-size: 480px) {
+        .datetime-inputs {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Animation for validation feedback */
+    .modal-field.valid,
+    .modal-field.invalid {
+        animation: validationPulse 0.3s ease-in-out;
+    }
+
+    @keyframes validationPulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.01);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    /* Enhanced button styles - integrated with existing system */
+    .btn.save {
+        background: color-mix(in oklab, #2CDA9D 18%, transparent);
+        color: color-mix(in oklab, #2CDA9D 80%, transparent);
+    }
+
+    .btn.save:hover:not(:disabled) {
+        background: color-mix(in oklab, #2CDA9D 24%, transparent);
+        transform: translateY(-1px);
+    }
+
+    .btn.cancel {
+        background: color-mix(in oklab, #FF6B6B 8%, transparent);
+        color: color-mix(in oklab, #FF6B6B 60%, transparent);
+    }
+
+    .btn.cancel:hover:not(:disabled) {
+        background: color-mix(in oklab, #FF6B6B 12%, transparent);
+        transform: translateY(-1px);
+    }
+
+    /* Accessibility improvements */
+    .modal-field input:focus-visible,
+    .modal-field textarea:focus-visible,
+    .modal-field select:focus-visible {
+        outline: 2px solid color-mix(in oklab, currentColor 40%, transparent);
+        outline-offset: 2px;
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+        .modal-field input,
+        .modal-field textarea,
+        .modal-field select {
+            border-width: 2px;
+        }
+
+        .modal-field.valid input,
+        .modal-field.valid textarea,
+        .modal-field.valid select {
+            border-color: color-mix(in oklab, #2CDA9D 80%, transparent);
+        }
+
+        .modal-field.invalid input,
+        .modal-field.invalid textarea,
+        .modal-field.invalid select {
+            border-color: color-mix(in oklab, #FF6B6B 80%, transparent);
+        }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+        .modal-field.valid,
+        .modal-field.invalid {
+            animation: none;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: none;
+        }
+    }
+}

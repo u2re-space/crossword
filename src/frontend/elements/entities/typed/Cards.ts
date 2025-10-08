@@ -1,4 +1,4 @@
-import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePath, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
+import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
 import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/entities/edits/EntityEdit";
 import { H, M } from "fest/lure";
 import { formatAsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
@@ -43,7 +43,7 @@ export const MakeCardElement = <
     //<span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
 
     //
-    const events = makeEvents(entityDesc, entityItem, makePath(entityItem, entityDesc));
+    const events = makeEvents(entityItem, entityDesc);
     const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
     const card = H`<div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${(ev: any) => { (ev.target as HTMLElement).toggleAttribute?.('data-open'); }}>
     <div class="card-avatar">
