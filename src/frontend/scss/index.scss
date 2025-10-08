@@ -1,17 +1,21 @@
-@use "./views/Layout";
-@use "./views/Toolbars";
-@use "./views/Settings";
-@use "./views/Viewers";
+@use "./misc/Animation";
 
 //
-@use "./docs/Preferences";
-@use "./docs/Docs";
+@use "./views/layout/Layout";
+@use "./views/layout/Settings";
+@use "./views/layout/Viewers";
+@use "./views/widgets/Toolbar";
 
 //
-@use "./items/Cards";
+@use "./views/docs/Preferences";
+@use "./views/docs/Docs";
 
-// will be deprecated in future...
-@use "./deprecated/Feedback";
-@use "./deprecated/Inputs";
-@use "./deprecated/EntityEditors";
-@use "./deprecated/Overlays";
+//
+@use "./views/items/Cards";
+
+//
+@use "./editors/forms/Modal";
+@use "./editors/fields/Fields";
+@use "./editors/fields/Button";
+@use "./editors/fields/DateTime";
+@use "./editors/overlays/Toast";

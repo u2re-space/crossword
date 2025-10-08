@@ -1,30 +1,15 @@
-// !Mixed contents, needs refactoring...
+// !Mixed or outdated contents, needs refactoring...
 
-@layer rs-fields {
-    ui-longtext {
-        --thumb-size: 1.25rem;
-        --track-height: 0.25rem;
-        display: inline-block;
-    }
-
-    ui-slider[variant="slider"] {
-        block-size: 1rem;
-        border-radius: 9999px;
-    }
-
-    .u2-input, .u2-field {
-        display: grid;
-        gap: 0.25rem;
-    }
+@layer rs-fields-datetime {
 
     // Date/Time Editor Styles
-    .field-editor {
+    .datetime-editor {
         display: grid;
         gap: 0.5rem;
     }
 
     //
-    .field-inputs {
+    .datetime-inputs {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 0.5rem;
@@ -32,12 +17,12 @@
     }
 
     //
-    .field-inputs input {
+    .datetime-inputs input {
         min-inline-size: 0;
     }
 
     //
-    .field-error {
+    .datetime-error {
         color: color-mix(in oklab, #FF6B6B 80%, transparent);
         font-size: 0.75rem;
         font-weight: 500;
@@ -52,7 +37,7 @@
     }
 
     //
-    .field-format {
+    .datetime-format {
         color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
         font-size: 0.7rem;
         font-style: italic;
@@ -63,26 +48,19 @@
     }
 
     //
-    .field-error {
-        color: color-mix(in oklab, #FF6B6B 80%, transparent);
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
+    .datetime-editor-placeholder {
+        padding: 0.75rem;
+        border: 2px dashed color-mix(in oklab, currentColor 16%, transparent);
+        border-radius: 0.65rem;
+        text-align: center;
+        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        background: color-mix(in oklab, currentColor 2%, transparent);
+    }
 
-        &::before {
-            content: "⚠";
-            font-size: 0.8em;
+    // Responsive Design
+    @container (max-inline-size: 480px) {
+        .datetime-inputs {
+            grid-template-columns: 1fr;
         }
     }
-
-    //
-    .field-helper {
-        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-    }
-
 }
