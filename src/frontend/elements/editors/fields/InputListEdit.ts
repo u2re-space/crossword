@@ -14,8 +14,9 @@ interface FieldWithKey {
 
 //
 interface ObjectAndKey {
-    object: any;
-    key: string;
+    object?: any | null;
+    key?: string | null;
+    parts?: any[] | any;
 };
 
 //
@@ -70,10 +71,13 @@ const FORMAT_AS_URL = (value: any, description: FieldDescription) => {
     return IS_URL(un_url) ? un_url : URL_BY_TYPE(un_url, description);
 };
 
-//
-export const DescriptorEdit = (object: any, key?: string | null, parts?: any[] | any, description?: FieldDescription) => {
-    description ??= { label: "Part", type: "text" };
+// parts is value of object[key], and also can be interpreted as referenced object itself...
+export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?: FieldDescription) => {
+    if (!key && !parts) return { block: null, saveEvent: () => { } };
+
+    //
     parts ??= makeReactive([]) as string[];
+    description ??= { label: "Part", type: "text" };
 
     // AI, remain as function, in future may be needed...
     const loadIfNotExists = () => {

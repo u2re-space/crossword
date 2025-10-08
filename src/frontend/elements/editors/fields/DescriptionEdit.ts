@@ -13,12 +13,14 @@ interface FieldWithKey {
 
 //
 interface ObjectAndKey {
-    object: any;
-    key: string;
+    object?: any | null;
+    key?: string | null;
+    parts?: any[] | any;
 };
 
 //
-export const DescriptorEdit = (object: any, key?: string | null, parts?: any[] | any) => {
+export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
+    if (!key && !parts) return { block: null, saveEvent: () => { } };
     parts ??= makeReactive([]) as string[];
 
     // AI, remain as function, in future may be needed...
@@ -95,3 +97,6 @@ export const DescriptorEdit = (object: any, key?: string | null, parts?: any[] |
     editBindings.set(object, { key: key ?? "", field: new WeakRef(block) });
     return { block, saveEvent, addPartEvent };
 };
+
+//
+export default DescriptionEdit;

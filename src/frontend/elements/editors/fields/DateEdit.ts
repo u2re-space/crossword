@@ -44,8 +44,8 @@ interface FieldWithKey {
 
 //
 interface ObjectAndKey {
-    object: any;
-    key: string;
+    object?: any | null;
+    key?: string | null;
 };
 
 //
@@ -92,7 +92,10 @@ const VALIDATE = (value: Date | string | number | object | null, format?: string
 //
 
 //
-export const DateFieldLayout = ({ object, key }: ObjectAndKey) => {
+export const DateEntryEdit = ({ object, key }: ObjectAndKey) => {
+    if (!key) return { block: null, saveEvent: () => { } };
+
+    //
     const refEl = Q(($h) => $h);
     const rifEl = Q(($h) => $h);
 
@@ -133,3 +136,6 @@ export const DateFieldLayout = ({ object, key }: ObjectAndKey) => {
     editBindings.set(object, { key, field: new WeakRef(block) });
     return { block, saveEvent };
 }
+
+//
+export default DateEntryEdit;
