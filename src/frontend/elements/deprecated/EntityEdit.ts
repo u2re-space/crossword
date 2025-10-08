@@ -8,7 +8,7 @@ import {
     ensureSectionHost,
     cloneEntity,
     fieldDescriptorToSpec
-} from "@rs-frontend/elements/entities/edits/EntityFields";
+} from "@rs-frontend/elements/entities/deprecated/EntityFields";
 
 //
 import { generateEntityId, fixEntityId, type EntityLike } from "@rs-core/template/EntityId";

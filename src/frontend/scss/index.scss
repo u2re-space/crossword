@@ -2,8 +2,16 @@
 @use "./views/Toolbars";
 @use "./views/Settings";
 @use "./views/Viewers";
+
+//
 @use "./docs/Preferences";
 @use "./docs/Docs";
-@use "./overlays/Feedback";
-@use "./overlays/Inputs";
+
+//
 @use "./items/Cards";
+
+// will be deprecated in future...
+@use "./deprecated/Feedback";
+@use "./deprecated/Inputs";
+@use "./deprecated/EntityEditors";
+@use "./deprecated/Overlays";

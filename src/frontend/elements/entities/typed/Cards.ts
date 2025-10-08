@@ -1,5 +1,5 @@
 import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/entities/edits/EntityEdit";
+import { makeEvents, objectExcludeNotExists } from "@rs-frontend/elements/deprecated/EntityEdit";
 import { H, M } from "fest/lure";
 import { formatAsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
 import type { EntityDescriptor } from "./Types";

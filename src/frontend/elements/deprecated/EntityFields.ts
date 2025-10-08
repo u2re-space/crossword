@@ -1,6 +1,6 @@
 //
 import { H } from "fest/lure";
-import type { FieldSpec } from "@rs-frontend/elements/entities/edits/Modal";
+import type { FieldSpec } from "@rs-frontend/elements/entities/deprecated/Modal";
 import { fromMultiline, getByPath, setByPath, startCase, toMultiline, unsetByPath } from "../utils/Formatted";
 import {
     BASE_ENTITY_FIELD_RULES,

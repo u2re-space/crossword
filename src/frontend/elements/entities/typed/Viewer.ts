@@ -3,7 +3,7 @@ import { implementDropEvent, implementPasteEvent } from "../utils/HookEvent";
 import { sendToEntityPipeline, writeTimelineTasks } from "@rs-core/workers/FileSystem";
 import { bindDropToDir, openPickerAndAnalyze } from "../utils/FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
-import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/edits/EntityEdit";
+import { makeEntityEdit, makeEvents } from "@rs-frontend/elements/entities/deprecated/EntityEdit";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { $trigger, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, formatAsTime, getComparableTimeValue, insideOfDay, parseAndGetCorrectTime } from "@rs-frontend/elements/entities/utils/TimeUtils";

@@ -53,21 +53,22 @@ export const copyEmailClick = (ev: Event) => {
 }
 
 //
-export const formatText = (text: string) => {
+export const formatTextElement = (text: string) => {
     const normalized = text?.trim?.();
     if (!normalized) return null;
     return H`<span draggable="true" data-action="copy-text" class="text">${normalized}</span>`;
 }
 
 //
-export const formatEmail = (email: string) => {
+export const formatEmailElement = (email: string) => {
     const normalized = email?.trim?.();
     if (!normalized) return null;
     return H`<a on:dragstart=${beginDragAsText} draggable="true" data-action="copy-email" class="email" href="mailto:${normalized}" on:click=${copyEmailClick}>${normalized}</a>`;
 }
 
+
 //
-export const formatPhone = (phone: string) => {
+export const formatPhoneElement = (phone: string) => {
     let text = phone ?? "";
     text = text.replace(/\+7/g, '8').replace(/\s+/g, '').replace(/[^0-9]/g, '');
     text = text.replace(/\(/g, '').replace(/\)/g, '');
@@ -193,17 +194,17 @@ export const formatBiography = (biography: any) => {
 
 //
 export const formatTextList = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>) => {
-    return listFormatter(label, text, formatText);
+    return listFormatter(label, text, formatTextElement);
 };
 
 //
 export const formatEmailList = (label: string | any, emails: string | string[] | Set<any> | any[] | Map<any, any>) => {
-    return listFormatter(label, emails, formatEmail);
+    return listFormatter(label, emails, formatEmailElement);
 }
 
 //
 export const formatPhoneList = (label: string | any, phones: string | string[] | Set<any> | any[] | Map<any, any>) => {
-    return listFormatter(label, phones, formatPhone);
+    return listFormatter(label, phones, formatPhoneElement);
 }
 
 //
