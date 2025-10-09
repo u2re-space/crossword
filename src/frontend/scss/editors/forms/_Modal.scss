@@ -126,6 +126,12 @@
             color: color-mix(in oklab, currentColor 54%, rgba(17, 24, 39, 0.78));
         }
 
+        .contacts-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
         input,
         select,
         textarea {

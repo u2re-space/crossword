@@ -130,6 +130,11 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     }
 
     //
+    const onRemoveEv = (ev: any) => {
+        if (ev.target.tagName == "BUTTON") { removePartEvent(parseInt(ev.target.dataset.index ?? "-1") ?? 0); }
+    }
+
+    //
     const $partRender = (part, index) => {
         const refByIndex = propRef(parts, index);
         if (index < 0 || index == null || typeof index != "number" || part == null) return;
@@ -141,9 +146,12 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
             type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
             data-format=${description?.type ?? "text"}
             value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
-        ></input><label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
-        <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
+        ></input>
         <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
+        <button type="button" on:click=${onRemoveEv} data-index=${index}>x</button>
+        <label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
+        <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
+
         </div>`
     };
 
@@ -181,6 +189,9 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
 
     // add part event
     const addPartEvent = () => { parts.push(""); }
+
+    // remove part event
+    const removePartEvent = (index: number) => { parts.splice(index, 1); }
 
     //
     block?.addEventListener("click", (ev) => {
