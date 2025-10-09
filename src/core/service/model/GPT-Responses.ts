@@ -54,7 +54,7 @@ export class GPTResponses {
     //
     protected pending: any[] = [];
     protected messages: any[] = [];
-    protected tools: any[] = [];
+    protected tools: Map<string, any> = new Map();
 
     //
     constructor(apiKey: string, apiUrl: string, apiSecret: string, model: string) {
@@ -69,7 +69,7 @@ export class GPTResponses {
 
     //
     async useMCP(serverLabel: string, origin: string, clientKey: string, secretKey: string) {
-        this.tools.push({
+        this.tools.set(origin?.trim?.(), {
             "type": "mcp",
             "server_label": serverLabel,
             "server_url": origin,
@@ -78,7 +78,7 @@ export class GPTResponses {
             },
             "require_approval": "never"
         })
-        return this.tools[this.tools.length - 1];
+        return this.tools.get(origin?.trim?.());
     }
 
 
@@ -144,7 +144,7 @@ export class GPTResponses {
             },
             body: JSON.stringify({
                 model: this.model,
-                tools: this.tools?.filter?.((tool: any) => !!tool),
+                tools: Array.from(this.tools.values())?.filter?.((tool: any) => !!tool),
                 input: [...this.pending]?.filter?.((item: any) => !!item),
                 reasoning: { "effort": effort },
                 text: { verbosity: verbosity },
