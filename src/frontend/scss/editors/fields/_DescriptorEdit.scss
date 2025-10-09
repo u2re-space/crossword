@@ -1,5 +1,7 @@
 // Multi-part description editor with add/remove functionality
+@use "../mixins/Colorize" as *;
 
+//
 @layer rs-fields-descriptor {
 
     //
@@ -19,60 +21,39 @@
 
         // Multi-line text input
         textarea {
-            inline-size: 100%;
-            min-inline-size: 0;
-            min-block-size: 4rem;
-            padding: 0.6rem 0.7rem;
+            inline-size: stretch;
+            block-size: max-content;
+            padding: 0.55rem 0.65rem;
             border-radius: 0.65rem;
             border: 0px none transparent;
-            background: --c2-surface(0.01, var(--current, currentColor));
-            color: --c2-on-surface(0.0, var(--current, currentColor));
-            font-size: clamp(0.85rem, 0.5cqi + 0.75rem, 0.95rem);
-            font-family: inherit;
-            line-height: 1.5;
+            field-sizing: content;
+
+            //
             outline: none;
             resize: vertical;
             transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+            max-inline-size: stretch;
+            max-block-size: stretch;
 
-            &:focus {
-                border-color: transparent;
-                background: --c2-surface(0.01, var(--current, currentColor));
-            }
-
-            &:hover:not(:focus) {
-                border-color: transparent;
-            }
-
-            &::placeholder {
-                color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
-            }
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
 
         // Single-line input (for URLs, emails, phones, tags)
         input {
-            inline-size: 100%;
-            min-inline-size: 0;
+            inline-size: stretch;
+            block-size: auto;
             padding: 0.55rem 0.65rem;
             border-radius: 0.65rem;
             border: 0px none transparent;
-            background: --c2-surface(0.01, var(--current, currentColor));
-            color: --c2-on-surface(0.0, var(--current, currentColor));
-            font-size: clamp(0.85rem, 0.5cqi + 0.75rem, 0.95rem);
+            field-sizing: content;
             outline: none;
             transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 
-            &:focus {
-                border-color: transparent;
-                background: --c2-surface(0.01, var(--current, currentColor));
-            }
-
-            &:hover:not(:focus) {
-                border-color: transparent;
-            }
-
-            &::placeholder {
-                color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
-            }
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
 
         // Field label (aria-hidden decorative)
@@ -81,14 +62,14 @@
             inset-inline-start: 0.75rem;
             inset-block-start: -0.65rem;
             padding-inline: 0.4rem;
-            background: --c2-surface(0.01, var(--current, currentColor));
-            color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.3);
-            font-size: clamp(0.7rem, 0.35cqi + 0.6rem, 0.8rem);
-            font-weight: 500;
             pointer-events: none;
             border-radius: 0.3rem;
             backdrop-filter: blur(4px);
             z-index: 1;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
 
         // Preview link (for URLs)
@@ -98,9 +79,7 @@
             gap: 0.3rem;
             padding: 0.35rem 0.5rem;
             border-radius: 0.5rem;
-            background: --c2-surface(0.01, var(--current, currentColor));
-            color: --c2-on-surface(0.0, var(--current, currentColor));
-            font-size: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
+            field-sizing: content;
             text-decoration: none;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -108,26 +87,23 @@
             border: 0px none transparent;
             transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 
-            &:hover {
-                background: --c2-surface(0.01, var(--current, currentColor));
-                color: --c2-on-surface(0.0, var(--current, currentColor));
-                transform: translateY(-1px);
-            }
-
             &:active {
                 transform: translateY(0);
             }
 
-            &::before {
-                content: "🔗";
-                font-size: 0.9em;
-            }
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
 
         // Show/hide password/URL checkbox
         input[type="checkbox"][data-type="show-password-or-url"] {
             inline-size: auto;
-            accent-color: transparent;
+            field-sizing: content;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 
@@ -139,46 +115,41 @@
         gap: 0.4rem;
         padding: 0.5rem 0.7rem;
         border-radius: 0.65rem;
-
-        background: --c2-surface(0.01, var(--current, currentColor));
-        border: 1px solid oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
-        color: --c2-on-surface(0.0, var(--current, currentColor));
-
         margin: 0px;
-
-        font-size: clamp(0.85rem, 0.6cqi + 0.75rem, 0.95rem);
-        font-weight: 600;
         cursor: pointer;
-        transition: all 160ms ease;
+        transition: border-color 160ms ease, background 160ms ease;
 
-        &:hover {
-            background: --c2-surface(0.01, var(--current, currentColor));
-        }
-
-        &::before {
-            content: "+";
-            font-size: 1.2em;
-            line-height: 1;
-        }
+        //
+        @include font-style("&");
+        @include solid-colorize("&");
     }
 
     // Type-specific styling
     .descriptor-edit[data-type="phone"] {
         .descriptor-edit-part input {
             font-variant-numeric: tabular-nums;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 
     .descriptor-edit[data-type="email"] {
         .descriptor-edit-part input {
             text-transform: lowercase;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 
     .descriptor-edit[data-type="url"] {
         .descriptor-edit-part input {
-            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
-            font-size: 0.9em;
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 
@@ -206,10 +177,18 @@
         .descriptor-edit-part textarea,
         .descriptor-edit-part input {
             border-width: 2px;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
 
         .descriptor-edit > button {
             border-width: 2px;
+
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 }

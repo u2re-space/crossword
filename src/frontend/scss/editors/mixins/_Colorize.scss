@@ -1,0 +1,151 @@
+@use "sass:map";
+
+//
+@property --color-shade {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0.0;
+}
+
+//
+@property --color-tint {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0.0;
+}
+
+//
+@property --color-opacity {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0.0;
+}
+
+//
+@property --color-enable-blur {
+    syntax: "<boolean>";
+    inherits: false;
+    initial-value: false;
+}
+
+//
+@mixin solid-colorize($selector: "&", $options: ("shade": 0.0, "tint": 0.0)) {
+    #{$selector} {
+        --color-shade: #{map.get($options, "shade")};
+        --color-tint: #{map.get($options, "tint")};
+
+        //
+        --surface-color: --c2-surface(var(--color-shade), var(--current, currentColor));
+        --on-surface-color: --c2-on-surface(var(--color-tint), var(--current, currentColor));
+        --border-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.2);
+        --scrollbar-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.4);
+    }
+
+    //
+    #{$selector} {
+        border: solid 0.5px var(--border-color);
+        background: var(--surface-color);
+        color: var(--on-surface-color);
+        accent-color: var(--on-surface-color);
+        caret-color: var(--on-surface-color);
+        text-decoration-color: var(--on-surface-color);
+        text-emphasis-color: var(--on-surface-color);
+        scrollbar-color: var(--scrollbar-color) transparent;
+        fill-color: var(--on-surface-color);
+        stroke-color: var(--on-surface-color);
+        -webkit-tap-highlight-color: var(--on-surface-color);
+        -webkit-text-fill-color: var(--on-surface-color);
+    }
+
+    //
+    #{$selector}:hover {
+        --color-shade: calc(#{map.get($options, "shade")} + 0.04);
+    }
+
+    //
+    #{$selector}:active {
+        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    }
+
+    //
+    #{$selector}:focus {
+        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    }
+
+    //
+    #{$selector}:focus-visible {
+        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    }
+
+    // inverse fill colors for checked and selected states
+    #{$selector}:checked, #{$selector}::selection {
+        --on-surface-color: --c2-surface(calc(var(--color-shade) - 0.04), var(--current, currentColor));
+        --surface-color: --c2-on-surface(calc(var(--color-tint) + 0.04), var(--current, currentColor));
+    }
+
+    //
+    #{$selector}::placeholder {
+        --on-surface-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
+    }
+}
+
+//
+@mixin overlay-colorize($selector: "&", $options: ("shade": 0.0, "tint": 0.0, "opacity": 0.04, "enable-blur": true)) {
+    #{$selector} {
+        --color-shade: #{map.get($options, "shade")};
+        --color-tint: #{map.get($options, "tint")};
+        --color-opacity: #{map.get($options, "opacity")};
+        --color-enable-blur: #{map.get($options, "enable-blur")};
+    }
+
+    //
+    #{$selector} {
+        @if map.get($options, "enable-blur") {
+            backdrop-filter: blur(16px);
+        }
+
+        //
+        --surface-color: oklch(from --c2-on-surface(var(--color-shade), var(--current, currentColor)) l c h / var(--color-opacity));
+        --on-surface-color: --c2-on-surface(var(--color-tint), var(--current, currentColor));
+        --border-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.1);
+        --scrollbar-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.1);
+
+        //
+        border: solid 0.5px var(--border-color);
+        background: var(--surface-color);
+        color: var(--on-surface-color);
+        accent-color: var(--on-surface-color);
+        caret-color: var(--on-surface-color);
+        text-decoration-color: var(--on-surface-color);
+        text-emphasis-color: var(--on-surface-color);
+        scrollbar-color: var(--scrollbar-color) transparent;
+        fill-color: var(--on-surface-color);
+        stroke-color: var(--on-surface-color);
+        -webkit-tap-highlight-color: var(--on-surface-color);
+        -webkit-text-fill-color: var(--on-surface-color);
+    }
+
+    //
+    #{$selector}:focus {
+        --color-opacity: calc(#{map.get($options, "opacity")} + 0.05);
+    }
+
+    //
+    #{$selector}:hover {
+        --color-opacity: calc(#{map.get($options, "opacity")} + 0.04);
+    }
+}
+
+//
+@mixin font-style($selector: "&", $options: (
+    "font-size-base": 0.3cqi,
+    "font-size-shift": 0.0rem,
+    "max-font-size": 0.95rem,
+    "min-font-size": 0.75rem,
+    "font-weight": 500
+)) {
+    #{$selector} {
+        font-size: clamp(#{map.get($options, "min-font-size")}, calc(#{map.get($options, "font-size-base")} + #{map.get($options, "font-size-shift")}), #{map.get($options, "max-font-size")});
+        font-weight: #{map.get($options, "font-weight")};
+    }
+}

@@ -1,5 +1,7 @@
 // Modern date field editor with format selector
 
+@use "../mixins/Colorize" as *;
+
 @layer rs-fields-date {
 
     //
@@ -15,37 +17,10 @@
         display: grid;
         gap: 0.25rem;
 
+        //
         input[type="datetime-local"] {
-            inline-size: 100%;
-            min-inline-size: 0;
-            padding: 0.55rem 0.65rem;
-            border-radius: 0.65rem;
-            border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
-            background: color-mix(in oklab, var(--current, currentColor) 4%, transparent);
-            color: color-mix(in oklab, currentColor 80%, rgba(17, 24, 39, 0.9));
-            font-size: clamp(0.85rem, 0.5cqi + 0.75rem, 0.95rem);
-            outline: none;
-            transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-            font-variant-numeric: tabular-nums;
-
-            &:focus {
-                border-color: color-mix(in oklab, currentColor 28%, transparent);
-                background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
-                box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 12%, transparent);
-            }
-
-            &:hover:not(:focus) {
-                border-color: color-mix(in oklab, currentColor 20%, transparent);
-            }
-
-            &[data-invalid="true"] {
-                border-color: color-mix(in oklab, #FF6B6B 40%, transparent);
-                background: color-mix(in oklab, #FF6B6B 4%, transparent);
-
-                &:focus {
-                    box-shadow: 0 0 0 3px color-mix(in oklab, #FF6B6B 16%, transparent);
-                }
-            }
+            @include solid-colorize("&");
+            @include font-style("&");
 
             // Calendar icon styling
             &::-webkit-calendar-picker-indicator {
@@ -68,13 +43,11 @@
         align-items: center;
         padding: 0.5rem 0.65rem;
         border-radius: 0.65rem;
-        background: color-mix(in oklab, currentColor 4%, transparent);
-        border: 1px solid color-mix(in oklab, currentColor 10%, transparent);
 
+        //
         label {
             font-size: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
             font-weight: 500;
-            color: color-mix(in oklab, currentColor 54%, rgba(17, 24, 39, 0.78));
             margin: 0;
         }
 
@@ -82,89 +55,42 @@
             inline-size: 1rem;
             block-size: 1rem;
             display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: color-mix(in oklab, currentColor 48%, transparent);
-            transition: color 160ms ease, transform 160ms ease;
+            place-content: center;
+            place-items: center;
         }
 
         select {
             padding: 0.35rem 0.5rem;
             border-radius: 0.5rem;
-            border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
-            background: color-mix(in oklab, var(--current, currentColor) 6%, transparent);
-            color: color-mix(in oklab, currentColor 80%, rgba(17, 24, 39, 0.9));
-            font-size: clamp(0.8rem, 0.4cqi + 0.7rem, 0.9rem);
-            font-weight: 500;
+
+            //
             outline: none;
             cursor: pointer;
             transition: border-color 160ms ease, background 160ms ease, transform 140ms ease;
 
-            &:hover {
-                border-color: color-mix(in oklab, currentColor 24%, transparent);
-                transform: translateY(-1px);
-            }
-
-            &:focus {
-                border-color: color-mix(in oklab, currentColor 32%, transparent);
-                background: color-mix(in oklab, var(--current, currentColor) 10%, transparent);
-            }
-
-            &:active {
-                transform: translateY(0);
-            }
-        }
-
-        &:has(select:focus) {
-            border-color: color-mix(in oklab, currentColor 18%, transparent);
-            background: color-mix(in oklab, currentColor 6%, transparent);
-
-            ui-icon {
-                color: color-mix(in oklab, currentColor 64%, transparent);
-                transform: scale(1.1);
-            }
+            //
+            @include font-style("&");
+            @include solid-colorize("&");
         }
     }
 
-    // Responsive adjustments
+    //
     @container (max-inline-size: 400px) {
         .date-field-layout-format {
             grid-template-columns: 1fr;
             gap: 0.4rem;
 
-            label {
-                grid-column: 1 / -1;
-            }
-
-            ui-icon {
-                display: none;
-            }
-
-            select {
-                grid-column: 1 / -1;
-            }
+            label, select { grid-column: 1 / -1; }
+            ui-icon { display: none; }
         }
     }
 
-    // Accessibility
+    //
     @media (prefers-reduced-motion: reduce) {
         .date-field-layout-input input,
         .date-field-layout-format select,
         .date-field-layout-format ui-icon {
             transition-duration: 0ms;
-        }
-    }
-
-    // High contrast mode
-    @media (prefers-contrast: high) {
-        .date-field-layout-input input,
-        .date-field-layout-format,
-        .date-field-layout-format select {
-            border-width: 2px;
-        }
-
-        .date-field-layout-input input[data-invalid="true"] {
-            border-color: color-mix(in oklab, #FF6B6B 80%, transparent);
         }
     }
 }

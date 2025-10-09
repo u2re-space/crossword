@@ -1,5 +1,5 @@
 // similar to DescriptorEdit, but use input[type="@N"]
-import { computed, makeReactive, propRef } from "fest/object";
+import { computed, isReactive, makeReactive, propRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
 
 //
@@ -76,6 +76,7 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     if (!key && !parts) return { block: null, saveEvent: () => { } };
 
     //
+    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = makeReactive(!Array.isArray(parts) ? [parts] : parts); }
     parts ??= makeReactive([]) as string[];
     description ??= { label: "Part", type: "text" };
 
@@ -130,11 +131,6 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     }
 
     //
-    const onRemoveEv = (ev: any) => {
-        if (ev.target.tagName == "BUTTON") { removePartEvent(parseInt(ev.target.dataset.index ?? "-1") ?? 0); }
-    }
-
-    //
     const $partRender = (part, index) => {
         const refByIndex = propRef(parts, index);
         if (index < 0 || index == null || typeof index != "number" || part == null) return;
@@ -148,7 +144,7 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
             value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
         ></input>
         <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
-        <button type="button" on:click=${onRemoveEv} data-index=${index}>x</button>
+        <button type="button" data-type="remove" data-index=${index}>x</button>
         <label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
         <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
 
@@ -158,9 +154,9 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     //
     const aRefEl = Q(($a) => $a);
     const block = H`<div class="field-list-edit" data-type=${description?.type ?? "text"}>
-        ${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}
-        <button type="button">Add ${description?.label ?? "Part"}</button>
-    </div>`
+        <div class="field-list-edit-parts">${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}</div>
+        <button data-type="add" type="button" on:click=${(ev)=>addPartEvent?.()}>Add ${description?.label ?? "Part"}</button>
+    </div>`;
 
     //
     const saveEvent = (value: any, index: number) => {
@@ -191,11 +187,12 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     const addPartEvent = () => { parts.push(""); }
 
     // remove part event
-    const removePartEvent = (index: number) => { parts.splice(index, 1); }
+    const removePartEvent = (index: number) => { if (index >= 0 && index < parts.length) { console.log("removePartEvent", index); parts.splice(index, 1); } }
 
     //
     block?.addEventListener("click", (ev) => {
-        if (ev.target.tagName == "BUTTON") { addPartEvent(); }
+        if (ev.target.dataset.type == "remove") { removePartEvent(parseInt(ev.target.dataset.index ?? "-1") ?? 0); } else
+        if (ev.target.dataset.type == "add") { addPartEvent(); } else
         if (ev.target.tagName == "INPUT") {
             saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1") ?? 0);
         }

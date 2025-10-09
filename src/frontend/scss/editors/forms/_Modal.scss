@@ -48,7 +48,7 @@
         box-shadow: var(--modal-shadow);
         backdrop-filter: blur(12px) saturate(120%);
         border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
-        overflow: hidden;
+        overflow: visible;
 
         @supports (container-type: inline-size) {
             container-type: inline-size;
@@ -61,6 +61,7 @@
         gap: clamp(0.4rem, 1vw, 0.6rem);
         padding-block: clamp(0.4rem, 1vw, 0.7rem);
         border-block-end: 1px solid color-mix(in oklab, currentColor 16%, transparent);
+        inline-size: stretch;
 
         &:last-of-type {
             border-block-end: none;
@@ -109,10 +110,13 @@
     .modal-fields {
         display: grid;
         gap: clamp(0.45rem, 1cqi + 0.25rem, 0.8rem);
-        overflow: auto;
         padding-inline: clamp(0rem, 0.5cqi, 0.5rem);
         scrollbar-width: thin;
         max-block-size: min(62vh, 440px);
+
+        overflow-y: auto;
+        overflow-x: hidden;
+        container-type: inline-size;
     }
 
     .modal-field {

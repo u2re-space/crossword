@@ -1,5 +1,7 @@
 // !Mixed or outdated contents, needs refactoring...
+@use "../mixins/Colorize" as *;
 
+//
 @layer rs-fields-datetime {
 
     // Date/Time Editor Styles
@@ -14,47 +16,55 @@
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 0.5rem;
         align-items: center;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
     }
 
     //
     .datetime-inputs input {
         min-inline-size: 0;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
     }
 
     //
     .datetime-error {
-        color: color-mix(in oklab, #FF6B6B 80%, transparent);
-        font-size: 0.75rem;
-        font-weight: 500;
+        --current: #FF6B6B;
+
+        //
         display: flex;
         align-items: center;
         gap: 0.25rem;
 
-        &::before {
-            content: "⚠";
-            font-size: 0.8em;
-        }
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
     }
 
     //
     .datetime-format {
-        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
-        font-size: 0.7rem;
         font-style: italic;
         padding: 0.25rem 0.5rem;
-        background: color-mix(in oklab, currentColor 4%, transparent);
         border-radius: 0.25rem;
-        border: 1px solid color-mix(in oklab, currentColor 8%, transparent);
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
     }
 
     //
     .datetime-editor-placeholder {
         padding: 0.75rem;
-        border: 2px dashed color-mix(in oklab, currentColor 16%, transparent);
         border-radius: 0.65rem;
         text-align: center;
-        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
-        background: color-mix(in oklab, currentColor 2%, transparent);
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
     }
 
     // Responsive Design

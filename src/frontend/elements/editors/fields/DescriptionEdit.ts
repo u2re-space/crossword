@@ -1,4 +1,4 @@
-import { makeReactive, propRef } from "fest/object";
+import { isReactive, makeReactive, propRef } from "fest/object";
 import { H, M } from "fest/lure";
 
 //
@@ -21,6 +21,9 @@ interface ObjectAndKey {
 //
 export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
     if (!key && !parts) return { block: null, saveEvent: () => { } };
+
+    //
+    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = makeReactive(!Array.isArray(parts) ? [parts] : parts); }
     parts ??= makeReactive([]) as string[];
 
     // AI, remain as function, in future may be needed...
@@ -59,8 +62,8 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
 
     // if parts is just string, when adding part changes to array of strings
     const block = H`<div class="descriptor-edit">
-        ${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}
-        <button type="button">Add Part</button>
+        <div class="descriptor-edit-parts">${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}</div>
+        <button type="button" on:click=${(ev)=>addPartEvent?.()}>Add Part</button>
     </div>`
 
     //
@@ -89,11 +92,13 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
     }
 
     // add part event
-    const addPartEvent = () => { parts.value = [...parts.value, ""]; }
+    const addPartEvent = () => { parts.push(""); }
+
+    // remove part event
+    const removePartEvent = (index: number) => { if (index >= 0 && index < parts.length) { parts.splice(index, 1); } }
 
     //
     block?.addEventListener("click", (ev) => {
-        if (ev.target.tagName == "BUTTON") { addPartEvent(); }
         if (ev.target.tagName == "TEXTAREA") {
             saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1"));
         }

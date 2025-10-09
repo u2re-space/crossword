@@ -1,0 +1,261 @@
+@use "../mixins/Colorize" as *;
+
+//
+@layer rs-fields-general {
+
+
+    ui-longtext {
+        --thumb-size: 1.25rem;
+        --track-height: 0.25rem;
+        display: inline-block;
+    }
+
+    ui-slider[variant="slider"] {
+        block-size: 1rem;
+        border-radius: 9999px;
+    }
+
+    .u2-input, .u2-field {
+        display: grid;
+        gap: 0.25rem;
+    }
+
+    // Date/Time Editor Styles
+    .field-editor {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    //
+    .field-inputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    //
+    .field-error {
+        --current: #FF6B6B;
+    }
+
+    //
+    .field-helper {
+        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        font-size: 0.75rem;
+    }
+
+
+
+
+    ::picker(select) {
+        background: transparent;
+        background-color: transparent;
+    }
+
+    select {
+        & {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffffb3'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right clamp(0.75rem, 0.8vw, 1rem) center;
+            background-size: clamp(0.7rem, 0.9vw, 0.95rem);
+            border-radius: 0.6rem;
+
+            //
+            @include solid-colorize("&");
+            @include font-style("&");
+        }
+
+        &, ::picker(select) {
+            appearance: base-select;
+            border: none;
+            outline: none;
+        }
+
+        & {
+            display: block;
+            block-size: max-content;
+        }
+
+        & option {
+            & {
+                appearance: none;
+                display: flex;
+                flex-direction: row;
+                place-content: center;
+                place-items: center;
+                justify-content: start;
+                block-size: max-content;
+                gap: 0.25rem;
+                min-inline-size: 0;
+                border: none;
+                outline: none;
+            }
+
+            //
+            @include solid-colorize("&");
+            @include font-style("&");
+
+            &:first-of-type {
+                border-radius: min(8px, 50cqmin) min(8px, 50cqmin) 0 0;
+            }
+
+            &:last-of-type {
+                border-radius: 0 0 min(8px, 50cqmin) min(8px, 50cqmin);
+            }
+
+            &:not(&:last-of-type) {
+                border-bottom: none;
+            }
+        }
+    }
+
+    //
+    button {
+        block-size: max-content;
+        inline-size: max-content;
+        max-inline-size: stretch;
+        display: inline-flex;
+        place-content: center;
+        place-items: center;
+    }
+
+    //
+    button.btn, .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: min(1rem, 50cqmin);
+        cursor: pointer;
+        pointer-events: auto;
+
+        //
+        transition: color 160ms ease, background 160ms ease;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
+
+        //
+        &.save { --current: #2CDA9D; }
+        &.cancel { --current: #FF6B6B; }
+    }
+
+    //
+    input:where([type="datetime-local"], [type="date"], [type="time"], [type="text"], [type="number"], [type="email"], [type="url"], [type="tel"], [type="password"], [type="search"], [type="month"], [type="week"]) {
+        border-radius: min(0.6rem, 50cqmin);
+        padding: 0.6rem 2.5rem 0.6rem 0.75rem;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        outline: none;
+        field-sizing: content;
+        transition: border-color 160ms ease, background 160ms ease;
+        cursor: text;
+        user-select: text;
+        pointer-events: auto;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
+    }
+
+    //
+    input:where([type="checkbox"], [type="radio"]), button[data-icon-only] {
+        content: " ";
+
+        //
+        --icon-color: currentColor;
+
+        //
+        inline-size: auto;
+        block-size: auto;
+
+        //
+        max-inline-size: stretch;
+        max-block-size: stretch;
+
+        //
+        border-radius: min(0.125rem, 50cqmin);
+
+        //
+        aspect-ratio: 1 / 1;
+        transition: border-color 160ms ease, background 160ms ease;
+        outline: none;
+        cursor: pointer;
+        user-select: none;
+        pointer-events: auto;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        margin: 0;
+        contain: strict;
+        line-height: 0;
+        content-visibility: auto;
+        will-change: transform;
+        transform: translateZ(0);
+        transform-origin: 50% 50%;
+        backface-visibility: hidden;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
+
+        //
+        &::before {
+            --icon-color: inherit;
+
+            //
+            line-height: 0;
+            content: "";
+            display: block;
+            inline-size: stretch;
+            block-size: stretch;
+            max-inline-size: stretch;
+            max-block-size: stretch;
+            box-sizing: border-box;
+            aspect-ratio: 1 / 1;
+            text-align: center;
+            overflow: hidden;
+            border-radius: min(0.5rem, 50cqmin);
+            contain: strict;
+            object-fit: contain;
+            object-position: center;
+            background-color: var(--icon-color, currentColor) !important;
+            mask-image: var(--ui-icon-mask, linear-gradient(#0000, #0000));
+            mask-repeat: no-repeat;
+            mask-origin: content-box;
+            mask-clip: content-box;
+            mask-position: center;
+            mask-size: contain;
+            mask-type: alpha;
+            transition: background-color 160ms ease;
+            padding: 0px;
+            margin: 0px;
+        }
+    }
+
+    //
+    input:where([type="radio"]:checked) {
+        border-radius: min(50%, 50cqmin);
+    }
+
+    //
+    input:where([type="number"], [type="date"], [type="time"], [type="datetime-local"]) {
+        font-variant-numeric: tabular-nums;
+        transition: border-color 160ms ease, background 160ms ease;
+        outline: none;
+        cursor: text;
+        user-select: text;
+        pointer-events: auto;
+
+        //
+        @include solid-colorize("&");
+        @include font-style("&");
+    }
+
+}
