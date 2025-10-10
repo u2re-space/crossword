@@ -1,5 +1,5 @@
 // similar to DescriptorEdit, but use input[type="@N"]
-import { computed, isReactive, makeReactive, propRef } from "fest/object";
+import { computed, isReactive, makeReactive, propRef, wrapSetAsArray } from "fest/object";
 import { H, M, Q } from "fest/lure";
 
 //
@@ -77,24 +77,24 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
 
     //
     if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = makeReactive(!Array.isArray(parts) ? [parts] : parts); }
-    parts ??= makeReactive([]) as string[];
+    parts ??= makeReactive([]); const ars = parts;//wrapSetAsArray(parts);
     description ??= { label: "Part", type: "text" };
 
     // AI, remain as function, in future may be needed...
     const loadIfNotExists = () => {
         // if key is presented and object has key, and parts is empty, push the value to parts
-        if (key != null && object?.[key] != null && parts?.length <= 0) {
+        if (key != null && object?.[key] != null && ars?.length <= 0) {
             // TODO: make better idea...
             if (Array.isArray(object[key])) {
-                parts?.push(...object[key].map((item) => {
+                ars?.push(...object[key].map((item) => {
                     if (typeof item == "object" && (item != null || "value" in item)) { return item.value; } else
                         return String(item);
                 }));
             } else
                 if (typeof object[key] == "object" && (object[key] != null || "value" in object[key])) {
-                    parts?.push(object[key].value);
+                    ars?.push(object[key].value);
                 } else
-                    parts?.push(object[key]);
+                ars?.push(object[key]);
         }
     }
 
@@ -106,13 +106,13 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         // alternatively, can be used index of child-list element...
         const rawValue = ev.target.value;
         const value = (description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(rawValue) ?? rawValue;
-        saveEvent(value, parseInt(ev.target.dataset.index ?? "-1") ?? 0);
+        saveEvent(value, parseInt(ev.target.dataset.index ?? "-1"));
     }
 
     // if parts is just string, when adding part changes to array of strings
     const onPreviewEv = (ev: any) => {
         if (ev.target.tagName == "A") {
-            ev.target.href = FORMAT_AS_URL(parts[parseInt(ev.target.dataset.index ?? "-1") ?? 0], description);
+            ev.target.href = FORMAT_AS_URL(ars[parseInt(ev.target.dataset.index ?? "-1") ?? 0], description);
 
             // DAMN, don't recurse and stuck browser to loops, if event is already is clicked...
             //ev.target.click();
@@ -130,31 +130,41 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         }
     }
 
+    // add part event
+    const addPartEvent = () => { ars.push(""); }; // remove part event
+    const removePartEvent = (index: number) => { if (index >= 0 && index < ars.length) { ars.splice(index, 1); } }
+
     //
     const $partRender = (part, index) => {
-        const refByIndex = propRef(parts, index);
+        const refByIndex = propRef(ars, index);
         if (index < 0 || index == null || typeof index != "number" || part == null) return;
-        return H`<div class="field-list-edit-part" data-index=${index} style=${{ order: index, "--index": index }}><input
-            name=${"part-" + index}
-            on:change=${onChangeEv}
-            prop:value=${refByIndex?.value}
-            data-index=${index}
-            type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
-            data-format=${description?.type ?? "text"}
-            value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
-        ></input>
-        <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
-        <button type="button" data-type="remove" data-index=${index}>x</button>
-        <label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
-        <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
+
+        const block = H`<div class="field-list-edit-part" data-index=${index} style=${{ order: index, "--index": index }}>
+            <input
+                name=${"part-" + index}
+                on:change=${onChangeEv}
+                prop:value=${refByIndex?.value}
+                type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
+                data-format=${description?.type ?? "text"}
+                value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
+                data-index=${index}
+            ></input>
+
+            <button data-type="remove" data-index="${index}" type="button">x</button>
+            <input type="checkbox" name=${"show-part-" + index} on:change=${onCheckboxEv} data-index=${index} data-type="show-password-or-url"></input>
+            <label aria-hidden="true" for=${"part-" + index}>${description?.label ?? "Part"}</label>
+            <a aria-hidden="true" ref=${aRefEl} on:click=${onPreviewEv} data-type="preview" data-index=${index} href=${computed(refByIndex, (v) => FORMAT_AS_URL(v, description))} target="_blank">${refByIndex}</a>
 
         </div>`
+
+        block?.querySelector?.("button")?.addEventListener?.("click", (ev)=>{ removePartEvent(parseInt(ev.target.dataset.index ?? "-1")); });
+        return block;
     };
 
     //
     const aRefEl = Q(($a) => $a);
     const block = H`<div class="field-list-edit" data-type=${description?.type ?? "text"}>
-        <div class="field-list-edit-parts">${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}</div>
+        <div class="field-list-edit-parts">${M(parts, $partRender)}</div>
         <button data-type="add" type="button" on:click=${(ev)=>addPartEvent?.()}>Add ${description?.label ?? "Part"}</button>
     </div>`;
 
@@ -170,12 +180,12 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         console.log("saveEvent", value, index);
 
         // if multi-part
-        if (index !== -1 && Array.isArray(parts)) {
-            if (typeof parts[index] == "string") { parts[index] = value; }
-            if (typeof parts[index] == "object" && (parts[index] != null || "value" in parts[index])) { parts[index].value = value; }
+        if (index !== -1 && (Array.isArray(parts) || parts instanceof Set)) {
+            if (typeof ars[index] == "string") { ars[index] = value; }
+            if (typeof ars[index] == "object" && ars != null && (ars[index] != null || "value" in ars?.[index])) { ars[index].value = value; }
         } else
             // currently, no scenario, if index is -1 and parts is array, so...
-            if (!Array.isArray(parts)) {
+            if (!Array.isArray(parts) && !(parts instanceof Set)) {
                 if (typeof parts == "object" && (parts != null || "value" in parts)) {
                     parts.value = value;
                 } else // we no able to reassign primitive value. So, save to object, if presented. Or we do nothing.
@@ -183,23 +193,8 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
             }
     }
 
-    // add part event
-    const addPartEvent = () => { parts.push(""); }
-
-    // remove part event
-    const removePartEvent = (index: number) => { if (index >= 0 && index < parts.length) { console.log("removePartEvent", index); parts.splice(index, 1); } }
-
-    //
-    block?.addEventListener("click", (ev) => {
-        if (ev.target.dataset.type == "remove") { removePartEvent(parseInt(ev.target.dataset.index ?? "-1") ?? 0); } else
-        if (ev.target.dataset.type == "add") { addPartEvent(); } else
-        if (ev.target.tagName == "INPUT") {
-            saveEvent(ev.target.value, parseInt(ev.target.dataset.index ?? "-1") ?? 0);
-        }
-    });
-
     //
     whichUsed.set(block, { key: key ?? "", object });
     editBindings.set(object, { key: key ?? "", field: new WeakRef(block) });
-    return { block, saveEvent, addPartEvent };
+    return { block, saveEvent };
 };

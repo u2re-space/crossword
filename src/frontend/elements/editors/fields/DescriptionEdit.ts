@@ -62,7 +62,7 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
 
     // if parts is just string, when adding part changes to array of strings
     const block = H`<div class="descriptor-edit">
-        <div class="descriptor-edit-parts">${Array.isArray(parts) ? M(parts, $partRender) : $partRender(parts, 0)}</div>
+        <div class="descriptor-edit-parts">${M(parts, $partRender)}</div>
         <button type="button" on:click=${(ev)=>addPartEvent?.()}>Add Part</button>
     </div>`
 
