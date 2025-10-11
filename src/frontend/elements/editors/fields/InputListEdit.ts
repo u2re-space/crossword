@@ -139,15 +139,16 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         const refByIndex = propRef(ars, index);
         if (index < 0 || index == null || typeof index != "number" || part == null) return;
 
+        const partName = "part-" + index;
         const block = H`<div class="field-list-edit-part" data-index=${index} style=${{ order: index, "--index": index }}>
             <input
-                name=${"part-" + index}
-                on:change=${onChangeEv}
-                prop:value=${refByIndex?.value}
+                autocomplete="off"
+                name=${partName}
                 type=${HTMLInputTypeByVirtualType.get(description?.type ?? "text") ?? "text"}
-                data-format=${description?.type ?? "text"}
-                value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
                 data-index=${index}
+                data-format=${description?.type ?? "text"}
+                on:change=${onChangeEv}
+                prop:value=${(description?.format ?? formattingRegistry.get(description?.type ?? "text"))?.(part) ?? part}
             ></input>
 
             <button data-type="remove" data-index="${index}" type="button">x</button>
