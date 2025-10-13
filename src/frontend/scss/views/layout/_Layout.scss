@@ -3,7 +3,7 @@
 
 @use "../../core/variables" as *;
 @use "../../core/mixins" as *;
-@use "../../editors/mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-layout {
 
@@ -96,11 +96,12 @@
                 user-select: none;
                 list-style: none;
                 overflow: hidden;
-                @include surface(var(--surface-opacity-default));
                 box-shadow: var(--shadow-inset), var(--shadow-inset-strong);
                 box-sizing: border-box;
                 gap: 0px;
                 border-radius: var(--radius-xs);
+
+                @include surface(var(--surface-opacity-default));
 
                 &:focus {
                     border: none 0px transparent;
@@ -124,13 +125,17 @@
                     user-select: none;
                     padding: 0px;
 
-                    * { 
-                        pointer-events: none; 
+                    @include solid-colorize("&");
+
+                    & {
+                        border: none;
+                        outline: none;
+                        border-width: 0px;
+                        border-radius: 0px;
                     }
-                    
-                    &:hover,
-                    &:focus-within {
-                        @include surface(var(--surface-opacity-emphasis));
+
+                    * {
+                        pointer-events: none;
                     }
 
                     a {
@@ -144,6 +149,13 @@
                         user-select: none;
                         border: none;
                         outline: none;
+
+                        & {
+                            border: none;
+                            outline: none;
+                            border-width: 0px;
+                            border-radius: 0px;
+                        }
 
                         &:focus {
                             border: none;
@@ -170,7 +182,6 @@
                     &:focus {
                         border: none;
                         outline: none;
-                        @include surface(var(--surface-opacity-subtle));
                     }
 
                     a:visited {
@@ -179,14 +190,6 @@
 
                     a:link {
                         background-color: transparent;
-                    }
-
-                    a:hover {
-                        @include surface(var(--surface-opacity-muted));
-                    }
-
-                    a:active {
-                        @include surface(var(--surface-opacity-default));
                     }
                 }
             }
@@ -266,7 +269,7 @@
                 span {
                     display: block;
                     font-weight: var(--font-weight-normal);
-                    @include text-color(0);
+                    color: --c2-on-surface(0.0, var(--current, currentColor));
                     padding-inline-end: var(--padding-xs);
                 }
             }

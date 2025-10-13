@@ -3,7 +3,7 @@
 
 @use "../../core/variables" as *;
 @use "../../core/mixins" as *;
-@use "../../editors/mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-preferences {
     [data-type="preferences"],
@@ -52,8 +52,7 @@
             @include accordion-base;
 
             &[open] {
-                @include border-color(var(--contrast-opacity-default));
-                @include surface(var(--surface-opacity-emphasis));
+                --color-shade: var(--surface-opacity-emphasis);
             }
 
             summary {
@@ -109,13 +108,13 @@
                         cursor: pointer;
                         padding: var(--padding-md) var(--padding-lg);
                         justify-content: flex-start;
-                        
-                        ui-icon { 
-                            --icon-size: var(--icon-size-md); 
+
+                        ui-icon {
+                            --icon-size: var(--icon-size-md);
                         }
-                        
-                        span { 
-                            font-weight: var(--font-weight-semibold); 
+
+                        span {
+                            font-weight: var(--font-weight-semibold);
                         }
                     }
 

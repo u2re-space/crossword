@@ -1,5 +1,5 @@
 // Enhanced DateTime Field Editor with modern design patterns
-@use "../mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-fields-datetime {
 
@@ -17,12 +17,12 @@
         grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
         gap: var(--space-sm);
         align-items: center;
-        
+
         input {
             @include form-field-base;
             min-inline-size: 0;
             font-variant-numeric: tabular-nums;
-            
+
             &:where([type="date"], [type="time"], [type="datetime-local"]) {
                 padding-inline-end: calc(var(--space-lg) * 2);
             }
@@ -37,7 +37,7 @@
         gap: var(--space-xs);
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-sm);
-        
+
         @include solid-colorize("&");
         @include font-style("&", ("size": "sm"));
     }
@@ -47,7 +47,7 @@
         font-style: italic;
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-xs);
-        
+
         @include solid-colorize("&", ("shade": 0.02));
         @include font-style("&", ("size": "xs"));
     }
@@ -57,7 +57,7 @@
         padding: var(--space-md);
         border-radius: var(--radius-md);
         text-align: center;
-        
+
         @include solid-colorize("&", ("shade": 0.01));
         @include font-style("&", ("size": "sm"));
     }
@@ -74,7 +74,7 @@
         .datetime-editor {
             gap: var(--space-xs);
         }
-        
+
         .datetime-inputs input {
             padding: calc(var(--space-sm) * 0.8) var(--space-sm);
         }
@@ -94,7 +94,7 @@
         .datetime-inputs input {
             border-width: 2px;
         }
-        
+
         .datetime-error {
             border: 2px solid var(--border-color);
         }

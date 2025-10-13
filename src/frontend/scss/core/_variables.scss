@@ -5,6 +5,42 @@
 // SPACING & SIZING
 // =============================================================================
 
+
+// Design system variables
+:root {
+  // Spacing scale
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.25rem;
+
+  // Border radius scale
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.65rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  // Font sizes
+  --text-xs: clamp(0.7rem, 0.3cqi + 0.6rem, 0.75rem);
+  --text-sm: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
+  --text-base: clamp(0.8rem, 0.5cqi + 0.7rem, 0.95rem);
+  --text-lg: clamp(0.9rem, 0.6cqi + 0.8rem, 1.1rem);
+  --text-xl: clamp(1rem, 0.8cqi + 0.9rem, 1.3rem);
+
+  // Transitions
+  --transition-fast: 140ms ease;
+  --transition-normal: 160ms ease;
+  --transition-slow: 200ms ease;
+
+  // Interactive states
+  --hover-lift: 0.04;
+  --active-lift: 0.05;
+  --focus-lift: 0.05;
+}
+
 :root {
   // Base spacing system using consistent clamp functions
   --space-xs: clamp(0.25rem, 0.5vw, 0.35rem);
@@ -89,18 +125,39 @@
   --contrast-opacity-emphasis: 0.16;
   --contrast-opacity-strong: 0.24;
 
-  // Text opacity levels
-  --text-opacity-secondary: 0.12;
-  --text-opacity-muted: 0.18;
-  --text-opacity-disabled: 0.48;
+  // Text tint levels for colorize
+  --text-tint-primary: 0.0;
+  --text-tint-secondary: 0.04;
+  --text-tint-muted: 0.06;
+  --text-tint-disabled: 0.12;
 
-  // Color variants
+  // Border and outline opacity
+  --border-opacity-subtle: 0.14;
+  --border-opacity-default: 0.2;
+  --border-opacity-emphasis: 0.24;
+  --border-opacity-strong: 0.4;
+  --border-opacity-dashed: 0.18;
+
+  // Scrollbar opacity
+  --scrollbar-opacity: 0.4;
+  --scrollbar-tint: 0.1;
+
+  // Outline and focus opacity
+  --outline-opacity: 0.4;
+  --outline-tint: 0.0;
+
+  // Semantic color variants
   --color-red: oklch(0.5 0.2 30 / 1);
   --color-orange: oklch(0.5 0.2 80 / 1);
   --color-yellow: oklch(0.7 0.2 100 / 1);
   --color-green: oklch(0.5 0.2 140 / 1);
   --color-blue: oklch(0.5 0.2 260 / 1);
   --color-purple: oklch(0.5 0.2 320 / 1);
+
+  // Validation colors
+  --color-success: #2CDA9D;
+  --color-warning: #FFB347;
+  --color-error: #FF6B6B;
 }
 
 // =============================================================================

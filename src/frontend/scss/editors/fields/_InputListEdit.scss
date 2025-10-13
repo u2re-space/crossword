@@ -1,4 +1,4 @@
-@use "../mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-fields-input-list {
 
@@ -17,18 +17,18 @@
         grid-column: 1 / -1;
         place-content: center;
         place-items: center;
-        
+
         display: grid;
         grid-template-columns: [input] minmax(0, 1fr) [checkbox-btn] minmax(0, auto) [remove-btn] minmax(0, auto);
         grid-template-rows: minmax(0, auto);
         gap: var(--space-sm);
-        
+
         position: relative;
         padding: 0;
         border-radius: var(--space-md);
         container-type: inline-size;
         background: transparent;
-        
+
         @include font-style("&");
 
         & > * {
@@ -92,7 +92,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             border: none;
-            
+
             @include solid-colorize("&");
         }
 

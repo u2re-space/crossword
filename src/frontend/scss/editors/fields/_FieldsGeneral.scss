@@ -1,4 +1,4 @@
-@use "../mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 //
 @layer rs-fields-general {
@@ -41,7 +41,7 @@
 
     //
     .field-helper {
-        color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+        color: --c2-on-surface(0.08, var(--current, currentColor));
         font-size: 0.75rem;
     }
 

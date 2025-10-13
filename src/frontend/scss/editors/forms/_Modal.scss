@@ -1,4 +1,4 @@
-@use "../mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 //
 @layer rs-forms-modal {
@@ -19,14 +19,14 @@
         place-content: center;
         place-items: center;
         padding: var(--space-xl);
-        background: color-mix(in oklab, black 22%, transparent);
+        background: oklch(from black l c h / 0.22);
         z-index: 9999;
         backdrop-filter: blur(18px) saturate(120%);
         line-height: normal;
 
         & {
             line-height: normal;
-            scrollbar-color: --c2-on-surface(0.0, var(--current, currentColor)) transparent;
+            scrollbar-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.4) transparent;
         }
 
         @media (pointer: coarse) {
@@ -49,7 +49,7 @@
         background: --c2-surface(0.01, var(--current, currentColor));
         box-shadow: var(--modal-shadow);
         backdrop-filter: blur(12px) saturate(120%);
-        border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
+        border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.18);
         overflow: visible;
         container-type: inline-size;
     }
@@ -59,7 +59,7 @@
         display: grid;
         gap: var(--space-sm);
         padding-block: var(--space-sm);
-        border-block-end: 1px solid color-mix(in oklab, currentColor 16%, transparent);
+        border-block-end: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.16);
         inline-size: stretch;
 
         &:last-of-type {
@@ -69,7 +69,7 @@
         .modal-section-title {
             @include font-style("&", ("size": "sm", "weight": 600));
             margin: 0;
-            color: color-mix(in oklab, currentColor 60%, rgba(17, 24, 39, 0.78));
+            color: --c2-on-surface(0.04, var(--current, currentColor));
         }
 
         .modal-section-fields {
@@ -83,7 +83,7 @@
     }
 
     .modal-fields::-webkit-scrollbar-thumb {
-        background: color-mix(in oklab, currentColor 24%, transparent);
+        background: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.24);
         border-radius: 999px;
     }
 
@@ -101,7 +101,7 @@
     .modal-description {
         @include font-style("&", ("size": "base"));
         margin: 0;
-        color: color-mix(in oklab, currentColor 42%, rgba(17, 24, 39, 0.72));
+        color: --c2-on-surface(0.05, var(--current, currentColor));
     }
 
     // Enhanced modal fields container
@@ -124,7 +124,7 @@
 
         .label {
             @include font-style("&", ("size": "sm", "weight": 600));
-            color: color-mix(in oklab, currentColor 54%, rgba(17, 24, 39, 0.78));
+            color: --c2-on-surface(0.06, var(--current, currentColor));
         }
 
         .contacts-group {
@@ -138,29 +138,29 @@
         select,
         textarea {
             @include form-field-base;
-            border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
-            background: color-mix(in oklab, var(--current, currentColor) 4%, transparent);
+            border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.14);
+            background: --c2-surface(0.04, var(--current, currentColor));
             background-repeat: no-repeat;
             color: --c2-on-surface(0.0, var(--current, currentColor));
             min-block-size: 2.5rem;
             font-size: inherit;
 
             &:focus {
-                border-color: color-mix(in oklab, currentColor 24%, transparent);
-                background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+                border-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.24);
+                background: --c2-surface(0.08, var(--current, currentColor));
             }
         }
 
         // Enhanced select styling
         select {
             @include select-dropdown;
-            border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
-            background-color: color-mix(in oklab, var(--current, currentColor) 4%, transparent);
+            border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.14);
+            background-color: --c2-surface(0.04, var(--current, currentColor));
             min-block-size: 2.5rem;
 
             &:hover {
-                border-color: color-mix(in oklab, currentColor 20%, transparent);
-                background-color: color-mix(in oklab, var(--current, currentColor) 6%, transparent);
+                border-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.20);
+                background-color: --c2-surface(0.06, var(--current, currentColor));
             }
         }
 
@@ -171,7 +171,7 @@
 
         .field-helper {
             font-size: 0.75rem;
-            color: color-mix(in oklab, currentColor 38%, rgba(17, 24, 39, 0.6));
+            color: --c2-on-surface(0.08, var(--current, currentColor));
         }
     }
 
@@ -235,16 +235,16 @@
     .modal-field.valid input,
     .modal-field.valid textarea,
     .modal-field.valid select {
-        border-color: color-mix(in oklab, #2CDA9D 40%, transparent);
-        background: color-mix(in oklab, #2CDA9D 4%, transparent);
+        border-color: oklch(from #2CDA9D l c h / 0.4);
+        background: oklch(from #2CDA9D l c h / 0.04);
     }
 
     .modal-field.invalid input,
     .modal-field.invalid textarea,
     .modal-field.invalid select {
-        border-color: color-mix(in oklab, #FF6B6B 40%, transparent);
-        background: color-mix(in oklab, #FF6B6B 4%, transparent);
-        box-shadow: 0 0 0 3px color-mix(in oklab, #FF6B6B 12%, transparent);
+        border-color: oklch(from #FF6B6B l c h / 0.4);
+        background: oklch(from #FF6B6B l c h / 0.04);
+        box-shadow: 0 0 0 3px oklch(from #FF6B6B l c h / 0.12);
     }
 
 
@@ -289,7 +289,7 @@
     .modal-field input:focus-visible,
     .modal-field textarea:focus-visible,
     .modal-field select:focus-visible {
-        outline: 2px solid color-mix(in oklab, currentColor 40%, transparent);
+        outline: 2px solid oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4);
         outline-offset: 2px;
     }
 
@@ -304,13 +304,13 @@
         .modal-field.valid input,
         .modal-field.valid textarea,
         .modal-field.valid select {
-            border-color: color-mix(in oklab, #2CDA9D 80%, transparent);
+            border-color: oklch(from #2CDA9D l c h / 0.8);
         }
 
         .modal-field.invalid input,
         .modal-field.invalid textarea,
         .modal-field.invalid select {
-            border-color: color-mix(in oklab, #FF6B6B 80%, transparent);
+            border-color: oklch(from #FF6B6B l c h / 0.8);
         }
     }
 

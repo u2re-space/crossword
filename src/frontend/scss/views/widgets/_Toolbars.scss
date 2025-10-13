@@ -3,7 +3,7 @@
 
 @use "../../core/variables" as *;
 @use "../../core/mixins" as *;
-@use "../../editors/mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-toolbars {
     .view-toolbar {
@@ -13,8 +13,8 @@
         background: transparent;
         padding-block: var(--padding-md);
 
-        &:empty { 
-            display: none; 
+        &:empty {
+            display: none;
         }
 
         .button-set {
@@ -28,13 +28,13 @@
             button {
                 @include button-variant(var(--surface-opacity-default));
                 gap: var(--gap-sm);
-                
-                &:hover { 
-                    @include surface(var(--surface-opacity-emphasis)); 
+
+                &:hover {
+                    @include surface(var(--surface-opacity-emphasis));
                 }
-                
-                &:active { 
-                    transform: translateY(0.5px); 
+
+                &:active {
+                    transform: translateY(0.5px);
                 }
 
                 span {
@@ -43,8 +43,8 @@
                 }
             }
 
-            &:empty { 
-                display: none; 
+            &:empty {
+                display: none;
             }
         }
 

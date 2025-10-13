@@ -3,7 +3,7 @@
 
 @use "../../core/variables" as *;
 @use "../../core/mixins" as *;
-@use "../../editors/mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-settings {
 
@@ -62,7 +62,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-base);
-                @include text-color(var(--text-opacity-secondary));
+                color: --c2-on-surface(0.04, var(--current, currentColor));
             }
         }
     }
@@ -92,8 +92,8 @@
         font-size: var(--font-sm);
         white-space: nowrap;
 
-        ui-icon { 
-            --icon-size: var(--icon-size-md); 
+        ui-icon {
+            --icon-size: var(--icon-size-md);
         }
 
         &.is-active {
@@ -146,7 +146,7 @@
         p {
             margin: 0;
             font-size: var(--font-sm);
-            @include text-color(var(--text-opacity-secondary));
+            color: --c2-on-surface(0.04, var(--current, currentColor));
         }
     }
 
@@ -194,7 +194,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-sm);
-                @include text-color(var(--text-opacity-muted));
+                color: --c2-on-surface(0.06, var(--current, currentColor));
             }
         }
 
@@ -205,7 +205,7 @@
 
         .group-note {
             font-size: var(--font-sm);
-            @include text-color(var(--text-opacity-muted));
+            color: --c2-on-surface(0.06, var(--current, currentColor));
         }
     }
 
@@ -222,12 +222,12 @@
         .field-label {
             font-size: var(--font-sm);
             font-weight: var(--font-weight-semibold);
-            @include text-color(var(--text-opacity-secondary));
+            color: --c2-on-surface(0.04, var(--current, currentColor));
         }
 
         .field-hint {
             font-size: var(--font-xs);
-            @include text-color(var(--text-opacity-muted));
+            color: --c2-on-surface(0.06, var(--current, currentColor));
         }
 
         ::picker(select) {
@@ -240,7 +240,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .field-control, 
+        .field-control,
         .field-control option {
             @include input-base;
         }
@@ -257,7 +257,7 @@
             border-radius: var(--form-radius);
         }
 
-        select.field-control, 
+        select.field-control,
         ::picker(select) {
             appearance: base-select;
             border: none;
@@ -292,8 +292,8 @@
                 @include text-color(0);
                 @include surface(var(--surface-opacity-strong));
 
-                &:hover { 
-                    @include surface(var(--surface-opacity-emphasis)); 
+                &:hover {
+                    @include surface(var(--surface-opacity-emphasis));
                 }
             }
 
@@ -332,14 +332,14 @@
 
         .save-status {
             font-size: var(--font-sm);
-            @include text-color(var(--text-opacity-muted));
+            color: --c2-on-surface(0.06, var(--current, currentColor));
         }
     }
 
     // Mobile optimizations
     @include breakpoint("md") {
-        .settings-view { 
-            padding: var(--padding-lg); 
+        .settings-view {
+            padding: var(--padding-lg);
         }
 
         .settings-hero {
@@ -348,20 +348,20 @@
             justify-items: center;
         }
 
-        .settings-tab { 
-            flex: 1 0 auto; 
+        .settings-tab {
+            flex: 1 0 auto;
         }
 
-        .settings-panel { 
-            padding: var(--padding-lg); 
+        .settings-panel {
+            padding: var(--padding-lg);
         }
 
         .settings-actions {
             flex-direction: column-reverse;
             align-items: stretch;
 
-            .btn.save { 
-                justify-content: center; 
+            .btn.save {
+                justify-content: center;
             }
         }
     }

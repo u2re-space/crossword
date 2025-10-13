@@ -1,39 +1,5 @@
 @use "sass:map";
 
-// Design system variables
-:root {
-    // Spacing scale
-    --space-xs: 0.25rem;
-    --space-sm: 0.5rem;
-    --space-md: 0.75rem;
-    --space-lg: 1rem;
-    --space-xl: 1.25rem;
-
-    // Border radius scale
-    --radius-xs: 0.25rem;
-    --radius-sm: 0.5rem;
-    --radius-md: 0.65rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
-    --radius-full: 9999px;
-
-    // Font sizes
-    --text-xs: clamp(0.7rem, 0.3cqi + 0.6rem, 0.75rem);
-    --text-sm: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
-    --text-base: clamp(0.8rem, 0.5cqi + 0.7rem, 0.95rem);
-    --text-lg: clamp(0.9rem, 0.6cqi + 0.8rem, 1.1rem);
-    --text-xl: clamp(1rem, 0.8cqi + 0.9rem, 1.3rem);
-
-    // Transitions
-    --transition-fast: 140ms ease;
-    --transition-normal: 160ms ease;
-    --transition-slow: 200ms ease;
-
-    // Interactive states
-    --hover-lift: 0.04;
-    --active-lift: 0.05;
-    --focus-lift: 0.05;
-}
 
 // Color system properties
 @property --color-shade {
@@ -74,7 +40,7 @@
         --scrollbar-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.4);
 
         // Apply colors
-        border: solid 0.5px var(--border-color);
+        border-color: var(--border-color);
         background: var(--surface-color);
         color: var(--on-surface-color);
         accent-color: var(--on-surface-color);
@@ -85,8 +51,15 @@
         -webkit-tap-highlight-color: var(--on-surface-color);
         -webkit-text-fill-color: var(--on-surface-color);
 
-        // Interactive states
+        //
         &:is(button, input, select, textarea) {
+            border-style: solid;
+            border-width: 0.5px;
+        }
+
+        // Interactive states
+        &:is(button, input, select, textarea, a, li) {
+
             transition:
                 border-color var(--transition-normal),
                 background var(--transition-normal),

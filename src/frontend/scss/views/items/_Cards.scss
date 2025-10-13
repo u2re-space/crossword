@@ -3,7 +3,7 @@
 
 @use "../../core/variables" as *;
 @use "../../core/mixins" as *;
-@use "../../editors/mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 // Legacy text wrapping mixins - preserved for backward compatibility
 @mixin make-wraps {
@@ -38,17 +38,17 @@
         @include make-wraps;
     }
 
-    :where(a) { 
-        text-transform: math-auto; 
+    :where(a) {
+        text-transform: math-auto;
     }
-    
-    :where(ul, li, span, p):empty { 
-        display: none; 
+
+    :where(ul, li, span, p):empty {
+        display: none;
     }
-    
-    :where(ul, li, span)::marker { 
-        margin: 0; 
-        padding: 0; 
+
+    :where(ul, li, span)::marker {
+        margin: 0;
+        padding: 0;
     }
 }
 
@@ -103,7 +103,7 @@
             @include surface(var(--surface-opacity-default));
         }
 
-        &:not([data-variant]), 
+        &:not([data-variant]),
         &[data-variant="default"] {
             @include surface(var(--surface-opacity-subtle));
         }
@@ -132,17 +132,17 @@
             @include text-color(0);
             --icon-color: --c2-surface(0, var(--current, currentColor));
 
-            .avatar-inner { 
+            .avatar-inner {
                 font-weight: var(--font-weight-bold);
                 font-size: var(--font-base);
                 line-height: 0;
             }
         }
 
-        .card-description, 
+        .card-description,
         .card-content {
             font-size: var(--font-sm);
-            @include text-color(var(--text-opacity-secondary));
+            color: --c2-on-surface(0.04, var(--current, currentColor));
             @include text-clamp(4);
             line-height: normal;
             opacity: 1;
@@ -164,19 +164,19 @@
                 display: flex;
                 flex-direction: row;
 
-                &:empty { 
-                    display: none; 
+                &:empty {
+                    display: none;
                 }
-                
-                &:has(+ ul:empty) { 
-                    display: none; 
+
+                &:has(+ ul:empty) {
+                    display: none;
                 }
             }
 
             ul {
                 margin: 0;
                 padding: 0;
-                @include text-color(var(--text-opacity-muted));
+                color: --c2-on-surface(0.06, var(--current, currentColor));
                 line-height: normal;
                 block-size: max-content;
                 overflow: hidden;
@@ -213,125 +213,125 @@
         .card-description {
             display: none;
             block-size: 0px;
-            transition: var(--transition-opacity), 
+            transition: var(--transition-opacity),
                        block-size var(--duration-normal) var(--ease-out),
                        display var(--duration-normal) var(--ease-out),
                        padding-block var(--duration-normal) var(--ease-out);
             transition-behavior: allow-discrete;
         }
-        
-        &[data-open] .card-description { 
-            display: flex; 
-            opacity: 1; 
-            block-size: max-content; 
-            padding-block: var(--padding-sm); 
+
+        &[data-open] .card-description {
+            display: flex;
+            opacity: 1;
+            block-size: max-content;
+            padding-block: var(--padding-sm);
         }
-        
-        @starting-style { 
-            &[data-open] .card-description { 
-                opacity: 0; 
-                block-size: 0px; 
-                padding-block: 0rem; 
-            } 
+
+        @starting-style {
+            &[data-open] .card-description {
+                opacity: 0;
+                block-size: 0px;
+                padding-block: 0rem;
+            }
         }
 
         // Card utility elements
         .card-desc {
-            padding: 0; 
-            margin: 0; 
-            font-size: var(--font-sm); 
-            @include text-color(var(--text-opacity-muted)); 
-            display: flex; 
-            flex-direction: row; 
-            gap: var(--gap-xs); 
-            list-style: none; 
-            
-            li { 
-                padding: 0; 
-                margin: 0; 
+            padding: 0;
+            margin: 0;
+            font-size: var(--font-sm);
+            color: --c2-on-surface(0.06, var(--current, currentColor));
+            display: flex;
+            flex-direction: row;
+            gap: var(--gap-xs);
+            list-style: none;
+
+            li {
+                padding: 0;
+                margin: 0;
             }
         }
-        
-        .card-title { 
-            padding: 0; 
-            margin: 0; 
-            font-weight: var(--font-weight-bold); 
-            font-size: var(--font-base); 
-            @include text-truncate; 
-            display: flex; 
-            flex-direction: row; 
-            gap: var(--gap-xs); 
-            list-style: none; 
-            
-            li { 
-                padding: 0; 
-                margin: 0; 
+
+        .card-title {
+            padding: 0;
+            margin: 0;
+            font-weight: var(--font-weight-bold);
+            font-size: var(--font-base);
+            @include text-truncate;
+            display: flex;
+            flex-direction: row;
+            gap: var(--gap-xs);
+            list-style: none;
+
+            li {
+                padding: 0;
+                margin: 0;
             }
         }
-        
-        .card-kind { 
-            padding: 0; 
-            margin: 0; 
-            font-size: var(--font-sm); 
-            @include text-color(var(--text-opacity-muted)); 
-            margin-block-start: var(--gap-xs); 
-            display: flex; 
-            flex-direction: row; 
-            gap: var(--gap-xs); 
-            list-style: none; 
-            
-            li { 
-                padding: 0; 
-                margin: 0; 
+
+        .card-kind {
+            padding: 0;
+            margin: 0;
+            font-size: var(--font-sm);
+            color: --c2-on-surface(0.06, var(--current, currentColor));
+            margin-block-start: var(--gap-xs);
+            display: flex;
+            flex-direction: row;
+            gap: var(--gap-xs);
+            list-style: none;
+
+            li {
+                padding: 0;
+                margin: 0;
             }
         }
-        
-        .card-time { 
-            padding: 0; 
-            margin: 0; 
-            font-size: var(--font-sm); 
-            @include text-color(var(--text-opacity-muted)); 
-            display: flex; 
-            flex-direction: row; 
-            gap: var(--gap-xs); 
-            list-style: none; 
-            
-            li { 
-                padding: 0; 
-                margin: 0; 
+
+        .card-time {
+            padding: 0;
+            margin: 0;
+            font-size: var(--font-sm);
+            color: --c2-on-surface(0.06, var(--current, currentColor));
+            display: flex;
+            flex-direction: row;
+            gap: var(--gap-xs);
+            list-style: none;
+
+            li {
+                padding: 0;
+                margin: 0;
             }
         }
-        
-        .card-props { 
-            display: flex; 
-            inline-size: stretch; 
-            flex-direction: column; 
-            gap: var(--gap-xs); 
-            justify-items: center; 
-            align-content: flex-start; 
+
+        .card-props {
+            display: flex;
+            inline-size: stretch;
+            flex-direction: column;
+            gap: var(--gap-xs);
+            justify-items: center;
+            align-content: flex-start;
         }
-        
-        .card-actions { 
-            display: flex; 
-            gap: var(--gap-xs); 
-            
-            li { 
-                padding: 0; 
-                margin: 0; 
+
+        .card-actions {
+            display: flex;
+            gap: var(--gap-xs);
+
+            li {
+                padding: 0;
+                margin: 0;
             }
-            
-            > .action { 
-                @include flex-center; 
-                gap: var(--gap-xs); 
-                padding: var(--padding-xs) var(--padding-sm); 
-                border-radius: var(--radius-sm); 
-                @include surface(var(--surface-opacity-subtle)); 
-                cursor: pointer; 
-                border: 0; 
+
+            > .action {
+                @include flex-center;
+                gap: var(--gap-xs);
+                padding: var(--padding-xs) var(--padding-sm);
+                border-radius: var(--radius-sm);
+                @include surface(var(--surface-opacity-subtle));
+                cursor: pointer;
+                border: 0;
                 transition: var(--transition-colors);
-                
-                &:hover { 
-                    @include surface(var(--surface-opacity-muted)); 
+
+                &:hover {
+                    @include surface(var(--surface-opacity-muted));
                 }
             }
         }
@@ -342,7 +342,7 @@
             gap: var(--gap-xs);
             grid-column: 1 / -1;
             font-size: var(--font-sm);
-            @include text-color(var(--text-opacity-muted));
+            color: --c2-on-surface(0.06, var(--current, currentColor));
 
             ul {
                 margin: 0;
@@ -358,7 +358,7 @@
                     @include flex-center;
                     justify-content: flex-start;
                     gap: var(--gap-xs);
-                    
+
                     &:hover {
                         text-decoration: underline;
                     }
@@ -374,7 +374,7 @@
             -webkit-user-drag: auto;
             @include text-color(0);
             text-decoration: none;
-            
+
             &:hover,
             &:active,
             &:focus {
@@ -391,13 +391,13 @@
 
         // Responsive behavior
         @include container("lg") {
-            .card-actions > .action span { 
-                display: none; 
+            .card-actions > .action span {
+                display: none;
             }
         }
 
 
-        .card-description-content, 
+        .card-description-content,
         .card-properties {
             display: block;
             padding: 0;
@@ -409,7 +409,7 @@
             p {
                 font-size: 1em;
                 font-weight: var(--font-weight-normal);
-                @include text-color(0);
+                color: --c2-on-surface(0.0, var(--current, currentColor));
                 margin: 0;
                 padding: 0;
                 display: block;
@@ -431,7 +431,7 @@
             span {
                 font-size: 1em;
                 font-weight: var(--font-weight-normal);
-                @include text-color(0);
+                color: --c2-on-surface(0.0, var(--current, currentColor));
                 margin: 0;
                 padding: 0;
                 display: block;

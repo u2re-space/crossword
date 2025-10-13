@@ -1,6 +1,6 @@
 // Modern date field editor with format selector
 
-@use "../mixins/Colorize" as *;
+@use "../../core/colorize" as *;
 
 @layer rs-fields-date {
 
@@ -70,13 +70,13 @@
             grid-template-columns: 1fr;
             gap: var(--space-sm);
 
-            label, 
-            select { 
-                grid-column: 1 / -1; 
+            label,
+            select {
+                grid-column: 1 / -1;
             }
-            
-            ui-icon { 
-                display: none; 
+
+            ui-icon {
+                display: none;
             }
         }
     }
