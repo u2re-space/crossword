@@ -1,6 +1,7 @@
 // Modern date field editor with format selector
 
 @use "../../core/colorize" as *;
+@use "../../core/mixins" as *;
 
 @layer rs-fields-date {
 
@@ -23,7 +24,6 @@
 
             //
             @include form-field-base;
-            @include solid-colorize("&");
 
             // Enhanced calendar icon styling
             &::-webkit-calendar-picker-indicator {
@@ -75,8 +75,7 @@
             padding: calc(var(--space-sm) * 0.7) var(--space-sm);
             border-radius: var(--radius-sm);
 
-            @include select-dropdown;
-            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+            @include select-dropdown(("shade": var(--surface-opacity-muted)));
         }
     }
 

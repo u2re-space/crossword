@@ -14,14 +14,36 @@
   --space-md: 0.75rem;
   --space-lg: 1rem;
   --space-xl: 1.25rem;
+  --space-2xl: 1.6rem;
+
+  // Gap scale
+  --gap-xs: 0.35rem;
+  --gap-sm: 0.5rem;
+  --gap-md: 0.8rem;
+  --gap-lg: 1rem;
+  --gap-xl: 1.4rem;
 
   // Border radius scale
-  --radius-xs: 0.25rem;
+  --radius-xs: 0.3rem;
   --radius-sm: 0.5rem;
-  --radius-md: 0.65rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.9rem;
+  --radius-xl: 1.1rem;
   --radius-full: 9999px;
+
+  // Padding scale
+  --padding-xs: 0.35rem;
+  --padding-sm: 0.5rem;
+  --padding-md: 0.75rem;
+  --padding-lg: 1rem;
+  --padding-xl: 1.25rem;
+
+  // Avatar and icon sizes
+  --avatar-size: 48px;
+  --avatar-size-lg: 64px;
+  --icon-size-sm: 1rem;
+  --icon-size-md: 1.25rem;
+  --icon-size-lg: 1.5rem;
 
   // Font sizes
   --text-xs: clamp(0.7rem, 0.3cqi + 0.6rem, 0.75rem);
@@ -41,43 +63,45 @@
   --focus-lift: 0.02;
 }
 
-:root {
-  // Base spacing system using consistent clamp functions
-  --space-xs: clamp(0.25rem, 0.5vw, 0.35rem);
-  --space-sm: clamp(0.35rem, 0.8vw, 0.6rem);
-  --space-md: clamp(0.45rem, 1vw, 0.8rem);
-  --space-lg: clamp(0.6rem, 1.2vw, 1rem);
-  --space-xl: clamp(0.75rem, 1.5vw, 1.25rem);
-  --space-2xl: clamp(1rem, 2vw, 1.6rem);
+@supports (width: clamp(1rem, 1vw, 2rem)) {
+  :root {
+    // Base spacing system using consistent clamp functions
+    --space-xs: clamp(0.25rem, 0.5vw, 0.35rem);
+    --space-sm: clamp(0.35rem, 0.8vw, 0.6rem);
+    --space-md: clamp(0.45rem, 1vw, 0.8rem);
+    --space-lg: clamp(0.6rem, 1.2vw, 1rem);
+    --space-xl: clamp(0.75rem, 1.5vw, 1.25rem);
+    --space-2xl: clamp(1rem, 2vw, 1.6rem);
 
-  // Specific use-case spacing
-  --gap-xs: clamp(0.25rem, 0.6vw, 0.45rem);
-  --gap-sm: clamp(0.4rem, 0.8vw, 0.7rem);
-  --gap-md: clamp(0.6rem, 1vw, 0.9rem);
-  --gap-lg: clamp(0.75rem, 1.2vw, 1.25rem);
-  --gap-xl: clamp(1rem, 1.8vw, 1.6rem);
+    // Specific use-case spacing
+    --gap-xs: clamp(0.25rem, 0.6vw, 0.45rem);
+    --gap-sm: clamp(0.4rem, 0.8vw, 0.7rem);
+    --gap-md: clamp(0.6rem, 1vw, 0.9rem);
+    --gap-lg: clamp(0.75rem, 1.2vw, 1.25rem);
+    --gap-xl: clamp(1rem, 1.8vw, 1.6rem);
 
-  // Border radius system
-  --radius-xs: clamp(0.25rem, 0.5vw, 0.375rem);
-  --radius-sm: clamp(0.5rem, 0.8vw, 0.65rem);
-  --radius-md: clamp(0.75rem, 1vw, 1rem);
-  --radius-lg: clamp(0.85rem, 1.2vw, 1.2rem);
-  --radius-xl: clamp(1rem, 1.5vw, 1.4rem);
-  --radius-full: 999px;
+    // Border radius system
+    --radius-xs: clamp(0.25rem, 0.5vw, 0.375rem);
+    --radius-sm: clamp(0.5rem, 0.8vw, 0.65rem);
+    --radius-md: clamp(0.75rem, 1vw, 1rem);
+    --radius-lg: clamp(0.85rem, 1.2vw, 1.2rem);
+    --radius-xl: clamp(1rem, 1.5vw, 1.4rem);
+    --radius-full: 9999px;
 
-  // Padding system
-  --padding-xs: clamp(0.25rem, 0.5vw, 0.375rem);
-  --padding-sm: clamp(0.35rem, 0.7vw, 0.55rem);
-  --padding-md: clamp(0.5rem, 0.9vw, 0.75rem);
-  --padding-lg: clamp(0.65rem, 1.1vw, 0.95rem);
-  --padding-xl: clamp(0.8rem, 1.3vw, 1.15rem);
+    // Padding system
+    --padding-xs: clamp(0.25rem, 0.5vw, 0.375rem);
+    --padding-sm: clamp(0.35rem, 0.7vw, 0.55rem);
+    --padding-md: clamp(0.5rem, 0.9vw, 0.75rem);
+    --padding-lg: clamp(0.65rem, 1.1vw, 0.95rem);
+    --padding-xl: clamp(0.8rem, 1.3vw, 1.15rem);
 
-  // Avatar and icon sizes
-  --avatar-size: clamp(32px, 6vw, 48px);
-  --avatar-size-lg: clamp(40px, 8vw, 64px);
-  --icon-size-sm: clamp(0.9rem, 1.2cqi, 1.1rem);
-  --icon-size-md: clamp(1.1rem, 1.4cqi, 1.3rem);
-  --icon-size-lg: clamp(1.4rem, 1.8cqi, 1.7rem);
+    // Avatar and icon sizes
+    --avatar-size: clamp(32px, 6vw, 48px);
+    --avatar-size-lg: clamp(40px, 8vw, 64px);
+    --icon-size-sm: clamp(0.9rem, 1.2cqi, 1.1rem);
+    --icon-size-md: clamp(1.1rem, 1.4cqi, 1.3rem);
+    --icon-size-lg: clamp(1.4rem, 1.8cqi, 1.7rem);
+  }
 }
 
 // =============================================================================

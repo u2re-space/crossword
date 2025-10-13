@@ -7,11 +7,112 @@
 
 @layer rs-settings {
 
+    .settings-panel {
+        @include panel-base;
+        justify-content: start;
+        block-size: max-content;
+
+        @include solid-colorize("&");
+
+        &:focus-visible {
+            @include focus-ring();
+        }
+
+        .panel-header {
+            display: grid;
+            gap: var(--gap-xs);
+            min-inline-size: 0;
+            inline-size: stretch;
+            text-align: start;
+            padding: var(--padding-sm);
+
+            h2 {
+                margin: 0;
+                font-size: var(--font-xl);
+            }
+
+            p {
+                margin: 0;
+                font-size: var(--font-sm);
+                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+            }
+        }
+
+        .settings-group {
+            border-radius: var(--radius-lg);
+
+            @include surface(var(--surface-opacity-default));
+
+            & {
+                border: none 0 transparent;
+                border-width: 0;
+            }
+
+            &:not(.is-collapsible) {
+                padding: var(--padding-lg);
+                display: grid;
+                gap: var(--gap-md);
+            }
+
+            &.is-collapsible {
+                padding: 0;
+
+                summary {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--gap-xs);
+                    padding: var(--padding-lg);
+                    cursor: pointer;
+                    list-style: none;
+                    outline: none;
+                }
+
+                .group-body {
+                    padding: 0 var(--padding-lg) var(--padding-lg);
+                    display: grid;
+                    gap: var(--gap-md);
+                }
+            }
+
+            .group-header {
+                display: grid;
+                gap: var(--gap-xs);
+
+                h3 {
+                    margin: 0;
+                    font-size: var(--font-md);
+                    text-align: center;
+                }
+
+                p {
+                    margin: 0;
+                    font-size: var(--font-sm);
+                    color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                }
+            }
+
+            .group-title {
+                font-size: var(--font-base);
+                font-weight: var(--font-weight-semibold);
+            }
+
+            .group-note {
+                font-size: var(--font-sm);
+                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            }
+
+            .group-body {
+                display: grid;
+                gap: var(--gap-md);
+            }
+        }
+    }
+
     .settings-view {
         display: grid;
         gap: var(--gap-xl);
         padding: var(--gap-xl);
-        border-radius: 0px;
+        border-radius: 0;
         min-inline-size: 0;
 
         @include surface(var(--surface-opacity-subtle));
@@ -19,6 +120,43 @@
         span {
             block-size: max-content;
             line-height: normal;
+        }
+
+        .settings-form {
+            display: grid;
+            gap: var(--gap-xl);
+            min-inline-size: 0;
+            grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
+            block-size: max-content;
+
+            .settings-panels {
+                display: grid;
+                gap: var(--gap-xl);
+                min-inline-size: 0;
+            }
+        }
+
+        .settings-actions {
+            gap: var(--gap-md);
+            margin-block-start: var(--gap-sm);
+            padding: var(--padding-sm);
+
+            @include flex-between;
+
+            .btn.save {
+                @include button-variant(var(--contrast-opacity-subtle));
+                @include text-color(0);
+                @include border-color(var(--contrast-opacity-default));
+
+                &:hover {
+                    @include surface(var(--contrast-opacity-muted));
+                }
+            }
+
+            .save-status {
+                font-size: var(--font-sm);
+                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            }
         }
     }
 
@@ -30,23 +168,19 @@
         padding: var(--padding-xl);
         border-radius: var(--radius-lg);
 
-        //
         @include surface(var(--surface-opacity-default));
         @include border-color(var(--surface-opacity-emphasis));
         @include text-color(0);
 
-        //
         .hero-icon {
             inline-size: clamp(3rem, 4vw, 3.5rem);
             block-size: clamp(3rem, 4vw, 3.5rem);
             border-radius: 50%;
 
-            //
             @include grid-center;
             @include surface(var(--surface-opacity-default));
             @include border-color(var(--surface-opacity-emphasis));
 
-            //
             ui-icon {
                 --icon-size: clamp(1.6rem, 2.4vw, 1.9rem);
                 --icon-color: currentColor;
@@ -82,148 +216,34 @@
         @include hide-scrollbar;
         @include surface(var(--surface-opacity-subtle));
         @include border-color(var(--surface-opacity-emphasis));
-    }
 
-    .settings-tab {
-        gap: var(--gap-sm);
-        padding: var(--padding-sm) var(--padding-lg);
-        border-radius: var(--radius-full);
-        background: transparent;
-        cursor: pointer;
-        transition: var(--transition-colors);
-        font-size: var(--font-sm);
-        white-space: nowrap;
-
-        //
-        @include solid-colorize("&");
-        @include flex-center;
-        @include text-color(0);
-
-        ui-icon {
-            --icon-size: var(--icon-size-md);
-        }
-
-        &.is-active {
-            @include surface(var(--contrast-opacity-subtle));
-            @include border-color(var(--contrast-opacity-default));
-        }
-
-        &:hover:not(.is-active) {
-            @include surface(var(--surface-opacity-default));
-        }
-    }
-
-    .settings-form {
-        display: grid;
-        gap: var(--gap-xl);
-        min-inline-size: 0;
-        grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
-        block-size: max-content;
-    }
-
-    .settings-panels {
-        display: grid;
-        gap: var(--gap-xl);
-        min-inline-size: 0;
-    }
-
-    .settings-panel {
-        @include panel-base;
-        justify-content: start;
-        block-size: max-content;
-
-        &:focus-visible {
-            @include focus-ring();
-        }
-    }
-
-    .panel-header {
-        display: grid;
-        gap: var(--gap-xs);
-        min-inline-size: 0;
-        inline-size: stretch;
-        text-align: start;
-        padding: var(--padding-sm);
-
-        h2 {
-            margin: 0;
-            font-size: var(--font-xl);
-        }
-
-        p {
-            margin: 0;
+        .settings-tab {
+            gap: var(--gap-sm);
+            padding: var(--padding-sm) var(--padding-lg);
+            border-radius: var(--radius-full);
+            background: transparent;
+            cursor: pointer;
+            transition: var(--transition-colors);
             font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
-        }
-    }
+            white-space: nowrap;
 
-    .settings-group {
-        border-radius: var(--radius-lg);
+            @include solid-colorize("&");
+            @include flex-center;
+            @include text-color(0);
 
-        @include surface(var(--surface-opacity-default));
-
-        & {
-            border: none 0px transparent;
-            border-width: 0px;
-        }
-
-        &:not(.is-collapsible) {
-            padding: var(--padding-lg);
-            display: grid;
-            gap: var(--gap-md);
-        }
-
-        &.is-collapsible {
-            padding: 0;
-
-            summary {
-                display: flex;
-                flex-direction: column;
-                gap: var(--gap-xs);
-                padding: var(--padding-lg);
-                cursor: pointer;
-                list-style: none;
-                outline: none;
+            ui-icon {
+                --icon-size: var(--icon-size-md);
             }
 
-            .group-body {
-                padding: 0 var(--padding-lg) var(--padding-lg);
-                display: grid;
-                gap: var(--gap-md);
-            }
-        }
-
-        .group-header {
-            display: grid;
-            gap: var(--gap-xs);
-
-            h3 {
-                margin: 0;
-                font-size: var(--font-md);
-                text-align: center;
+            &.is-active {
+                @include surface(var(--contrast-opacity-subtle));
+                @include border-color(var(--contrast-opacity-default));
             }
 
-            p {
-                margin: 0;
-                font-size: var(--font-sm);
-                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            &:hover:not(.is-active) {
+                @include surface(var(--surface-opacity-default));
             }
         }
-
-        .group-title {
-            font-size: var(--font-base);
-            font-weight: var(--font-weight-semibold);
-        }
-
-        .group-note {
-            font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
-        }
-    }
-
-    .group-body {
-        display: grid;
-        gap: var(--gap-md);
     }
 
     .field {
@@ -243,19 +263,23 @@
             color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
         }
 
+        .field-control {
+            @include input-base;
+
+            option {
+                @include input-base;
+            }
+        }
+
         input.field-control {
             border-radius: var(--form-radius);
             font-variant-numeric: tabular-nums;
             pointer-events: auto;
         }
 
-        .field-control,
-        .field-control option {
-            @include input-base;
-        }
-
         select.field-control {
-            &, &::picker(select) {
+            &,
+            &::picker(select) {
                 appearance: base-select;
                 border: none;
                 outline: none;
@@ -273,25 +297,16 @@
                 text-overflow: '';
                 text-overflow: "";
                 appearance: base-select;
-
-                //
                 padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
                 pointer-events: auto;
                 border-radius: var(--form-radius);
-                cursor: pointer;
                 padding-inline: var(--padding-sm);
                 accent-color: transparent;
                 color: transparent !important;
-
-                //
                 display: block;
                 block-size: max-content;
-
-                //
-                //@include select-dropdown;
                 @include solid-colorize("&");
 
-                //
                 &,
                 &:hover,
                 &:focus-visible,
@@ -321,14 +336,13 @@
                 padding: var(--padding-sm);
                 line-height: normal;
 
-                //
                 @include flex-center;
                 @include surface(var(--surface-opacity-muted));
 
                 & {
                     border-style: solid;
-                    border-width: 0px;
-                    border-radius: 0px;
+                    border-width: 0;
+                    border-radius: 0;
                     justify-content: start;
                     inset: auto;
                     margin: 0;
@@ -356,33 +370,18 @@
         }
     }
 
-    .settings-actions {
-        gap: var(--gap-md);
-        margin-block-start: var(--gap-sm);
-        padding: var(--padding-sm);
-
-        @include flex-between;
-
-        .btn.save {
-            @include button-variant(var(--contrast-opacity-subtle));
-            @include text-color(0);
-            @include border-color(var(--contrast-opacity-default));
-
-            &:hover {
-                @include surface(var(--contrast-opacity-muted));
-            }
-        }
-
-        .save-status {
-            font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
-        }
-    }
-
-    // Mobile optimizations
     @include breakpoint("md") {
         .settings-view {
             padding: var(--padding-lg);
+
+            .settings-actions {
+                flex-direction: column-reverse;
+                align-items: stretch;
+
+                .btn.save {
+                    justify-content: center;
+                }
+            }
         }
 
         .settings-hero {
@@ -391,21 +390,14 @@
             justify-items: center;
         }
 
-        .settings-tab {
-            flex: 1 0 auto;
+        .settings-nav {
+            .settings-tab {
+                flex: 1 0 auto;
+            }
         }
 
         .settings-panel {
             padding: var(--padding-lg);
-        }
-
-        .settings-actions {
-            flex-direction: column-reverse;
-            align-items: stretch;
-
-            .btn.save {
-                justify-content: center;
-            }
         }
     }
 }

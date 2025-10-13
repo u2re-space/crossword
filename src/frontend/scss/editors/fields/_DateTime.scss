@@ -1,5 +1,6 @@
 // Enhanced DateTime Field Editor with modern design patterns
 @use "../../core/colorize" as *;
+@use "../../core/mixins" as *;
 
 @layer rs-fields-datetime {
 
@@ -20,7 +21,6 @@
 
         input {
             @include form-field-base;
-            @include solid-colorize("&");
 
             & {
                 min-inline-size: 0;

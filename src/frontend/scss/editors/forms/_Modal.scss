@@ -149,8 +149,7 @@
         input,
         select,
         textarea {
-            @include form-field-base;
-            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+            @include form-field-base(("shade": var(--surface-opacity-muted)));
 
             & {
                 background-repeat: no-repeat;
@@ -167,8 +166,7 @@
 
         // Enhanced select styling
         select {
-            @include select-dropdown;
-            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+            @include select-dropdown(("shade": var(--surface-opacity-muted)));
 
             //
             & { min-block-size: 2.5rem; };
@@ -199,118 +197,86 @@
         }
     }
 
-    .modal-container {
+    :where(.modal-container, .modal-main, .modal-controls) {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
         @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
-    .modal-main {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
-    }
-
-    .modal-controls {
-        display: flex;
-        flex-direction: row;
-        gap: 0.25rem;
-        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
-    }
-
-    .modal-toggle {
+    :where(.modal-toggle, .modal-sliders, .modal-sliders-group) {
         display: flex;
         flex-direction: row;
         gap: 0.25rem;
         background-color: --c2-surface(0.0, var(--current, currentColor));
     }
 
-    .modal-sliders {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
-    }
-
-    .modal-sliders-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
-    }
-
-    /* Enhanced Field Validation States */
-    .modal-field.valid input,
-    .modal-field.valid textarea,
-    .modal-field.valid select {
-        @include validation-success;
-    }
-
-    .modal-field.invalid input,
-    .modal-field.invalid textarea,
-    .modal-field.invalid select {
-        @include validation-error;
-    }
-
-
-    /* Field Type Indicators */
-    .modal-field[data-multiline="true"] textarea {
-        min-block-size: 5rem;
-        resize: vertical;
-    }
-
-    .modal-field[data-numeric="true"] input {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .modal-field[data-json="true"] textarea {
-        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-        font-size: 0.85em;
-        min-block-size: 6rem;
-        line-height: 1.4;
-    }
-
-    .modal-field[data-datetime="true"] {
-        position: relative;
-    }
-
-    /* Links Field Enhancement */
-    .modal-field textarea[name="links"] {
-        min-block-size: 4rem;
-        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-        font-size: 0.85em;
-        line-height: 1.4;
-    }
-
-    /* Animation for validation feedback */
-    .modal-field.valid,
-    .modal-field.invalid {
-        animation: validationPulse 0.3s ease-in-out;
-    }
-
-    /* High contrast mode support */
-    @media (prefers-contrast: high) {
-        .modal-field input,
-        .modal-field textarea,
-        .modal-field select {
-            border-width: 2px;
+    .modal-field {
+        /* Enhanced Field Validation States */
+        &.valid :where(input, textarea, select) {
+            @include validation-success;
         }
 
-        .modal-field.valid input,
-        .modal-field.valid textarea,
-        .modal-field.valid select {
-            @include validation-state(var(--color-success), 0.8, 0.04);
+        &.invalid :where(input, textarea, select) {
+            @include validation-error;
         }
 
-        .modal-field.invalid input,
-        .modal-field.invalid textarea,
-        .modal-field.invalid select {
-            @include validation-state(var(--color-error), 0.8, 0.04);
+        /* Field Type Indicators */
+        &[data-multiline="true"] textarea {
+            min-block-size: 5rem;
+            resize: vertical;
+        }
+
+        &[data-numeric="true"] input {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        &[data-json="true"] textarea {
+            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+            font-size: 0.85em;
+            min-block-size: 6rem;
+            line-height: 1.4;
+        }
+
+        &[data-datetime="true"] {
+            position: relative;
+        }
+
+        /* Links Field Enhancement */
+        & textarea[name="links"] {
+            min-block-size: 4rem;
+            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        /* Animation for validation feedback */
+        &.valid,
+        &.invalid {
+            animation: validationPulse 0.3s ease-in-out;
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            & :where(input, textarea, select) {
+                border-width: 2px;
+            }
+
+            &.valid :where(input, textarea, select) {
+                @include validation-state(var(--color-success), 0.8, 0.04);
+            }
+
+            &.invalid :where(input, textarea, select) {
+                @include validation-state(var(--color-error), 0.8, 0.04);
+            }
         }
     }
+
+
+
+
+
 
     /* Reduced motion support */
     @media (prefers-reduced-motion: reduce) {

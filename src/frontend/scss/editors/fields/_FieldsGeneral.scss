@@ -1,8 +1,8 @@
 @use "../../core/colorize" as *;
+@use "../../core/mixins" as *;
 
 //
 @layer rs-fields-general {
-
 
     ui-longtext {
         --thumb-size: 1.25rem;
@@ -15,7 +15,8 @@
         border-radius: 9999px;
     }
 
-    .u2-input, .u2-field {
+    .u2-input,
+    .u2-field {
         display: grid;
         gap: 0.25rem;
     }
@@ -61,12 +62,8 @@
 
         @include select-dropdown;
 
-        &::-ms-expand {
-            display: none;
-        }
-
-        // Picker styling
-        &, &::picker(select) {
+        &,
+        &::picker(select) {
             appearance: base-select;
             outline: none;
         }
@@ -76,9 +73,51 @@
             background-color: transparent;
             padding: 0;
         }
+
+        &::-ms-expand {
+            display: none;
+        }
+
+        option {
+            appearance: none;
+            display: flex;
+            flex-direction: row;
+            place-content: center;
+            place-items: center;
+            justify-content: start;
+            block-size: max-content;
+            gap: var(--space-xs);
+            min-inline-size: 0;
+            outline: none;
+            user-select: none;
+            cursor: pointer;
+
+            @include solid-colorize("&");
+            @include font-style("&", ("size": "sm"));
+
+            & {
+                border-width: 0px;
+                border-inline-start-width: 0.5px;
+                border-inline-end-width: 0.5px;
+            }
+
+            &:first-of-type {
+                border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+                border-block-start-width: 0.5px;
+            }
+
+            &:last-of-type {
+                border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+                border-block-end-width: 0.5px;
+            }
+
+            &:not(:last-of-type) {
+                border-block-end: none;
+                border-block-end-width: 0.5px;
+            }
+        }
     }
 
-    //
     ::picker(select) {
         appearance: base-select;
         border: none;
@@ -89,96 +128,33 @@
         padding: 0;
     }
 
-    // Option styling with proper nesting
-    option {
-        appearance: none;
-        display: flex;
-        flex-direction: row;
-        place-content: center;
-        place-items: center;
-        justify-content: start;
-        block-size: max-content;
-        gap: var(--space-xs);
-        min-inline-size: 0;
-        outline: none;
-        user-select: none;
-        cursor: pointer;
-
-        @include solid-colorize("&");
-        @include font-style("&", ("size": "sm"));
-
-        & {
-            border-width: 0px;
-            border-inline-start-width: 0.5px;
-            border-inline-end-width: 0.5px;
+    input {
+        &::-webkit-outer-spin-button,
+        &::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
-        &:first-of-type {
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-            border-block-start-width: 0.5px;
+        &:where([type="number"], [type="date"], [type="time"], [type="datetime-local"]) {
+            font-variant-numeric: tabular-nums;
         }
 
-        &:last-of-type {
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            border-block-end-width: 0.5px;
-        }
-
-        &:not(:last-of-type) {
-            border-block-end: none;
-            border-block-end-width: 0.5px;
-        }
-    }
-
-    //
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
-    // Enhanced button styling
-    button {
-
-        &.btn,
-        &.save,
-        &.cancel {
-            gap: var(--space-sm);
-            padding: calc(var(--space-sm) * 0.9) var(--space-md);
-            border-radius: var(--radius-xl);
-
-            @include button-base;
-        }
-
-        // Semantic button variants
-        &.save { --current: var(--color-success); }
-        &.cancel { --current: var(--color-error); }
-    }
-
-    .btn {
-        @include button-base;
-        gap: var(--space-sm);
-        padding: calc(var(--space-sm) * 0.9) var(--space-md);
-        border-radius: var(--radius-xl);
-
-        &.save { --current: var(--color-success); }
-        &.cancel { --current: var(--color-error); }
-    }
-
-    // Enhanced input field styling
-    input:where([type="datetime-local"], [type="date"], [type="time"], [type="text"], [type="number"], [type="email"], [type="url"], [type="tel"], [type="password"], [type="search"], [type="month"], [type="week"]) {
-
-        // Special styling for inputs that might have dropdowns/pickers
         &:where([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]) {
             padding-inline-end: calc(var(--space-lg) * 2);
 
             @include form-field-base;
         }
+
+        &:where([type="datetime-local"], [type="date"], [type="time"], [type="text"], [type="number"], [type="email"], [type="url"], [type="tel"], [type="password"], [type="search"], [type="month"], [type="week"]) {
+            @include form-field-base;
+        }
+
+        &:is([type="radio"]:checked) {
+            border-radius: var(--radius-full);
+        }
     }
 
-    // Enhanced checkbox and radio button styling
-    input:where([type="checkbox"], [type="radio"]),
-    button[data-icon-only] {
-
+    :where(input:is([type="checkbox"], [type="radio"]), button[data-icon-only]) {
         --icon-color: currentColor;
         content: " ";
 
@@ -191,14 +167,28 @@
         }
     }
 
-    // Radio button specific styling
-    input[type="radio"]:checked {
-        border-radius: var(--radius-full);
+    button {
+
+        &:is(.btn, .save, .cancel) {
+            gap: var(--space-sm);
+            padding: calc(var(--space-sm) * 0.9) var(--space-md);
+            border-radius: var(--radius-xl);
+
+            @include button-base;
+
+            &.save { --current: var(--color-success); }
+            &.cancel { --current: var(--color-error); }
+        }
     }
 
-    // Numeric and date inputs with tabular numbers
-    input:where([type="number"], [type="date"], [type="time"], [type="datetime-local"]) {
-        font-variant-numeric: tabular-nums;
+    .btn {
+        @include button-base;
+        gap: var(--space-sm);
+        padding: calc(var(--space-sm) * 0.9) var(--space-md);
+        border-radius: var(--radius-xl);
+
+        &.save { --current: var(--color-success); }
+        &.cancel { --current: var(--color-error); }
     }
 
 }

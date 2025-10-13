@@ -110,15 +110,16 @@
         gap: var(--gap-md);
         padding: var(--padding-md);
         border-radius: var(--radius-lg);
-        @include scrollable("x");
-        @include hide-scrollbar;
         position: relative;
         isolation: isolate;
         grid-column: 1 / -1;
         inline-size: stretch;
         block-size: max-content;
         grid-row: 1 / 1 span;
+
         @include surface(var(--surface-opacity-emphasis));
+        @include scrollable("x");
+        @include hide-scrollbar;
 
         .doc-collection {
             @include button-variant(0);

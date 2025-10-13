@@ -1,5 +1,6 @@
 // Multi-part description editor with add/remove functionality
 @use "../../core/colorize" as *;
+@use "../../core/mixins" as *;
 
 //
 @layer rs-fields-descriptor {
@@ -22,7 +23,6 @@
         // Multi-line text input with enhanced styling
         textarea {
             @include form-field-base;
-            @include solid-colorize("&");
 
             //
             & {
