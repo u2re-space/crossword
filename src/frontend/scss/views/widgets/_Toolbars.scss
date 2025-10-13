@@ -1,49 +1,55 @@
-@layer rs-toolbars {
+// Toolbar Components - Refactored and Optimized
+// Unified with design system variables and mixins
 
+@use "../../core/variables" as *;
+@use "../../core/mixins" as *;
+@use "../../editors/mixins/Colorize" as *;
+
+@layer rs-toolbars {
     .view-toolbar {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: clamp(0.35rem, 1vw, 0.6rem);
+        @include flex-between;
+        gap: var(--gap-md);
         inline-size: 100%;
         background: transparent;
-        padding-block: clamp(0.35rem, 1vw, 0.6rem);
+        padding-block: var(--padding-md);
 
-        &:empty { display: none; }
+        &:empty { 
+            display: none; 
+        }
 
         .button-set {
             display: inline-flex;
             flex-wrap: wrap;
-            gap: clamp(0.35rem, 1vw, 0.6rem);
-            padding: clamp(0.25rem, 0.8vw, 0.45rem);
-            border-radius: clamp(0.6rem, 1vw, 0.85rem);
-            background: color-mix(in oklab, var(--current, currentColor) 6%, transparent);
+            gap: var(--gap-md);
+            padding: var(--padding-sm);
+            border-radius: var(--radius-lg);
+            @include surface(var(--surface-opacity-muted));
 
             button {
-                display: inline-flex;
-                align-items: center;
-                gap: clamp(0.25rem, 0.8vw, 0.4rem);
-                padding: clamp(0.3rem, 0.8vw, 0.5rem) clamp(0.6rem, 1vw, 0.85rem);
-                border-radius: 999px;
-                border: 0;
-                background: color-mix(in oklab, var(--current, currentColor) 10%, transparent);
-                color: --c2-on-surface(0.0, var(--current, currentColor));
-                cursor: pointer;
-                transition: background 140ms ease, transform 140ms ease;
-
-                &:hover { background: color-mix(in oklab, var(--current, currentColor) 14%, transparent); }
-                &:active { transform: translateY(0.5px); }
+                @include button-variant(var(--surface-opacity-default));
+                gap: var(--gap-sm);
+                
+                &:hover { 
+                    @include surface(var(--surface-opacity-emphasis)); 
+                }
+                
+                &:active { 
+                    transform: translateY(0.5px); 
+                }
 
                 span {
-                    font-size: clamp(0.8rem, 0.5cqi + 0.7rem, 0.9rem);
-                    font-weight: 500;
+                    font-size: var(--font-sm);
+                    font-weight: var(--font-weight-medium);
                 }
             }
 
-            &:empty { display: none; }
+            &:empty { 
+                display: none; 
+            }
         }
 
-        @media (max-width: 720px) {
+        // Mobile optimizations
+        @include breakpoint("md") {
             justify-content: center;
 
             .button-set {
@@ -51,7 +57,7 @@
                 inline-size: 100%;
 
                 button {
-                    flex: 1 1 calc(50% - 0.5rem);
+                    flex: 1 1 calc(50% - var(--gap-sm));
                     justify-content: center;
                 }
             }

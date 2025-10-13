@@ -1,128 +1,95 @@
-// ? Not yet completely finished...
-// ! Some parts may be still missing...
-// ! Some design concepts may be outdated...
-// ! May need some refactoring or improvement...
+// Preferences Views - Refactored and Optimized
+// Unified with design system variables and mixins
 
-//
+@use "../../core/variables" as *;
+@use "../../core/mixins" as *;
 @use "../../editors/mixins/Colorize" as *;
 
-//
 @layer rs-preferences {
     [data-type="preferences"],
     [data-type="quests"] {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
-
-        overflow-y: auto;
-        scrollbar-width: thin;
-
-        //
-        @include solid-colorize();
+        gap: var(--gap-xs);
+        @include scrollable("y");
+        @include surface();
     }
 
     .preferences-view {
         display: grid;
-        gap: clamp(0.75rem, 1vw, 1.25rem);
-        border-radius: clamp(0.75rem, 1vw, 1.1rem);
+        gap: var(--gap-xl);
+        border-radius: var(--radius-lg);
         padding: 0px;
+        @include surface(0);
 
-        //
-        @include solid-colorize("&", ("shade": 0.0));
-
-        //
         .view-toolbar {
             position: sticky;
             inset-block-start: 0;
             z-index: 4;
             display: flex;
             justify-content: flex-end;
-            padding-block-end: clamp(0.35rem, 0.8vw, 0.6rem);
-            backdrop-filter: blur(12px) saturate(120%);
+            padding-block-end: var(--padding-md);
+            @include backdrop-blur();
 
             .button-set {
                 display: flex;
                 flex-wrap: wrap;
-                gap: clamp(0.35rem, 0.8vw, 0.6rem);
+                gap: var(--gap-md);
 
                 button {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.35rem;
-                    padding: 0.4rem 0.75rem;
-                    border-radius: 999px;
-                    border: 0;
-                    cursor: pointer;
-                    transition: background 140ms ease, transform 140ms ease;
-
-
-                    @include solid-colorize("&", ("shade": 0.0));
-
-
-                    span {
-                        font-size: 0.85rem;
-                        font-weight: 500;
-                    }
+                    @include button-variant(0);
+                    font-size: var(--font-sm);
                 }
             }
         }
 
         [data-type="preferences"] {
             display: grid;
-            gap: clamp(0.45rem, 1vw, 0.8rem);
+            gap: var(--gap-md);
         }
 
         .preference-accordion {
-            border-radius: clamp(0.75rem, 1vw, 1rem);
-            overflow: hidden;
-            transition: border-color 160ms ease, background 160ms ease;
-
-            @include solid-colorize("&", ("shade": 0.0));
+            @include accordion-base;
 
             &[open] {
-                border-color: color-mix(in oklab, currentColor 28%, transparent);
-                background: color-mix(in oklab, currentColor 12%, transparent);
+                @include border-color(var(--contrast-opacity-default));
+                @include surface(var(--surface-opacity-emphasis));
             }
 
             summary {
                 display: grid;
                 grid-template-columns: auto 1fr auto auto;
-                gap: clamp(0.4rem, 0.8vw, 0.6rem);
+                gap: var(--gap-md);
                 align-items: center;
-                padding: clamp(0.75rem, 1vw + 0.5rem, 1rem);
+                padding: var(--padding-lg);
                 cursor: pointer;
-
-                @include solid-colorize("&", ("shade": 0.0));
+                @include surface(0);
 
                 span {
-                    font-weight: 600;
-                    font-size: clamp(0.92rem, 0.6cqi + 0.8rem, 1.02rem);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
+                    font-weight: var(--font-weight-semibold);
+                    font-size: var(--font-md);
+                    @include text-truncate;
                 }
 
                 button.plain {
                     inline-size: 2rem;
                     block-size: 2rem;
-                    border-radius: 999px;
-                    display: inline-grid;
-                    place-content: center;
+                    @include grid-center;
+                    border-radius: var(--radius-full);
                     border: none;
                     background: transparent;
                     color: inherit;
                     cursor: pointer;
-                    transition: background 140ms ease;
-
-                    @include solid-colorize("&", ("shade": 0.1));
+                    transition: var(--transition-colors);
+                    @include surface(var(--surface-opacity-default));
                 }
             }
 
             .spoiler-content {
-                padding: clamp(0rem, 0.5vw, 0.35rem) clamp(0.75rem, 1vw + 0.5rem, 1rem) clamp(0.9rem, 1vw + 0.7rem, 1.15rem);
+                padding: var(--padding-xs) var(--padding-lg) var(--padding-xl);
                 display: grid;
-                gap: clamp(0.6rem, 1vw, 0.9rem);
-                scrollbar-width: thin;
+                gap: var(--gap-md);
+                @include scrollable("y");
 
                 md-view {
                     inline-size: 100%;
@@ -131,33 +98,39 @@
                 }
 
                 .ai-spoiler {
-                    border-radius: clamp(0.6rem, 1vw, 0.85rem);
-                    border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
-
-                    @include solid-colorize("&", ("shade": 0.08));
+                    border-radius: var(--radius-lg);
+                    @include border-color(var(--surface-opacity-strong));
+                    border: 1px solid;
+                    @include surface(var(--surface-opacity-default));
 
                     summary {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 0.45rem;
+                        @include flex-center;
+                        gap: var(--gap-sm);
                         cursor: pointer;
-                        padding: clamp(0.6rem, 0.8vw, 0.75rem) clamp(0.8rem, 1vw, 1rem);
-                        ui-icon { --icon-size: 1.1rem; }
-                        span { font-weight: 600; }
+                        padding: var(--padding-md) var(--padding-lg);
+                        justify-content: flex-start;
+                        
+                        ui-icon { 
+                            --icon-size: var(--icon-size-md); 
+                        }
+                        
+                        span { 
+                            font-weight: var(--font-weight-semibold); 
+                        }
                     }
 
                     .ai-answer {
-                        padding: clamp(0.6rem, 0.9vw, 0.85rem) clamp(0.8rem, 1vw, 1.1rem) clamp(0.8rem, 1vw, 1.25rem);
-                        border-radius: clamp(0.45rem, 0.8vw, 0.6rem);
-
-                        @include solid-colorize("&", ("shade": 0.12));
+                        padding: var(--padding-md) var(--padding-lg) var(--padding-xl);
+                        border-radius: var(--radius-md);
+                        @include surface(var(--surface-opacity-emphasis));
                     }
                 }
             }
         }
 
-        @media (max-width: 720px) {
-            padding: clamp(0.65rem, 4vw, 1.1rem);
+        // Mobile optimizations
+        @include breakpoint("md") {
+            padding: var(--padding-lg);
 
             .view-toolbar {
                 justify-content: stretch;
@@ -174,7 +147,7 @@
 
             .preference-accordion summary {
                 grid-template-columns: auto 1fr auto;
-                gap: 0.45rem;
+                gap: var(--gap-sm);
 
                 button.plain span {
                     display: none;

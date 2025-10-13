@@ -1,20 +1,16 @@
+// Layout Components - Refactored and Optimized
+// Unified with design system variables and mixins
+
+@use "../../core/variables" as *;
+@use "../../core/mixins" as *;
+@use "../../editors/mixins/Colorize" as *;
+
 @layer rs-layout {
-    //
-    :root {
-        --card-radius: 0.75rem;
-        --card-padding: 0.75rem;
-        --card-shadow: 0 6px 18px rgba(0,0,0,0.12);
-        --card-avatar-size: 40px;
-    }
 
     .app-layout {
-
-
         section {
             pointer-events: auto;
-            overflow: hidden auto;
-            scrollbar-width: thin;
-            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+            @include scrollable("y");
             touch-action: manipulation;
         }
 
@@ -37,153 +33,121 @@
         .tab {
             display: grid;
             grid-auto-flow: row;
-            gap: 0.75rem;
-            padding: 0.25rem;
+            gap: var(--card-gap);
+            padding: var(--padding-xs);
             background-color: transparent;
             inline-size: stretch;
             block-size: stretch;
-            overflow: hidden auto;
-            scrollbar-width: thin;
-            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
-
-            &::-webkit-scrollbar {
-                inline-size: 6px;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                background: color-mix(in oklab, var(--current, currentColor) 28%, transparent);
-                border-radius: 999px;
-            }
-
-            &::-webkit-scrollbar-track {
-                background: transparent;
-            }
+            @include scrollable("y");
         }
 
         .view {
             display: block;
             padding: 0px;
-            border-radius: 0.5rem;
+            border-radius: var(--radius-sm);
         }
 
         .view > h2 {
-            margin: 0 0 0.5rem 0;
-            font-weight: 700;
-            font-size: 1.125rem;
+            margin: 0 0 var(--gap-sm) 0;
+            font-weight: var(--font-weight-bold);
+            font-size: var(--font-lg);
             letter-spacing: 0.01em;
         }
 
         .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 0.5rem;
+            @include grid-auto-fill(220px);
         }
 
         .sidebar {
-            & {
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start;
-                align-items: stretch;
-                max-inline-size: stretch;
-                min-inline-size: max-content;
-                text-align: start;
-                inline-size: min(160px, 100cqi);
-                box-sizing: border-box;
-                gap: 0rem;
-                border-radius: 0.25rem;
-                background-color: transparent;
-                background-color: --c2-surface(0.0, var(--current, transparent));
-                box-shadow: 0 0 0.125rem 0 rgba(0, 0, 0, 0.1);
-                user-select: none;
-                padding: 0.25rem;
-            }
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            max-inline-size: stretch;
+            min-inline-size: max-content;
+            text-align: start;
+            inline-size: min(160px, 100cqi);
+            box-sizing: border-box;
+            gap: 0rem;
+            border-radius: var(--radius-xs);
+            background-color: transparent;
+            @include surface(0);
+            box-shadow: var(--shadow-sm);
+            user-select: none;
+            padding: var(--padding-xs);
 
-            //
             &[slot="sidebar"] {
                 grid-column: 1 / 2;
                 grid-row: 2 / 3;
                 position: sticky;
-                inset-block-start: 0.5rem;
+                inset-block-start: var(--padding-sm);
                 align-self: start;
-                max-block-size: calc(100dvb - 1rem);
-                overflow: auto;
+                max-block-size: calc(100dvb - var(--space-lg));
+                @include scrollable;
             }
 
             // Navigation list container
             ul {
                 display: flex;
                 flex-direction: column;
-                //padding: 0.375rem; /* inset padding */
                 padding: 0rem;
                 margin: 0;
                 inline-size: stretch;
                 user-select: none;
                 list-style: none;
                 overflow: hidden;
-                background-color: --c2-surface(0.1, var(--current, transparent));
-                box-shadow: inset 0 6px 14px rgba(0,0,0,0.04), inset 0 -6px 10px rgba(255,255,255,0.02);
+                @include surface(var(--surface-opacity-default));
+                box-shadow: var(--shadow-inset), var(--shadow-inset-strong);
                 box-sizing: border-box;
                 gap: 0px;
-                border-radius: 0.25rem;
+                border-radius: var(--radius-xs);
 
-                &::focus {
+                &:focus {
                     border: none 0px transparent;
                     outline: none 0px transparent;
                 }
 
-                // list items are simple rows inside the inset box
+                // Navigation list items
                 li {
                     display: flex;
                     flex-direction: row;
                     align-items: center;
                     inline-size: stretch;
                     box-sizing: border-box;
-                    border-radius: 0.25rem;
+                    border-radius: var(--radius-xs);
                     background-color: transparent;
-                    transition: background-color .12s linear, color .12s linear;
+                    transition: var(--transition-colors);
                     pointer-events: none;
                     overflow: hidden;
-
                     gap: 0rem;
                     margin: 0px;
                     user-select: none;
                     padding: 0px;
 
-                    //
-                    * { pointer-events: none; }
+                    * { 
+                        pointer-events: none; 
+                    }
+                    
                     &:hover,
                     &:focus-within {
-                        background-color: --c2-surface(0.12, var(--current, transparent));
+                        @include surface(var(--surface-opacity-emphasis));
                     }
 
                     a {
-                        display: flex;
-                        flex-direction: row;
-                        align-items: center;
-                        justify-items: start;
-
-                        padding: 0.5rem;
+                        @include nav-item;
+                        padding: var(--padding-sm);
                         inline-size: stretch;
-                        text-decoration: none;
-                        color: inherit;
                         block-size: max-content;
-
                         pointer-events: auto;
-                        row-gap: 0rem;
-                        column-gap: 0.25rem;
-
+                        column-gap: var(--gap-xs);
                         background: transparent;
-                        background-color: transparent;
-                        color: --c2-on-surface(0.0, var(--current, currentColor));
-
                         user-select: none;
-                        border: none 0px transparent;
-                        outline: none 0px transparent;
+                        border: none;
+                        outline: none;
 
-                        &::focus {
-                            border: none 0px transparent;
-                            outline: none 0px transparent;
+                        &:focus {
+                            border: none;
+                            outline: none;
                         }
 
                         ui-icon {
@@ -191,8 +155,7 @@
                             inline-size: 1.5rem;
                             block-size: 1.5rem;
                             pointer-events: none;
-
-                            --icon-color: --c2-on-surface(0.0, var(--current, currentColor));
+                            --icon-color: currentColor;
                         }
 
                         span {
@@ -204,10 +167,10 @@
                         }
                     }
 
-                    &::focus {
-                        border: none 0px transparent;
-                        outline: none 0px transparent;
-                        background-color: --c2-surface(0.02, var(--current, currentColor));
+                    &:focus {
+                        border: none;
+                        outline: none;
+                        @include surface(var(--surface-opacity-subtle));
                     }
 
                     a:visited {
@@ -219,158 +182,130 @@
                     }
 
                     a:hover {
-                        background-color: --c2-surface(0.06, var(--current, currentColor));
+                        @include surface(var(--surface-opacity-muted));
                     }
 
                     a:active {
-                        background-color: --c2-surface(0.09, var(--current, currentColor));
+                        @include surface(var(--surface-opacity-default));
                     }
                 }
             }
 
-            // enforce left/start alignment for all nested text elements
+            // Enforce left/start alignment for all nested text elements
             &, ul, ul li, ul li a, ul li a span {
                 text-align: start;
                 direction: ltr;
                 justify-items: start;
                 justify-self: start;
             }
-
         }
 
 
         & {
             display: grid;
             box-sizing: border-box;
-
             inline-size: stretch;
             block-size: stretch;
-
             place-content: center;
             place-items: center;
             justify-content: start;
         }
 
-        & > [slot="bar"] {
+        > [slot="bar"] {
             grid-column: 1 / -1;
             margin: 0;
-            padding: 0.25rem 0.5rem;
-            background-color: --c2-surface(0.02, var(--current, currentColor));
+            padding: var(--padding-xs) var(--padding-sm);
+            @include surface(var(--surface-opacity-subtle));
         }
 
-        & > ui-tabbed-box {
+        > ui-tabbed-box {
             grid-column: 2 / -1;
             grid-row: 2 / 3;
             inline-size: stretch;
             block-size: stretch;
         }
 
-        & section {
+        section {
             display: grid;
             grid-template-columns: minmax(0px, 1fr);
             grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
             grid-template-areas: "content" "toolbar";
-            border-radius: 0.5rem;
+            border-radius: var(--radius-sm);
             inline-size: stretch;
             block-size: stretch;
-            gap: 0.25rem;
+            gap: var(--gap-xs);
             background-color: transparent;
-            overflow: hidden auto;
-            scrollbar-width: thin;
-            scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+            @include scrollable("y");
         }
 
-        & > .toolbar {
-            & {
-                grid-column: 1 / -1;
-                margin: 0;
-                flex-direction: row;
-                gap: 0.25rem;
-                block-size: max-content;
-                inline-size: stretch;
-                display: flex;
-                background-color: transparent;
-                justify-content: start;
-                padding: 0.25rem 0.5rem;
-                padding-block-start: 0.5rem;
-                position: sticky;
-                inset-block-start: 0;
-                z-index: 10;
-                backdrop-filter: blur(6px) saturate(120%);
-            }
+        > .toolbar {
+            grid-column: 1 / -1;
+            margin: 0;
+            flex-direction: row;
+            gap: var(--gap-xs);
+            block-size: max-content;
+            inline-size: stretch;
+            display: flex;
+            background-color: transparent;
+            justify-content: start;
+            padding: var(--padding-xs) var(--padding-sm);
+            padding-block-start: var(--padding-sm);
+            position: sticky;
+            inset-block-start: 0;
+            z-index: 10;
+            @include backdrop-blur("subtle");
 
             button {
-                & {
-                    display: flex;
-                    flex-direction: row;
-                    gap: 0.25rem;
-                    block-size: max-content;
-                    inline-size: max-content;
-                    max-block-size: 3rem;
-                    border-radius: 0.5rem;
-                    border: 0px none transparent;
-                    outline: 0px none transparent;
-                    cursor: pointer;
-                    background-color: --c2-surface(0.02, var(--current, currentColor));
-                    padding: 0.333rem;
-                    transition: background-color 0.12s linear;
-                    aspect-ratio: auto;
-
-                    place-content: center;
-                    place-items: center;
-                }
+                @include toolbar-button;
+                max-block-size: 3rem;
+                border-radius: var(--radius-sm);
+                padding: var(--padding-xs);
+                aspect-ratio: auto;
+                @include grid-center;
 
                 span {
                     display: block;
-                    font-size: 0.8rem;
-                    font-weight: 400;
-                    color: --c2-on-surface(0.0, var(--current, currentColor));
-                    padding-inline-end: 0.333rem;
-                }
-
-                &:hover {
-                    background-color: --c2-surface(0.04, var(--current, currentColor));
+                    font-weight: var(--font-weight-normal);
+                    @include text-color(0);
+                    padding-inline-end: var(--padding-xs);
                 }
             }
 
-            @container (max-inline-size: 800px) {
-                button {
-                    span {
-                        display: none;
-                    }
+            @include container("lg") {
+                button span {
+                    display: none;
                 }
             }
         }
 
-        @container (max-inline-size: 800px) {
-            & > nav[slot="sidebar"] {
+        // Mobile responsive behavior
+        @include container("lg") {
+            > nav[slot="sidebar"] {
                 position: static;
                 max-block-size: none;
                 order: 2;
-                inline-size: calc(100cqi - 0.5rem);
+                inline-size: calc(100cqi - var(--padding-sm));
             }
 
-            & nav {
-                padding: 0.5rem 0.25rem;
+            nav {
+                padding: var(--padding-sm) var(--padding-xs);
                 inline-size: 100cqi;
             }
 
-            & nav ul {
-                //flex-direction: row;
+            nav ul {
                 gap: 0px;
-                overflow-x: auto;
+                @include scrollable("x");
                 padding-inline: 0px;
                 inline-size: stretch;
-                -webkit-overflow-scrolling: touch;
             }
 
-            & nav ul li {
+            nav ul li {
                 flex: 0 0 auto;
                 white-space: nowrap;
-                border-radius: 0.375rem;
+                border-radius: var(--radius-sm);
             }
 
-            & > ui-tabbed-box {
+            > ui-tabbed-box {
                 order: 3;
                 grid-column: 1 / -1;
             }

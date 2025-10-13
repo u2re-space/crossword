@@ -1,23 +1,18 @@
-// ? Not yet completely finished...
-// ! Some parts are still missing...
-// ! Still needs some improvements...
-// ! May need some refactoring...
+// Settings Views - Refactored and Optimized
+// Unified with design system variables and mixins
+
+@use "../../core/variables" as *;
+@use "../../core/mixins" as *;
+@use "../../editors/mixins/Colorize" as *;
 
 @layer rs-settings {
-    :root {
-        --settings-gap: clamp(0.75rem, 1vw + 0.4rem, 1.25rem);
-        --settings-radius: clamp(0.8rem, 1vw, 1.1rem);
-        --settings-border: 1px solid color-mix(in oklab, var(--current, #0f172a) 12%, transparent);
-        --settings-surface: color-mix(in oklab, var(--current, #0f172a) 6%, transparent);
-        --settings-contrast: color-mix(in oklab, var(--current, #4c51bf) 14%, transparent);
-    }
 
     .settings-view {
         display: grid;
-        gap: var(--settings-gap);
-        padding: var(--settings-gap);
+        gap: var(--gap-xl);
+        padding: var(--gap-xl);
         border-radius: 0px;
-        background: --c2-surface(0.01, var(--current, currentColor));
+        @include surface(var(--surface-opacity-subtle));
         min-inline-size: 0;
 
         span {
@@ -29,224 +24,210 @@
     .settings-hero {
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: clamp(0.6rem, 1vw, 1rem);
+        gap: var(--gap-lg);
         align-items: center;
-        padding: clamp(0.75rem, 1vw + 0.3rem, 1.1rem);
-        border-radius: var(--settings-radius);
-        background: --c2-surface(0.05, var(--current, currentColor));
-        border: var(--settings-border);
-        color: --c2-on-surface(0, var(--current, currentColor));
+        padding: var(--padding-xl);
+        border-radius: var(--radius-lg);
+        @include surface(var(--surface-opacity-default));
+        @include border-color(var(--surface-opacity-emphasis));
+        border: 1px solid;
+        @include text-color(0);
 
         .hero-icon {
             inline-size: clamp(3rem, 4vw, 3.5rem);
             block-size: clamp(3rem, 4vw, 3.5rem);
-            display: grid;
-            place-items: center;
+            @include grid-center;
             border-radius: 50%;
-            background: --c2-surface(0.08, var(--current, currentColor));
-            border: var(--settings-border);
+            @include surface(var(--surface-opacity-default));
+            @include border-color(var(--surface-opacity-emphasis));
+            border: 1px solid;
 
             ui-icon {
                 --icon-size: clamp(1.6rem, 2.4vw, 1.9rem);
-                --icon-color: --c2-on-surface(0, var(--current, currentColor));
+                --icon-color: currentColor;
             }
         }
 
         .hero-body {
             display: grid;
-            gap: 0.3rem;
+            gap: var(--gap-sm);
             min-inline-size: 0;
 
             h1 {
                 margin: 0;
-                font-size: clamp(1.35rem, 1.3cqi + 1rem, 1.75rem);
-                font-weight: 700;
+                font-size: var(--font-2xl);
+                font-weight: var(--font-weight-bold);
             }
 
             p {
                 margin: 0;
-                font-size: clamp(0.82rem, 0.4cqi + 0.78rem, 0.95rem);
-                color: --c2-on-surface(0.18, var(--current, currentColor));
+                font-size: var(--font-base);
+                @include text-color(var(--text-opacity-secondary));
             }
         }
     }
 
     .settings-nav {
         display: flex;
-        gap: clamp(0.4rem, 0.8vw, 0.6rem);
-        overflow-x: auto;
-        padding: 0.1rem;
-        border-radius: var(--settings-radius);
-        background: --c2-surface(0.03, var(--current, currentColor));
-        border: var(--settings-border);
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar { display: none; }
+        gap: var(--gap-md);
+        @include scrollable("x");
+        @include hide-scrollbar;
+        padding: var(--padding-xs);
+        border-radius: var(--radius-lg);
+        @include surface(var(--surface-opacity-subtle));
+        @include border-color(var(--surface-opacity-emphasis));
+        border: 1px solid;
     }
 
     .settings-tab {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.45rem 0.85rem;
-        border-radius: 999px;
+        @include flex-center;
+        gap: var(--gap-sm);
+        padding: var(--padding-sm) var(--padding-lg);
+        border-radius: var(--radius-full);
         border: 1px solid transparent;
         background: transparent;
-        color: --c2-on-surface(0, var(--current, currentColor));
+        @include text-color(0);
         cursor: pointer;
-        transition: background 120ms ease, border-color 120ms ease;
-        font-size: clamp(0.78rem, 0.45cqi + 0.7rem, 0.9rem);
+        transition: var(--transition-colors);
+        font-size: var(--font-sm);
         white-space: nowrap;
 
-        ui-icon { --icon-size: clamp(0.95rem, 1.4cqi, 1.1rem); }
+        ui-icon { 
+            --icon-size: var(--icon-size-md); 
+        }
 
         &.is-active {
-            background: --c2-contrast(0.02, var(--current, currentColor));
-            border-color: --c2-contrast(0.05, var(--current, currentColor));
+            @include surface(var(--contrast-opacity-subtle));
+            @include border-color(var(--contrast-opacity-default));
         }
 
         &:hover:not(.is-active) {
-            background: --c2-surface(0.08, var(--current, currentColor));
+            @include surface(var(--surface-opacity-default));
         }
     }
 
     .settings-form {
         display: grid;
-        gap: var(--settings-gap);
+        gap: var(--gap-xl);
         min-inline-size: 0;
-
         grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
         block-size: max-content;
     }
 
     .settings-panels {
         display: grid;
-        gap: var(--settings-gap);
+        gap: var(--gap-xl);
         min-inline-size: 0;
     }
 
     .settings-panel {
-        display: flex;
-        flex-direction: column;
-        place-content: center;
-        place-items: center;
-
+        @include panel-base;
         justify-content: start;
         block-size: max-content;
 
-        gap: clamp(0.6rem, 1vw, 0.9rem);
-        padding: clamp(0.8rem, 1vw + 0.35rem, 1.1rem);
-        border-radius: var(--settings-radius);
-        background: --c2-surface(0.04, var(--current, currentColor));
-        border: var(--settings-border);
-
         &:focus-visible {
-            outline: 2px solid --c2-contrast(0.08, var(--current, currentColor));
-            outline-offset: 2px;
+            @include focus-ring();
         }
     }
 
     .panel-header {
         display: grid;
-        gap: 0.25rem;
+        gap: var(--gap-xs);
         min-inline-size: 0;
         inline-size: stretch;
         text-align: start;
-        padding: 0.5rem;
+        padding: var(--padding-sm);
 
         h2 {
             margin: 0;
-            font-size: clamp(1.05rem, 1cqi + 0.9rem, 1.35rem);
+            font-size: var(--font-xl);
         }
 
         p {
             margin: 0;
-            font-size: clamp(0.78rem, 0.4cqi + 0.7rem, 0.9rem);
-            color: --c2-on-surface(0.18, var(--current, currentColor));
+            font-size: var(--font-sm);
+            @include text-color(var(--text-opacity-secondary));
         }
     }
 
     .settings-group {
-        background: --c2-surface(0.08, var(--current, currentColor));
-        //border: var(--settings-border);
+        @include surface(var(--surface-opacity-default));
         border: none;
-        border-radius: clamp(0.6rem, 0.9vw, 0.9rem);
+        border-radius: var(--radius-lg);
 
         &:not(.is-collapsible) {
-            padding: clamp(0.65rem, 0.9vw, 0.85rem);
+            padding: var(--padding-lg);
             display: grid;
-            gap: clamp(0.45rem, 0.8vw, 0.7rem);
+            gap: var(--gap-md);
         }
 
         &.is-collapsible {
-            & {
-                padding: 0;
+            padding: 0;
 
-                summary {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.1rem;
-                    padding: clamp(0.65rem, 0.9vw, 0.85rem);
-                    cursor: pointer;
-                    list-style: none;
-                    outline: none;
-                }
+            summary {
+                display: flex;
+                flex-direction: column;
+                gap: var(--gap-xs);
+                padding: var(--padding-lg);
+                cursor: pointer;
+                list-style: none;
+                outline: none;
+            }
 
-                .group-body {
-                    padding: 0 clamp(0.65rem, 0.9vw, 0.85rem) clamp(0.65rem, 0.9vw, 0.85rem);
-                    display: grid;
-                    gap: clamp(0.5rem, 0.8vw, 0.7rem);
-                }
+            .group-body {
+                padding: 0 var(--padding-lg) var(--padding-lg);
+                display: grid;
+                gap: var(--gap-md);
             }
         }
 
         .group-header {
             display: grid;
-            gap: 0.15rem;
+            gap: var(--gap-xs);
 
             h3 {
                 margin: 0;
-                font-size: clamp(0.92rem, 0.6cqi + 0.78rem, 1.05rem);
+                font-size: var(--font-md);
                 text-align: center;
             }
 
             p {
                 margin: 0;
-                font-size: clamp(0.76rem, 0.4cqi + 0.68rem, 0.86rem);
-                color: --c2-on-surface(0.2, var(--current, currentColor));
+                font-size: var(--font-sm);
+                @include text-color(var(--text-opacity-muted));
             }
         }
 
         .group-title {
-            font-size: clamp(0.9rem, 0.55cqi + 0.75rem, 1.02rem);
-            font-weight: 600;
+            font-size: var(--font-base);
+            font-weight: var(--font-weight-semibold);
         }
 
         .group-note {
-            font-size: clamp(0.76rem, 0.4cqi + 0.68rem, 0.86rem);
-            color: --c2-on-surface(0.2, var(--current, currentColor));
+            font-size: var(--font-sm);
+            @include text-color(var(--text-opacity-muted));
         }
     }
 
     .group-body {
         display: grid;
-        gap: clamp(0.5rem, 0.8vw, 0.65rem);
+        gap: var(--gap-md);
     }
 
     .field {
         display: grid;
-        gap: 0.25rem;
+        gap: var(--gap-xs);
         min-inline-size: 0;
 
         .field-label {
-            font-size: clamp(0.78rem, 0.5cqi + 0.7rem, 0.88rem);
-            font-weight: 600;
-            color: --c2-on-surface(0.12, var(--current, currentColor));
+            font-size: var(--font-sm);
+            font-weight: var(--font-weight-semibold);
+            @include text-color(var(--text-opacity-secondary));
         }
 
         .field-hint {
-            font-size: clamp(0.7rem, 0.35cqi + 0.65rem, 0.84rem);
-            color: --c2-on-surface(0.2, var(--current, currentColor));
+            font-size: var(--font-xs);
+            @include text-color(var(--text-opacity-muted));
         }
 
         ::picker(select) {
@@ -255,29 +236,13 @@
         }
 
         input.field-control {
-            border-radius: 0.6rem;
+            border-radius: var(--form-radius);
             font-variant-numeric: tabular-nums;
         }
 
-        .field-control, .field-control option {
-            inline-size: 100%;
-            padding: clamp(0.48rem, 0.9vw, 0.6rem) clamp(0.6rem, 0.9vw, 0.85rem);
-            //border: 1px solid color-mix(in oklab, var(--current, #0f172a) 16%, transparent);
-            background: --c2-surface(0.04, var(--current, currentColor));
-            color: --c2-on-surface(0, var(--current, currentColor));
-            outline: none;
-            font: inherit;
-            transition: background 120ms ease, border-color 120ms ease;
-            min-inline-size: 0;
-
-            &:hover {
-                background: --c2-surface(0.03, var(--current, currentColor));
-            }
-
-            &:focus-visible {
-                border-color: --c2-contrast(0.05, var(--current, currentColor));
-                background: --c2-surface(0.02, var(--current, currentColor));
-            }
+        .field-control, 
+        .field-control option {
+            @include input-base;
         }
 
         select.field-control {
@@ -287,12 +252,13 @@
             padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffffb3'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
             background-repeat: no-repeat;
-            background-position: right clamp(0.75rem, 0.8vw, 1rem) center;
-            background-size: clamp(0.7rem, 0.9vw, 0.95rem);
-            border-radius: 0.6rem;
+            background-position: right var(--padding-lg) center;
+            background-size: var(--icon-size-sm);
+            border-radius: var(--form-radius);
         }
 
-        select.field-control, ::picker(select) {
+        select.field-control, 
+        ::picker(select) {
             appearance: base-select;
             border: none;
             outline: none;
@@ -304,47 +270,39 @@
         }
 
         select.field-control option {
-            & {
-                appearance: none;
-                display: flex;
-                flex-direction: row;
-                place-content: center;
-                place-items: center;
-                justify-content: start;
-                block-size: max-content;
-                gap: 0.25rem;
-                min-inline-size: 0;
-                border: none;
-                outline: none;
-            }
-
-            & {
-                background: --c2-surface(0.06, var(--current, currentColor));
-            }
+            appearance: none;
+            @include flex-center;
+            justify-content: start;
+            block-size: max-content;
+            gap: var(--gap-xs);
+            min-inline-size: 0;
+            border: none;
+            outline: none;
+            @include surface(var(--surface-opacity-muted));
 
             &:hover {
-                background: --c2-surface(0.04, var(--current, currentColor));
+                @include surface(var(--surface-opacity-muted));
             }
 
             &:focus-visible {
-                //border-color: --c2-contrast(0.06, var(--current, currentColor));
-                background: --c2-surface(0.04, var(--current, currentColor));
+                @include surface(var(--surface-opacity-muted));
             }
 
             &:checked {
-                background: --c2-on-surface(-0.04, var(--current, currentColor));
-                color: --c2-surface(0.01, var(--current, currentColor));
+                @include text-color(0);
+                @include surface(var(--surface-opacity-strong));
 
-                &:hover { background: --c2-on-surface(-0.06, var(--current, currentColor)); };
+                &:hover { 
+                    @include surface(var(--surface-opacity-emphasis)); 
+                }
             }
 
-
             &:first-of-type {
-                border-radius: 8px 8px 0 0;
+                border-radius: var(--radius-sm) var(--radius-sm) 0 0;
             }
 
             &:last-of-type {
-                border-radius: 0 0 8px 8px;
+                border-radius: 0 0 var(--radius-sm) var(--radius-sm);
             }
 
             &:not(&:last-of-type) {
@@ -356,39 +314,33 @@
     }
 
     .settings-actions {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: clamp(0.4rem, 0.9vw, 0.65rem);
-        margin-top: clamp(0.2rem, 0.6vw, 0.45rem);
-        padding: 0.5rem;
+        @include flex-between;
+        gap: var(--gap-md);
+        margin-top: var(--gap-sm);
+        padding: var(--padding-sm);
 
         .btn.save {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.45rem 0.85rem;
-            border-radius: 999px;
-            border: 1px solid --c2-contrast(0.05, var(--current, currentColor));
-            background: --c2-contrast(0.04, var(--current, currentColor));
-            color: --c2-on-surface(-0.02, var(--current, currentColor));
-            cursor: pointer;
-            transition: background 120ms ease;
+            @include button-variant(var(--contrast-opacity-subtle));
+            @include border-color(var(--contrast-opacity-default));
+            border: 1px solid;
+            @include text-color(0);
 
             &:hover {
-                background: --c2-contrast(0.06, var(--current, currentColor));
+                @include surface(var(--contrast-opacity-muted));
             }
         }
 
         .save-status {
-            font-size: clamp(0.78rem, 0.4cqi + 0.7rem, 0.86rem);
-            color: --c2-on-surface(0.2, var(--current, currentColor));
+            font-size: var(--font-sm);
+            @include text-color(var(--text-opacity-muted));
         }
     }
 
-
-    @media (max-width: 720px) {
-        .settings-view { padding: clamp(0.7rem, 4vw, 1rem); }
+    // Mobile optimizations
+    @include breakpoint("md") {
+        .settings-view { 
+            padding: var(--padding-lg); 
+        }
 
         .settings-hero {
             grid-template-columns: 1fr;
@@ -396,15 +348,21 @@
             justify-items: center;
         }
 
-        .settings-tab { flex: 1 0 auto; }
+        .settings-tab { 
+            flex: 1 0 auto; 
+        }
 
-        .settings-panel { padding: clamp(0.7rem, 1.2vw, 1rem); }
+        .settings-panel { 
+            padding: var(--padding-lg); 
+        }
 
         .settings-actions {
             flex-direction: column-reverse;
             align-items: stretch;
 
-            .btn.save { justify-content: center; }
+            .btn.save { 
+                justify-content: center; 
+            }
         }
     }
 }

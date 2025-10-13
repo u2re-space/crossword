@@ -1,0 +1,439 @@
+// Core Mixins Library
+// Reusable mixins for common styling patterns
+
+@use "variables" as *;
+@use "../editors/mixins/Colorize" as *;
+
+// =============================================================================
+// RESPONSIVE BREAKPOINTS
+// =============================================================================
+
+@mixin breakpoint($size) {
+  @if $size == "sm" {
+    @media (max-width: 480px) { @content; }
+  }
+  @else if $size == "md" {
+    @media (max-width: 720px) { @content; }
+  }
+  @else if $size == "lg" {
+    @media (max-width: 960px) { @content; }
+  }
+  @else if $size == "xl" {
+    @media (max-width: 1200px) { @content; }
+  }
+  @else {
+    @media (max-width: #{$size}) { @content; }
+  }
+}
+
+@mixin breakpoint-up($size) {
+  @if $size == "sm" {
+    @media (min-width: 481px) { @content; }
+  }
+  @else if $size == "md" {
+    @media (min-width: 721px) { @content; }
+  }
+  @else if $size == "lg" {
+    @media (min-width: 961px) { @content; }
+  }
+  @else if $size == "xl" {
+    @media (min-width: 1201px) { @content; }
+  }
+  @else {
+    @media (min-width: #{$size}) { @content; }
+  }
+}
+
+// Container query variants
+@mixin container($size) {
+  @if $size == "sm" {
+    @container (max-inline-size: 480px) { @content; }
+  }
+  @else if $size == "md" {
+    @container (max-inline-size: 720px) { @content; }
+  }
+  @else if $size == "lg" {
+    @container (max-inline-size: 960px) { @content; }
+  }
+  @else {
+    @container (max-inline-size: #{$size}) { @content; }
+  }
+}
+
+// =============================================================================
+// LAYOUT MIXINS
+// =============================================================================
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin grid-center {
+  display: grid;
+  place-items: center;
+}
+
+@mixin grid-auto-fill($min-size: 260px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($min-size, 1fr));
+  gap: var(--gap-md);
+}
+
+@mixin scrollable($direction: "y") {
+  @if $direction == "x" {
+    overflow-x: auto;
+    overflow-y: hidden;
+  } @else if $direction == "y" {
+    overflow-y: auto;
+    overflow-x: hidden;
+  } @else {
+    overflow: auto;
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--current, currentColor) 28%, transparent) transparent;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    inline-size: 6px;
+    block-size: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--current, currentColor) 28%, transparent);
+    border-radius: var(--radius-full);
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@mixin hide-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// =============================================================================
+// SURFACE & COLOR MIXINS
+// =============================================================================
+
+@mixin surface($opacity: var(--surface-opacity-default)) {
+  @include solid-colorize("&", ("shade": $opacity));
+}
+
+@mixin surface-interactive($opacity: var(--surface-opacity-default)) {
+  @include surface($opacity);
+
+  &:hover {
+    @include solid-colorize("&", ("shade": calc($opacity + 0.02)));
+  }
+
+  &:active {
+    @include solid-colorize("&", ("shade": calc($opacity + 0.04)));
+  }
+}
+
+@mixin text-color($opacity: 0) {
+  color: color-mix(in oklab, var(--current, currentColor) calc(100% - #{$opacity} * 100%), transparent);
+}
+
+@mixin border-color($opacity: 0.12) {
+  border-color: color-mix(in oklab, var(--current, currentColor) calc(#{$opacity} * 100%), transparent);
+}
+
+// =============================================================================
+// TEXT MIXINS
+// =============================================================================
+
+@mixin text-wrap {
+  flex-wrap: wrap;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  hyphens: auto;
+}
+
+@mixin text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@mixin text-clamp($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// =============================================================================
+// COMPONENT MIXINS
+// =============================================================================
+
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-xs);
+  padding: var(--button-padding-y) var(--button-padding-x);
+  border: none;
+  border-radius: var(--button-radius);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-colors), var(--transition-transform);
+  text-decoration: none;
+  user-select: none;
+
+  &:disabled {
+    opacity: var(--text-opacity-disabled);
+    pointer-events: none;
+  }
+}
+
+@mixin button-variant($surface-opacity: var(--surface-opacity-default)) {
+  @include button-base;
+  @include surface-interactive($surface-opacity);
+  @include text-color(0);
+}
+
+@mixin card-base {
+  display: grid;
+  gap: var(--card-gap);
+  padding: var(--card-padding);
+  border-radius: var(--card-radius);
+  @include surface(var(--surface-opacity-muted));
+  transition: var(--transition-colors), var(--transition-transform);
+}
+
+@mixin input-base {
+  display: block;
+  width: 100%;
+  padding: var(--form-padding);
+  border: 1px solid transparent;
+  border-radius: var(--form-radius);
+  @include surface(var(--surface-opacity-muted));
+  @include text-color(0);
+  font: inherit;
+  outline: none;
+  transition: var(--transition-colors);
+  min-inline-size: 0;
+
+  &:hover {
+    @include surface(var(--surface-opacity-default));
+  }
+
+  &:focus-visible {
+    @include surface(var(--surface-opacity-subtle));
+    @include border-color(var(--contrast-opacity-default));
+  }
+}
+
+@mixin panel-base {
+  display: grid;
+  gap: var(--gap-md);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-lg);
+  @include surface(var(--surface-opacity-muted));
+  @include border-color(var(--surface-opacity-emphasis));
+  border: 1px solid;
+}
+
+// =============================================================================
+// ANIMATION MIXINS
+// =============================================================================
+
+@mixin fade-in($duration: var(--duration-normal)) {
+  animation: fade-in $duration var(--ease-out);
+}
+
+@mixin slide-up($duration: var(--duration-normal)) {
+  animation: slide-up $duration var(--ease-out);
+}
+
+@mixin scale-in($duration: var(--duration-fast)) {
+  animation: scale-in $duration var(--ease-bounce);
+}
+
+// Keyframe definitions
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// =============================================================================
+// ACCESSIBILITY MIXINS
+// =============================================================================
+
+@mixin focus-ring($color: var(--current, currentColor)) {
+  &:focus-visible {
+    outline: 2px solid color-mix(in oklab, $color 60%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+@mixin high-contrast {
+  @media (prefers-contrast: high) {
+    @content;
+  }
+}
+
+// =============================================================================
+// UTILITY MIXINS
+// =============================================================================
+
+@mixin aspect-ratio($ratio: 1) {
+  aspect-ratio: $ratio;
+
+  // Fallback for browsers without aspect-ratio support
+  @supports not (aspect-ratio: 1) {
+    position: relative;
+
+    &::before {
+      content: "";
+      display: block;
+      padding-top: calc(100% / #{$ratio});
+    }
+
+    > * {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+@mixin backdrop-blur($strength: "default") {
+  @if $strength == "subtle" {
+    backdrop-filter: var(--backdrop-blur-subtle);
+  } @else if $strength == "strong" {
+    backdrop-filter: var(--backdrop-blur-strong);
+  } @else {
+    backdrop-filter: var(--backdrop-blur-default);
+  }
+}
+
+@mixin glass-effect($opacity: var(--surface-opacity-default)) {
+  @include surface($opacity);
+  @include backdrop-blur();
+  border: 1px solid color-mix(in oklab, var(--current, currentColor) 8%, transparent);
+}
+
+// =============================================================================
+// COMPONENT-SPECIFIC MIXINS
+// =============================================================================
+
+@mixin toolbar-button {
+  @include button-variant(var(--surface-opacity-default));
+  font-size: var(--font-sm);
+
+  @include container("md") {
+    span { display: none; }
+  }
+}
+
+@mixin nav-item {
+  @include flex-between;
+  padding: var(--nav-padding);
+  border-radius: var(--nav-radius);
+  @include surface-interactive(0);
+  @include text-color(0);
+  text-decoration: none;
+  gap: var(--nav-gap);
+
+  ui-icon {
+    --icon-size: var(--icon-size-md);
+    --icon-color: currentColor;
+  }
+}
+
+@mixin accordion-base {
+  border-radius: var(--radius-lg);
+  @include surface(var(--surface-opacity-muted));
+  overflow: hidden;
+  transition: var(--transition-colors);
+
+  &[open] {
+    @include surface(var(--surface-opacity-emphasis));
+    @include border-color(var(--contrast-opacity-default));
+  }
+
+  summary {
+    @include flex-between;
+    padding: var(--padding-lg);
+    cursor: pointer;
+    list-style: none;
+    font-weight: var(--font-weight-semibold);
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+
+@mixin empty-state {
+  @include grid-center;
+  padding: var(--padding-2xl);
+  border-radius: var(--radius-lg);
+  @include surface(var(--surface-opacity-default));
+  @include text-color(var(--text-opacity-muted));
+  border: 1px dashed color-mix(in oklab, var(--current, currentColor) 18%, transparent);
+  text-align: center;
+  min-block-size: var(--space-2xl);
+}
