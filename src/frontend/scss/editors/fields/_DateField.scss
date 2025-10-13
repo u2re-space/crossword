@@ -4,29 +4,29 @@
 
 @layer rs-fields-date {
 
-    //
+    // Enhanced date field layout
     .date-field-layout {
         display: grid;
-        gap: clamp(0.5rem, 1cqi + 0.3rem, 0.75rem);
+        gap: var(--space-md);
         container-type: inline-size;
         min-inline-size: 0;
     }
 
-    //
+    // Enhanced input section
     .date-field-layout-input {
         display: grid;
-        gap: 0.25rem;
+        gap: var(--space-xs);
 
-        //
         input[type="datetime-local"] {
-            @include solid-colorize("&");
-            @include font-style("&");
+            @include form-field-base;
+            font-variant-numeric: tabular-nums;
+            padding-inline-end: calc(var(--space-lg) * 2);
 
-            // Calendar icon styling
+            // Enhanced calendar icon styling
             &::-webkit-calendar-picker-indicator {
                 cursor: pointer;
                 filter: opacity(0.6);
-                transition: filter 160ms ease;
+                transition: filter var(--transition-normal);
 
                 &:hover {
                     filter: opacity(1);
@@ -35,62 +35,65 @@
         }
     }
 
-    //
+    // Enhanced format section
     .date-field-layout-format {
         display: grid;
         grid-template-columns: 1fr auto auto;
-        gap: 0.5rem;
+        gap: var(--space-sm);
         align-items: center;
-        padding: 0.5rem 0.65rem;
-        border-radius: 0.65rem;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-md);
 
-        //
         label {
-            font-size: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
-            font-weight: 500;
+            @include font-style("&", ("size": "sm", "weight": 500));
             margin: 0;
         }
 
         ui-icon {
-            inline-size: 1rem;
-            block-size: 1rem;
+            inline-size: var(--space-lg);
+            block-size: var(--space-lg);
             display: inline-flex;
             place-content: center;
             place-items: center;
         }
 
         select {
-            padding: 0.35rem 0.5rem;
-            border-radius: 0.5rem;
-
-            //
-            outline: none;
-            cursor: pointer;
-            transition: border-color 160ms ease, background 160ms ease, transform 140ms ease;
-
-            //
-            @include font-style("&");
-            @include solid-colorize("&");
+            @include select-dropdown;
+            padding: calc(var(--space-sm) * 0.7) var(--space-sm);
+            border-radius: var(--radius-sm);
         }
     }
 
-    //
-    @container (max-inline-size: 400px) {
+    // Enhanced responsive design
+    @container (max-inline-size: 25rem) {
         .date-field-layout-format {
             grid-template-columns: 1fr;
-            gap: 0.4rem;
+            gap: var(--space-sm);
 
-            label, select { grid-column: 1 / -1; }
-            ui-icon { display: none; }
+            label, 
+            select { 
+                grid-column: 1 / -1; 
+            }
+            
+            ui-icon { 
+                display: none; 
+            }
         }
     }
 
-    //
+    // Accessibility improvements
     @media (prefers-reduced-motion: reduce) {
         .date-field-layout-input input,
         .date-field-layout-format select,
         .date-field-layout-format ui-icon {
             transition-duration: 0ms;
+        }
+    }
+
+    @media (prefers-contrast: high) {
+        .date-field-layout-input input,
+        .date-field-layout-format select {
+            border-width: 2px;
         }
     }
 }

@@ -1,48 +1,79 @@
 @use "sass:map";
 
-//
+// Design system variables
+:root {
+    // Spacing scale
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.25rem;
+
+    // Border radius scale
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.5rem;
+    --radius-md: 0.65rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-full: 9999px;
+
+    // Font sizes
+    --text-xs: clamp(0.7rem, 0.3cqi + 0.6rem, 0.75rem);
+    --text-sm: clamp(0.75rem, 0.4cqi + 0.65rem, 0.85rem);
+    --text-base: clamp(0.8rem, 0.5cqi + 0.7rem, 0.95rem);
+    --text-lg: clamp(0.9rem, 0.6cqi + 0.8rem, 1.1rem);
+    --text-xl: clamp(1rem, 0.8cqi + 0.9rem, 1.3rem);
+
+    // Transitions
+    --transition-fast: 140ms ease;
+    --transition-normal: 160ms ease;
+    --transition-slow: 200ms ease;
+
+    // Interactive states
+    --hover-lift: 0.04;
+    --active-lift: 0.05;
+    --focus-lift: 0.05;
+}
+
+// Color system properties
 @property --color-shade {
     syntax: "<number>";
     inherits: false;
     initial-value: 0.0;
 }
 
-//
 @property --color-tint {
     syntax: "<number>";
     inherits: false;
     initial-value: 0.0;
 }
 
-//
 @property --color-opacity {
     syntax: "<number>";
     inherits: false;
     initial-value: 0.0;
 }
 
-//
 @property --color-enable-blur {
     syntax: "<boolean>";
     inherits: false;
     initial-value: false;
 }
 
-//
+// Enhanced colorize mixin with better organization
 @mixin solid-colorize($selector: "&", $options: ("shade": 0.0, "tint": 0.0)) {
     #{$selector} {
+        // Base color properties
         --color-shade: #{map.get($options, "shade") or 0.0};
         --color-tint: #{map.get($options, "tint") or 0.0};
 
-        //
+        // Computed color values
         --surface-color: --c2-surface(var(--color-shade), var(--current, currentColor));
         --on-surface-color: --c2-on-surface(var(--color-tint), var(--current, currentColor));
         --border-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.2);
         --scrollbar-color: oklch(from --c2-on-surface(calc(var(--color-tint) + 0.1), var(--current, currentColor)) l c h / 0.4);
-    }
 
-    //
-    #{$selector} {
+        // Apply colors
         border: solid 0.5px var(--border-color);
         background: var(--surface-color);
         color: var(--on-surface-color);
@@ -51,41 +82,41 @@
         text-decoration-color: var(--on-surface-color);
         text-emphasis-color: var(--on-surface-color);
         scrollbar-color: var(--scrollbar-color) transparent;
-        fill-color: var(--on-surface-color);
-        stroke-color: var(--on-surface-color);
         -webkit-tap-highlight-color: var(--on-surface-color);
         -webkit-text-fill-color: var(--on-surface-color);
-    }
 
-    //
-    #{$selector}:is(button, input, select, textarea):hover {
-        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.04);
-    }
+        // Interactive states
+        &:is(button, input, select, textarea) {
+            transition:
+                border-color var(--transition-normal),
+                background var(--transition-normal),
+                box-shadow var(--transition-normal),
+                transform var(--transition-fast);
 
-    //
-    #{$selector}:is(button, input, select, textarea):active {
-        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
-    }
+            &:hover {
+                --color-shade: calc(#{map.get($options, "shade") or 0.0} + var(--hover-lift));
+            }
 
-    //
-    #{$selector}:is(button, input, select, textarea):focus {
-        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
-    }
+            &:active {
+                --color-shade: calc(#{map.get($options, "shade") or 0.0} + var(--active-lift));
+            }
 
-    //
-    #{$selector}:is(button, input, select, textarea):focus-visible {
-        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
-    }
+            &:focus,
+            &:focus-visible {
+                --color-shade: calc(#{map.get($options, "shade") or 0.0} + var(--focus-lift));
+            }
 
-    // inverse fill colors for checked and selected states
-    #{$selector}:checked, #{$selector}::selection {
-        --on-surface-color: --c2-surface(calc(var(--color-shade) - 0.04), var(--current, currentColor));
-        --surface-color: --c2-on-surface(calc(var(--color-tint) + 0.04), var(--current, currentColor));
-    }
+            &::placeholder {
+                --on-surface-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
+            }
+        }
 
-    //
-    #{$selector}:is(button, input, select, textarea)::placeholder {
-        --on-surface-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
+        // Special states
+        &:checked,
+        &::selection {
+            --on-surface-color: --c2-surface(calc(var(--color-shade) - 0.04), var(--current, currentColor));
+            --surface-color: --c2-on-surface(calc(var(--color-tint) + 0.04), var(--current, currentColor));
+        }
     }
 }
 
@@ -119,8 +150,6 @@
         text-decoration-color: var(--on-surface-color);
         text-emphasis-color: var(--on-surface-color);
         scrollbar-color: var(--scrollbar-color) transparent;
-        fill-color: var(--on-surface-color);
-        stroke-color: var(--on-surface-color);
         -webkit-tap-highlight-color: var(--on-surface-color);
         -webkit-text-fill-color: var(--on-surface-color);
     }
@@ -136,18 +165,134 @@
     }
 }
 
-//
+// Enhanced font styling with design system integration
 @mixin font-style($selector: "&", $options: (
-    "font-size-base": 0.3cqi,
-    "font-size-shift": 0.0rem,
-    "max-font-size": 0.95rem,
-    "min-font-size": 0.75rem,
-    "font-weight": 500,
-    "font-family": "inherit"
+    "size": "base",
+    "weight": 500,
+    "family": "inherit"
 )) {
     #{$selector} {
-        font-size: clamp(#{map.get($options, "min-font-size") or 0.75rem}, calc(#{map.get($options, "font-size-base") or 0.3cqi} + #{map.get($options, "font-size-shift") or 0.0rem}), #{map.get($options, "max-font-size") or 0.95rem});
-        font-weight: #{map.get($options, "font-weight") or 500};
-        font-family: #{map.get($options, "font-family") or "inherit"};
+        $size: map.get($options, "size") or "base";
+
+        @if $size == "xs" {
+            font-size: var(--text-xs);
+        } @else if $size == "sm" {
+            font-size: var(--text-sm);
+        } @else if $size == "lg" {
+            font-size: var(--text-lg);
+        } @else if $size == "xl" {
+            font-size: var(--text-xl);
+        } @else {
+            font-size: var(--text-base);
+        }
+
+        font-weight: #{map.get($options, "weight") or 500};
+        font-family: #{map.get($options, "family") or "inherit"};
+    }
+}
+
+// Utility mixins for common patterns
+@mixin form-field-base {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    border: none;
+    outline: none;
+    cursor: text;
+    user-select: text;
+    pointer-events: auto;
+    inline-size: stretch;
+    max-inline-size: stretch;
+    field-sizing: content;
+
+    @include solid-colorize("&");
+    @include font-style("&");
+}
+
+@mixin button-base {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    pointer-events: auto;
+    block-size: max-content;
+    inline-size: max-content;
+    max-inline-size: stretch;
+    line-height: normal;
+
+    @include solid-colorize("&");
+    @include font-style("&");
+}
+
+@mixin select-dropdown {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    padding-inline-end: calc(var(--space-lg) * 2);
+
+    // Better SVG icon that adapts to color scheme
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right var(--space-md) center;
+    background-size: var(--space-lg);
+
+    @include form-field-base;
+}
+
+@mixin checkbox-radio-base {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto;
+    aspect-ratio: 1 / 1;
+    inline-size: auto;
+    block-size: auto;
+    max-inline-size: stretch;
+    max-block-size: stretch;
+    border-radius: var(--radius-xs);
+    contain: strict;
+    line-height: 0;
+    content-visibility: auto;
+    will-change: transform;
+    transform: translateZ(0);
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+
+    @include solid-colorize("&");
+
+    &::before {
+        content: "";
+        display: block;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1;
+        text-align: center;
+        overflow: hidden;
+        border-radius: var(--radius-sm);
+        contain: strict;
+        object-fit: contain;
+        object-position: center;
+        background-color: var(--on-surface-color);
+        mask-image: var(--ui-icon-mask, linear-gradient(#0000, #0000));
+        mask-repeat: no-repeat;
+        mask-origin: content-box;
+        mask-clip: content-box;
+        mask-position: center;
+        mask-size: contain;
+        mask-type: alpha;
+        transition: background-color var(--transition-normal);
+        padding: 0;
+        margin: 0;
     }
 }

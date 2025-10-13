@@ -1,76 +1,102 @@
-// !Mixed or outdated contents, needs refactoring...
+// Enhanced DateTime Field Editor with modern design patterns
 @use "../mixins/Colorize" as *;
 
-//
 @layer rs-fields-datetime {
 
-    // Date/Time Editor Styles
+    // Main datetime editor container
     .datetime-editor {
         display: grid;
-        gap: 0.5rem;
+        gap: var(--space-sm);
+        container-type: inline-size;
+        min-inline-size: 0;
     }
 
-    //
+    // Input group with improved responsive design
     .datetime-inputs {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+        gap: var(--space-sm);
         align-items: center;
-
-        //
-        @include solid-colorize("&");
-        @include font-style("&");
+        
+        input {
+            @include form-field-base;
+            min-inline-size: 0;
+            font-variant-numeric: tabular-nums;
+            
+            &:where([type="date"], [type="time"], [type="datetime-local"]) {
+                padding-inline-end: calc(var(--space-lg) * 2);
+            }
+        }
     }
 
-    //
-    .datetime-inputs input {
-        min-inline-size: 0;
-
-        //
-        @include solid-colorize("&");
-        @include font-style("&");
-    }
-
-    //
+    // Error state styling
     .datetime-error {
         --current: #FF6B6B;
-
-        //
         display: flex;
         align-items: center;
-        gap: 0.25rem;
-
-        //
+        gap: var(--space-xs);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-sm);
+        
         @include solid-colorize("&");
-        @include font-style("&");
+        @include font-style("&", ("size": "sm"));
     }
 
-    //
+    // Format indicator
     .datetime-format {
         font-style: italic;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-
-        //
-        @include solid-colorize("&");
-        @include font-style("&");
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-xs);
+        
+        @include solid-colorize("&", ("shade": 0.02));
+        @include font-style("&", ("size": "xs"));
     }
 
-    //
+    // Placeholder state
     .datetime-editor-placeholder {
-        padding: 0.75rem;
-        border-radius: 0.65rem;
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
         text-align: center;
-
-        //
-        @include solid-colorize("&");
-        @include font-style("&");
+        
+        @include solid-colorize("&", ("shade": 0.01));
+        @include font-style("&", ("size": "sm"));
     }
 
-    // Responsive Design
-    @container (max-inline-size: 480px) {
+    // Enhanced responsive design
+    @container (max-inline-size: 30rem) {
         .datetime-inputs {
             grid-template-columns: 1fr;
+            gap: var(--space-xs);
+        }
+    }
+
+    @container (max-inline-size: 20rem) {
+        .datetime-editor {
+            gap: var(--space-xs);
+        }
+        
+        .datetime-inputs input {
+            padding: calc(var(--space-sm) * 0.8) var(--space-sm);
+        }
+    }
+
+    // Accessibility improvements
+    @media (prefers-reduced-motion: reduce) {
+        .datetime-inputs input,
+        .datetime-error,
+        .datetime-format {
+            transition-duration: 0ms;
+        }
+    }
+
+    // High contrast mode
+    @media (prefers-contrast: high) {
+        .datetime-inputs input {
+            border-width: 2px;
+        }
+        
+        .datetime-error {
+            border: 2px solid var(--border-color);
         }
     }
 }

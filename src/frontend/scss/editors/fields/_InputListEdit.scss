@@ -2,41 +2,33 @@
 
 @layer rs-fields-input-list {
 
+    // Enhanced field list edit with design system integration
     .field-list-edit {
         grid-template-columns: [button] minmax(0, 1fr) [checkbox] minmax(0, auto);
         display: grid;
-        gap: clamp(0.5rem, 1cqi + 0.3rem, 0.75rem);
-        row-gap: 0.5rem;
+        gap: var(--space-md);
+        row-gap: var(--space-sm);
         container-type: inline-size;
         min-inline-size: 0;
     }
 
+    // Enhanced field list edit part
     .field-list-edit-part {
         grid-column: 1 / -1;
-
-        //
         place-content: center;
         place-items: center;
-
-        //
+        
         display: grid;
         grid-template-columns: [input] minmax(0, 1fr) [checkbox-btn] minmax(0, auto) [remove-btn] minmax(0, auto);
         grid-template-rows: minmax(0, auto);
-        gap: 0.5rem;
-
-        //
+        gap: var(--space-sm);
+        
         position: relative;
-        padding: 0px;
-
-        //
-        border-radius: 0.75rem;
+        padding: 0;
+        border-radius: var(--space-md);
         container-type: inline-size;
-
-        //
-        transition: background 180ms ease, border-color 180ms ease;
         background: transparent;
-
-
+        
         @include font-style("&");
 
         & > * {
@@ -52,120 +44,70 @@
         }
 
         & > button {
-            margin: 0px;
+            @include button-base;
+            margin: 0;
             grid-column: remove-btn;
-
-            //
-            display: flex;
-            place-content: center;
-            place-items: center;
             line-height: 0;
-            border-radius: min(50%, 50cqmin);
-
-            //
-            inline-size: 2rem;
-            block-size: 2rem;
+            border-radius: var(--radius-full);
+            inline-size: calc(var(--space-lg) * 1.6);
+            block-size: calc(var(--space-lg) * 1.6);
             aspect-ratio: 1 / 1;
-
-            //
-            @include solid-colorize("&");
-            @include font-style("&", ("font-weight": 700));
+            font-weight: 700;
         }
 
-        // Input field
+        // Enhanced input field styling
         input[type="text"],
         input[type="tel"],
         input[type="email"],
         input[type="url"] {
+            @include form-field-base;
             grid-column: input;
-
-            //
-            inline-size: stretch;
             min-inline-size: 0;
-
-            //
-            @include solid-colorize("&");
-            @include font-style("&");
         }
 
-        //
+        // Enhanced checkbox styling
         input[type="checkbox"][data-type="show-password-or-url"] {
+            @include checkbox-radio-base;
             grid-column: checkbox-btn;
-
-            //
-            appearance: none;
-            margin: 0px;
-
-            //
-            position: relative;
-
-            //
-            min-block-size: 0px;
-            min-inline-size: 0px;
-            inline-size: 2rem;
-            block-size: 2rem;
-            aspect-ratio: 1 / 1;
-            border-radius: 50%;
-
-            //
-            display: flex;
-            place-content: center;
-            place-items: center;
-            line-height: 0;
-
-            //
-            cursor: pointer;
-            transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+            min-block-size: 0;
+            min-inline-size: 0;
+            inline-size: calc(var(--space-lg) * 1.6);
+            block-size: calc(var(--space-lg) * 1.6);
+            border-radius: var(--radius-full);
             z-index: 2;
-
-            //
-            @include solid-colorize("&");
-            @include font-style("&");
         }
 
-        //
+        // Enhanced preview link styling
         a[data-type="preview"] {
-            grid-column: input;
-
-            //
             display: none;
             align-items: center;
             position: absolute;
-            gap: 0.35rem;
-            padding: 0.4rem 0.6rem;
-            border-radius: 0.5rem;
-            font-size: clamp(0.8rem, 0.5cqi + 0.7rem, 0.9rem);
+            grid-column: input;
+            gap: var(--space-xs);
+            padding: calc(var(--space-sm) * 0.8) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
             text-decoration: none;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            border: 0px none transparent;
-            transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            
+            @include solid-colorize("&");
         }
 
-        //
         &[data-show-preview] a[data-type="preview"] {
             display: inline-flex;
         }
     }
 
-    //
+    // Enhanced main button styling
     .field-list-edit[data-type] > button {
+        @include button-base;
         grid-column: button;
-
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        padding: 0.65rem 0.85rem;
-        border-radius: 0.7rem;
-
-        cursor: pointer;
-        transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
-
-        //
-        @include solid-colorize("&");
-        @include font-style("&");
+        gap: calc(var(--space-sm) * 0.9);
+        padding: var(--space-md) calc(var(--space-md) * 1.3);
+        border-radius: var(--radius-lg);
     }
 
     //
@@ -191,26 +133,28 @@
         }
     }
 
-    // Responsive adjustments
-    @container (max-inline-size: 500px) {
+    // Enhanced responsive adjustments
+    @container (max-inline-size: 31.25rem) {
         .field-list-edit-part {
             a[data-type="preview"] {
-                font-size: 0.75rem;
+                font-size: var(--text-xs);
             }
         }
     }
 
-    @container (max-inline-size: 350px) {
+    @container (max-inline-size: 21.875rem) {
         .field-list-edit-part {
-            padding: 0.6rem;
+            padding: var(--space-sm);
+            gap: calc(var(--space-sm) * 0.8);
 
             a[data-type="preview"] {
-                font-size: 0.7rem;
+                font-size: var(--text-xs);
+                padding: calc(var(--space-xs) * 0.7) var(--space-xs);
             }
         }
     }
 
-    // Accessibility
+    // Enhanced accessibility
     @media (prefers-reduced-motion: reduce) {
         .field-list-edit-part,
         .field-list-edit-part input,
@@ -222,6 +166,13 @@
 
         .field-list-edit-part input[type="checkbox"]::before {
             transition-duration: 0ms;
+        }
+    }
+
+    @media (prefers-contrast: high) {
+        .field-list-edit-part input,
+        .field-list-edit > button {
+            border-width: 2px;
         }
     }
 }
