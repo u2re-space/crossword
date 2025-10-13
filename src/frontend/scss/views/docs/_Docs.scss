@@ -294,10 +294,13 @@
 
             button {
                 inline-size: stretch;
-                @include text-truncate;
                 max-inline-size: 100cqi;
+
+                //
+                @include text-truncate;
                 @include surface(0);
 
+                //
                 button {
                     @include surface(var(--surface-opacity-default));
                 }
@@ -305,13 +308,14 @@
         }
 
         .doc-empty-state {
-            @include empty-state;
             font-size: var(--font-base);
+
+            //
+            @include empty-state;
         }
     }
 
     .doc-entry {
-        @include card-base;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: var(--gap-md);
         align-items: center;
@@ -321,6 +325,9 @@
         text-align: start;
         block-size: max-content;
         inline-size: stretch;
+
+        //
+        @include card-base;
         @include surface(var(--surface-opacity-default));
 
         .doc-entry-text {
@@ -334,6 +341,7 @@
             .doc-entry-title {
                 font-weight: var(--font-weight-semibold);
                 font-size: var(--font-md);
+
                 @include text-truncate;
             }
 
@@ -344,8 +352,9 @@
 
             .doc-entry-summary {
                 font-size: var(--font-xs);
-                @include text-clamp(2);
                 display: none;
+
+                @include text-clamp(2);
             }
         }
 
@@ -355,7 +364,6 @@
             background: transparent;
 
             .doc-entry-chip {
-                @include flex-center;
                 gap: var(--gap-xs);
                 inline-size: auto;
                 block-size: clamp(2.1rem, 3vw, 2.4rem);
@@ -365,6 +373,8 @@
                 border-radius: var(--radius-full);
                 cursor: pointer;
                 transition: var(--transition-colors), var(--transition-transform);
+
+                @include flex-center;
 
                 span {
                     font-size: var(--font-xs);
@@ -386,10 +396,12 @@
         background: transparent;
 
         .doc-preview-placeholder {
-            @include grid-center;
             text-align: center;
             padding: var(--padding-2xl);
             border-radius: var(--radius-xl);
+
+            //
+            @include grid-center;
             @include surface(var(--surface-opacity-emphasis));
         }
     }
@@ -400,11 +412,12 @@
         padding: 0px;
         border-radius: var(--radius-sm);
         max-block-size: none;
-        @include scrollable;
         block-size: stretch;
         grid-template-rows: minmax(0px, max-content) minmax(0px, 1fr);
         grid-template-columns: minmax(0px, 1fr);
         background: transparent;
+
+        @include scrollable;
 
         .doc-preview-header {
             @include flex-between;
@@ -443,6 +456,8 @@
             block-size: stretch;
             border-radius: var(--radius-sm);
             padding: var(--padding-lg);
+
+            //
             @include scrollable;
             @include surface(0);
         }
@@ -454,23 +469,27 @@
             border-radius: var(--radius-lg);
 
             summary {
-                @include flex-center;
                 gap: var(--gap-sm);
                 cursor: pointer;
                 font-weight: var(--font-weight-semibold);
                 justify-content: flex-start;
+
+                //
+                @include flex-center;
             }
         }
     }
 
     .doc-meta-tag {
-        @include flex-center;
         gap: var(--gap-xs);
         padding: var(--padding-xs) var(--padding-md);
         border-radius: var(--radius-full);
         font-size: var(--font-xs);
         font-weight: var(--font-weight-semibold);
         letter-spacing: 0.01em;
+
+        //
+        @include flex-center;
         @include surface(0);
     }
 
@@ -478,6 +497,8 @@
         display: inline-flex;
         flex-wrap: wrap;
         gap: var(--gap-xs);
+
+        //
         @include surface(0);
     }
 
@@ -497,6 +518,8 @@
                 margin: 0;
                 font-size: var(--font-lg);
                 font-weight: var(--font-weight-semibold);
+
+                //
                 @include surface(0);
             }
         }
@@ -531,4 +554,3 @@
         }
     }
 }
-

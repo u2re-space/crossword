@@ -11,6 +11,7 @@
         display: flex;
         flex-direction: column;
         gap: var(--gap-xs);
+
         @include scrollable("y");
         @include surface();
     }
@@ -20,6 +21,7 @@
         gap: var(--gap-xl);
         border-radius: var(--radius-lg);
         padding: 0px;
+
         @include surface(0);
 
         .view-toolbar {
@@ -37,8 +39,9 @@
                 gap: var(--gap-md);
 
                 button {
-                    @include button-variant(0);
                     font-size: var(--font-sm);
+
+                    @include button-variant(0);
                 }
             }
         }
@@ -62,24 +65,30 @@
                 align-items: center;
                 padding: var(--padding-lg);
                 cursor: pointer;
+
+                //
                 @include surface(0);
 
                 span {
                     font-weight: var(--font-weight-semibold);
                     font-size: var(--font-md);
+
+                    //
                     @include text-truncate;
                 }
 
                 button.plain {
                     inline-size: 2rem;
                     block-size: 2rem;
-                    @include grid-center;
                     border-radius: var(--radius-full);
                     border: none;
                     background: transparent;
                     color: inherit;
                     cursor: pointer;
                     transition: var(--transition-colors);
+
+                    //
+                    @include grid-center;
                     @include surface(var(--surface-opacity-default));
                 }
             }
@@ -88,6 +97,8 @@
                 padding: var(--padding-xs) var(--padding-lg) var(--padding-xl);
                 display: grid;
                 gap: var(--gap-md);
+
+                //
                 @include scrollable("y");
 
                 md-view {
@@ -98,16 +109,19 @@
 
                 .ai-spoiler {
                     border-radius: var(--radius-lg);
-                    @include border-color(var(--surface-opacity-strong));
                     border: 1px solid;
+
+                    //
+                    @include border-color(var(--surface-opacity-strong));
                     @include surface(var(--surface-opacity-default));
 
                     summary {
-                        @include flex-center;
                         gap: var(--gap-sm);
                         cursor: pointer;
                         padding: var(--padding-md) var(--padding-lg);
                         justify-content: flex-start;
+
+                        @include flex-center;
 
                         ui-icon {
                             --icon-size: var(--icon-size-md);
