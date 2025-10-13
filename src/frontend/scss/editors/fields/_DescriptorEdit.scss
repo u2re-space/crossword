@@ -64,27 +64,25 @@
 
             @include font-style("&", ("size": "sm"));
             @include solid-colorize("&");
-
-            &:active {
-                transform: translateY(1px);
-            }
         }
 
         // Show/hide password/URL checkbox with enhanced styling
         input[type="checkbox"][data-type="show-password-or-url"] {
-            @include checkbox-radio-base;
             inline-size: auto;
             field-sizing: content;
+
+            @include checkbox-radio-base;
         }
     }
 
     // Enhanced add button
     .descriptor-edit > button {
-        @include button-base;
         gap: var(--space-sm);
         padding: var(--space-sm) var(--space-md);
         border-radius: var(--radius-md);
         margin: 0;
+
+        @include button-base;
     }
 
     // Type-specific styling with better organization

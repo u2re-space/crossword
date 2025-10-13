@@ -118,24 +118,32 @@
         &[data-variant="blur"] { --current: var(--primary); }
 
         .card-avatar {
+            --icon-color: --c2-surface(0, var(--current, currentColor));
+
+            //
             inline-size: var(--card-avatar-size);
             block-size: var(--card-avatar-size);
             min-inline-size: var(--card-avatar-size);
             grid-column: 1 / 1 span;
             border-radius: 50%;
             line-height: 0;
-            @include grid-center;
             background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.03));
             box-shadow: var(--shadow-inset-strong);
             aspect-ratio: 1 / 1;
+
+            //
             @include surface(0.8);
             @include text-color(0);
-            --icon-color: --c2-surface(0, var(--current, currentColor));
+            @include grid-center;
 
             .avatar-inner {
                 font-weight: var(--font-weight-bold);
                 font-size: var(--font-base);
                 line-height: 0;
+            }
+
+            ui-icon {
+                --icon-color: --c2-surface(0, var(--current, currentColor));
             }
         }
 

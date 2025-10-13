@@ -10,11 +10,13 @@
     [data-type="contacts"],
     [data-type="bonuses"],
     [data-type="services"] {
-        @include grid-auto-fill(260px);
         grid-auto-rows: minmax(0px, max-content);
         grid-auto-flow: row;
         column-fill: balance;
         align-items: start;
+
+        //
+        @include grid-auto-fill(260px);
         @include scrollable("y");
     }
 
@@ -24,15 +26,16 @@
     }
 
     .viewer-tab-content {
-        @include surface(var(--surface-opacity-subtle));
         overflow-x: hidden;
-        @include scrollable("y");
         scrollbar-gutter: auto;
         touch-action: manipulation;
         pointer-events: auto;
         display: flex;
         flex-direction: column;
         gap: var(--gap-xs);
+
+        @include surface(var(--surface-opacity-subtle));
+        @include scrollable("y");
 
         .viewer-tab-content-header {
             font-size: var(--font-xl);

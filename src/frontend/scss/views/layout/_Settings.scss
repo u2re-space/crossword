@@ -28,19 +28,24 @@
         align-items: center;
         padding: var(--padding-xl);
         border-radius: var(--radius-lg);
+        border: 1px solid;
+
+        //
         @include surface(var(--surface-opacity-default));
         @include border-color(var(--surface-opacity-emphasis));
-        border: 1px solid;
         @include text-color(0);
 
+        //
         .hero-icon {
             inline-size: clamp(3rem, 4vw, 3.5rem);
             block-size: clamp(3rem, 4vw, 3.5rem);
-            @include grid-center;
+
             border-radius: 50%;
+            border: 1px solid;
+
+            @include grid-center;
             @include surface(var(--surface-opacity-default));
             @include border-color(var(--surface-opacity-emphasis));
-            border: 1px solid;
 
             ui-icon {
                 --icon-size: clamp(1.6rem, 2.4vw, 1.9rem);
@@ -306,7 +311,7 @@
             }
 
             &:not(&:last-of-type) {
-                border-bottom: none;
+                border-block-end: none;
             }
         }
 
@@ -314,15 +319,17 @@
     }
 
     .settings-actions {
-        @include flex-between;
         gap: var(--gap-md);
-        margin-top: var(--gap-sm);
+        margin-block-start: var(--gap-sm);
         padding: var(--padding-sm);
 
+        @include flex-between;
+
         .btn.save {
+            border: 1px solid;
+
             @include button-variant(var(--contrast-opacity-subtle));
             @include border-color(var(--contrast-opacity-default));
-            border: 1px solid;
             @include text-color(0);
 
             &:hover {

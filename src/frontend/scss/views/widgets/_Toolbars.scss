@@ -7,11 +7,12 @@
 
 @layer rs-toolbars {
     .view-toolbar {
-        @include flex-between;
         gap: var(--gap-md);
         inline-size: 100%;
         background: transparent;
         padding-block: var(--padding-md);
+
+        @include flex-between;
 
         &:empty {
             display: none;
@@ -23,11 +24,13 @@
             gap: var(--gap-md);
             padding: var(--padding-sm);
             border-radius: var(--radius-lg);
+
             @include surface(var(--surface-opacity-muted));
 
             button {
-                @include button-variant(var(--surface-opacity-default));
                 gap: var(--gap-sm);
+
+                @include button-variant(var(--surface-opacity-default));
 
                 &:hover {
                     @include surface(var(--surface-opacity-emphasis));

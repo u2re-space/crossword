@@ -83,6 +83,8 @@
                 inset-block-start: var(--padding-sm);
                 align-self: start;
                 max-block-size: calc(100dvb - var(--space-lg));
+
+                //
                 @include scrollable;
             }
 
@@ -214,14 +216,16 @@
             justify-content: start;
         }
 
-        > [slot="bar"] {
+        & > [slot="bar"] {
             grid-column: 1 / -1;
             margin: 0;
             padding: var(--padding-xs) var(--padding-sm);
+
+            //
             @include surface(var(--surface-opacity-subtle));
         }
 
-        > ui-tabbed-box {
+        & > ui-tabbed-box {
             grid-column: 2 / -1;
             grid-row: 2 / 3;
             inline-size: stretch;
@@ -238,10 +242,12 @@
             block-size: stretch;
             gap: var(--gap-xs);
             background-color: transparent;
+
+            //
             @include scrollable("y");
         }
 
-        > .toolbar {
+        & > .toolbar {
             grid-column: 1 / -1;
             margin: 0;
             flex-direction: row;
@@ -256,16 +262,23 @@
             position: sticky;
             inset-block-start: 0;
             z-index: 10;
+
+            //
             @include backdrop-blur("subtle");
 
             button {
-                @include toolbar-button;
                 max-block-size: 3rem;
                 border-radius: var(--radius-sm);
                 padding: var(--padding-xs);
                 aspect-ratio: auto;
-                @include grid-center;
+                flex-direction: row;
+                display: flex;
 
+                //
+                @include toolbar-button;
+                @include flex-center;
+
+                //
                 span {
                     display: block;
                     font-weight: var(--font-weight-normal);
@@ -283,7 +296,7 @@
 
         // Mobile responsive behavior
         @include container("lg") {
-            > nav[slot="sidebar"] {
+            & > nav[slot="sidebar"] {
                 position: static;
                 max-block-size: none;
                 order: 2;
@@ -308,7 +321,7 @@
                 border-radius: var(--radius-sm);
             }
 
-            > ui-tabbed-box {
+            & > ui-tabbed-box {
                 order: 3;
                 grid-column: 1 / -1;
             }

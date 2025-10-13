@@ -246,6 +246,8 @@
         gap: var(--gap-sm);
         padding: var(--padding-sm) var(--padding-md);
         border-radius: var(--radius-lg);
+
+        //
         @include surface(var(--surface-opacity-emphasis));
 
         input {
@@ -257,6 +259,8 @@
             min-inline-size: 0;
             padding: var(--padding-sm);
             outline: none;
+            border-radius: var(--radius-md);
+
             @include surface(0);
         }
     }

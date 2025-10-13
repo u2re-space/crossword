@@ -158,6 +158,10 @@
   --color-success: #2CDA9D;
   --color-warning: #FFB347;
   --color-error: #FF6B6B;
+
+  --color-success-dark: oklch(from rgba(11, 52, 36, 0.92));
+  --color-warning-dark: oklch(from rgba(64, 38, 8, 0.92) l c h / 1);
+  --color-error-dark: oklch(from rgba(56, 12, 20, 0.9) l c h / 1);
 }
 
 // =============================================================================

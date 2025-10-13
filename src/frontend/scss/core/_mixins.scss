@@ -437,9 +437,9 @@
 // =============================================================================
 
 @mixin toolbar-button {
-    @include button-variant(var(--surface-opacity-default));
     font-size: var(--font-sm);
 
+    @include button-variant(var(--surface-opacity-default));
     @include container("md") {
         span {
             display: none;

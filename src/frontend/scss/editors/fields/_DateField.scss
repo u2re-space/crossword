@@ -18,9 +18,11 @@
         gap: var(--space-xs);
 
         input[type="datetime-local"] {
-            @include form-field-base;
             font-variant-numeric: tabular-nums;
             padding-inline-end: calc(var(--space-lg) * 2);
+
+            //
+            @include form-field-base;
 
             // Enhanced calendar icon styling
             &::-webkit-calendar-picker-indicator {
@@ -45,8 +47,9 @@
         border-radius: var(--radius-md);
 
         label {
-            @include font-style("&", ("size": "sm", "weight": 500));
             margin: 0;
+
+            @include font-style("&", ("size": "sm", "weight": 500));
         }
 
         ui-icon {
@@ -58,9 +61,10 @@
         }
 
         select {
-            @include select-dropdown;
             padding: calc(var(--space-sm) * 0.7) var(--space-sm);
             border-radius: var(--radius-sm);
+
+            @include select-dropdown;
         }
     }
 

@@ -36,7 +36,7 @@
 
     //
     .field-error {
-        --current: #FF6B6B;
+        --current: var(--color-error);
     }
 
     //
@@ -45,13 +45,19 @@
         font-size: 0.75rem;
     }
 
+    //
+    ::picker(select) {
+        appearance: base-select;
+        border: none;
+        outline: none;
+        background: transparent;
+        background-color: transparent;
 
-
+        @include select-dropdown;
+    }
 
     // Enhanced select dropdown styling
     select {
-        @include select-dropdown;
-
         display: block;
         block-size: max-content;
 
@@ -60,6 +66,8 @@
             appearance: base-select;
             border: none;
             outline: none;
+
+            @include select-dropdown;
         }
 
         ::picker(select) {
@@ -100,7 +108,6 @@
 
     // Enhanced button styling
     button {
-        @include button-base;
 
         &.btn,
         &.save,
@@ -108,11 +115,13 @@
             gap: var(--space-sm);
             padding: calc(var(--space-sm) * 0.9) var(--space-md);
             border-radius: var(--radius-xl);
+
+            @include button-base;
         }
 
         // Semantic button variants
-        &.save { --current: #2CDA9D; }
-        &.cancel { --current: #FF6B6B; }
+        &.save { --current: var(--color-success); }
+        &.cancel { --current: var(--color-error); }
     }
 
     .btn {
@@ -121,27 +130,29 @@
         padding: calc(var(--space-sm) * 0.9) var(--space-md);
         border-radius: var(--radius-xl);
 
-        &.save { --current: #2CDA9D; }
-        &.cancel { --current: #FF6B6B; }
+        &.save { --current: var(--color-success); }
+        &.cancel { --current: var(--color-error); }
     }
 
     // Enhanced input field styling
     input:where([type="datetime-local"], [type="date"], [type="time"], [type="text"], [type="number"], [type="email"], [type="url"], [type="tel"], [type="password"], [type="search"], [type="month"], [type="week"]) {
-        @include form-field-base;
 
         // Special styling for inputs that might have dropdowns/pickers
         &:where([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]) {
             padding-inline-end: calc(var(--space-lg) * 2);
+
+            @include form-field-base;
         }
     }
 
     // Enhanced checkbox and radio button styling
     input:where([type="checkbox"], [type="radio"]),
     button[data-icon-only] {
-        @include checkbox-radio-base;
 
         --icon-color: currentColor;
         content: " ";
+
+        @include checkbox-radio-base;
 
         &::before {
             --icon-color: inherit;
