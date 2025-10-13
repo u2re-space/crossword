@@ -186,18 +186,6 @@ export const createDeleteEntryAction = (options: DeleteEntryActionOptions = {}):
             event.stopPropagation();
             try {
                 let proceed = true;
-                if (typeof confirm === "function") {
-                    proceed = await confirm(entry, ctx);
-                } else {
-                    const message = typeof confirmMessage === "function"
-                        ? confirmMessage(entry, ctx)
-                        : confirmMessage ?? `Delete "${entry.title}"?`;
-                    if (message) {
-                        const canConfirm = typeof window !== "undefined" && typeof window.confirm === "function";
-                        proceed = canConfirm ? window.confirm(message) : true;
-                    }
-                }
-
                 if (!proceed) return;
 
                 button.disabled = true;
@@ -260,7 +248,7 @@ const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => 
                         </div>
                         ${wordCount ? H`<span class="doc-meta-tag">${wordCount} words</span>` : null}
                     </header>
-                    <md-view ref=${$setter} src=${url}></md-view>
+                    <md-view ref=${$setter} src=${url} style="background-color: white;"></md-view>
                 </div>`
             );
         },

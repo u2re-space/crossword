@@ -31,8 +31,8 @@
 //
 @mixin solid-colorize($selector: "&", $options: ("shade": 0.0, "tint": 0.0)) {
     #{$selector} {
-        --color-shade: #{map.get($options, "shade")};
-        --color-tint: #{map.get($options, "tint")};
+        --color-shade: #{map.get($options, "shade") or 0.0};
+        --color-tint: #{map.get($options, "tint") or 0.0};
 
         //
         --surface-color: --c2-surface(var(--color-shade), var(--current, currentColor));
@@ -58,23 +58,23 @@
     }
 
     //
-    #{$selector}:hover {
-        --color-shade: calc(#{map.get($options, "shade")} + 0.04);
+    #{$selector}:is(button, input, select, textarea):hover {
+        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.04);
     }
 
     //
-    #{$selector}:active {
-        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    #{$selector}:is(button, input, select, textarea):active {
+        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
     }
 
     //
-    #{$selector}:focus {
-        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    #{$selector}:is(button, input, select, textarea):focus {
+        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
     }
 
     //
-    #{$selector}:focus-visible {
-        --color-shade: calc(#{map.get($options, "shade")} + 0.05);
+    #{$selector}:is(button, input, select, textarea):focus-visible {
+        --color-shade: calc(#{map.get($options, "shade") or 0.0} + 0.05);
     }
 
     // inverse fill colors for checked and selected states
@@ -84,7 +84,7 @@
     }
 
     //
-    #{$selector}::placeholder {
+    #{$selector}:is(button, input, select, textarea)::placeholder {
         --on-surface-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.2);
     }
 }
@@ -92,8 +92,8 @@
 //
 @mixin overlay-colorize($selector: "&", $options: ("shade": 0.0, "tint": 0.0, "opacity": 0.04, "enable-blur": true)) {
     #{$selector} {
-        --color-shade: #{map.get($options, "shade")};
-        --color-tint: #{map.get($options, "tint")};
+        --color-shade: #{map.get($options, "shade") or 0.0};
+        --color-tint: #{map.get($options, "tint") or 0.0};
         --color-opacity: #{map.get($options, "opacity")};
         --color-enable-blur: #{map.get($options, "enable-blur")};
     }
@@ -127,12 +127,12 @@
 
     //
     #{$selector}:focus {
-        --color-opacity: calc(#{map.get($options, "opacity")} + 0.05);
+        --color-opacity: calc(#{map.get($options, "opacity") or 0.04} + 0.05);
     }
 
     //
     #{$selector}:hover {
-        --color-opacity: calc(#{map.get($options, "opacity")} + 0.04);
+        --color-opacity: calc(#{map.get($options, "opacity") or 0.04} + 0.04);
     }
 }
 
@@ -142,10 +142,12 @@
     "font-size-shift": 0.0rem,
     "max-font-size": 0.95rem,
     "min-font-size": 0.75rem,
-    "font-weight": 500
+    "font-weight": 500,
+    "font-family": "inherit"
 )) {
     #{$selector} {
-        font-size: clamp(#{map.get($options, "min-font-size")}, calc(#{map.get($options, "font-size-base")} + #{map.get($options, "font-size-shift")}), #{map.get($options, "max-font-size")});
-        font-weight: #{map.get($options, "font-weight")};
+        font-size: clamp(#{map.get($options, "min-font-size") or 0.75rem}, calc(#{map.get($options, "font-size-base") or 0.3cqi} + #{map.get($options, "font-size-shift") or 0.0rem}), #{map.get($options, "max-font-size") or 0.95rem});
+        font-weight: #{map.get($options, "font-weight") or 500};
+        font-family: #{map.get($options, "font-family") or "inherit"};
     }
 }

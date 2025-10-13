@@ -7,10 +7,6 @@
 @use "./views/widgets/Toolbars";
 
 //
-@use "./views/docs/Preferences";
-@use "./views/docs/Docs";
-
-//
 @use "./views/items/Cards";
 
 //
@@ -23,3 +19,7 @@
 @use "./editors/fields/DateField";
 @use "./editors/fields/DescriptorEdit";
 @use "./editors/fields/InputListEdit";
+
+//
+@use "./views/docs/Preferences";
+@use "./views/docs/Docs";

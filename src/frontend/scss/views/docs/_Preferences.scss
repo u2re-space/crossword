@@ -4,17 +4,21 @@
 // ! May need some refactoring or improvement...
 
 //
+@use "../../editors/mixins/Colorize" as *;
+
+//
 @layer rs-preferences {
     [data-type="preferences"],
     [data-type="quests"] {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
 
         overflow-y: auto;
         scrollbar-width: thin;
-        scrollbar-color: oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4) transparent;
+
+        //
+        @include solid-colorize();
     }
 
     .preferences-view {
@@ -22,8 +26,11 @@
         gap: clamp(0.75rem, 1vw, 1.25rem);
         border-radius: clamp(0.75rem, 1vw, 1.1rem);
         padding: 0px;
-        background: color-mix(in oklab, var(--current, transparent) 4%, transparent);
 
+        //
+        @include solid-colorize("&", ("shade": 0.0));
+
+        //
         .view-toolbar {
             position: sticky;
             inset-block-start: 0;
@@ -45,19 +52,12 @@
                     padding: 0.4rem 0.75rem;
                     border-radius: 999px;
                     border: 0;
-                    background: color-mix(in oklab, var(--current, currentColor) 8%, transparent);
-                    color: --c2-on-surface(0.0, var(--current, currentColor));
                     cursor: pointer;
                     transition: background 140ms ease, transform 140ms ease;
 
-                    &:hover {
-                        background: color-mix(in oklab, var(--current, currentColor) 12%, transparent);
-                        transform: translateY(-1px);
-                    }
 
-                    &:active {
-                        transform: translateY(0);
-                    }
+                    @include solid-colorize("&", ("shade": 0.0));
+
 
                     span {
                         font-size: 0.85rem;
@@ -74,10 +74,10 @@
 
         .preference-accordion {
             border-radius: clamp(0.75rem, 1vw, 1rem);
-            border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
-            background: color-mix(in oklab, currentColor 6%, transparent);
             overflow: hidden;
             transition: border-color 160ms ease, background 160ms ease;
+
+            @include solid-colorize("&", ("shade": 0.0));
 
             &[open] {
                 border-color: color-mix(in oklab, currentColor 28%, transparent);
@@ -91,12 +91,8 @@
                 align-items: center;
                 padding: clamp(0.75rem, 1vw + 0.5rem, 1rem);
                 cursor: pointer;
-                color: --c2-on-surface(0.0, var(--current, currentColor));
 
-                ui-icon {
-                    --icon-size: 1.25rem;
-                    --icon-color: color-mix(in oklab, currentColor 48%, white 60%);
-                }
+                @include solid-colorize("&", ("shade": 0.0));
 
                 span {
                     font-weight: 600;
@@ -118,9 +114,7 @@
                     cursor: pointer;
                     transition: background 140ms ease;
 
-                    &:hover {
-                        background: color-mix(in oklab, currentColor 18%, transparent);
-                    }
+                    @include solid-colorize("&", ("shade": 0.1));
                 }
             }
 
@@ -139,7 +133,8 @@
                 .ai-spoiler {
                     border-radius: clamp(0.6rem, 1vw, 0.85rem);
                     border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
-                    background: color-mix(in oklab, currentColor 8%, transparent);
+
+                    @include solid-colorize("&", ("shade": 0.08));
 
                     summary {
                         display: inline-flex;
@@ -153,8 +148,9 @@
 
                     .ai-answer {
                         padding: clamp(0.6rem, 0.9vw, 0.85rem) clamp(0.8rem, 1vw, 1.1rem) clamp(0.8rem, 1vw, 1.25rem);
-                        background: color-mix(in oklab, currentColor 12%, transparent);
                         border-radius: clamp(0.45rem, 0.8vw, 0.6rem);
+
+                        @include solid-colorize("&", ("shade": 0.12));
                     }
                 }
             }

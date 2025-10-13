@@ -155,7 +155,7 @@
             --icon-color: --c2-surface(0, var(--current, currentColor));
         }
 
-        .card-avatar .avatar-inner { font-weight: 700; font-size: 1rem; }
+        .card-avatar .avatar-inner { font-weight: 700; font-size: 1rem; line-height: 0; }
 
         /* Verbal description */
         .card-description, .card-content {
