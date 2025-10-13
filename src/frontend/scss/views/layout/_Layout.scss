@@ -71,10 +71,11 @@
             gap: 0rem;
             border-radius: var(--radius-xs);
             background-color: transparent;
-            @include surface(0);
             box-shadow: var(--shadow-sm);
             user-select: none;
             padding: var(--padding-xs);
+
+            @include surface(var(--surface-opacity-subtle));
 
             &[slot="sidebar"] {
                 grid-column: 1 / 2;
@@ -98,12 +99,12 @@
                 user-select: none;
                 list-style: none;
                 overflow: hidden;
-                box-shadow: var(--shadow-inset), var(--shadow-inset-strong);
+                box-shadow: var(--shadow-inset);
                 box-sizing: border-box;
                 gap: 0px;
                 border-radius: var(--radius-xs);
 
-                @include surface(var(--surface-opacity-default));
+                @include surface(var(--surface-opacity-muted));
 
                 &:focus {
                     border: none 0px transparent;
@@ -118,7 +119,6 @@
                     inline-size: stretch;
                     box-sizing: border-box;
                     border-radius: var(--radius-xs);
-                    background-color: transparent;
                     transition: var(--transition-colors);
                     pointer-events: none;
                     overflow: hidden;
@@ -127,13 +127,14 @@
                     user-select: none;
                     padding: 0px;
 
-                    @include solid-colorize("&");
+                    @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
                     & {
                         border: none;
                         outline: none;
                         border-width: 0px;
                         border-radius: 0px;
+                        //background-color: transparent;
                     }
 
                     * {
@@ -282,7 +283,7 @@
                 span {
                     display: block;
                     font-weight: var(--font-weight-normal);
-                    color: --c2-on-surface(0.0, var(--current, currentColor));
+                    color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
                     padding-inline-end: var(--padding-xs);
                 }
             }

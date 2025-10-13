@@ -12,6 +12,12 @@
         min-inline-size: 0;
     }
 
+    .field-list-edit-parts {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
     // Enhanced field list edit part
     .field-list-edit-part {
         grid-column: 1 / -1;
@@ -45,14 +51,17 @@
 
         & > button {
             @include button-base;
-            margin: 0;
-            grid-column: remove-btn;
-            line-height: 0;
-            border-radius: var(--radius-full);
-            inline-size: calc(var(--space-lg) * 1.6);
-            block-size: calc(var(--space-lg) * 1.6);
-            aspect-ratio: 1 / 1;
-            font-weight: 700;
+
+            & {
+                margin: 0;
+                grid-column: remove-btn;
+                line-height: 0;
+                border-radius: var(--radius-full);
+                inline-size: calc(var(--space-lg) * 1.6);
+                block-size: calc(var(--space-lg) * 1.6);
+                aspect-ratio: 1 / 1;
+                font-weight: 700;
+            }
         }
 
         // Enhanced input field styling
@@ -60,14 +69,19 @@
         input[type="tel"],
         input[type="email"],
         input[type="url"] {
-            @include form-field-base;
             grid-column: input;
             min-inline-size: 0;
+
+            @include form-field-base;
+            @include solid-colorize("&");
+
+            & {
+                border-width: 0.5px;
+            }
         }
 
         // Enhanced checkbox styling
         input[type="checkbox"][data-type="show-password-or-url"] {
-            @include checkbox-radio-base;
             grid-column: checkbox-btn;
             min-block-size: 0;
             min-inline-size: 0;
@@ -75,6 +89,8 @@
             block-size: calc(var(--space-lg) * 1.6);
             border-radius: var(--radius-full);
             z-index: 2;
+
+            @include checkbox-radio-base;
         }
 
         // Enhanced preview link styling
@@ -104,10 +120,17 @@
     // Enhanced main button styling
     .field-list-edit[data-type] > button {
         @include button-base;
-        grid-column: button;
-        gap: calc(var(--space-sm) * 0.9);
-        padding: var(--space-md) calc(var(--space-md) * 1.3);
-        border-radius: var(--radius-lg);
+        @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+
+        & {
+            grid-column: button;
+            gap: calc(var(--space-sm) * 0.9);
+            padding: var(--space-md) calc(var(--space-md) * 1.3);
+            border-radius: var(--radius-lg);
+
+            border-width: 0px;
+            box-shadow: var(--shadow-sm);
+        }
     }
 
     //

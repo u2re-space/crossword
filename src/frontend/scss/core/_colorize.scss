@@ -52,13 +52,13 @@
         -webkit-text-fill-color: var(--on-surface-color);
 
         //
-        &:is(button, input, select, textarea) {
+        &:where(button, input, select, textarea) {
             border-style: solid;
             border-width: 0.5px;
         }
 
         // Interactive states
-        &:is(button, input, select, textarea, a, li) {
+        &:where(button, input, select, textarea, a, li, option) {
 
             transition:
                 border-color var(--transition-normal),
@@ -89,6 +89,11 @@
         &::selection {
             --on-surface-color: --c2-surface(calc(var(--color-shade) - 0.04), var(--current, currentColor));
             --surface-color: --c2-on-surface(calc(var(--color-tint) + 0.04), var(--current, currentColor));
+        }
+
+        //
+        &:where(select) option {
+            border-color: var(--border-color);
         }
     }
 }
@@ -141,7 +146,7 @@
 // Enhanced font styling with design system integration
 @mixin font-style($selector: "&", $options: (
     "size": "base",
-    "weight": 500,
+    "weight": 400,
     "family": "inherit"
 )) {
     #{$selector} {
@@ -159,7 +164,7 @@
             font-size: var(--text-base);
         }
 
-        font-weight: #{map.get($options, "weight") or 500};
+        font-weight: #{map.get($options, "weight") or 400};
         font-family: #{map.get($options, "family") or "inherit"};
     }
 }
@@ -168,7 +173,6 @@
 @mixin form-field-base {
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-md);
-    border: none;
     outline: none;
     cursor: text;
     user-select: text;
@@ -177,8 +181,17 @@
     max-inline-size: stretch;
     field-sizing: content;
 
+    //
     @include solid-colorize("&");
     @include font-style("&");
+
+    & {
+        border-width: 0px;
+    }
+
+    &:where(select) {
+        user-select: none;
+    }
 }
 
 @mixin button-base {
@@ -200,20 +213,103 @@
     @include font-style("&");
 }
 
-@mixin select-dropdown {
+@mixin option-style {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     cursor: pointer;
-    padding-inline-end: calc(var(--space-lg) * 2);
+    user-select: none;
 
-    // Better SVG icon that adapts to color scheme
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right var(--space-md) center;
-    background-size: var(--space-lg);
+    @include solid-colorize("&");
 
+    & {
+        border-width: 0px;
+        border-inline-start-width: 0.5px;
+        border-inline-end-width: 0.5px;
+    }
+
+    &:first-of-type {
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        border-block-start-width: 0.5px;
+    }
+
+    &:last-of-type {
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        border-block-end-width: 0.5px;
+    }
+
+    &:not(:last-of-type) {
+        border-block-end: none;
+        border-block-end-width: 0.5px;
+    }
+}
+
+@mixin select-dropdown {
     @include form-field-base;
+
+    & {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        cursor: pointer;
+        padding-inline-end: calc(var(--space-lg) * 2);
+    }
+
+    //
+    &:where(select) {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: base-select;
+        cursor: pointer;
+        padding-inline: 0;
+        background: none;
+        user-select: none;
+        padding: var(--space-sm);
+        display: flex;
+        place-content: center;
+        place-items: center;
+        justify-content: start;
+        gap: var(--space-xs);
+        min-inline-size: 0;
+
+        text-indent: 0.01px;
+        text-overflow: '';
+        text-overflow: "";
+    }
+
+    &::picker(select) {
+        appearance: base-select;
+        cursor: pointer;
+        background: transparent;
+        background-color: transparent;
+        padding: 0;
+    }
+
+    &::after {
+        mask-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
+        mask-repeat: no-repeat;
+        mask-origin: content-box;
+        mask-clip: content-box;
+        mask-position: center;
+        mask-size: contain;
+        mask-type: alpha;
+
+        background-color: var(--icon-color, currentColor);
+        content: "";
+        display: flex;
+        inline-size: var(--space-lg);
+        block-size: var(--space-lg);
+        max-inline-size: var(--space-lg);
+        max-block-size: var(--space-lg);
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    option {
+        @include option-style;
+    }
 }
 
 @mixin checkbox-radio-base {

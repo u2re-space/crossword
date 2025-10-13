@@ -12,8 +12,9 @@
         gap: var(--gap-xl);
         padding: var(--gap-xl);
         border-radius: 0px;
-        @include surface(var(--surface-opacity-subtle));
         min-inline-size: 0;
+
+        @include surface(var(--surface-opacity-subtle));
 
         span {
             block-size: max-content;
@@ -28,7 +29,6 @@
         align-items: center;
         padding: var(--padding-xl);
         border-radius: var(--radius-lg);
-        border: 1px solid;
 
         //
         @include surface(var(--surface-opacity-default));
@@ -39,14 +39,14 @@
         .hero-icon {
             inline-size: clamp(3rem, 4vw, 3.5rem);
             block-size: clamp(3rem, 4vw, 3.5rem);
-
             border-radius: 50%;
-            border: 1px solid;
 
+            //
             @include grid-center;
             @include surface(var(--surface-opacity-default));
             @include border-color(var(--surface-opacity-emphasis));
 
+            //
             ui-icon {
                 --icon-size: clamp(1.6rem, 2.4vw, 1.9rem);
                 --icon-color: currentColor;
@@ -67,7 +67,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-base);
-                color: --c2-on-surface(0.04, var(--current, currentColor));
+                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
             }
         }
     }
@@ -75,27 +75,29 @@
     .settings-nav {
         display: flex;
         gap: var(--gap-md);
-        @include scrollable("x");
-        @include hide-scrollbar;
         padding: var(--padding-xs);
         border-radius: var(--radius-lg);
+
+        @include scrollable("x");
+        @include hide-scrollbar;
         @include surface(var(--surface-opacity-subtle));
         @include border-color(var(--surface-opacity-emphasis));
-        border: 1px solid;
     }
 
     .settings-tab {
-        @include flex-center;
         gap: var(--gap-sm);
         padding: var(--padding-sm) var(--padding-lg);
         border-radius: var(--radius-full);
-        border: 1px solid transparent;
         background: transparent;
-        @include text-color(0);
         cursor: pointer;
         transition: var(--transition-colors);
         font-size: var(--font-sm);
         white-space: nowrap;
+
+        //
+        @include solid-colorize("&");
+        @include flex-center;
+        @include text-color(0);
 
         ui-icon {
             --icon-size: var(--icon-size-md);
@@ -151,14 +153,19 @@
         p {
             margin: 0;
             font-size: var(--font-sm);
-            color: --c2-on-surface(0.04, var(--current, currentColor));
+            color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
         }
     }
 
     .settings-group {
-        @include surface(var(--surface-opacity-default));
-        border: none;
         border-radius: var(--radius-lg);
+
+        @include surface(var(--surface-opacity-default));
+
+        & {
+            border: none 0px transparent;
+            border-width: 0px;
+        }
 
         &:not(.is-collapsible) {
             padding: var(--padding-lg);
@@ -199,7 +206,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-sm);
-                color: --c2-on-surface(0.06, var(--current, currentColor));
+                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
             }
         }
 
@@ -210,7 +217,7 @@
 
         .group-note {
             font-size: var(--font-sm);
-            color: --c2-on-surface(0.06, var(--current, currentColor));
+            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
         }
     }
 
@@ -223,26 +230,23 @@
         display: grid;
         gap: var(--gap-xs);
         min-inline-size: 0;
+        pointer-events: none;
 
         .field-label {
             font-size: var(--font-sm);
             font-weight: var(--font-weight-semibold);
-            color: --c2-on-surface(0.04, var(--current, currentColor));
+            color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
         }
 
         .field-hint {
             font-size: var(--font-xs);
-            color: --c2-on-surface(0.06, var(--current, currentColor));
-        }
-
-        ::picker(select) {
-            background: transparent;
-            background-color: transparent;
+            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
         }
 
         input.field-control {
             border-radius: var(--form-radius);
             font-variant-numeric: tabular-nums;
+            pointer-events: auto;
         }
 
         .field-control,
@@ -251,71 +255,105 @@
         }
 
         select.field-control {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffffb3'%3e%3cpath d='M4.2 6.4a.75.75 0 0 1 1.06-.05L8 8.68l2.74-2.33a.75.75 0 1 1 .98 1.14l-3.24 2.75a.75.75 0 0 1-.98 0L4.25 7.49a.75.75 0 0 1-.05-1.06z'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right var(--padding-lg) center;
-            background-size: var(--icon-size-sm);
-            border-radius: var(--form-radius);
-        }
-
-        select.field-control,
-        ::picker(select) {
-            appearance: base-select;
-            border: none;
-            outline: none;
-        }
-
-        select.field-control {
-            display: block;
-            block-size: max-content;
-        }
-
-        select.field-control option {
-            appearance: none;
-            @include flex-center;
-            justify-content: start;
-            block-size: max-content;
-            gap: var(--gap-xs);
-            min-inline-size: 0;
-            border: none;
-            outline: none;
-            @include surface(var(--surface-opacity-muted));
-
-            &:hover {
-                @include surface(var(--surface-opacity-muted));
+            &, &::picker(select) {
+                appearance: base-select;
+                border: none;
+                outline: none;
+                cursor: pointer;
+                inset: auto;
+                margin: 0;
+                transform: none;
+                translate: none;
             }
 
-            &:focus-visible {
-                @include surface(var(--surface-opacity-muted));
-            }
+            & {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                text-indent: 0.01px;
+                text-overflow: '';
+                text-overflow: "";
+                appearance: base-select;
 
-            &:checked {
-                @include text-color(0);
-                @include surface(var(--surface-opacity-strong));
+                //
+                padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
+                pointer-events: auto;
+                border-radius: var(--form-radius);
+                cursor: pointer;
+                padding-inline: var(--padding-sm);
+                accent-color: transparent;
+                color: transparent !important;
 
-                &:hover {
-                    @include surface(var(--surface-opacity-emphasis));
+                //
+                display: block;
+                block-size: max-content;
+
+                //
+                //@include select-dropdown;
+                @include solid-colorize("&");
+
+                //
+                &,
+                &:hover,
+                &:focus-visible,
+                &:active {
+                    border-width: 0.5px;
+                }
+
+                &::-ms-expand {
+                    display: none;
                 }
             }
 
-            &:first-of-type {
-                border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            &::picker(select) {
+                background: transparent;
+                background-color: transparent;
+                padding: 0;
             }
 
-            &:last-of-type {
-                border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            }
+            option {
+                appearance: none;
+                justify-content: start;
+                block-size: max-content;
+                gap: var(--gap-xs);
+                min-inline-size: 0;
+                border: none;
+                outline: none;
+                padding: var(--padding-sm);
+                line-height: normal;
 
-            &:not(&:last-of-type) {
-                border-block-end: none;
+                //
+                @include flex-center;
+                @include surface(var(--surface-opacity-muted));
+
+                & {
+                    border-style: solid;
+                    border-width: 0px;
+                    border-radius: 0px;
+                    justify-content: start;
+                    inset: auto;
+                    margin: 0;
+                    transform: none;
+                    translate: none;
+                    border-inline-start-width: 0.5px;
+                    border-inline-end-width: 0.5px;
+                }
+
+                &:first-of-type {
+                    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+                    border-block-start-width: 0.5px;
+                }
+
+                &:last-of-type {
+                    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+                    border-block-end-width: 0.5px;
+                }
+
+                &:not(&:last-of-type) {
+                    border-block-end: none;
+                    border-block-end-width: 0.5px;
+                }
             }
         }
-
-
     }
 
     .settings-actions {
@@ -326,11 +364,9 @@
         @include flex-between;
 
         .btn.save {
-            border: 1px solid;
-
             @include button-variant(var(--contrast-opacity-subtle));
-            @include border-color(var(--contrast-opacity-default));
             @include text-color(0);
+            @include border-color(var(--contrast-opacity-default));
 
             &:hover {
                 @include surface(var(--contrast-opacity-muted));
@@ -339,7 +375,7 @@
 
         .save-status {
             font-size: var(--font-sm);
-            color: --c2-on-surface(0.06, var(--current, currentColor));
+            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
         }
     }
 

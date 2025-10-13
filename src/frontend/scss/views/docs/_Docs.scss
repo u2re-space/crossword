@@ -347,7 +347,7 @@
 
             .doc-entry-subtitle {
                 font-size: var(--font-sm);
-                color: --c2-on-surface(0.04, var(--current, currentColor));
+                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
             }
 
             .doc-entry-summary {

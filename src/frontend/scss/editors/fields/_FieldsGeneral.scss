@@ -41,8 +41,41 @@
 
     //
     .field-helper {
-        color: --c2-on-surface(0.08, var(--current, currentColor));
+        color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
         font-size: 0.75rem;
+    }
+
+    // Enhanced select dropdown styling
+    select {
+        display: block;
+        block-size: max-content;
+        cursor: pointer;
+        background: none;
+        padding: 0;
+        user-select: none;
+
+        text-indent: 0.01px;
+        text-overflow: '';
+        text-overflow: "";
+        color: transparent !important;
+
+        @include select-dropdown;
+
+        &::-ms-expand {
+            display: none;
+        }
+
+        // Picker styling
+        &, &::picker(select) {
+            appearance: base-select;
+            outline: none;
+        }
+
+        &::picker(select) {
+            background: transparent;
+            background-color: transparent;
+            padding: 0;
+        }
     }
 
     //
@@ -52,58 +85,55 @@
         outline: none;
         background: transparent;
         background-color: transparent;
-
-        @include select-dropdown;
+        line-height: 0;
+        padding: 0;
     }
 
-    // Enhanced select dropdown styling
-    select {
-        display: block;
+    // Option styling with proper nesting
+    option {
+        appearance: none;
+        display: flex;
+        flex-direction: row;
+        place-content: center;
+        place-items: center;
+        justify-content: start;
         block-size: max-content;
+        gap: var(--space-xs);
+        min-inline-size: 0;
+        outline: none;
+        user-select: none;
+        cursor: pointer;
 
-        // Picker styling
-        &, ::picker(select) {
-            appearance: base-select;
-            border: none;
-            outline: none;
+        @include solid-colorize("&");
+        @include font-style("&", ("size": "sm"));
 
-            @include select-dropdown;
+        & {
+            border-width: 0px;
+            border-inline-start-width: 0.5px;
+            border-inline-end-width: 0.5px;
         }
 
-        ::picker(select) {
-            background: transparent;
-            background-color: transparent;
+        &:first-of-type {
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            border-block-start-width: 0.5px;
         }
 
-        // Option styling with proper nesting
-        option {
-            appearance: none;
-            display: flex;
-            flex-direction: row;
-            place-content: center;
-            place-items: center;
-            justify-content: start;
-            block-size: max-content;
-            gap: var(--space-xs);
-            min-inline-size: 0;
-            border: none;
-            outline: none;
-
-            @include solid-colorize("&");
-            @include font-style("&", ("size": "sm"));
-
-            &:first-of-type {
-                border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-            }
-
-            &:last-of-type {
-                border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            }
-
-            &:not(:last-of-type) {
-                border-block-end: none;
-            }
+        &:last-of-type {
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            border-block-end-width: 0.5px;
         }
+
+        &:not(:last-of-type) {
+            border-block-end: none;
+            border-block-end-width: 0.5px;
+        }
+    }
+
+    //
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
     }
 
     // Enhanced button styling

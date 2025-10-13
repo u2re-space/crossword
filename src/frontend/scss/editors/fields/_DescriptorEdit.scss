@@ -22,15 +22,32 @@
         // Multi-line text input with enhanced styling
         textarea {
             @include form-field-base;
-            block-size: max-content;
-            resize: vertical;
-            max-inline-size: stretch;
-            max-block-size: stretch;
+            @include solid-colorize("&");
+
+            //
+            & {
+                display: block;
+                block-size: max-content;
+                resize: vertical;
+                max-inline-size: stretch;
+                max-block-size: stretch;
+                inline-size: stretch;
+            }
         }
 
         // Single-line input (for URLs, emails, phones, tags) with enhanced styling
         input {
             @include form-field-base;
+
+            & {
+                inline-size: stretch;
+                max-inline-size: stretch;
+            }
+        }
+
+        label {
+            inline-size: stretch;
+            max-inline-size: stretch;
         }
 
         // Field label (aria-hidden decorative) with enhanced styling
@@ -77,12 +94,17 @@
 
     // Enhanced add button
     .descriptor-edit > button {
-        gap: var(--space-sm);
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-md);
-        margin: 0;
-
         @include button-base;
+        @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+
+        & {
+            gap: calc(var(--space-sm) * 0.9);
+            padding: var(--space-md) calc(var(--space-md) * 1.3);
+            border-radius: var(--radius-lg);
+
+            border-width: 0px;
+            box-shadow: var(--shadow-sm);
+        }
     }
 
     // Type-specific styling with better organization

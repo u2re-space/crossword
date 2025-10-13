@@ -275,13 +275,14 @@
     gap: var(--card-gap);
     padding: var(--card-padding);
     border-radius: var(--card-radius);
-    @include surface(var(--surface-opacity-muted));
     transition: var(--transition-colors), var(--transition-transform);
+
+    @include surface(var(--surface-opacity-muted));
 }
 
 @mixin input-base {
     display: block;
-    width: 100%;
+    inline-size: stretch;
     padding: var(--form-padding);
     border: 1px solid transparent;
     border-radius: var(--form-radius);
@@ -292,15 +293,6 @@
 
     @include surface(var(--surface-opacity-muted));
     @include text-color(0);
-
-    &:hover {
-        @include surface(var(--surface-opacity-default));
-    }
-
-    &:focus-visible {
-        @include surface(var(--surface-opacity-subtle));
-        @include border-color(var(--contrast-opacity-default));
-    }
 }
 
 @mixin panel-base {
@@ -308,9 +300,10 @@
     gap: var(--gap-md);
     padding: var(--padding-xl);
     border-radius: var(--radius-lg);
+    border: 1px solid;
+
     @include surface(var(--surface-opacity-muted));
     @include border-color(var(--surface-opacity-emphasis));
-    border: 1px solid;
 }
 
 // =============================================================================
@@ -368,9 +361,9 @@
 // ACCESSIBILITY MIXINS
 // =============================================================================
 
-@mixin focus-ring($tint: 0.0) {
+@mixin focus-ring($tint: var(--outline-tint)) {
     &:focus-visible {
-        outline: 2px solid oklch(from --c2-on-surface($tint, var(--current, currentColor)) l c h / 0.6);
+        outline: 2px solid oklch(from --c2-on-surface($tint, var(--current, currentColor)) l c h / var(--outline-opacity));
         outline-offset: 2px;
     }
 }
@@ -492,8 +485,30 @@
     padding: var(--padding-2xl);
     border-radius: var(--radius-lg);
     @include surface(var(--surface-opacity-default));
-    @include text-color(var(--text-opacity-muted));
-    border: 1px dashed oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.18);
+    @include text-color(var(--text-tint-muted));
+    border: 1px dashed oklch(from --c2-on-surface(var(--scrollbar-tint), var(--current, currentColor)) l c h / var(--border-opacity-dashed));
     text-align: center;
     min-block-size: var(--space-2xl);
+}
+
+// =============================================================================
+// VALIDATION STATE MIXINS
+// =============================================================================
+
+@mixin validation-state($color, $border-opacity: var(--border-opacity-strong), $bg-opacity: 0.04) {
+    border-color: oklch(from $color l c h / $border-opacity);
+    background: oklch(from $color l c h / $bg-opacity);
+}
+
+@mixin validation-success {
+    @include validation-state(var(--color-success));
+}
+
+@mixin validation-error {
+    @include validation-state(var(--color-error));
+    box-shadow: 0 0 0 3px oklch(from var(--color-error) l c h / 0.12);
+}
+
+@mixin validation-warning {
+    @include validation-state(var(--color-warning));
 }

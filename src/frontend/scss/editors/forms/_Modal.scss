@@ -1,4 +1,5 @@
 @use "../../core/colorize" as *;
+@use "../../core/mixins" as *;
 
 //
 @layer rs-forms-modal {
@@ -8,7 +9,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
+        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
     // Enhanced modal backdrop
@@ -26,7 +27,7 @@
 
         & {
             line-height: normal;
-            scrollbar-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.4) transparent;
+            scrollbar-color: oklch(from --c2-on-surface(var(--scrollbar-tint), var(--current, currentColor)) l c h / var(--scrollbar-opacity)) transparent;
         }
 
         @media (pointer: coarse) {
@@ -46,12 +47,12 @@
         max-block-size: min(94vh, 45rem);
         border-radius: var(--modal-radius);
         padding: var(--space-xl);
-        background: --c2-surface(0.01, var(--current, currentColor));
         box-shadow: var(--modal-shadow);
         backdrop-filter: blur(12px) saturate(120%);
-        border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.18);
         overflow: visible;
         container-type: inline-size;
+
+        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
     // Enhanced modal section
@@ -59,17 +60,18 @@
         display: grid;
         gap: var(--space-sm);
         padding-block: var(--space-sm);
-        border-block-end: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.16);
         inline-size: stretch;
+        background: transparent;
 
         &:last-of-type {
             border-block-end: none;
         }
 
         .modal-section-title {
-            @include font-style("&", ("size": "sm", "weight": 600));
             margin: 0;
-            color: --c2-on-surface(0.04, var(--current, currentColor));
+
+            //
+            @include font-style("&", ("size": "sm", "weight": 600));
         }
 
         .modal-section-fields {
@@ -83,8 +85,10 @@
     }
 
     .modal-fields::-webkit-scrollbar-thumb {
-        background: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.24);
         border-radius: 999px;
+
+        //
+        @include solid-colorize("&", ("shade": var(--surface-opacity-emphasis)));
     }
 
     .modal-fields::-webkit-scrollbar-track {
@@ -93,15 +97,19 @@
 
     // Enhanced modal title and description
     .modal-title {
-        @include font-style("&", ("size": "xl", "weight": 700));
         margin: 0;
         line-height: 1.2;
+
+        //
+        @include font-style("&", ("size": "xl", "weight": 700));
     }
 
     .modal-description {
-        @include font-style("&", ("size": "base"));
         margin: 0;
-        color: --c2-on-surface(0.05, var(--current, currentColor));
+        background: transparent;
+
+        //
+        @include font-style("&", ("size": "base"));
     }
 
     // Enhanced modal fields container
@@ -121,10 +129,14 @@
         display: grid;
         gap: var(--space-xs);
         min-inline-size: 0;
+        background: transparent;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        contain: inline-size;
+        container-type: inline-size;
 
         .label {
             @include font-style("&", ("size": "sm", "weight": 600));
-            color: --c2-on-surface(0.06, var(--current, currentColor));
         }
 
         .contacts-group {
@@ -138,30 +150,28 @@
         select,
         textarea {
             @include form-field-base;
-            border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.14);
-            background: --c2-surface(0.04, var(--current, currentColor));
-            background-repeat: no-repeat;
-            color: --c2-on-surface(0.0, var(--current, currentColor));
-            min-block-size: 2.5rem;
-            font-size: inherit;
+            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
-            &:focus {
-                border-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.24);
-                background: --c2-surface(0.08, var(--current, currentColor));
+            & {
+                background-repeat: no-repeat;
+                min-block-size: 2.5rem;
+                font-size: inherit;
+                max-inline-size: stretch;
+                max-inline-size: 100cqi;
+
+                text-overflow: ellipsis;
+                overflow: auto;
+                scrollbar-width: none;
             }
         }
 
         // Enhanced select styling
         select {
             @include select-dropdown;
-            border: 1px solid oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.14);
-            background-color: --c2-surface(0.04, var(--current, currentColor));
-            min-block-size: 2.5rem;
+            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
-            &:hover {
-                border-color: oklch(from --c2-on-surface(0.1, var(--current, currentColor)) l c h / 0.20);
-                background-color: --c2-surface(0.06, var(--current, currentColor));
-            }
+            //
+            & { min-block-size: 2.5rem; };
         }
 
         textarea[data-multiline="true"] {
@@ -171,7 +181,7 @@
 
         .field-helper {
             font-size: 0.75rem;
-            color: --c2-on-surface(0.08, var(--current, currentColor));
+            @include solid-colorize("&", ("tint": var(--text-tint-muted)));
         }
     }
 
@@ -193,21 +203,21 @@
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
+        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
     .modal-main {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
+        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
     .modal-controls {
         display: flex;
         flex-direction: row;
         gap: 0.25rem;
-        background-color: --c2-surface(0.0, var(--current, currentColor));
+        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
     }
 
     .modal-toggle {
@@ -235,16 +245,13 @@
     .modal-field.valid input,
     .modal-field.valid textarea,
     .modal-field.valid select {
-        border-color: oklch(from var(--color-success) l c h / 0.4);
-        background: oklch(from var(--color-success) l c h / 0.04);
+        @include validation-success;
     }
 
     .modal-field.invalid input,
     .modal-field.invalid textarea,
     .modal-field.invalid select {
-        border-color: oklch(from var(--color-error) l c h / 0.4);
-        background: oklch(from var(--color-error) l c h / 0.04);
-        box-shadow: 0 0 0 3px oklch(from var(--color-error) l c h / 0.12);
+        @include validation-error;
     }
 
 
@@ -284,15 +291,6 @@
         animation: validationPulse 0.3s ease-in-out;
     }
 
-
-    /* Accessibility improvements */
-    .modal-field input:focus-visible,
-    .modal-field textarea:focus-visible,
-    .modal-field select:focus-visible {
-        outline: 2px solid oklch(from --c2-on-surface(0.0, var(--current, currentColor)) l c h / 0.4);
-        outline-offset: 2px;
-    }
-
     /* High contrast mode support */
     @media (prefers-contrast: high) {
         .modal-field input,
@@ -304,13 +302,13 @@
         .modal-field.valid input,
         .modal-field.valid textarea,
         .modal-field.valid select {
-            border-color: oklch(from var(--color-success) l c h / 0.8);
+            @include validation-state(var(--color-success), 0.8, 0.04);
         }
 
         .modal-field.invalid input,
         .modal-field.invalid textarea,
         .modal-field.invalid select {
-            border-color: oklch(from var(--color-error) l c h / 0.8);
+            @include validation-state(var(--color-error), 0.8, 0.04);
         }
     }
 

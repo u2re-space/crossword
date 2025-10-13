@@ -20,8 +20,12 @@
 
         input {
             @include form-field-base;
-            min-inline-size: 0;
-            font-variant-numeric: tabular-nums;
+            @include solid-colorize("&");
+
+            & {
+                min-inline-size: 0;
+                font-variant-numeric: tabular-nums;
+            }
 
             &:where([type="date"], [type="time"], [type="datetime-local"]) {
                 padding-inline-end: calc(var(--space-lg) * 2);
