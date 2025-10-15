@@ -1,9 +1,7 @@
 import { getDirectoryHandle, H, I } from "fest/lure";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { ref } from "fest/object";
 
 //
-export const CURRENT_VIEW = ref("timeline");
 export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value: string }, sidebar: HTMLElement) => {
     const TOOLBAR = H`<div class="toolbar" slot="bar">
         <div style="flex: 1;"></div>

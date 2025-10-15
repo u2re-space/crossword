@@ -1,4 +1,4 @@
-import { AppLayout, CURRENT_VIEW } from "./elements/layouts/AppLayout";
+import { AppLayout } from "./elements/layouts/AppLayout";
 import { $byKind, $insideOfDay, DataExplorer, PreferencesView, QuestsView, Settings, ViewPage } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 
@@ -12,7 +12,7 @@ import { Sidebar } from "./elements/layouts/Sidebar";
 import { MakeCardElement } from "./elements/entities/typed/Cards";
 
 //
-import { dropFile, H } from "fest/lure";
+import { dropFile, H, hashTargetRef } from "fest/lure";
 import { sampleTasks, writeSampleTask } from "../$test/Tasks";
 import { startDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 
@@ -38,6 +38,7 @@ const implementTestDrop = (mountElement: HTMLElement) => {
 }
 
 //
+export const CURRENT_VIEW = hashTargetRef(location.hash || "task", false);
 export default async function frontend(mountElement) {
     initDOM(document.body);
     loadInlineStyle(style);
