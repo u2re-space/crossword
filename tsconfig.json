@@ -26,7 +26,15 @@
             "@rs-core/*": ["./src/core/*"],
             "@rs-frontend/*": ["./src/frontend/*"],
             "@rs-shared/*": ["./shared/*"],
-            "@rs-test/*": ["./test/*"]
+            "@rs-test/*": ["./test/*"],
+
+            "veela": ["./shared/fest/veela/index.ts"],
+            "veela-runtime": ["./shared/fest/veela/scss/runtime/index.ts"],
+            "veela-runtime/*": ["./shared/fest/veela/scss/runtime/*"],
+            "veela-lib": ["./shared/fest/veela/scss/lib/index.scss"],
+            "veela-lib/*": ["./shared/fest/veela/scss/lib/*"],
+            "veela-mixins": ["./shared/fest/veela/scss/lib/mixins/index.scss"],
+            "veela-mixins/*": ["./shared/fest/veela/scss/lib/mixins/*"]
         },
         "target": "ESNext",
         "module": "ESNext",

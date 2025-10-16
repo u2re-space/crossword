@@ -1,7 +1,7 @@
 // Enhanced DateTime Field Editor with modern design patterns
-@use "../../core/colorize" as *;
-@use "../../core/mixins" as *;
+@use "veela-lib" as *;
 
+//
 @layer rs-fields-datetime {
 
     // Main datetime editor container

@@ -1,6 +1,5 @@
 // Multi-part description editor with add/remove functionality
-@use "../../core/colorize" as *;
-@use "../../core/mixins" as *;
+@use "veela-lib" as *;
 
 //
 @layer rs-fields-descriptor {

@@ -1,9 +1,7 @@
 // Card Components - Refactored and Optimized
 // Unified with design system variables and mixins
 
-@use "../../core/variables" as *;
-@use "../../core/mixins" as *;
-@use "../../core/colorize" as *;
+@use "veela-lib" as *;
 
 // Legacy text wrapping mixins - preserved for backward compatibility
 @mixin make-wraps {

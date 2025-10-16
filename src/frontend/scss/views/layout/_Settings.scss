@@ -1,9 +1,7 @@
 // Settings Views - Refactored and Optimized
 // Unified with design system variables and mixins
 
-@use "../../core/variables" as *;
-@use "../../core/mixins" as *;
-@use "../../core/colorize" as *;
+@use "veela-lib" as *;
 
 @layer rs-settings {
 

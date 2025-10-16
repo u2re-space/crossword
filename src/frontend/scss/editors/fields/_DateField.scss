@@ -1,8 +1,7 @@
 // Modern date field editor with format selector
+@use "veela-lib" as *;
 
-@use "../../core/colorize" as *;
-@use "../../core/mixins" as *;
-
+//
 @layer rs-fields-date {
 
     // Enhanced date field layout
