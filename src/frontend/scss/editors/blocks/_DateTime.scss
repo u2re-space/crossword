@@ -20,8 +20,6 @@
         align-items: center;
 
         input {
-            @include form-field-base;
-
             & {
                 min-inline-size: 0;
                 font-variant-numeric: tabular-nums;

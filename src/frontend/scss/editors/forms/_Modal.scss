@@ -51,9 +51,6 @@
             font-variant-numeric: tabular-nums;
             padding-inline-end: calc(var(--space-lg) * 2);
 
-            //
-            @include form-field-base;
-
             // Enhanced calendar icon styling
             &::-webkit-calendar-picker-indicator {
                 cursor: pointer;
@@ -270,8 +267,6 @@
         input,
         select,
         textarea {
-            @include form-field-base(("shade": var(--surface-opacity-muted)));
-
             & {
                 background-repeat: no-repeat;
                 min-block-size: 2.5rem;

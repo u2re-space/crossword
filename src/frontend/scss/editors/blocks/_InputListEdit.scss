@@ -44,31 +44,26 @@
                 grid-column: input;
             }
 
-            & > button {
-                @include button-base;
+            & > :is(button, input[type="checkbox"]) {
+                grid-column: remove-btn;
+                margin: 0;
+                line-height: 0;
+                border-radius: var(--radius-full, 50%);
+                inline-size: calc(var(--space-xl) * 1.6);
+                block-size: calc(var(--space-xl) * 1.6);
+                aspect-ratio: 1 / 1;
+                font-weight: 700;
+            }
 
-                & {
-                    margin: 0;
-                    grid-column: remove-btn;
-                    line-height: 0;
-                    border-radius: var(--radius-full);
-                    inline-size: calc(var(--space-lg) * 1.6);
-                    block-size: calc(var(--space-lg) * 1.6);
-                    aspect-ratio: 1 / 1;
-                    font-weight: 700;
-                }
+            & > input[type="checkbox"] {
+                grid-column: checkbox-btn;
             }
 
             input {
                 &:where([type="text"], [type="tel"], [type="email"], [type="url"]) {
                     grid-column: input;
                     min-inline-size: 0;
-
-                    @include form-field-base;
-
-                    & {
-                        border-width: 0.5px;
-                    }
+                    border-width: 0.5px;
                 }
 
                 &[type="checkbox"][data-type="show-password-or-url"] {
@@ -107,7 +102,7 @@
             }
         }
 
-        &[data-type] > button {
+        &[data-type] > :where(button, input[type="checkbox"]) {
             @include button-base;
             @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
@@ -174,14 +169,14 @@
             }
         }
 
-        .field-list-edit > button {
+        .field-list-edit > :where(button, input[type="checkbox"]) {
             transition-duration: 0ms;
         }
     }
 
     @media (prefers-contrast: high) {
         .field-list-edit-part input,
-        .field-list-edit > button {
+        .field-list-edit > :where(button, input[type="checkbox"]) {
             border-width: 2px;
         }
     }
@@ -207,27 +202,18 @@
 
         // Multi-line text input with enhanced styling
         textarea {
-            @include form-field-base;
-
-            //
-            & {
-                display: block;
-                block-size: max-content;
-                resize: vertical;
-                max-inline-size: stretch;
-                max-block-size: stretch;
-                inline-size: stretch;
-            }
+            display: block;
+            block-size: max-content;
+            resize: vertical;
+            max-inline-size: stretch;
+            max-block-size: stretch;
+            inline-size: stretch;
         }
 
         // Single-line input (for URLs, emails, phones, tags) with enhanced styling
         input {
-            @include form-field-base;
-
-            & {
-                inline-size: stretch;
-                max-inline-size: stretch;
-            }
+            inline-size: stretch;
+            max-inline-size: stretch;
         }
 
         label {
@@ -278,18 +264,13 @@
     }
 
     // Enhanced add button
-    .descriptor-edit > button {
-        @include button-base;
-        @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
+    .descriptor-edit > :where(button, input[type="checkbox"]) {
+        gap: calc(var(--space-sm) * 0.9);
+        padding: var(--space-md) calc(var(--space-md) * 1.3);
+        border-radius: var(--radius-lg);
 
-        & {
-            gap: calc(var(--space-sm) * 0.9);
-            padding: var(--space-md) calc(var(--space-md) * 1.3);
-            border-radius: var(--radius-lg);
-
-            border-width: 0px;
-            box-shadow: var(--shadow-sm);
-        }
+        border-width: 0px;
+        box-shadow: var(--shadow-sm);
     }
 
     // Type-specific styling with better organization
@@ -341,7 +322,7 @@
         .descriptor-edit-part textarea,
         .descriptor-edit-part input,
         .descriptor-edit-part a,
-        .descriptor-edit > button {
+        .descriptor-edit > :where(button, input[type="checkbox"]) {
             transition-duration: 0ms;
         }
     }
@@ -349,7 +330,7 @@
     @media (prefers-contrast: high) {
         .descriptor-edit-part textarea,
         .descriptor-edit-part input,
-        .descriptor-edit > button {
+        .descriptor-edit > :where(button, input[type="checkbox"]) {
             border-width: 2px;
         }
     }
