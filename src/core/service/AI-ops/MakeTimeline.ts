@@ -23,7 +23,7 @@ import { realtimeStates } from "../Cache";
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 
 //
-import { checkRemainsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { loadSettings } from "@rs-core/config/Settings";
 

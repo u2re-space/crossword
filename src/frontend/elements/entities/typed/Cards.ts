@@ -1,7 +1,7 @@
 import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../utils/Formatted";
 import { H, M } from "fest/lure";
-import { formatAsTime } from "@rs-frontend/elements/entities/utils/TimeUtils";
-import type { EntityDescriptor } from "./Types";
+import { formatAsTime } from "@rs-core/utils/TimeUtils";
+import type { EntityDescriptor } from "../../../../core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //

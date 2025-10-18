@@ -1,5 +1,5 @@
 import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
-import type { EntityDescriptor } from "../entities/typed/Types";
+import type { EntityDescriptor } from "../../../core/utils/Types";
 import { removeFile, writeFile } from "fest/lure";
 import { H, Q, M } from "fest/lure";
 import { makeReactive, stringRef, propRef } from "fest/object";

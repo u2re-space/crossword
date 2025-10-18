@@ -1,6 +1,6 @@
 import { stringRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
-import { parseDateCorrectly } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 
 //
 const jsonOutputTypeFormat = [

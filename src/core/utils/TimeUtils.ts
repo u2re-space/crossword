@@ -1,5 +1,5 @@
 import { makeReactive } from "fest/object";
-import type { ChapterDescriptor, DayDescriptor } from "../typed/Types";
+import type { ChapterDescriptor, DayDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
 
 //

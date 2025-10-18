@@ -1,6 +1,6 @@
 import { observableByMap, observableBySet } from "fest/object";
 import { H, M } from "fest/lure";
-import { parseDateCorrectly, getISOWeekNumber } from "@rs-frontend/elements/entities/utils/TimeUtils";
+import { parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
 
 
 
