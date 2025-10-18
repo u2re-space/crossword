@@ -7,13 +7,11 @@ import "fest/fl-ui";
 
 // @ts-ignore
 import style from "./index.scss?inline";
-import { sampleDays } from "../$test/Days";
 import { Sidebar } from "./elements/layouts/Sidebar";
 import { MakeCardElement } from "./elements/entities/typed/Cards";
 
 //
 import { dropFile, H, hashTargetRef } from "fest/lure";
-import { sampleTasks, writeSampleTask } from "../$test/Tasks";
 import { startDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 
 //
@@ -44,12 +42,6 @@ export default async function frontend(mountElement) {
     loadInlineStyle(style);
 
     //
-    await (async () => {
-        //await clearAllInDirectory()?.catch?.(console.warn.bind(console));
-        await Promise.all(sampleTasks.map((task) => writeSampleTask(task)?.catch?.(console.warn.bind(console))));
-    })();
-
-    //
     const entityViews = new Map([
         ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["pending", "in_progress", "completed", "failed", "delayed", "canceled", "other", "all"], availableActions: ["generate", "debug-gen", "upload"] }],
         ["event", { icon: "calendar", label: "Event", groupedBy: "days", tabs: ["education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other", "all"], availableActions: ["upload", "add"] }],
@@ -77,9 +69,6 @@ export default async function frontend(mountElement) {
     };
 
     //
-    const viewPage = { $refresh: () => { } };
-
-    //
     const views = new Map<any, any>([
         ["preferences", () => PreferencesView()],
         ["quests", () => QuestsView()],
@@ -96,6 +85,6 @@ export default async function frontend(mountElement) {
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
 
-    // Start debug task generation for testing
-    startDebugTaskGeneration();
+    //
+    //startDebugTaskGeneration();
 }

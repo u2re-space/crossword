@@ -45,8 +45,13 @@ const initiateConversionProcedure = async (dataSource: string|Blob|File|any)=>{
     }));
 
     //
-    if (settings?.ai?.mcp?.serverLabel && settings.ai?.mcp.origin && settings.ai?.mcp.clientKey && settings.ai?.mcp.secretKey) {
-        await gptResponses.useMCP(settings.ai?.mcp.serverLabel, settings.ai?.mcp.origin, settings.ai?.mcp.clientKey, settings.ai?.mcp.secretKey)?.catch?.(console.warn.bind(console));
+    // Support multiple MCP configurations
+    if (settings?.ai?.mcp && Array.isArray(settings.ai.mcp)) {
+        for (const mcpConfig of settings.ai.mcp) {
+            if (mcpConfig.serverLabel && mcpConfig.origin && mcpConfig.clientKey && mcpConfig.secretKey) {
+                await gptResponses.useMCP(mcpConfig.serverLabel, mcpConfig.origin, mcpConfig.clientKey, mcpConfig.secretKey)?.catch?.(console.warn.bind(console));
+            }
+        }
     }
 
     // phase 2 - convert data to target format, make final description

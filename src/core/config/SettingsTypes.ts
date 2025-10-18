@@ -33,18 +33,21 @@ export type SectionConfig = {
     groups: GroupConfig[];
 };
 
+export type MCPConfig = {
+    id: string;
+    serverLabel: string;
+    origin: string;
+    clientKey: string;
+    secretKey: string;
+};
+
 export type AppSettings = {
     ai?: {
         apiKey?: string;
         baseUrl?: string;
         model?: string;
         customModel?: string;
-        mcp?: {
-            serverLabel?: string;
-            origin?: string;
-            clientKey?: string;
-            secretKey?: string;
-        };
+        mcp?: MCPConfig[];
     };
     webdav?: {
         url?: string;
@@ -63,12 +66,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         baseUrl: "",
         model: "gpt-5-mini",
         customModel: "",
-        mcp: {
-            serverLabel: "",
-            origin: "",
-            clientKey: "",
-            secretKey: ""
-        }
+        mcp: []
     },
     webdav: {
         url: "http://localhost:6065",

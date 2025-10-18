@@ -4,7 +4,7 @@ import { H } from "fest/lure";
 import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
 
 //
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey } from "@rs-core/config/SettingsTypes";
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
 
 //
@@ -41,6 +41,10 @@ export const Settings = async () => {
     const navButtons = new Map<SectionKey, HTMLButtonElement>();
     const panelRefs = new Map<SectionKey, HTMLElement>();
     const tabbed = new Map<SectionKey, HTMLElement>();
+
+    // MCP management
+    const mcpConfigs: MCPConfig[] = [];
+    const mcpContainerRefs = new Map<string, HTMLElement>();
 
     //
     const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
@@ -99,6 +103,87 @@ export const Settings = async () => {
         return { root: section, body };
     };
 
+    // MCP management functions
+    const createMCPField = (mcpId: string, fieldName: string, label: string, type: "text" | "password" = "text", placeholder: string = "") => {
+        const fieldId = `mcp-${mcpId}-${fieldName}`;
+        const control = H`<input class="field-control" id=${fieldId} name=${`mcp.${mcpId}.${fieldName}`} type=${type} placeholder=${placeholder} />` as HTMLInputElement;
+        control.dataset.mcpId = mcpId;
+        control.dataset.fieldName = fieldName;
+        const field = H`<label class="field">
+            <span class="field-label">${label}</span>
+            ${control}
+        </label>` as HTMLElement;
+        fieldRefs.set(`mcp.${mcpId}.${fieldName}`, control);
+        return field;
+    };
+
+    const createMCPContainer = (mcpConfig: MCPConfig, isNew: boolean = false) => {
+        const container = H`<div class="mcp-config ${isNew ? 'mcp-config-new' : ''}" data-mcp-id=${mcpConfig.id}>
+            <div class="mcp-header">
+                <h4>MCP Server: ${mcpConfig.serverLabel || 'New Server'}</h4>
+                <button type="button" class="btn btn-danger btn-sm remove-mcp" data-mcp-id=${mcpConfig.id}>
+                    <ui-icon icon="trash"></ui-icon>
+                    <span>Remove</span>
+                </button>
+            </div>
+            <div class="mcp-fields">
+                ${createMCPField(mcpConfig.id, 'serverLabel', 'Server Label', 'text', 'my-bridge')}
+                ${createMCPField(mcpConfig.id, 'origin', 'Origin', 'text', 'https://server.example')}
+                ${createMCPField(mcpConfig.id, 'clientKey', 'Client Key', 'text')}
+                ${createMCPField(mcpConfig.id, 'secretKey', 'Secret Key', 'password')}
+            </div>
+        </div>` as HTMLElement;
+
+        mcpContainerRefs.set(mcpConfig.id, container);
+        return container;
+    };
+
+    const addMCPConfig = () => {
+        const newId = `mcp-${Date.now()}`;
+        const newConfig: MCPConfig = {
+            id: newId,
+            serverLabel: '',
+            origin: '',
+            clientKey: '',
+            secretKey: ''
+        };
+        mcpConfigs.push(newConfig);
+
+        const mcpGroup = groupRefs.get('mcp:mcp-management');
+        if (mcpGroup) {
+            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
+            if (body) {
+                // Insert before the add button (which should be the last element)
+                const addButton = body.querySelector('.mcp-actions');
+                if (addButton) {
+                    body.insertBefore(createMCPContainer(newConfig, true), addButton);
+                } else {
+                    body.appendChild(createMCPContainer(newConfig, true));
+                }
+            }
+        }
+    };
+
+    const removeMCPConfig = (mcpId: string) => {
+        const index = mcpConfigs.findIndex(config => config.id === mcpId);
+        if (index !== -1) {
+            mcpConfigs.splice(index, 1);
+        }
+
+        const container = mcpContainerRefs.get(mcpId);
+        if (container) {
+            container.remove();
+            mcpContainerRefs.delete(mcpId);
+        }
+
+        // Remove field references
+        fieldRefs.forEach((control, path) => {
+            if (path.startsWith(`mcp.${mcpId}.`)) {
+                fieldRefs.delete(path);
+            }
+        });
+    };
+
     //
     SETTINGS_SECTIONS.forEach((section) => {
         const button = H`<button type="button" class="settings-tab" role="tab" id=${`tab-${section.key}`} aria-controls=${`panel-${section.key}`} aria-selected="false">
@@ -121,7 +206,28 @@ export const Settings = async () => {
 
         section.groups.forEach((group) => {
             const { root, body } = createGroup(section.key, group);
-            group.fields.forEach((field) => body.append(createField(field)));
+
+            // Special handling for MCP section
+            if (section.key === 'mcp' && group.key === 'mcp-management') {
+                // Add MCP management buttons
+                const addButton = H`<button type="button" class="btn btn-primary add-mcp">
+                    <ui-icon icon="plus"></ui-icon>
+                    <span>Add MCP Server</span>
+                </button>` as HTMLButtonElement;
+                addButton.addEventListener('click', addMCPConfig);
+
+                const buttonContainer = H`<div class="mcp-actions">${addButton}</div>` as HTMLElement;
+                body.appendChild(buttonContainer);
+
+                // Add existing MCP configs
+                mcpConfigs.forEach(config => {
+                    body.appendChild(createMCPContainer(config));
+                });
+            } else {
+                // Regular field handling
+                group.fields.forEach((field) => body.append(createField(field)));
+            }
+
             panel.append(root);
         });
 
@@ -187,10 +293,25 @@ export const Settings = async () => {
 
     const applySettingsToForm = (settings: AppSettings) => {
         fieldRefs.forEach((control, path) => {
-            if (path === "ai.model" || path === "ai.customModel" || path === "timeline.source") return;
+            if (path === "ai.model" || path === "ai.customModel" || path === "timeline.source" || path.startsWith("mcp.")) return;
             const value = getByPath(settings, path);
             setControlValue(control, value ?? "");
         });
+
+        // Apply MCP configurations
+        if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
+            settings.ai.mcp.forEach(mcpConfig => {
+                const serverLabelControl = fieldRefs.get(`mcp.${mcpConfig.id}.serverLabel`);
+                const originControl = fieldRefs.get(`mcp.${mcpConfig.id}.origin`);
+                const clientKeyControl = fieldRefs.get(`mcp.${mcpConfig.id}.clientKey`);
+                const secretKeyControl = fieldRefs.get(`mcp.${mcpConfig.id}.secretKey`);
+
+                if (serverLabelControl) setControlValue(serverLabelControl, mcpConfig.serverLabel);
+                if (originControl) setControlValue(originControl, mcpConfig.origin);
+                if (clientKeyControl) setControlValue(clientKeyControl, mcpConfig.clientKey);
+                if (secretKeyControl) setControlValue(secretKeyControl, mcpConfig.secretKey);
+            });
+        }
     };
 
     const applyModelSelection = (settings: AppSettings) => {
@@ -248,7 +369,41 @@ export const Settings = async () => {
 
     activateSection(tabsState.value);
 
+    // Add event delegation for remove MCP buttons
+    form.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.remove-mcp')) {
+            const button = target.closest('.remove-mcp') as HTMLButtonElement;
+            const mcpId = button.dataset.mcpId;
+            if (mcpId) {
+                removeMCPConfig(mcpId);
+            }
+        }
+    });
+
     let settings = await loadSettings();
+
+    // Load existing MCP configurations BEFORE applying settings
+    if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
+        mcpConfigs.push(...settings.ai.mcp);
+
+        // Recreate MCP containers for loaded configurations
+        const mcpGroup = groupRefs.get('mcp:mcp-management');
+        if (mcpGroup) {
+            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
+            if (body) {
+                // Clear existing MCP containers (except the add button)
+                const existingContainers = body.querySelectorAll('.mcp-config');
+                existingContainers.forEach(container => container.remove());
+
+                // Add loaded MCP configurations
+                mcpConfigs.forEach(config => {
+                    body.appendChild(createMCPContainer(config));
+                });
+            }
+        }
+    }
+
     await updateTimelineSelect(settings);
     applySettingsToForm(settings);
     applyModelSelection(settings);
@@ -267,18 +422,33 @@ export const Settings = async () => {
             return;
         }
 
+        // Collect MCP configurations
+        const mcpConfigurations: MCPConfig[] = [];
+        mcpConfigs.forEach(config => {
+            const serverLabel = readValue(`mcp.${config.id}.serverLabel`);
+            const origin = readValue(`mcp.${config.id}.origin`);
+            const clientKey = readValue(`mcp.${config.id}.clientKey`);
+            const secretKey = readValue(`mcp.${config.id}.secretKey`);
+
+            // Only include MCP configs that have at least a server label
+            if (serverLabel.trim()) {
+                mcpConfigurations.push({
+                    id: config.id,
+                    serverLabel: serverLabel,
+                    origin: origin,
+                    clientKey: clientKey,
+                    secretKey: secretKey
+                });
+            }
+        });
+
         const next: AppSettings = {
             ai: {
                 apiKey: readValue("ai.apiKey"),
                 baseUrl: readValue("ai.baseUrl"),
                 model: isCustomSelected ? "custom" : modelSelection,
                 customModel: isCustomSelected ? customIdentifier : "",
-                mcp: {
-                    serverLabel: readValue("ai.mcp.serverLabel"),
-                    origin: readValue("ai.mcp.origin"),
-                    clientKey: readValue("ai.mcp.clientKey"),
-                    secretKey: readValue("ai.mcp.secretKey")
-                }
+                mcp: mcpConfigurations
             },
             webdav: {
                 url: readValue("webdav.url") || DEFAULT_SETTINGS.webdav?.url,

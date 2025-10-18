@@ -292,7 +292,6 @@
                 -webkit-appearance: none;
                 -moz-appearance: none;
                 text-indent: 0.01px;
-                text-overflow: '';
                 text-overflow: "";
                 appearance: base-select;
                 padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
@@ -300,7 +299,7 @@
                 border-radius: var(--form-radius);
                 padding-inline: var(--padding-sm);
                 accent-color: transparent;
-                color: transparent !important;
+                color: transparent;
                 display: block;
                 block-size: max-content;
                 @include solid-colorize("&");
@@ -364,6 +363,204 @@
                     border-block-end: none;
                     border-block-end-width: 0.5px;
                 }
+            }
+        }
+    }
+
+    // MCP Configuration Styles
+    .mcp-actions {
+        display: flex;
+        gap: var(--gap-sm);
+        margin-block-end: var(--gap-md);
+        padding: var(--padding-sm);
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--surface-opacity-subtle), var(--surface-opacity-muted));
+        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+
+        .add-mcp {
+            @include button-variant(var(--primary-opacity-subtle));
+            @include text-color(var(--primary-color));
+            @include border-color(var(--primary-opacity-default));
+            padding: var(--padding-sm) var(--padding-lg);
+            font-weight: var(--font-weight-semibold);
+            transition: all var(--transition-colors) ease-in-out;
+            position: relative;
+            overflow: hidden;
+
+            &::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+                transform: translateX(-100%);
+                transition: transform var(--transition-colors);
+            }
+
+            &:hover {
+                @include surface(var(--primary-opacity-muted));
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px var(--primary-opacity-subtle);
+
+                &::before {
+                    transform: translateX(100%);
+                }
+            }
+
+            &:active {
+                transform: translateY(0);
+            }
+
+            ui-icon {
+                --icon-size: var(--icon-size-md);
+                transition: transform var(--transition-colors);
+            }
+
+            &:hover ui-icon {
+                transform: rotate(90deg);
+            }
+        }
+    }
+
+    .mcp-config {
+        border-radius: var(--radius-lg);
+        padding: var(--padding-lg);
+        margin-block-end: var(--gap-md);
+        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+        position: relative;
+        overflow: hidden;
+        transition: all var(--transition-colors) ease-in-out;
+
+        @include surface(var(--surface-opacity-subtle));
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg,
+                var(--primary-opacity-subtle) 0%,
+                transparent 50%,
+                var(--secondary-opacity-subtle) 100%);
+            opacity: 0;
+            transition: opacity var(--transition-colors);
+            pointer-events: none;
+        }
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--surface-opacity-muted);
+            border-color: var(--primary-opacity-default);
+
+            &::before {
+                opacity: 1;
+            }
+        }
+
+        .mcp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-block-end: var(--gap-md);
+            position: relative;
+            z-index: 1;
+
+            h4 {
+                margin: 0;
+                font-size: var(--font-md);
+                font-weight: var(--font-weight-semibold);
+                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+                display: flex;
+                align-items: center;
+                gap: var(--gap-xs);
+
+                &::before {
+                    content: '🔌';
+                    font-size: var(--font-sm);
+                    opacity: 0.7;
+                }
+            }
+
+            .remove-mcp {
+                @include button-variant(var(--danger-opacity-subtle));
+                @include text-color(var(--danger-color));
+                @include border-color(var(--danger-opacity-default));
+                padding: var(--padding-xs) var(--padding-sm);
+                font-size: var(--font-xs);
+                gap: var(--gap-xs);
+                border-radius: var(--radius-full);
+                transition: all var(--transition-colors) ease-in-out;
+                position: relative;
+                overflow: hidden;
+
+                &::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background: radial-gradient(circle, var(--danger-opacity-muted) 0%, transparent 70%);
+                    transform: scale(0);
+                    transition: transform var(--transition-colors);
+                }
+
+                &:hover {
+                    @include surface(var(--danger-opacity-muted));
+                    transform: scale(1.05);
+
+                    &::before {
+                        transform: scale(1);
+                    }
+                }
+
+                &:active {
+                    transform: scale(0.95);
+                }
+
+                ui-icon {
+                    --icon-size: var(--icon-size-sm);
+                    transition: transform var(--transition-colors);
+                }
+
+                &:hover ui-icon {
+                    transform: rotate(180deg);
+                }
+            }
+        }
+
+        .mcp-fields {
+            display: grid;
+            gap: var(--gap-md);
+            position: relative;
+            z-index: 1;
+
+            .field {
+                transition: all var(--transition-colors) ease-in-out;
+
+                &:focus-within {
+                    transform: translateX(4px);
+                }
+
+                .field-control {
+                    transition: all var(--transition-colors) ease-in-out;
+
+                    &:focus {
+                        box-shadow: 0 0 0 3px var(--primary-opacity-subtle);
+                        border-color: var(--primary-opacity-default);
+                    }
+                }
+            }
+        }
+
+        // Animation for new MCP configs
+        &.mcp-config-new {
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
     }
