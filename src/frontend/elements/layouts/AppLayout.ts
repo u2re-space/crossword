@@ -1,4 +1,4 @@
-import { getDirectoryHandle, H, I } from "fest/lure";
+import { getDirectoryHandle, H, I, mountAsRoot } from "fest/lure";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 
 //
@@ -15,7 +15,7 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
 
     // wire: Paste and Recognize
-    TOOLBAR.querySelector('#paste-and-recognize')?.addEventListener?.('click', async () => {
+    $layout.querySelector('#paste-and-recognize')?.addEventListener?.('click', async () => {
         try {
             if (navigator.clipboard && (navigator.clipboard as any).read) {
                 const items = await (navigator.clipboard as any).read();
@@ -28,7 +28,7 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
     });
 
     // wire: Snip and Recognize (fallback to image picker)
-    TOOLBAR.querySelector('#snip-and-recognize')?.addEventListener?.('click', async () => {
+    $layout.querySelector('#snip-and-recognize')?.addEventListener?.('click', async () => {
         try {
             const input = document.createElement('input');
             input.type = 'file';
@@ -43,8 +43,8 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
     });
 
     // wire: Mount User Directory (ensure structure exists)
-    TOOLBAR.querySelector('#mount-user-dir')?.addEventListener?.('click', async () => {
-        try {
+    $layout.querySelector('#mount-user-dir')?.addEventListener?.('click', async () => {
+        /*try {
             const dirs = [
                 '/user/',
                 '/user/data/',
@@ -65,7 +65,9 @@ export const AppLayout = (views: Map<string, HTMLElement>, currentView: { value:
                 '/docs/questions/math/'
             ];
             for (const dir of dirs) await getDirectoryHandle(null, dir, { create: true } as any);
-        } catch (e) { console.warn(e); }
+        } catch (e) { console.warn(e); }*/
+
+        await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
     });
     return $layout;
 }
