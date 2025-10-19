@@ -3,125 +3,6 @@
 //
 @layer rs-forms-modal {
 
-    .u2-input,
-    .u2-field {
-        display: grid;
-        gap: 0.25rem;
-    }
-
-    // Date/Time Editor Styles
-    .field-editor {
-        display: grid;
-        gap: 0.5rem;
-    }
-
-    //
-    .field-inputs {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    //
-    .field-error {
-        --current: var(--color-error);
-    }
-
-    //
-    .field-helper {
-        color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
-        font-size: 0.75rem;
-    }
-
-    // Enhanced date field layout
-    .date-field-layout {
-        display: grid;
-        gap: var(--space-md);
-        container-type: inline-size;
-        min-inline-size: 0;
-    }
-
-    // Enhanced input section
-    .date-field-layout-input {
-        display: grid;
-        gap: var(--space-xs);
-
-        input[type="datetime-local"] {
-            font-variant-numeric: tabular-nums;
-            padding-inline-end: calc(var(--space-lg) * 2);
-
-            // Enhanced calendar icon styling
-            &::-webkit-calendar-picker-indicator {
-                cursor: pointer;
-                filter: opacity(0.6);
-                transition: filter var(--transition-normal);
-
-                &:hover {
-                    filter: opacity(1);
-                }
-            }
-
-            &::-webkit-datetime-edit {
-                @include solid-colorize("&");
-
-                & {
-                    background: transparent;
-                }
-            }
-        }
-    }
-
-    // Enhanced format section
-    .date-field-layout-format {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: var(--space-sm);
-        align-items: center;
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-md);
-
-        label {
-            margin: 0;
-
-            @include font-style("&", ("size": "sm", "weight": 500));
-        }
-
-        ui-icon {
-            inline-size: var(--space-lg);
-            block-size: var(--space-lg);
-            display: inline-flex;
-            place-content: center;
-            place-items: center;
-            padding: 0px;
-            border-width: 0px;
-        }
-
-        select {
-            padding: calc(var(--space-sm) * 0.7) var(--space-sm);
-            border-radius: var(--radius-sm);
-
-            @include select-dropdown(("shade": var(--surface-opacity-muted)));
-        }
-    }
-
-    // Enhanced responsive design
-    @container (max-inline-size: 25rem) {
-        .date-field-layout-format {
-            grid-template-columns: 1fr;
-            gap: var(--space-sm);
-
-            label,
-            select {
-                grid-column: 1 / -1;
-            }
-
-            ui-icon {
-                display: none;
-            }
-        }
-    }
-
     //
     ui-modal {
         display: flex;
@@ -325,6 +206,113 @@
         background-color: --c2-surface(0.0, var(--current, currentColor));
     }
 
+
+
+
+
+    .u2-input,
+    .u2-field {
+        display: grid;
+        gap: 0.25rem;
+    }
+
+    // Date/Time Editor Styles
+    .field-editor {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    //
+    .field-inputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    //
+    .field-error {
+        --current: var(--color-error);
+    }
+
+    //
+    .field-helper {
+        color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+        font-size: 0.75rem;
+    }
+
+    // Enhanced date field layout
+    .date-field-layout {
+        display: grid;
+        gap: var(--space-md);
+        container-type: inline-size;
+        min-inline-size: 0;
+    }
+
+    // Enhanced input section
+    .date-field-layout-input {
+        display: grid;
+        gap: var(--space-xs);
+
+        input[type="datetime-local"] {
+            font-variant-numeric: tabular-nums;
+            padding-inline-end: calc(var(--space-lg) * 2);
+
+            // Enhanced calendar icon styling
+            &::-webkit-calendar-picker-indicator {
+                cursor: pointer;
+                filter: opacity(0.6);
+                transition: filter var(--transition-normal);
+
+                &:hover {
+                    filter: opacity(1);
+                }
+            }
+
+            &::-webkit-datetime-edit {
+                @include solid-colorize("&");
+
+                & {
+                    background: transparent;
+                }
+            }
+        }
+    }
+
+    // Enhanced format section
+    .date-field-layout-format {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: var(--space-sm);
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-md);
+
+        label {
+            margin: 0;
+
+            @include font-style("&", ("size": "sm", "weight": 500));
+        }
+
+        ui-icon {
+            inline-size: var(--space-lg);
+            block-size: var(--space-lg);
+            display: inline-flex;
+            place-content: center;
+            place-items: center;
+            padding: 0px;
+            border-width: 0px;
+        }
+
+        select {
+            padding: calc(var(--space-sm) * 0.7) var(--space-sm);
+            border-radius: var(--radius-sm);
+
+            @include select-dropdown(("shade": var(--surface-opacity-muted)));
+        }
+    }
+
+    //
     .modal-field {
         /* Enhanced Field Validation States */
         &.valid :where(input, textarea, select) {
@@ -383,6 +371,23 @@
 
             &.invalid :where(input, textarea, select) {
                 @include validation-state(var(--color-error), 0.8, 0.04);
+            }
+        }
+    }
+
+    // Enhanced responsive design
+    @container (max-inline-size: 25rem) {
+        .date-field-layout-format {
+            grid-template-columns: 1fr;
+            gap: var(--space-sm);
+
+            label,
+            select {
+                grid-column: 1 / -1;
+            }
+
+            ui-icon {
+                display: none;
             }
         }
     }

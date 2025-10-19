@@ -9,6 +9,18 @@
         @include panel-base;
         justify-content: start;
         block-size: max-content;
+        inline-size: stretch;
+        aspect-ratio: auto;
+        display: flex;
+        max-block-size: stretch;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: var(--surface-opacity-emphasis) transparent;
+        flex-direction: column;
+        flex-wrap: nowrap;
+
+        align-items: center;
 
         @include solid-colorize("&");
 
@@ -23,6 +35,10 @@
             inline-size: stretch;
             text-align: start;
             padding: var(--padding-sm);
+            position: relative;
+
+            place-content: center;
+            place-items: center;
 
             h2 {
                 margin: 0;
@@ -38,18 +54,37 @@
 
         .settings-group {
             border-radius: var(--radius-lg);
+            justify-content: start;
+            min-inline-size: 80cqi;
+            inline-size: max-content;
+            block-size: max-content;
+            max-block-size: none;
+            overflow: visible;
+            max-inline-size: stretch;
 
             @include surface(var(--surface-opacity-default));
 
             & {
+                display: flex;
+                flex-direction: column;
                 border: none 0 transparent;
                 border-width: 0;
+                block-size: max-content;
+                line-height: normal;
+                flex-wrap: nowrap;
+                max-block-size: none;
+                inline-size: max-content;
             }
 
             &:not(.is-collapsible) {
                 padding: var(--padding-lg);
-                display: grid;
                 gap: var(--gap-md);
+                display: flex;
+                flex-direction: column;
+                flex-wrap: nowrap;
+                block-size: max-content;
+                max-block-size: none;
+                inline-size: max-content;
             }
 
             &.is-collapsible {
@@ -73,19 +108,31 @@
             }
 
             .group-header {
-                display: grid;
+                display: flex;
+                flex-direction: column;
                 gap: var(--gap-xs);
+                block-size: max-content;
+                min-inline-size: 0;
+                line-height: normal;
+                flex-wrap: nowrap;
+                position: relative;
 
                 h3 {
                     margin: 0;
                     font-size: var(--font-md);
                     text-align: center;
+                    line-height: normal;
+                    block-size: max-content;
+                    max-block-size: none;
                 }
 
                 p {
                     margin: 0;
                     font-size: var(--font-sm);
                     color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                    line-height: normal;
+                    block-size: max-content;
+                    max-block-size: none;
                 }
             }
 
@@ -112,6 +159,21 @@
         padding: var(--gap-xl);
         border-radius: 0;
         min-inline-size: 0;
+        inline-size: max-content;
+        aspect-ratio: auto;
+
+        header {
+            line-height: normal;
+            block-size: max-content;
+            min-inline-size: 0;
+            padding: 0;
+            margin: 0;
+
+            h2, h1, span, p {
+                line-height: normal;
+                block-size: max-content;
+            }
+        }
 
         @include surface(var(--surface-opacity-subtle));
 
@@ -126,6 +188,12 @@
             min-inline-size: 0;
             grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
             block-size: max-content;
+            inline-size: max-content;
+            aspect-ratio: auto;
+            max-inline-size: stretch;
+            padding: 0;
+            box-shadow: none;
+            border: none 0 transparent;
 
             .settings-panels {
                 display: grid;
@@ -376,6 +444,7 @@
         border-radius: var(--radius-md);
         background: linear-gradient(135deg, var(--surface-opacity-subtle), var(--surface-opacity-muted));
         border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        order: 99;
 
         .add-mcp {
             @include button-variant(var(--primary-opacity-subtle));
@@ -425,12 +494,14 @@
         border-radius: var(--radius-lg);
         padding: var(--padding-lg);
         margin-block-end: var(--gap-md);
-        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
         position: relative;
         overflow: hidden;
         transition: all var(--transition-colors) ease-in-out;
+        order: calc(1 + sibling-index());
+        border: none 0 transparent;
 
         @include surface(var(--surface-opacity-subtle));
+        @include border-color(var(--surface-opacity-emphasis));
 
         &::before {
             content: '';
@@ -446,9 +517,9 @@
         }
 
         &:hover {
-            transform: translateY(-2px);
             box-shadow: 0 8px 24px var(--surface-opacity-muted);
             border-color: var(--primary-opacity-default);
+            border-width: 0;
 
             &::before {
                 opacity: 1;

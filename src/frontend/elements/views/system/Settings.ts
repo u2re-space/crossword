@@ -155,10 +155,11 @@ export const Settings = async () => {
             if (body) {
                 // Insert before the add button (which should be the last element)
                 const addButton = body.querySelector('.mcp-actions');
+                const container = createMCPContainer(newConfig, true);
                 if (addButton) {
-                    body.insertBefore(createMCPContainer(newConfig, true), addButton);
+                    addButton.before(container);
                 } else {
-                    body.appendChild(createMCPContainer(newConfig, true));
+                    body.append(container);
                 }
             }
         }
@@ -216,13 +217,13 @@ export const Settings = async () => {
                 </button>` as HTMLButtonElement;
                 addButton.addEventListener('click', addMCPConfig);
 
-                const buttonContainer = H`<div class="mcp-actions">${addButton}</div>` as HTMLElement;
-                body.appendChild(buttonContainer);
-
-                // Add existing MCP configs
+                //
                 mcpConfigs.forEach(config => {
-                    body.appendChild(createMCPContainer(config));
+                    body.append(createMCPContainer(config));
                 });
+
+                //
+                body.append(H`<div class="mcp-actions">${addButton}</div>` as HTMLElement);
             } else {
                 // Regular field handling
                 group.fields.forEach((field) => body.append(createField(field)));
@@ -397,8 +398,13 @@ export const Settings = async () => {
                 existingContainers.forEach(container => container.remove());
 
                 // Add loaded MCP configurations
+                const addButton = body.querySelector('.mcp-actions');
                 mcpConfigs.forEach(config => {
-                    body.appendChild(createMCPContainer(config));
+                    if (addButton) {
+                        addButton.before(createMCPContainer(config));
+                    } else {
+                        body.append(createMCPContainer(config));
+                    }
                 });
             }
         }

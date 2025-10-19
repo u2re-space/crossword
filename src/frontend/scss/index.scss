@@ -1,18 +1,14 @@
-@use "./views/layout/Layout";
-@use "./views/layout/Settings";
 @use "./views/layout/Viewers";
-@use "./views/widgets/Toolbars";
-
-
-
-//
-@use "./editors/blocks/DateTime";
-@use "./editors/blocks/InputListEdit";
+@use "./views/layout/Layout";
+@use "./views/layout/Modal";
+@use "./views/layout/Settings";
+@use "./views/layout/Preferences";
+@use "./views/layout/Toolbars";
 
 //
-@use "./editors/forms/Modal";
-@use "./editors/overlays/Toast";
-
-//
-@use "./views/docs/Preferences";
 @use "./views/items/Cards";
+
+//
+@use "./editors/forms/DateTime";
+@use "./editors/forms/InputListEdit";
+@use "./overlays/Toast";
