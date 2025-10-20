@@ -123,12 +123,13 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         optimizer({}),
         createExternal({
             interop: 'auto',
-            externals: { "externals": "externals", "dist": "dist", "fonts": "fonts", "fest": "fest", "fest-src": "fest-src" },
+            externals: { "assets": "assets", "externals": "externals", "dist": "dist", "fonts": "fonts", "fest": "fest", "fest-src": "fest-src" },
             externalizeDeps: [
                 "externals", "/externals", "./externals",
                 "dist", "/dist", "./dist",
                 "fonts", "../fonts", "./fonts",
-                "fest", "../fest", "./fest"
+                "fest", "../fest", "./fest",
+                "assets", "../assets", "./assets",
             ]
         }),
         VitePWA({
@@ -230,7 +231,15 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         https,
         fs: {
             strict: false,
-            allow: [searchForWorkspaceRoot(process.cwd()), '../**/*', '../*', '..', resolve(__dirname, './**/*'), resolve(__dirname, './*'), __dirname ]
+            allow: [
+                searchForWorkspaceRoot(process.cwd()),
+                '../**/*', '../*', '..',
+                '../assets/**/*', '../assets/*', '../assets',
+                '../../assets/**/*', '../../assets/*', '../../assets',
+                resolve(__dirname, './**/*'), resolve(__dirname, './*'), __dirname,
+                resolve(__dirname, '../../assets/**/*'), resolve(__dirname, '../../assets/*'), resolve(__dirname, '../../assets'),
+                resolve(__dirname, '../assets/**/*'), resolve(__dirname, '../assets/*'), resolve(__dirname, '../assets'),
+            ]
         },
         cors: {
             allowedHeaders: "*",
@@ -240,6 +249,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             origin: "*"
         },
         headers: {
+            "Depth": "1",
             "Accept-Language": "*",
             "Content-Security-Policy": "upgrade-insecure-requests",
             "Content-Language": "*",
@@ -288,6 +298,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     //
     return {
+        "base": "",
         rollupOptions, plugins, resolve: $resolve, build, css, optimizeDeps, server,
         define: { 'process.env': {} }
     };

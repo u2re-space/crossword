@@ -6,7 +6,8 @@
         "paths": {
             "@phosphor-icons/core/assets/*": ["./node_modules/@phosphor-icons/core/assets/*"],
             "icons/*": ["./node_modules/@phosphor-icons/core/assets/*"],
-            "fonts/*": ["./shared/assets/fonts/*"],
+            "assets/fonts/*": ["./assets/fonts/*"],
+            "assets/*": ["./assets/*"],
             "fest-src/*": ["./shared/*"],
             "fest/*": ["./shared/fest/*"],
             "fest/fl-ui/*": ["./shared/fest/fl-ui/*"],
