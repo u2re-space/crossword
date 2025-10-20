@@ -210,6 +210,7 @@ export const createDeleteEntryAction = (options: DeleteEntryActionOptions = {}):
     };
 };
 
+//
 const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => {
     const text = await file.text();
     const rawTitleLine = text.trim().split(/\r?\n/).find((line) => line.trim().length) || "";
@@ -219,6 +220,8 @@ const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => 
     const summarySource = text.trim().split(/\r?\n/).slice(0, 6).join(" ");
     const summary = truncateDocSnippet(sanitizeDocSnippet(summarySource));
     const sanitizedBody = sanitizeDocSnippet(text);
+
+    //
     const blob = new Blob([text], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const wordCount = text.split(/\s+/).filter(Boolean).length;
@@ -248,7 +251,7 @@ const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => 
                         </div>
                         ${wordCount ? H`<span class="doc-meta-tag">${wordCount} words</span>` : null}
                     </header>
-                    <md-view ref=${$setter} src=${url} style="background-color: white;"></md-view>
+                    <md-view ref=${$setter} src=${url}></md-view>
                 </div>`
             );
         },

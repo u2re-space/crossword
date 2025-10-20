@@ -94,6 +94,7 @@
                 .doc-action {
                     @include button-variant(0);
                     font-size: var(--font-sm);
+                    pointer-events: auto;
 
                     &[disabled] {
                         opacity: var(--text-opacity-disabled);
@@ -590,6 +591,7 @@
 
                 button {
                     font-size: var(--font-sm);
+                    pointer-events: auto;
 
                     @include button-variant(0);
                 }
@@ -704,6 +706,7 @@
                     button {
                         flex: 1 1 calc(50% - 0.5rem);
                         justify-content: center;
+                        pointer-events: auto;
                     }
                 }
             }
