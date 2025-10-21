@@ -223,6 +223,11 @@ export const formatLocationList = (label: string | any, location: any | any[] | 
     return listFormatter(label, location, formatLocation);
 }
 
+//
+export const formatAsCode = (label, code)=>{
+
+}
+
 
 //
 export const formatByCondition = (label: string | any, text: string | string[] | Set<any> | any[] | Map<any, any>, key: string | null = null) => {
@@ -232,6 +237,7 @@ export const formatByCondition = (label: string | any, text: string | string[] |
     if (key == "email") { return formatEmailList(label || "Email", text); }
     if (key == "biography") { return formatBiographyList(label || "Biography", text); }
     if (key == "location") { return formatLocationList(label || "Location", text); }
+    if (key == "code") { return formatAsCode(label || "Code", text); }
 
     //
     if (typeof text != "object") return formatTextList(label, text);

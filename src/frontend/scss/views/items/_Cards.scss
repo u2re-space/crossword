@@ -50,6 +50,36 @@
     }
 }
 
+
+@mixin make-openable($selector: ".card-content") {
+    // Toggle description functionality
+    & #{$selector} {
+        display: none;
+        block-size: 0px;
+        transition: var(--transition-opacity),
+                   block-size var(--duration-normal) var(--ease-out),
+                   display var(--duration-normal) var(--ease-out),
+                   padding-block var(--duration-normal) var(--ease-out);
+        transition-behavior: allow-discrete;
+    }
+
+    &[data-open] #{$selector} {
+        display: flex;
+        opacity: 1;
+        block-size: max-content;
+        padding-block: var(--padding-sm);
+    }
+
+    @starting-style {
+        &[data-open] #{$selector} {
+            opacity: 0;
+            block-size: 0px;
+            padding-block: 0rem;
+        }
+    }
+}
+
+
 @layer rs-cards {
 
     .card {
@@ -206,6 +236,10 @@
             }
         }
 
+        //
+        @include make-openable(".card-content");
+        @include make-openable(".card-description");
+
         p {
             @include can-wrap-text;
             display: inline-block;
@@ -216,31 +250,7 @@
             line-height: var(--leading-tight);
         }
 
-        // Toggle description functionality
-        .card-description {
-            display: none;
-            block-size: 0px;
-            transition: var(--transition-opacity),
-                       block-size var(--duration-normal) var(--ease-out),
-                       display var(--duration-normal) var(--ease-out),
-                       padding-block var(--duration-normal) var(--ease-out);
-            transition-behavior: allow-discrete;
-        }
 
-        &[data-open] .card-description {
-            display: flex;
-            opacity: 1;
-            block-size: max-content;
-            padding-block: var(--padding-sm);
-        }
-
-        @starting-style {
-            &[data-open] .card-description {
-                opacity: 0;
-                block-size: 0px;
-                padding-block: 0rem;
-            }
-        }
 
         // Card utility elements
         .card-desc {
@@ -474,6 +484,14 @@
 
         .card-description-content {
             font-size: var(--font-xs);
+        }
+    }
+
+    @container (inline-size <= 600px) {
+        .card .action {
+            span {
+                display: none !important;
+            }
         }
     }
 }
