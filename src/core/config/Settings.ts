@@ -96,98 +96,177 @@ export const saveSettings = async (settings: AppSettings) => {
         }
     };
     await idbPutSettings(merged);
-    updateWebDavSettings(merged)?.catch(console.warn.bind(console));
+    updateWebDavSettings(merged)?.catch?.(console.warn.bind(console));
     return merged;
 };
 
 // Утилита для склейки путей без дублей слэшей
 const joinPath = (base: string, name?: string, addTrailingSlash = false) => {
-  const b = (base || "/").replace(/\/+$/g, "") || "/";
-  const n = (name || "").replace(/^\/+/g, "");
-  let out = b === "/" ? `/${n}` : `${b}/${n}`;
-  if (addTrailingSlash) out = out.replace(/\/?$/g, "/");
-  return out.replace(/\/{2,}/g, "/");
+    const b = (base || "/").replace(/\/+$/g, "") || "/";
+    const n = (name || "").replace(/^\/+/g, "");
+    let out = b === "/" ? `/${n}` : `${b}/${n}`;
+    if (addTrailingSlash) out = out.replace(/\/?$/g, "/");
+    return out.replace(/\/{2,}/g, "/");
 };
 
+const isDirHandle = (h: any) => (h?.kind === 'directory');
 const safeTime = (v: any) => {
-  const t = new Date(v as any).getTime();
-  return Number.isFinite(t) ? t : 0;
+    const t = new Date(v as any).getTime();
+    return Number.isFinite(t) ? t : 0;
+};
+
+type SyncOptions = {
+    // Для download: удалять локальные записи, которых нет на сервере
+    pruneLocal?: boolean;
+    // Для upload: удалять записи на сервере, которых нет локально
+    pruneRemote?: boolean;
 };
 
 // DOWNLOAD: не прибавляем path к filename — берём filename как есть
-const downloadContentsToOPFS = async (webDavClient, path = "/") => {
-  const files = await webDavClient
-    .getDirectoryContents(path || "/")
-    .catch((e) => { console.warn(e); return []; });
+const downloadContentsToOPFS = async (
+    webDavClient,
+    path = "/",
+    opts: SyncOptions = {},
+    rootHandle: FileSystemDirectoryHandle | null = null
+) => {
+    const files = await webDavClient
+        ?.getDirectoryContents?.(path || "/")
+        ?.catch?.((e) => { console.warn(e); return []; }) as FileStat[];
 
-  return Promise.all(
-    (files as FileStat[]).map(async (file) => {
-      const isDir = file?.type === "directory";
-      // ВАЖНО: filename уже абсолютный путь на сервере относительно base-URL клиента
-      const fullPath = isDir ? joinPath(file.filename, "", true) : file.filename;
-
-      if (isDir) {
-        return downloadContentsToOPFS(webDavClient, fullPath);
-      }
-
-      if (file?.type === "file") {
-        const localMeta = await readFile(null, fullPath).catch(() => null);
-        const localMtime = safeTime(localMeta?.lastModified);
-        const remoteMtime = safeTime(file?.lastmod);
-
-        if (remoteMtime > localMtime) {
-          const contents = await webDavClient
-            .getFileContents(fullPath)
-            .catch((e) => { console.warn(e); return null; });
-
-          if (!contents || contents.byteLength === 0) return;
-
-          // mime может отсутствовать — ставим разумный дефолт
-          const mime = (file as any)?.mime || "application/octet-stream";
-          return writeFileSmart(null, fullPath, new File([contents], file.basename, { type: mime }));
+    // Если включено — удаляем локальные элементы, которых нет на сервере
+    if (opts.pruneLocal && files?.length > 0) {
+        try {
+            const dirHandle = await getDirectoryHandle(rootHandle, path)?.catch?.(() => null);
+            if (dirHandle?.entries) {
+                const localEntries = await Array.fromAsync(dirHandle.entries());
+                const remoteNames = new Set(files?.map?.((f) => f?.basename).filter(Boolean));
+                await Promise.all(
+                    (localEntries as [string, FileSystemDirectoryHandle | FileSystemFileHandle][])
+                        .filter(([name]) => !remoteNames.has(name))
+                        .map(([name]) =>
+                            dirHandle.removeEntry(name, { recursive: true })?.catch?.(console.warn.bind(console))
+                        )
+                );
+            }
+        } catch (e) {
+            console.warn(e);
         }
-      }
-    })
-  );
+    }
+
+    return Promise.all(
+        files.map(async (file) => {
+            const isDir = file?.type === "directory";
+            // ВАЖНО: filename уже абсолютный путь на сервере относительно base-URL клиента
+            const fullPath = isDir ? joinPath(file.filename, "", true) : file.filename;
+
+            if (isDir) {
+                return downloadContentsToOPFS(webDavClient, fullPath, opts, rootHandle);
+            }
+
+            if (file?.type === "file") {
+                const localMeta = await readFile(rootHandle, fullPath).catch(() => null);
+                const localMtime = safeTime(localMeta?.lastModified);
+                const remoteMtime = safeTime(file?.lastmod);
+
+                if (remoteMtime > localMtime) {
+                    const contents = await webDavClient
+                        .getFileContents(fullPath)
+                        .catch((e) => { console.warn(e); return null; });
+
+                    if (!contents || contents.byteLength === 0) return;
+
+                    // mime может отсутствовать — ставим разумный дефолт
+                    const mime = (file as any)?.mime || "application/octet-stream";
+                    return writeFileSmart(rootHandle, fullPath, new File([contents], file.basename, { type: mime }));
+                }
+            }
+        })
+    );
 };
 
 // UPLOAD: аккуратно собираем пути; сравниваем даты безопасно
-const uploadOPFSToWebDav = async (webDavClient, dirHandle: FileSystemDirectoryHandle | null = null, path = "/") => {
-  const entries = await Array.fromAsync(
-    dirHandle ?? (await getDirectoryHandle(null, path))?.entries?.() ?? []
-  );
+const uploadOPFSToWebDav = async (
+    webDavClient,
+    dirHandle: FileSystemDirectoryHandle | null = null,
+    path = "/",
+    opts: SyncOptions = {}
+) => {
+    const effectiveDirHandle = dirHandle ?? (await getDirectoryHandle(null, path, { create: true })?.catch?.(console.warn.bind(console)));
+    const entries = await Array.fromAsync(effectiveDirHandle?.entries?.() ?? []);
 
-  await Promise.all(
-    (entries as [string, FileSystemDirectoryHandle | FileSystemFileHandle][])
-      .map(async ([name, fileOrDir]) => {
-        const isDir = (fileOrDir as any) instanceof FileSystemDirectoryHandle;
-        const remotePath = joinPath(path, name, isDir);
+    //
+    if (path != "/") {
+        // Небольшая правка: гарантированно получаем entries из handle
+        // Если включено — удаляем на сервере всё, чего нет локально в текущем каталоге
+        if (opts.pruneRemote && entries?.length >= 0) {
+            const remoteItems = await webDavClient
+                .getDirectoryContents(path || '/')
+                .catch((e) => { console.warn(e); return []; }) as FileStat[];
 
-        if (isDir) {
-          const dirPathNoSlash = joinPath(path, name, false);
-          const exists = await webDavClient.exists(dirPathNoSlash).catch((e) => { console.warn(e); return false; });
-          if (!exists) {
-            await webDavClient.createDirectory(dirPathNoSlash, { recursive: true }).catch(console.warn);
-          }
-          return uploadOPFSToWebDav(webDavClient, fileOrDir as FileSystemDirectoryHandle, remotePath);
+            // Локальные имена (в текущем каталоге)
+            const localSet = new Set(
+                (entries as [string, FileSystemDirectoryHandle | FileSystemFileHandle][])
+                    .map(([name]) => name.toLowerCase())
+            );
+
+            // Удаляем только то, чего точно нет локально по ИМЕНИ (без includes)
+            const extra = remoteItems.filter((r) => {
+                const base = (r?.basename || '').toLowerCase();
+                return base && !localSet.has(base);
+            });
+
+            // Файлы сначала, директории потом
+            const filesFirst = [
+                ...extra.filter((x) => x.type !== 'directory'),
+                //...extra.filter((x) => x.type === 'directory'),
+            ];
+
+            for (const r of filesFirst) {
+                const remotePath = r.filename || joinPath(path, r.basename, r.type === 'directory');
+                try {
+                    await webDavClient.deleteFile(remotePath);
+                } catch (e) {
+                    console.warn('delete failed:', remotePath, e);
+                }
+            }
         }
+    }
 
-        // File
-        const fileHandle = fileOrDir as FileSystemFileHandle;
-        const fileContent = await fileHandle.getFile();
-        if (!fileContent || fileContent.size === 0) return;
+    //
+    await Promise.all(
+        (entries as [string, FileSystemDirectoryHandle | FileSystemFileHandle][])
+            .map(async ([name, fileOrDir]) => {
+                const isDir = isDirHandle(fileOrDir);
+                const remotePath = joinPath(path, name, isDir);
 
-        const remoteStat = await webDavClient.stat(joinPath(path, name, false)).catch(() => null);
-        const remoteMtime = safeTime(remoteStat?.lastmod);
-        const localMtime = safeTime(fileContent.lastModified);
+                if (isDir) {
+                    const dirPathNoSlash = joinPath(path, name, false);
+                    const exists = await webDavClient.exists(dirPathNoSlash).catch((e) => { console.warn(e); return false; });
+                    if (!exists) {
+                        await webDavClient.createDirectory(dirPathNoSlash, { recursive: true }).catch(console.warn);
+                    }
+                    return uploadOPFSToWebDav(webDavClient, fileOrDir as FileSystemDirectoryHandle, remotePath, opts);
+                }
 
-        if (!remoteStat || localMtime > remoteMtime) {
-          await webDavClient
-            .putFileContents(joinPath(path, name, false), await fileContent.arrayBuffer(), { overwrite: true })
-            .catch((e) => { console.warn(e); return null; });
-        }
-      })
-  );
+                // File
+                const fileHandle = fileOrDir as FileSystemFileHandle;
+                const fileContent = await fileHandle.getFile();
+                if (!fileContent || fileContent.size === 0) return;
+
+                //
+                const fullFilePath = joinPath(path, name, false);
+                const remoteStat = await webDavClient.stat(fullFilePath).catch(() => null);
+                const remoteMtime = safeTime(remoteStat?.lastmod);
+                const localMtime = safeTime(fileContent.lastModified);
+
+                //
+                if (!remoteStat || localMtime > remoteMtime) {
+                    await webDavClient.putFileContents(fullFilePath, await fileContent.arrayBuffer(), { overwrite: true })
+                        .catch((e) => { console.warn(e); return null; });
+                }
+            })
+    );
+
 };
 
 //
@@ -201,8 +280,8 @@ export const WebDavSync = (address: string, options: any = {}) => {
     const client = createClient(getHostOnly(address), options);
     return {
         client,
-        upload() { return uploadOPFSToWebDav(client)?.catch?.((e) => { console.warn(e); return []; }) },
-        download() { return downloadContentsToOPFS(client)?.catch?.((e) => { console.warn(e); return []; }) },
+        upload(withPrune = false) { return uploadOPFSToWebDav(client, null, "/", { pruneRemote: withPrune })?.catch?.((e) => { console.warn(e); return []; }) },
+        download(withPrune = false) { return downloadContentsToOPFS(client, "/", { pruneLocal: withPrune })?.catch?.((e) => { console.warn(e); return []; }) },
     }
 }
 
@@ -219,8 +298,8 @@ export const currentWebDav: { sync: any } = { sync: null };
         token: settings.webdav.token
     });
     currentWebDav.sync = client ?? currentWebDav.sync;
-    await currentWebDav?.sync?.download?.();
-    await currentWebDav?.sync?.upload?.();
+    await currentWebDav?.sync?.upload?.(true);
+    await currentWebDav?.sync?.download?.(true);
 })();
 
 //
@@ -234,18 +313,26 @@ export const updateWebDavSettings = async (settings: any) => {
         password: settings.webdav.password,
         token: settings.webdav.token
     }) ?? currentWebDav.sync;
-    await currentWebDav?.sync?.download?.();
     await currentWebDav?.sync?.upload?.();
+    await currentWebDav?.sync?.download?.(true);
 }
 
 //
-(async ()=>{
-    addEventListener("pagehide", (ev)=>{
+(async () => {
+    addEventListener("pagehide", (ev) => {
         currentWebDav?.sync?.upload?.();
-    }),
+    });
     addEventListener("beforeunload", (event) => {
         currentWebDav?.sync?.upload?.();
     })
+})();
+
+//
+(async () => {
+    while (true) {
+        await currentWebDav?.sync?.upload?.();
+        await new Promise((resolve) => { setTimeout(resolve, 3000); });
+    }
 })();
 
 //

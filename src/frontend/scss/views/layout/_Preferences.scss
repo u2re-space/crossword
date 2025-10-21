@@ -76,7 +76,7 @@
 
         .doc-header-actions {
             @include flex-center;
-            flex-wrap: wrap;
+            flex-wrap: no-wrap;
             gap: var(--gap-sm);
             justify-content: flex-end;
             grid-column: 1 / -1;
@@ -85,7 +85,7 @@
             .doc-actions {
                 display: inline-flex;
                 gap: var(--gap-sm);
-                flex-wrap: wrap;
+                flex-wrap: no-wrap;
                 padding: var(--padding-sm);
                 border-radius: var(--radius-lg);
                 @include backdrop-blur("strong");
@@ -553,6 +553,10 @@
         .doc-collection {
             transition-duration: 0ms;
         }
+    }
+
+    @container (inline-size <= 600px) {
+        .doc-action span { display: none !important; }
     }
 }
 

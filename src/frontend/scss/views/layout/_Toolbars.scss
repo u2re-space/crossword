@@ -4,7 +4,7 @@
 @use "veela-lib" as *;
 
 @layer rs-toolbars {
-    .view-toolbar {
+    .toolbar, .view-toolbar {
         gap: var(--gap-md);
         inline-size: 100%;
         background: transparent;
@@ -18,7 +18,7 @@
 
         .button-set {
             display: inline-flex;
-            flex-wrap: wrap;
+            flex-wrap: no-wrap;
             gap: var(--gap-md);
             padding: var(--padding-sm);
             border-radius: var(--radius-lg);
@@ -62,6 +62,10 @@
                     justify-content: center;
                 }
             }
+        }
+
+        @container (inline-size <= 600px) {
+            button span { display: none !important; };
         }
     }
 }
