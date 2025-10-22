@@ -1,4 +1,5 @@
-import { Promised, makeReactive, observe, safe } from "fest/object";
+import { makeReactive, observe, safe } from "fest/object";
+import { Promised } from "fest/core";
 
 //
 const STORE = "cache";
