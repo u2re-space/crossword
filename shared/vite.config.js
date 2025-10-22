@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 //
 import optimizer from 'vite-plugin-optimizer';
-import createExternal from "vite-plugin-external";
+import { externalPlugin } from "@praha/vite-plugin-external";
 import cssnano from "cssnano";
 import deduplicate from "postcss-discard-duplicates";
 import autoprefixer from "autoprefixer";
@@ -38,6 +38,17 @@ const importFromTSConfig = (tsconfig, __dirname) => {
 //
 export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve("./", import.meta.dirname))=>{
     const $resolve = { alias: importFromTSConfig(tsconfig, __dirname) }
+    const projectMap = new Map([
+        ["fest/core", "core.ts"],
+        ["fest/fl-ui", "fl.ui"],
+        ["fest/object", "object.ts"],
+        ["fest/uniform", "uniform.ts"],
+        ["fest/dom", "dom.ts"],
+        ["fest/veela", "veela.css"],
+        ["fest/veela-runtime", "veela.css"],
+        ["fest/lure", "lur.e"],
+    ]);
+
     const terserOptions = {
         ecma: 2025,
         keep_classnames: false,
@@ -121,17 +132,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             })
         ]),
         optimizer({}),
-        createExternal({
-            interop: 'auto',
-            externals: { "assets": "assets", "externals": "externals", "dist": "dist", "fonts": "fonts", "fest": "fest", "fest-src": "fest-src" },
-            externalizeDeps: [
-                "externals", "/externals", "./externals",
-                "dist", "/dist", "./dist",
-                "fonts", "../fonts", "./fonts",
-                "fest", "../fest", "./fest",
-                "assets", "../assets", "./assets",
-            ]
-        }),
         VitePWA({
             registerType: 'autoUpdate',
             strategies: 'injectManifest',
@@ -156,15 +156,28 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 enabled: true
             }
         }),
+        externalPlugin({
+            include: Array.from(projectMap?.keys()).filter((n)=>!n?.endsWith(NAME)), // Explicitly externalize specific packages
+            exclude: [resolve(__dirname, "./src/index.ts"), "./src/index.ts", resolve(__dirname, "./dist/"+NAME+".js"), "./dist/"+NAME+".js"]
+        })
     ];
 
     //
     const rollupOptions = {
-        plugins,
-        treeshake: 'smallest',
+        shimMissingExports: true,
+        treeshake: {
+            annotations: false,
+            moduleSideEffects: true,
+            tryCatchDeoptimization: false,
+            unknownGlobalSideEffects: true,
+            correctVarValueBeforeDeclaration: true,
+            propertyReadSideEffects: true
+        },
         input: resolve(__dirname, './src/index.ts'),
         external: (source) => {
-            if (source.startsWith("/externals") || source.startsWith("fest")) return true;
+            if (source?.includes?.("node_modules/")) return false;
+            if (source?.includes?.("fest/"+NAME) || source?.includes?.("./src/index.ts") || source?.includes?.(projectMap.get("fest/"+NAME)) || source?.includes?.("dist/")) return false;
+            if (Array.from(projectMap.keys()).some((name)=>source.includes(name))) return true;
             return false;
         },
         output: {
