@@ -1,6 +1,8 @@
 import { AppLayout } from "./elements/layouts/AppLayout";
 import { $byKind, $insideOfDay, DataExplorer, PreferencesView, QuestsView, Settings, ViewPage } from "./elements/Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
+import { UIPhosphorIcon } from "fest/icon";
+console.log(UIPhosphorIcon);
 
 //
 import "fest/fl-ui";

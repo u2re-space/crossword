@@ -28,7 +28,7 @@ const TASK_TEMPLATES = [
         name: "Debug Other Task",
         description: "This is a debug task of 'other' kind. It represents miscellaneous tasks that don't fit into specific categories.",
         status: "under_consideration",
-        icon: "question-mark-circle",
+        icon: "play-circle",//"question-mark-circle",
         variant: "orange"
     }
 ];
