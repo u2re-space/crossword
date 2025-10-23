@@ -186,7 +186,6 @@
         .card-content {
             font-size: var(--font-sm);
             color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
-            line-height: normal;
             opacity: 1;
             grid-column: 1 / -1;
             block-size: max-content;
@@ -196,6 +195,7 @@
             overflow: hidden;
             padding-block: var(--padding-sm);
             flex-direction: column;
+            line-height: normal;
 
             @include text-clamp(4);
 
@@ -213,6 +213,7 @@
                 line-height: normal;
                 display: flex;
                 flex-direction: row;
+                margin-block-end: var(--gap-xs);
 
                 &:empty {
                     display: none;

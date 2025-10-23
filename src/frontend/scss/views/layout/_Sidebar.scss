@@ -74,6 +74,7 @@
                 margin: 0;
                 user-select: none;
                 padding: 0;
+                font-size: var(--font-sm);
 
                 @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
@@ -92,6 +93,7 @@
                     user-select: none;
                     border: none;
                     outline: none;
+                    font-size: var(--font-sm);
 
                     &:focus {
                         border: none;
@@ -105,9 +107,9 @@
                         pointer-events: none;
 
                         --icon-size: 1rem;
-                        --icon-color: --c2-surface(0.7, var(--current, currentColor));
+                        --icon-color: --c2-surface(0.6, var(--current, currentColor));
 
-                        color: --c2-surface(0.7, var(--current, currentColor));
+                        color: --c2-surface(0.6, var(--current, currentColor));
                     }
 
                     span {
