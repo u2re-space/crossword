@@ -3,7 +3,6 @@ import app from "./src/index.ts";
 
 /* App Loader */
 export default async function loadApp(mountElement) {
-    console.log(mountElement, app);
     app?.(mountElement);
 }
 

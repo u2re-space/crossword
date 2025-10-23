@@ -13,13 +13,10 @@ import { Sidebar } from "./elements/layouts/Sidebar";
 import { MakeCardElement } from "./elements/entities/typed/Cards";
 
 //
-import { dropFile, H, hashTargetRef } from "fest/lure";
-import { startDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
+import { dropFile, hashTargetRef } from "fest/lure";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
-    console.log(mountElement);
-
     //
     mountElement?.addEventListener?.("dragover", (event) => {
         const eventTarget = event?.target as HTMLElement;
@@ -88,7 +85,4 @@ export default async function frontend(mountElement) {
     const layout = AppLayout(views, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
-
-    //
-    //startDebugTaskGeneration();
 }
