@@ -50,7 +50,7 @@
     }
 }
 
-
+//
 @mixin make-openable($selector: ".card-content") {
     // Toggle description functionality
     & #{$selector} {
@@ -63,13 +63,15 @@
         transition-behavior: allow-discrete;
     }
 
-    &[data-open] #{$selector} {
+    //
+    &[data-open] #{$selector}:not(:empty) {
         display: flex;
         opacity: 1;
         block-size: max-content;
         padding-block: var(--padding-sm);
     }
 
+    //
     @starting-style {
         &[data-open] #{$selector} {
             opacity: 0;
@@ -184,7 +186,6 @@
         .card-content {
             font-size: var(--font-sm);
             color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
-            @include text-clamp(4);
             line-height: normal;
             opacity: 1;
             grid-column: 1 / -1;
@@ -195,6 +196,14 @@
             overflow: hidden;
             padding-block: var(--padding-sm);
             flex-direction: column;
+
+            @include text-clamp(4);
+
+            &:empty {
+                display: none;
+                block-size: 0px;
+                padding-block: 0rem;
+            }
 
             .card-label {
                 margin-block-start: var(--gap-xs);
@@ -229,6 +238,8 @@
                 font-variant-numeric: tabular-nums;
                 font-size: var(--font-sm);
 
+                &:empty { display: none; }
+
                 li {
                     @include can-wrap-text;
                     display: list-item;
@@ -242,7 +253,7 @@
 
         //
         @include make-openable(".card-content");
-        @include make-openable(".card-description");
+        //@include make-openable(".card-description");
 
         p {
             @include can-wrap-text;
