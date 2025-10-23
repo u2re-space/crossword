@@ -79,8 +79,11 @@
     }
 }
 
-
+//
 @layer rs-cards {
+    .cards-grid {
+        @include grid-auto-fill(220px);
+    }
 
     .card {
         display: grid;

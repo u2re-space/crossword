@@ -6,22 +6,20 @@
 @layer rs-layout {
 
     .app-layout {
-        &,
-        & * {
-            line-height: normal;
-        }
+        &, & * { line-height: normal; }
 
-        @include flex-center;
-        display: grid;
-        box-sizing: border-box;
-        inline-size: stretch;
-        block-size: stretch;
-        place-content: center;
-        justify-content: start;
+        & {
+            @include flex-center;
+            display: grid;
+            box-sizing: border-box;
+            inline-size: stretch;
+            block-size: stretch;
+            place-content: center;
+            justify-content: start;
+        }
 
         section {
             pointer-events: auto;
-            @include scrollable("y");
             touch-action: manipulation;
 
             display: grid;
@@ -33,6 +31,8 @@
             block-size: stretch;
             gap: var(--gap-xs);
             background-color: transparent;
+
+            @include scrollable("y");
         }
 
         header {
@@ -42,20 +42,7 @@
             touch-action: manipulation;
             pointer-events: auto;
 
-            * {
-                pointer-events: none;
-            }
-        }
-
-        .tab {
-            display: grid;
-            grid-auto-flow: row;
-            gap: var(--card-gap);
-            padding: var(--padding-xs);
-            background-color: transparent;
-            inline-size: stretch;
-            block-size: stretch;
-            @include scrollable("y");
+            * { pointer-events: none; }
         }
 
         .view {
@@ -63,7 +50,7 @@
             padding: 0;
             border-radius: var(--radius-sm);
 
-            > h2 {
+            & > h2 {
                 margin: 0 0 var(--gap-sm) 0;
                 font-weight: var(--font-weight-bold);
                 font-size: var(--font-lg);
@@ -71,96 +58,12 @@
             }
         }
 
-        .cards-grid {
-            @include grid-auto-fill(220px);
-        }
-
-        & > [slot="bar"] {
-            grid-column: 1 / -1;
-            margin: 0;
-            padding: var(--padding-xs) var(--padding-sm);
-
-            @include surface(var(--surface-opacity-subtle));
-        }
-
-        & > ui-tabbed-box {
-            grid-column: 2 / -1;
-            grid-row: 2 / 3;
+        ui-tabbed-box {
             inline-size: stretch;
             block-size: stretch;
-        }
-
-        & > .toolbar {
-            grid-column: 1 / -1;
-            margin: 0;
-            flex-direction: row;
-            gap: var(--gap-xs);
-            block-size: max-content;
-            inline-size: stretch;
-            display: flex;
-            background-color: transparent;
-            justify-content: start;
-            padding: var(--padding-xs) var(--padding-sm);
-            padding-block-start: var(--padding-sm);
-            position: sticky;
-            inset-block-start: 0;
-            z-index: 10;
-
-            @include backdrop-blur("subtle");
-
-            button {
-                max-block-size: 3rem;
-                border-radius: var(--radius-sm);
-                padding: var(--padding-xs);
-                aspect-ratio: auto;
-                flex-direction: row;
-                display: flex;
-
-                @include toolbar-button;
-                @include flex-center;
-
-                span {
-                    display: block;
-                    font-weight: var(--font-weight-normal);
-                    color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
-                    padding-inline-end: var(--padding-xs);
-                }
-            }
+            padding-block: var(--padding-sm);
 
             @include container("lg") {
-                button span {
-                    display: none;
-                }
-            }
-        }
-
-        @include container("lg") {
-            & > nav[slot="sidebar"] {
-                position: static;
-                max-block-size: none;
-                order: 2;
-                inline-size: calc(100cqi - var(--padding-sm));
-            }
-
-            nav {
-                padding: var(--padding-sm) var(--padding-xs);
-                inline-size: 100cqi;
-
-                ul {
-                    gap: 0;
-                    @include scrollable("x");
-                    padding-inline: 0;
-                    inline-size: stretch;
-
-                    li {
-                        flex: 0 0 auto;
-                        white-space: nowrap;
-                        border-radius: var(--radius-sm);
-                    }
-                }
-            }
-
-            & > ui-tabbed-box {
                 order: 3;
                 grid-column: 1 / -1;
             }

@@ -1,4 +1,4 @@
-import { openDirectory, H, M, getDirectoryHandle } from "fest/lure";
+import { openDirectory, H, M, getDirectoryHandle, mountAsRoot } from "fest/lure";
 import { dataCategories } from "@rs-core/service/Cache";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
@@ -43,16 +43,6 @@ export const DataExplorer = () => {
     };
 
     //
-    const onMount = () => {
-        getDirectoryHandle(null, viewer?.path, { create: true })?.then(() => {
-            toastSuccess("Mounted");
-        }).catch((e) => {
-            toastError("Mount failed");
-            console.warn(e);
-        });
-    };
-
-    //
     const onRefresh = () => {
         currentWebDav?.sync?.download?.(viewer?.path).then(() => {
             viewer?.loadPath?.(viewer?.path);
@@ -64,8 +54,46 @@ export const DataExplorer = () => {
     };
 
     //
+    const onMount = async () => {
+        /*try {
+            const dirs = [
+                '/user/',
+                '/user/data/',
+                '/user/docs/',
+                '/timeline/',
+                '/data/bonus/',
+                '/data/service/',
+                '/data/person/',
+                '/data/contacts/',
+                '/data/events/',
+                '/data/factors/',
+                '/docs/plans/',
+                '/docs/ideas/',
+                '/docs/notes/',
+                '/docs/solutions/',
+                '/docs/quests/',
+                '/docs/questions/coding/',
+                '/docs/questions/math/'
+            ];
+            for (const dir of dirs) await getDirectoryHandle(null, dir, { create: true } as any);
+        } catch (e) { console.warn(e); }*/
+
+        getDirectoryHandle(null, viewer?.path, { create: true })?.then(async () => {
+            await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
+            toastSuccess("Mounted");
+        }).catch((e) => {
+            toastError("Mount failed");
+            console.warn(e);
+        });
+    }
+
+    //
     const toolbar = H`<div class="view-toolbar">
         <div class="button-set">
+            <button id="mount-user-dir" on:click=${onMount}>
+                <ui-icon icon="screwdriver"></ui-icon>
+                <span>Mount User Directory</span>
+            </button>
             <button type="button" on:click=${onUpload}>
                 <ui-icon icon="upload"></ui-icon>
                 <span>Upload</span>

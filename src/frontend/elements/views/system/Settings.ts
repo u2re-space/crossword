@@ -16,7 +16,7 @@ import { AISection } from "@rs-core/config/sections/AISection";
 import { MCPSection } from "@rs-core/config/sections/MCPSection";
 import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
 import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
-import { renderTabName } from "@rs-frontend/elements/Views";
+import { renderTabName } from "@rs-frontend/elements/entities/typed/Utils";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [

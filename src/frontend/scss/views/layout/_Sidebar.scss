@@ -31,6 +31,12 @@
             max-block-size: calc(100dvb - var(--space-lg));
 
             @include scrollable;
+            @include container("lg") {
+                position: static;
+                max-block-size: none;
+                order: 2;
+                inline-size: calc(100cqi - var(--padding-sm));
+            }
         }
 
         ul {
@@ -124,6 +130,26 @@
             direction: ltr;
             justify-items: start;
             justify-self: start;
+        }
+
+        //
+        @include container("lg") {
+            nav {
+                padding: var(--padding-sm) var(--padding-xs);
+                inline-size: 100cqi;
+
+                ul {
+                    gap: 0;
+                    padding-inline: 0;
+                    inline-size: stretch;
+
+                    li {
+                        flex: 0 0 auto;
+                        white-space: nowrap;
+                        border-radius: var(--radius-sm);
+                    }
+                }
+            }
         }
     }
 
