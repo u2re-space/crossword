@@ -106,12 +106,13 @@
         @include text-color(0);
 
         li {
+            @include text-truncate;
+
             font-size: inherit;
             color: currentColor;
             padding: 0;
             margin: 0;
             display: inline;
-            @include text-truncate;
             overflow: hidden;
         }
 
@@ -328,6 +329,14 @@
             align-content: flex-start;
         }
 
+        button {
+            pointer-events: auto;
+            user-select: none;
+            user-drag: none;
+            -webkit-user-drag: none;
+            padding: var(--padding-md);
+        }
+
         .card-actions {
             display: flex;
             gap: var(--gap-xs);
@@ -339,7 +348,7 @@
 
             & > .action {
                 gap: var(--gap-xs);
-                padding: var(--padding-xs) var(--padding-sm);
+                padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);
                 cursor: pointer;
                 transition: var(--transition-colors);
@@ -401,13 +410,6 @@
             &:focus {
                 text-decoration: underline;
             }
-        }
-
-        button {
-            pointer-events: auto;
-            user-select: none;
-            user-drag: none;
-            -webkit-user-drag: none;
         }
 
         // Responsive behavior

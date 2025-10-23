@@ -133,6 +133,9 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         ]),
         optimizer({}),
         VitePWA({
+            srcDir: resolve(__dirname, "./src/pwa/"),
+            dstDir: resolve(__dirname, "./dist/"),
+            filename: "sw.ts",
             registerType: 'autoUpdate',
             strategies: 'injectManifest',
             injectRegister: 'auto',
@@ -143,8 +146,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 globIgnores: ['**/index.html']
             },
             injectManifest: {
-                swSrc: resolve(__dirname, './src/pwa/sw.ts'),
-                swDest: resolve(__dirname, './dist/pwa/sw.mjs'),
+                injectionPoint: undefined,
                 maximumFileSizeToCacheInBytes: 1024 * 1024 * 16,
             },
             includeAssets: [
@@ -279,6 +281,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     //
     const build = {
+        emptyOutDir: false,
         target: 'esnext',
         outDir: resolve(__dirname, './dist'),
         //assetsInlineLimit: 4096,

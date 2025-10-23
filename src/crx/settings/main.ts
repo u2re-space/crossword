@@ -1,4 +1,5 @@
-import frontend from "../../index.mjs";
+import frontend from "../../index";
 
+//
 const mount = document.getElementById("app");
 frontend?.(mount ?? document.body);

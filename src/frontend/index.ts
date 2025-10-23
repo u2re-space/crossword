@@ -18,6 +18,8 @@ import { startDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
+    console.log(mountElement);
+
     //
     mountElement?.addEventListener?.("dragover", (event) => {
         const eventTarget = event?.target as HTMLElement;

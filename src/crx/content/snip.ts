@@ -1,5 +1,9 @@
-import type { cropArea } from "@rs-crx/service/compress";
 import { box, hideSelection, hint, showSelection, showToast, sizeBadge } from "./overlay";
+
+//
+export interface cropArea {
+
+}
 
 //
 let __snipInjected = false;

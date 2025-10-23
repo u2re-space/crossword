@@ -55,7 +55,7 @@
         .settings-group {
             border-radius: var(--radius-lg);
             justify-content: start;
-            min-inline-size: 80cqi;
+            min-inline-size: clamp(24rem, 40cqi, 100cqi);
             inline-size: max-content;
             block-size: max-content;
             max-block-size: none;
@@ -104,6 +104,10 @@
                     padding: 0 var(--padding-lg) var(--padding-lg);
                     display: grid;
                     gap: var(--gap-md);
+
+                    place-content: center;
+                    place-items: center;
+                    text-align: center;
                 }
             }
 
@@ -116,6 +120,10 @@
                 line-height: normal;
                 flex-wrap: nowrap;
                 position: relative;
+
+                place-content: center;
+                place-items: center;
+                text-align: center;
 
                 h3 {
                     margin: 0;
@@ -439,17 +447,36 @@
     .mcp-actions {
         display: flex;
         gap: var(--gap-sm);
-        margin-block-end: var(--gap-md);
+        //margin-block-end: var(--gap-md);
         padding: var(--padding-sm);
         border-radius: var(--radius-md);
         background: linear-gradient(135deg, var(--surface-opacity-subtle), var(--surface-opacity-muted));
-        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        //border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        border: 0px none transparent;
         order: 99;
+        place-content: center;
+        place-items: center;
+        text-align: center;
+
+        header, p {
+            place-content: center;
+            place-items: center;
+            text-align: center;
+            line-height: normal;
+            block-size: max-content;
+            max-block-size: none;
+            min-inline-size: 0;
+            inline-size: max-content;
+        }
 
         .add-mcp {
             @include button-variant(var(--primary-opacity-subtle));
             @include text-color(var(--primary-color));
             @include border-color(var(--primary-opacity-default));
+
+            text-align: center;
+            place-content: center;
+            place-items: center;
             padding: var(--padding-sm) var(--padding-lg);
             font-weight: var(--font-weight-semibold);
             transition: all var(--transition-colors) ease-in-out;

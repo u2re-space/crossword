@@ -241,7 +241,7 @@ const uploadOPFSToWebDav = async (
 
                 if (isDir) {
                     const dirPathNoSlash = joinPath(path, name, false);
-                    const exists = await webDavClient.exists(dirPathNoSlash).catch((e) => { console.warn(e); return false; });
+                    const exists = await webDavClient.exists(dirPathNoSlash).catch((e) => { return false; });
                     if (!exists) {
                         await webDavClient.createDirectory(dirPathNoSlash, { recursive: true }).catch(console.warn);
                     }
@@ -262,7 +262,7 @@ const uploadOPFSToWebDav = async (
                 //
                 if (!remoteStat || localMtime > remoteMtime) {
                     await webDavClient.putFileContents(fullFilePath, await fileContent.arrayBuffer(), { overwrite: true })
-                        .catch((e) => { console.warn(e); return null; });
+                        .catch((e) => { return null; });
                 }
             })
     );
@@ -278,10 +278,12 @@ const getHostOnly = (address: string) => {
 //
 export const WebDavSync = (address: string, options: any = {}) => {
     const client = createClient(getHostOnly(address), options);
+    const status = currentWebDav?.sync?.getDAVCompliance?.()?.catch?.(console.warn.bind(console)) ?? null;
     return {
+        status,
         client,
-        upload(withPrune = false) { return uploadOPFSToWebDav(client, null, "/", { pruneRemote: withPrune })?.catch?.((e) => { console.warn(e); return []; }) },
-        download(withPrune = false) { return downloadContentsToOPFS(client, "/", { pruneLocal: withPrune })?.catch?.((e) => { console.warn(e); return []; }) },
+        upload(withPrune = false) { if (this.status != null) { return uploadOPFSToWebDav(client, null, "/", { pruneRemote: withPrune })?.catch?.((e) => { console.warn(e); return []; }) } },
+        download(withPrune = false) { if (this.status != null) { return downloadContentsToOPFS(client, "/", { pruneLocal: withPrune })?.catch?.((e) => { console.warn(e); return []; }) } },
     }
 }
 
