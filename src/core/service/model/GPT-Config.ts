@@ -40,14 +40,14 @@ export const COMPUTE_TEMPERATURE = (data: DataInput) => {
 //
 export const typesForKind: Record<DataKind, "input_text" | "image_url" | "input_image" | "input_url" | "text_search_result" | "json_schema" | "json_schema_search_result"> = {
     "math": "input_text",
-    "url": "input_text",
+    "url": "input_image",
     "text": "input_text",
     "input_text": "input_text",
     "output_text": "input_text",
     "image_url": "input_image",
     "image": "input_image",
     "input_image": "input_image",
-    "input_url": "input_url",
+    "input_url": "input_image",
 }
 
 //

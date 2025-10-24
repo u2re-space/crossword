@@ -13,21 +13,25 @@ export const getUsableData = async (data: DataInput) => {
             }
         }
     } else
-        if (typeof data?.dataSource == "string") {
-            // be aware, this may be base64 encoded image
-            if (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) {
-                return {
-                    "type": "input_image",
-                    "image_url": data?.dataSource,// @ts-ignore
-                    "detail": "auto"
-                }
-            }
+    if (typeof data?.dataSource == "string") {
 
-            // anyways returns Promise<string>
+        // be aware, this may be base64 encoded image
+        if (
+            (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) || URL.canParse(data?.dataSource?.trim?.()) ||
+            (typesForKind?.[data?.dataKind || "input_text"] == "input_image")
+        ) {
             return {
-                "type": "input_text",
-                "text": data?.dataSource
+                "type": "input_image",
+                "image_url": data?.dataSource,// @ts-ignore
+                "detail": "auto"
             }
+        }
+
+        // anyways returns Promise<string>
+        return {
+            "type": "input_text",
+            "text": data?.dataSource
+        }
     }
 
     // is not Blob or File, so it's (may be) string (if not string, try to parse it as JSON)
