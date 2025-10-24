@@ -159,13 +159,7 @@
         // Enhanced responsive design
         @container (max-inline-size: 25rem) {
             .date-field-layout-format {
-                grid-template-columns: 1fr;
                 gap: var(--space-sm);
-
-                label,
-                select {
-                    grid-column: 1 / -1;
-                }
 
                 ui-icon {
                     display: none;
