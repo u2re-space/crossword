@@ -150,8 +150,7 @@
         // Accessibility improvements
         @media (prefers-reduced-motion: reduce) {
             .date-field-layout-input input,
-            .date-field-layout-format select,
-            .date-field-layout-format ui-icon {
+            .date-field-layout-format :where(select, ui-icon) {
                 transition-duration: 0ms;
             }
         }
@@ -161,9 +160,7 @@
             .date-field-layout-format {
                 gap: var(--space-sm);
 
-                ui-icon {
-                    display: none;
-                }
+                ui-icon { display: none; }
             }
         }
     }
