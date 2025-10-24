@@ -14,7 +14,6 @@
         gap: var(--gap-xs);
         inline-size: stretch;
         background: transparent;
-        padding-block: var(--padding-md);
 
         grid-column: 1 / -1;
         margin: 0;
@@ -25,10 +24,14 @@
         background-color: transparent;
         justify-content: start;
         padding: var(--padding-xs) var(--padding-sm);
-        padding-block-start: var(--padding-sm);
+        padding-block: var(--padding-md);
         position: sticky;
         inset-block-start: 0;
         z-index: 10;
+
+        //
+        place-content: center;
+        place-items: center;
 
         //
         @include backdrop-blur("subtle");
@@ -47,11 +50,10 @@
             border-radius: var(--radius-lg);
             block-size: max-content;
 
-            @include surface(var(--surface-opacity-muted));
+            @include surface(var(--surface-opacity-default, 0.08));
 
-            &:empty {
-                display: none;
-            }
+            //
+            &:empty { display: none; }
 
             //
             button {
@@ -64,14 +66,12 @@
                 gap: var(--gap-sm);
 
                 //
-                @include button-variant(var(--surface-opacity-default));
+                @include button-variant(var(--surface-opacity-emphasis));
+                @include surface(var(--surface-opacity-emphasis));
                 @include toolbar-button;
                 @include flex-center;
 
                 //
-                &:hover { @include surface(var(--surface-opacity-emphasis)); }
-                &:active { transform: translateY(0.5px); }
-
                 span {
                     font-size: var(--font-sm);
                     display: block;

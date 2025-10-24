@@ -60,6 +60,9 @@
         .modal-title {
             margin: 0;
             line-height: 1.2;
+            place-content: center;
+            place-items: center;
+            text-align: center;
 
             //
             @include font-style("&", ("size": "xl", "weight": 700));
@@ -68,6 +71,9 @@
         .modal-description {
             margin: 0;
             background: transparent;
+            place-content: center;
+            place-items: center;
+            text-align: center;
 
             //
             @include font-style("&", ("size": "base"));
@@ -89,6 +95,9 @@
 
             .modal-section-title {
                 margin: 0;
+                place-content: center;
+                place-items: center;
+                text-align: center;
 
                 //
                 @include font-style("&", ("size": "sm", "weight": 600));
@@ -199,6 +208,13 @@
                     font-size: 0.85em;
                     line-height: 1.4;
                 }
+            }
+
+            //
+            .contacts-group {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-sm);
             }
 
             /* Reduced motion support */

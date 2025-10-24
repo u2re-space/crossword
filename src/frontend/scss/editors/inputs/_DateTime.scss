@@ -9,6 +9,8 @@
         gap: var(--space-sm);
         container-type: inline-size;
         min-inline-size: 0;
+
+        @include surface(var(--surface-opacity-default, 0.08));
     }
 
     // Input group with improved responsive design

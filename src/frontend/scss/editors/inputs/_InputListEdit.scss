@@ -12,6 +12,11 @@
         container-type: inline-size;
         min-inline-size: 0;
 
+        padding: var(--padding-md);
+        border-radius: var(--radius-md);
+
+        @include surface(var(--surface-opacity-default, 0.08));
+
         &-parts {
             display: flex;
             flex-direction: column;
@@ -53,6 +58,7 @@
                 block-size: calc(var(--space-xl) * 1.6);
                 aspect-ratio: 1 / 1;
                 font-weight: 500;
+                border-width: 0.5px;
             }
 
             & > input[type="checkbox"] {
@@ -111,8 +117,7 @@
                 gap: calc(var(--space-sm) * 0.9);
                 padding: var(--space-md) calc(var(--space-md) * 1.3);
                 border-radius: var(--radius-lg);
-
-                border-width: 0px;
+                border-width: 0.5px;
                 box-shadow: var(--shadow-sm);
             }
         }
@@ -173,13 +178,6 @@
             transition-duration: 0ms;
         }
     }
-
-    @media (prefers-contrast: high) {
-        .field-list-edit-part input,
-        .field-list-edit > :where(button, input[type="checkbox"]) {
-            border-width: 2px;
-        }
-    }
 }
 
 //
@@ -191,147 +189,140 @@
         gap: var(--space-md);
         container-type: inline-size;
         min-inline-size: 0;
-    }
+        padding: var(--padding-md);
+        border-radius: var(--radius-md);
 
-    // Enhanced descriptor part layout
-    .descriptor-edit-part {
-        display: grid;
-        gap: var(--space-xs);
-        position: relative;
-        container-type: inline-size;
+        @include surface(var(--surface-opacity-default, 0.08));
 
-        // Multi-line text input with enhanced styling
-        textarea {
-            display: block;
-            block-size: max-content;
-            resize: vertical;
-            max-inline-size: stretch;
-            max-block-size: stretch;
-            inline-size: stretch;
-        }
-
-        // Single-line input (for URLs, emails, phones, tags) with enhanced styling
-        input {
-            inline-size: stretch;
-            max-inline-size: stretch;
-        }
-
-        label {
-            inline-size: stretch;
-            max-inline-size: stretch;
-        }
-
-        // Field label (aria-hidden decorative) with enhanced styling
-        label[aria-hidden="true"] {
-            position: absolute;
-            inset-inline-start: var(--space-md);
-            inset-block-start: calc(var(--space-md) * -0.8);
-            padding-inline: var(--space-sm);
-            pointer-events: none;
-            border-radius: var(--radius-xs);
-            backdrop-filter: blur(4px);
-            z-index: 1;
-
-            @include font-style("&", ("size": "sm"));
-            @include solid-colorize("&");
-        }
-
-        // Preview link (for URLs) with improved styling
-        a[data-type="preview"] {
-            display: inline-flex;
-            align-items: center;
+        // Enhanced descriptor part layout
+        .descriptor-edit-part {
+            display: grid;
             gap: var(--space-xs);
-            padding: calc(var(--space-sm) * 0.7) var(--space-sm);
-            border-radius: var(--radius-sm);
-            field-sizing: content;
-            text-decoration: none;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            border: none;
+            position: relative;
+            container-type: inline-size;
 
-            @include font-style("&", ("size": "sm"));
-            @include solid-colorize("&");
-        }
-
-        // Show/hide password/URL checkbox with enhanced styling
-        input[type="checkbox"][data-type="show-password-or-url"] {
-            inline-size: auto;
-            field-sizing: content;
-
-            @include checkbox-radio-base;
-        }
-    }
-
-    // Enhanced add button
-    .descriptor-edit > :where(button, input[type="checkbox"]) {
-        gap: calc(var(--space-sm) * 0.9);
-        padding: var(--space-md) calc(var(--space-md) * 1.3);
-        border-radius: var(--radius-lg);
-
-        border-width: 0px;
-        box-shadow: var(--shadow-sm);
-    }
-
-    // Type-specific styling with better organization
-    .descriptor-edit[data-type="phone"] {
-        .descriptor-edit-part input {
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
-        }
-    }
-
-    .descriptor-edit[data-type="email"] {
-        .descriptor-edit-part input {
-            text-transform: lowercase;
-            font-variant-caps: all-small-caps;
-        }
-    }
-
-    .descriptor-edit[data-type="url"] {
-        .descriptor-edit-part input {
-            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-            font-size: 0.92em;
-            word-break: break-all;
-        }
-    }
-
-    // Enhanced responsive adjustments
-    @container (max-inline-size: 25rem) {
-        .descriptor-edit-part {
-            a[data-type="preview"] {
-                max-inline-size: 100%;
-                font-size: var(--text-xs);
+            // Multi-line text input with enhanced styling
+            textarea {
+                display: block;
+                block-size: max-content;
+                resize: vertical;
+                max-inline-size: stretch;
+                max-block-size: stretch;
+                inline-size: stretch;
+                border-width: 0.5px;
             }
-        }
-    }
 
-    @container (max-inline-size: 20rem) {
-        .descriptor-edit-part {
-            gap: calc(var(--space-xs) * 0.8);
-
-            textarea,
+            // Single-line input (for URLs, emails, phones, tags) with enhanced styling
             input {
-                padding: calc(var(--space-sm) * 0.8) var(--space-sm);
+                inline-size: stretch;
+                max-inline-size: stretch;
+                border-width: 0.5px;
+            }
+
+            label {
+                inline-size: stretch;
+                max-inline-size: stretch;
+            }
+
+            // Field label (aria-hidden decorative) with enhanced styling
+            label[aria-hidden="true"] {
+                position: absolute;
+                inset-inline-start: var(--space-md);
+                inset-block-start: calc(var(--space-md) * -0.8);
+                padding-inline: var(--space-sm);
+                pointer-events: none;
+                border-radius: var(--radius-xs);
+                backdrop-filter: blur(4px);
+                z-index: 1;
+
+                @include font-style("&", ("size": "sm"));
+                @include solid-colorize("&");
+            }
+
+            // Preview link (for URLs) with improved styling
+            a[data-type="preview"] {
+                display: inline-flex;
+                align-items: center;
+                gap: var(--space-xs);
+                padding: calc(var(--space-sm) * 0.7) var(--space-sm);
+                border-radius: var(--radius-sm);
+                field-sizing: content;
+                text-decoration: none;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                border: none;
+
+                @include font-style("&", ("size": "sm"));
+                @include solid-colorize("&");
+            }
+
+            // Show/hide password/URL checkbox with enhanced styling
+            input[type="checkbox"][data-type="show-password-or-url"] {
+                inline-size: auto;
+                field-sizing: content;
+
+                @include checkbox-radio-base;
+            }
+
+            // Enhanced responsive adjustments
+            @container (max-inline-size: 25rem) {
+                & a[data-type="preview"] {
+                    max-inline-size: 100%;
+                    font-size: var(--text-xs);
+                }
+            }
+
+            //
+            @container (max-inline-size: 20rem) {
+                & {
+                    gap: calc(var(--space-xs) * 0.8);
+
+                    textarea, input {
+                        padding: calc(var(--space-sm) * 0.8) var(--space-sm);
+                    }
+                }
             }
         }
-    }
 
-    // Enhanced accessibility
-    @media (prefers-reduced-motion: reduce) {
-        .descriptor-edit-part textarea,
-        .descriptor-edit-part input,
-        .descriptor-edit-part a,
-        .descriptor-edit > :where(button, input[type="checkbox"]) {
-            transition-duration: 0ms;
+        // Enhanced add button
+        & > :where(button, input[type="checkbox"]) {
+            gap: calc(var(--space-sm) * 0.9);
+            padding: var(--space-md) calc(var(--space-md) * 1.3);
+            border-radius: var(--radius-lg);
+            border-width: 0.5px;
+            box-shadow: var(--shadow-sm);
         }
-    }
 
-    @media (prefers-contrast: high) {
-        .descriptor-edit-part textarea,
-        .descriptor-edit-part input,
-        .descriptor-edit > :where(button, input[type="checkbox"]) {
-            border-width: 2px;
+        // Type-specific styling with better organization
+        &[data-type="phone"] {
+            .descriptor-edit-part input {
+                font-variant-numeric: tabular-nums;
+                letter-spacing: 0.02em;
+            }
+        }
+
+        &[data-type="email"] {
+            .descriptor-edit-part input {
+                text-transform: lowercase;
+                font-variant-caps: all-small-caps;
+            }
+        }
+
+        &[data-type="url"] {
+            .descriptor-edit-part input {
+                font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+                font-size: 0.92em;
+                word-break: break-all;
+            }
+        }
+
+        // Enhanced accessibility
+        @media (prefers-reduced-motion: reduce) {
+            .descriptor-edit-part :where(a, input, textarea),
+            & > :where(button, input[type="checkbox"]) {
+                transition-duration: 0ms;
+            }
         }
     }
 }

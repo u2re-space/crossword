@@ -371,13 +371,6 @@
 
                 @include surface(var(--surface-opacity-subtle));
                 @include flex-center;
-
-                &, &:hover {
-                    border: none 0px transparent;
-                    border-style: none;
-                    border-width: 0px;
-                    border-color: transparent;
-                }
             }
         }
 
