@@ -151,4 +151,30 @@
         @include solid-colorize("&", ("tint": var(--text-tint-muted)));
     }
 
+    // Accessibility improvements
+    @media (prefers-reduced-motion: reduce) {
+        .date-field-layout-input input,
+        .date-field-layout-format select,
+        .date-field-layout-format ui-icon {
+            transition-duration: 0ms;
+        }
+    }
+
+    // Enhanced responsive design
+    @container (max-inline-size: 25rem) {
+        .date-field-layout-format {
+            grid-template-columns: 1fr;
+            gap: var(--space-sm);
+
+            label,
+            select {
+                grid-column: 1 / -1;
+            }
+
+            ui-icon {
+                display: none;
+            }
+        }
+    }
+
 }

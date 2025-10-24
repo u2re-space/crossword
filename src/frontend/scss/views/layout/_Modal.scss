@@ -39,6 +39,7 @@
         --modal-radius: var(--radius-xl);
         --modal-shadow: 0 24px 60px rgba(12, 12, 16, 0.34);
 
+        //
         display: grid;
         gap: var(--space-lg);
         min-inline-size: min(92vw, 33.75rem);
@@ -51,92 +52,198 @@
         overflow: visible;
         container-type: inline-size;
 
-        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
-    }
+        //
+        @include solid-colorize("&", ("shade": var(--surface-opacity-emphasis, 0.12)));
+        @include scrollable("y");
 
-    // Enhanced modal section
-    .modal-section {
-        display: grid;
-        gap: var(--space-sm);
-        padding-block: var(--space-sm);
-        inline-size: stretch;
-        background: transparent;
-
-        &:last-of-type {
-            border-block-end: none;
-        }
-
-        .modal-section-title {
+        // Enhanced modal title and description
+        .modal-title {
             margin: 0;
+            line-height: 1.2;
 
             //
-            @include font-style("&", ("size": "sm", "weight": 600));
+            @include font-style("&", ("size": "xl", "weight": 700));
         }
 
-        .modal-section-fields {
+        .modal-description {
+            margin: 0;
+            background: transparent;
+
+            //
+            @include font-style("&", ("size": "base"));
+        }
+
+        // Enhanced modal section
+        .modal-section {
             display: grid;
             gap: var(--space-sm);
-        }
-    }
-
-    // Enhanced modal title and description
-    .modal-title {
-        margin: 0;
-        line-height: 1.2;
-
-        //
-        @include font-style("&", ("size": "xl", "weight": 700));
-    }
-
-    .modal-description {
-        margin: 0;
-        background: transparent;
-
-        //
-        @include font-style("&", ("size": "base"));
-    }
-
-    // Enhanced modal fields container
-    .modal-fields {
-        display: grid;
-        gap: var(--space-md);
-        padding-inline: var(--space-sm);
-        scrollbar-width: thin;
-        max-block-size: min(62vh, 27.5rem);
-        overflow-y: auto;
-        overflow-x: hidden;
-        container-type: inline-size;
-
-        &::-webkit-scrollbar {
-            inline-size: 6px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            border-radius: 999px;
-
-            //
-            @include solid-colorize("&", ("shade": var(--surface-opacity-emphasis)));
-        }
-
-        &::-webkit-scrollbar-track {
+            padding-block: var(--space-sm);
+            inline-size: stretch;
             background: transparent;
+            overflow: visible;
+            block-size: max-content;
+
+            &:last-of-type {
+                border-block-end: none;
+            }
+
+            .modal-section-title {
+                margin: 0;
+
+                //
+                @include font-style("&", ("size": "sm", "weight": 600));
+            }
+
+            .modal-section-fields {
+                display: grid;
+                gap: var(--space-sm);
+            }
+        }
+
+        // Enhanced modal actions
+        .modal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: var(--space-md);
+            align-items: center;
+
+            .modal-actions-right {
+                display: inline-flex;
+                gap: var(--space-sm);
+            }
+        }
+
+        // Enhanced modal fields container
+        .modal-fields {
+            display: grid;
+            gap: var(--space-md);
+            padding-inline: var(--space-sm);
+            scrollbar-width: thin;
+            max-block-size: min(62vh, 27.5rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            container-type: inline-size;
+
+            &::-webkit-scrollbar {
+                inline-size: 6px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                border-radius: 999px;
+
+                //
+                @include solid-colorize("&", ("shade": var(--surface-opacity-emphasis)));
+            }
+
+            &::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            // Enhanced modal field
+            .modal-field {
+                & {
+                    display: grid;
+                    gap: var(--space-xs);
+                    min-inline-size: 0;
+                    background: transparent;
+                    inline-size: stretch;
+                    max-inline-size: stretch;
+                    contain: inline-size;
+                    container-type: inline-size;
+                }
+
+                /* Enhanced Field Validation States */
+                &.valid {
+                    & { animation: validationPulse 0.3s ease-in-out; };
+
+                    :where(input, textarea, select) {
+                        @include validation-success;
+                    }
+                }
+
+                &.invalid {
+                    & { animation: validationPulse 0.3s ease-in-out; };
+
+                    :where(input, textarea, select) {
+                        @include validation-error;
+                    }
+                }
+
+                /* Field Type Indicators */
+                &[data-multiline="true"] textarea {
+                    min-block-size: 5rem;
+                    resize: vertical;
+                }
+
+                &[data-numeric="true"] input {
+                    text-align: end;
+                    font-variant-numeric: tabular-nums;
+                }
+
+                &[data-json="true"] textarea {
+                    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+                    font-size: 0.85em;
+                    min-block-size: 6rem;
+                    line-height: 1.4;
+                }
+
+                &[data-datetime="true"] {
+                    position: relative;
+                }
+
+                /* Links Field Enhancement */
+                & textarea[name="links"] {
+                    min-block-size: 4rem;
+                    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+                    font-size: 0.85em;
+                    line-height: 1.4;
+                }
+            }
+
+            /* Reduced motion support */
+            @media (prefers-reduced-motion: reduce) {
+                .modal-field.valid,
+                .modal-field.invalid {
+                    animation: none;
+                }
+
+                .btn:hover:not(:disabled) {
+                    transform: none;
+                }
+            }
         }
     }
 
-    // Enhanced modal actions
-    .modal-actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: var(--space-md);
-        align-items: center;
+    // Enhanced responsive design
+    @container (max-inline-size: 30rem) {
+        .modal-form {
+            min-inline-size: min(92vw, 26.25rem);
+            max-block-size: min(92vh, 40rem);
+            padding: var(--space-lg);
 
-        .modal-actions-right {
-            display: inline-flex;
-            gap: var(--space-sm);
+            .modal-fields {
+                max-block-size: min(58vh, 23.75rem);
+            }
+
+            .modal-actions {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--space-sm);
+
+                .modal-actions-right {
+                    justify-content: stretch;
+                }
+
+                .btn {
+                    justify-content: center;
+                    inline-size: 100%;
+                }
+            }
         }
     }
 
+    //
     :where(.modal-container, .modal-main, .modal-controls) {
         display: flex;
         flex-direction: column;
@@ -150,139 +257,4 @@
         gap: 0.25rem;
         background-color: --c2-surface(0.0, var(--current, currentColor));
     }
-
-    // Enhanced modal field
-    .modal-field {
-        & {
-            display: grid;
-            gap: var(--space-xs);
-            min-inline-size: 0;
-            background: transparent;
-            inline-size: stretch;
-            max-inline-size: stretch;
-            contain: inline-size;
-            container-type: inline-size;
-        }
-
-        /* Enhanced Field Validation States */
-        &.valid {
-            & { animation: validationPulse 0.3s ease-in-out; };
-
-            :where(input, textarea, select) {
-                @include validation-success;
-            }
-        }
-
-        &.invalid {
-            & { animation: validationPulse 0.3s ease-in-out; };
-
-            :where(input, textarea, select) {
-                @include validation-error;
-            }
-        }
-
-        /* Field Type Indicators */
-        &[data-multiline="true"] textarea {
-            min-block-size: 5rem;
-            resize: vertical;
-        }
-
-        &[data-numeric="true"] input {
-            text-align: end;
-            font-variant-numeric: tabular-nums;
-        }
-
-        &[data-json="true"] textarea {
-            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-            font-size: 0.85em;
-            min-block-size: 6rem;
-            line-height: 1.4;
-        }
-
-        &[data-datetime="true"] {
-            position: relative;
-        }
-
-        /* Links Field Enhancement */
-        & textarea[name="links"] {
-            min-block-size: 4rem;
-            font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-            font-size: 0.85em;
-            line-height: 1.4;
-        }
-    }
-
-    // Enhanced responsive design
-    @container (max-inline-size: 25rem) {
-        .date-field-layout-format {
-            grid-template-columns: 1fr;
-            gap: var(--space-sm);
-
-            label,
-            select {
-                grid-column: 1 / -1;
-            }
-
-            ui-icon {
-                display: none;
-            }
-        }
-    }
-
-    // Accessibility improvements
-    @media (prefers-reduced-motion: reduce) {
-        .date-field-layout-input input,
-        .date-field-layout-format select,
-        .date-field-layout-format ui-icon {
-            transition-duration: 0ms;
-        }
-    }
-
-    @media (prefers-contrast: high) {
-        .date-field-layout-input input,
-        .date-field-layout-format select {
-            border-width: 2px;
-        }
-    }
-
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-        .modal-field.valid,
-        .modal-field.invalid {
-            animation: none;
-        }
-
-        .btn:hover:not(:disabled) {
-            transform: none;
-        }
-    }
-
-    // Enhanced responsive design
-    @container (max-inline-size: 30rem) {
-        .modal-form {
-            min-inline-size: min(92vw, 26.25rem);
-            max-block-size: min(92vh, 40rem);
-            padding: var(--space-lg);
-        }
-
-        .modal-fields {
-            max-block-size: min(58vh, 23.75rem);
-        }
-
-        .modal-actions {
-            flex-direction: column;
-            align-items: stretch;
-            gap: var(--space-sm);
-
-            .modal-actions-right {
-                justify-content: stretch;
-            }
-
-            .btn {
-                justify-content: center;
-                inline-size: 100%;
-            }
-        }
-    }
-
 }

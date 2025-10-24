@@ -1,13 +1,15 @@
 // Layout Components - Refactored and Optimized
 // Unified with design system variables and mixins
-
 @use "veela-lib" as *;
 
+//
 @layer rs-layout {
 
+    //
     .app-layout {
         &, & * { line-height: normal; }
 
+        //
         & {
             @include flex-center;
             display: grid;
@@ -18,54 +20,176 @@
             justify-content: start;
         }
 
-        section {
-            pointer-events: auto;
-            touch-action: manipulation;
 
-            display: grid;
-            grid-template-columns: minmax(0px, 1fr);
-            grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
-            grid-template-areas: "content" "toolbar";
-            border-radius: var(--radius-sm);
-            inline-size: stretch;
-            block-size: stretch;
-            gap: var(--gap-xs);
+
+        /***********/
+        /* SIDEBAR */
+        /***********/
+
+        //
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            max-inline-size: stretch;
+            min-inline-size: max-content;
+            text-align: start;
+            inline-size: min(200px, 100cqi);
+            box-sizing: border-box;
+            gap: 0;
+            border-radius: var(--radius-xs);
             background-color: transparent;
+            box-shadow: var(--shadow-sm);
+            user-select: none;
+            padding: var(--padding-xs);
 
-            @include scrollable("y");
-        }
+            @include surface(var(--surface-opacity-subtle));
 
-        header {
-            min-block-size: max-content;
-            block-size: max-content;
-            line-height: normal;
-            touch-action: manipulation;
-            pointer-events: auto;
+            &[slot="sidebar"] {
+                grid-column: 1 / 2;
+                grid-row: 2 / 3;
+                position: sticky;
+                inset-block-start: var(--padding-sm);
+                align-self: start;
+                max-block-size: calc(100dvb - var(--space-lg));
 
-            * { pointer-events: none; }
-        }
+                @include scrollable;
+                @include container("lg") {
+                    position: static;
+                    max-block-size: none;
+                    order: 2;
+                    inline-size: calc(100cqi - var(--padding-sm));
+                }
+            }
 
-        .view {
-            display: block;
-            padding: 0;
-            border-radius: var(--radius-sm);
+            ul {
+                display: flex;
+                flex-direction: column;
+                padding: 0;
+                margin: 0;
+                inline-size: stretch;
+                user-select: none;
+                list-style: none;
+                overflow: hidden;
+                box-shadow: var(--shadow-inset);
+                box-sizing: border-box;
+                gap: 0;
+                border-radius: var(--radius-xs);
 
-            & > h2 {
-                margin: 0 0 var(--gap-sm) 0;
-                font-weight: var(--font-weight-bold);
-                font-size: var(--font-lg);
-                letter-spacing: 0.01em;
+                @include surface(var(--surface-opacity-default));
+
+                &:focus {
+                    border: none 0 transparent;
+                    outline: none 0 transparent;
+                }
+
+                li {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    inline-size: stretch;
+                    box-sizing: border-box;
+                    transition: var(--transition-colors);
+                    pointer-events: none;
+                    overflow: hidden;
+                    gap: 0;
+                    margin: 0;
+                    user-select: none;
+                    padding: 0;
+                    font-size: var(--font-sm);
+
+                    * { pointer-events: none; }
+                    & { background-color: transparent; }
+                    &:hover, &:active { @include surface(var(--surface-opacity-emphasis)); }
+
+                    a {
+                        @include nav-item;
+                        padding: var(--padding-md);
+                        inline-size: stretch;
+                        block-size: max-content;
+                        pointer-events: auto;
+                        column-gap: var(--gap-xs);
+                        background: transparent;
+                        user-select: none;
+                        border: none;
+                        outline: none;
+                        font-size: var(--font-sm);
+
+                        &:focus {
+                            border: none;
+                            outline: none;
+                        }
+
+                        ui-icon {
+                            justify-self: start;
+                            inline-size: 1rem;
+                            block-size: 1rem;
+                            pointer-events: none;
+
+                            --icon-size: 1rem;
+                            --icon-color: --c2-surface(0.6, var(--current, currentColor));
+
+                            color: --c2-surface(0.6, var(--current, currentColor));
+                        }
+
+                        span {
+                            display: block;
+                            justify-self: start;
+                            text-align: start;
+                            inline-size: 100%;
+                            pointer-events: none;
+                        }
+                    }
+                }
+            }
+
+            &,
+            ul,
+            ul li,
+            ul li a,
+            ul li a span {
+                text-align: start;
+                direction: ltr;
+                justify-items: start;
+                justify-self: start;
+            }
+
+            //
+            @include container("lg") {
+                nav {
+                    padding: var(--padding-sm) var(--padding-xs);
+                    inline-size: 100cqi;
+
+                    ul {
+                        gap: 0;
+                        padding-inline: 0;
+                        inline-size: stretch;
+
+                        li {
+                            flex: 0 0 auto;
+                            white-space: nowrap;
+                            border-radius: var(--radius-sm);
+                        }
+                    }
+                }
             }
         }
 
-        ui-tabbed-box {
-            inline-size: stretch;
-            block-size: stretch;
-            padding-block: var(--padding-sm);
 
-            @include container("lg") {
-                order: 3;
-                grid-column: 1 / -1;
+
+        /*****************/
+        /* TITLEBAR HIDE */
+        /*****************/
+
+        //
+        @container (inline-size > 600px) {
+            &::part(bar), .toolbar {
+                display: none !important;
+            }
+
+            &::part(content-box) {
+                grid-row: 1 / -1;
             }
         }
     }
