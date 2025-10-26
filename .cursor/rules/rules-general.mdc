@@ -1,0 +1,117 @@
+---
+globs: *.ts,*.mjs,*.js,*.scss,*.css
+alwaysApply: false
+---
+# General Coding Recommendations
+
+Write code in a specified programming language (or detect it automatically) following certain criteria and tasks. Comments in the code are allowed as well, but preferably in English.
+
+The primary build system is Vite. Take into account the latest versions of browsers (Chrome 137 and above) and standards (WICG, WHATWG, ECMA, W3C, TC39, CSSWG), as much as possible...
+
+Try to fix possible validation issues, if found in/by IDE/Editor, and fix very weird or non-perfect indentations (using by spaces).
+
+It is also desirable not to output excessive amounts of code and lines; whenever possible, keep things simple and concise. For follow-up requests, output only the potential edits. Also, de-dublicate redundant or unnecessary code, where is possible.
+
+Write and output ONLY code, without any introduction, intermission or footer or post-scriptum.
+
+---
+
+
+## 🌳 Project Hierarchy
+
+### ⛰️ Level 0 (project root)
+
+- `./` - Project root directory
+- `shared/` - Modules directory
+- `shared/unite-2.man` - Project manifest
+- `shared/fest/` - Shared modules, utilities, etc.
+- `assets/` - Project assets, images, fonts, etc. (planned for future usage)
+
+### 🚧 Level 1 (core libraries)
+
+- `shared/fest/dom` - DOM utils and helpers library
+- `shared/fest/object` - Core reactivity library
+
+### 🧱 Level 2 (derived libraries)
+
+- `shared/fest/lure` - reactive DOM framework
+
+### 🏗️ Level 3 (UI libraries)
+
+- `shared/fest/fl-ui` - UI system and components library
+
+### 🏬 Level 4 (applications)
+
+- `src/` - Applications projects
+
+---
+
+## 🧩 Import rules
+
+- ✅ Allowed imports from lower level to higher level only.
+- ⚠️ Normally, imports between in same level or not approved.
+- ⛔ Imports in lower level from next level is not allowed.
+
+### 🧪 Examples
+
+- ✅ `fest/lure` can import `fest/object` or `fest/dom`, but not vice versa.
+- ⚠️ `fest/object` and `fest/dom`, or something in same level, isn't allowed to import vice versa...
+- ⛔ `fest/object`, `fest/dom` isn't allowed to import `fest/lure` or `fest/fl-ui`.
+
+### 📂 Project Import Rules
+
+You should follow these rules to import modules:
+
+- `/frontend/elements/` - frontend code, **can't** import modules from `/frontend/views/` or `/core/`, but **can** import modules from `/shared/`
+- `/frontend/views/` - views code, **can** import modules from `/frontend/elements/`, `/core/` and `/shared/`
+- `/core/` - core code, **can't** import modules from `/frontend/`, but **can** import some modules from `/shared/`, may be used not only in frontend, but also in backend to create some shared logic
+- `/shared/` - shared code, **can't** import modules from `/src/`, `/frontend/`, and may be used in frontend and backend
+- `/test/` - test code, **can't** import modules from `/src/`, `/frontend/`
+- `/pwa/` - pwa code, **can't** import modules from `/frontend/`
+- `/src/` - main code, **can't** import modules from `/test/`
+- `/main.mjs` - main entry point, can be imported only by `/index.html`
+- `/index.html` - application entry point, can be imported only by `/main.mjs`
+- `/vite.config.js` - vite config, **can't** import modules from `/src/`
+- `/tsconfig.json` - tsconfig, **can't** import modules from `/src/`
+- `/package.json` - package.json, **can't** import modules from `/src/`
+
+---
+
+## Common Imports
+
+- `fest/dom`
+- `fest/lure`
+- `fest/object`
+- `fest/fl-ui`
+
+Imports of project modules isn't should internally import by-self name.
+
+---
+
+## Project Directory Mapping
+
+By default, use key-name as import root.
+
+| Library | Path |
+|---|---|
+| `fest/lure`   | `shared/fest/lure`     |
+| `fest/dom`    | `shared/fest/dom`    |
+| `fest/object` | `shared/fest/object` |
+| `fest/fl-ui`  | `shared/fest/fl-ui`     |
+
+---
+
+## Our projects (for following)
+
+- <https://github.com/fest-live>
+
+## About Vite
+
+- <https://vite.dev/guide/>
+- <https://vite.dev/config/>
+
+## Guidelines
+
+- <https://chromestatus.com/>
+- <https://developer.chrome.com/>
+- <https://caniuse.com/>

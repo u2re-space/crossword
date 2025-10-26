@@ -1,0 +1,74 @@
+{
+    "name": "crossword",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "preview": "vite preview",
+        "start": "vite",
+        "dev": "vite dev",
+        "test": "vite dev",
+        "test:dev": "vite dev",
+        "test:test": "echo 'No tests configured for crossword' && exit 0"
+    },
+    "browserslist": [
+        "last 1 chrome version",
+        "last 1 edge version"
+    ],
+    "overrides": {
+        "rollup": "4.50.1",
+        "@rollup/rollup-linux-x64-gnu": "4.50.1",
+        "@rollup/rollup-linux-x64-musl": "4.50.1",
+        "@rollup/plugin-terser": "0.4.4",
+        "@rollup/plugin-typescript": "12.1.4"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "4.50.1"
+    },
+    "devDependencies": {
+        "@crxjs/vite-plugin": "^2.2.0",
+        "@danielx/civet": "^0.10.4",
+        "@phosphor-icons/core": "^2.1.1",
+        "@picocss/pico": "^2.1.1",
+        "@rollup/plugin-terser": "^0.4.4",
+        "@rollup/plugin-typescript": "^12.1.2",
+        "@rollup/rollup-linux-x64-gnu": "^4.50.1",
+        "@types/chrome": "^0.1.12",
+        "@types/sanitize-html": "^2.13.0",
+        "chrome-types": "^0.1.379",
+        "country-flag-emoji-polyfill": "^0.1.8",
+        "cssnano": "^7.0.7",
+        "cssnano-preset-advanced": "^7.0.7",
+        "culori": "^4.0.2",
+        "dompurify": "^3.2.4",
+        "install": "^0.13.0",
+        "isomorphic-dompurify": "^2.22.0",
+        "jsdom": "^26.0.0",
+        "jsonc-eslint-parser": "^2.4.1",
+        "marked": "^15.0.12",
+        "marked-katex-extension": "^5.1.5",
+        "mathml-to-latex": "^1.5.0",
+        "npm": "^11.6.0",
+        "postcss-preset-env": "^10.2.1",
+        "sass": "^1.86.0",
+        "temml": "^0.11.11",
+        "terser": "^5.41.0",
+        "turndown": "^7.2.1",
+        "typedoc": "^0.28.5",
+        "typescript": "~5.7.2",
+        "vite": ">=7.1.5",
+        "vite-bundle-analyzer": "^0.10.6",
+        "vite-plugin-bundle-prefetch": "^0.0.4",
+        "vite-plugin-external": "^6.2.2",
+        "vite-plugin-optimizer": "^1.4.3",
+        "vite-plugin-pwa": "^1.0.3",
+        "vite-plugin-singlefile": "^2.1.0",
+        "vite-plugin-static-copy": "^3.1.1",
+        "vite-tsconfig-paths": "^5.1.4",
+        "webdav": "^5.8.0"
+    },
+    "dependencies": {
+        "@jsquash/jpeg": "^1.6.0",
+        "@jsquash/png": "^3.1.1"
+    }
+}

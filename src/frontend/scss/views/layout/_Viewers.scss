@@ -1,0 +1,141 @@
+// Viewer Components - Refactored and Optimized
+// Unified with design system variables and mixins
+
+@use "veela-lib" as *;
+
+@layer rs-viewers {
+    [data-type="tasks"],
+    [data-type="contacts"],
+    [data-type="bonuses"],
+    [data-type="services"] {
+        grid-auto-rows: minmax(0px, max-content);
+        grid-auto-flow: row;
+        column-fill: balance;
+        align-items: start;
+
+        //
+        @include grid-auto-fill(260px);
+        @include scrollable("y");
+    }
+
+    //
+    section {
+        pointer-events: auto;
+        touch-action: manipulation;
+
+        display: grid;
+        grid-template-columns: minmax(0px, 1fr);
+        grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
+        grid-template-areas: "content" "toolbar";
+        border-radius: var(--radius-sm);
+        inline-size: stretch;
+        block-size: stretch;
+        gap: var(--gap-xs);
+        background-color: transparent;
+
+        //
+        @include scrollable("y");
+
+        &.viewer-section {
+            background-color: transparent;
+        }
+    }
+
+    //
+    header {
+        min-block-size: max-content;
+        block-size: max-content;
+        line-height: normal;
+        touch-action: manipulation;
+        pointer-events: auto;
+
+        * { pointer-events: none; }
+    }
+
+    //
+    .view {
+        display: block;
+        padding: 0;
+        border-radius: var(--radius-sm);
+
+        & > h2 {
+            margin: 0 0 var(--gap-sm) 0;
+            font-weight: var(--font-weight-bold);
+            font-size: var(--font-lg);
+            letter-spacing: 0.01em;
+        }
+    }
+
+    //
+    ui-tabbed-box {
+        //
+        inline-size: stretch;
+        block-size: stretch;
+        padding-block: var(--padding-sm);
+
+        //
+        @include container("lg") {
+            order: 3;
+            grid-column: 1 / -1;
+        }
+
+        .viewer-tab-content {
+            overflow-x: hidden;
+            scrollbar-gutter: auto;
+            touch-action: manipulation;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap-xs);
+
+            @include surface(var(--surface-opacity-subtle));
+            @include scrollable("y");
+
+            .viewer-tab-content-header {
+                font-size: var(--font-xl);
+                font-weight: var(--font-weight-semibold);
+                color: --c2-on-surface(var(--surface-opacity-subtle), var(--current, currentColor));
+                text-align: center;
+                padding: var(--padding-xs);
+                border-radius: var(--radius-sm);
+                background-color: transparent;
+                pointer-events: none;
+            }
+
+            .viewer-tab-content-body {
+                display: flex;
+                flex-direction: column;
+                gap: var(--gap-xs);
+                pointer-events: none;
+                block-size: max-content;
+            }
+        }
+    }
+
+    //
+    .subgroup {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-xs);
+        pointer-events: none;
+
+        .subgroup-items {
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap-xs);
+            padding: var(--padding-xs);
+            pointer-events: none;
+        }
+
+        .subgroup-header {
+            font-size: var(--font-sm);
+            font-weight: var(--font-weight-medium);
+            color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+            text-align: center;
+            padding: var(--padding-xs);
+            border-radius: var(--radius-sm);
+            @include surface(var(--surface-opacity-emphasis));
+            pointer-events: none;
+        }
+    }
+}

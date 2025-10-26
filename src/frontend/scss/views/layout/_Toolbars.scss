@@ -1,0 +1,111 @@
+// Toolbar Components - Refactored and Optimized
+// Unified with design system variables and mixins
+
+@use "veela-lib" as *;
+
+//
+@layer rs-toolbars {
+
+    .toolbar {
+        background-color: transparent;
+    }
+
+    .view-toolbar {
+        gap: var(--gap-xs);
+        inline-size: stretch;
+        background: transparent;
+
+        grid-column: 1 / -1;
+        margin: 0;
+        flex-direction: row;
+
+        block-size: max-content;
+        display: flex;
+        background-color: transparent;
+        justify-content: start;
+        padding: var(--padding-xs) var(--padding-sm);
+        padding-block: var(--padding-md);
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 10;
+
+        //
+        place-content: center;
+        place-items: center;
+
+        //
+        @include backdrop-blur("subtle");
+        @include flex-between;
+
+        //
+        &:empty {
+            display: none;
+        }
+
+        .button-set {
+            display: inline-flex;
+            flex-wrap: no-wrap;
+            gap: var(--gap-md);
+            padding: var(--padding-sm);
+            border-radius: var(--radius-lg);
+            block-size: max-content;
+
+            @include surface(var(--surface-opacity-default, 0.08));
+
+            //
+            &:empty { display: none; }
+
+            //
+            button {
+                max-block-size: 3rem;
+                border-radius: var(--radius-sm);
+                padding: var(--padding-xs);
+                aspect-ratio: auto;
+                flex-direction: row;
+                display: flex;
+                gap: var(--gap-sm);
+
+                //
+                @include button-variant(var(--surface-opacity-emphasis));
+                @include surface(var(--surface-opacity-emphasis));
+                @include toolbar-button;
+                @include flex-center;
+
+                //
+                span {
+                    font-size: var(--font-sm);
+                    display: block;
+                    font-weight: var(--font-weight-normal);
+                    color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+                    padding-inline-end: var(--padding-xs);
+                }
+            }
+        }
+
+        // Mobile optimizations
+        @include breakpoint("md") {
+            justify-content: center;
+
+            .button-set {
+                justify-content: center;
+                inline-size: 100%;
+
+                button {
+                    flex: 1 1 calc(50% - var(--gap-sm));
+                    justify-content: center;
+                }
+            }
+        }
+
+        //
+        @include container("lg") {
+            button span { display: none !important; }
+        }
+
+        //
+        @container (inline-size <= 600px) {
+            button span { display: none !important; };
+        }
+    }
+
+}

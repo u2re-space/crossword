@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru" color-mode="user" data-scheme="auto">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1.0, user-scalable=no, interactive-widget=overlays-content"/>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="manifest" href="./src/pwa/manifest.json" />
+        <meta name="theme-color" content="#000000">
+        <title>Crossword</title>
+        <style>script, link, style {display: none !important;}</style>
+        <script type="importmap">
+        {
+            "imports": {
+                "fest/": "/fest/",
+                "fest/cdnImport": "/fest/cdnImport.mjs",
+                "fest/dom": "/fest/dom/index.ts",
+                "fest/object": "/fest/object/index.ts",
+                "fest/fl-ui": "/fest/fl-ui/index.ts",
+                "fest/uniform": "/fest/uniform/index.ts",
+                "fest/lure": "/fest/lure/lure.ts",
+                "fest/theme": "/fest/theme/index.ts"
+            }
+        }
+        </script>
+        <script>
+            WeakMap.prototype.getOrInsert ??= function (key, defaultValue) {
+                if (!this.has(key)) { this.set(key, defaultValue); }
+                return this.get(key);
+            };
+
+            WeakMap.prototype.getOrInsertComputed ??= function (key, callbackFunction) {
+                if (!this.has(key)) { this.set(key, callbackFunction(key)); }
+                return this.get(key);
+            };
+
+            Map.prototype.getOrInsert ??= function (key, defaultValue) {
+                if (!this.has(key)) { this.set(key, defaultValue); }
+                return this.get(key);
+            };
+
+            Map.prototype.getOrInsertComputed ??= function (key, callbackFunction) {
+                if (!this.has(key)) { this.set(key, callbackFunction(key)); }
+                return this.get(key);
+            };
+        </script>
+        <script>
+            // workaround for happy-fs
+            if (typeof process == "undefined" || !window?.process) {
+                window.process = {
+                    env: {
+                        NODE_ENV: "production"
+                    }
+                }
+            }
+</script>
+    </head>
+<body>
+    <div id="app" class="c2-surface" style="pointer-events: auto; background-color: --c2-surface(0.15, var(--current, currentColor));"></div>
+    <script src="./main.mjs" async defer type="module"></script>
+</body>
+</html>
