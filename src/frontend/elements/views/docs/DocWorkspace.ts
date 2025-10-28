@@ -1,92 +1,7 @@
 import { H, Q, getDirectoryHandle, removeFile } from "fest/lure";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-
-//
-export type DocParserMeta = {
-    collection: DocCollection;
-    directory: string;
-    fileHandle: FileSystemFileHandle;
-    file: File;
-    filePath: string;
-};
-
-export type DocEntry = {
-    id: string;
-    title: string;
-    subtitle?: string;
-    summary?: string;
-    description?: string;
-    path: string;
-    fileName: string;
-    collectionId: string;
-    modifiedAt: number;
-    wordCount?: number;
-    searchText: string;
-    renderPreview: (container: HTMLElement, ctx: DocWorkspaceController) => void | Promise<void>;
-    dispose?: () => void;
-    raw?: unknown;
-};
-
-export type DocParser = (meta: DocParserMeta) => Promise<DocEntry | null>;
-
-export type DocCollection = {
-    id: string;
-    label: string;
-    dir?: string;
-    dirs?: string[];
-    icon?: string;
-    description?: string;
-    parser?: DocParser;
-    emptyState?: string;
-};
-
-export type WorkspaceAction = {
-    id: string;
-    label: string;
-    icon?: string;
-    primary?: boolean;
-    onClick: (ctx: DocWorkspaceController) => void | Promise<void>;
-    disabled?: (ctx: DocWorkspaceController) => boolean;
-    tooltip?: string;
-};
-
-export type EntryActionFactory = (entry: DocEntry, ctx: DocWorkspaceController) => HTMLElement | null;
-
-export type DocWorkspaceOptions = {
-    title?: string;
-    subtitle?: string;
-    collections: DocCollection[];
-    defaultCollectionId?: string;
-    actions?: WorkspaceAction[];
-    secondaryActions?: WorkspaceAction[];
-    entryActions?: EntryActionFactory[];
-    searchPlaceholder?: string;
-    emptyState?: string;
-    enableDrop?: boolean;
-    enablePaste?: boolean;
-    onDrop?: (event: DragEvent, ctx: DocWorkspaceController) => Promise<void> | void;
-    onPaste?: (event: ClipboardEvent, ctx: DocWorkspaceController) => Promise<void> | void;
-};
-
-export type DocWorkspaceController = {
-    element: HTMLElement;
-    options: DocWorkspaceOptions;
-    getCollections: () => DocCollection[];
-    getCollection: (id?: string) => DocCollection | undefined;
-    getCurrentCollection: () => DocCollection | undefined;
-    getCollectionDirs: (id?: string) => string[];
-    getCurrentEntry: () => DocEntry | null;
-    getEntries: (collectionId?: string) => DocEntry[];
-    selectCollection: (id: string) => void;
-    selectEntry: (entryId: string) => void;
-    reload: (collectionId?: string) => Promise<void>;
-    reloadCurrent: () => Promise<void>;
-    ensureDir: (dir: string) => Promise<FileSystemDirectoryHandle | null>;
-    setActions: (actions: WorkspaceAction[]) => void;
-    setSecondaryActions: (actions: WorkspaceAction[]) => void;
-    setEntryActions: (actions: EntryActionFactory[]) => void;
-    deleteEntry: (entry: DocEntry | string) => Promise<boolean>;
-};
+import type { DeleteEntryActionOptions, DocCollection, DocEntry, DocParser, DocWorkspaceController, DocWorkspaceOptions, EntryActionFactory } from "./Types";
+import { parseMarkdownEntry } from "./Parser";
 
 const normalizeCollections = (collections: DocCollection[]): DocCollection[] => {
     return collections.map((collection) => {
@@ -105,59 +20,6 @@ const normalizeCollections = (collections: DocCollection[]): DocCollection[] => 
 
 const DEFAULT_EMPTY_STATE = "No documents yet. Use the toolbar to add one.";
 
-const formatDateTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-};
-
-const toStringSafe = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
-
-const collapseWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
-
-const stripMarkdown = (value: unknown): string => {
-    const input = toStringSafe(value);
-    if (!input) return "";
-    return input
-        .replace(/```[\s\S]*?```/g, " ")
-        .replace(/`([^`]+)`/g, "$1")
-        .replace(/!\[[^\]]*\]\([^\)]+\)/g, " ")
-        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-        .replace(/(^|\n)\s{0,3}>\s?/g, "$1")
-        .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, "$1")
-        .replace(/(^|\n)\s{0,3}[-*+]\s+/g, "$1")
-        .replace(/(^|\n)\s{0,3}\d+\.\s+/g, "$1")
-        .replace(/(^|\n)---[\s\S]*?---(?=\n|$)/g, "$1")
-        .replace(/[\\*_~]/g, "")
-        .replace(/`/g, "")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/<\/?[^>]+>/g, " ");
-};
-
-export const sanitizeDocSnippet = (value: unknown): string => collapseWhitespace(stripMarkdown(value));
-
-export const truncateDocSnippet = (value: string, limit = 260): string => {
-    const trimmed = value.trim();
-    if (!limit || trimmed.length <= limit) return trimmed;
-    return `${trimmed.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
-};
-
-export type DeleteEntryActionOptions = {
-    icon?: string;
-    tooltip?: string;
-    label?: string;
-    className?: string;
-    confirm?: (entry: DocEntry, ctx: DocWorkspaceController) => boolean | Promise<boolean>;
-    confirmMessage?: string | ((entry: DocEntry, ctx: DocWorkspaceController) => string);
-    onSuccess?: (entry: DocEntry, ctx: DocWorkspaceController) => void;
-    onError?: (entry: DocEntry, ctx: DocWorkspaceController, error?: unknown) => void;
-};
 
 export const createDeleteEntryAction = (options: DeleteEntryActionOptions = {}): EntryActionFactory => {
     const {
@@ -210,59 +72,9 @@ export const createDeleteEntryAction = (options: DeleteEntryActionOptions = {}):
     };
 };
 
-//
-const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => {
-    const text = await file.text();
-    const rawTitleLine = text.trim().split(/\r?\n/).find((line) => line.trim().length) || "";
-    const sanitizedTitle = sanitizeDocSnippet(rawTitleLine);
-    const fallbackTitle = sanitizeDocSnippet(file.name.replace(/\.[^.]+$/, "")) || file.name;
-    const title = sanitizedTitle || fallbackTitle;
-    const summarySource = text.trim().split(/\r?\n/).slice(0, 6).join(" ");
-    const summary = truncateDocSnippet(sanitizeDocSnippet(summarySource));
-    const sanitizedBody = sanitizeDocSnippet(text);
-
-    //
-    const blob = new Blob([text], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const wordCount = text.split(/\s+/).filter(Boolean).length;
-
-    const $setter = (el) => {
-        el?.renderMarkdown?.(text);
-    }
-
-    const entry: DocEntry = {
-        id: `${collection.id}:${filePath}`,
-        title,
-        subtitle: formatDateTime(file.lastModified),
-        summary: summary || undefined,
-        path: filePath,
-        fileName: file.name,
-        collectionId: collection.id,
-        modifiedAt: file.lastModified,
-        wordCount,
-        searchText: [title, summary, truncateDocSnippet(sanitizedBody, 20000)].filter(Boolean).join(" \n").toLowerCase(),
-        renderPreview: (container) => {
-            container.replaceChildren(
-                H`<div class="doc-preview-frame">
-                    <header class="doc-preview-header">
-                        <div>
-                            <h2>${title || file.name}</h2>
-                            <p class="doc-subtitle">Updated ${formatDateTime(file.lastModified)}</p>
-                        </div>
-                        ${wordCount ? H`<span class="doc-meta-tag">${wordCount} words</span>` : null}
-                    </header>
-                    <md-view ref=${$setter} src=${url}></md-view>
-                </div>`
-            );
-        },
-        //dispose: () => URL.revokeObjectURL(url),
-        raw: text
-    };
-
-    return entry;
-};
 
 const unique = <T,>(values: T[]) => Array.from(new Set(values));
+
 
 export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { controller: DocWorkspaceController } => {
     const collections = normalizeCollections(options.collections ?? []);

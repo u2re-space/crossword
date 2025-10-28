@@ -3,10 +3,12 @@
 
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
 import { toastError, toastSuccess, toastWarning } from "@rs-frontend/elements/overlays/Toast";
-import { DocWorkspace, type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, sanitizeDocSnippet, truncateDocSnippet, createDeleteEntryAction } from "./DocWorkspace";
+import { DocWorkspace, createDeleteEntryAction } from "./DocWorkspace";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { openPickerAndWrite, pasteIntoDir } from "../../entities/utils/FileOps";
+import { type DocCollection, type DocParser, type DocEntry, type WorkspaceAction, type EntryActionFactory, } from "./Types";
+import { sanitizeDocSnippet, truncateDocSnippet } from "./Parser";
 
 const QUEST_COLLECTIONS: DocCollection[] = [
     { id: "questions", label: "Questions", dir: "/docs/questions/", description: "Open-ended prompts awaiting solutions." },
