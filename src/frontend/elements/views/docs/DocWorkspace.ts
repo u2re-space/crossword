@@ -530,5 +530,3 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
 
     return root as HTMLElement & { controller: DocWorkspaceController };
 };
-
-
