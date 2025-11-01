@@ -46,6 +46,17 @@
 
             @include surface(var(--surface-opacity-subtle));
 
+            // Make sidebar bigger on mobile and small screens
+            @media (max-width: 720px) {
+                inline-size: min(280px, 100cqi);
+                padding: var(--padding-sm);
+            }
+
+            @media (max-width: 480px) {
+                inline-size: min(320px, 100cqi);
+                padding: var(--padding-md);
+            }
+
             & {
                 border: none 0 transparent;
                 outline: none 0 transparent;
@@ -129,6 +140,19 @@
                             outline: none;
                         }
 
+                        // Make navigation items bigger on mobile
+                        @media (max-width: 720px) {
+                            padding: var(--padding-lg);
+                            font-size: var(--font-base);
+                            column-gap: var(--gap-sm);
+                        }
+
+                        @media (max-width: 480px) {
+                            padding: var(--padding-xl);
+                            font-size: var(--font-md);
+                            column-gap: var(--gap-md);
+                        }
+
                         ui-icon {
                             justify-self: start;
                             inline-size: 1rem;
@@ -139,6 +163,19 @@
                             --icon-color: --c2-surface(0.6, var(--current, currentColor));
 
                             color: --c2-surface(0.6, var(--current, currentColor));
+
+                            // Make icons bigger on mobile
+                            @media (max-width: 720px) {
+                                inline-size: 1.25rem;
+                                block-size: 1.25rem;
+                                --icon-size: 1.25rem;
+                            }
+
+                            @media (max-width: 480px) {
+                                inline-size: 1.5rem;
+                                block-size: 1.5rem;
+                                --icon-size: 1.5rem;
+                            }
                         }
 
                         span {
@@ -169,6 +206,15 @@
                     padding: var(--padding-sm) var(--padding-xs);
                     inline-size: 100cqi;
 
+                    // Increase nav padding on mobile
+                    @media (max-width: 720px) {
+                        padding: var(--padding-md) var(--padding-sm);
+                    }
+
+                    @media (max-width: 480px) {
+                        padding: var(--padding-lg) var(--padding-md);
+                    }
+
                     ul {
                         gap: 0;
                         padding-inline: 0;
@@ -178,6 +224,11 @@
                             flex: 0 0 auto;
                             white-space: nowrap;
                             border-radius: var(--radius-sm);
+
+                            // Increase list item spacing on mobile
+                            @media (max-width: 480px) {
+                                border-radius: var(--radius-md);
+                            }
                         }
                     }
                 }

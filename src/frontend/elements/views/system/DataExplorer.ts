@@ -23,7 +23,7 @@ export const DataExplorer = () => {
 
     //
     const onUpload = () => {
-        openPickerAndWrite(viewer?.path, 'text/markdown,text/plain,.md', true)?.then(() => {
+        openPickerAndWrite(viewer?.path, 'text/markdown,text/plain,.md', true)?.then?.(() => {
             toastSuccess("Uploaded");
             currentWebDav?.sync?.upload?.();
         }).catch((e) => {
@@ -34,7 +34,7 @@ export const DataExplorer = () => {
 
     //
     const onDownload = () => {
-        downloadByPath(viewer?.path)?.then(() => {
+        downloadByPath(viewer?.path)?.then?.(() => {
             toastSuccess("Downloaded");
         }).catch((e) => {
             toastError("Download failed");
@@ -44,7 +44,7 @@ export const DataExplorer = () => {
 
     //
     const onRefresh = () => {
-        currentWebDav?.sync?.download?.(viewer?.path).then(() => {
+        currentWebDav?.sync?.download?.(viewer?.path)?.then?.(() => {
             viewer?.loadPath?.(viewer?.path);
             toastSuccess("Refreshed");
         }).catch((e) => {
@@ -78,7 +78,7 @@ export const DataExplorer = () => {
             for (const dir of dirs) await getDirectoryHandle(null, dir, { create: true } as any);
         } catch (e) { console.warn(e); }*/
 
-        getDirectoryHandle(null, viewer?.path, { create: true })?.then(async () => {
+        getDirectoryHandle(null, viewer?.path, { create: true })?.then?.(async () => {
             await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
             toastSuccess("Mounted");
         }).catch((e) => {
@@ -114,7 +114,7 @@ export const DataExplorer = () => {
     </div>`
 
     //
-    const section = H`<section id="items" class="data-view c2-surface">${viewer}${toolbar}</section>`;
+    const section = H`<section id="explorer" class="data-view c2-surface">${viewer}${toolbar}</section>`;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: viewer?.path?.split?.("/")?.at?.(-1) });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
