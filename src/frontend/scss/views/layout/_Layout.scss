@@ -46,6 +46,11 @@
 
             @include surface(var(--surface-opacity-subtle));
 
+            & {
+                border: none 0 transparent;
+                outline: none 0 transparent;
+            }
+
             &[slot="sidebar"] {
                 grid-column: 1 / 2;
                 grid-row: 2 / 3;
@@ -72,12 +77,16 @@
                 user-select: none;
                 list-style: none;
                 overflow: hidden;
-                box-shadow: var(--shadow-inset);
                 box-sizing: border-box;
                 gap: 0;
                 border-radius: var(--radius-xs);
 
                 @include surface(var(--surface-opacity-default));
+
+                & {
+                    border: none 0 transparent;
+                    outline: none 0 transparent;
+                }
 
                 &:focus {
                     border: none 0 transparent;
@@ -101,7 +110,6 @@
 
                     * { pointer-events: none; }
                     & { background-color: transparent; }
-                    &:hover, &:active { @include surface(var(--surface-opacity-emphasis)); }
 
                     a {
                         @include nav-item;
