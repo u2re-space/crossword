@@ -384,7 +384,7 @@ export const makeEvents = (
             ev?.stopPropagation?.();
             const path = makePath(entityItem, entityDesc);
             try { await removeFile(null, path); } catch (e) { console.warn(e); }
-            const card = document.querySelector(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
+            const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
             card?.remove?.();
         },
         doEdit: async (ev: Event) => {
@@ -401,18 +401,18 @@ export const makeEvents = (
                 // If entity was updated, refresh the card in the UI
                 if (updatedEntity) {
                     const entityAny = updatedEntity as any;
-                    const card = document.querySelector(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
+                    const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityAny?.id || entityAny?.name}"]`);
                     if (card) {
                         (card as any)?.$updateInfo?.(entityAny);
 
                         // Update card content
-                        const titleEl = card.querySelector('.card-title');
+                        const titleEl = (card as any)?.querySelector('.card-title');
                         if (titleEl && entityAny.title) titleEl.textContent = entityAny.title;
 
-                        const nameEl = card.querySelector('.card-name');
+                        const nameEl = (card as any)?.querySelector('.card-name');
                         if (nameEl && entityAny.name) nameEl.textContent = entityAny.name;
 
-                        const descEl = card.querySelector('.card-description');
+                        const descEl = (card as any)?.querySelector('.card-description');
                         if (descEl && entityAny.description) {
                             const desc = Array.isArray(entityAny.description)
                                 ? entityAny.description.join('\n')

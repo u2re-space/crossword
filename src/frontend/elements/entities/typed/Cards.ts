@@ -51,7 +51,7 @@ export const MakeCardElement = <
     </div>
     <div class="card-props">
         <ul class="card-title"><li>${entityItem?.title || entityItem?.name || entityDesc.label}</li></ul>
-        <ul class="card-kind"><li>${entityItem?.kind || entityItem?.kind}</li></ul>
+        <ul class="card-kind"><li>${entityItem?.kind}</li></ul>
     </div>
     ${timeRangeElement}
     <div class="card-actions">

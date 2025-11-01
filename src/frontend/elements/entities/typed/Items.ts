@@ -1,5 +1,5 @@
 import { H, M, openDirectory } from "fest/lure";
-import { $trigger, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
+import { $trigger, isReactive, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, getComparableTimeValue, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement } from "./Cards";
@@ -7,6 +7,49 @@ import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { cleanToDay, GET_OR_CACHE_BY_NAME, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "./Utils";
 import { bindDropToDir } from "../utils/FileOps";
+
+//
+export const mergeByExists = <T extends { name: string }>(dataRef: T[], refs: T[]) => {
+    // Build index maps for O(1) lookups
+    const dataMap = new Map<string, { item: T; index: number }>();
+    dataRef.forEach((item, index) => {
+        if (item?.name) dataMap.set(item.name, { item, index });
+    });
+
+    const refsMap = new Map<string, T>();
+    refs.forEach(ref => {
+        if (ref?.name) refsMap.set(ref.name, ref);
+    });
+
+    // Update existing items
+    for (const [name, { index }] of dataMap) {
+        const ref = refsMap.get(name);
+        if (ref) {
+            dataRef[index] = ref;
+        }
+    }
+
+    // Add new items
+    for (const [name, ref] of refsMap) {
+        if (!dataMap.has(name)) {
+            dataRef.push(ref);
+        }
+    }
+
+    // Remove deleted items (iterate backwards to maintain indices)
+    for (let i = dataRef.length - 1; i >= 0; i--) {
+        const item = dataRef[i];
+        if (item?.name && !refsMap.has(item.name)) {
+            dataRef.splice(i, 1);
+        }
+    }
+
+    // sort by name
+    dataRef.sort((a: T, b: T) => a?.name?.localeCompare?.(b?.name ?? ""));
+
+    // return sorted data
+    return dataRef;
+}
 
 //
 const MakeItemsLoaderForTabPage = <
@@ -22,51 +65,86 @@ const MakeItemsLoaderForTabPage = <
 
     //
     let loadLocked = false;
+    let loaderDebounceTimer: any = null;
     const load = async () => {
         if (loadLocked) return { dataRef, load };
         loadLocked = true;
 
         //
-        const dHandle = await openDirectory(null, sourceRef.DIR, { create: true })?.catch?.(console.warn.bind(console));
-        const $remap = dHandle?.getMap?.();
-        const $reactive = observableByMap($remap);
+        const dHandle = openDirectory(null, sourceRef.DIR, { create: true }); await dHandle;
+        const loader = async () => {
+            const handleMap = await Promise.all(await Array.fromAsync(await dHandle?.entries?.() ?? []));
+            const refs = await Promise.all(handleMap?.map?.(async ($pair: any, index: number) => {
+                try {
+                    const forAddOrDelete = $pair != null;
+                    const [name, fileHandle] = $pair as any;
+                    const obj = await GET_OR_CACHE_BY_NAME(name, fileHandle?.getFile?.()?.catch?.(console.warn.bind(console)))?.catch?.(console.warn.bind(console));
 
-        // I don't know why, but new files isn't observable
-        dataRef?.splice?.(0, dataRef?.length ?? 0); dataRef.length = 0; // TODO: fix in reactive library
-        observe($reactive, (pair, index: number | string | symbol, old, $op?: string) => {
-            const forAddOrDelete = pair != null;
-            const [name, fileHandle] = (pair ?? old) != null ? (pair ?? old) : [null, null];
+                    //
+                    if (!forAddOrDelete) {
+                        if (typeof index == "number" && index >= 0) {
+                            REMOVE_IF_HAS_SIMILAR(dataRef, obj as E, index);
+                        } else {
+                            REMOVE_IF_HAS(dataRef, obj as E);
+                        }
+                    }
+
+                    //
+                    if (obj) {
+                        let processedObj = obj as E;
+                        if (typeof obj == "object") {
+                            processedObj = (isReactive(obj) ? obj : makeReactive(obj)) as E;
+                            (processedObj as any).__name = name;
+                            (processedObj as any).__path = `${sourceRef.DIR}${name}`;
+                        }
+
+                        // TODO? needs to replace push with splice adding with index saving order?
+                        if (
+                            !name?.trim?.()?.endsWith?.(".crswap") &&
+                            name?.trim?.()?.endsWith?.(".json") &&
+                            filtered(processedObj, chapterRef as C) &&
+                            forAddOrDelete
+                        ) { SPLICE_INTO_ONCE(dataRef, processedObj, index); };
+
+                        //
+                        return processedObj;
+                    }
+
+                    //
+                    return obj;
+                } catch {
+                    console.warn("Error loading item");
+                }
+            }));
 
             //
-            Promise.try(async () => {
-                const obj = await GET_OR_CACHE_BY_NAME(name, fileHandle?.getFile?.()?.catch?.(console.warn.bind(console)))?.catch?.(console.warn.bind(console));
+            mergeByExists(dataRef, refs);
 
-                //
-                if (!forAddOrDelete) {
-                    if (typeof index == "number" && index >= 0) {
-                        REMOVE_IF_HAS_SIMILAR(dataRef, obj as E, index, old);
-                    } else {
-                        REMOVE_IF_HAS(dataRef, obj as E);
+            //
+            // Remove items that no longer match the filter (when filter changes, e.g., switching tabs)
+            for (let i = dataRef.length - 1; i >= 0; i--) {
+                const item = dataRef[i];
+                if (item) {
+                    const itemName = (item as any).__name || (item as any).name;
+                    const shouldKeep = itemName &&
+                        itemName.trim?.()?.endsWith?.(".json") &&
+                        !itemName.trim?.()?.endsWith?.(".crswap") &&
+                        filtered(item, chapterRef as C);
+                    if (!shouldKeep) {
+                        dataRef.splice(i, 1);
                     }
                 }
+            }
+        }
 
-                //
-                if (obj) {
-                    if (typeof obj == "object") {
-                        (obj as any).__name = name;
-                        (obj as any).__path = `${sourceRef.DIR}${name}`;
-                    }
+        //
+        const debouncedLoader = () => {
+            if (loaderDebounceTimer) { clearTimeout(loaderDebounceTimer); }
+            loaderDebounceTimer = setTimeout(() => loader(), 50);
+        };
 
-                    // TODO? needs to replace push with splice adding with index saving order?
-                    if (
-                        !name?.trim?.()?.endsWith?.(".crswap") &&
-                        name?.trim?.()?.endsWith?.(".json") &&
-                        filtered(obj as E, chapterRef as C) &&
-                        forAddOrDelete
-                    ) { SPLICE_INTO_ONCE(dataRef, obj as E, index); };
-                }
-            })
-        })
+        //
+        await loader()?.catch?.(console.warn.bind(console)); subscribe(dHandle?.getMap?.() ?? [], debouncedLoader);
 
         // do sorting by days abd time before rendering
         //dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
