@@ -1,16 +1,15 @@
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
-import { makeEntityEdit } from "@rs-frontend/elements/editors/EntityEdit";
+import { makeEntityEdit } from "@rs-frontend/lure/editors/EntityEdit";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { openPickerAndAnalyze } from "../utils/FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/elements/overlays/Toast";
+import { openPickerAndAnalyze } from "./FileOps";
+import { toastSuccess, toastError } from "@rs-frontend/lure/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { H } from "fest/lure";
 
 //
-const iconsPerAction = new Map<string, string>([
+export const iconsPerAction = new Map<string, string>([
     ["add", "user-plus"],
     ["upload", "upload"],
     ["generate", "magic-wand"],
@@ -20,7 +19,7 @@ const iconsPerAction = new Map<string, string>([
 ]);
 
 //
-const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
+export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
     ["add", (entityDesc: EntityDescriptor) => `Add ${entityDesc.label}`],
     ["upload", (entityDesc: EntityDescriptor) => `Upload and recognize`], //${entityDesc.label}
     ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
@@ -30,8 +29,8 @@ const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string
 ]);
 
 //
-const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
-const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
+export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
+export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
     ["debug-gen", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         try {
             // Use debug task generation for immediate testing
@@ -120,16 +119,3 @@ const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, e
         } catch (e) { console.warn(e); }
     }]
 ]);
-
-//
-const generateActionButton = (action: string, entityDesc: EntityDescriptor, viewPage?: any) => {
-    return H`<button type="button" on:click=${(e: any) => actionRegistry.get(action)?.(e, entityDesc, viewPage)}>
-        <ui-icon icon=${iconsPerAction.get(action)}></ui-icon>
-        <span>${labelsPerAction.get(action)?.(entityDesc)}</span>
-    </button>`;
-}
-
-//
-export const makeActions = (actions: string[], entityDesc: EntityDescriptor, viewPage?: any) => {
-    return actions.map((action) => generateActionButton(action, entityDesc, viewPage));
-}

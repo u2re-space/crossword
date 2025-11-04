@@ -5,8 +5,8 @@ import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { cleanToDay, GET_OR_CACHE_BY_NAME, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "./Utils";
-import { bindDropToDir } from "../utils/FileOps";
+import { cleanToDay, GET_OR_CACHE_BY_NAME, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "../../utils/Utils";
+import { bindDropToDir } from "../../utils/FileOps";
 
 //
 export const mergeByExists = <T extends { name: string }>(dataRef: T[], refs: T[]) => {

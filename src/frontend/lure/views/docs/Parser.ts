@@ -1,49 +1,6 @@
 import { H } from "fest/lure";
-import type { DocEntry, DocParser } from "./Types";
-
-const toStringSafe = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
-
-const collapseWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
-
-const stripMarkdown = (value: unknown): string => {
-    const input = toStringSafe(value);
-    if (!input) return "";
-    return input
-        .replace(/```[\s\S]*?```/g, " ")
-        .replace(/`([^`]+)`/g, "$1")
-        .replace(/!\[[^\]]*\]\([^\)]+\)/g, " ")
-        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-        .replace(/(^|\n)\s{0,3}>\s?/g, "$1")
-        .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, "$1")
-        .replace(/(^|\n)\s{0,3}[-*+]\s+/g, "$1")
-        .replace(/(^|\n)\s{0,3}\d+\.\s+/g, "$1")
-        .replace(/(^|\n)---[\s\S]*?---(?=\n|$)/g, "$1")
-        .replace(/[\\*_~]/g, "")
-        .replace(/`/g, "")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/<\/?[^>]+>/g, " ");
-};
-
-
-const formatDateTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-};
-
-export const sanitizeDocSnippet = (value: unknown): string => collapseWhitespace(stripMarkdown(value));
-
-export const truncateDocSnippet = (value: string, limit = 260): string => {
-    const trimmed = value.trim();
-    if (!limit || trimmed.length <= limit) return trimmed;
-    return `${trimmed.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
-};
+import type { DocEntry, DocParser } from "../../../utils/Types";
+import { formatDateTime, sanitizeDocSnippet, truncateDocSnippet } from "@rs-frontend/utils/Formatted";
 
 //
 export const parseMarkdownEntry: DocParser = async ({ collection, file, filePath }) => {

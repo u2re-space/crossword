@@ -1,6 +1,6 @@
 import { H, Q, getDirectoryHandle, removeFile } from "fest/lure";
 import { watchFsDirectory } from "@rs-core/workers/FsWatch";
-import type { DeleteEntryActionOptions, DocCollection, DocEntry, DocParser, DocWorkspaceController, DocWorkspaceOptions, EntryActionFactory } from "./Types";
+import type { DeleteEntryActionOptions, DocCollection, DocEntry, DocParser, DocWorkspaceController, DocWorkspaceOptions, EntryActionFactory } from "../../../utils/Types";
 import { parseMarkdownEntry } from "./Parser";
 
 const normalizeCollections = (collections: DocCollection[]): DocCollection[] => {

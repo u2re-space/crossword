@@ -1,10 +1,10 @@
-import { type DocCollection, type WorkspaceAction, type DocWorkspaceController } from "./Types";
-import { toastError, toastSuccess } from "@rs-frontend/elements/overlays/Toast";
+import { type DocCollection, type WorkspaceAction, type DocWorkspaceController } from "../../../utils/Types";
+import { toastError, toastSuccess } from "@rs-frontend/lure/overlays/Toast";
 import { getDirectoryHandle } from "fest/lure";
 import { currentWebDav } from "@rs-core/config/Settings";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import { openPickerAndRecognize, pasteIntoDir } from "../../entities/utils/FileOps";
+import { openPickerAndRecognize, pasteIntoDir } from "../../../utils/FileOps";
 import { createDeleteEntryAction, DocWorkspace } from "./DocWorkspace";
 
 const COLLECTIONS: DocCollection[] = [

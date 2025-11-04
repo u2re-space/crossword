@@ -1,5 +1,5 @@
 import { AppLayout } from "./layouts/AppLayout";
-import { DataExplorer, PreferencesView, QuestsView, Settings, ViewPage } from "./Views";
+import { DataExplorer, PreferencesView, QuestsView, Settings } from "./Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { UIPhosphorIcon } from "fest/icon";
 console.log(UIPhosphorIcon);
@@ -9,12 +9,13 @@ import "fest/fl-ui";
 
 //
 import { Sidebar } from "./layouts/Sidebar";
-import { MakeCardElement } from "./entities/typed/Cards";
+import { MakeCardElement } from "./entities/Cards";
 import { dropFile, hashTargetRef } from "fest/lure";
+import { $byKind, $insideOfDay } from "../utils/Utils";
+import { ViewPage } from "./entities/Viewer";
 
 // @ts-ignore
 import style from "../scss/index.scss?inline";
-import { $byKind, $insideOfDay } from "./entities/typed/Utils";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -89,7 +90,6 @@ export async function frontend(mountElement) {
 }
 
 //
-export * from "./entities/typed/Viewer";
 export * from "./views/docs/PreferencesView";
 export * from "./views/docs/QuestsView";
 export * from "./views/system/DataExplorer";
