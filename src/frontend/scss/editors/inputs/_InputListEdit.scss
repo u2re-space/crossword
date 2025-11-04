@@ -6,7 +6,7 @@
     // Enhanced field list edit with design system integration
     .field-list-edit {
         grid-template-columns: [button] minmax(0, 1fr) [checkbox] minmax(0, auto);
-        display: grid;
+        display: inline-grid;
         gap: var(--space-md);
         row-gap: var(--space-sm);
         container-type: inline-size;
@@ -18,7 +18,7 @@
         @include surface(var(--surface-opacity-default, 0.08));
 
         &-parts {
-            display: flex;
+            display: inline-grid;
             flex-direction: column;
             gap: var(--space-sm);
         }
