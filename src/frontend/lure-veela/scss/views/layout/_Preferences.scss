@@ -19,7 +19,7 @@
 
         @include surface(0);
 
-        > * {
+        & > * {
             grid-column: 1 / -1;
         }
 
@@ -334,10 +334,10 @@
                 @include text-truncate;
             }
 
-            .doc-entry-subtitle {
-                font-size: var(--font-sm);
-                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
-            }
+                .doc-entry-subtitle {
+	                font-size: var(--font-sm);
+	                color: var(--text-secondary, color-mix(in oklch, var(--on-surface, currentColor) 74%, transparent));
+                }
 
             .doc-entry-summary {
                 font-size: var(--font-xs);

@@ -1,0 +1,34 @@
+@use "veela-lib" as *;
+@use "../../library/queries" as *;
+
+@layer rs-forms-modal {
+
+	// Compact containers adjustments
+	@include cq('(max-inline-size: 30rem)') {
+		.modal-form {
+			min-inline-size: min(92vw, 26.25rem);
+			max-block-size: min(92vh, 40rem);
+			padding: var(--space-lg);
+
+			.modal-fields { max-block-size: min(58vh, 23.75rem); }
+
+			.modal-actions {
+				flex-direction: column;
+				align-items: stretch;
+				gap: var(--space-sm);
+
+				.modal-actions-right { justify-content: stretch; }
+				.btn { justify-content: center; inline-size: 100%; }
+			}
+		}
+	}
+
+	// Reduced motion support moved from main file
+	@media (prefers-reduced-motion: reduce) {
+		.modal-field.valid,
+		.modal-field.invalid { animation: none; }
+		.btn:hover:not(:disabled) { transform: none; }
+	}
+}
+
+

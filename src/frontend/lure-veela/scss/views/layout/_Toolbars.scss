@@ -74,7 +74,7 @@
                     font-size: var(--font-sm);
                     display: block;
                     font-weight: var(--font-weight-normal);
-                    color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+                    color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                     padding-inline-end: var(--padding-xs);
                 }
             }

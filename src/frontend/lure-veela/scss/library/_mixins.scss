@@ -1,0 +1,62 @@
+// Shared mixins to unify common property blocks
+@use "veela-lib" as *;
+
+// Layout stacks
+@mixin stack($gap, $display: grid) {
+	display: $display;
+	gap: $gap;
+}
+
+@mixin hstack($gap) { @include stack($gap, inline-flex); }
+@mixin vstack($gap) { @include stack($gap, grid); }
+
+// Container helpers
+@mixin container-inline {
+	container-type: inline-size;
+}
+
+@mixin container-size {
+	container-type: size;
+	contain: content;
+}
+
+// Typography helpers
+@mixin font-nums-tabular { font-variant-numeric: tabular-nums; }
+@mixin font-scale($size, $weight: null) {
+	font-size: $size;
+	@if $weight != null { font-weight: $weight; }
+}
+
+// Input helpers
+@mixin input-padding-trailing($logical-size) {
+	padding-inline-end: calc(#{$logical-size} * 2);
+}
+
+// State blocks (flex row with gaps and radius)
+@mixin state-inline($gap, $padding-y, $padding-x, $radius) {
+	display: flex;
+	align-items: center;
+	gap: $gap;
+	padding: $padding-y $padding-x;
+	border-radius: $radius;
+}
+
+// Scrollbar styling (modern and webkit)
+@mixin scrollbars($size: 6px, $thumb-shade: var(--surface-opacity-emphasis)) {
+	// Firefox/modern
+	scrollbar-width: thin;
+	& { scrollbar-color: color-mix(in oklch, var(--on-surface, currentColor) var(--scrollbar-tint, 86%), transparent) transparent; }
+
+	// WebKit
+	&::-webkit-scrollbar { inline-size: $size; block-size: $size; }
+	&::-webkit-scrollbar-thumb {
+		border-radius: 999px;
+		@include solid-colorize("&", ("shade": $thumb-shade));
+	}
+	&::-webkit-scrollbar-track { background: transparent; }
+}
+
+// Accessibility helpers
+@mixin reduced-motion-zero { transition-duration: 0ms; }
+@mixin high-contrast-border($color: var(--border-color)) { border: 2px solid $color; }
+

@@ -153,7 +153,7 @@
         &[data-variant="blur"] { --current: var(--primary); }
 
         .card-avatar {
-            --icon-color: --c2-surface(0, var(--current, currentColor));
+            --icon-color: var(--on-surface-color, currentColor);
 
             //
             inline-size: var(--card-avatar-size);
@@ -168,9 +168,9 @@
 
             //
             @include surface(0.8);
-            @include text-color(0);
             @include grid-center;
 
+            //
             .avatar-inner {
                 font-weight: var(--font-weight-bold);
                 font-size: var(--font-base);
@@ -178,14 +178,14 @@
             }
 
             ui-icon {
-                --icon-color: --c2-surface(0, var(--current, currentColor));
+                --icon-color: var(--on-surface-color, currentColor);
             }
         }
 
         .card-description,
         .card-content {
             font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
             opacity: 1;
             grid-column: 1 / -1;
             block-size: max-content;
@@ -227,7 +227,7 @@
             ul {
                 margin: 0;
                 padding: 0;
-                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
                 line-height: normal;
                 block-size: max-content;
                 overflow: hidden;
@@ -273,7 +273,7 @@
             padding: 0;
             margin: 0;
             font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             display: flex;
             flex-direction: row;
             gap: var(--gap-xs);
@@ -306,7 +306,7 @@
             padding: 0;
             margin: 0;
             font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             margin-block-start: var(--gap-xs);
             display: flex;
             flex-direction: row;
@@ -323,7 +323,7 @@
             padding: 0;
             margin: 0;
             font-size: var(--font-sm);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             display: flex;
             flex-direction: row;
             gap: var(--gap-xs);
@@ -440,7 +440,7 @@
             p {
                 font-size: 1em;
                 font-weight: var(--font-weight-normal);
-                color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                 margin: 0;
                 padding: 0;
                 display: block;
@@ -462,7 +462,7 @@
             span {
                 font-size: 1em;
                 font-weight: var(--font-weight-normal);
-                color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                 margin: 0;
                 padding: 0;
                 display: block;

@@ -93,7 +93,7 @@
             .viewer-tab-content-header {
                 font-size: var(--font-xl);
                 font-weight: var(--font-weight-semibold);
-                color: --c2-on-surface(var(--surface-opacity-subtle), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--surface-opacity-subtle, 12%), transparent);
                 text-align: center;
                 padding: var(--padding-xs);
                 border-radius: var(--radius-sm);
@@ -129,7 +129,7 @@
         .subgroup-header {
             font-size: var(--font-sm);
             font-weight: var(--font-weight-medium);
-            color: --c2-on-surface(var(--text-tint-primary), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
             text-align: center;
             padding: var(--padding-xs);
             border-radius: var(--radius-sm);

@@ -58,7 +58,7 @@
 
     //
     .field-helper {
-        color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+        color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
         font-size: 0.75rem;
         @include solid-colorize("&", ("tint": var(--text-tint-muted)));
     }

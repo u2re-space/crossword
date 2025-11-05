@@ -46,7 +46,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-sm);
-                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
             }
         }
 
@@ -135,7 +135,7 @@
                 p {
                     margin: 0;
                     font-size: var(--font-sm);
-                    color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                    color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
                     line-height: normal;
                     block-size: max-content;
                     max-block-size: none;
@@ -149,7 +149,7 @@
 
             .group-note {
                 font-size: var(--font-sm);
-                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             }
 
             .group-body {
@@ -221,7 +221,7 @@
 
             .save-status {
                 font-size: var(--font-sm);
-                color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             }
         }
     }
@@ -267,7 +267,7 @@
             p {
                 margin: 0;
                 font-size: var(--font-base);
-                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
             }
         }
     }
@@ -321,12 +321,12 @@
         .field-label {
             font-size: var(--font-sm);
             font-weight: var(--font-weight-semibold);
-            color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
         }
 
         .field-hint {
             font-size: var(--font-xs);
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
         }
 
         .field-control {
@@ -527,7 +527,7 @@
                 margin: 0;
                 font-size: var(--font-md);
                 font-weight: var(--font-weight-semibold);
-                color: --c2-on-surface(var(--text-tint-secondary), var(--current, currentColor));
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
                 display: flex;
                 align-items: center;
                 gap: var(--gap-xs);

@@ -160,9 +160,9 @@
                             pointer-events: none;
 
                             --icon-size: 1rem;
-                            --icon-color: --c2-surface(0.6, var(--current, currentColor));
+                            --icon-color: color-mix(in oklch, var(--on-surface, currentColor) 60%, transparent);
 
-                            color: --c2-surface(0.6, var(--current, currentColor));
+                            color: color-mix(in oklch, var(--on-surface, currentColor) 60%, transparent);
 
                             // Make icons bigger on mobile
                             @media (max-width: 720px) {

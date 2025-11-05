@@ -1,14 +1,13 @@
 @use "veela-lib" as *;
+@use "../../library/mixins" as *;
 
 //
 @layer rs-fields-datetime {
 
     // Main datetime editor container
     .datetime-editor {
-        display: grid;
-        gap: var(--space-sm);
-        container-type: inline-size;
-        min-inline-size: 0;
+        @include vstack(var(--space-sm));
+        @include container-inline;
 
         @include surface(var(--surface-opacity-default, 0.08));
     }
@@ -23,11 +22,11 @@
         input {
             & {
                 min-inline-size: 0;
-                font-variant-numeric: tabular-nums;
+                @include font-nums-tabular;
             }
 
             &:where([type="date"], [type="time"], [type="datetime-local"]) {
-                padding-inline-end: calc(var(--space-lg) * 2);
+                @include input-padding-trailing(var(--space-lg));
             }
         }
     }
@@ -36,12 +35,7 @@
     .datetime-error {
         --current: var(--color-error);
 
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-sm);
-
+        @include state-inline(var(--space-xs), var(--space-xs), var(--space-sm), var(--radius-sm));
         @include solid-colorize("&");
         @include font-style("&", ("size": "sm"));
     }
@@ -66,41 +60,5 @@
         @include font-style("&", ("size": "sm"));
     }
 
-    // Enhanced responsive design
-    @container (max-inline-size: 30rem) {
-        .datetime-inputs {
-            grid-template-columns: 1fr;
-            gap: var(--space-xs);
-        }
-    }
-
-    @container (max-inline-size: 20rem) {
-        .datetime-editor {
-            gap: var(--space-xs);
-        }
-
-        .datetime-inputs input {
-            padding: calc(var(--space-sm) * 0.8) var(--space-sm);
-        }
-    }
-
-    // Accessibility improvements
-    @media (prefers-reduced-motion: reduce) {
-        .datetime-inputs input,
-        .datetime-error,
-        .datetime-format {
-            transition-duration: 0ms;
-        }
-    }
-
-    // High contrast mode
-    @media (prefers-contrast: high) {
-        .datetime-inputs input {
-            border-width: 2px;
-        }
-
-        .datetime-error {
-            border: 2px solid var(--border-color);
-        }
-    }
+    // Responsive and feature queries moved to separate file: _DateTime.queries.scss
 }
