@@ -80,14 +80,16 @@ export const writeFilesToDir = async (dir: string, files: File[] | FileList) => 
 
 //
 export const getMarkDownFromFile = async (handle: any) => {
-    const markdown = await handle.getFile();
-    return await markdown.text();
+    const markdown = await handle?.getFile?.();
+    return await markdown?.text?.() || "";
 }
 
 //
-export const getJSONFromFile = async ([handle]: any) => {
-    const json = await handle.getFile();
-    return JSON.parse(await json.text());
+export const getJSONFromFile = async (handle: any) => {
+    if (Array.isArray(handle)) handle = handle?.[0];
+    if (!handle) return {};
+    const json = await handle?.getFile?.();
+    return JSON.parse(await json?.text?.() || "{}");
 }
 
 //

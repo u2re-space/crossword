@@ -1,11 +1,9 @@
 import { AppLayout } from "./layouts/AppLayout";
-import { DataExplorer, PreferencesView, QuestsView, Settings } from "./Views";
+//import DataExplorer from "./views/system/DataExplorer";
+//import PreferencesView from "./views/docs/PreferencesView";
+//import QuestsView from "./views/docs/QuestsView";
+//import Settings from "./views/system/Settings";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
-import { UIPhosphorIcon } from "fest/icon";
-console.log(UIPhosphorIcon);
-
-//
-import "fest/fl-ui";
 
 //
 import { Sidebar } from "./layouts/Sidebar";
@@ -73,10 +71,10 @@ export async function frontend(mountElement) {
 
     //
     const views = new Map<any, any>([
-        ["preferences", () => PreferencesView()],
-        ["quests", () => QuestsView()],
-        ["explorer", () => DataExplorer()],
-        ["settings", await Settings()],
+        //["preferences", () => PreferencesView()],
+        //["quests", () => QuestsView()],
+        //["explorer", () => DataExplorer()],
+        //["settings", await Settings()],
         ...(await Promise.all(
             Array.from(entityViews.entries())
                 .map(async ([entityType, entityView]) => [entityType, await makeEntityView(entityType, entityView)])
@@ -88,12 +86,6 @@ export async function frontend(mountElement) {
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
 }
-
-//
-export * from "./views/docs/PreferencesView";
-export * from "./views/docs/QuestsView";
-export * from "./views/system/DataExplorer";
-export * from "./views/system/Settings";
 
 //
 export default frontend;

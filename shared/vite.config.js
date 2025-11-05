@@ -13,6 +13,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa'
 import { searchForWorkspaceRoot } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 //
 function normalizeAliasPattern(pattern) {
@@ -40,12 +41,9 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const $resolve = { alias: importFromTSConfig(tsconfig, __dirname) }
     const projectMap = new Map([
         ["fest/core", "core.ts"],
-        ["fest/fl-ui", "fl.ui"],
         ["fest/object", "object.ts"],
         ["fest/uniform", "uniform.ts"],
         ["fest/dom", "dom.ts"],
-        ["fest/veela", "veela.css"],
-        ["fest/veela-runtime", "veela.css"],
         ["fest/lure", "lur.e"],
     ]);
 
@@ -161,6 +159,9 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         externalPlugin({
             include: Array.from(projectMap?.keys()).filter((n)=>!n?.endsWith(NAME)), // Explicitly externalize specific packages
             exclude: [resolve(__dirname, "./src/index.ts"), "./src/index.ts", resolve(__dirname, "./dist/"+NAME+".js"), "./dist/"+NAME+".js"]
+        }),
+        svelte({
+            configFile: resolve(__dirname, "./svelte.config.js")
         })
     ];
 
