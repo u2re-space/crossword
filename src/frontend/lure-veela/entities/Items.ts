@@ -5,51 +5,8 @@ import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement } from "./Cards";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { cleanToDay, GET_OR_CACHE_BY_NAME, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "../../utils/Utils";
-import { bindDropToDir } from "../../utils/FileOps";
-
-//
-export const mergeByExists = <T extends { name: string }>(dataRef: T[], refs: T[]) => {
-    // Build index maps for O(1) lookups
-    const dataMap = new Map<string, { item: T; index: number }>();
-    dataRef.forEach((item, index) => {
-        if (item?.name) dataMap.set(item.name, { item, index });
-    });
-
-    const refsMap = new Map<string, T>();
-    refs.forEach(ref => {
-        if (ref?.name) refsMap.set(ref.name, ref);
-    });
-
-    // Update existing items
-    for (const [name, { index }] of dataMap) {
-        const ref = refsMap.get(name);
-        if (ref) {
-            dataRef[index] = ref;
-        }
-    }
-
-    // Add new items
-    for (const [name, ref] of refsMap) {
-        if (!dataMap.has(name)) {
-            dataRef.push(ref);
-        }
-    }
-
-    // Remove deleted items (iterate backwards to maintain indices)
-    for (let i = dataRef.length - 1; i >= 0; i--) {
-        const item = dataRef[i];
-        if (item?.name && !refsMap.has(item.name)) {
-            dataRef.splice(i, 1);
-        }
-    }
-
-    // sort by name
-    dataRef.sort((a: T, b: T) => a?.name?.localeCompare?.(b?.name ?? ""));
-
-    // return sorted data
-    return dataRef;
-}
+import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "@rs-frontend/utils/Utils";
+import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 
 //
 const MakeItemsLoaderForTabPage = <

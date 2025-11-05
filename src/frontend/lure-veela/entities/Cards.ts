@@ -1,13 +1,14 @@
-import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, makePropertyDesc, wrapBySpan, type CardRenderOptions } from "../../utils/Formatted";
+import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, type CardRenderOptions } from "@rs-frontend/utils/Formatted";
 import { H, M } from "fest/lure";
 import { formatAsTime } from "@rs-core/utils/TimeUtils";
-import type { EntityDescriptor } from "../../../../core/utils/Types";
+import type { EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //
 import { marked } from "marked"
 import markedKatex from "marked-katex-extension";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/lure/editors/EntityEdit";
+import { makeEvents, objectExcludeNotExists } from "@rs-frontend/lure-veela/editors/EntityEdit";
+import { makePropertyDesc } from "./Elements";
 marked.use(markedKatex({
     throwOnError: false,
     nonStandard: true

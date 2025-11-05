@@ -1,3 +1,3 @@
-export * from "./lure/Views";
-import { frontend as lureFrontend } from "./lure/Views";
+export * from "./lure-veela/Views";
+import { frontend as lureFrontend } from "./lure-veela/Views";
 export default lureFrontend;

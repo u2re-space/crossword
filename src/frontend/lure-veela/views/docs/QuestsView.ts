@@ -2,7 +2,7 @@
 /* Used for solving problems and questions by AI */
 
 import { getDirectoryHandle, H, M, remove } from "fest/lure";
-import { toastError, toastSuccess, toastWarning } from "@rs-frontend/lure/overlays/Toast";
+import { toastError, toastSuccess, toastWarning } from "@rs-frontend/lure-veela/overlays/Toast";
 import { DocWorkspace, createDeleteEntryAction } from "./DocWorkspace";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";

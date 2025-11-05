@@ -28,10 +28,12 @@
     "devDependencies": {
         "@crxjs/vite-plugin": "^2.2.0",
         "@danielx/civet": "^0.10.4",
+        "@material/material-color-utilities": "^0.2.7",
         "@phosphor-icons/core": "^2.1.1",
         "@picocss/pico": "^2.1.1",
         "@types/chrome": "^0.1.12",
         "@types/sanitize-html": "^2.13.0",
+        "beercss": "^3.12.13",
         "chrome-types": "^0.1.379",
         "country-flag-emoji-polyfill": "^0.1.8",
         "cssnano": "^7.0.7",
@@ -48,6 +50,7 @@
         "npm": "^11.6.0",
         "postcss-preset-env": "^10.2.1",
         "sass": "^1.93.3",
+        "svelte-tiny-virtual-list": "^3.0.1",
         "temml": "^0.11.11",
         "turndown": "^7.2.1",
         "typedoc": "^0.28.5",
@@ -65,6 +68,8 @@
     },
     "dependencies": {
         "@jsquash/jpeg": "^1.6.0",
-        "@jsquash/png": "^3.1.1"
+        "@jsquash/png": "^3.1.1",
+        "dragselect": "^3.1.2",
+        "sortablejs": "^1.15.6"
     }
 }

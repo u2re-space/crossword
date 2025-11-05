@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 //
-import { toastError, toastSuccess } from "@rs-frontend/lure/overlays/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/lure-veela/overlays/Toast";
 
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig } from "@rs-core/config/SettingsTypes";

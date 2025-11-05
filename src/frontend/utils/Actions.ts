@@ -1,10 +1,10 @@
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
-import { makeEntityEdit } from "@rs-frontend/lure/editors/EntityEdit";
+import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { openPickerAndAnalyze } from "./FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/lure/overlays/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/lure-veela/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 

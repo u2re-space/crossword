@@ -1,5 +1,5 @@
 import { type DocCollection, type WorkspaceAction, type DocWorkspaceController } from "../../../utils/Types";
-import { toastError, toastSuccess } from "@rs-frontend/lure/overlays/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/lure-veela/overlays/Toast";
 import { getDirectoryHandle } from "fest/lure";
 import { currentWebDav } from "@rs-core/config/Settings";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";

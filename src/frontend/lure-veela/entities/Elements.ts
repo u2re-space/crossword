@@ -1,7 +1,7 @@
 import { observableByMap, observableBySet } from "fest/object";
 import { H, M } from "fest/lure";
-import { beginDragAsText, buildPrimaryDayTitle, buildSecondaryDayTitle, isNotEmpty } from "../../utils/Formatted";
-import { copyEmailClick, copyPhoneClick } from "../../utils/Formatted";
+import { beginDragAsText, buildPrimaryDayTitle, buildSecondaryDayTitle, isNotEmpty } from "@rs-frontend/utils/Formatted";
+import { copyEmailClick, copyPhoneClick } from "@rs-frontend/utils/Formatted";
 
 
 //
