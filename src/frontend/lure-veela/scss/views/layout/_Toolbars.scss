@@ -66,8 +66,6 @@
                 gap: var(--gap-sm);
 
                 //
-                @include button-variant(var(--surface-opacity-emphasis));
-                @include surface(var(--surface-opacity-emphasis));
                 @include toolbar-button;
                 @include flex-center;
 

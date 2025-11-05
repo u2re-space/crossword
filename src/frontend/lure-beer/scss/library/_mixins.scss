@@ -167,8 +167,7 @@
 }
 
 // Select dropdown styling
-@mixin select-dropdown($options: ()) {
-    $shade: map-get($options, "shade") or 0.02;
+@mixin select-dropdown() {
     background-color: rgba(0, 0, 0, $shade);
     border: 1px solid rgba(0, 0, 0, $shade * 2);
     border-radius: var(--radius-sm, 0.25rem);
@@ -176,9 +175,10 @@
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right var(--padding-sm, 0.5rem) center;
+    background-position: right var(--space-sm, 0.5rem) center;
     background-size: 12px;
-    padding-right: calc(var(--padding-sm, 0.5rem) * 2 + 12px);
+    padding-inline-end: calc(var(--padding-md, 1rem) * 2 + 12px);
+    padding-inline-start: var(--padding-md, 0.5rem);
 
     @media (prefers-color-scheme: dark) {
         background-color: rgba(255, 255, 255, $shade);

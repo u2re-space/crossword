@@ -89,10 +89,8 @@
                 padding: var(--padding-sm);
                 border-radius: var(--radius-lg);
                 @include backdrop-blur("strong");
-                @include surface(var(--surface-opacity-emphasis));
 
                 .doc-action {
-                    @include button-variant(0);
                     font-size: var(--font-sm);
                     pointer-events: auto;
 
@@ -122,7 +120,6 @@
         @include hide-scrollbar;
 
         .doc-collection {
-            @include button-variant(0);
             gap: var(--gap-sm);
             font-size: var(--font-sm);
             white-space: nowrap;
@@ -296,15 +293,6 @@
             button {
                 inline-size: stretch;
                 max-inline-size: 100cqi;
-
-                //
-                @include text-truncate;
-                @include surface(0);
-
-                //
-                button {
-                    @include surface(var(--surface-opacity-default));
-                }
             }
         }
 
@@ -592,13 +580,6 @@
                 display: flex;
                 flex-wrap: wrap;
                 gap: var(--gap-md);
-
-                button {
-                    font-size: var(--font-sm);
-                    pointer-events: auto;
-
-                    @include button-variant(0);
-                }
             }
         }
 
@@ -645,7 +626,6 @@
 
                     //
                     @include grid-center;
-                    @include surface(var(--surface-opacity-default));
                 }
             }
 

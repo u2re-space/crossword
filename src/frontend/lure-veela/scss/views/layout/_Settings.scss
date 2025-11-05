@@ -216,13 +216,7 @@
             @include flex-between;
 
             .btn.save {
-                @include button-variant(var(--contrast-opacity-subtle));
-                @include text-color(0);
-                @include border-color(var(--contrast-opacity-default));
-
-                &:hover {
-                    @include surface(var(--contrast-opacity-muted));
-                }
+                @include button-base-variant();
             }
 
             .save-status {
@@ -468,37 +462,7 @@
         }
 
         .add-mcp {
-            @include button-variant(var(--primary-opacity-subtle));
-            @include text-color(var(--primary-color));
-            @include border-color(var(--primary-opacity-default));
-
-            text-align: center;
-            place-content: center;
-            place-items: center;
-            padding: var(--padding-sm) var(--padding-lg);
-            font-weight: var(--font-weight-semibold);
-            transition: all var(--transition-colors) ease-in-out;
-            position: relative;
-            overflow: hidden;
-
-            &::before {
-                content: '';
-                position: absolute;
-                inset: 0;
-                background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-                transform: translateX(-100%);
-                transition: transform var(--transition-colors);
-            }
-
-            &:hover {
-                @include surface(var(--primary-opacity-muted));
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px var(--primary-opacity-subtle);
-
-                &::before {
-                    transform: translateX(100%);
-                }
-            }
+            @include button-base-variant();
 
             &:active {
                 transform: translateY(0);
@@ -576,9 +540,6 @@
             }
 
             .remove-mcp {
-                @include button-variant(var(--danger-opacity-subtle));
-                @include text-color(var(--danger-color));
-                @include border-color(var(--danger-opacity-default));
                 padding: var(--padding-xs) var(--padding-sm);
                 font-size: var(--font-xs);
                 gap: var(--gap-xs);

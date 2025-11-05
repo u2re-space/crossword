@@ -18,13 +18,14 @@
             overflow: auto;
             scrollbar-width: none;
             border-width: 0.5px;
+            padding: 0.25rem;
+            padding-inline-start: 1rem;
         }
     }
 
     // Enhanced select styling
     select {
-        @include select-dropdown(("shade": var(--surface-opacity-subtle, 0.02)));
-        @include surface(var(--surface-opacity-subtle, 0.02));
+        @include select-dropdown();
 
         & { min-block-size: 2.5rem; };
         & { min-inline-size: 4rem; };
@@ -138,12 +139,12 @@
             }
 
             select {
-                padding: calc(var(--space-sm) * 0.7) var(--space-sm);
+                padding: calc(var(--padding-md) * 0.7) var(--padding-md);
+                padding-inline-start: var(--padding-md);
                 border-radius: var(--radius-sm);
                 min-inline-size: 4rem;
 
-                @include select-dropdown(("shade": var(--surface-opacity-subtle, 0.02)));
-                @include surface(var(--surface-opacity-subtle, 0.02));
+                @include select-dropdown();
             }
         }
 
