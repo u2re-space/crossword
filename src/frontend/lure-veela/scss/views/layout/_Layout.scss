@@ -13,13 +13,18 @@
 
         //
         & {
-            @include flex-center;
             display: grid;
             box-sizing: border-box;
-            inline-size: stretch;
-            block-size: stretch;
             place-content: center;
             justify-content: start;
+
+            //
+            grid-template-columns: minmax(0px, 1fr);
+            grid-column: 1 / -1;
+
+            //
+            @include flex-center;
+            @include container-clamped(stretch, stretch);
         }
 
 
@@ -30,143 +35,135 @@
 
         //
         .sidebar {
-            justify-content: flex-start;
             align-items: stretch;
-            inline-size: min(var(--sidebar-width, 20rem), 100cqi);
-            min-inline-size: fit-content;
             box-sizing: border-box;
             user-select: none;
             text-align: start;
             padding: 0px;
+            touch-action: pan-y;
+            pointer-events: auto;
+            justify-content: start;
+
+            //
+            @include flex-center;
+            @include container-clamped(clamp(0px, var(--sidebar-width, 20rem), 100cqi), stretch);
+            @include scrollable("y");
+            @include hide-scrollbar;
 
             //
             @include ui.vstack(var(--gap-xs));
             @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1, true);
 
-            // Make sidebar bigger on mobile and small screens
-            @media (max-width: 720px) {
-                inline-size: min(var(--sidebar-width-mobile, 17.5rem), 100cqi);
-                block-size: stretch;
-                //padding: var(--padding-md);
-            }
-
-            @media (max-width: 480px) {
-                inline-size: min(var(--sidebar-width-mobile-small, 20rem), 100cqi);
-                block-size: stretch;
-                //padding: var(--padding-lg);
-            }
-
+            //
             & {
                 border: none 0 transparent;
                 outline: none 0 transparent;
+                max-block-size: stretch;
+                min-block-size: 0px;
             }
 
+            //
             &[slot="sidebar"] {
                 grid-column: 1 / 2;
                 grid-row: 2 / 3;
                 position: sticky;
                 inset-block-start: var(--padding-sm);
                 align-self: start;
-                max-block-size: calc(100dvb - var(--space-lg));
                 display: flex;
                 flex-direction: column;
+                touch-action: pan-y;
+                justify-content: start;
 
+                //
+                @include container-clamped(stretch, stretch);
                 @include scrollable;
+                @include hide-scrollbar;
                 @include container("lg") {
                     position: static;
                     max-block-size: none;
                     order: 2;
-                    inline-size: calc(100cqi - var(--padding-sm));
+                    inline-size: calc(100cqi - clamp(0px, var(--padding-sm), 100cqi));
                 }
+
+                & { min-block-size: 0px; }
             }
 
             ul {
-                @include ui.tonal-list(surface, var(--surface-opacity-default), var(--radius-md), 0);
-                inline-size: stretch;
                 user-select: none;
                 overflow: hidden;
                 box-sizing: border-box;
                 margin: 0px;
+                touch-action: pan-y;
+                justify-content: start;
 
-                & {
+                //
+                @include container-clamped(stretch, max-content);
+                @include ui.tonal-list(surface, var(--surface-opacity-default), var(--radius-md), 0);
+
+                //
+                &, &:focus {
                     border: none 0 transparent;
                     outline: none 0 transparent;
                 }
 
-                &:focus {
-                    border: none 0 transparent;
-                    outline: none 0 transparent;
-                }
+                //
+                & { min-block-size: max-content; max-block-size: none; }
 
+                //
                 li {
-                    inline-size: stretch;
-                    pointer-events: none;
                     overflow: visible;
                     font-size: t.$font-sm;
                     transition: var(--transition-colors);
-                    block-size: max-content;
-                    max-block-size: fit-content;
+                    touch-action: pan-y;
 
-                    * { pointer-events: none; }
+                    //
+                    @include container-clamped(stretch, max-content);
 
+                    //
+                    &, * { pointer-events: none; }
+
+                    //
                     a {
-                        padding: var(--padding-lg);
-                        inline-size: stretch;
-                        block-size: max-content;
-                        max-block-size: fit-content;
+                        display: flex;
+                        flex-direction: row;
+                        flex-wrap: nowrap;
                         pointer-events: auto;
-                        column-gap: var(--gap-xs);
                         background: transparent;
-                        border: none;
-                        outline: none;
+                        touch-action: pan-y;
 
+                        //
+                        @include container-clamped(stretch, max-content);
                         @include nav-item;
-                        @include ui.text-label("label-large");
 
-                        &:focus {
+                        //
+                        &, &:focus {
                             border: none;
                             outline: none;
                         }
 
-                        @media (max-height: 600px) {
-                            padding: var(--padding-xl);
-                            column-gap: var(--gap-sm);
+                        //
+                        & { padding: var(--padding-lg); column-gap: var(--gap-xs); gap: var(--gap-md); @include ui.text-label("label-large"); }
+                        @media (max-height: 600px) { padding: var(--padding-xl); gap: var(--gap-sm); @include ui.text-label("title-small"); }
+                        @media (max-height: 480px) { padding: var(--padding-lg); gap: var(--gap-md); @include ui.text-label("title-medium"); }
 
-                            @include ui.text-label("title-small");
-                        }
-
-                        @media (max-height: 480px) {
-                            padding: var(--padding-lg);
-                            column-gap: var(--gap-md);
-
-                            @include ui.text-label("title-medium");
-                        }
-
+                        //
                         ui-icon {
                             justify-self: start;
-                            inline-size: var(--icon-size-sm);
-                            block-size: var(--icon-size-sm);
+                            inline-size: var(--icon-size);
+                            block-size: var(--icon-size);
                             --icon-size: var(--icon-size-sm);
                             color: color-mix(in oklch, var(--on-surface, currentColor) 58%, transparent);
 
-                            @media (max-width: 720px) {
-                                inline-size: var(--icon-size-md);
-                                block-size: var(--icon-size-md);
-                                --icon-size: var(--icon-size-md);
-                            }
-
-                            @media (max-width: 480px) {
-                                inline-size: var(--icon-size-lg);
-                                block-size: var(--icon-size-lg);
-                                --icon-size: var(--icon-size-lg);
-                            }
+                            @media (max-width: 720px) { --icon-size: var(--icon-size-md); }
+                            @media (max-width: 480px) { --icon-size: var(--icon-size-lg); }
                         }
 
+                        //
                         span {
                             display: block;
                             justify-self: start;
                             text-align: start;
-                            inline-size: 100%;
+                            @include container-clamped(stretch, max-content);
                         }
                     }
                 }
@@ -186,18 +183,14 @@
             //
             @include container("lg") {
                 nav {
-                    padding: var(--padding-sm) var(--padding-xs);
                     inline-size: 100cqi;
 
-                    // Increase nav padding on mobile
-                    @media (max-width: 720px) {
-                        padding: var(--padding-md) var(--padding-sm);
-                    }
+                    //
+                    padding: var(--padding-sm) var(--padding-xs);
+                    @media (max-width: 720px) { padding: var(--padding-md) var(--padding-sm); }
+                    @media (max-width: 480px) { padding: var(--padding-lg) var(--padding-md); }
 
-                    @media (max-width: 480px) {
-                        padding: var(--padding-lg) var(--padding-md);
-                    }
-
+                    //
                     ul {
                         gap: 0;
                         padding-inline: 0;
@@ -208,10 +201,8 @@
                             white-space: nowrap;
                             border-radius: var(--radius-sm);
 
-                            // Increase list item spacing on mobile
-                            @media (max-width: 480px) {
-                                border-radius: var(--radius-md);
-                            }
+                            //
+                            @media (max-width: 480px) { border-radius: var(--radius-md); }
                         }
                     }
                 }
@@ -225,7 +216,7 @@
         /*****************/
 
         //
-        @container (inline-size > 600px) {
+        /*@container (inline-size > 600px) {
             &::part(bar), .toolbar {
                 display: none !important;
             }
@@ -233,6 +224,6 @@
             &::part(content-box) {
                 grid-row: 1 / -1;
             }
-        }
+        }*/
     }
 }

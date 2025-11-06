@@ -9,28 +9,37 @@
 
     .toolbar {
         background-color: transparent;
+        display: none;
     }
 
     .view-toolbar {
-        inline-size: stretch;
         background: transparent;
 
-        grid-column: 1 / -1;
-        margin: 0;
-        block-size: max-content;
+        grid-column: 2 / 3 span;
+        grid-row: 1 / 1 span;
+
+        margin: 0px;
         position: sticky;
         inset-block-start: 0;
         z-index: 10;
+        margin-block-start: var(--gap-md);
 
-        @include ui.inline-toolbar(var(--gap-xs));
         justify-content: flex-start;
-        padding-inline: var(--padding-sm);
-        padding-block: var(--padding-md);
+        padding-inline: 0px;
+        padding-block: 0px;
         place-content: center;
         place-items: center;
+        place-self: center;
 
+        //
+        @include ui.inline-toolbar(var(--gap-xs));
         @include backdrop-blur("subtle");
-        @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-xl), null, 1);
+        @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-lg), null, 1);
+        @include container-clamped(stretch, max-content);
+
+        //
+        & { min-block-size: 0px; block-size: fit-content; max-block-size: 4rem; }
+        & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
 
         //
         &:empty {
@@ -38,10 +47,9 @@
         }
 
         .button-set {
-            block-size: max-content;
-
             @include ui.inline-toolbar(var(--gap-md));
             @include ui.tonal-surface(surface-container, var(--surface-opacity-default, 0.08), var(--radius-lg), var(--padding-sm));
+            @include container-clamped(stretch, stretch);
             flex-wrap: nowrap;
 
             //
@@ -49,21 +57,30 @@
 
             //
             button {
-                max-block-size: 3rem;
+                max-block-size: stretch;
                 border-radius: var(--radius-sm);
                 padding: var(--padding-xs);
                 aspect-ratio: auto;
 
+                //
                 @include ui.inline-toolbar(var(--gap-sm));
                 @include toolbar-button;
                 @include flex-center;
 
+                & {
+                    min-inline-size: 0px;
+                    min-block-size: 0px;
+                    inline-size: fit-content;
+                    block-size: fit-content;
+                }
+
                 //
                 span {
                     display: block;
-                    @include ui.text-body("body-small");
                     color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                     padding-inline-end: var(--padding-xs);
+
+                    @include ui.text-body("body-small");
                 }
             }
         }

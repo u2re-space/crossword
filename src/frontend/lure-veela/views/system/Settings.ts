@@ -31,7 +31,7 @@ export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as Sec
 
 //
 export const Settings = async () => {
-    const container = H`<section id="settings" class="settings-view" style="padding: 0px; inline-size: stretch; block-size: stretch; background-color: transparent;"></section>` as HTMLElement;
+    const container = H`<section id="settings" class="settings-view"></section>`;
     const tabsState: { value: SectionKey } = { value: SETTINGS_SECTIONS[0].key };
 
     //
@@ -40,6 +40,7 @@ export const Settings = async () => {
     const groupRefs = new Map<string, HTMLElement>();
     const navButtons = new Map<SectionKey, HTMLButtonElement>();
     const panelRefs = new Map<SectionKey, HTMLElement>();
+    const forms = new Map<SectionKey, HTMLFormElement>();
     const tabbed = new Map<SectionKey, HTMLElement>();
 
     // MCP management
@@ -50,10 +51,6 @@ export const Settings = async () => {
     const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
     const saveBtn = H`<button type="submit" class="btn save"><ui-icon icon="check"></ui-icon><span>Save changes</span></button>` as HTMLButtonElement;
     const actions = H`<div class="settings-actions">${[status, saveBtn]}</div>` as HTMLElement;
-
-    //
-    const form = H`<form style="inline-size: stretch; block-size: stretch; background-color: transparent;" class="settings-form" on:submit=${(ev: SubmitEvent) => ev.preventDefault()}></form>` as HTMLFormElement;
-    container.append(form);
 
     //
     const createField = (config: FieldConfig) => {
@@ -199,11 +196,16 @@ export const Settings = async () => {
         panel.setAttribute("tabindex", "-1");
         panelRefs.set(section.key, panel);
 
+        const panelForm = H`<form class="settings-form" data-section=${section.key}></form>` as HTMLFormElement;
+        panelForm.noValidate = true;
+        panel.append(panelForm);
+        forms.set(section.key, panelForm);
+
         const panelHeader = H`<header class="panel-header">
             <h2>${section.title}</h2>
             <p>${section.description}</p>
         </header>` as HTMLElement;
-        panel.append(panelHeader);
+        panelForm.append(panelHeader);
 
         section.groups.forEach((group) => {
             const { root, body } = createGroup(section.key, group);
@@ -229,7 +231,7 @@ export const Settings = async () => {
                 group.fields.forEach((field) => body.append(createField(field)));
             }
 
-            panel.append(root);
+            panelForm.append(root);
         });
 
         tabbed.set(section.key, panel);
@@ -244,7 +246,7 @@ export const Settings = async () => {
         style="background-color: transparent; inline-size: stretch; block-size: stretch;"
         class="all"
     ></ui-tabbed-box>` as HTMLElement;
-    form.append(panelsWrapper, actions);
+    container.append(panelsWrapper);
 
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
     const customModelInput = fieldRefs.get("ai.customModel") as HTMLInputElement | undefined;
@@ -371,7 +373,7 @@ export const Settings = async () => {
     activateSection(tabsState.value);
 
     // Add event delegation for remove MCP buttons
-    form.addEventListener('click', (e) => {
+    container.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target.closest('.remove-mcp')) {
             const button = target.closest('.remove-mcp') as HTMLButtonElement;
@@ -416,8 +418,17 @@ export const Settings = async () => {
     syncCustomVisibility();
 
     //
-    form.addEventListener("input", () => { status.textContent = ""; });
-    form.addEventListener("submit", async () => {
+    const handleFormInput = (event: Event) => {
+        if (!(event.target instanceof HTMLElement)) return;
+        if (!event.target.closest('.settings-form')) return;
+        status.textContent = "";
+    };
+
+    const handleSubmit = async (event: SubmitEvent) => {
+        const submittedForm = event.target;
+        if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.classList.contains('settings-form')) return;
+        event.preventDefault();
+
         const modelSelection = modelSelectEl?.value ?? DEFAULT_SETTINGS.ai?.model;
         const customIdentifier = customModelInput?.value.trim() ?? "";
         const isCustomSelected = modelSelection === "custom";
@@ -481,7 +492,18 @@ export const Settings = async () => {
             status.textContent = "Error";
             setTimeout(() => { status.textContent = ""; }, 1800);
         }
+    };
+
+    container.addEventListener("input", handleFormInput);
+    container.addEventListener("submit", handleSubmit);
+    saveBtn.addEventListener("click", () => {
+        const activeForm = forms.get(tabsState.value);
+        activeForm?.requestSubmit();
     });
 
-    return container;
+    //
+    return H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">
+        ${actions}
+        ${container}
+    </div>` as HTMLElement;
 };

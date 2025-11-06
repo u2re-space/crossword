@@ -20,7 +20,18 @@
     }
 
     //
-    section {
+    /*
+    .app-layout > * > section,
+    .app-layout > section {
+        grid-column: 1 / -1;
+        grid-row: 2 / -1;
+        inline-size: stretch;
+        block-size: stretch;
+    }*/
+
+    //
+    .app-layout > * > section,
+    .app-layout > section {
         pointer-events: auto;
         touch-action: manipulation;
 
@@ -32,11 +43,20 @@
         block-size: stretch;
         gap: var(--gap-xs);
 
+        grid-column: 1 / -1;
+        grid-row: 2 / -1;
+
         @include scrollable("y");
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), null, 1);
+        @include container-clamped(stretch, stretch);
 
         &.viewer-section {
             background-color: transparent;
+        }
+
+        & {
+            border-radius: var(--radius-lg);
+            clip-path: inset(0px round var(--radius-lg));
         }
     }
 
@@ -70,6 +90,9 @@
         block-size: stretch;
         padding-block: var(--padding-sm);
 
+        grid-column: 1 / -1;
+        grid-row: 1 / -1;
+
         //
         @include container("lg") {
             order: 3;
@@ -81,6 +104,9 @@
             scrollbar-gutter: auto;
             touch-action: manipulation;
             pointer-events: auto;
+            align-content: start;
+
+            //
             @include ui.vstack(var(--gap-xs));
             @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1);
             @include scrollable("y");

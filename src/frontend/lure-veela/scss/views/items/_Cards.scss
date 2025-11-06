@@ -8,6 +8,8 @@
 // Legacy text wrapping mixins - preserved for backward compatibility
 @mixin make-wraps {
     @include text-wrap;
+
+    //
     text-align: justify;
     text-overflow: ellipsis;
     text-spacing-trim: trim-start;
@@ -99,16 +101,21 @@
         gap: var(--space-lg);
         row-gap: var(--card-gap);
         transition: var(--transition-all);
-        touch-action: manipulation;
         user-select: none;
         inline-size: stretch;
         order: var(--card-order, initial);
         block-size: max-content;
         pointer-events: auto;
+        overflow: hidden;
         --current: var(--primary);
 
         @include ui.tonal-surface(surface-container, var(--surface-opacity-muted), var(--card-radius), var(--card-padding), 2);
         @include text-color(0);
+
+        &, & * {
+            touch-action: pan-y;
+            line-height: normal;
+        }
 
         li {
             @include text-truncate;
@@ -172,7 +179,7 @@
 
             //
             .avatar-inner {
-                font-weight: var(--font-weight-bold);
+                font-weight: var(--font-weight-medium);
                 font-size: var(--font-base);
                 line-height: 0;
             }
@@ -182,19 +189,21 @@
             }
         }
 
+        //
         .card-description,
         .card-content {
-            @include ui.text-body("body-small");
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
             opacity: 1;
             grid-column: 1 / -1;
             block-size: max-content;
             box-sizing: border-box;
-            @include ui.vstack(var(--gap-xs));
             overflow: hidden;
             padding-block: var(--padding-sm);
             line-height: normal;
+            text-align: start;
 
+            @include ui.text-body("body-small");
+            @include ui.vstack(var(--gap-xs));
             @include text-clamp(4);
 
             &:empty {
@@ -230,10 +239,11 @@
                 block-size: max-content;
                 overflow: hidden;
                 opacity: 0.8;
-                @include ui.vstack(var(--gap-xs));
                 list-style-position: inside;
                 font-variant-numeric: tabular-nums;
                 font-size: t.$font-sm;
+
+                @include ui.vstack(var(--gap-xs));
 
                 &:empty { display: none; }
 
@@ -260,6 +270,7 @@
             block-size: max-content;
             inline-size: stretch;
             line-height: var(--leading-tight);
+            text-align: start;
         }
 
 
@@ -362,6 +373,11 @@
                 @include ui.tonal-surface(surface, var(--surface-opacity-subtle));
                 @include flex-center;
             }
+
+            //
+            @container (inline-size <= 400px) {
+                display: none;
+            }
         }
 
         .card-links {
@@ -398,8 +414,9 @@
             user-select: none;
             user-drag: auto;
             -webkit-user-drag: auto;
-            @include text-color(0);
             text-decoration: none;
+
+            @include text-color(0);
 
             &:hover,
             &:active,
@@ -424,10 +441,11 @@
             list-style: none;
             font-size: t.$font-sm;
             line-height: var(--leading-relaxed);
+            text-align: start;
 
             p {
                 font-size: 1em;
-                font-weight: var(--font-weight-normal);
+                font-weight: var(--font-weight-thin);
                 color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                 margin: 0;
                 padding: 0;
@@ -449,7 +467,7 @@
 
             span {
                 font-size: 1em;
-                font-weight: var(--font-weight-normal);
+                font-weight: var(--font-weight-thin);
                 color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                 margin: 0;
                 padding: 0;
@@ -458,6 +476,7 @@
                 gap: var(--gap-xs);
                 list-style: none;
                 line-height: inherit;
+                text-align: start;
 
                 &::first-letter {
                     text-transform: uppercase;
@@ -469,7 +488,7 @@
                 }
 
                 &:first-of-type {
-                    font-weight: var(--font-weight-semibold);
+                    font-weight: var(--font-weight-medium);
                 }
             }
 

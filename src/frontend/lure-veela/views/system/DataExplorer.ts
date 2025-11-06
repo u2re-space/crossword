@@ -7,6 +7,13 @@ import { downloadByPath, openPickerAndWrite } from "@rs-frontend/utils/FileOps";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 
 //
+const makeFragment = (children: HTMLElement[]) => {
+    const fragment = document.createDocumentFragment();
+    children.forEach(child => fragment.appendChild(child));
+    return fragment;
+}
+
+//
 const rowFileMap = new WeakMap<HTMLElement, any>();
 export const DataExplorer = () => {
 
@@ -88,7 +95,7 @@ export const DataExplorer = () => {
     }
 
     //
-    const toolbar = H`<div class="view-toolbar">
+    const toolbar = H`<div slot="bar" class="view-toolbar">
         <div class="button-set">
             <button id="mount-user-dir" on:click=${onMount}>
                 <ui-icon icon="screwdriver"></ui-icon>
@@ -114,7 +121,7 @@ export const DataExplorer = () => {
     </div>`
 
     //
-    const section = H`<section id="explorer" class="data-view c2-surface">${viewer}${toolbar}</section>`;
+    const section = H`<div style="display: contents;">${toolbar}<section id="explorer" class="data-view c2-surface">${viewer}</section></div>`;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: viewer?.path?.split?.("/")?.at?.(-1) });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);

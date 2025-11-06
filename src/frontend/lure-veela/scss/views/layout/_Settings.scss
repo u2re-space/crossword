@@ -5,25 +5,27 @@
 
     .settings-panel {
         @include panel-base;
-        justify-content: start;
-        block-size: max-content;
-        inline-size: stretch;
-        aspect-ratio: auto;
-        display: flex;
-        max-block-size: stretch;
-        overflow-y: auto;
-        overflow-x: hidden;
-        scrollbar-width: thin;
-        scrollbar-color: var(--surface-opacity-emphasis) transparent;
-        flex-direction: column;
-        flex-wrap: nowrap;
-
-        align-items: center;
-
         @include solid-colorize("&");
 
-        &:focus-visible {
-            @include focus-ring();
+        //
+        & {
+            place-content: center;
+            place-items: center;
+            justify-content: start;
+            block-size: stretch;
+            inline-size: stretch;
+            aspect-ratio: auto;
+            display: flex;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--surface-opacity-emphasis) transparent;
+            flex-direction: column;
+            flex-wrap: nowrap;
+            align-items: center;
+            grid-row: 1 / -1;
+            max-block-size: none;
+            border-width: 0px;
         }
 
         .panel-header {
@@ -31,6 +33,7 @@
             gap: var(--gap-xs);
             min-inline-size: 0;
             inline-size: stretch;
+            max-inline-size: stretch;
             text-align: start;
             padding: var(--padding-sm);
             position: relative;
@@ -51,15 +54,6 @@
         }
 
         .settings-group {
-            border-radius: var(--radius-lg);
-            justify-content: start;
-            min-inline-size: clamp(24rem, 40cqi, 100cqi);
-            inline-size: max-content;
-            block-size: max-content;
-            max-block-size: none;
-            overflow: visible;
-            max-inline-size: stretch;
-
             @include surface(var(--surface-opacity-default));
 
             & {
@@ -67,11 +61,17 @@
                 flex-direction: column;
                 border: none 0 transparent;
                 border-width: 0;
-                block-size: max-content;
                 line-height: normal;
                 flex-wrap: nowrap;
+
+                border-radius: var(--radius-lg);
+                justify-content: start;
+                min-inline-size: fit-content;
+                inline-size: stretch;
+                block-size: max-content;
                 max-block-size: none;
-                inline-size: max-content;
+                overflow: visible;
+                max-inline-size: stretch;
             }
 
             &:not(.is-collapsible) {
@@ -82,7 +82,7 @@
                 flex-wrap: nowrap;
                 block-size: max-content;
                 max-block-size: none;
-                inline-size: max-content;
+                inline-size: stretch;
             }
 
             &.is-collapsible {
@@ -159,14 +159,35 @@
         }
     }
 
+    .settings-actions {
+        gap: var(--gap-md);
+        margin-block-start: var(--gap-sm);
+        padding: var(--padding-sm);
+        grid-column: 1 / -1;
+
+        @include flex-between;
+
+        .btn.save {
+            @include button-base-variant();
+        }
+
+        .save-status {
+            font-size: var(--font-sm);
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
+        }
+    }
+
     .settings-view {
-        display: grid;
+        display: flex;
         gap: var(--gap-xl);
-        padding: var(--gap-xl);
+        padding: 0px;
         border-radius: 0;
         min-inline-size: 0;
-        inline-size: max-content;
         aspect-ratio: auto;
+
+        inline-size: stretch;
+        block-size: stretch;
+        background-color: transparent;
 
         header {
             line-height: normal;
@@ -181,48 +202,47 @@
             }
         }
 
-        @include surface(var(--surface-opacity-subtle));
-
         span {
             block-size: max-content;
             line-height: normal;
         }
+    }
 
-        .settings-form {
+    .settings-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-xl);
+        grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
+        block-size: max-content;
+        inline-size: fit-content;
+        min-inline-size: min(100%, 40rem);
+        aspect-ratio: auto;
+        max-inline-size: stretch;
+        padding: var(--padding-lg);
+        box-shadow: none;
+        contain: inline-size layout paint style;
+
+        place-content: center;
+        place-items: center;
+        border-width: 0.5px;
+        border-style: solid;
+        border-radius: var(--radius-lg);
+
+        @include solid-colorize("&");
+
+        .settings-panels {
             display: grid;
             gap: var(--gap-xl);
             min-inline-size: 0;
-            grid-template-rows: minmax(0px, max-content) minmax(0px, max-content);
-            block-size: max-content;
-            inline-size: max-content;
-            aspect-ratio: auto;
+            inline-size: stretch;
             max-inline-size: stretch;
-            padding: 0;
-            box-shadow: none;
-            border: none 0 transparent;
-
-            .settings-panels {
-                display: grid;
-                gap: var(--gap-xl);
-                min-inline-size: 0;
-            }
         }
 
-        .settings-actions {
-            gap: var(--gap-md);
-            margin-block-start: var(--gap-sm);
-            padding: var(--padding-sm);
-
-            @include flex-between;
-
-            .btn.save {
-                @include button-base-variant();
-            }
-
-            .save-status {
-                font-size: var(--font-sm);
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
-            }
+        & > * {
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
+            box-sizing: border-box;
         }
     }
 
@@ -624,8 +644,6 @@
 
     @include breakpoint("md") {
         .settings-view {
-            padding: var(--padding-lg);
-
             .settings-actions {
                 flex-direction: column-reverse;
                 align-items: stretch;
