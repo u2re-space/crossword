@@ -2,6 +2,8 @@
 // Unified with design system variables and mixins
 
 @use "veela-lib" as *;
+@use "../../library/mixins" as ui;
+@use "../../library/tokens" as t;
 
 // Legacy text wrapping mixins - preserved for backward compatibility
 @mixin make-wraps {
@@ -96,8 +98,6 @@
         align-items: center;
         gap: var(--space-lg);
         row-gap: var(--card-gap);
-        padding: var(--card-padding);
-        border-radius: var(--card-radius);
         transition: var(--transition-all);
         touch-action: manipulation;
         user-select: none;
@@ -107,7 +107,7 @@
         pointer-events: auto;
         --current: var(--primary);
 
-        @include surface(var(--surface-opacity-muted));
+        @include ui.tonal-surface(surface-container, var(--surface-opacity-muted), var(--card-radius), var(--card-padding), 2);
         @include text-color(0);
 
         li {
@@ -135,12 +135,12 @@
         }
 
         &[data-variant] {
-            @include surface(var(--surface-opacity-default));
+            @include ui.tonal-surface(surface-container, var(--surface-opacity-default));
         }
 
         &:not([data-variant]),
         &[data-variant="default"] {
-            @include surface(var(--surface-opacity-subtle));
+            @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle));
         }
 
         // Color variants
@@ -184,17 +184,15 @@
 
         .card-description,
         .card-content {
-            font-size: var(--font-sm);
+            @include ui.text-body("body-small");
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
             opacity: 1;
             grid-column: 1 / -1;
             block-size: max-content;
             box-sizing: border-box;
-            display: flex;
-            gap: var(--gap-xs);
+            @include ui.vstack(var(--gap-xs));
             overflow: hidden;
             padding-block: var(--padding-sm);
-            flex-direction: column;
             line-height: normal;
 
             @include text-clamp(4);
@@ -232,12 +230,10 @@
                 block-size: max-content;
                 overflow: hidden;
                 opacity: 0.8;
-                display: flex;
-                gap: var(--gap-xs);
-                flex-direction: column;
+                @include ui.vstack(var(--gap-xs));
                 list-style-position: inside;
                 font-variant-numeric: tabular-nums;
-                font-size: var(--font-sm);
+                font-size: t.$font-sm;
 
                 &:empty { display: none; }
 
@@ -272,12 +268,11 @@
         .card-desc {
             padding: 0;
             margin: 0;
-            font-size: var(--font-sm);
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
-            display: flex;
-            flex-direction: row;
-            gap: var(--gap-xs);
             list-style: none;
+
+            @include ui.text-body("body-small");
+            @include ui.inline-toolbar(var(--gap-xs));
 
             li {
                 padding: 0;
@@ -288,13 +283,11 @@
         .card-title {
             padding: 0;
             margin: 0;
-            font-weight: var(--font-weight-bold);
-            font-size: var(--font-base);
-            @include text-truncate;
-            display: flex;
-            flex-direction: row;
-            gap: var(--gap-xs);
             list-style: none;
+
+            @include ui.text-heading("title-small");
+            @include text-truncate;
+            @include ui.inline-toolbar(var(--gap-xs));
 
             li {
                 padding: 0;
@@ -305,13 +298,12 @@
         .card-kind {
             padding: 0;
             margin: 0;
-            font-size: var(--font-sm);
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             margin-block-start: var(--gap-xs);
-            display: flex;
-            flex-direction: row;
-            gap: var(--gap-xs);
             list-style: none;
+
+            @include ui.text-body("body-small");
+            @include ui.inline-toolbar(var(--gap-xs));
 
             li {
                 padding: 0;
@@ -322,12 +314,11 @@
         .card-time {
             padding: 0;
             margin: 0;
-            font-size: var(--font-sm);
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
-            display: flex;
-            flex-direction: row;
-            gap: var(--gap-xs);
             list-style: none;
+
+            @include ui.text-body("body-small");
+            @include ui.inline-toolbar(var(--gap-xs));
 
             li {
                 padding: 0;
@@ -353,8 +344,7 @@
         }
 
         .card-actions {
-            display: flex;
-            gap: var(--gap-xs);
+            @include ui.inline-toolbar(var(--gap-xs));
 
             li {
                 padding: 0;
@@ -362,33 +352,31 @@
             }
 
             & > .action {
-                gap: var(--gap-xs);
                 padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);
                 cursor: pointer;
                 transition: var(--transition-colors);
                 box-shadow: var(--shadow-sm);
 
-                @include surface(var(--surface-opacity-subtle));
+                @include ui.inline-toolbar(var(--gap-xs));
+                @include ui.tonal-surface(surface, var(--surface-opacity-subtle));
                 @include flex-center;
             }
         }
 
         .card-links {
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap-xs);
             grid-column: 1 / -1;
-            font-size: var(--font-sm);
+            font-size: t.$font-sm;
             color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+
+            @include ui.vstack(var(--gap-xs));
 
             ul {
                 margin: 0;
                 padding: 0;
-                display: flex;
-                flex-direction: column;
-                gap: var(--gap-xs);
                 list-style: none;
+
+                @include ui.vstack(var(--gap-xs));
 
                 li a {
                     color: inherit;
@@ -434,7 +422,7 @@
             padding: 0;
             margin: 0;
             list-style: none;
-            font-size: var(--font-sm);
+            font-size: t.$font-sm;
             line-height: var(--leading-relaxed);
 
             p {
@@ -493,7 +481,7 @@
         }
 
         .card-description-content {
-            font-size: var(--font-xs);
+            font-size: t.$font-xs;
         }
     }
 

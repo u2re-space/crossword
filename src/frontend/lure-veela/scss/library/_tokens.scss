@@ -24,6 +24,29 @@ $font-lg: var(--font-lg);
 $font-xl: var(--font-xl);
 $font-2xl: var(--font-2xl);
 
+$font-weight-normal: var(--font-weight-normal);
+$font-weight-medium: var(--font-weight-medium);
+$font-weight-semibold: var(--font-weight-semibold);
+$font-weight-bold: var(--font-weight-bold);
+$font-weight-extrabold: var(--font-weight-extrabold);
+
+$font-family-base: var(--font-family-base);
+$font-family-mono: var(--font-family-mono);
+
+$color-primary: var(--md3-primary);
+$color-primary-container: var(--md3-primary-container);
+$color-secondary: var(--md3-secondary);
+$color-tertiary: var(--md3-tertiary);
+$color-surface: var(--md3-surface);
+$color-surface-variant: var(--md3-surface-variant);
+$color-surface-container: var(--md3-surface-container);
+$color-outline: var(--md3-outline);
+$color-outline-variant: var(--md3-outline-variant);
+$color-error: var(--md3-error);
+$color-inverse-surface: var(--md3-inverse-surface);
+$color-inverse-on-surface: var(--md3-inverse-on-surface);
+$color-scrim: var(--md3-scrim);
+
 // Common color variables (compat layer for reducing --c2-* usage)
 $on-surface: var(--on-surface, currentColor);
 $text-secondary: var(--text-secondary, color-mix(in oklch, var(--on-surface, currentColor) 74%, transparent));

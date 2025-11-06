@@ -2,6 +2,7 @@
 // Unified with design system variables and mixins
 
 @use "veela-lib" as *;
+@use "../../library/mixins" as ui;
 
 //
 @layer rs-toolbars {
@@ -11,31 +12,25 @@
     }
 
     .view-toolbar {
-        gap: var(--gap-xs);
         inline-size: stretch;
         background: transparent;
 
         grid-column: 1 / -1;
         margin: 0;
-        flex-direction: row;
-
         block-size: max-content;
-        display: flex;
-        background-color: transparent;
-        justify-content: start;
-        padding: var(--padding-xs) var(--padding-sm);
-        padding-block: var(--padding-md);
         position: sticky;
         inset-block-start: 0;
         z-index: 10;
 
-        //
+        @include ui.inline-toolbar(var(--gap-xs));
+        justify-content: flex-start;
+        padding-inline: var(--padding-sm);
+        padding-block: var(--padding-md);
         place-content: center;
         place-items: center;
 
-        //
         @include backdrop-blur("subtle");
-        @include flex-between;
+        @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-xl), null, 1);
 
         //
         &:empty {
@@ -43,14 +38,11 @@
         }
 
         .button-set {
-            display: inline-flex;
-            flex-wrap: no-wrap;
-            gap: var(--gap-md);
-            padding: var(--padding-sm);
-            border-radius: var(--radius-lg);
             block-size: max-content;
 
-            @include surface(var(--surface-opacity-default, 0.08));
+            @include ui.inline-toolbar(var(--gap-md));
+            @include ui.tonal-surface(surface-container, var(--surface-opacity-default, 0.08), var(--radius-lg), var(--padding-sm));
+            flex-wrap: nowrap;
 
             //
             &:empty { display: none; }
@@ -61,19 +53,15 @@
                 border-radius: var(--radius-sm);
                 padding: var(--padding-xs);
                 aspect-ratio: auto;
-                flex-direction: row;
-                display: flex;
-                gap: var(--gap-sm);
 
-                //
+                @include ui.inline-toolbar(var(--gap-sm));
                 @include toolbar-button;
                 @include flex-center;
 
                 //
                 span {
-                    font-size: var(--font-sm);
                     display: block;
-                    font-weight: var(--font-weight-normal);
+                    @include ui.text-body("body-small");
                     color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                     padding-inline-end: var(--padding-xs);
                 }

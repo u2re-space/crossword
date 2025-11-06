@@ -2,6 +2,7 @@
 // Unified with design system variables and mixins
 
 @use "veela-lib" as *;
+@use "../../library/mixins" as ui;
 
 @layer rs-viewers {
     [data-type="tasks"],
@@ -27,14 +28,12 @@
         grid-template-columns: minmax(0px, 1fr);
         grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
         grid-template-areas: "content" "toolbar";
-        border-radius: var(--radius-sm);
         inline-size: stretch;
         block-size: stretch;
         gap: var(--gap-xs);
-        background-color: transparent;
 
-        //
         @include scrollable("y");
+        @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), null, 1);
 
         &.viewer-section {
             background-color: transparent;
@@ -60,8 +59,7 @@
 
         & > h2 {
             margin: 0 0 var(--gap-sm) 0;
-            font-weight: var(--font-weight-bold);
-            font-size: var(--font-lg);
+            @include ui.text-heading("title-medium");
             letter-spacing: 0.01em;
         }
     }
@@ -83,18 +81,13 @@
             scrollbar-gutter: auto;
             touch-action: manipulation;
             pointer-events: auto;
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap-xs);
-
-            @include surface(var(--surface-opacity-subtle));
+            @include ui.vstack(var(--gap-xs));
+            @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1);
             @include scrollable("y");
 
             .viewer-tab-content-header {
-                font-size: var(--font-xl);
-                font-weight: var(--font-weight-semibold);
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--surface-opacity-subtle, 12%), transparent);
-                text-align: center;
+                @include ui.text-heading("title-large", center);
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--surface-opacity-muted, 8%), transparent);
                 padding: var(--padding-xs);
                 border-radius: var(--radius-sm);
                 background-color: transparent;
@@ -102,9 +95,7 @@
             }
 
             .viewer-tab-content-body {
-                display: flex;
-                flex-direction: column;
-                gap: var(--gap-xs);
+                @include ui.vstack(var(--gap-xs));
                 pointer-events: none;
                 block-size: max-content;
             }
@@ -113,27 +104,22 @@
 
     //
     .subgroup {
-        display: flex;
-        flex-direction: column;
-        gap: var(--gap-xs);
+        @include ui.vstack(var(--gap-xs));
         pointer-events: none;
 
         .subgroup-items {
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap-xs);
+            @include ui.vstack(var(--gap-xs));
             padding: var(--padding-xs);
             pointer-events: none;
         }
 
         .subgroup-header {
-            font-size: var(--font-sm);
-            font-weight: var(--font-weight-medium);
+            @include ui.text-label("title-small", true);
             color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
             text-align: center;
             padding: var(--padding-xs);
             border-radius: var(--radius-sm);
-            @include surface(var(--surface-opacity-emphasis));
+            @include ui.tonal-surface(surface, var(--surface-opacity-emphasis), var(--radius-sm));
             pointer-events: none;
         }
     }

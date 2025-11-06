@@ -1,6 +1,8 @@
 // Layout Components - Refactored and Optimized
 // Unified with design system variables and mixins
 @use "veela-lib" as *;
+@use "../../library/mixins" as ui;
+@use "../../library/tokens" as t;
 
 //
 @layer rs-layout {
@@ -28,33 +30,27 @@
 
         //
         .sidebar {
-            display: flex;
-            flex-direction: column;
             justify-content: flex-start;
             align-items: stretch;
-            max-inline-size: stretch;
-            min-inline-size: max-content;
-            text-align: start;
-            inline-size: min(200px, 100cqi);
+            inline-size: min(var(--sidebar-width, 20rem), 100cqi);
+            min-inline-size: fit-content;
             box-sizing: border-box;
-            gap: 0;
-            border-radius: var(--radius-xs);
-            background-color: transparent;
-            box-shadow: var(--shadow-sm);
             user-select: none;
-            padding: var(--padding-xs);
+            text-align: start;
 
-            @include surface(var(--surface-opacity-subtle));
+            //
+            @include ui.vstack(var(--gap-xs));
+            @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1, true);
 
             // Make sidebar bigger on mobile and small screens
             @media (max-width: 720px) {
-                inline-size: min(280px, 100cqi);
-                padding: var(--padding-sm);
+                inline-size: min(var(--sidebar-width-mobile, 17.5rem), 100cqi);
+                padding: var(--padding-md);
             }
 
             @media (max-width: 480px) {
-                inline-size: min(320px, 100cqi);
-                padding: var(--padding-md);
+                inline-size: min(var(--sidebar-width-mobile-small, 20rem), 100cqi);
+                padding: var(--padding-lg);
             }
 
             & {
@@ -69,6 +65,8 @@
                 inset-block-start: var(--padding-sm);
                 align-self: start;
                 max-block-size: calc(100dvb - var(--space-lg));
+                display: flex;
+                flex-direction: column;
 
                 @include scrollable;
                 @include container("lg") {
@@ -80,19 +78,11 @@
             }
 
             ul {
-                display: flex;
-                flex-direction: column;
-                padding: 0;
-                margin: 0;
+                @include ui.tonal-list(surface, var(--surface-opacity-default), var(--radius-md), 0);
                 inline-size: stretch;
                 user-select: none;
-                list-style: none;
                 overflow: hidden;
                 box-sizing: border-box;
-                gap: 0;
-                border-radius: var(--radius-xs);
-
-                @include surface(var(--surface-opacity-default));
 
                 & {
                     border: none 0 transparent;
@@ -105,76 +95,60 @@
                 }
 
                 li {
-                    display: flex;
-                    flex-direction: row;
-                    align-items: center;
                     inline-size: stretch;
-                    box-sizing: border-box;
-                    transition: var(--transition-colors);
                     pointer-events: none;
                     overflow: hidden;
-                    gap: 0;
-                    margin: 0;
-                    user-select: none;
-                    padding: 0;
-                    font-size: var(--font-sm);
+                    font-size: t.$font-sm;
+                    transition: var(--transition-colors);
 
                     * { pointer-events: none; }
-                    & { background-color: transparent; }
 
                     a {
                         @include nav-item;
+                        @include ui.text-label("label-large");
                         padding: var(--padding-md);
                         inline-size: stretch;
                         block-size: max-content;
                         pointer-events: auto;
                         column-gap: var(--gap-xs);
                         background: transparent;
-                        user-select: none;
                         border: none;
                         outline: none;
-                        font-size: var(--font-sm);
 
                         &:focus {
                             border: none;
                             outline: none;
                         }
 
-                        // Make navigation items bigger on mobile
                         @media (max-width: 720px) {
                             padding: var(--padding-lg);
-                            font-size: var(--font-base);
+                            @include ui.text-label("title-small");
                             column-gap: var(--gap-sm);
                         }
 
                         @media (max-width: 480px) {
                             padding: var(--padding-xl);
-                            font-size: var(--font-md);
+                            @include ui.text-label("title-medium");
                             column-gap: var(--gap-md);
                         }
 
                         ui-icon {
                             justify-self: start;
-                            inline-size: 1rem;
-                            block-size: 1rem;
-                            pointer-events: none;
+                            inline-size: var(--icon-size-sm);
+                            block-size: var(--icon-size-sm);
+                            --icon-size: var(--icon-size-sm);
+                            color: color-mix(in oklch, var(--on-surface, currentColor) 58%, transparent);
 
-                            --icon-size: 1rem;
-                            --icon-color: color-mix(in oklch, var(--on-surface, currentColor) 60%, transparent);
-
-                            color: color-mix(in oklch, var(--on-surface, currentColor) 60%, transparent);
-
-                            // Make icons bigger on mobile
                             @media (max-width: 720px) {
-                                inline-size: 1.25rem;
-                                block-size: 1.25rem;
-                                --icon-size: 1.25rem;
+                                inline-size: var(--icon-size-md);
+                                block-size: var(--icon-size-md);
+                                --icon-size: var(--icon-size-md);
                             }
 
                             @media (max-width: 480px) {
-                                inline-size: 1.5rem;
-                                block-size: 1.5rem;
-                                --icon-size: 1.5rem;
+                                inline-size: var(--icon-size-lg);
+                                block-size: var(--icon-size-lg);
+                                --icon-size: var(--icon-size-lg);
                             }
                         }
 
@@ -183,7 +157,6 @@
                             justify-self: start;
                             text-align: start;
                             inline-size: 100%;
-                            pointer-events: none;
                         }
                     }
                 }

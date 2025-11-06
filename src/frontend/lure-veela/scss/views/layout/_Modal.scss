@@ -1,5 +1,6 @@
 @use "veela-lib" as *;
-@use "../../library/mixins" as *;
+@use "../../library/mixins" as ui;
+@use "../../library/tokens" as t;
 
 //
 @layer rs-forms-modal {
@@ -8,10 +9,9 @@
     ui-modal {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: var(--gap-xs);
 
-        //
-        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
+        @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
     }
 
     //
@@ -22,12 +22,11 @@
         place-content: center;
         place-items: center;
         padding: var(--space-xl);
-        background: oklch(from black l c h / 0.22);
         z-index: 9999;
-        backdrop-filter: blur(18px) saturate(120%);
         line-height: normal;
 
-        //
+        @include ui.glass-backdrop();
+
         @media (pointer: coarse) {
             padding: calc(var(--space-xl) * 1.25);
         }
@@ -35,28 +34,18 @@
 
     //
     .modal-form {
-        --modal-radius: var(--radius-xl);
-        --modal-shadow: 0 24px 60px rgba(12, 12, 16, 0.34);
-
-        //
         min-inline-size: min(92vw, 33.75rem);
         max-inline-size: min(100%, 40rem);
         max-block-size: min(94vh, 45rem);
         inline-size: stretch;
-        border-radius: var(--modal-radius);
-        padding: var(--space-xl);
-        box-shadow: var(--modal-shadow);
-        backdrop-filter: blur(12px) saturate(120%);
         overflow: visible;
         line-height: normal;
 
-        //
-        @include vstack(var(--space-lg));
-        @include container-inline;
-        @include solid-colorize("&", ("shade": var(--surface-opacity-emphasis, 0.12)));
+        @include ui.card-surface(surface-container, var(--surface-opacity-emphasis), var(--radius-xl), var(--space-xl), 3);
+        @include ui.vstack(var(--space-lg));
+        @include ui.container-inline;
         @include scrollable("y");
 
-        //
         & { scrollbar-color: color-mix(in oklch, var(--on-surface, currentColor) var(--scrollbar-tint, 86%), transparent) transparent; }
 
         //
@@ -68,7 +57,7 @@
             text-align: center;
 
             //
-            @include font-style("&", ("size": "xl", "weight": 700));
+            @include ui.text-heading("headline-small", center);
         }
 
         //
@@ -80,15 +69,13 @@
             text-align: center;
 
             //
-            @include font-style("&", ("size": "base"));
+            @include ui.text-body("body-medium");
         }
 
         //
         .modal-section {
-            display: grid;
-            gap: var(--space-sm);
+            @include ui.section-stack(var(--space-sm));
             padding-block: var(--space-sm);
-            inline-size: stretch;
             background: transparent;
             overflow: visible;
             block-size: max-content;
@@ -105,28 +92,23 @@
                 text-align: center;
 
                 //
-                @include font-style("&", ("size": "sm", "weight": 600));
+                @include ui.text-label("title-small", true);
             }
 
             //
             .modal-section-fields {
-                display: grid;
-                gap: var(--space-sm);
+                @include ui.field-stack(var(--space-sm));
             }
         }
 
         //
         .modal-actions {
-            display: flex;
-            flex-wrap: wrap;
+            @include ui.inline-toolbar(var(--space-md));
             justify-content: space-between;
-            gap: var(--space-md);
-            align-items: center;
 
             //
             .modal-actions-right {
-                display: inline-flex;
-                gap: var(--space-sm);
+                @include ui.inline-toolbar(var(--space-sm));
             }
         }
 
@@ -137,23 +119,19 @@
             overflow-y: auto;
             overflow-x: hidden;
 
-            //
-            @include vstack(var(--space-md));
-            @include container-inline;
-            @include scrollbars(6px, var(--surface-opacity-emphasis));
+            @include ui.field-stack(var(--space-md));
+            @include ui.container-inline;
+            @include ui.scrollbars(6px, var(--surface-opacity-emphasis));
 
             //
             .modal-field {
-                & {
-                    display: grid;
-                    gap: var(--space-xs);
-                    min-inline-size: 0;
-                    background: transparent;
-                    inline-size: stretch;
-                    max-inline-size: stretch;
-                    contain: inline-size;
-                    container-type: inline-size;
-                }
+                @include ui.field-stack(var(--space-xs));
+                min-inline-size: 0;
+                background: transparent;
+                inline-size: stretch;
+                max-inline-size: stretch;
+                contain: inline-size;
+                container-type: inline-size;
 
                 //
                 &:where(.valid, .invalid) {
@@ -228,9 +206,8 @@
     :where(.modal-toggle, .modal-sliders, .modal-sliders-group, .modal-container, .modal-main, .modal-controls) {
         display: flex;
         flex-direction: row;
-        gap: 0.25rem;
+        gap: var(--gap-xs);
 
-        //
-        @include solid-colorize("&", ("shade": var(--surface-opacity-subtle)));
+        @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-md));
     }
 }

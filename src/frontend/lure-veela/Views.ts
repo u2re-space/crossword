@@ -14,6 +14,10 @@ import { dropFile, hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../utils/Utils";
 import { ViewPage } from "./entities/Viewer";
 
+//
+//import "beercss";
+import "material-dynamic-colors";
+
 // @ts-ignore
 import style from "./scss/index.scss?inline";
 
