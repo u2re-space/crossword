@@ -16,7 +16,7 @@ import { ViewPage } from "./entities/Viewer";
 
 //
 //import "beercss";
-import "material-dynamic-colors";
+//import "material-dynamic-colors";
 
 // @ts-ignore
 import style from "./scss/index.scss?inline";

@@ -37,6 +37,7 @@
             box-sizing: border-box;
             user-select: none;
             text-align: start;
+            padding: 0px;
 
             //
             @include ui.vstack(var(--gap-xs));
@@ -45,12 +46,14 @@
             // Make sidebar bigger on mobile and small screens
             @media (max-width: 720px) {
                 inline-size: min(var(--sidebar-width-mobile, 17.5rem), 100cqi);
-                padding: var(--padding-md);
+                block-size: stretch;
+                //padding: var(--padding-md);
             }
 
             @media (max-width: 480px) {
                 inline-size: min(var(--sidebar-width-mobile-small, 20rem), 100cqi);
-                padding: var(--padding-lg);
+                block-size: stretch;
+                //padding: var(--padding-lg);
             }
 
             & {
@@ -83,6 +86,7 @@
                 user-select: none;
                 overflow: hidden;
                 box-sizing: border-box;
+                margin: 0px;
 
                 & {
                     border: none 0 transparent;
@@ -97,39 +101,45 @@
                 li {
                     inline-size: stretch;
                     pointer-events: none;
-                    overflow: hidden;
+                    overflow: visible;
                     font-size: t.$font-sm;
                     transition: var(--transition-colors);
+                    block-size: max-content;
+                    max-block-size: fit-content;
 
                     * { pointer-events: none; }
 
                     a {
-                        @include nav-item;
-                        @include ui.text-label("label-large");
-                        padding: var(--padding-md);
+                        padding: var(--padding-lg);
                         inline-size: stretch;
                         block-size: max-content;
+                        max-block-size: fit-content;
                         pointer-events: auto;
                         column-gap: var(--gap-xs);
                         background: transparent;
                         border: none;
                         outline: none;
 
+                        @include nav-item;
+                        @include ui.text-label("label-large");
+
                         &:focus {
                             border: none;
                             outline: none;
                         }
 
-                        @media (max-width: 720px) {
-                            padding: var(--padding-lg);
-                            @include ui.text-label("title-small");
+                        @media (max-height: 600px) {
+                            padding: var(--padding-xl);
                             column-gap: var(--gap-sm);
+
+                            @include ui.text-label("title-small");
                         }
 
-                        @media (max-width: 480px) {
-                            padding: var(--padding-xl);
-                            @include ui.text-label("title-medium");
+                        @media (max-height: 480px) {
+                            padding: var(--padding-lg);
                             column-gap: var(--gap-md);
+
+                            @include ui.text-label("title-medium");
                         }
 
                         ui-icon {
