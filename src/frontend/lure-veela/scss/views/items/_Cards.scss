@@ -176,28 +176,29 @@
             var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1))) 30%
         );
 
-        @include text-color(0);
+        //
         @include ui.tonal-surface(surface-container, var(--card-surface-tone), var(--card-radius), var(--card-padding), 2);
+        @include text-color(0);
 
+        //
         --color-shade: var(--card-surface-tone);
         --color-tint: var(--card-surface-tint);
-        background-color: var(--surface-color);
+        //background-color: var(--surface-color);
         background-image:
             radial-gradient(
                 140% 120% at 0% 100%,
-                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-strength) * 55%), transparent) 0%,
+                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-strength) * 55%), transparent) 0%,
                 transparent 62%
             ),
             linear-gradient(
                 var(--card-gradient-angle),
-                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-strength) * 90%), transparent) 0%,
-                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-secondary) * 100%), transparent) 42%,
+                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-strength) * 90%), transparent) 0%,
+                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-secondary) * 100%), transparent) 42%,
                 transparent 100%
             );
         background-repeat: no-repeat;
         background-blend-mode: plus-lighter, normal;
         background-origin: border-box;
-        border-color: color-mix(in oklch, var(--current, currentColor) calc(var(--card-border-alpha) * 100%), transparent);
         box-shadow:
             var(--md3-elevation-2, md3-elevation(2)),
             0 0 0 1px color-mix(in oklch, var(--current, currentColor) calc((var(--card-border-alpha) + 0.08) * 100%), transparent),

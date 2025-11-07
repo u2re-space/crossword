@@ -54,7 +54,7 @@
         box-shadow: var(--md3-elevation-#{$elevation}, md3-elevation($elevation));
     }
     @if $border {
-        border: 1px solid color-mix(in oklch, var(--md3-outline) 42%, transparent);
+        border: 0.5px solid color-mix(in oklch, var(--md3-outline) 42%, transparent);
     }
 }
 
