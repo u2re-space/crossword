@@ -29,6 +29,7 @@
         place-content: center;
         place-items: center;
         place-self: center;
+        pointer-events: none;
 
         box-sizing: border-box;
 
@@ -68,6 +69,7 @@
                 border-radius: var(--radius-sm);
                 padding: var(--padding-xs);
                 aspect-ratio: auto;
+                pointer-events: auto;
 
                 //
                 @include ui.inline-toolbar(var(--gap-sm));
