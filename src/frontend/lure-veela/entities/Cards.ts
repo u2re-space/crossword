@@ -28,7 +28,7 @@ export const MakeCardElement = <
     //
     const begin_time = formatAsTime(entityItem?.properties?.begin_time) || "";
     const end_time = formatAsTime(entityItem?.properties?.end_time) || "";
-    const variant = entityItem?.variant || "default";
+    const variant = entityItem?.variant || entityItem?.properties?.variant || "default";
     let description = entityItem?.description || "";
 
     //

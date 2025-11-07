@@ -26,7 +26,7 @@ export const DataExplorer = () => {
     });
 
     // make file manager
-    const viewer = H`<ui-file-manager path="/user/" sidebar="auto" style="grid-column: 1 / -1;"></ui-file-manager>`;
+    const viewer = H`<ui-file-manager path="/user/" sidebar="auto" style="grid-column: 1 / -1; grid-row: 1 / -1;"></ui-file-manager>`;
 
     //
     const onUpload = () => {
@@ -127,8 +127,5 @@ export const DataExplorer = () => {
     implementPasteEvent(section, intake);
 
     //
-    const wrapper = H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">${toolbar}${section}</div>`;
-
-    //
-    return wrapper;
+    return H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">${toolbar}${section}</div>`;;
 };

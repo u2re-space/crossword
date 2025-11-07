@@ -60,10 +60,12 @@
     & #{$selector} {
         display: none;
         block-size: 0px;
-        transition: var(--transition-opacity),
-                   block-size var(--duration-normal) var(--ease-out),
-                   display var(--duration-normal) var(--ease-out),
-                   padding-block var(--duration-normal) var(--ease-out);
+        interpolate-size: allow-keywords;
+        transition: block-size var(--duration-normal) var(--ease-out),
+                    display var(--duration-normal) var(--ease-out),
+                    padding-block var(--duration-normal) var(--ease-out);
+        transition-duration: var(--duration-normal);
+        transition-delay: 0s;
         transition-behavior: allow-discrete;
     }
 
@@ -73,6 +75,7 @@
         opacity: 1;
         block-size: max-content;
         padding-block: var(--padding-sm);
+        interpolate-size: allow-keywords;
     }
 
     //
@@ -81,14 +84,47 @@
             opacity: 0;
             block-size: 0px;
             padding-block: 0rem;
+            display: flex;
         }
     }
 }
 
 //
 @layer rs-cards {
-    .cards-grid {
-        @include grid-auto-fill(220px);
+    @property --card-surface-tone {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 0.12;
+    }
+
+    @property --card-surface-tint {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: -0.08;
+    }
+
+    @property --card-border-alpha {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 0.18;
+    }
+
+    @property --card-overlay-strength {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 0.24;
+    }
+
+    @property --card-overlay-secondary {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 0.14;
+    }
+
+    @property --card-gradient-angle {
+        syntax: "<angle>";
+        inherits: true;
+        initial-value: 128deg;
     }
 
     .card {
@@ -100,17 +136,78 @@
         align-items: center;
         gap: var(--space-lg);
         row-gap: var(--card-gap);
+
+        place-self: center;
+
         transition: var(--transition-all);
+        transition-duration: var(--duration-normal);
+        transition-delay: 0s;
+        transition-behavior: allow-discrete;
+        interpolate-size: allow-keywords;
+
         user-select: none;
         inline-size: stretch;
         order: var(--card-order, initial);
         block-size: max-content;
         pointer-events: auto;
         overflow: hidden;
-        --current: var(--primary);
+        position: relative;
+        isolation: isolate;
+        border: 1px solid transparent;
+        background: none;
 
-        @include ui.tonal-surface(surface-container, var(--surface-opacity-muted), var(--card-radius), var(--card-padding), 2);
+
+        //
+        --current: var(--primary);
+        --card-surface-tone: clamp(0.06, var(--surface-opacity-subtle), 0.14);
+        --card-surface-tint: clamp(-0.12, calc(var(--card-surface-tone) * -0.8), -0.02);
+        --card-border-alpha: clamp(0.12, calc(var(--card-surface-tone) * 2.1), 0.22);
+        --card-shadow-strength: clamp(0.14, calc(var(--card-surface-tone) * 1.8), 0.24);
+        --card-overlay-strength: clamp(0.18, calc(var(--card-surface-tone) * 1.8), 0.34);
+        --card-overlay-secondary: clamp(0.1, calc(var(--card-overlay-strength) * 0.52), 0.24);
+        --card-gradient-angle: 128deg;
+        --color-red: var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1)));
+        --color-yellow: var(--color-warning, oklch(0.86 0.09 100 / 1));
+        --color-green: var(--color-success, oklch(0.72 0.13 150 / 1));
+        --color-blue: var(--color-info, oklch(0.65 0.12 240 / 1));
+        --color-purple: var(--md3-tertiary, oklch(0.62 0.22 310 / 1));
+        --color-orange: color-mix(in oklch,
+            var(--color-warning, oklch(0.82 0.12 80 / 1)) 70%,
+            var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1))) 30%
+        );
+
         @include text-color(0);
+        @include ui.tonal-surface(surface-container, var(--card-surface-tone), var(--card-radius), var(--card-padding), 2);
+
+        --color-shade: var(--card-surface-tone);
+        --color-tint: var(--card-surface-tint);
+        background-color: var(--surface-color);
+        background-image:
+            radial-gradient(
+                140% 120% at 0% 100%,
+                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-strength) * 55%), transparent) 0%,
+                transparent 62%
+            ),
+            linear-gradient(
+                var(--card-gradient-angle),
+                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-strength) * 90%), transparent) 0%,
+                color-mix(in oklch, var(--current, currentColor) calc(var(--card-overlay-secondary) * 100%), transparent) 42%,
+                transparent 100%
+            );
+        background-repeat: no-repeat;
+        background-blend-mode: plus-lighter, normal;
+        background-origin: border-box;
+        border-color: color-mix(in oklch, var(--current, currentColor) calc(var(--card-border-alpha) * 100%), transparent);
+        box-shadow:
+            var(--md3-elevation-2, md3-elevation(2)),
+            0 0 0 1px color-mix(in oklch, var(--current, currentColor) calc((var(--card-border-alpha) + 0.08) * 100%), transparent),
+            0 28px 42px -30px color-mix(in oklch, var(--current, currentColor) calc((var(--card-shadow-strength) + 0.08) * 100%), transparent);
+
+        & {
+            inline-size: stretch !important;
+            min-inline-size: fit-content !important;
+            max-inline-size: 60rem !important;
+        }
 
         &, & * {
             touch-action: pan-y;
@@ -141,13 +238,45 @@
             user-select: none;
         }
 
-        &[data-variant] {
-            @include ui.tonal-surface(surface-container, var(--surface-opacity-default));
-        }
-
         &:not([data-variant]),
         &[data-variant="default"] {
-            @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle));
+            --current: var(--surface-container-high, var(--primary));
+            --card-surface-tone: clamp(0.08, calc(var(--surface-opacity-default) * 1.2), 0.18);
+            --card-surface-tint: clamp(-0.14, calc(var(--card-surface-tone) * -0.9), -0.03);
+            --card-border-alpha: clamp(0.14, calc(var(--card-surface-tone) * 1.8), 0.28);
+            --card-shadow-strength: clamp(0.16, calc(var(--card-surface-tone) * 1.9), 0.28);
+            --card-overlay-strength: clamp(0.22, calc(var(--card-surface-tone) * 1.9), 0.38);
+            --card-overlay-secondary: clamp(0.12, calc(var(--card-overlay-strength) * 0.5), 0.26);
+        }
+
+        /*
+        &[data-variant] {
+            --card-surface-tone: clamp(0.24, calc(var(--surface-opacity-strong) + 0.12), 0.48);
+            --card-surface-tint: clamp(-0.28, calc(var(--card-surface-tone) * -0.82), -0.06);
+            --card-border-alpha: clamp(0.22, calc(var(--card-surface-tone) * 0.96), 0.42);
+            --card-shadow-strength: clamp(0.28, calc(var(--card-surface-tone) * 1.06), 0.44);
+            --card-overlay-strength: clamp(0.3, calc(var(--card-surface-tone) * 1.4), 0.56);
+            --card-overlay-secondary: clamp(0.16, calc(var(--card-overlay-strength) * 0.48), 0.34);
+        }*/
+
+        &:is(:hover, :focus-visible) {
+            --card-surface-tone: min(0.6, calc(var(--card-surface-tone) + 0.06));
+            --card-border-alpha: min(0.46, calc(var(--card-border-alpha) + 0.08));
+            --card-shadow-strength: min(0.5, calc(var(--card-shadow-strength) + 0.1));
+            --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength) + 0.1));
+            --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary) + 0.06));
+        }
+
+        &[data-open] {
+            --card-surface-tone: min(0.56, calc(var(--card-surface-tone) + 0.04));
+            --card-shadow-strength: min(0.46, calc(var(--card-shadow-strength) + 0.08));
+            --card-overlay-strength: min(0.6, calc(var(--card-overlay-strength) + 0.06));
+            --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary) + 0.05));
+        }
+
+        @container (inline-size <= 460px) {
+            --card-gradient-angle: 110deg;
+            --card-overlay-strength: clamp(0.2, calc(var(--card-overlay-strength) + 0.04), 0.4);
         }
 
         // Color variants
@@ -157,7 +286,16 @@
         &[data-variant="blue"] { --current: var(--color-blue); }
         &[data-variant="orange"] { --current: var(--color-orange); }
         &[data-variant="yellow"] { --current: var(--color-yellow); }
-        &[data-variant="blur"] { --current: var(--primary); }
+        &[data-variant="blur"] {
+            --current: var(--primary);
+            --card-surface-tone: clamp(0.18, calc(var(--surface-opacity-default) * 2.6), 0.36);
+            --card-surface-tint: clamp(-0.22, calc(var(--card-surface-tone) * -0.86), -0.04);
+            --card-border-alpha: clamp(0.18, calc(var(--card-surface-tone) * 1.06), 0.32);
+            --card-shadow-strength: clamp(0.22, calc(var(--card-surface-tone) * 1.24), 0.38);
+            --card-overlay-strength: clamp(0.28, calc(var(--card-surface-tone) * 1.3), 0.44);
+            --card-overlay-secondary: clamp(0.14, calc(var(--card-overlay-strength) * 0.48), 0.28);
+            backdrop-filter: blur(18px) saturate(125%);
+        }
 
         .card-avatar {
             --icon-color: var(--on-surface-color, currentColor);

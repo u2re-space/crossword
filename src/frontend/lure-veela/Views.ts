@@ -45,8 +45,8 @@ const implementTestDrop = (mountElement: HTMLElement) => {
 //
 export const CURRENT_VIEW = hashTargetRef(location.hash || "task", false);
 export async function frontend(mountElement) {
-    initDOM(document.body);
-    loadInlineStyle(style);
+    await initDOM(document.body);
+    await loadInlineStyle(style);
 
     //
     const entityViews = new Map([

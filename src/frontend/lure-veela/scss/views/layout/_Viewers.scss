@@ -36,6 +36,9 @@
         touch-action: manipulation;
 
         margin-inline: var(--padding-sm);
+        margin-block-start: var(--padding-sm);
+
+        //
         display: grid;
         grid-template-columns: minmax(0px, 1fr);
         grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
@@ -79,9 +82,9 @@
         border-radius: var(--radius-sm);
 
         & > h2 {
-            margin: 0 0 var(--gap-sm) 0;
-            @include ui.text-heading("title-medium");
             letter-spacing: 0.01em;
+
+            @include ui.text-heading("title-medium");
         }
     }
 
@@ -89,8 +92,9 @@
     ui-tabbed-box {
         inline-size: stretch;
         block-size: stretch;
-        padding-block: var(--padding-sm);
 
+        //
+        gap: 0px;
         grid-column: 1 / -1;
         grid-row: 1 / -1;
 
