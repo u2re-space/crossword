@@ -100,7 +100,6 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
             ${options.title ? H`<h1>${options.title}</h1>` : null}
             ${options.subtitle ? H`<p>${options.subtitle}</p>` : null}
         </div>
-        <div class="doc-header-actions"></div>
     </header>` as HTMLElement;
 
     const tabsNav = H`<nav class="doc-collections" role="tablist"></nav>` as HTMLElement;
@@ -140,7 +139,7 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
     listContainer.append(list, emptyState);
     root.append(tabsNav, main, header);
 
-    const actionArea = header.querySelector<HTMLElement>(".doc-header-actions")!;
+    const actionArea = H`<div class="doc-header-actions"></div>`;
     const primaryBar = H`<div class="doc-actions primary"></div>` as HTMLElement;
     const secondaryBar = H`<div class="doc-actions secondary"></div>` as HTMLElement;
     actionArea.append(primaryBar, secondaryBar);
@@ -528,5 +527,12 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
         entries.clear();
     };
 
-    return root as HTMLElement & { controller: DocWorkspaceController };
+    const wrapper = H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">
+        ${actionArea}
+        ${root as HTMLElement & { controller: DocWorkspaceController }}
+    </div>`;
+
+    wrapper.controller = controller;
+
+    return wrapper;
 };

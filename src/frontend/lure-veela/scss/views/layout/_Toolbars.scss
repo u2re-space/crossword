@@ -15,14 +15,13 @@
     .view-toolbar {
         background: transparent;
 
-        grid-column: 2 / 3 span;
+        grid-column: 3 / 3 span;
         grid-row: 1 / 1 span;
 
-        margin: 0px;
+        padding: 0px;
         position: sticky;
         inset-block-start: 0;
         z-index: 10;
-        margin-block-start: var(--gap-md);
 
         justify-content: flex-start;
         padding-inline: 0px;
@@ -30,6 +29,8 @@
         place-content: center;
         place-items: center;
         place-self: center;
+
+        box-sizing: border-box;
 
         //
         @include ui.inline-toolbar(var(--gap-xs));
@@ -40,6 +41,10 @@
         //
         & { min-block-size: 0px; block-size: fit-content; max-block-size: 4rem; }
         & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
+        & {
+            margin: 0px;
+            margin-inline: var(--padding-sm);
+        }
 
         //
         &:empty {
@@ -54,6 +59,8 @@
 
             //
             &:empty { display: none; }
+            & { min-block-size: 0px; block-size: fit-content; max-block-size: stretch; }
+            & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
 
             //
             button {

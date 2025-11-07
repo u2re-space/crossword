@@ -26,7 +26,7 @@ export const DataExplorer = () => {
     });
 
     // make file manager
-    const viewer = H`<ui-file-manager path="/user/" sidebar="auto"></ui-file-manager>`;
+    const viewer = H`<ui-file-manager path="/user/" sidebar="auto" style="grid-column: 1 / -1;"></ui-file-manager>`;
 
     //
     const onUpload = () => {
@@ -95,7 +95,7 @@ export const DataExplorer = () => {
     }
 
     //
-    const toolbar = H`<div slot="bar" class="view-toolbar">
+    const toolbar = H`<div slot="bar" class="view-toolbar" style="grid-column: 3 / -1;">
         <div class="button-set">
             <button id="mount-user-dir" on:click=${onMount}>
                 <ui-icon icon="screwdriver"></ui-icon>
@@ -121,9 +121,14 @@ export const DataExplorer = () => {
     </div>`
 
     //
-    const section = H`<div style="display: contents;">${toolbar}<section id="explorer" class="data-view c2-surface">${viewer}</section></div>`;
+    const section = H`<section id="explorer" class="data-view c2-surface" style="grid-column: 2 / -1; grid-row: 2 / -1;" id="explorer">${viewer}</section>`;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: viewer?.path?.split?.("/")?.at?.(-1) });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
-    return section;
+
+    //
+    const wrapper = H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">${toolbar}${section}</div>`;
+
+    //
+    return wrapper;
 };

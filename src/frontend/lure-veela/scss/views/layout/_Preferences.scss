@@ -17,6 +17,13 @@
         grid-template-rows: minmax(0px, max-content) minmax(0px, 1fr) minmax(0px, max-content);
         grid-template-columns: minmax(0px, 1fr);
 
+        grid-column: 1 / -1;
+        grid-row: 2 / -1;
+        z-index: 99;
+        visibility: visible;
+        content-visibility: visible;
+        opacity: 1;
+
         @include surface(0);
 
         & > * {
@@ -25,6 +32,7 @@
 
         &, * {
             line-height: normal;
+            content-visibility: visible;
         }
 
         @include breakpoint("lg") {
@@ -42,6 +50,67 @@
             block-size: 0px;
             grid-row: 1 / 1 span;
             @include surface(var(--surface-opacity-emphasis));
+        }
+    }
+
+
+
+    .doc-header-actions {
+        @include flex-center;
+        flex-wrap: no-wrap;
+        gap: var(--gap-sm);
+        justify-content: flex-end;
+        inline-size: stretch;
+        flex-direction: row;
+        grid-column: 2 / -1;
+        grid-row: 1 / 1;
+
+        .doc-actions {
+            display: inline-flex;
+            gap: var(--gap-sm);
+            flex-wrap: no-wrap;
+            flex-direction: row;
+            padding: var(--padding-sm);
+            border-radius: var(--radius-lg);
+            @include backdrop-blur("strong");
+
+            .doc-action {
+                font-size: var(--font-sm);
+                pointer-events: auto;
+
+                &[disabled] {
+                    opacity: var(--text-opacity-disabled);
+                    pointer-events: none;
+                }
+            }
+        }
+    }
+
+    .doc-entry-actions {
+        display: inline-flex;
+        gap: var(--gap-sm);
+        background: transparent;
+        flex-direction: row;
+        flex-wrap: nowrap;
+
+        .doc-entry-chip {
+            gap: var(--gap-xs);
+            inline-size: auto;
+            block-size: clamp(2.1rem, 3vw, 2.4rem);
+            aspect-ratio: 1 / 1;
+            padding-inline: var(--padding-sm);
+            padding-block: var(--padding-xs);
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            transition: var(--transition-colors), var(--transition-transform);
+
+            @include flex-center;
+
+            span {
+                font-size: var(--font-xs);
+                font-weight: var(--font-weight-semibold);
+                white-space: nowrap;
+            }
         }
     }
 
@@ -74,33 +143,7 @@
             }
         }
 
-        .doc-header-actions {
-            @include flex-center;
-            flex-wrap: no-wrap;
-            gap: var(--gap-sm);
-            justify-content: flex-end;
-            grid-column: 1 / -1;
-            inline-size: stretch;
 
-            .doc-actions {
-                display: inline-flex;
-                gap: var(--gap-sm);
-                flex-wrap: no-wrap;
-                padding: var(--padding-sm);
-                border-radius: var(--radius-lg);
-                @include backdrop-blur("strong");
-
-                .doc-action {
-                    font-size: var(--font-sm);
-                    pointer-events: auto;
-
-                    &[disabled] {
-                        opacity: var(--text-opacity-disabled);
-                        pointer-events: none;
-                    }
-                }
-            }
-        }
     }
 
     .doc-collections {
@@ -347,31 +390,6 @@
             }
         }
 
-        .doc-entry-actions {
-            display: inline-flex;
-            gap: var(--gap-sm);
-            background: transparent;
-
-            .doc-entry-chip {
-                gap: var(--gap-xs);
-                inline-size: auto;
-                block-size: clamp(2.1rem, 3vw, 2.4rem);
-                aspect-ratio: 1 / 1;
-                padding-inline: var(--padding-sm);
-                padding-block: var(--padding-xs);
-                border-radius: var(--radius-full);
-                cursor: pointer;
-                transition: var(--transition-colors), var(--transition-transform);
-
-                @include flex-center;
-
-                span {
-                    font-size: var(--font-xs);
-                    font-weight: var(--font-weight-semibold);
-                    white-space: nowrap;
-                }
-            }
-        }
     }
 
     .doc-preview {
