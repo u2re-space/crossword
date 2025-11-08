@@ -98,7 +98,7 @@
                     filter: opacity(0.6);
                     transition: filter var(--transition-normal);
 
-                    &:hover {
+                    &:where(:hover, :focus-visible, :active) {
                         filter: opacity(1);
                     }
                 }

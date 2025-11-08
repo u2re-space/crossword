@@ -326,7 +326,7 @@
                 @include border-color(var(--contrast-opacity-default));
             }
 
-            &:hover:not(.is-active) {
+            &:where(:hover, :focus-visible):not(.is-active) {
                 @include surface(var(--surface-opacity-default));
             }
         }
@@ -391,13 +391,7 @@
                 display: block;
                 block-size: max-content;
                 @include solid-colorize("&");
-
-                &,
-                &:hover,
-                &:focus-visible,
-                &:active {
-                    border-width: 0.5px;
-                }
+                border-width: 0.5px;
 
                 &::-ms-expand {
                     display: none;
@@ -493,7 +487,7 @@
                 transition: transform var(--transition-colors);
             }
 
-            &:hover ui-icon {
+            &:where(:hover, :focus-visible) ui-icon {
                 transform: rotate(90deg);
             }
         }
@@ -525,7 +519,7 @@
             pointer-events: none;
         }
 
-        &:hover {
+        &:where(:hover, :focus-visible, :focus-within) {
             box-shadow: 0 8px 24px var(--surface-opacity-muted);
             border-color: var(--primary-opacity-default);
             border-width: 0;
@@ -577,7 +571,7 @@
                     transition: transform var(--transition-colors);
                 }
 
-                &:hover {
+                &:where(:hover, :focus-visible) {
                     @include surface(var(--danger-opacity-muted));
                     transform: scale(1.05);
 
@@ -595,7 +589,7 @@
                     transition: transform var(--transition-colors);
                 }
 
-                &:hover ui-icon {
+                &:where(:hover, :focus-visible) ui-icon {
                     transform: rotate(180deg);
                 }
             }

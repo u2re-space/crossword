@@ -94,7 +94,7 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
     let secondaryActions = options.secondaryActions ? options.secondaryActions.slice() : [];
     let entryActionFactories = options.entryActions ? options.entryActions.slice() : [];
 
-    const root = H`<section class="doc-workspace" data-drop-enabled=${options.enableDrop ?? false}></section>` as HTMLElement;
+    const root = H`<section class="doc-workspace" data-type=${options.defaultCollectionId} data-drop-enabled=${options.enableDrop ?? false}></section>` as HTMLElement;
     const header = H`<header class="doc-workspace-header">
         <div class="doc-headings">
             ${options.title ? H`<h1>${options.title}</h1>` : null}

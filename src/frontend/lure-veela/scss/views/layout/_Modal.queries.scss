@@ -8,7 +8,6 @@
 		.modal-form {
 			min-inline-size: min(92vw, 26.25rem);
 			max-block-size: min(92vh, 40rem);
-			padding: var(--space-lg);
 
 			.modal-fields { max-block-size: min(58vh, 23.75rem); }
 
@@ -27,7 +26,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.modal-field.valid,
 		.modal-field.invalid { animation: none; }
-		.btn:hover:not(:disabled) { transform: none; }
+		.btn:where(:hover, :focus-visible):not(:disabled) { transform: none; }
 	}
 }
 

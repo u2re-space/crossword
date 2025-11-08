@@ -10,6 +10,9 @@
         display: flex;
         flex-direction: column;
         gap: var(--gap-xs);
+        box-sizing: border-box;
+        max-inline-size: min(100cqi, 100dvi);
+        max-block-size: min(100cqb, 100dvb);
 
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
     }
@@ -24,12 +27,12 @@
         padding: var(--space-xl);
         z-index: 9999;
         line-height: normal;
+        overflow: hidden;
+        box-sizing: border-box;
+        max-inline-size: min(100cqi, 100dvi);
+        max-block-size: min(100cqb, 100dvb);
 
         @include ui.glass-backdrop();
-
-        @media (pointer: coarse) {
-            padding: calc(var(--space-xl) * 1.25);
-        }
     }
 
     //
@@ -40,13 +43,16 @@
         inline-size: stretch;
         overflow: visible;
         line-height: normal;
+        box-sizing: border-box;
+        block-size: stretch;
 
         @include ui.card-surface(surface-container, var(--surface-opacity-emphasis), var(--radius-xl), var(--space-xl), 3);
         @include ui.vstack(var(--space-lg));
         @include ui.container-inline;
         @include scrollable("y");
 
-        & { scrollbar-color: color-mix(in oklch, var(--on-surface, currentColor) var(--scrollbar-tint, 86%), transparent) transparent; }
+        //
+        &, &:focus-visible, &:focus { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--on-surface, currentColor) var(--scrollbar-tint, 86%), transparent) transparent; }
 
         //
         .modal-title {
@@ -192,7 +198,7 @@
                     animation: none;
                 }
 
-                .btn:hover:not(:disabled) {
+                .btn:where(:hover, :focus-visible):not(:disabled) {
                     transform: none;
                 }
             }

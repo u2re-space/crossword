@@ -147,12 +147,105 @@
                         @media (max-height: 480px) { padding: var(--padding-lg); gap: var(--gap-md); @include ui.text-label("title-medium"); }
 
                         //
+                        & {
+                            position: relative;
+                            isolation: isolate;
+                            border-radius: var(--radius-md);
+                            transition: color var(--transition-colors), background-color var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
+                            color: color-mix(in oklch, var(--on-surface, currentColor) 72%, transparent);
+                            will-change: transform, color, opacity;
+                            transform: translate3d(0, 0, 0);
+                        }
+
+                        &::before {
+                            content: "";
+                            position: absolute;
+                            inset: 0;
+                            border-radius: inherit;
+                            background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 18%, transparent);
+                            opacity: 0;
+                            transform: scale3d(0.98, 0.98, 1);
+                            transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
+                            pointer-events: none;
+                            will-change: opacity, transform;
+                        }
+
+                        &::after {
+                            content: "";
+                            position: absolute;
+                            inset-block: clamp(0.35rem, 0.6lh, 1.25rem);
+                            inset-inline-start: calc(var(--gap-sm) * -0.6);
+                            inline-size: max(0.2rem, 3px);
+                            border-radius: var(--radius-full);
+                            background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 48%, transparent);
+                            opacity: 0;
+                            transform: scale3d(1, 0.4, 1);
+                            transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
+                            pointer-events: none;
+                            will-change: opacity, transform;
+                        }
+
+                        &:where(:hover, :focus-visible, :focus, :active) {
+                            color: color-mix(in oklch, var(--on-surface, currentColor) 94%, transparent);
+                            transform: translate3d(0.08rem, 0, 0);
+
+                            &::before {
+                                opacity: 0.55;
+                                transform: scale3d(1, 1, 1);
+                            }
+
+                            &::after {
+                                opacity: 0.6;
+                                transform: scale3d(1, 1, 1);
+                            }
+
+                            ui-icon {
+                                color: color-mix(in oklch, var(--on-surface, currentColor) 94%, transparent);
+                                transform: scale3d(1.05, 1.05, 1);
+                            }
+                        }
+
+                        &[data-active="true"] {
+                            color: color-mix(in oklch, var(--on-primary, var(--on-surface, currentColor)) 94%, transparent);
+                            font-weight: var(--font-weight-semibold);
+                            letter-spacing: 0.02em;
+                            transform: translate3d(0.12rem, 0, 0);
+
+                            &::before {
+                                opacity: 0.85;
+                                transform: scale3d(1, 1, 1);
+                                background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 36%, transparent);
+                                box-shadow:
+                                    0 6px 18px color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 14%, transparent),
+                                    0 0 0 1px color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 22%, transparent);
+                            }
+
+                            &::after {
+                                opacity: 1;
+                                transform: scale3d(1, 1, 1);
+                                background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 92%, transparent);
+                            }
+
+                            ui-icon {
+                                color: color-mix(in oklch, var(--on-primary, var(--on-surface, currentColor)) 94%, transparent);
+                                transform: scale3d(1.06, 1.06, 1);
+                            }
+                        }
+
+                        @media (prefers-reduced-motion: reduce) {
+                            &, &::before, &::after {
+                                transition-duration: 0ms;
+                                transform: none;
+                            }
+                        }
+
                         ui-icon {
                             justify-self: start;
                             inline-size: var(--icon-size);
                             block-size: var(--icon-size);
                             --icon-size: var(--icon-size-sm);
                             color: color-mix(in oklch, var(--on-surface, currentColor) 58%, transparent);
+                            transition: color var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
 
                             @media (max-width: 720px) { --icon-size: var(--icon-size-md); }
                             @media (max-width: 480px) { --icon-size: var(--icon-size-lg); }
