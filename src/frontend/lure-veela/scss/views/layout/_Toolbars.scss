@@ -9,7 +9,9 @@
 
     .toolbar {
         background-color: transparent;
-        display: none;
+        display: flex;
+        flex-direction: row;
+        grid-column: 3 / -1;
     }
 
     .view-toolbar {

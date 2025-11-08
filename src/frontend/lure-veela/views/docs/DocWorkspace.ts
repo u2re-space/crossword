@@ -527,12 +527,8 @@ export const DocWorkspace = (options: DocWorkspaceOptions): HTMLElement & { cont
         entries.clear();
     };
 
-    const wrapper = H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">
-        ${actionArea}
-        ${root as HTMLElement & { controller: DocWorkspaceController }}
-    </div>`;
-
+    /*const wrapper = root;
     wrapper.controller = controller;
-
-    return wrapper;
+    return wrapper;*/
+    return root as HTMLElement & { controller: DocWorkspaceController };
 };

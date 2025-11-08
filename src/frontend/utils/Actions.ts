@@ -3,10 +3,14 @@ import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { openPickerAndAnalyze } from "./FileOps";
+import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite } from "./FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import { currentWebDav } from "@rs-core/config/Settings";
+import { getDirectoryHandle, mountAsRoot } from "fest/lure";
+
+
 
 //
 export const iconsPerAction = new Map<string, string>([
@@ -15,22 +19,92 @@ export const iconsPerAction = new Map<string, string>([
     ["generate", "magic-wand"],
     ["debug-gen", "bug"],
     ["paste-and-recognize", "clipboard"],
-    ["snip-and-recognize", "crop"]
+    ["snip-and-recognize", "crop"],
+
+    ["file-refresh", "arrows-clockwise"],
+    ["file-mount", "screwdriver"],
+    ["file-download", "download"],
+    ["file-upload", "upload"],
+
+    ["apply-settings", "gear-six"]
 ]);
+
+
 
 //
 export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
+    ["file-upload", (entityDesc: EntityDescriptor) => `Upload file`],
+    ["file-download", (entityDesc: EntityDescriptor) => `Download file`],
+    ["file-mount", (entityDesc: EntityDescriptor) => `Mount directory`],
+    ["file-refresh", (entityDesc: EntityDescriptor) => `Refresh`],
     ["add", (entityDesc: EntityDescriptor) => `Add ${entityDesc.label}`],
     ["upload", (entityDesc: EntityDescriptor) => `Upload and recognize`], //${entityDesc.label}
     ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
     ["debug-gen", (entityDesc: EntityDescriptor) => `Generate debug tasks for ${entityDesc.label}`],
     ["paste-and-recognize", (entityDesc: EntityDescriptor) => "Paste and recognize"],
-    ["snip-and-recognize", (entityDesc: EntityDescriptor) => "Snip and recognize"]
+    ["snip-and-recognize", (entityDesc: EntityDescriptor) => "Snip and recognize"],
+    ["apply-settings", (entityDesc: EntityDescriptor)=>"Save settings"]
 ]);
+
+
 
 //
 export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
+    ["apply-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
+        const forms = viewPage.forms;
+        const tabsState = viewPage.tabsState;
+        if (forms) {
+            const activeForm = forms.get(tabsState.value);
+            activeForm?.requestSubmit?.();
+        }
+    }],
+
+
+
+    ["file-upload", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
+        const viewer = viewPage?.querySelector("ui-file-manager");
+        openPickerAndWrite(viewer?.path, 'text/markdown,text/plain,.md', true)?.then?.(() => {
+            toastSuccess("Uploaded");
+            currentWebDav?.sync?.upload?.();
+        }).catch((e) => {
+            toastError("Upload failed");
+            console.warn(e);
+        });
+    }],
+
+    ["file-mount", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        const viewer = viewPage?.querySelector("ui-file-manager");
+        getDirectoryHandle(null, viewer?.path, { create: true })?.then?.(async () => {
+            await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
+            toastSuccess("Mounted");
+        }).catch((e) => {
+            toastError("Mount failed");
+            console.warn(e);
+        });
+    }],
+
+    ["file-download", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        const viewer = viewPage?.querySelector("ui-file-manager");
+        downloadByPath(viewer?.path)?.then?.(() => {
+            toastSuccess("Downloaded");
+        }).catch((e) => {
+            toastError("Download failed");
+            console.warn(e);
+        });
+    }],
+
+    ["file-refresh", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        const viewer = viewPage?.querySelector("ui-file-manager");
+        currentWebDav?.sync?.download?.(viewer?.path)?.then?.(() => {
+            viewer?.loadPath?.(viewer?.path);
+            toastSuccess("Refreshed");
+        }).catch((e) => {
+            toastError("Refresh failed");
+            console.warn(e);
+        });
+    }],
+
     ["debug-gen", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         try {
             // Use debug task generation for immediate testing

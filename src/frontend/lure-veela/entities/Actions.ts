@@ -14,3 +14,8 @@ const generateActionButton = (action: string, entityDesc: EntityDescriptor, view
 export const makeActions = (actions: string[], entityDesc: EntityDescriptor, viewPage?: any) => {
     return actions.map((action) => generateActionButton(action, entityDesc, viewPage));
 }
+
+//
+export const makeToolbar = (actions: string[], entityDesc: EntityDescriptor, forView: any)=>{
+    return H`<div slot="bar" class="view-toolbar"><div class="button-set">${makeActions(actions, entityDesc, forView)}</div></div>`
+}

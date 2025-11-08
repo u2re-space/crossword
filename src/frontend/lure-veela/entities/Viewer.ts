@@ -67,11 +67,7 @@ export const ViewPage = <
     ></ui-tabbed-box>`;
 
     //
-    const toolbar = H`<div slot="bar" class="view-toolbar">
-    <div class="button-set">
-        ${makeActions(availableActions, entityDesc, viewPage)}</div>
-    </div>`
-    const section = H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">${toolbar}<section id="${entityDesc.type}" class="viewer-section">${tabbed}</section></div>` as HTMLElement; viewPage.$section = section;
+    const section = H`<section id="${entityDesc.type}" class="viewer-section">${tabbed}</section>` as HTMLElement; viewPage.$section = section;
     const intake = (payload) => sendToEntityPipeline(payload, { entityType: entityDesc.type }).catch(console.warn);
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
@@ -90,5 +86,5 @@ export const ViewPage = <
     });
 
     //
-    return section;//makeFragment([toolbar, section]);
+    return section;
 }

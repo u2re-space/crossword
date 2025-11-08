@@ -17,6 +17,7 @@ import { MCPSection } from "@rs-core/config/sections/MCPSection";
 import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
 import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
+import { propRef, stringRef } from "fest/object";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
@@ -32,7 +33,6 @@ export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as Sec
 //
 export const Settings = async () => {
     const container = H`<section id="settings" class="settings-view"></section>`;
-    const tabsState: { value: SectionKey } = { value: SETTINGS_SECTIONS[0].key };
 
     //
     const fieldRefs = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
@@ -46,11 +46,6 @@ export const Settings = async () => {
     // MCP management
     const mcpConfigs: MCPConfig[] = [];
     const mcpContainerRefs = new Map<string, HTMLElement>();
-
-    //
-    const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
-    const saveBtn = H`<button type="submit" class="btn save"><ui-icon icon="check"></ui-icon><span>Save changes</span></button>` as HTMLButtonElement;
-    const actions = H`<div class="settings-actions">${[status, saveBtn]}</div>` as HTMLElement;
 
     //
     const createField = (config: FieldConfig) => {
@@ -246,8 +241,10 @@ export const Settings = async () => {
         style="background-color: transparent; inline-size: stretch; block-size: stretch;"
         class="all"
     ></ui-tabbed-box>` as HTMLElement;
+    const tabsState: { value: SectionKey } = propRef(panelsWrapper, "currentTab", SETTINGS_SECTIONS[0].key);
     container.append(panelsWrapper);
 
+    //
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
     const customModelInput = fieldRefs.get("ai.customModel") as HTMLInputElement | undefined;
     const customModelGroup = groupRefs.get("ai:custom-model");
@@ -368,8 +365,10 @@ export const Settings = async () => {
             //panel.setAttribute("aria-hidden", selected ? "false" : "true");
             panel.tabIndex = selected ? 0 : -1;
         });
+        tabsState.value = key;
     }
 
+    //
     activateSection(tabsState.value);
 
     // Add event delegation for remove MCP buttons
@@ -384,6 +383,7 @@ export const Settings = async () => {
         }
     });
 
+    //
     let settings = await loadSettings();
 
     // Load existing MCP configurations BEFORE applying settings
@@ -412,10 +412,14 @@ export const Settings = async () => {
         }
     }
 
+    //
     await updateTimelineSelect(settings);
     applySettingsToForm(settings);
     applyModelSelection(settings);
     syncCustomVisibility();
+
+    //
+    const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
 
     //
     const handleFormInput = (event: Event) => {
@@ -424,6 +428,7 @@ export const Settings = async () => {
         status.textContent = "";
     };
 
+    //
     const handleSubmit = async (event: SubmitEvent) => {
         const submittedForm = event.target;
         if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.classList.contains('settings-form')) return;
@@ -459,6 +464,7 @@ export const Settings = async () => {
             }
         });
 
+        //
         const next: AppSettings = {
             ai: {
                 apiKey: readValue("ai.apiKey"),
@@ -478,6 +484,7 @@ export const Settings = async () => {
             }
         };
 
+        //
         try {
             settings = await saveSettings(next);
             await updateTimelineSelect(settings);
@@ -494,16 +501,10 @@ export const Settings = async () => {
         }
     };
 
+    //
     container.addEventListener("input", handleFormInput);
     container.addEventListener("submit", handleSubmit);
-    saveBtn.addEventListener("click", () => {
-        const activeForm = forms.get(tabsState.value);
-        activeForm?.requestSubmit();
-    });
-
-    //
-    return H`<div style="display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; inline-size: stretch; block-size: stretch; grid-column: 1 / -1; grid-row: 1 / -1;">
-        ${actions}
-        ${container}
-    </div>` as HTMLElement;
+    container.tabsState = tabsState;
+    container.forms = forms;
+    return container as HTMLElement;
 };

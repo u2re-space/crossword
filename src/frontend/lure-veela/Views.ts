@@ -20,6 +20,7 @@ import { ViewPage } from "./entities/Viewer";
 
 // @ts-ignore
 import style from "./scss/index.scss?inline";
+import { makeToolbar } from "./entities/Actions";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -77,8 +78,8 @@ export async function frontend(mountElement) {
 
     //
     const views = new Map<any, any>([
-        ["preferences", () => PreferencesView()],
-        ["quests", () => QuestsView()],
+        //["preferences", () => PreferencesView()],
+        //["quests", () => QuestsView()],
         ["explorer", () => DataExplorer()],
         ["settings", await Settings()],
         ...(await Promise.all(
@@ -88,7 +89,30 @@ export async function frontend(mountElement) {
     ]);
 
     //
-    const layout = AppLayout(views, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
+    const actions = new Map<string, any>(Array.from(entityViews?.entries?.()).map(([key, desc])=>{
+        return [key, makeToolbar(desc?.availableActions || [], {
+            label: desc?.label || key,
+            type: key,
+            DIR: (key == "task" || key == "timeline") ? `/timeline/` : `/data/${key}/`
+        }, views.get(key))];
+    }));
+
+    //
+    actions.set("explorer", makeToolbar(["file-refresh", "file-upload", "file-download", "file-mount"], {
+        label: "File Explorer",
+        type: "explorer",
+        DIR: `/`
+    }, views.get("explorer")));
+
+    //
+    actions.set("settings", makeToolbar(["apply-settings"], {
+        label: "Settings",
+        type: "settings",
+        DIR: `/`
+    }, views.get("settings")));
+
+    //
+    const layout = AppLayout(views, actions, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
 }

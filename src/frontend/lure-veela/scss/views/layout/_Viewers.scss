@@ -47,7 +47,7 @@
         block-size: stretch;
         gap: var(--gap-xs);
 
-        grid-column: 1 / -1;
+        grid-column: 2 / -1;
         grid-row: 2 / -1;
 
         @include scrollable("y");
