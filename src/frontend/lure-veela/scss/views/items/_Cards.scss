@@ -173,8 +173,16 @@
         --card-overlay-secondary: var(--card-overlay-secondary-base);
         --card-gradient-angle: 128deg;
         --card-shadow-base: var(--md3-elevation-2, md3-elevation(2));
-        --card-shadow-outline: 0 0 0 1px color-mix(in oklch, var(--current, currentColor) calc((var(--card-border-alpha) + 0.08) * 100%), transparent);
-        --card-shadow-ambient: 0 28px 42px -30px color-mix(in oklch, var(--current, currentColor) calc((var(--card-shadow-strength) + 0.08) * 100%), transparent);
+        --card-shadow-outline: 0 0 0 1px color-mix(
+            in oklch,
+            var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.08) * 100%),
+            transparent
+        );
+        --card-shadow-ambient: 0 28px 42px -30px color-mix(
+            in oklch,
+            var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.08) * 100%),
+            transparent
+        );
 
         --color-red: var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1)));
         --color-yellow: var(--color-warning, oklch(0.86 0.09 100 / 1));
@@ -234,13 +242,25 @@
         background-image:
             radial-gradient(
                 140% 120% at 0% 100%,
-                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-strength) * 55%), transparent) 0%,
+                color-mix(
+                    in oklch,
+                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-strength) * 55%),
+                    transparent
+                ) 0%,
                 transparent 62%
             ),
             linear-gradient(
                 var(--card-gradient-angle),
-                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-strength) * 90%), transparent) 0%,
-                color-mix(in oklch, var(--surface-color, currentColor) calc(var(--card-overlay-secondary) * 100%), transparent) 42%,
+                color-mix(
+                    in oklch,
+                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-strength) * 90%),
+                    transparent
+                ) 0%,
+                color-mix(
+                    in oklch,
+                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-secondary) * 100%),
+                    transparent
+                ) 42%,
                 transparent 100%
             );
 
@@ -294,8 +314,16 @@
             --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.1));
             --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.06));
             --card-shadow-base: var(--md3-elevation-2, md3-elevation(2));
-            --card-shadow-outline: 0 0 0 1px color-mix(in oklch, var(--current, currentColor) calc((var(--card-border-alpha) + 0.12) * 100%), transparent);
-            --card-shadow-ambient: 0 34px 54px -28px color-mix(in oklch, var(--current, currentColor) calc((var(--card-shadow-strength) + 0.18) * 100%), transparent);
+            --card-shadow-outline: 0 0 0 1px color-mix(
+                in oklch,
+                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.12) * 100%),
+                transparent
+            );
+            --card-shadow-ambient: 0 34px 54px -28px color-mix(
+                in oklch,
+                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.18) * 100%),
+                transparent
+            );
         }
 
         &[data-open] {
@@ -304,8 +332,16 @@
             --card-overlay-strength: min(0.6, calc(var(--card-overlay-strength-base) + 0.06));
             --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
             --card-shadow-base: var(--md3-elevation-3, md3-elevation(3));
-            --card-shadow-outline: 0 0 0 1px color-mix(in oklch, var(--current, currentColor) calc((var(--card-border-alpha) + 0.14) * 100%), transparent);
-            --card-shadow-ambient: 0 40px 62px -26px color-mix(in oklch, var(--current, currentColor) calc((var(--card-shadow-strength) + 0.22) * 100%), transparent);
+            --card-shadow-outline: 0 0 0 1px color-mix(
+                in oklch,
+                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.14) * 100%),
+                transparent
+            );
+            --card-shadow-ambient: 0 40px 62px -26px color-mix(
+                in oklch,
+                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.22) * 100%),
+                transparent
+            );
         }
 
         @container (inline-size <= 460px) {
@@ -355,7 +391,7 @@
         }
 
         .card-avatar {
-            --icon-color: --c2-surface(0, var(--current, currentColor));
+            --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
 
             //
             inline-size: var(--card-avatar-size);
@@ -380,14 +416,18 @@
             }
 
             ui-icon {
-                --icon-color: --c2-surface(0, var(--current, currentColor));
+                --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
             }
         }
 
         //
         .card-description,
         .card-content {
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
+            color: color-mix(
+                in oklch,
+                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-secondary, 74%),
+                transparent
+            );
             opacity: 1;
             grid-column: 1 / -1;
             block-size: max-content;
@@ -429,7 +469,11 @@
             ul {
                 margin: 0;
                 padding: 0;
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
+                color: color-mix(
+                    in oklch,
+                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
+                    transparent
+                );
                 line-height: normal;
                 block-size: max-content;
                 overflow: hidden;
@@ -474,7 +518,11 @@
         .card-desc {
             padding: 0;
             margin: 0;
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
+            color: color-mix(
+                in oklch,
+                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
+                transparent
+            );
             list-style: none;
 
             @include ui.text-body("body-small");
@@ -504,7 +552,11 @@
         .card-kind {
             padding: 0;
             margin: 0;
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
+            color: color-mix(
+                in oklch,
+                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
+                transparent
+            );
             margin-block-start: var(--gap-xs);
             list-style: none;
 
@@ -578,7 +630,10 @@
         .card-links {
             grid-column: 1 / -1;
             font-size: t.$font-sm;
-            color: --c2-on-surface(var(--text-tint-muted), var(--current, currentColor));
+            color: --c2-on-surface(
+                var(--text-tint-muted),
+                var(--current, var(--color-primary, var(--md3-primary, #6750a4)))
+            );
 
             @include ui.vstack(var(--gap-xs));
 
@@ -639,7 +694,11 @@
             p {
                 font-size: 1em;
                 font-weight: var(--font-weight-thin);
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
+                color: color-mix(
+                    in oklch,
+                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-primary, 92%),
+                    transparent
+                );
                 margin: 0;
                 padding: 0;
                 display: block;
@@ -661,7 +720,11 @@
             span {
                 font-size: 1em;
                 font-weight: var(--font-weight-thin);
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
+                color: color-mix(
+                    in oklch,
+                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-primary, 92%),
+                    transparent
+                );
                 margin: 0;
                 padding: 0;
                 display: block;

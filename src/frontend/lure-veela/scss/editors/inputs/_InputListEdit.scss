@@ -81,7 +81,7 @@
                     border-radius: var(--radius-full);
                     z-index: 2;
 
-                    @include checkbox-radio-base;
+                    @include checkbox-base;
                 }
             }
 
@@ -262,7 +262,7 @@
                 inline-size: auto;
                 field-sizing: content;
 
-                @include checkbox-radio-base;
+                @include checkbox-base;
             }
 
             // Enhanced responsive adjustments
