@@ -25,7 +25,7 @@
 
     // Enhanced select styling
     select {
-        @include select-base();
+        //@include select-base();
 
         & { min-block-size: 2.5rem; };
         & { min-inline-size: 4rem; };

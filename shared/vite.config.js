@@ -3,10 +3,8 @@ import { resolve } from "node:path";
 //
 import optimizer from 'vite-plugin-optimizer';
 import { externalPlugin } from "@praha/vite-plugin-external";
-import cssnano from "cssnano";
-import deduplicate from "postcss-discard-duplicates";
-import autoprefixer from "autoprefixer";
 import https from "../private/https/certificate.mjs";
+import postcssConfig from "../postcss.config.js";
 
 //
 import { viteSingleFile } from 'vite-plugin-singlefile';
@@ -198,22 +196,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     //
     const css = {
-        postcss: {
-            plugins: [
-                deduplicate(),
-                autoprefixer(),
-                cssnano({
-                    preset: ['advanced', {
-                        calc: false,
-                        layer: false,
-                        scope: false,
-                        discardComments: {
-                            removeAll: true
-                        }
-                    }],
-                }),
-            ],
-        },
+        postcss: postcssConfig,
     }
 
     //

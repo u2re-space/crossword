@@ -1,6 +1,8 @@
 // Card Components - Refactored and Optimized
 // Unified with design system variables and mixins
 
+@use "sass:list";
+
 @use "veela-lib" as *;
 @use "../../library/mixins" as ui;
 @use "../../library/tokens" as t;
@@ -9,7 +11,6 @@
 @mixin make-wraps {
     @include text-wrap;
 
-    //
     text-align: justify;
     text-overflow: ellipsis;
     text-spacing-trim: trim-start;
@@ -33,7 +34,8 @@
         text-transform: uppercase;
     }
 
-    span, a {
+    span,
+    a {
         font-size: var(--font-xs);
         display: inline-block;
         line-height: inherit;
@@ -54,22 +56,20 @@
     }
 }
 
-//
 @mixin make-openable($selector: ".card-content") {
-    // Toggle description functionality
     & #{$selector} {
         display: none;
         block-size: 0px;
         interpolate-size: allow-keywords;
-        transition: block-size var(--duration-normal) var(--ease-out),
-                    display var(--duration-normal) var(--ease-out),
-                    padding-block var(--duration-normal) var(--ease-out);
+        transition:
+            block-size var(--duration-normal) var(--ease-out),
+            display var(--duration-normal) var(--ease-out),
+            padding-block var(--duration-normal) var(--ease-out);
         transition-duration: var(--duration-normal);
         transition-delay: 0s;
         transition-behavior: allow-discrete;
     }
 
-    //
     &[data-open] #{$selector}:not(:empty) {
         display: flex;
         opacity: 1;
@@ -78,7 +78,6 @@
         interpolate-size: allow-keywords;
     }
 
-    //
     @starting-style {
         &[data-open] #{$selector} {
             opacity: 0;
@@ -89,7 +88,167 @@
     }
 }
 
-//
+$card-ambient-default: 0 28px 42px -30px;
+$card-ambient-hover: 0 34px 54px -28px;
+$card-ambient-open: 0 40px 62px -26px;
+
+$card-variants: (
+    "red": "--color-red",
+    "purple": "--color-purple",
+    "green": "--color-green",
+    "blue": "--color-blue",
+    "orange": "--color-orange",
+    "yellow": "--color-yellow"
+);
+
+@mixin card-color($tint) {
+    color: color-mix(
+        in oklch,
+        var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) #{$tint},
+        transparent
+    );
+}
+
+@mixin card-reset-item {
+    margin: 0;
+    padding: 0;
+    line-height: inherit;
+}
+
+@mixin card-list-reset($display: block, $list-style: none) {
+    margin: 0;
+    padding: 0;
+    list-style: $list-style;
+    display: $display;
+    line-height: inherit;
+    block-size: max-content;
+    overflow: hidden;
+}
+
+@mixin card-inline($type: "body-small", $gap: var(--gap-xs), $truncate: false) {
+    @include card-list-reset(flex);
+
+    @if $type == "title-small" {
+        @include ui.text-heading($type);
+    } @else {
+        @include ui.text-body($type);
+    }
+
+    @include ui.inline-toolbar($gap);
+
+    @if $truncate {
+        @include text-truncate;
+    }
+
+    li {
+        @include card-reset-item;
+    }
+}
+
+@mixin card-stack($tint, $gap: var(--gap-xs), $clamp: 4) {
+    @include card-color($tint);
+
+    opacity: 1;
+    grid-column: 1 / -1;
+    block-size: max-content;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding-block: var(--padding-sm);
+    line-height: normal;
+    text-align: start;
+
+    @include ui.text-body("body-small");
+    @include ui.vstack($gap);
+
+    @if $clamp != null {
+        @include text-clamp($clamp);
+    }
+
+    &:empty {
+        display: none;
+        block-size: 0px;
+        padding-block: 0rem;
+    }
+}
+
+@mixin card-paragraph {
+    @include can-wrap-text;
+    display: inline-block;
+    inline-size: stretch;
+    block-size: max-content;
+    margin: 0;
+    padding: 0;
+    line-height: var(--leading-tight);
+    text-align: start;
+}
+
+@mixin card-rich-text($tint) {
+    font-size: 1em;
+    font-weight: var(--font-weight-thin);
+    @include card-color($tint);
+
+    margin: 0;
+    padding: 0;
+    display: block;
+    gap: var(--gap-xs);
+    list-style: none;
+    line-height: inherit;
+    text-align: start;
+
+    &::first-letter {
+        text-transform: uppercase;
+    }
+
+    li {
+        @include card-reset-item;
+    }
+}
+
+@mixin card-shadows($elevation, $border-delta, $shadow-delta, $ambient: $card-ambient-default) {
+    --card-shadow-base: var(--md3-elevation-#{$elevation}, md3-elevation(#{$elevation}));
+    --card-shadow-outline: 0 0 0 1px color-mix(
+        in oklch,
+        var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + #{$border-delta}) * 100%),
+        transparent
+    );
+    --card-shadow-ambient: #{$ambient} color-mix(
+        in oklch,
+        var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + #{$shadow-delta}) * 100%),
+        transparent
+    );
+}
+
+@mixin card-surface-vars(
+    $tone,
+    $border,
+    $shadow,
+    $overlay,
+    $secondary,
+    $tint-range: (-0.12, -0.02, -0.8)
+) {
+    --card-surface-tone-base: #{$tone};
+    --card-border-alpha-base: #{$border};
+    --card-shadow-strength-base: #{$shadow};
+    --card-overlay-strength-base: #{$overlay};
+    --card-overlay-secondary-base: #{$secondary};
+    --card-surface-tint-min: #{list.nth($tint-range, 1)};
+    --card-surface-tint-max: #{list.nth($tint-range, 2)};
+    --card-surface-tint-factor: #{list.nth($tint-range, 3)};
+}
+
+@mixin card-sync-vars {
+    --card-surface-tone: var(--card-surface-tone-base);
+    --card-border-alpha: var(--card-border-alpha-base);
+    --card-shadow-strength: var(--card-shadow-strength-base);
+    --card-overlay-strength: var(--card-overlay-strength-base);
+    --card-overlay-secondary: var(--card-overlay-secondary-base);
+    --card-surface-tint: clamp(
+        var(--card-surface-tint-min, -0.12),
+        calc(var(--card-surface-tone) * var(--card-surface-tint-factor, -0.8)),
+        var(--card-surface-tint-max, -0.02)
+    );
+}
+
 @layer rs-cards {
     @property --card-surface-tone {
         syntax: "<number>";
@@ -158,56 +317,44 @@
     }
 
     .card {
-        //
         --current: var(--primary);
-        --card-surface-tone-base: clamp(0.06, var(--surface-opacity-subtle), 0.14);
-        --card-border-alpha-base: clamp(0.12, calc(var(--card-surface-tone-base) * 2.1), 0.22);
-        --card-shadow-strength-base: clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.24);
-        --card-overlay-strength-base: clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34);
-        --card-overlay-secondary-base: clamp(0.1, calc(var(--card-overlay-strength-base) * 0.52), 0.24);
-        --card-surface-tone: var(--card-surface-tone-base);
-        --card-surface-tint: clamp(-0.12, calc(var(--card-surface-tone) * -0.8), -0.02);
-        --card-border-alpha: var(--card-border-alpha-base);
-        --card-shadow-strength: var(--card-shadow-strength-base);
-        --card-overlay-strength: var(--card-overlay-strength-base);
-        --card-overlay-secondary: var(--card-overlay-secondary-base);
+
+        @include card-surface-vars(
+            clamp(0.06, var(--surface-opacity-subtle), 0.14),
+            clamp(0.12, calc(var(--card-surface-tone-base) * 2.1), 0.22),
+            clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.24),
+            clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34),
+            clamp(0.1, calc(var(--card-overlay-strength-base) * 0.52), 0.24)
+        );
+        @include card-sync-vars;
         --card-gradient-angle: 128deg;
-        --card-shadow-base: var(--md3-elevation-2, md3-elevation(2));
-        --card-shadow-outline: 0 0 0 1px color-mix(
-            in oklch,
-            var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.08) * 100%),
-            transparent
-        );
-        --card-shadow-ambient: 0 28px 42px -30px color-mix(
-            in oklch,
-            var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.08) * 100%),
-            transparent
-        );
+        @include card-shadows(2, 0.08, 0.08, $card-ambient-default);
 
         --color-red: var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1)));
         --color-yellow: var(--color-warning, oklch(0.86 0.09 100 / 1));
         --color-green: var(--color-success, oklch(0.72 0.13 150 / 1));
         --color-blue: var(--color-info, oklch(0.65 0.12 240 / 1));
         --color-purple: var(--md3-tertiary, oklch(0.62 0.22 310 / 1));
-        --color-orange: color-mix(in oklch,
+        --color-orange: color-mix(
+            in oklch,
             var(--color-warning, oklch(0.82 0.12 80 / 1)) 70%,
             var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1))) 30%
         );
         --color-shade: var(--card-surface-tone);
         --color-tint: var(--card-surface-tint);
 
-
-
-
         display: grid;
-        grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr) minmax(0px, max-content) minmax(0px, max-content);
+        grid-template-columns:
+            minmax(0px, max-content)
+            minmax(0px, 1fr)
+            minmax(0px, max-content)
+            minmax(0px, max-content);
         grid-auto-rows: minmax(0px, max-content);
         grid-auto-flow: column;
         column-fill: balance;
         align-items: center;
         gap: var(--space-lg);
         row-gap: var(--card-gap);
-
         place-self: center;
 
         transition: var(--transition-all);
@@ -225,19 +372,14 @@
         position: relative;
         isolation: isolate;
 
-        //
         border-radius: var(--card-radius);
         padding: var(--card-padding);
-
-        //
         background-blend-mode: plus-lighter, normal;
         background-repeat: no-repeat;
         background-origin: border-box;
 
-        //
         @include solid-colorize("&", ("shade": var(--card-surface-tone)));
 
-        //
         background-color: var(--surface-color);
         background-image:
             radial-gradient(
@@ -264,19 +406,21 @@
                 transparent 100%
             );
 
-        //
         & {
             inline-size: stretch !important;
             min-inline-size: fit-content !important;
             max-inline-size: 60rem !important;
         }
 
-        &, & * {
+        &,
+        & * {
             touch-action: pan-y;
             line-height: normal;
         }
 
-        &, &:hover, &:active {
+        &,
+        &:hover,
+        &:active {
             box-shadow: var(--card-shadow-base), var(--card-shadow-outline), var(--card-shadow-ambient);
             border-width: 0.5px;
         }
@@ -289,23 +433,36 @@
         &:not([data-variant]),
         &[data-variant="default"] {
             --current: var(--surface-container-high, var(--primary));
-            --card-surface-tone-base: clamp(0.08, calc(var(--surface-opacity-default) * 1.2), 0.18);
-            --card-border-alpha-base: clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.28);
-            --card-shadow-strength-base: clamp(0.16, calc(var(--card-surface-tone-base) * 1.9), 0.28);
-            --card-overlay-strength-base: clamp(0.22, calc(var(--card-surface-tone-base) * 1.9), 0.38);
-            --card-overlay-secondary-base: clamp(0.12, calc(var(--card-overlay-strength-base) * 0.5), 0.26);
-            --card-surface-tint: clamp(-0.14, calc(var(--card-surface-tone) * -0.9), -0.03);
+            @include card-surface-vars(
+                clamp(0.08, calc(var(--surface-opacity-default) * 1.2), 0.18),
+                clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.28),
+                clamp(0.16, calc(var(--card-surface-tone-base) * 1.9), 0.28),
+                clamp(0.22, calc(var(--card-surface-tone-base) * 1.9), 0.38),
+                clamp(0.12, calc(var(--card-overlay-strength-base) * 0.5), 0.26),
+                (-0.14, -0.03, -0.9)
+            );
+            @include card-sync-vars;
         }
 
-        /*
-        &[data-variant] {
-            --card-surface-tone: clamp(0.24, calc(var(--surface-opacity-strong) + 0.12), 0.48);
-            --card-surface-tint: clamp(-0.28, calc(var(--card-surface-tone) * -0.82), -0.06);
-            --card-border-alpha: clamp(0.22, calc(var(--card-surface-tone) * 0.96), 0.42);
-            --card-shadow-strength: clamp(0.28, calc(var(--card-surface-tone) * 1.06), 0.44);
-            --card-overlay-strength: clamp(0.3, calc(var(--card-surface-tone) * 1.4), 0.56);
-            --card-overlay-secondary: clamp(0.16, calc(var(--card-overlay-strength) * 0.48), 0.34);
-        }*/
+        @each $variant, $color-var in $card-variants {
+            &[data-variant="#{$variant}"] {
+                --current: var(#{$color-var});
+            }
+        }
+
+        &[data-variant="blur"] {
+            --current: var(--primary);
+            @include card-surface-vars(
+                clamp(0.18, calc(var(--surface-opacity-default) * 2.6), 0.36),
+                clamp(0.18, calc(var(--card-surface-tone-base) * 1.06), 0.32),
+                clamp(0.22, calc(var(--card-surface-tone-base) * 1.24), 0.38),
+                clamp(0.28, calc(var(--card-surface-tone-base) * 1.3), 0.44),
+                clamp(0.14, calc(var(--card-overlay-strength-base) * 0.48), 0.28),
+                (-0.22, -0.04, -0.86)
+            );
+            @include card-sync-vars;
+            backdrop-filter: blur(18px) saturate(125%);
+        }
 
         &:where(:hover, :focus-visible, :focus, :active) {
             --card-surface-tone: min(0.6, calc(var(--card-surface-tone-base) + 0.06));
@@ -313,17 +470,7 @@
             --card-shadow-strength: min(0.5, calc(var(--card-shadow-strength-base) + 0.1));
             --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.1));
             --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.06));
-            --card-shadow-base: var(--md3-elevation-2, md3-elevation(2));
-            --card-shadow-outline: 0 0 0 1px color-mix(
-                in oklch,
-                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.12) * 100%),
-                transparent
-            );
-            --card-shadow-ambient: 0 34px 54px -28px color-mix(
-                in oklch,
-                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.18) * 100%),
-                transparent
-            );
+            @include card-shadows(2, 0.12, 0.18, $card-ambient-hover);
         }
 
         &[data-open] {
@@ -331,17 +478,7 @@
             --card-shadow-strength: min(0.46, calc(var(--card-shadow-strength-base) + 0.08));
             --card-overlay-strength: min(0.6, calc(var(--card-overlay-strength-base) + 0.06));
             --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
-            --card-shadow-base: var(--md3-elevation-3, md3-elevation(3));
-            --card-shadow-outline: 0 0 0 1px color-mix(
-                in oklch,
-                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + 0.14) * 100%),
-                transparent
-            );
-            --card-shadow-ambient: 0 40px 62px -26px color-mix(
-                in oklch,
-                var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-shadow-strength) + 0.22) * 100%),
-                transparent
-            );
+            @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
         }
 
         @container (inline-size <= 460px) {
@@ -351,29 +488,11 @@
                 calc(clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34) + 0.04),
                 0.4
             );
-        }
-
-        // Color variants
-        &[data-variant="red"] { --current: var(--color-red); }
-        &[data-variant="purple"] { --current: var(--color-purple); }
-        &[data-variant="green"] { --current: var(--color-green); }
-        &[data-variant="blue"] { --current: var(--color-blue); }
-        &[data-variant="orange"] { --current: var(--color-orange); }
-        &[data-variant="yellow"] { --current: var(--color-yellow); }
-        &[data-variant="blur"] {
-            --current: var(--primary);
-            --card-surface-tone-base: clamp(0.18, calc(var(--surface-opacity-default) * 2.6), 0.36);
-            --card-border-alpha-base: clamp(0.18, calc(var(--card-surface-tone-base) * 1.06), 0.32);
-            --card-shadow-strength-base: clamp(0.22, calc(var(--card-surface-tone-base) * 1.24), 0.38);
-            --card-overlay-strength-base: clamp(0.28, calc(var(--card-surface-tone-base) * 1.3), 0.44);
-            --card-overlay-secondary-base: clamp(0.14, calc(var(--card-overlay-strength-base) * 0.48), 0.28);
-            --card-surface-tint: clamp(-0.22, calc(var(--card-surface-tone) * -0.86), -0.04);
-            backdrop-filter: blur(18px) saturate(125%);
+            @include card-sync-vars;
         }
 
         li {
             @include text-truncate;
-
             font-size: inherit;
             color: currentColor;
             padding: 0;
@@ -393,22 +512,19 @@
         .card-avatar {
             --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
 
-            //
             inline-size: var(--card-avatar-size);
             block-size: var(--card-avatar-size);
             min-inline-size: var(--card-avatar-size);
             grid-column: 1 / 1 span;
             border-radius: 50%;
             line-height: 0;
-            background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.03));
+            background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.03));
             box-shadow: var(--shadow-inset-strong);
             aspect-ratio: 1 / 1;
 
-            //
             @include surface(0.8);
             @include grid-center;
 
-            //
             .avatar-inner {
                 font-weight: var(--font-weight-medium);
                 font-size: var(--font-base);
@@ -420,168 +536,73 @@
             }
         }
 
-        //
         .card-description,
         .card-content {
-            color: color-mix(
-                in oklch,
-                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-secondary, 74%),
-                transparent
-            );
-            opacity: 1;
-            grid-column: 1 / -1;
-            block-size: max-content;
-            box-sizing: border-box;
-            overflow: hidden;
-            padding-block: var(--padding-sm);
-            line-height: normal;
-            text-align: start;
-
-            @include ui.text-body("body-small");
-            @include ui.vstack(var(--gap-xs));
-            @include text-clamp(4);
-
-            &:empty {
-                display: none;
-                block-size: 0px;
-                padding-block: 0rem;
-            }
+            @include card-stack(var(--text-tint-secondary, 74%));
 
             .card-label {
-                margin-block-start: var(--gap-xs);
-                block-size: max-content;
+                margin-block: var(--gap-xs);
                 opacity: 0.8;
                 font-size: var(--font-sm);
                 line-height: normal;
                 display: flex;
                 flex-direction: row;
-                margin-block-end: var(--gap-xs);
 
-                &:empty {
-                    display: none;
-                }
-
+                &:empty,
                 &:has(+ ul:empty) {
                     display: none;
                 }
             }
 
             ul {
-                margin: 0;
-                padding: 0;
-                color: color-mix(
-                    in oklch,
-                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
-                    transparent
-                );
-                line-height: normal;
-                block-size: max-content;
-                overflow: hidden;
+                @include card-list-reset();
+                @include card-color(var(--text-tint-muted, 60%));
+
                 opacity: 0.8;
                 list-style-position: inside;
                 font-variant-numeric: tabular-nums;
                 font-size: t.$font-sm;
+                line-height: normal;
 
                 @include ui.vstack(var(--gap-xs));
 
-                &:empty { display: none; }
+                &:empty {
+                    display: none;
+                }
 
                 li {
+                    @include card-reset-item;
                     @include can-wrap-text;
                     display: list-item;
-                    flex-direction: row;
                     block-size: max-content;
-                    margin: 0;
-                    padding: 0;
                 }
             }
         }
 
-        //
         @include make-openable(".card-content");
-        //@include make-openable(".card-description");
 
         p {
-            @include can-wrap-text;
-            display: inline-block;
-            margin: 0;
-            padding: 0;
-            block-size: max-content;
-            inline-size: stretch;
-            line-height: var(--leading-tight);
-            text-align: start;
+            @include card-paragraph;
         }
 
-
-
-        // Card utility elements
         .card-desc {
-            padding: 0;
-            margin: 0;
-            color: color-mix(
-                in oklch,
-                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
-                transparent
-            );
-            list-style: none;
-
-            @include ui.text-body("body-small");
-            @include ui.inline-toolbar(var(--gap-xs));
-
-            li {
-                padding: 0;
-                margin: 0;
-            }
+            @include card-inline();
+            @include card-color(var(--text-tint-muted, 60%));
         }
 
         .card-title {
-            padding: 0;
-            margin: 0;
-            list-style: none;
-
-            @include ui.text-heading("title-small");
-            @include text-truncate;
-            @include ui.inline-toolbar(var(--gap-xs));
-
-            li {
-                padding: 0;
-                margin: 0;
-            }
+            @include card-inline("title-small", var(--gap-xs), true);
         }
 
         .card-kind {
-            padding: 0;
-            margin: 0;
-            color: color-mix(
-                in oklch,
-                var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-muted, 60%),
-                transparent
-            );
+            @include card-inline();
+            @include card-color(var(--text-tint-muted, 60%));
             margin-block-start: var(--gap-xs);
-            list-style: none;
-
-            @include ui.text-body("body-small");
-            @include ui.inline-toolbar(var(--gap-xs));
-
-            li {
-                padding: 0;
-                margin: 0;
-            }
         }
 
         .card-time {
-            padding: 0;
-            margin: 0;
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
-            list-style: none;
-
-            @include ui.text-body("body-small");
-            @include ui.inline-toolbar(var(--gap-xs));
-
-            li {
-                padding: 0;
-                margin: 0;
-            }
+            @include card-inline();
+            @include card-color(var(--text-tint-muted, 60%));
         }
 
         .card-props {
@@ -602,12 +623,7 @@
         }
 
         .card-actions {
-            @include ui.inline-toolbar(var(--gap-xs));
-
-            li {
-                padding: 0;
-                margin: 0;
-            }
+            @include card-inline();
 
             & > .action {
                 padding: var(--padding-xs) var(--padding-md);
@@ -621,7 +637,6 @@
                 @include flex-center;
             }
 
-            //
             @container (inline-size <= 400px) {
                 display: none;
             }
@@ -638,10 +653,7 @@
             @include ui.vstack(var(--gap-xs));
 
             ul {
-                margin: 0;
-                padding: 0;
-                list-style: none;
-
+                @include card-list-reset();
                 @include ui.vstack(var(--gap-xs));
 
                 li a {
@@ -658,7 +670,6 @@
             }
         }
 
-        // Interactive elements
         a {
             pointer-events: auto;
             user-select: none;
@@ -673,75 +684,25 @@
             }
         }
 
-        // Responsive behavior
         @include container("lg") {
             .card-actions > .action span {
                 display: none;
             }
         }
 
-
         .card-description-content,
         .card-properties {
-            display: block;
-            padding: 0;
-            margin: 0;
-            list-style: none;
+            @include card-list-reset();
             font-size: t.$font-sm;
             line-height: var(--leading-relaxed);
             text-align: start;
 
             p {
-                font-size: 1em;
-                font-weight: var(--font-weight-thin);
-                color: color-mix(
-                    in oklch,
-                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-primary, 92%),
-                    transparent
-                );
-                margin: 0;
-                padding: 0;
-                display: block;
-                flex-direction: row;
-                gap: var(--gap-xs);
-                list-style: none;
-                line-height: inherit;
-
-                li {
-                    padding: 0;
-                    margin: 0;
-                }
-
-                &::first-letter {
-                    text-transform: uppercase;
-                }
+                @include card-rich-text(var(--text-tint-primary, 92%));
             }
 
             span {
-                font-size: 1em;
-                font-weight: var(--font-weight-thin);
-                color: color-mix(
-                    in oklch,
-                    var(--on-surface, var(--color-on-surface, var(--md3-on-surface, #1c1b1f))) var(--text-tint-primary, 92%),
-                    transparent
-                );
-                margin: 0;
-                padding: 0;
-                display: block;
-                flex-direction: row;
-                gap: var(--gap-xs);
-                list-style: none;
-                line-height: inherit;
-                text-align: start;
-
-                &::first-letter {
-                    text-transform: uppercase;
-                }
-
-                li {
-                    padding: 0;
-                    margin: 0;
-                }
+                @include card-rich-text(var(--text-tint-primary, 92%));
 
                 &:first-of-type {
                     font-weight: var(--font-weight-medium);
@@ -749,9 +710,7 @@
             }
 
             li {
-                line-height: inherit;
-                padding: 0;
-                margin: 0;
+                @include card-reset-item;
             }
         }
 
@@ -761,10 +720,9 @@
     }
 
     @container (inline-size <= 600px) {
-        .card .action {
-            span {
-                display: none !important;
-            }
+        .card .action span {
+            display: none !important;
         }
     }
 }
+

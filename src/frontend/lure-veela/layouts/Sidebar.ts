@@ -23,10 +23,11 @@ export const Sidebar: any = (currentView: { value: string }, entityViews: any) =
             return;
         }
 
-        const links = sidebar.querySelectorAll<HTMLAnchorElement>('a[data-name]');
-        let nextActive: HTMLAnchorElement | null = null;
+        const links = sidebar.querySelectorAll('a[data-name]') as NodeListOf<HTMLAnchorElement>;
+        let nextActive: HTMLAnchorElement | undefined = undefined;
 
-        links.forEach((link) => {
+        //
+        links.forEach((link: HTMLAnchorElement) => {
             const isActive = normalize(link.dataset.name) === activeName;
             if (isActive) {
                 link.setAttribute("data-active", "true");
@@ -40,7 +41,8 @@ export const Sidebar: any = (currentView: { value: string }, entityViews: any) =
             }
         });
 
-        lastActiveName = nextActive ? (normalize(nextActive.dataset.name) || activeName) : null;
+        //
+        lastActiveName = nextActive ? (normalize((nextActive as any)?.name || (nextActive as any)?.dataset?.name) || activeName) : null;
     };
 
     applyActive(currentView?.value);

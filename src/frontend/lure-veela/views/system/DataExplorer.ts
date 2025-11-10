@@ -31,5 +31,5 @@ export const DataExplorer = () => {
     const intake  = (payload) => sendToEntityPipeline(payload, { entityType: viewer?.path?.split?.("/")?.at?.(-1) });
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
-    return H`${section}`;;
+    return section;
 };

@@ -353,7 +353,7 @@
             @include input-base;
 
             option {
-                @include input-base;
+                @include option-style;
             }
         }
 
@@ -390,7 +390,6 @@
                 color: transparent;
                 display: block;
                 block-size: max-content;
-                @include solid-colorize("&");
                 border-width: 0.5px;
 
                 &::-ms-expand {
@@ -416,7 +415,7 @@
                 line-height: normal;
 
                 @include flex-center;
-                @include surface(var(--surface-opacity-muted));
+                @include option-style;
 
                 & {
                     border-style: solid;

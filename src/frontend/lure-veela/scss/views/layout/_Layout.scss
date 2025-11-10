@@ -142,9 +142,9 @@
                         }
 
                         //
-                        & { padding: var(--padding-lg); column-gap: var(--gap-xs); gap: var(--gap-md); @include ui.text-label("label-large"); }
-                        @media (max-height: 600px) { padding: var(--padding-xl); gap: var(--gap-sm); @include ui.text-label("title-small"); }
-                        @media (max-height: 480px) { padding: var(--padding-lg); gap: var(--gap-md); @include ui.text-label("title-medium"); }
+                        & { padding: var(--padding-lg); column-gap: var(--gap-xs); gap: var(--gap-md); }
+                        @media (max-height: 600px) { padding: var(--padding-xl); gap: var(--gap-sm); }
+                        @media (max-height: 480px) { padding: var(--padding-lg); gap: var(--gap-md); }
 
                         //
                         & {
