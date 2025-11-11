@@ -8,57 +8,33 @@
     .datetime-editor {
         @include vstack(var(--space-sm));
         @include container-inline;
-
-        @include surface(var(--surface-opacity-default, 0.08));
     }
 
     // Input group with improved responsive design
     .datetime-inputs {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-        gap: var(--space-sm);
         align-items: center;
-
-        input {
-            & {
-                min-inline-size: 0;
-                @include font-nums-tabular;
-            }
-
-            &:where([type="date"], [type="time"], [type="datetime-local"]) {
-                @include input-padding-trailing(var(--space-lg));
-            }
-        }
     }
 
     // Error state styling
     .datetime-error {
         --current: var(--color-error);
 
-        @include state-inline(var(--space-xs), var(--space-xs), var(--space-sm), var(--radius-sm));
-        @include solid-colorize("&");
         @include font-style("&", ("size": "sm"));
     }
 
     // Format indicator
     .datetime-format {
         font-style: italic;
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-xs);
 
-        @include solid-colorize("&", ("shade": 0.02));
         @include font-style("&", ("size": "xs"));
     }
 
     // Placeholder state
     .datetime-editor-placeholder {
-        padding: var(--space-md);
-        border-radius: var(--radius-md);
         text-align: center;
 
-        @include solid-colorize("&", ("shade": 0.01));
         @include font-style("&", ("size": "sm"));
     }
-
-    // Responsive and feature queries moved to separate file: _DateTime.queries.scss
 }

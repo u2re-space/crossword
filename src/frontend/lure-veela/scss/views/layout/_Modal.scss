@@ -204,16 +204,4 @@
             }
         }
     }
-
-    //
-    // Container queries moved to separate file: _Modal.queries.scss
-
-    //
-    :where(.modal-toggle, .modal-sliders, .modal-sliders-group, .modal-container, .modal-main, .modal-controls) {
-        display: flex;
-        flex-direction: row;
-        gap: var(--gap-xs);
-
-        @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-md));
-    }
 }

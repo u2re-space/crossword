@@ -15,8 +15,6 @@
         padding: var(--padding-md);
         border-radius: var(--radius-md);
 
-        @include surface(var(--surface-opacity-default, 0.08));
-
         &-parts {
             display: inline-grid;
             flex-direction: column;
@@ -53,9 +51,6 @@
                 grid-column: remove-btn;
                 margin: 0;
                 line-height: 0;
-                border-radius: var(--radius-full, 50%);
-                inline-size: calc(var(--space-xl) * 1.6);
-                block-size: calc(var(--space-xl) * 1.6);
                 aspect-ratio: 1 / 1;
                 font-weight: 500;
                 border-width: 0.5px;
@@ -74,11 +69,6 @@
 
                 &[type="checkbox"][data-type="show-password-or-url"] {
                     grid-column: checkbox-btn;
-                    min-block-size: 0;
-                    min-inline-size: 0;
-                    inline-size: calc(var(--space-lg) * 1.6);
-                    block-size: calc(var(--space-lg) * 1.6);
-                    border-radius: var(--radius-full);
                     z-index: 2;
 
                     @include checkbox-base;
@@ -90,17 +80,11 @@
                 align-items: center;
                 position: absolute;
                 grid-column: input;
-                gap: var(--space-xs);
-                padding: calc(var(--space-sm) * 0.8) var(--space-sm);
-                border-radius: var(--radius-sm);
-                font-size: var(--text-sm);
                 text-decoration: none;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 border: none;
-
-                @include solid-colorize("&");
             }
 
             &[data-show-preview] a[data-type="preview"] {
@@ -110,14 +94,9 @@
 
         &[data-type] > :where(button, input[type="checkbox"]) {
             @include button-base;
-            @include solid-colorize("&", ("shade": var(--surface-opacity-muted)));
 
             & {
                 grid-column: button;
-                gap: calc(var(--space-sm) * 0.9);
-                padding: var(--space-md) calc(var(--space-md) * 1.3);
-                border-radius: var(--radius-lg);
-                border-width: 0.5px;
                 box-shadow: var(--shadow-sm);
             }
         }
@@ -134,48 +113,6 @@
                 text-transform: lowercase;
                 font-variant-caps: all-small-caps;
             }
-        }
-
-        &[data-type="url"] {
-            .field-list-edit-part input {
-                font-family: ui-monospace, "Cascadia Code", "Source Code Pro", "SF Mono", Monaco, Menlo, monospace;
-                font-size: 0.92em;
-                word-break: break-all;
-            }
-        }
-    }
-
-    // Enhanced responsive adjustments
-    @container (max-inline-size: 31.25rem) {
-        .field-list-edit-part {
-            a[data-type="preview"] {
-                font-size: var(--text-xs);
-            }
-        }
-    }
-
-    @container (max-inline-size: 21.875rem) {
-        .field-list-edit-part {
-            padding: var(--space-sm);
-            gap: calc(var(--space-sm) * 0.8);
-
-            a[data-type="preview"] {
-                font-size: var(--text-xs);
-                padding: calc(var(--space-xs) * 0.7) var(--space-xs);
-            }
-        }
-    }
-
-    // Enhanced accessibility
-    @media (prefers-reduced-motion: reduce) {
-        .field-list-edit-part {
-            &, :where(input, a, input[type="checkbox"], input[type="checkbox"]::before) {
-                transition-duration: 0ms;
-            }
-        }
-
-        .field-list-edit > :where(button, input[type="checkbox"]) {
-            transition-duration: 0ms;
         }
     }
 }
@@ -227,25 +164,16 @@
             // Field label (aria-hidden decorative) with enhanced styling
             label[aria-hidden="true"] {
                 position: absolute;
-                inset-inline-start: var(--space-md);
-                inset-block-start: calc(var(--space-md) * -0.8);
-                padding-inline: var(--space-sm);
                 pointer-events: none;
-                border-radius: var(--radius-xs);
-                backdrop-filter: blur(4px);
                 z-index: 1;
 
                 @include font-style("&", ("size": "sm"));
-                @include solid-colorize("&");
             }
 
             // Preview link (for URLs) with improved styling
             a[data-type="preview"] {
                 display: inline-flex;
                 align-items: center;
-                gap: var(--space-xs);
-                padding: calc(var(--space-sm) * 0.7) var(--space-sm);
-                border-radius: var(--radius-sm);
                 field-sizing: content;
                 text-decoration: none;
                 overflow: hidden;
@@ -254,7 +182,6 @@
                 border: none;
 
                 @include font-style("&", ("size": "sm"));
-                @include solid-colorize("&");
             }
 
             // Show/hide password/URL checkbox with enhanced styling
@@ -285,43 +212,11 @@
             }
         }
 
-        // Enhanced add button
-        & > :where(button, input[type="checkbox"]) {
-            gap: calc(var(--space-sm) * 0.9);
-            padding: var(--space-md) calc(var(--space-md) * 1.3);
-            border-radius: var(--radius-lg);
-            border-width: 0.5px;
-            box-shadow: var(--shadow-sm);
-        }
-
         // Type-specific styling with better organization
         &[data-type="phone"] {
             .descriptor-edit-part input {
                 font-variant-numeric: tabular-nums;
                 letter-spacing: 0.02em;
-            }
-        }
-
-        &[data-type="email"] {
-            .descriptor-edit-part input {
-                text-transform: lowercase;
-                font-variant-caps: all-small-caps;
-            }
-        }
-
-        &[data-type="url"] {
-            .descriptor-edit-part input {
-                font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-                font-size: 0.92em;
-                word-break: break-all;
-            }
-        }
-
-        // Enhanced accessibility
-        @media (prefers-reduced-motion: reduce) {
-            .descriptor-edit-part :where(a, input, textarea),
-            & > :where(button, input[type="checkbox"]) {
-                transition-duration: 0ms;
             }
         }
     }

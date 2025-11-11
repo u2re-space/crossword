@@ -351,10 +351,7 @@
 
         .field-control {
             @include input-base;
-
-            option {
-                @include option-style;
-            }
+            @include select-base();
         }
 
         input.field-control {
@@ -364,87 +361,7 @@
         }
 
         select.field-control {
-            &,
-            &::picker(select) {
-                appearance: base-select;
-                border: none;
-                outline: none;
-                cursor: pointer;
-                inset: auto;
-                margin: 0;
-                transform: none;
-                translate: none;
-            }
-
-            & {
-                -webkit-appearance: none;
-                -moz-appearance: none;
-                text-indent: 0.01px;
-                text-overflow: "";
-                appearance: base-select;
-                padding-inline-end: clamp(2rem, 1.8vw, 2.4rem);
-                pointer-events: auto;
-                border-radius: var(--form-radius);
-                padding-inline: var(--padding-sm);
-                accent-color: transparent;
-                color: transparent;
-                display: block;
-                block-size: max-content;
-                border-width: 0.5px;
-
-                &::-ms-expand {
-                    display: none;
-                }
-            }
-
-            &::picker(select) {
-                background: transparent;
-                background-color: transparent;
-                padding: 0;
-            }
-
-            option {
-                appearance: none;
-                justify-content: start;
-                block-size: max-content;
-                gap: var(--gap-xs);
-                min-inline-size: 0;
-                border: none;
-                outline: none;
-                padding: var(--padding-sm);
-                line-height: normal;
-
-                @include flex-center;
-                @include option-style;
-
-                & {
-                    border-style: solid;
-                    border-width: 0;
-                    border-radius: 0;
-                    justify-content: start;
-                    inset: auto;
-                    margin: 0;
-                    transform: none;
-                    translate: none;
-                    border-inline-start-width: 0.5px;
-                    border-inline-end-width: 0.5px;
-                }
-
-                &:first-of-type {
-                    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-                    border-block-start-width: 0.5px;
-                }
-
-                &:last-of-type {
-                    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-                    border-block-end-width: 0.5px;
-                }
-
-                &:not(&:last-of-type) {
-                    border-block-end: none;
-                    border-block-end-width: 0.5px;
-                }
-            }
+            @include select-base();
         }
     }
 

@@ -17,15 +17,12 @@
             text-overflow: ellipsis;
             overflow: auto;
             scrollbar-width: none;
-            border-width: 0.5px;
-            padding: 0.25rem;
-            padding-inline-start: 1rem;
         }
     }
 
     // Enhanced select styling
     select {
-        //@include select-base();
+        @include select-base();
 
         & { min-block-size: 2.5rem; };
         & { min-inline-size: 4rem; };
@@ -120,7 +117,7 @@
             gap: var(--space-sm);
             align-items: center;
             padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-full);
 
             label {
                 margin: 0;
@@ -139,29 +136,7 @@
             }
 
             select {
-                padding: calc(var(--padding-md) * 0.7) var(--padding-md);
-                padding-inline-start: var(--padding-md);
-                border-radius: var(--radius-sm);
-                min-inline-size: 4rem;
-
                 @include select-base();
-            }
-        }
-
-        // Accessibility improvements
-        @media (prefers-reduced-motion: reduce) {
-            .date-field-layout-input input,
-            .date-field-layout-format :where(select, ui-icon) {
-                transition-duration: 0ms;
-            }
-        }
-
-        // Enhanced responsive design
-        @container (max-inline-size: 25rem) {
-            .date-field-layout-format {
-                gap: var(--space-sm);
-
-                ui-icon { display: none; }
             }
         }
     }
