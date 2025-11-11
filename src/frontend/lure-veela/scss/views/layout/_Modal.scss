@@ -45,14 +45,19 @@
         line-height: normal;
         box-sizing: border-box;
         block-size: stretch;
+        background-color: var(--surface-color);
+        color: var(--on-surface-color);
+        padding: var(--padding-lg);
+        border-radius: var(--radius-lg);
 
-        @include ui.card-surface(surface-container, var(--surface-opacity-emphasis), var(--radius-xl), var(--space-xl), 3);
+        //
+        @include solid-colorize-selector-only("&");
         @include ui.vstack(var(--space-lg));
         @include ui.container-inline;
         @include scrollable("y");
 
         //
-        &, &:focus-visible, &:focus { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--on-surface, currentColor) var(--scrollbar-tint, 86%), transparent) transparent; }
+        &, &:focus-visible, &:focus { scrollbar-width: thin;  }
 
         //
         .modal-title {
@@ -86,6 +91,7 @@
             overflow: visible;
             block-size: max-content;
 
+            //
             &:last-of-type {
                 border-block-end: none;
             }

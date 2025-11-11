@@ -5,7 +5,7 @@
 
     .settings-panel {
         @include panel-base;
-        @include solid-colorize("&");
+        @include solid-colorize-selector-only("&");
 
         //
         & {
@@ -228,7 +228,7 @@
         border-style: solid;
         border-radius: var(--radius-lg);
 
-        @include solid-colorize("&");
+        @include solid-colorize-selector-only("&");
 
         .settings-panels {
             display: grid;
@@ -313,7 +313,7 @@
             font-size: var(--font-sm);
             white-space: nowrap;
 
-            @include solid-colorize("&");
+            @include solid-colorize-selector-only("&");
             @include flex-center;
             @include text-color(0);
 
@@ -329,39 +329,6 @@
             &:where(:hover, :focus-visible):not(.is-active) {
                 @include surface(var(--surface-opacity-default));
             }
-        }
-    }
-
-    .field {
-        display: grid;
-        gap: var(--gap-xs);
-        min-inline-size: 0;
-        pointer-events: none;
-
-        .field-label {
-            font-size: var(--font-sm);
-            font-weight: var(--font-weight-semibold);
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
-        }
-
-        .field-hint {
-            font-size: var(--font-xs);
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
-        }
-
-        .field-control {
-            @include input-base;
-            @include select-base();
-        }
-
-        input.field-control {
-            border-radius: var(--form-radius);
-            font-variant-numeric: tabular-nums;
-            pointer-events: auto;
-        }
-
-        select.field-control {
-            @include select-base();
         }
     }
 
@@ -516,23 +483,6 @@
             gap: var(--gap-md);
             position: relative;
             z-index: 1;
-
-            .field {
-                transition: all var(--transition-colors) ease-in-out;
-
-                &:focus-within {
-                    transform: translateX(4px);
-                }
-
-                .field-control {
-                    transition: all var(--transition-colors) ease-in-out;
-
-                    &:focus {
-                        box-shadow: 0 0 0 3px var(--primary-opacity-subtle);
-                        border-color: var(--primary-opacity-default);
-                    }
-                }
-            }
         }
 
         // Animation for new MCP configs

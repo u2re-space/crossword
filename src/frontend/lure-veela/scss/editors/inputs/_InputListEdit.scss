@@ -129,8 +129,6 @@
         padding: var(--padding-md);
         border-radius: var(--radius-md);
 
-        @include surface(var(--surface-opacity-default, 0.08));
-
         // Enhanced descriptor part layout
         .descriptor-edit-part {
             display: grid;
@@ -186,29 +184,9 @@
 
             // Show/hide password/URL checkbox with enhanced styling
             input[type="checkbox"][data-type="show-password-or-url"] {
-                inline-size: auto;
-                field-sizing: content;
-
-                @include checkbox-base;
-            }
-
-            // Enhanced responsive adjustments
-            @container (max-inline-size: 25rem) {
-                & a[data-type="preview"] {
-                    max-inline-size: 100%;
-                    font-size: var(--text-xs);
-                }
-            }
-
-            //
-            @container (max-inline-size: 20rem) {
-                & {
-                    gap: calc(var(--space-xs) * 0.8);
-
-                    textarea, input {
-                        padding: calc(var(--space-sm) * 0.8) var(--space-sm);
-                    }
-                }
+                inline-size: fit-content;
+                block-size: fit-content;
+                aspect-ratio: 1 / 1;
             }
         }
 

@@ -378,7 +378,7 @@ $card-variants: (
         background-repeat: no-repeat;
         background-origin: border-box;
 
-        @include solid-colorize("&", ("shade": var(--card-surface-tone)));
+        @include solid-colorize-selector-only("&", ("shade": var(--card-surface-tone)));
 
         background-color: var(--surface-color);
         background-image:

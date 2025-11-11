@@ -55,6 +55,7 @@
         "postcss-discard-duplicates": "^7.0.1",
         "postcss-import": "^16.1.0",
         "postcss-preset-env": "^10.2.1",
+        "postcss-remove-duplicate-values": "^2.0.0",
         "sass": "^1.93.3",
         "svelte": "^5.43.3",
         "svelte-tiny-virtual-list": "^3.0.1",

@@ -1,23 +1,19 @@
 import autoprefixer from "autoprefixer";
 import cssnano from "cssnano";
-import postcssDiscardDuplicates from "postcss-discard-duplicates";
+import removeDuplicateValues  from "postcss-remove-duplicate-values";
 import postcssImport from "postcss-import";
 import postcssPresetEnv from "postcss-preset-env";
 
 const browsers = ["last 1 chrome version", "last 1 edge version"];
 
 const presetEnvConfig = {
-    stage: 0,
+    stage: false,
     autoprefixer: false,
     browsers,
     features: {
-        "custom-media-queries": true,
-        "logical-properties-and-values": true,
-        "media-query-ranges": true,
-        "nesting-rules": true,
-        "color-functional-notation": true,
+        "custom-media-queries": true
     },
-    preserve: false,
+    preserve: true,
 };
 
 const cssnanoConfig = {
@@ -27,6 +23,11 @@ const cssnanoConfig = {
             calc: false,
             layer: false,
             scope: false,
+            discardOverridden: false,
+            discardEmpty: true,
+            discardUnused: true,
+            discardDuplicates: false,
+            mergeRules: true,
             discardComments: {
                 removeAll: true,
             },
@@ -36,14 +37,14 @@ const cssnanoConfig = {
 
 export default {
     plugins: [
-        postcssImport(),
+        //postcssImport(),
         postcssPresetEnv(presetEnvConfig),
         autoprefixer({
-            overrideBrowserslist: browsers,
-            flexbox: "no-2009",
-            grid: true,
+            overrideBrowserslist: browsers
         }),
-        postcssDiscardDuplicates(),
+        /*removeDuplicateValues({
+            preserveEmpty: false,
+        }),*/
         cssnano(cssnanoConfig),
     ],
 };
