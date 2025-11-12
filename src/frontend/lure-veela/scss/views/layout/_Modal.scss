@@ -152,9 +152,15 @@
         //
         .modal-fields {
             padding-inline: var(--space-sm);
-            max-block-size: min(62vh, 27.5rem);
+            max-block-size: stretch;
+            block-size: fit-content;
             overflow-y: auto;
             overflow-x: hidden;
+            display: grid;
+
+            //
+            grid-template-columns: minmax(0px, 1fr);
+            grid-auto-rows: minmax(0px, max-content);
 
             //
             @include ui.field-stack(var(--space-md));

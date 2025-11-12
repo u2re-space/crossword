@@ -45,7 +45,7 @@
     $elevation: null,
     $border: false
 ) {
-    @include solid-colorize-selector-only("&", ("shade": $tone, "role": $role));
+    @include solid-colorize("&", ("shade": $tone, "role": $role, "scope": "selector"));
 
     @if $radius != null { border-radius: $radius; }
     @if $padding != null { padding: $padding; }
@@ -140,7 +140,7 @@
     &::-webkit-scrollbar { inline-size: $size; block-size: $size; }
     &::-webkit-scrollbar-thumb {
         border-radius: 999px;
-        @include solid-colorize-selector-only("&", ("shade": $tone));
+        @include solid-colorize("&", ("shade": $tone, "scope": "selector"));
     }
     &::-webkit-scrollbar-track { background: transparent; }
 }

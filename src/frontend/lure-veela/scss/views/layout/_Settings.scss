@@ -5,7 +5,7 @@
 
     .settings-panel {
         @include panel-base;
-        @include solid-colorize-selector-only("&");
+        @include solid-colorize("&", ("scope": "selector"));
 
         //
         & {
@@ -229,7 +229,7 @@
         border-style: solid;
         border-radius: var(--radius-lg);
 
-        @include solid-colorize-selector-only("&");
+        @include solid-colorize("&", ("scope": "selector"));
 
         .settings-panels {
             display: grid;
@@ -314,7 +314,7 @@
             font-size: var(--font-sm);
             white-space: nowrap;
 
-            @include solid-colorize-selector-only("&");
+            @include solid-colorize("&", ("scope": "selector"));
             @include flex-center;
             @include text-color(0);
 
