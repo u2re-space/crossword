@@ -60,6 +60,7 @@
                 outline: none 0 transparent;
                 max-block-size: stretch;
                 min-block-size: 0px;
+                box-shadow: none;
             }
 
             //
@@ -85,12 +86,12 @@
                     inline-size: calc(100cqi - clamp(0px, var(--padding-sm), 100cqi));
                 }
 
-                & { min-block-size: 0px; }
+                & { min-block-size: 0px; box-shadow: none; }
             }
 
             ul {
                 user-select: none;
-                overflow: hidden;
+                overflow: visible;
                 box-sizing: border-box;
                 margin: 0px;
                 touch-action: pan-y;
@@ -300,6 +301,11 @@
                     }
                 }
             }
+        }
+
+        /* */
+        & > :where(*) {
+            box-shadow: none;
         }
 
 

@@ -241,6 +241,8 @@
             flex-direction: row;
             padding: var(--padding-sm);
             border-radius: var(--radius-lg);
+            overflow: visible;
+
             @include backdrop-blur("strong");
 
             .doc-action {
@@ -261,6 +263,7 @@
         background: transparent;
         flex-direction: row;
         flex-wrap: nowrap;
+        overflow: visible;
 
         .doc-entry-chip {
             gap: var(--gap-xs);

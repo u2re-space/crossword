@@ -164,6 +164,7 @@
         margin-block-start: var(--gap-sm);
         padding: var(--padding-sm);
         grid-column: 1 / -1;
+        overflow: visible;
 
         @include flex-between;
 
@@ -346,6 +347,7 @@
         place-content: center;
         place-items: center;
         text-align: center;
+        overflow: visible;
 
         header, p {
             place-content: center;
@@ -507,6 +509,7 @@
             .settings-actions {
                 flex-direction: column-reverse;
                 align-items: stretch;
+                overflow: visible;
 
                 .btn.save {
                     justify-content: center;

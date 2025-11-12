@@ -625,6 +625,10 @@ $card-variants: (
         .card-actions {
             @include card-inline();
 
+            & {
+                overflow: visible;
+            }
+
             & > .action {
                 padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);

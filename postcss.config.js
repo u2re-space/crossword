@@ -26,7 +26,7 @@ const cssnanoConfig = {
             discardOverridden: false,
             discardEmpty: true,
             discardUnused: true,
-            discardDuplicates: false,
+            discardDuplicates: true,
             mergeRules: true,
             discardComments: {
                 removeAll: true,
@@ -42,9 +42,9 @@ export default {
         autoprefixer({
             overrideBrowserslist: browsers
         }),
-        /*removeDuplicateValues({
+        removeDuplicateValues({
             preserveEmpty: false,
-        }),*/
+        }),
         cssnano(cssnanoConfig),
     ],
 };
