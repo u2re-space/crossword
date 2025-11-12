@@ -1,4 +1,4 @@
-import { DataInput, DataKind, actionWithDataType, getDataKindByMIMEType, typesForKind } from "./GPT-Config";
+import { actionWithDataType, getDataKindByMIMEType, typesForKind, type DataInput, type DataKind } from "./GPT-Config";
 
 //
 export const getUsableData = async (data: DataInput) => {

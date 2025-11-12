@@ -1,8 +1,6 @@
 import { AppLayout } from "./layouts/AppLayout";
-import { DataExplorer, PreferencesView, QuestsView, Settings } from "./Views";
+import { DataExplorer, Settings } from "./Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
-import { UIPhosphorIcon } from "fest/icon";
-console.log(UIPhosphorIcon);
 
 //
 import "fest/fl-ui";

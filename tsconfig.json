@@ -1,13 +1,31 @@
 {
-    "include": ["./main.mjs", "src/index.ts", "./src/**/*.ts", "./test/**/*.ts", "./shared/**/*.ts"],
-    "exclude": ["./dist/**/*", "./externals/**/*"],
+    "include": [
+        "**/*.ts",
+        "**/*.mjs",
+        "**/*.js",
+        "**/*.d.ts",
+        "**/*.tsx",
+        "**/*.vue"
+    ],
+    "exclude": [
+        "node_modules/**",
+        "externals/**",
+        "frontend/**",
+        "frontend/externals/**"
+    ],
     "compilerOptions": {
-        "outDir": "./dist/",
+        "skipLibCheck": true,
+        "jsx": "preserve",
         "paths": {
+            "/assets/*": ["./assets/*"],
+            "/frontend/*": ["./frontend/*"],
+
             "@phosphor-icons/core/assets/*": ["./node_modules/@phosphor-icons/core/assets/*"],
             "icons/*": ["./node_modules/@phosphor-icons/core/assets/*"],
+
             "assets/fonts/*": ["./assets/fonts/*"],
             "assets/*": ["./assets/*"],
+
             "fest-src/*": ["./shared/*"],
             "fest/*": ["./shared/fest/*"],
             "fest/fl-ui/*": ["./shared/fest/fl-ui/*"],
@@ -20,6 +38,7 @@
             "fest/polyfill/*": ["./shared/fest/polyfill/*"],
             "polyfill/*": ["./shared/fest/polyfill/*"],
             "shared/*": ["./shared/*"],
+
             "@fl-ui/*": ["./shared/fest/fl-ui/ui/*"],
             "@fl-src/*": ["./shared/fest/fl-ui/*"],
             "@fl-design/*": ["./shared/fest/fl-ui/design/*"],
@@ -34,30 +53,42 @@
             "veela-runtime": ["./shared/fest/veela/scss/runtime/index.ts"],
             "veela-runtime/*": ["./shared/fest/veela/scss/runtime/*"],
             "veela-lib": ["./shared/fest/veela/scss/lib/index.scss"],
-            "veela-lib/*": ["./shared/fest/veela/scss/lib/*"],
-            "veela-mixins": ["./shared/fest/veela/scss/lib/mixins/index.scss"],
-            "veela-mixins/*": ["./shared/fest/veela/scss/lib/mixins/*"]
+            "veela-lib/*": ["./shared/fest/veela/scss/lib/*"]
         },
-        "target": "ESNext",
+        "typeRoots": ["types", "chrome"],
+        "baseUrl": "./",
+        "composite": true,
+        "lib": ["dom", "esnext", "webworker"],
         "module": "ESNext",
+        "target": "ESNext",
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
         "moduleResolution": "bundler",
-        "lib": ["ESNext", "DOM", "WebWorker"],
-        "types": ["chrome"],
+        "allowArbitraryExtensions": true,
         "esModuleInterop": true,
         "strict": true,
         "forceConsistentCasingInFileNames": true,
         "allowJs": true,
-        "allowArbitraryExtensions": true,
-        "allowSyntheticDefaultImports": true,
-        "allowUmdGlobalAccess": true,
-        "allowUnreachableCode": true,
-        "allowUnusedLabels": true,
+        "noEmit": true,
+        "sourceMap": true,
+        "removeComments": false,
         "noImplicitAny": false,
-        "declaration": false,
-        "noImplicitThis": false,
-        "inlineSources": true,
-        "inlineSourceMap": true,
-        "sourceMap": false,
-        "experimentalDecorators": true
+        "noImplicitOverride": false,
+        "noImplicitReturns": false,
+        "noImplicitUseStrict": false,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictPropertyInitialization": false,
+        "strictBindCallApply": true,
+        "alwaysStrict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "allowUnusedLabels": true,
+        "allowUnreachableCode": true,
+        "experimentalDecorators": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "noImplicitThis": true
     }
 }
