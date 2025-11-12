@@ -10,7 +10,8 @@
         gap: var(--space-md);
         row-gap: var(--space-sm);
         container-type: inline-size;
-        min-inline-size: 0;
+        min-inline-size: 0px;
+        inline-size: stretch;
 
         padding: var(--padding-md);
         border-radius: var(--radius-md);
@@ -36,6 +37,7 @@
             border-radius: var(--space-md);
             container-type: inline-size;
             background: transparent;
+            inline-size: stretch;
 
             @include font-style("&");
 
@@ -125,9 +127,10 @@
         display: grid;
         gap: var(--space-md);
         container-type: inline-size;
-        min-inline-size: 0;
+        min-inline-size: 0px;
         padding: var(--padding-md);
         border-radius: var(--radius-md);
+        inline-size: stretch;
 
         // Enhanced descriptor part layout
         .descriptor-edit-part {
@@ -135,6 +138,7 @@
             gap: var(--space-xs);
             position: relative;
             container-type: inline-size;
+            inline-size: stretch;
 
             // Multi-line text input with enhanced styling
             textarea {

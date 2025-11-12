@@ -6,18 +6,6 @@
 @layer rs-forms-modal {
 
     //
-    ui-modal {
-        display: flex;
-        flex-direction: column;
-        gap: var(--gap-xs);
-        box-sizing: border-box;
-        max-inline-size: min(100cqi, 100dvi);
-        max-block-size: min(100cqb, 100dvb);
-
-        @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
-    }
-
-    //
     .rs-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -27,23 +15,28 @@
         padding: var(--space-xl);
         z-index: 9999;
         line-height: normal;
-        overflow: hidden;
         box-sizing: border-box;
         max-inline-size: min(100cqi, 100dvi);
         max-block-size: min(100cqb, 100dvb);
+        overflow: hidden;
 
         @include ui.glass-backdrop();
     }
 
     //
-    .modal-form {
+    ui-modal, .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-xs);
+        box-sizing: border-box;
+        overflow: hidden;
+
+        //
         min-inline-size: min(92vw, 33.75rem);
         max-inline-size: min(100%, 40rem);
         max-block-size: min(94vh, 45rem);
-        inline-size: stretch;
-        overflow: visible;
+        inline-size: min(100%, 40rem);;
         line-height: normal;
-        box-sizing: border-box;
         block-size: stretch;
         background-color: var(--surface-color);
         color: var(--on-surface-color);
@@ -51,13 +44,14 @@
         border-radius: var(--radius-lg);
 
         //
-        @include solid-colorize-selector-only("&");
+        @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
         @include ui.vstack(var(--space-lg));
         @include ui.container-inline;
         @include scrollable("y");
 
         //
-        &, &:focus-visible, &:focus { scrollbar-width: thin;  }
+        &, & :where(*) { box-sizing: border-box; }
+        &, &:focus-visible, &:focus { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;  }
 
         //
         .modal-title {
@@ -66,6 +60,14 @@
             place-content: center;
             place-items: center;
             text-align: center;
+
+            //
+            justify-content: safe center;
+            justify-items: safe center;
+
+            //
+            inline-size: stretch;
+            min-inline-size: 0px;
 
             //
             @include ui.text-heading("headline-small", center);
@@ -80,6 +82,14 @@
             text-align: center;
 
             //
+            justify-content: safe center;
+            justify-items: safe center;
+
+            //
+            inline-size: stretch;
+            min-inline-size: 0px;
+
+            //
             @include ui.text-body("body-medium");
         }
 
@@ -92,6 +102,10 @@
             block-size: max-content;
 
             //
+            inline-size: stretch;
+            min-inline-size: 0px;
+
+            //
             &:last-of-type {
                 border-block-end: none;
             }
@@ -102,6 +116,14 @@
                 place-content: center;
                 place-items: center;
                 text-align: center;
+
+                //
+                inline-size: stretch;
+                min-inline-size: 0px;
+
+                //
+                justify-content: safe center;
+                justify-items: safe center;
 
                 //
                 @include ui.text-label("title-small", true);
@@ -117,6 +139,8 @@
         .modal-actions {
             @include ui.inline-toolbar(var(--space-md));
             justify-content: space-between;
+            inline-size: stretch;
+            min-inline-size: 0px;
 
             //
             .modal-actions-right {
@@ -131,81 +155,41 @@
             overflow-y: auto;
             overflow-x: hidden;
 
+            //
             @include ui.field-stack(var(--space-md));
             @include ui.container-inline;
             @include ui.scrollbars(6px, var(--surface-opacity-emphasis));
 
             //
-            .modal-field {
-                @include ui.field-stack(var(--space-xs));
-                min-inline-size: 0;
-                background: transparent;
-                inline-size: stretch;
-                max-inline-size: stretch;
-                contain: inline-size;
-                container-type: inline-size;
-
-                //
-                &:where(.valid, .invalid) {
-                    animation: validationPulse 0.3s ease-in-out;
-                }
-
-                // Field Validation States
-                &.valid :where(input, textarea, select) {
-                    @include validation-success;
-                }
-
-                &.invalid :where(input, textarea, select) {
-                    @include validation-error;
-                }
-
-                // Field Type Indicators
-                &[data-multiline="true"] textarea {
-                    min-block-size: 5rem;
-                    resize: vertical;
-                }
-
-                &[data-numeric="true"] input {
-                    text-align: end;
-                    font-variant-numeric: tabular-nums;
-                }
-
-                &[data-json="true"] textarea {
-                    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-                    font-size: 0.85em;
-                    min-block-size: 6rem;
-                    line-height: 1.4;
-                }
-
-                &[data-datetime="true"] {
-                    position: relative;
-                }
-
-                // Links Field Enhancement
-                & textarea[name="links"] {
-                    min-block-size: 4rem;
-                    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-                    font-size: 0.85em;
-                    line-height: 1.4;
-                }
-            }
+            text-align: start;
+            justify-content: start;
+            justify-items: start;
+            inline-size: stretch;
+            min-inline-size: 0px;
 
             //
-            .contacts-group {
+            .contacts-group, .modal-field {
                 display: flex;
                 flex-direction: column;
                 gap: var(--space-sm);
-            }
 
-            // Reduced motion support
-            @media (prefers-reduced-motion: reduce) {
-                .modal-field.valid,
-                .modal-field.invalid {
-                    animation: none;
-                }
+                //
+                place-content: center;
+                place-items: center;
 
-                .btn:where(:hover, :focus-visible):not(:disabled) {
-                    transform: none;
+                //
+                align-content: safe center;
+                align-items: safe center;
+
+                //
+                inline-size: stretch;
+                min-inline-size: 0px;
+
+                //
+                label {
+                    text-align: start;
+                    justify-content: start;
+                    justify-items: start;
                 }
             }
         }
