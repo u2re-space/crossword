@@ -60,7 +60,7 @@ export default {
         "plugin/use-logical-properties-and-values": [true, {"severity": "warning"}],
         "plugin/use-logical-units": [true, {"severity": "warning"}],
         "plugin/no-unsupported-browser-features": [true, {"severity": "warning"}],
-        "max-nesting-depth": 3,
+        "max-nesting-depth": 4,
         "selector-max-compound-selectors": 4,
         "declaration-block-no-duplicate-properties": true
     }
