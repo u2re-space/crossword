@@ -64,7 +64,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     ai: {
         apiKey: "",
         baseUrl: "",
-        model: "gpt-5-mini",
+        model: "gpt-5.1",
         customModel: "",
         mcp: []
     },

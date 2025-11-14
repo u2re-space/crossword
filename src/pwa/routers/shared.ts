@@ -27,7 +27,7 @@ export const initiateConversionProcedure = async (dataSource: string | Blob | Fi
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return { entities: [] };
 
     //
-    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
+    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.1");
 
     // phase 1 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze... and load into context

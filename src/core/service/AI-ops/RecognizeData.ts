@@ -2,7 +2,7 @@ import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 
 //
-const DEFAULT_MODEL = 'gpt-5-mini';
+const DEFAULT_MODEL = 'gpt-5.1';
 const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
 const ENDPOINT = '/responses';
 

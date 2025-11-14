@@ -63,7 +63,7 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
 
     //
-    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5-mini");
+    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.1");
     console.log(gptResponses);
 
     //
