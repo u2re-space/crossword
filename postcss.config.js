@@ -27,6 +27,9 @@ const cssnanoConfig = {
             discardEmpty: true,
             discardUnused: true,
             discardDuplicates: true,
+            reduceIdents: {
+                gridTemplate: false,
+            },
             mergeRules: true,
             discardComments: {
                 removeAll: true,

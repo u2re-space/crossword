@@ -21,16 +21,17 @@
 
     //
     .view-box {
+        grid-row: content-row;
         grid-column: 1 / -1;
-        grid-row: 2 / -1;
         inline-size: stretch;
         block-size: stretch;
         contain: strict;
 
         //
         grid-template-columns: minmax(0px, 1fr);
-        grid-template-rows: [content] minmax(0px, 1fr) [toolbar] minmax(0px, max-content);
+        grid-template-rows: [toolbar] minmax(0px, max-content) [content] minmax(0px, 1fr);
         display: grid;
+        box-shadow: none;
     }
 
     //
@@ -45,6 +46,7 @@
         grid-row: content;
         perspective: 1000;
         content-visibility: auto;
+        box-shadow: none;
 
         //
         display: grid;
@@ -122,6 +124,10 @@
             @include ui.vstack(var(--gap-xs));
             @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1);
             @include scrollable("y");
+
+            & {
+                box-shadow: none;
+            }
 
             .viewer-tab-content-header {
                 @include ui.text-heading("title-large", center);

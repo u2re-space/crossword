@@ -19,6 +19,7 @@
         max-inline-size: min(100cqi, 100dvi);
         max-block-size: min(100cqb, 100dvb);
         overflow: hidden;
+        perspective: 1000;
 
         @include ui.glass-backdrop();
     }
@@ -30,6 +31,7 @@
         gap: var(--gap-xs);
         box-sizing: border-box;
         overflow: hidden;
+        perspective: 1000;
 
         //
         min-inline-size: min(92vw, 33.75rem);
@@ -42,6 +44,7 @@
         color: var(--on-surface-color);
         padding: var(--padding-lg);
         border-radius: var(--radius-lg);
+        content-visibility: auto;
 
         //
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));

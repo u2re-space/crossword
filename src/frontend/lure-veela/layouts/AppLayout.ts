@@ -23,7 +23,7 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev)=>{
-        if (ev?.newTab && currentView.value != ev?.newTab) { currentView.value = ev.newTab ?? currentView.value; };
+        if (ev?.newTab && currentView.value != ev?.newTab && ev?.target == $layout) { currentView.value = ev.newTab ?? currentView.value; };
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
         ${contentView}

@@ -14,6 +14,7 @@
         block-size: max-content;
         inline-size: stretch;
         grid-row: toolbar;
+        box-shadow: none;
     }
 
     .view-toolbar {
@@ -36,6 +37,7 @@
         pointer-events: none;
 
         box-sizing: border-box;
+        box-shadow: none;
 
         //
         @include ui.inline-toolbar(var(--gap-xs));

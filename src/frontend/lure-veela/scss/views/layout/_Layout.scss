@@ -27,6 +27,11 @@
             @include container-clamped(stretch, stretch);
         }
 
+        & {
+            background: none;
+            background-color: transparent;
+            box-shadow: none;
+        }
 
 
         /***********/
