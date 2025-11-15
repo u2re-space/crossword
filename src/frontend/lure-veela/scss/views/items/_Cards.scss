@@ -360,6 +360,8 @@ $card-variants: (
         transition: var(--transition-all);
         transition-duration: var(--duration-normal);
         transition-delay: 0s;
+
+        //
         transition-behavior: allow-discrete;
         interpolate-size: allow-keywords;
 
@@ -410,6 +412,10 @@ $card-variants: (
             inline-size: stretch !important;
             min-inline-size: fit-content !important;
             max-inline-size: 60rem !important;
+
+            //
+            perspective: 1000;
+            transform: translateZ(0px);
         }
 
         &,

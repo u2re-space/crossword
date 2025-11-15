@@ -98,6 +98,13 @@
                 //
                 @include scrollable("y");
 
+                & {
+                    perspective: 1000;
+                    transform: translateZ(0px);
+                    content-visibility: auto;
+                    contain: strict;
+                }
+
                 md-view {
                     inline-size: 100%;
                     min-block-size: 4rem;

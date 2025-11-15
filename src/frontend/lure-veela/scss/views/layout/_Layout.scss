@@ -162,7 +162,6 @@
                             border-radius: var(--radius-md);
                             transition: color var(--transition-colors), background-color var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
                             color: color-mix(in oklch, var(--on-surface, currentColor) 72%, transparent);
-                            will-change: transform, color, opacity;
                             transform: translate3d(0, 0, 0);
                         }
 
@@ -176,7 +175,6 @@
                             transform: scale3d(0.98, 0.98, 1);
                             transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
                             pointer-events: none;
-                            will-change: opacity, transform;
                         }
 
                         &::after {
@@ -191,7 +189,6 @@
                             transform: scale3d(1, 0.4, 1);
                             transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
                             pointer-events: none;
-                            will-change: opacity, transform;
                         }
 
                         &:where(:hover, :focus-visible, :focus, :active) {

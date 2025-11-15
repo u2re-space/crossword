@@ -17,6 +17,12 @@
         //
         @include grid-auto-fill(260px);
         @include scrollable("y");
+
+        //
+        perspective: 1000;
+        transform: translateZ(0px);
+        content-visibility: auto;
+        contain: strict;
     }
 
     //
@@ -44,8 +50,6 @@
         margin-inline: var(--padding-sm);
         margin-block-start: var(--padding-sm);
         grid-row: content;
-        perspective: 1000;
-        content-visibility: auto;
         box-shadow: none;
 
         //
@@ -55,14 +59,20 @@
         inline-size: stretch;
         block-size: stretch;
         gap: var(--gap-xs);
-
         flex-grow: 1;
-        contain: strict;
 
+        //
         @include scrollable("y");
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), null, 1);
         @include container-clamped(stretch, stretch);
 
+        //
+        perspective: 1000;
+        transform: translateZ(0px);
+        content-visibility: auto;
+        contain: strict;
+
+        //
         &.viewer-section {
             background-color: transparent;
         }
@@ -127,6 +137,10 @@
 
             & {
                 box-shadow: none;
+                perspective: 1000;
+                transform: translateZ(0px);
+                content-visibility: auto;
+                contain: strict;
             }
 
             .viewer-tab-content-header {
