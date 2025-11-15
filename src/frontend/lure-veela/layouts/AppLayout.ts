@@ -5,14 +5,14 @@ import { H, C } from "fest/lure";
 export const AppLayout = (currentView: { value: string }, existsViews: Map<string, any>, makeView: (key: string)=>any, sidebar: HTMLElement) => {
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
-        <div class="toolbar" style="background-color: transparent;">
+        <div class="toolbar" style="will-change: contents; background-color: transparent;">
             ${C(computed(currentView, (key)=>{
                 const a = makeView(key)?.[0]
 
                 return a;
             }))}
         </div>
-        <div class="content" style="">
+        <div class="content" style="will-change: contents;">
             ${C(computed(currentView, (key)=>{
                 const b = makeView(key)?.[1]
 
