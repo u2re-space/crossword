@@ -66,6 +66,9 @@
                 max-block-size: stretch;
                 min-block-size: 0px;
                 box-shadow: none;
+
+                contain: strict;
+                content-visibility: auto;
             }
 
             //

@@ -34,9 +34,8 @@
         perspective: 1000;
 
         //
-        min-inline-size: min(92vw, 33.75rem);
-        max-inline-size: min(100%, 40rem);
-        max-block-size: min(94vh, 45rem);
+        min-inline-size: min(92dvw, 33.75rem); max-inline-size: min(99dvw, 40rem);
+        min-block-size: min(94dvh, 45rem); max-block-size: min(94dvh, 45rem);
         inline-size: min(100%, 40rem);;
         line-height: normal;
         block-size: stretch;
@@ -44,7 +43,6 @@
         color: var(--on-surface-color);
         padding: var(--padding-lg);
         border-radius: var(--radius-lg);
-        content-visibility: auto;
 
         //
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
@@ -55,6 +53,11 @@
         //
         &, & :where(*) { box-sizing: border-box; }
         &, &:focus-visible, &:focus { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;  }
+
+        & {
+            contain: strict;
+            content-visibility: auto;
+        }
 
         //
         .modal-title {
@@ -99,6 +102,8 @@
         //
         .modal-section {
             @include ui.section-stack(var(--space-sm));
+
+            //
             padding-block: var(--space-sm);
             background: transparent;
             overflow: visible;

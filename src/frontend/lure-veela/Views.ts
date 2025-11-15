@@ -106,7 +106,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "settings") {
             element = Settings();
-            actions = makeToolbar([], {
+            actions = makeToolbar(["apply-settings"], {
                 label: "Settings",
                 type: registryKey,
                 DIR: `/`
@@ -116,7 +116,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "explorer") {
             element = DataExplorer();
-            actions = makeToolbar([], {
+            actions = makeToolbar(["file-refresh", "file-upload", "file-mount", "file-download"], {
                 label: "File Explorer",
                 type: registryKey,
                 DIR: `/`
