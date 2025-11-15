@@ -20,35 +20,42 @@
     }
 
     //
-    /*
-    .app-layout > * > section,
-    .app-layout > section {
+    .view-box {
         grid-column: 1 / -1;
         grid-row: 2 / -1;
         inline-size: stretch;
         block-size: stretch;
-    }*/
+        contain: strict;
+
+        //
+        grid-template-columns: minmax(0px, 1fr);
+        grid-template-rows: [content] minmax(0px, 1fr) [toolbar] minmax(0px, max-content);
+        display: grid;
+    }
 
     //
-    .app-layout > * > section,
-    .app-layout > section {
+    .view-box > * > section,
+    .view-box > section {
         pointer-events: auto;
         touch-action: manipulation;
 
+        //
         margin-inline: var(--padding-sm);
         margin-block-start: var(--padding-sm);
+        grid-row: content;
+        perspective: 1000;
+        content-visibility: auto;
 
         //
         display: grid;
         grid-template-columns: minmax(0px, 1fr);
-        grid-template-rows: minmax(0px, 1fr) minmax(0px, max-content);
-        grid-template-areas: "content" "toolbar";
+        grid-template-rows: minmax(0px, 1fr);
         inline-size: stretch;
         block-size: stretch;
         gap: var(--gap-xs);
 
-        grid-column: 2 / -1;
-        grid-row: 2 / -1;
+        flex-grow: 1;
+        contain: strict;
 
         @include scrollable("y");
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), null, 1);

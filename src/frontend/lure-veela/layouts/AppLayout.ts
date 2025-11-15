@@ -1,16 +1,32 @@
-import { H, I } from "fest/lure";
+import { computed } from "fest-src/fest/object/index";
+import { H, C } from "fest/lure";
 
 //
-export const AppLayout = (views: Map<string, HTMLElement>, actions: Map<string, HTMLElement>, currentView: { value: string }, sidebar: HTMLElement) => {
-    const TOOLBAR = H`<div class="toolbar" slot="bar" style="background-color: transparent;">
-        ${I({ mapped: actions, current: currentView })}
+export const AppLayout = (currentView: { value: string }, existsViews: Map<string, any>, makeView: (key: string)=>any, sidebar: HTMLElement) => {
+    // TODO: add support for async loading views (Object.TS, LUR.E)
+    const contentView = H`<div class="view-box">
+        <div class="toolbar" slot="bar" style="background-color: transparent;">
+            ${C(computed(currentView, (key)=>{
+                const a = makeView(key)?.[0]
+
+                return a;
+            }))}
+        </div>
+        <div class="content">
+            ${C(computed(currentView, (key)=>{
+                const b = makeView(key)?.[1]
+
+                return b;
+            }))}
+        </div>
     </div>`;
 
-    //
-    const $layout = H`<ui-box-with-sidebar class="app-layout">
-        ${TOOLBAR}
-        ${I({ mapped: views, current: currentView })}
+    // TODO: add support for async loading views (Object.TS, LUR.E)
+    const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev)=>{
+        if (ev?.newTab && currentView.value != ev?.newTab) { currentView.value = ev.newTab ?? currentView.value; };
+    }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
-    </ui-box-with-sidebar>`;
+        ${contentView}
+    </ui-tabbed-with-sidebar>`;
     return $layout;
 }

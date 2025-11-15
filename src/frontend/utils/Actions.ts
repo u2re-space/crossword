@@ -52,6 +52,7 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
 export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
     ["apply-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
+        viewPage = await viewPage;
         const forms = viewPage.forms;
         const tabsState = viewPage.tabsState;
         if (forms) {
@@ -63,6 +64,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
 
     ["file-upload", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
+        viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         openPickerAndWrite(viewer?.path, 'text/markdown,text/plain,.md', true)?.then?.(() => {
             toastSuccess("Uploaded");
@@ -74,6 +76,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     ["file-mount", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         getDirectoryHandle(null, viewer?.path, { create: true })?.then?.(async () => {
             await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
@@ -85,6 +88,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     ["file-download", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         downloadByPath(viewer?.path)?.then?.(() => {
             toastSuccess("Downloaded");
@@ -95,6 +99,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     ["file-refresh", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         currentWebDav?.sync?.download?.(viewer?.path)?.then?.(() => {
             viewer?.loadPath?.(viewer?.path);
@@ -106,6 +111,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     ["debug-gen", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         try {
             // Use debug task generation for immediate testing
             const results = await triggerDebugTaskGeneration(3); // Generate 3 debug tasks
@@ -123,6 +129,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
     //
     ["generate", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         const response = await generateNewPlan();
         //viewPage?.$refresh?.();
         if (!response) {
@@ -134,6 +141,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
     //
     ["add", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         try {
             const result = await makeEntityEdit(entityItem, entityDesc, {
                 allowLinks: true,
@@ -157,6 +165,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
     //
     ["upload", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
         try {
             await openPickerAndAnalyze(entityDesc.DIR, 'text/markdown,text/plain,.json,image/*', true);
             toastSuccess(`${entityDesc.label} uploaded`);

@@ -1,6 +1,7 @@
 import { AppLayout } from "./layouts/AppLayout";
 import { DataExplorer, Settings } from "./Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
+import { makeReactive, $trigger } from "fest/object";
 
 //
 import "fest/fl-ui";
@@ -67,50 +68,84 @@ export async function frontend(mountElement) {
         entityView ??= entityViews.get(entityType);
         if (!entityView) return null;
         const tabOrganizer = entityType == "task" ? $insideOfDay : $byKind;//(item, tab) => true
-        return () => ViewPage({
+        return ViewPage({
             label: entityView?.label || entityType,
             type: entityType,
             DIR: (entityType == "task" || entityType == "timeline") ? `/timeline/` : `/data/${entityType}/`
         }, entityView?.tabs || [], tabOrganizer as any, entityView?.availableActions || [], MakeCardElement);
     };
 
-    //
-    const views = new Map<any, any>([
-        //["preferences", () => PreferencesView()],
-        //["quests", () => QuestsView()],
-        ["explorer", () => DataExplorer()],
-        ["settings", await Settings()],
-        ...(await Promise.all(
-            Array.from(entityViews.entries())
-                .map(async ([entityType, entityView]) => [entityType, await makeEntityView(entityType, entityView)])
-        ))?.filter(([entityType, entityView]) => entityView) as [string, HTMLElement | null | string | any][]
-    ]);
+
 
     //
-    const actions = new Map<string, any>(Array.from(entityViews?.entries?.()).map(([key, desc])=>{
-        return [key, makeToolbar(desc?.availableActions || [], {
-            label: desc?.label || key,
-            type: key,
-            DIR: (key == "task" || key == "timeline") ? `/timeline/` : `/data/${key}/`
-        }, views.get(key))];
-    }));
+    const existsViews: Map<string, any> = makeReactive(new Map<string, any>()) as Map<string, any>;
+    const makeView = (registryKey, )=>{
+        let actions: any = {};
+        let element: any = null;
+
+        //
+        if (!registryKey) return null;
+
+        //
+        if (existsViews.has(registryKey)) {
+            return existsViews.get(registryKey);
+        }
+
+        // exists views
+        const entityView = entityViews.get(registryKey);
+        if (entityView) {
+            element = makeEntityView(registryKey, entityView);
+            actions = makeToolbar(entityView?.availableActions || [], {
+                label: entityView?.label || registryKey,
+                type: registryKey,
+                DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
+            }, element);
+        }
+
+
+        //
+        if (registryKey == "settings") {
+            element = Settings();
+            actions = makeToolbar([], {
+                label: "Settings",
+                type: registryKey,
+                DIR: `/`
+            }, element);
+        }
+
+        //
+        if (registryKey == "explorer") {
+            element = DataExplorer();
+            actions = makeToolbar([], {
+                label: "File Explorer",
+                type: registryKey,
+                DIR: `/`
+            }, element);
+        }
+
+
+
+        // TODO: custom views
+
+        //
+        if (element) {
+            existsViews.set(registryKey, [actions, element]);
+        }
+
+        //
+        if (element instanceof Promise) {
+            element?.then?.((el)=>{ // provoke re-render of async element
+                (existsViews?.get?.(registryKey))[1] = el;
+                if (CURRENT_VIEW?.value == registryKey) { CURRENT_VIEW?.[$trigger]?.(); };
+            });
+        }
+
+        //
+        return existsViews?.get?.(registryKey);
+    }
 
     //
-    actions.set("explorer", makeToolbar(["file-refresh", "file-upload", "file-download", "file-mount"], {
-        label: "File Explorer",
-        type: "explorer",
-        DIR: `/`
-    }, views.get("explorer")));
-
-    //
-    actions.set("settings", makeToolbar(["apply-settings"], {
-        label: "Settings",
-        type: "settings",
-        DIR: `/`
-    }, views.get("settings")));
-
-    //
-    const layout = AppLayout(views, actions, CURRENT_VIEW, Sidebar(CURRENT_VIEW, entityViews));
+    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, makeView));
     mountElement?.append?.(layout);
     implementTestDrop(mountElement);
 }
