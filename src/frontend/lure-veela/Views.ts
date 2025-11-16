@@ -43,16 +43,6 @@ const implementTestDrop = (mountElement: HTMLElement) => {
     });
 }
 
-//
-async function makeWallpaper() {
-    const { H, orientRef } = await import("fest/lure");
-    const oRef = orientRef();
-    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${BACKGROUND_IMAGE}></canvas>`;
-    return CE;
-}
-
-//
-const BACKGROUND_IMAGE = "./assets/imgs/test.jpg";
 
 
 
@@ -181,7 +171,6 @@ export async function frontend(mountElement) {
 
     //
     const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, makeView));
-    mountElement?.append?.(await makeWallpaper());
     mountElement?.append?.(layout);
     mountElement?.append?.(createCtxMenu());
 

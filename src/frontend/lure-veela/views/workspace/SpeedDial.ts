@@ -120,6 +120,17 @@ const createMenuEntryForAction = (actionId: string, item: SpeedDialItem, fallbac
     };
 };
 
+//
+const BACKGROUND_IMAGE = "./assets/imgs/test.jpg";
+
+//
+function makeWallpaper() {
+    const oRef = orientRef();
+    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${BACKGROUND_IMAGE}></canvas>`;
+    return CE;
+}
+
+//
 export function SpeedDial(makeView: any) {
     viewMaker = makeView;
 
@@ -136,7 +147,8 @@ export function SpeedDial(makeView: any) {
     };
 
     const oRef = orientRef();
-    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef}>
+    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef}>
+        ${makeWallpaper()}
         <div class="speed-dial-layer speed-dial-layer--items sd-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
             ${M(items, renderIcon)}
         </div>
@@ -168,28 +180,28 @@ const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell }
             <div class="modal-fields">
                 <label class="modal-field">
                     <span>Label</span>
-                    <input name="label" type="text" minlength="1" required value=${draft.label} />
+                    <input name="label" type="text" minlength="1" required value="${draft.label}" />
                 </label>
                 <label class="modal-field">
                     <span>Icon</span>
-                    <input name="icon" type="text" value=${draft.icon} placeholder="lucide icon name" />
+                    <input name="icon" type="text" placeholder="lucide icon name" value="${draft.icon}" />
                 </label>
                 <label class="modal-field">
                     <span>Action</span>
                     <select name="action">
-                        ${ACTION_OPTIONS.map((option)=>H`<option value=${option.value} selected=${option.value === draft.action}>${option.label}</option>`)}
+                        ${ACTION_OPTIONS.map((option)=>H`<option selected="${option.value === draft.action}" value="${option.value}">${option.label}</option>`)}
                     </select>
                 </label>
                 <label class="modal-field" data-field="view">
                     <span>View</span>
                     <select name="view">
                         <option value="">Choose view</option>
-                        ${NAVIGATION_SHORTCUTS.map((shortcut)=>H`<option value=${shortcut.view} selected=${shortcut.view === draft.view}>${shortcut.label}</option>`)}
+                        ${NAVIGATION_SHORTCUTS.map((shortcut)=>H`<option selected="${shortcut.view === draft.view}" value="${shortcut.view}" >${shortcut.label}</option>`)}
                     </select>
                 </label>
                 <label class="modal-field" data-field="href">
                     <span>Link</span>
-                    <input name="href" type="url" value=${draft.href} placeholder="https://example.com" />
+                    <input name="href" type="url" placeholder="https://example.com" value="${draft.href}"/>
                 </label>
                 <label class="modal-field">
                     <span>Description</span>

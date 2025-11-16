@@ -316,8 +316,22 @@ $card-variants: (
         initial-value: 128deg;
     }
 
+    @property --card-swipe-offset {
+        syntax: "<length>";
+        inherits: true;
+        initial-value: 0px;
+    }
+
+    @property --card-swipe-progress {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 0;
+    }
+
     .card {
         --current: var(--primary);
+        --card-swipe-offset: 0px;
+        --card-swipe-progress: 0;
 
         @include card-surface-vars(
             clamp(0.06, var(--surface-opacity-default), 0.14),
@@ -390,7 +404,11 @@ $card-variants: (
 
             //
             perspective: 1000;
-            transform: translateZ(0px);
+            transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
+        }
+
+        &:where([data-swiping], [data-swipe-action]) {
+            will-change: transform;
         }
 
         &,
@@ -409,6 +427,99 @@ $card-variants: (
         * {
             pointer-events: none;
             user-select: none;
+        }
+
+        > :not(.card-swipe-preview) {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-swipe-preview {
+            position: absolute;
+            inset: 0;
+            padding: var(--card-padding);
+            display: none;
+            grid-template-columns: repeat(2, minmax(0px, 1fr));
+            gap: var(--gap-md);
+            pointer-events: none;
+            z-index: 0;
+            align-items: center;
+            justify-content: space-between;
+            transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));
+            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
+            transition: opacity var(--duration-fast) var(--ease-out);
+        }
+
+        .card-swipe-action {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--gap-xs);
+            font-size: clamp(var(--font-xs), 1cqmin, var(--font-sm));
+            font-weight: var(--font-weight-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: var(--padding-xs) var(--padding-md);
+            border-radius: var(--radius-pill, 999px);
+            background: color-mix(in oklch, var(--current) 24%, transparent);
+            color: --c2-on-surface(var(--text-tint-primary, 90%), var(--current));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--current) 50%, transparent);
+            opacity: 0;
+            transform: translateX(0);
+            transition:
+                opacity var(--duration-normal) var(--ease-out),
+                transform var(--duration-normal) var(--ease-out);
+
+            ui-icon {
+                --icon-color: currentColor;
+            }
+        }
+
+        .card-swipe-action.is-edit {
+            justify-self: flex-start;
+            background: linear-gradient(
+                90deg,
+                color-mix(in oklch, var(--color-green) 60%, transparent),
+                transparent
+            );
+        }
+
+        .card-swipe-action.is-remove {
+            justify-self: flex-end;
+            background: linear-gradient(
+                270deg,
+                color-mix(in oklch, var(--color-red) 68%, transparent),
+                transparent
+            );
+        }
+
+        &[data-swipe-action="edit"],
+        &[data-swipe-success="edit"] {
+            --card-shadow-outline: 0 0 0 1.5px color-mix(
+                in oklch,
+                var(--color-green) calc(var(--card-swipe-progress, 0) * 85%),
+                transparent
+            );
+        }
+
+        &[data-swipe-action="remove"],
+        &[data-swipe-success="remove"] {
+            --card-shadow-outline: 0 0 0 1.5px color-mix(
+                in oklch,
+                var(--color-red) calc(var(--card-swipe-progress, 0) * 85%),
+                transparent
+            );
+        }
+
+        &[data-swipe-action="edit"] .card-swipe-action.is-edit,
+        &[data-swipe-success="edit"] .card-swipe-action.is-edit {
+            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
+            transform: translateX(calc((1 - var(--card-swipe-progress, 0)) * -35%));
+        }
+
+        &[data-swipe-action="remove"] .card-swipe-action.is-remove,
+        &[data-swipe-success="remove"] .card-swipe-action.is-remove {
+            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
+            transform: translateX(calc((1 - var(--card-swipe-progress, 0)) * 35%));
         }
 
         &:not([data-variant]),
@@ -460,6 +571,12 @@ $card-variants: (
             --card-overlay-strength: min(0.6, calc(var(--card-overlay-strength-base) + 0.06));
             --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
             @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
+        }
+
+        @container (inline-size <= 720px) {
+            .card-swipe-preview {
+                display: grid;
+            }
         }
 
         @container (inline-size <= 460px) {
