@@ -1,14 +1,15 @@
-import { observableByMap, subscribe, addToCallChain } from "fest/object";
+import { subscribe, addToCallChain } from "fest/object";
 import { H, M } from "fest/lure";
+import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
 
 //
-export const Sidebar: any = (currentView: { value: string }, entityViews, makeView: (key: string)=>any) => {
+export const Sidebar: any = (currentView: { value: string }, entityViews, _makeView: (key: string)=>any) => {
 
     //
+    const fallbackLinks = NAVIGATION_SHORTCUTS.filter(({ view }) => !entityViews?.has?.(view));
     const sidebar = H`<nav slot="sidebar" class="sidebar c2-surface" aria-label="Primary"><ul>
     ${M(entityViews, (frag, name) => H`<li><a target="_self" href="#${name}" data-name="${name}"><ui-icon icon="${frag?.icon}"></ui-icon><span>${frag?.label}</span></a></li>`)}
-    <li><a target="_self" href="#explorer" data-name="explorer"><ui-icon icon="books"></ui-icon><span>Explorer</span></a></li>
-    <li><a target="_self" href="#settings" data-name="settings"><ui-icon icon="gear"></ui-icon><span>Settings</span></a></li>
+    ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-name="${frag.view}"><ui-icon icon="${frag.icon}"></ui-icon><span>${frag.label}</span></a></li>`)}
 </ul></nav>`;
 
     if (currentView) {

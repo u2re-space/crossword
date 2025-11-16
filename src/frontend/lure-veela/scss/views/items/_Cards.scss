@@ -320,7 +320,7 @@ $card-variants: (
         --current: var(--primary);
 
         @include card-surface-vars(
-            clamp(0.06, var(--surface-opacity-subtle), 0.14),
+            clamp(0.06, var(--surface-opacity-default), 0.14),
             clamp(0.12, calc(var(--card-surface-tone-base) * 2.1), 0.22),
             clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.24),
             clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34),
@@ -380,33 +380,8 @@ $card-variants: (
         background-repeat: no-repeat;
         background-origin: border-box;
 
+        //
         @include solid-colorize("&", ("shade": var(--card-surface-tone), "scope": "selector"));
-
-        background-color: var(--surface-color);
-        background-image:
-            radial-gradient(
-                140% 120% at 0% 100%,
-                color-mix(
-                    in oklch,
-                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-strength) * 55%),
-                    transparent
-                ) 0%,
-                transparent 62%
-            ),
-            linear-gradient(
-                var(--card-gradient-angle),
-                color-mix(
-                    in oklch,
-                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-strength) * 90%),
-                    transparent
-                ) 0%,
-                color-mix(
-                    in oklch,
-                    var(--surface-color, var(--color-surface, var(--md3-surface, #ffffff))) calc(var(--card-overlay-secondary) * 100%),
-                    transparent
-                ) 42%,
-                transparent 100%
-            );
 
         & {
             inline-size: stretch !important;

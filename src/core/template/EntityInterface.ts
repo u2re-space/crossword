@@ -74,8 +74,8 @@ export interface PropBase {
 //
 export interface EntityInterface<T extends PropBase, K extends (ENTITY_KIND | VENDOR_KIND | PLACE_KIND | FACTOR_KIND | PERSON_KIND | SERVICE_KIND | ITEM_KIND | SKILL_KIND)> {
     id: string;
-    type: T;
-    kind: K;
+    type?: T;
+    kind?: K;
     name?: string;
     title?: string;
     variant?: string;
@@ -83,7 +83,11 @@ export interface EntityInterface<T extends PropBase, K extends (ENTITY_KIND | VE
     image?: string;
     icon?: string;
     tags?: string[];
-    properties: T;
+    properties?: T;
+    items?: any;
+    meta?: any;
+    shortcut?: any;
+    viewMaker?: any;
 }
 
 //

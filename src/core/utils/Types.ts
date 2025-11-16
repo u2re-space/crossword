@@ -18,7 +18,7 @@ export type ChapterDescriptor = DayDescriptor | TimeType | string | null;
 
 //
 export interface EntityDescriptor {
-    type: string;
-    label: string;
-    DIR: string;
+    type?: string;
+    label?: string;
+    DIR?: string;
 }

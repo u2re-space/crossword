@@ -11,6 +11,7 @@ import { Sidebar } from "./layouts/Sidebar";
 import { MakeCardElement } from "./entities/Cards";
 import { dropFile, hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../utils/Utils";
+import { createCtxMenu, SpeedDial } from "./views/workspace/SpeedDial";
 import { ViewPage } from "./entities/Viewer";
 
 //
@@ -41,6 +42,19 @@ const implementTestDrop = (mountElement: HTMLElement) => {
         }
     });
 }
+
+//
+async function makeWallpaper() {
+    const { H, orientRef } = await import("fest/lure");
+    const oRef = orientRef();
+    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${BACKGROUND_IMAGE}></canvas>`;
+    return CE;
+}
+
+//
+const BACKGROUND_IMAGE = "./assets/imgs/test.jpg";
+
+
 
 //
 export const CURRENT_VIEW = hashTargetRef(location.hash || "task", false);
@@ -79,7 +93,7 @@ export async function frontend(mountElement) {
 
     //
     const existsViews: Map<string, any> = makeReactive(new Map<string, any>()) as Map<string, any>;
-    const makeView = (registryKey, )=>{
+    const makeView = (registryKey, props?: any)=>{
         let actions: any = {};
         let element: any = null;
 
@@ -88,6 +102,9 @@ export async function frontend(mountElement) {
 
         //
         if (existsViews.has(registryKey)) {
+            if (props?.focus == true || props?.focus == null) {
+                CURRENT_VIEW.value = registryKey;
+            }
             return existsViews.get(registryKey);
         }
 
@@ -123,6 +140,19 @@ export async function frontend(mountElement) {
             }, element);
         }
 
+        //
+        if (registryKey == "home") {
+            element = SpeedDial(makeView);
+            actions = makeToolbar([], {
+                label: "",
+                type: registryKey,
+                DIR: `/`
+            }, element);
+        }
+
+        //
+        if (!element) return;
+
 
 
         // TODO: custom views
@@ -141,12 +171,21 @@ export async function frontend(mountElement) {
         }
 
         //
+        if (props?.focus == true || props?.focus == null) {
+            CURRENT_VIEW.value = registryKey;
+        }
+
+        //
         return existsViews?.get?.(registryKey);
     }
 
     //
     const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, makeView));
+    mountElement?.append?.(await makeWallpaper());
     mountElement?.append?.(layout);
+    mountElement?.append?.(createCtxMenu());
+
+    //
     implementTestDrop(mountElement);
 }
 
