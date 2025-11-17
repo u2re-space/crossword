@@ -27,14 +27,20 @@ Write and output ONLY code, without any introduction, intermission or footer or 
 - `shared/fest/` - Shared modules, utilities, etc.
 - `assets/` - Project assets, images, fonts, etc. (planned for future usage)
 
+### 🚧 Level 0.5 (root core libraries)
+
+- `shared/fest/core` - Core TS/JS utilities and helpers library
+
 ### 🚧 Level 1 (core libraries)
 
 - `shared/fest/dom` - DOM utils and helpers library
 - `shared/fest/object` - Core reactivity library
+- `shared/fest/veela` - CSS framework
 
 ### 🧱 Level 2 (derived libraries)
 
-- `shared/fest/lure` - reactive DOM framework
+- `shared/fest/lure` - Reactive DOM framework
+- `shared/fest/icon` - Icon library (web component)
 
 ### 🏗️ Level 3 (UI libraries)
 
@@ -60,14 +66,10 @@ Write and output ONLY code, without any introduction, intermission or footer or 
 
 ### 📂 Project Import Rules
 
-You should follow these rules to import modules:
+Directories in root of project:
 
-- `/frontend/elements/` - frontend code, **can't** import modules from `/frontend/views/` or `/core/`, but **can** import modules from `/shared/`
-- `/frontend/views/` - views code, **can** import modules from `/frontend/elements/`, `/core/` and `/shared/`
-- `/core/` - core code, **can't** import modules from `/frontend/`, but **can** import some modules from `/shared/`, may be used not only in frontend, but also in backend to create some shared logic
-- `/shared/` - shared code, **can't** import modules from `/src/`, `/frontend/`, and may be used in frontend and backend
-- `/test/` - test code, **can't** import modules from `/src/`, `/frontend/`
-- `/pwa/` - pwa code, **can't** import modules from `/frontend/`
+- `/shared/` - shared code, **can't** import modules from `/src/`, and may be used in frontend and backend
+- `/test/` - test code, **can't** import modules from `/src/`
 - `/src/` - main code, **can't** import modules from `/test/`
 - `/main.mjs` - main entry point, can be imported only by `/index.html`
 - `/index.html` - application entry point, can be imported only by `/main.mjs`
@@ -75,14 +77,24 @@ You should follow these rules to import modules:
 - `/tsconfig.json` - tsconfig, **can't** import modules from `/src/`
 - `/package.json` - package.json, **can't** import modules from `/src/`
 
+You should follow these rules to import modules (in `src/` directory):
+
+- `/frontend/utils/` - frontend code, **can't** import modules from `/frontend/lure-veela/` or `/core/`, but **can** import modules from `/shared/`
+- `/frontend/lure-veela/` - views code, **can** import modules from `/frontend/utils/`, `/core/` and `/shared/`
+- `/core/` - core code, **can't** import modules from `/frontend/`, but **can** import some modules from `/shared/`, may be used not only in frontend, but also in backend to create some shared logic
+- `/pwa/` - pwa code, **can't** import modules from `/frontend/`
+
 ---
 
 ## Common Imports
 
-- `fest/dom`
-- `fest/lure`
-- `fest/object`
-- `fest/fl-ui`
+- `fest/dom` - DOM utils and helpers library
+- `fest/lure` - Reactive DOM framework
+- `fest/object` - Core reactivity library
+- `fest/fl-ui` - UI system and components library
+- `fest/veela` - CSS framework
+- `fest/icon` - Icon library (web component)
+- `fest/core` - Core TS/JS utilities and helpers library
 
 Imports of project modules isn't should internally import by-self name.
 
@@ -94,10 +106,13 @@ By default, use key-name as import root.
 
 | Library | Path |
 |---|---|
-| `fest/lure`   | `shared/fest/lure`     |
-| `fest/dom`    | `shared/fest/dom`    |
-| `fest/object` | `shared/fest/object` |
+| `fest/lure`   | `shared/fest/lure`      |
+| `fest/dom`    | `shared/fest/dom`       |
+| `fest/object` | `shared/fest/object`    |
 | `fest/fl-ui`  | `shared/fest/fl-ui`     |
+| `fest/veela`  | `shared/fest/veela`     |
+| `fest/icon`   | `shared/fest/icon`      |
+| `fest/core`   | `shared/fest/core`      |
 
 ---
 
