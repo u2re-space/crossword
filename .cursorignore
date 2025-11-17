@@ -11,6 +11,8 @@ https
 .gitignore
 dist
 dist/*
+dev-dist
+dev-dist/*
 externals/*
 externals
 *.png
@@ -38,6 +40,10 @@ externals
 *.a
 *.o
 *.obj
+*.ps1
+*.sh
+*.cmd
+*.bat
 .idea/*
 .idea
 .gigaide
