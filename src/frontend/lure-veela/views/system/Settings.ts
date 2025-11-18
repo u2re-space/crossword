@@ -17,7 +17,7 @@ import { MCPSection } from "@rs-core/config/sections/MCPSection";
 import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
 import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
-import { propRef, stringRef } from "fest/object";
+import { computed, propRef, stringRef } from "fest/object";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
@@ -42,6 +42,7 @@ export const Settings = async () => {
     const panelRefs = new Map<SectionKey, HTMLElement>();
     const forms = new Map<SectionKey, HTMLFormElement>();
     const tabbed = new Map<SectionKey, HTMLElement>();
+    const statusText = stringRef("");
 
     // MCP management
     const mcpConfigs: MCPConfig[] = [];
@@ -113,7 +114,7 @@ export const Settings = async () => {
         const container = H`<div class="mcp-config ${isNew ? 'mcp-config-new' : ''}" data-mcp-id=${mcpConfig.id}>
             <div class="mcp-header">
                 <h4>MCP Server: ${mcpConfig.serverLabel || 'New Server'}</h4>
-                <button type="button" class="btn btn-danger btn-sm remove-mcp" data-mcp-id=${mcpConfig.id}>
+                <button type="button" class="btn btn-danger btn-sm remove-mcp" data-mcp-id=${mcpConfig.id} on:click=${() => removeMCPConfig(mcpConfig.id)}>
                     <ui-icon icon="trash"></ui-icon>
                     <span>Remove</span>
                 </button>
@@ -170,7 +171,7 @@ export const Settings = async () => {
         }
 
         // Remove field references
-        fieldRefs.forEach((control, path) => {
+        fieldRefs.forEach((_control, path) => {
             if (path.startsWith(`mcp.${mcpId}.`)) {
                 fieldRefs.delete(path);
             }
@@ -179,12 +180,11 @@ export const Settings = async () => {
 
     //
     SETTINGS_SECTIONS.forEach((section) => {
-        const button = H`<button type="button" class="settings-tab" role="tab" id=${`tab-${section.key}`} aria-controls=${`panel-${section.key}`} aria-selected="false">
+        const button = H`<button type="button" class="settings-tab" role="tab" id=${`tab-${section.key}`} aria-controls=${`panel-${section.key}`} aria-selected="false" on:click=${() => activateSection(section.key)}>
             <ui-icon icon=${section.icon}></ui-icon>
             <span>${section.title}</span>
         </button>` as HTMLButtonElement;
         button.tabIndex = -1;
-        button.addEventListener("click", () => activateSection(section.key));
         navButtons.set(section.key, button);
 
         const panel = H`<section class="settings-panel" role="tabpanel" id=${`panel-${section.key}`} aria-labelledby=${`tab-${section.key}`} hidden></section>` as HTMLElement;
@@ -208,11 +208,11 @@ export const Settings = async () => {
             // Special handling for MCP section
             if (section.key === 'mcp' && group.key === 'mcp-management') {
                 // Add MCP management buttons
-                const addButton = H`<button type="button" class="btn btn-primary add-mcp">
+                const addButton = H`<button type="button" class="btn btn-primary add-mcp" on:click=${addMCPConfig}>
                     <ui-icon icon="plus"></ui-icon>
                     <span>Add MCP Server</span>
                 </button>` as HTMLButtonElement;
-                addButton.addEventListener('click', addMCPConfig);
+
 
                 //
                 mcpConfigs.forEach(config => {
@@ -242,7 +242,12 @@ export const Settings = async () => {
         class="all"
     ></ui-tabbed-box>` as HTMLElement;
     const tabsState: { value: SectionKey } = propRef(panelsWrapper, "currentTab", SETTINGS_SECTIONS[0].key);
-    container.append(panelsWrapper);
+
+    // styles broken for that... TODO: fix
+    const statusBar = H`<div class="settings-actions" role="status" prop:hidden=${computed(statusText, (text) => !text?.trim())}>
+        <span class="save-status" aria-live="polite">${statusText}</span>
+    </div>` as HTMLElement;
+    container.append(panelsWrapper/*, statusBar*/);
 
     //
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
@@ -371,18 +376,6 @@ export const Settings = async () => {
     //
     activateSection(tabsState.value);
 
-    // Add event delegation for remove MCP buttons
-    container.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('.remove-mcp')) {
-            const button = target.closest('.remove-mcp') as HTMLButtonElement;
-            const mcpId = button.dataset.mcpId;
-            if (mcpId) {
-                removeMCPConfig(mcpId);
-            }
-        }
-    });
-
     //
     let settings = await loadSettings();
 
@@ -419,13 +412,10 @@ export const Settings = async () => {
     syncCustomVisibility();
 
     //
-    const status = H`<span class="save-status" aria-live="polite"></span>` as HTMLElement;
-
-    //
     const handleFormInput = (event: Event) => {
         if (!(event.target instanceof HTMLElement)) return;
         if (!event.target.closest('.settings-form')) return;
-        status.textContent = "";
+        statusText.value = "";
     };
 
     //
@@ -489,15 +479,15 @@ export const Settings = async () => {
             settings = await saveSettings(next);
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
-            status.textContent = "Saved";
+            statusText.value = "Saved";
             toastSuccess("Settings updated");
             syncCustomVisibility();
-            setTimeout(() => { status.textContent = ""; }, 1600);
+            setTimeout(() => { statusText.value = ""; }, 1600);
         } catch (e) {
             console.warn(e);
             toastError("Failed to save settings");
-            status.textContent = "Error";
-            setTimeout(() => { status.textContent = ""; }, 1800);
+            statusText.value = "Error";
+            setTimeout(() => { statusText.value = ""; }, 1800);
         }
     };
 
