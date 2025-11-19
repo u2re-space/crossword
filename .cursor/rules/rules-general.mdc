@@ -1,132 +1,74 @@
 ---
-globs: *.ts,*.mjs,*.js,*.scss,*.css
+globs: *.ts,*.tsx,*.mjs,*.js,*.scss,*.css
 alwaysApply: false
 ---
+
 # General Coding Recommendations
 
-Write code in a specified programming language (or detect it automatically) following certain criteria and tasks. Comments in the code are allowed as well, but preferably in English.
+Write or update code in the relevant programming language (or detect it automatically) according to the current task. Comments are allowed, but preferably in English.
 
-The primary build system is Vite. Take into account the latest versions of browsers (Chrome 137 and above) and standards (WICG, WHATWG, ECMA, W3C, TC39, CSSWG), as much as possible...
-
-Try to fix possible validation issues, if found in/by IDE/Editor, and fix very weird or non-perfect indentations (using by spaces).
-
-It is also desirable not to output excessive amounts of code and lines; whenever possible, keep things simple and concise. For follow-up requests, output only the potential edits. Also, de-dublicate redundant or unnecessary code, where is possible.
-
-Write and output ONLY code, without any introduction, intermission or footer or post-scriptum.
-
----
-
-
-## 🌳 Project Hierarchy
-
-### ⛰️ Level 0 (project root)
-
-- `./` - Project root directory
-- `shared/` - Modules directory
-- `shared/unite-2.man` - Project manifest
-- `shared/fest/` - Shared modules, utilities, etc.
-- `assets/` - Project assets, images, fonts, etc. (planned for future usage)
-
-### 🚧 Level 0.5 (root core libraries)
-
-- `shared/fest/core` - Core TS/JS utilities and helpers library
-
-### 🚧 Level 1 (core libraries)
-
-- `shared/fest/dom` - DOM utils and helpers library
-- `shared/fest/object` - Core reactivity library
-- `shared/fest/veela` - CSS framework
-
-### 🧱 Level 2 (derived libraries)
-
-- `shared/fest/lure` - Reactive DOM framework
-- `shared/fest/icon` - Icon library (web component)
-
-### 🏗️ Level 3 (UI libraries)
-
-- `shared/fest/fl-ui` - UI system and components library
-
-### 🏬 Level 4 (applications)
-
-- `src/` - Applications projects
+- The primary build system is Vite. Respect the existing project configuration and structure.
+- Target the latest stable Chrome (137+) and modern evergreen browsers, following current standards (WHATWG, WICG, ECMA, W3C, TC39, CSSWG) where reasonably possible.
+- Prefer modern language and platform features that are well-supported in these targets; avoid legacy patterns unless strictly necessary.
+- Fix validation issues reported by the IDE/editor where possible.
+- Normalize indentation (spaces only) and clean up inconsistent or unusual formatting.
+- Avoid overly verbose output: keep changes minimal and focused on the task. For follow-up edits, output **only** the changed or newly added code blocks.
+- Remove duplicated or dead code when it is safe to do so.
+- Write and output **only code** (no explanations, no comments outside the code, no headings, no prose).
+- Respect and use settings from:
+  - `tsconfig.json` (types, module resolution, strictness, paths, etc.)
+  - `package.json` (scripts, dependencies, engines, browserslist, etc.)
+  - `vite.config.*` (aliases, plugins, environment, base path, etc.)
 
 ---
 
-## 🧩 Import rules
+## TypeScript / JavaScript
 
-- ✅ Allowed imports from lower level to higher level only.
-- ⚠️ Normally, imports between in same level or not approved.
-- ⛔ Imports in lower level from next level is not allowed.
-
-### 🧪 Examples
-
-- ✅ `fest/lure` can import `fest/object` or `fest/dom`, but not vice versa.
-- ⚠️ `fest/object` and `fest/dom`, or something in same level, isn't allowed to import vice versa...
-- ⛔ `fest/object`, `fest/dom` isn't allowed to import `fest/lure` or `fest/fl-ui`.
-
-### 📂 Project Import Rules
-
-Directories in root of project:
-
-- `/shared/` - shared code, **can't** import modules from `/src/`, and may be used in frontend and backend
-- `/test/` - test code, **can't** import modules from `/src/`
-- `/src/` - main code, **can't** import modules from `/test/`
-- `/main.mjs` - main entry point, can be imported only by `/index.html`
-- `/index.html` - application entry point, can be imported only by `/main.mjs`
-- `/vite.config.js` - vite config, **can't** import modules from `/src/`
-- `/tsconfig.json` - tsconfig, **can't** import modules from `/src/`
-- `/package.json` - package.json, **can't** import modules from `/src/`
-
-You should follow these rules to import modules (in `src/` directory):
-
-- `/frontend/utils/` - frontend code, **can't** import modules from `/frontend/lure-veela/` or `/core/`, but **can** import modules from `/shared/`
-- `/frontend/lure-veela/` - views code, **can** import modules from `/frontend/utils/`, `/core/` and `/shared/`
-- `/core/` - core code, **can't** import modules from `/frontend/`, but **can** import some modules from `/shared/`, may be used not only in frontend, but also in backend to create some shared logic
-- `/pwa/` - pwa code, **can't** import modules from `/frontend/`
+- Prefer TypeScript where the project already uses it.
+- Follow the strictness level defined in `tsconfig.json`; do not relax compiler options unless explicitly requested.
+- Use `const` by default, `let` when reassignment is required, and avoid `var`.
+- Prefer explicit types on public APIs (functions, exported values, React/Vue components’ props, etc.).
+- Keep functions small and focused; extract helpers when logic becomes complex or repeatedly reused.
+- Prefer native Web APIs and language features over large utility libraries if functionality overlaps.
+- When adding or updating imports, respect existing path aliases and module structure defined in Vite and `tsconfig.json`.
 
 ---
 
-## Common Imports
+## Styling (CSS / SCSS)
 
-- `fest/dom` - DOM utils and helpers library
-- `fest/lure` - Reactive DOM framework
-- `fest/object` - Core reactivity library
-- `fest/fl-ui` - UI system and components library
-- `fest/veela` - CSS framework
-- `fest/icon` - Icon library (web component)
-- `fest/core` - Core TS/JS utilities and helpers library
-
-Imports of project modules isn't should internally import by-self name.
+- Follow existing naming conventions (BEM, utility-first, CSS Modules, etc.) already present in the project.
+- Prefer modern layout techniques (Flexbox, Grid) and avoid outdated patterns (e.g., table layouts) unless required.
+- Remove unused styles when it is safe to confirm they are not referenced.
+- Keep selectors as small and specific as necessary; avoid over-nesting in SCSS.
+- Use variables, mixins, or design tokens already defined in the project instead of duplicating values.
 
 ---
 
-## Project Directory Mapping
+## Vite-Specific Notes
 
-By default, use key-name as import root.
-
-| Library | Path |
-|---|---|
-| `fest/lure`   | `shared/fest/lure`      |
-| `fest/dom`    | `shared/fest/dom`       |
-| `fest/object` | `shared/fest/object`    |
-| `fest/fl-ui`  | `shared/fest/fl-ui`     |
-| `fest/veela`  | `shared/fest/veela`     |
-| `fest/icon`   | `shared/fest/icon`      |
-| `fest/core`   | `shared/fest/core`      |
+- When resolving or adding imports, honor Vite’s alias configuration and supported file extensions.
+- Ensure that any changes remain compatible with Vite’s dev server and build pipeline (ESM, dynamic imports, etc.).
+- When adjusting configuration, prefer small, focused changes and keep plugin order and behavior in mind.
 
 ---
 
-## Our projects (for following)
+## References (for internal guidance only)
 
-- <https://github.com/fest-live>
+- Vite:
+  - <https://vite.dev/guide/>
+  - <https://vite.dev/config/>
+- Platform & standards:
+  - <https://developer.chrome.com/>
+  - <https://developer.mozilla.org/>
+  - <https://www.ecma-international.org/>
+- Styling:
+  - <https://sass-lang.com/documentation/>
+  - <https://css-tricks.com/>
 
-## About Vite
+---
 
-- <https://vite.dev/guide/>
-- <https://vite.dev/config/>
+## Browser Support
 
-## Guidelines
-
-- <https://chromestatus.com/>
-- <https://developer.chrome.com/>
-- <https://caniuse.com/>
+- Check support when using new or experimental platform features:
+  - <https://chromestatus.com/>
+  - <https://caniuse.com/>

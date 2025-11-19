@@ -1,19 +1,133 @@
 ---
-globs: *.ts,*.mjs,*.js
+globs: *.ts,*.tsx,*.mjs,*.js
 alwaysApply: false
 ---
-# Coding Recommendations for JS/TS
 
-Before taking any actions, lookup all (if available) used or related (possible) imports, or cheat-sheets registry (`cheat-sheet-js.mdc`)! Also read or learn `tsconfig.ts` aliases.
+# JS/TS Coding & Project Navigation Guidelines
+
+Use these as *recommendations*, not strict rules. Prefer consistency with the
+existing codebase.
 
 ---
 
-## Specifications
+## Before You Start Editing
 
-- <https://chromestatus.com/>
-- <https://developer.chrome.com/>
-- <https://github.com/tc39/>
-- <https://github.com/tc39/ecma262>
-- <https://github.com/WICG/html-in-canvas>
-- <https://html.spec.whatwg.org/>
-- <https://tc39.es/ecma262/>
+1. **Inspect the file context**
+   - Scroll through the file first; understand its purpose and public API.
+   - Identify existing patterns (naming, error handling, async style, etc.).
+   - Check for nearby TODO/FIXME comments.
+
+2. **Check related imports & modules**
+   - Find and open all imported modules used in the current file.
+   - Notice:
+     - Existing utilities you can reuse (avoid re‑inventing).
+     - Existing types/interfaces you can extend instead of duplicating.
+     - Shared helpers for logging, HTTP, dates, validation, etc.
+
+3. **Understand project configuration**
+   - Read or skim:
+     - `tsconfig.json` (path aliases, strictness, module resolution).
+     - `package.json` (scripts, target environments, dependencies).
+     - Build tools (one or more of):
+       - `vite.config.*`
+       - `webpack.config.*`
+       - `rollup.config.*`
+       - `esbuild.config.*`
+   - Pay special attention to:
+     - Path aliases (`compilerOptions.paths`, `resolve.alias`, etc.).
+     - JSX runtime settings.
+     - Target environments (browsers / Node versions).
+     - Experimental flags and feature toggles.
+
+4. **Check typing & linting rules**
+   - Look for:
+     - ESLint config (`.eslintrc.*`).
+     - Prettier config (`.prettierrc.*`).
+     - Type checking scripts in `package.json` (e.g. `typecheck`).
+   - Match the existing style:
+     - Prefer existing naming conventions.
+     - Use the same import style (default vs named, path depth, etc.).
+     - Respect configured rules instead of introducing exceptions.
+
+---
+
+## Implementation Guidelines
+
+1. **TypeScript usage**
+   - Prefer **explicit types** for public APIs (exports) and function params.
+   - Let the compiler infer **local** types where it stays clear.
+   - Avoid `any`. If unavoidable, use:
+     - `unknown` + narrowing
+     - or a well‑named type alias.
+   - Use `interface` / `type` consistently with the existing codebase.
+
+2. **Runtime safety**
+   - Validate external input (network, DOM, query params, etc.).
+   - Narrow types when working with `unknown`/`any`/`JSON.parse` results.
+   - Handle async errors (try/catch or `.catch`, avoid unhandled promises).
+
+3. **Code structure**
+   - Prefer small, single‑responsibility functions.
+   - Extract repeated logic into shared utilities when it’s clearly reused.
+   - Keep modules focused: avoid files that do “everything”.
+
+4. **Performance & ergonomics**
+   - Avoid unnecessary re‑computation in hot paths (render loops, observers).
+   - Prefer lazy initialization when possible.
+   - For browser code, consider layout thrashing, timers, and DOM churn.
+
+5. **Comments & documentation**
+   - Add comments when behavior is non‑obvious or constrained by specs.
+   - Prefer **why** over **what** in comments.
+   - Add/extend JSDoc or TSDoc for exported functions and types.
+
+---
+
+## Web Platform & Language Specifications
+
+Use the official specs and proposals for *behavioral correctness* and
+edge‑case handling, especially for:
+
+- DOM, Events, HTML parsing, Canvas
+- JavaScript language semantics
+- TypeScript type system
+
+**Recommended references:**
+
+- Web platform & browser:
+  - <https://developer.chrome.com/>
+  - <https://html.spec.whatwg.org/>
+  - <https://drafts.csswg.org/web-animations/>
+  - <https://github.com/WICG/html-in-canvas>
+
+- JavaScript / ECMAScript:
+  - <https://github.com/tc39/>
+  - <https://github.com/tc39/ecma262>
+  - <https://tc39.es/ecma262/>
+
+- TypeScript:
+  - <https://www.typescriptlang.org/docs/>
+
+---
+
+## Browser & Runtime Support
+
+When using newer APIs or syntax, verify compatibility with the project’s target
+environments.
+
+- General feature support:
+  - <https://caniuse.com/>
+  - <https://chromestatus.com/>
+
+- Cross‑check:
+  - Project `browserslist` config (if present).
+  - Build target options in bundler / TS config.
+
+---
+
+## When Unsure
+
+- Prefer matching **existing patterns** in the repository over introducing a new style.
+- If a standard or spec contradicts existing code:
+  - Note the discrepancy via a short comment or TODO.
+  - Avoid silent behavior changes unless clearly intended by the task.
