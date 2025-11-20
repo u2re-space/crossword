@@ -4,7 +4,7 @@ import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator"
 import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
 import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite } from "./FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/lure-veela/overlays/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";

@@ -2,7 +2,7 @@ import { makeReactive } from "fest/object";
 import { ctxMenuTrigger, H, orientRef, M, Q } from "fest/lure";
 import { bindInteraction } from "fest/fl-ui";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
-import { toastSuccess, toastError } from "@rs-frontend/lure-veela/overlays/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import {
     speedDialMeta,
     speedDialItems,

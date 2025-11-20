@@ -3,7 +3,7 @@
 
 // Svelte + Beer CSS frontend (alternative implementation)
 //import frontend from "./svelte-beer/index";
-import frontend from "./lure-veela/views/Views";
+import frontend from "./lure-veela/layout/Views";
 
 export default frontend;
 

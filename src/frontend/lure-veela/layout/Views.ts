@@ -1,4 +1,4 @@
-import { AppLayout } from "./layouts/AppLayout";
+import { AppLayout } from "./AppLayout";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
 
@@ -6,18 +6,19 @@ import { makeReactive, $trigger } from "fest/object";
 import "fest/fl-ui";
 
 //
-import { Sidebar } from "./layouts/Sidebar";
-import { MakeCardElement } from "../entities/Cards";
+import { Sidebar } from "./Sidebar";
+import { MakeCardElement } from "../items/Cards";
 import { dropFile, hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
-import { createCtxMenu, SpeedDial } from "./workspace/SpeedDial";
-import { ViewPage } from "./layouts/Viewer";
+import { createCtxMenu, SpeedDial } from "../views/SpeedDial";
+import { ViewPage } from "../views/Viewer";
 
 // @ts-ignore
 import style from "../scss/index.scss?inline";
-import { makeToolbar } from "../entities/Actions";
-import { Settings } from "./system/Settings";
-import { DataExplorer } from "./system/DataExplorer";
+import { makeToolbar } from "../items/Actions";
+import { Settings } from "../views/Settings";
+import { DataExplorer } from "../views/DataExplorer";
+import { MakeMarkdownView } from "../views/Markdown";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -40,6 +41,14 @@ const implementTestDrop = (mountElement: HTMLElement) => {
     });
 }
 
+
+
+//
+const generateId = (path: string)=>{
+    const filename = path?.split("/")?.pop()?.replace?.(/[^a-zA-Z0-9-_]/g, "-") || "doc";
+    const randHash = Math.random().toString(36).slice(2, 6);
+    return `${filename}-${randHash}`;
+}
 
 
 
@@ -128,6 +137,18 @@ export async function frontend(mountElement) {
         }
 
         //
+        if (registryKey?.startsWith?.("markdown:")) {
+            const path = registryKey.replace("markdown:", "");
+            registryKey = generateId(path);
+            element = MakeMarkdownView(path, registryKey);
+            actions = makeToolbar([], {
+                label: path.split("/").pop() || "Markdown",
+                type: registryKey,
+                DIR: `/`
+            }, element);
+        }
+
+        //
         if (registryKey == "home") {
             element = SpeedDial(makeView);
             actions = makeToolbar([], {
@@ -172,12 +193,24 @@ export async function frontend(mountElement) {
     mountElement?.append?.(createCtxMenu());
 
     //
+    mountElement?.addEventListener?.("open", (event: CustomEvent) => {
+        const { path, item } = event.detail || {};
+        const isMd = path?.endsWith?.(".md") || item?.type?.includes?.("markdown") || item?.name?.endsWith?.(".md");
+        if (path && isMd) {
+            event.preventDefault();
+            event.stopPropagation();
+            const key = `markdown:${path}`;
+            makeView(key, { focus: true });
+        }
+    });
+
+    //
     implementTestDrop(mountElement);
 }
 
 //
-export * from "./system/DataExplorer";
-export * from "./system/Settings";
+export * from "../views/DataExplorer";
+export * from "../views/Settings";
 
 //
 export default frontend;
