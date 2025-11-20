@@ -215,7 +215,7 @@ export const Settings = async () => {
         button.tabIndex = -1;
         navButtons.set(section.key, button);
 
-        const panel = H`<section class="settings-panel" role="tabpanel" id=${`panel-${section.key}`} aria-labelledby=${`tab-${section.key}`} hidden></section>` as HTMLElement;
+        const panel = H`<section class="settings-panel" role="tabpanel" id=${`panel-${section.key}`} aria-labelledby=${`tab-${section.key}`}></section>` as HTMLElement;
         panel.setAttribute("tabindex", "-1");
         panelRefs.set(section.key, panel);
 
@@ -394,7 +394,7 @@ export const Settings = async () => {
         });
         panelRefs.forEach((panel, sectionKey) => {
             const selected = sectionKey === key;
-            panel.hidden = !selected;
+            //panel.hidden = !selected;
             //panel.setAttribute("aria-hidden", selected ? "false" : "true");
             panel.tabIndex = selected ? 0 : -1;
         });
