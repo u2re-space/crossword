@@ -55,7 +55,7 @@
             "veela-lib": ["./shared/fest/veela/scss/lib/index.scss"],
             "veela-lib/*": ["./shared/fest/veela/scss/lib/*"]
         },
-        "typeRoots": ["types", "chrome"],
+        "types": ["chrome"],
         "baseUrl": "./",
         "composite": true,
         "lib": ["dom", "esnext", "webworker"],

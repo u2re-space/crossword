@@ -2,9 +2,9 @@ import { resolve } from "node:path";
 
 //
 import optimizer from 'vite-plugin-optimizer';
-import { externalPlugin } from "@praha/vite-plugin-external";
 import https from "../private/https/certificate.mjs";
 import postcssConfig from "../postcss.config.js";
+import jspmPlugin from "vite-plugin-jspm";
 
 //
 import { viteSingleFile } from 'vite-plugin-singlefile';
@@ -39,9 +39,13 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const $resolve = { alias: importFromTSConfig(tsconfig, __dirname) }
     const projectMap = new Map([
         ["fest/core", "core.ts"],
+        ["fest/icon", "icon.ts"],
+        ["fest/fl-ui", "fl.ui"],
         ["fest/object", "object.ts"],
         ["fest/uniform", "uniform.ts"],
         ["fest/dom", "dom.ts"],
+        ["fest/veela", "veela.css"],
+        ["fest/veela-runtime", "veela.css"],
         ["fest/lure", "lur.e"],
     ]);
 
@@ -75,7 +79,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             pure_funcs: [],
             arguments: true,
             expression: true,
-            inline: 3,
             module: true,
             passes: 3,
             side_effects: true,
@@ -108,7 +111,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             //indent_level: 0,
             semicolons: true,
             shebang: true,
-            inline_script: true,
             quote_style: 0,
             wrap_iife: true,
             ascii_only: true,
@@ -118,7 +120,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'production';
     const plugins = [
-        viteSingleFile(),
+        /*jspmPlugin({
+            downloadDeps: true,
+            inputMap: true
+        }),*/
         ...(isBuild ? [] : [
             viteStaticCopy({
                 targets: [
@@ -127,7 +132,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 ]
             })
         ]),
-        optimizer({}),
         VitePWA({
             srcDir: resolve(__dirname, "./src/pwa/"),
             dstDir: resolve(__dirname, "./dist/"),
@@ -153,15 +157,24 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 type: 'module',
                 enabled: true
             }
-        }),
-        externalPlugin({
-            include: Array.from(projectMap?.keys()).filter((n)=>!n?.endsWith(NAME)), // Explicitly externalize specific packages
-            exclude: [resolve(__dirname, "./src/index.ts"), "./src/index.ts", resolve(__dirname, "./dist/"+NAME+".js"), "./dist/"+NAME+".js"]
-        }),
-        svelte({
-            configFile: resolve(__dirname, "./svelte.config.js")
         })
     ];
+
+    //
+    const manualChunks = function(id) {
+        if (id.includes('node_modules')) {
+            const modules = id.split('node_modules/');
+            const pkg = modules[modules.length - 1].split('/');
+            const name = pkg[0].startsWith('@') ? pkg[1] : pkg[0];
+            return `vendor/${name}`;
+        }
+        if (id.includes('/modules/projects/')) {
+            const match = id.match(/\/modules\/projects\/([^/]+)/);
+            if (match && id?.endsWith?.("src/index.ts")) {
+                return `${[...projectMap?.entries?.()]?.find?.(([k,v])=>match?.[0]?.includes?.("/" + v))?.[0]/*?.replace?.("fest/", "")*/ || "unk"}`;
+            }
+        }
+    }
 
     //
     const rollupOptions = {
@@ -169,18 +182,11 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         treeshake: {
             annotations: false,
             moduleSideEffects: true,
-            tryCatchDeoptimization: false,
             unknownGlobalSideEffects: true,
             correctVarValueBeforeDeclaration: true,
             propertyReadSideEffects: true
         },
         input: resolve(__dirname, './src/index.ts'),
-        external: (source) => {
-            if (source?.includes?.("node_modules/")) return false;
-            if (source?.includes?.("fest/"+NAME) || source?.includes?.("./src/index.ts") || source?.includes?.(projectMap.get("fest/"+NAME)) || source?.includes?.("dist/")) return false;
-            if (Array.from(projectMap.keys()).some((name)=>source.includes(name))) return true;
-            return false;
-        },
         output: {
             compact: true,
             globals: {},
@@ -189,8 +195,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             dir: resolve(__dirname, './dist'),
             exports: "auto",
             minifyInternalExports: true,
-            experimentalMinChunkSize: 500_500,
-            inlineDynamicImports: true,
+            entryFileNames: "[name].js",
+            chunkFileNames: "modules/[name].js",
+            assetFileNames: "assets/[name][extname]",
+            manualChunks,
         }
     };
 
@@ -268,12 +276,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         emptyOutDir: false,
         target: 'esnext',
         outDir: resolve(__dirname, './dist'),
-        //assetsInlineLimit: 4096,
         cssCodeSplit: false,
-        chunkSizeWarningLimit: 1600,
-        assetsInlineLimit: 1024 * 1024,
+        chunkSizeWarningLimit: 2048,
+        assetsInlineLimit: 1024 * 16,
         minify: false, // "terser",
-        emptyOutDir: true,
         sourcemap: 'hidden',
         modulePreload: {
             polyfill: true,

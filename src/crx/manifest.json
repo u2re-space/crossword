@@ -6,6 +6,9 @@
     "action": {
         "default_popup": "popup/index.html"
     },
+    "chrome_url_overrides": {
+        "newtab": "popup/index.html"
+    },
     "options_ui": {
         "page": "settings/index.html",
         "open_in_tab": true

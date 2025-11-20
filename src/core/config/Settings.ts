@@ -14,10 +14,12 @@ export const splitPath = (path: string) => path.split(".");
 export const getByPath = (source: any, path: string) => splitPath(path).reduce<any>((acc, key) => (acc == null ? acc : acc[key]), source);
 export const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
 
-
 //
 export const DB_NAME = 'req-store';
 export const STORE = 'settings';
+
+//
+const hasChromeStorage = () => typeof chrome !== "undefined" && chrome?.storage?.local;
 
 //
 async function idbOpen(): Promise<IDBDatabase> {
@@ -32,6 +34,19 @@ async function idbOpen(): Promise<IDBDatabase> {
 
 //
 export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> => {
+    if (hasChromeStorage()) {
+        return new Promise((res) => {
+            chrome.storage.local.get([key], (result) => {
+                if (chrome.runtime.lastError) {
+                    console.warn(chrome.runtime.lastError);
+                    res(null);
+                } else {
+                    res(result[key]);
+                }
+            });
+        });
+    }
+
     const db = await idbOpen();
     return new Promise((res, rej) => {
         const tx = db.transaction(STORE, 'readonly');
@@ -43,6 +58,18 @@ export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> =
 
 //
 export const idbPutSettings = async (value: any, key: string = SETTINGS_KEY): Promise<void> => {
+    if (hasChromeStorage()) {
+        return new Promise((res, rej) => {
+            chrome.storage.local.set({ [key]: value }, () => {
+                if (chrome.runtime.lastError) {
+                    rej(chrome.runtime.lastError);
+                } else {
+                    res();
+                }
+            });
+        });
+    }
+
     const db = await idbOpen();
     return new Promise((res, rej) => {
         console.log("idbPutSettings", key, value);
@@ -321,12 +348,14 @@ export const updateWebDavSettings = async (settings: any) => {
 
 //
 (async () => {
-    addEventListener("pagehide", (ev) => {
-        currentWebDav?.sync?.upload?.();
-    });
-    addEventListener("beforeunload", (event) => {
-        currentWebDav?.sync?.upload?.();
-    })
+    if (typeof window !== "undefined") {
+        addEventListener("pagehide", (ev) => {
+            currentWebDav?.sync?.upload?.();
+        });
+        addEventListener("beforeunload", (event) => {
+            currentWebDav?.sync?.upload?.();
+        })
+    }
 })();
 
 //

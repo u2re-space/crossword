@@ -1,6 +1,5 @@
 import { resolve  } from "node:path";
 import { readFile } from "node:fs/promises";
-
 import { crx } from "@crxjs/vite-plugin";
 
 //
@@ -49,11 +48,27 @@ const createCrxConfig = () => {
     const basePlugins = (baseConfig?.plugins || []).filter((plugin) => plugin?.name !== "vite:singlefile");
     const baseRollup = baseConfig?.build?.rollupOptions ?? {};
     const baseOutput = Array.isArray(baseRollup.output) ? baseRollup.output[0] : (baseRollup.output ?? {});
+
+    //
     const crxOutput = objectAssign({}, baseOutput, {
+        entryFileNames: "app/[name]-[hash].js",
+        chunkFileNames: "modules/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
         inlineDynamicImports: false,
-        entryFileNames: "[name].js",
-        chunkFileNames: "chunks/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]"
+        manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+                const modules = id.split('node_modules/');
+                const pkg = modules[modules.length - 1].split('/');
+                const name = pkg[0].startsWith('@') ? pkg[1] : pkg[0];
+                return `vendor/${name}`;
+            }
+            if (id.includes('/modules/projects/')) {
+                const match = id.match(/\/modules\/projects\/([^/]+)/);
+                if (match && id?.endsWith?.("src/index.ts")) {
+                    return `${[...projectMap?.entries?.()]?.find?.(([k,v])=>match?.[0]?.includes?.("/" + v))?.[0]/*?.replace?.("fest/", "")*/ || "unk"}`;
+                }
+            }
+        }
     });
 
     return objectAssign({}, baseConfig, {

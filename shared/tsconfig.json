@@ -30,6 +30,7 @@
         "module": "ESNext",
         "moduleResolution": "bundler",
         "lib": ["ESNext", "DOM", "WebWorker"],
+        "types": ["chrome"],
         "esModuleInterop": true,
         "strict": true,
         "forceConsistentCasingInFileNames": true,
@@ -45,7 +46,6 @@
         "inlineSources": true,
         "inlineSourceMap": true,
         "sourceMap": false,
-        "typeRoots": ["plugins/global.d.ts"],
         "experimentalDecorators": true
     }
 }
