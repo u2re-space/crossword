@@ -1,0 +1,78 @@
+---
+globs: *.ts,*.tsx,*.mjs,*.js,*.scss,*.css
+alwaysApply: false
+---
+
+# General Coding Recommendations
+
+Write or update code in the relevant programming language (or detect it automatically) according to the current task. Comments are allowed, but preferably in English.
+
+- The primary build system is Vite. Respect the existing project configuration and structure.
+- Target the latest stable Chrome (137+) and modern evergreen browsers, following current standards (WHATWG, WICG, ECMA, W3C, TC39, CSSWG) where reasonably possible.
+- Prefer modern language and platform features that are well-supported in these targets; avoid legacy patterns unless strictly necessary.
+- Fix validation issues reported by the IDE/editor where possible.
+- Normalize indentation (spaces only) and clean up inconsistent or unusual formatting.
+- Avoid overly verbose output: keep changes minimal and focused on the task. For follow-up edits, output **only** the changed or newly added code blocks.
+- Remove duplicated or dead code when it is safe to do so.
+- Write and output **only code** (no explanations, no comments outside the code, no headings, no prose).
+- Respect and use settings from:
+  - `tsconfig.json` (types, module resolution, strictness, paths, etc.)
+  - `package.json` (scripts, dependencies, engines, browserslist, etc.)
+  - `vite.config.*` (aliases, plugins, environment, base path, etc.)
+
+---
+
+## TypeScript / JavaScript
+
+- Prefer TypeScript where the project already uses it.
+- Follow the strictness level defined in `tsconfig.json`; do not relax compiler options unless explicitly requested.
+- Use `const` by default, `let` when reassignment is required, and avoid `var`.
+- Prefer explicit types on public APIs (functions, exported values, React/Vue components’ props, etc.).
+- Keep functions small and focused; extract helpers when logic becomes complex or repeatedly reused.
+- Prefer native Web APIs and language features over large utility libraries if functionality overlaps.
+- When adding or updating imports, respect existing path aliases and module structure defined in Vite and `tsconfig.json`.
+
+---
+
+## Styling (CSS / SCSS)
+
+- Follow existing naming conventions (BEM, utility-first, CSS Modules, etc.) already present in the project.
+- Prefer modern layout techniques (Flexbox, Grid) and avoid outdated patterns (e.g., table layouts) unless required.
+- Remove unused styles when it is safe to confirm they are not referenced.
+- Keep selectors as small and specific as necessary; avoid over-nesting in SCSS.
+- Use variables, mixins, or design tokens already defined in the project instead of duplicating values.
+
+---
+
+## Vite-Specific Notes
+
+- When resolving or adding imports, honor Vite’s alias configuration and supported file extensions.
+- Ensure that any changes remain compatible with Vite’s dev server and build pipeline (ESM, dynamic imports, etc.).
+- When adjusting configuration, prefer small, focused changes and keep plugin order and behavior in mind.
+
+---
+
+## References (for internal guidance only)
+
+- Vite:
+  - <https://vite.dev/guide/>
+  - <https://vite.dev/config/>
+- Platform & standards:
+  - <https://developer.chrome.com/>
+  - <https://developer.mozilla.org/>
+  - <https://www.ecma-international.org/>
+- Styling:
+  - <https://sass-lang.com/documentation/>
+  - <https://css-tricks.com/>
+  - <https://phosphoricons.com/>
+  - <https://m3.material.io/>
+  - <https://fonts.google.com/icons> (in future use)
+  - <https://github.com/fest-live/icon.ts> (`fest/icon`)
+
+---
+
+## Browser Support
+
+- Check support when using new or experimental platform features:
+  - <https://chromestatus.com/>
+  - <https://caniuse.com/>
