@@ -1,17 +1,22 @@
 @use "./library/tokens";
 @use "./library/queries";
-@use "./views/layout/Viewers";
-@use "./views/layout/Layout";
-@use "./views/layout/Settings";
-@use "./views/layout/Preferences";
-@use "./views/layout/Modal";
-@use "./views/layout/Toolbars";
 
 //
-@use "./views/items/Cards";
+@use "./app/layout/Layout";
 
 //
-@use "./editors/inputs/Fields";
-@use "./editors/inputs/DateTime";
-@use "./editors/inputs/InputListEdit";
+@use "./app/views/Viewers";
+@use "./app/views/Settings";
+@use "./app/views/Toolbars";
+
+//
+@use "./app/items/Cards";
+
+//
+@use "./inputs/Modal";
+@use "./inputs/Fields";
+@use "./inputs/DateTime";
+@use "./inputs/InputListEdit";
+
+//
 @use "./overlays/Toast";

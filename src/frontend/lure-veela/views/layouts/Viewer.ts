@@ -1,12 +1,12 @@
 import { H } from "fest/lure";
-import { implementDropEvent, implementPasteEvent } from "../../utils/HookEvent";
+import { implementDropEvent, implementPasteEvent } from "../../../utils/HookEvent";
 import { makeReactive} from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { renderTabName } from "../../utils/Utils";
+import { renderTabName } from "../../../utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { makeActions } from "./Actions";
-import { CollectItemsForTabPage, MakeItemBy } from "./Items";
+import { makeActions } from "../../entities/Actions";
+import { CollectItemsForTabPage, MakeItemBy } from "../../entities/Items";
 
 //
 const makeFragment = (children: HTMLElement[]) => {

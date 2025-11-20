@@ -147,7 +147,7 @@ export function SpeedDial(makeView: any) {
     };
 
     const oRef = orientRef();
-    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" prop:orient=${oRef}>
+    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef} prop:orient=${oRef}>
         ${makeWallpaper()}
         <div class="speed-dial-layer speed-dial-layer--items sd-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
             ${M(items, renderIcon)}
@@ -158,13 +158,14 @@ export function SpeedDial(makeView: any) {
     </div>`;
 }
 
+//
 const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell } = {})=>{
     const workingItem = item ?? createEmptySpeedDialItem(opts?.suggestedCell ?? [0, 0]);
     const isNew = !item;
     const workingMeta = ensureSpeedDialMeta(workingItem.id);
     const draft = {
         label: getRefValue(workingItem.label, "New shortcut"),
-        icon: getRefValue(workingItem.icon, "sparkles"),
+        icon: getRefValue(workingItem.icon, "sparkle"),
         action: resolveItemAction(workingItem),
         href: workingMeta?.href || "",
         view: workingMeta?.view || "",
@@ -184,7 +185,7 @@ const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell }
                 </label>
                 <label class="modal-field">
                     <span>Icon</span>
-                    <input name="icon" type="text" placeholder="lucide icon name" value="${draft.icon}" />
+                    <input name="icon" type="text" placeholder="phosphor icon name" value="${draft.icon}" />
                 </label>
                 <label class="modal-field">
                     <span>Action</span>
@@ -256,7 +257,7 @@ const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell }
         ev?.preventDefault?.();
         const formData = new FormData(form);
         workingItem.label.value = (formData.get("label") as string || "").trim();
-        workingItem.icon.value = (formData.get("icon") as string || "").trim() || "sparkles";
+        workingItem.icon.value = (formData.get("icon") as string || "").trim() || "sparkle";
         workingItem.action = (formData.get("action") as string) || "open-view";
         workingMeta.action = workingItem.action;
         workingMeta.view = (formData.get("view") as string || "").trim();
@@ -326,7 +327,7 @@ export function createCtxMenu() {
                 utilities.push(createMenuEntryForAction("copy-state-desc", item, "Copy shortcut JSON"));
                 sections.push(utilities);
                 sections.push([
-                    { id: "edit", label: "Edit shortcut", icon: "pencil-line", action: ()=>openItemEditor(item) },
+                    { id: "edit", label: "Edit shortcut", icon: "pencil-simple-line", action: ()=>openItemEditor(item) },
                     { id: "remove", label: "Remove", icon: "trash", action: ()=>{
                         removeSpeedDialItem(item.id);
                         persistSpeedDialItems();

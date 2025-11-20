@@ -178,6 +178,34 @@ export const Settings = async () => {
         });
     };
 
+    const renderMCPs = (settings: AppSettings) => {
+        // Clear internal array
+        mcpConfigs.length = 0;
+        if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
+            mcpConfigs.push(...settings.ai.mcp);
+        }
+
+        const mcpGroup = groupRefs.get('mcp:mcp-management');
+        if (mcpGroup) {
+            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
+            if (body) {
+                // Clear existing MCP containers
+                const existingContainers = body.querySelectorAll('.mcp-config');
+                existingContainers.forEach(container => container.remove());
+
+                // Add loaded MCP configurations
+                const addButton = body.querySelector('.mcp-actions');
+                mcpConfigs.forEach(config => {
+                     if (addButton) {
+                         addButton.before(createMCPContainer(config));
+                     } else {
+                         body.append(createMCPContainer(config));
+                     }
+                });
+            }
+        }
+    };
+
     //
     SETTINGS_SECTIONS.forEach((section) => {
         const button = H`<button type="button" class="settings-tab" role="tab" id=${`tab-${section.key}`} aria-controls=${`panel-${section.key}`} aria-selected="false" on:click=${() => activateSection(section.key)}>
@@ -380,30 +408,7 @@ export const Settings = async () => {
     let settings = await loadSettings();
 
     // Load existing MCP configurations BEFORE applying settings
-    if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
-        mcpConfigs.push(...settings.ai.mcp);
-
-        // Recreate MCP containers for loaded configurations
-        const mcpGroup = groupRefs.get('mcp:mcp-management');
-        if (mcpGroup) {
-            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
-            if (body) {
-                // Clear existing MCP containers (except the add button)
-                const existingContainers = body.querySelectorAll('.mcp-config');
-                existingContainers.forEach(container => container.remove());
-
-                // Add loaded MCP configurations
-                const addButton = body.querySelector('.mcp-actions');
-                mcpConfigs.forEach(config => {
-                    if (addButton) {
-                        addButton.before(createMCPContainer(config));
-                    } else {
-                        body.append(createMCPContainer(config));
-                    }
-                });
-            }
-        }
-    }
+    renderMCPs(settings);
 
     //
     await updateTimelineSelect(settings);
@@ -496,5 +501,14 @@ export const Settings = async () => {
     container.addEventListener("submit", handleSubmit);
     container.tabsState = tabsState;
     container.forms = forms;
+    (container as any).reloadSettings = async (newSettings?: AppSettings) => {
+        settings = newSettings || await loadSettings();
+        renderMCPs(settings);
+        await updateTimelineSelect(settings);
+        applySettingsToForm(settings);
+        applyModelSelection(settings);
+        syncCustomVisibility();
+        toastSuccess("Settings reloaded");
+    };
     return container as HTMLElement;
 };

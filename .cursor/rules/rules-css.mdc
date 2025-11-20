@@ -109,6 +109,18 @@ alwaysApply: false
 
 ---
 
+## Design concepts
+
+**Inspired by:**
+- <https://phosphoricons.com/>
+- <https://m3.material.io/>
+- <https://fonts.google.com/icons> (in future use)
+
+**Main library:** `fest/veela`
+- <https://github.com/fest-live/veela.css>
+
+---
+
 ## References / Specs
 
 ### CSS General
@@ -137,6 +149,9 @@ alwaysApply: false
 
 - <https://sass-lang.com/documentation/>
 - <https://css-tricks.com/>
+- <https://phosphoricons.com/>
+- <https://m3.material.io/>
+- <https://fonts.google.com/icons> (in future use)
 
 ### Browser Support & Status
 

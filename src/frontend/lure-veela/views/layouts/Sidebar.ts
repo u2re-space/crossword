@@ -1,6 +1,6 @@
 import { subscribe, addToCallChain } from "fest/object";
 import { H, M } from "fest/lure";
-import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
+import { NAVIGATION_SHORTCUTS } from "../../../utils/StateStorage";
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, _makeView: (key: string)=>any) => {

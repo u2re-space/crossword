@@ -108,6 +108,12 @@ edge‑case handling, especially for:
 - TypeScript:
   - <https://www.typescriptlang.org/docs/>
 
+- Design misc:
+  - <https://phosphoricons.com/>
+  - <https://m3.material.io/>
+  - <https://fonts.google.com/icons> (in future use)
+  - <https://github.com/fest-live/icon.ts> (`fest/icon`)
+
 ---
 
 ## Browser & Runtime Support

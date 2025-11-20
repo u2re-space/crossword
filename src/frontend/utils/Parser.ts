@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import type { DocEntry, DocParser } from "../../../utils/Types";
+import type { DocCollection, DocEntry, DocParser } from "./Types";
 import { formatDateTime, sanitizeDocSnippet, truncateDocSnippet } from "@rs-frontend/utils/Formatted";
 
 //
@@ -52,4 +52,35 @@ export const parseMarkdownEntry: DocParser = async ({ collection, file, filePath
     };
 
     return entry;
+};
+
+//
+export const unique = <T,>(values: T[]) => Array.from(new Set(values));
+export const normalizeCollections = (collections: DocCollection[]): DocCollection[] => {
+    return collections.map((collection) => {
+        const dirs = collection.dirs?.length
+            ? collection.dirs.slice()
+            : collection.dir
+                ? [collection.dir]
+                : [];
+        const normalized = { ...collection, dirs };
+        if (!normalized.emptyState && collection.description) {
+            normalized.emptyState = collection.description;
+        }
+        return normalized;
+    });
+};
+
+//
+export const ensureCollections = async (COLLECTIONS) => {
+    for (const collection of COLLECTIONS) {
+        const dirs = collection.dirs ?? (collection.dir ? [collection.dir] : []);
+        for (const dir of dirs) {
+            try {
+                await getDirectoryHandle(null, dir, { create: true } as any);
+            } catch (error) {
+                console.warn("Failed to ensure directory", dir, error);
+            }
+        }
+    }
 };

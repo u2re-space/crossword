@@ -1,5 +1,4 @@
 import { AppLayout } from "./layouts/AppLayout";
-import { DataExplorer, Settings } from "./Views";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
 
@@ -8,19 +7,17 @@ import "fest/fl-ui";
 
 //
 import { Sidebar } from "./layouts/Sidebar";
-import { MakeCardElement } from "./entities/Cards";
+import { MakeCardElement } from "../entities/Cards";
 import { dropFile, hashTargetRef } from "fest/lure";
-import { $byKind, $insideOfDay } from "../utils/Utils";
-import { createCtxMenu, SpeedDial } from "./views/workspace/SpeedDial";
-import { ViewPage } from "./entities/Viewer";
-
-//
-//import "beercss";
-//import "material-dynamic-colors";
+import { $byKind, $insideOfDay } from "../../utils/Utils";
+import { createCtxMenu, SpeedDial } from "./workspace/SpeedDial";
+import { ViewPage } from "./layouts/Viewer";
 
 // @ts-ignore
-import style from "./scss/index.scss?inline";
-import { makeToolbar } from "./entities/Actions";
+import style from "../scss/index.scss?inline";
+import { makeToolbar } from "../entities/Actions";
+import { Settings } from "./system/Settings";
+import { DataExplorer } from "./system/DataExplorer";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -113,7 +110,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "settings") {
             element = Settings();
-            actions = makeToolbar(["apply-settings"], {
+            actions = makeToolbar(["apply-settings", "import-settings", "export-settings"], {
                 label: "Settings",
                 type: registryKey,
                 DIR: `/`
@@ -179,10 +176,8 @@ export async function frontend(mountElement) {
 }
 
 //
-export * from "./views/docs/PreferencesView";
-export * from "./views/docs/QuestsView";
-export * from "./views/system/DataExplorer";
-export * from "./views/system/Settings";
+export * from "./system/DataExplorer";
+export * from "./system/Settings";
 
 //
 export default frontend;

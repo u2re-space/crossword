@@ -7,7 +7,7 @@ import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite } from "./File
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/overlays/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { currentWebDav } from "@rs-core/config/Settings";
+import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";
 import { getDirectoryHandle, mountAsRoot } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
 
@@ -28,9 +28,11 @@ export const iconsPerAction = new Map<string, string>([
     ["file-upload", "upload"],
 
     ["apply-settings", "gear-six"],
+    ["import-settings", "upload-simple"],
+    ["export-settings", "download-simple"],
     ["open-link", "arrow-square-out"],
     ["copy-link", "link"],
-    ["copy-state-desc", "file-json"],
+    ["copy-state-desc", "file-code"],
     ["open-view", "compass"]
 ]);
 
@@ -49,6 +51,8 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
     ["paste-and-recognize", (entityDesc: EntityDescriptor) => "Paste and recognize"],
     ["snip-and-recognize", (entityDesc: EntityDescriptor) => "Snip and recognize"],
     ["apply-settings", (entityDesc: EntityDescriptor)=>"Save settings"],
+    ["import-settings", () => "Import settings"],
+    ["export-settings", () => "Export settings"],
     ["open-link", (entityDesc: EntityDescriptor | any) => entityDesc?.label ? `Open ${entityDesc.label}` : "Open link"],
     ["copy-link", () => "Copy link"],
     ["copy-state-desc", () => "Copy shortcut JSON"],
@@ -102,6 +106,50 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             const activeForm = forms.get(tabsState.value);
             activeForm?.requestSubmit?.();
         }
+    }],
+
+    ["export-settings", async () => {
+        try {
+            const settings = await loadSettings();
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `crossword-settings-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toastSuccess("Settings exported");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to export settings");
+        }
+    }],
+
+    ["import-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        viewPage = await viewPage;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                if (typeof json !== 'object') throw new Error("Invalid JSON");
+                
+                await saveSettings(json);
+                if (viewPage && viewPage.reloadSettings) {
+                    await viewPage.reloadSettings(json);
+                } else {
+                    toastSuccess("Settings imported (reload required)");
+                }
+            } catch (e) {
+                console.warn(e);
+                toastError("Failed to import settings");
+            }
+        };
+        input.click();
     }],
 
     ["open-link", async (context: any, entityDesc: EntityDescriptor)=>{

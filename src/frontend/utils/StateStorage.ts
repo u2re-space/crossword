@@ -62,7 +62,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     {
         id: "shortcut-docs",
         cell: [0, 1],
-        icon: "book-open-check",
+        icon: "book-open-text",
         label: "Docs",
         action: "open-link",
         meta: { href: "https://github.com/fest-live", description: "Project documentation" }
@@ -70,7 +70,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     {
         id: "shortcut-roadmap",
         cell: [1, 1],
-        icon: "route",
+        icon: "signpost",
         label: "Roadmap",
         action: "open-link",
         meta: { href: "https://github.com/u2re-space/unite-2.man", description: "Manifest notes" }
@@ -219,7 +219,7 @@ const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
     return {
         id: config.id || generateItemId(),
         cell: makeReactive(ensureCell(config.cell)),
-        icon: stringRef(config.icon || "sparkles"),
+        icon: stringRef(config.icon || "sparkle"),
         label: stringRef(config.label || "Shortcut"),
         action: config.action || "open-view"
     };
@@ -236,7 +236,7 @@ const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
     return {
         id: item.id,
         cell: [item.cell?.[0] ?? 0, item.cell?.[1] ?? 0] as GridCell,
-        icon: unwrapRef(item.icon, "sparkles"),
+        icon: unwrapRef(item.icon, "sparkle"),
         label: unwrapRef(item.label, "Shortcut"),
         action: item.action
     };
@@ -307,7 +307,7 @@ export const createEmptySpeedDialItem = (cell: GridCell = [0, 0]): SpeedDialItem
     const item = createStatefulItem({
         id: generateItemId(),
         cell,
-        icon: "sparkles",
+        icon: "sparkle",
         label: "New shortcut",
         action: "open-link"
     });
