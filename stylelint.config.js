@@ -24,7 +24,9 @@ export default {
                 "while",
                 "warn",
                 "debug",
-                "error"
+                "error",
+                "layer",
+                "property"
             ],
             "severity": "warning"
         }],
@@ -49,7 +51,8 @@ export default {
         "unit-allowed-list": [
             "em", "rem", "s", "ms", "px", "%",
             "dvi", "dvb", "dvh", "dvw", "svh", "svw",
-            "lvh", "lvw", "cqi", "cqb", "cqw", "cqh"
+            "lvh", "lvw", "cqi", "cqb", "cqw", "cqh",
+            "deg", "rad", "grad", "turn", "fr"
         ],
         "scss/at-extend-no-missing-placeholder": null,
         "scss/selector-no-redundant-nesting-selector": null,
@@ -60,8 +63,8 @@ export default {
         "plugin/use-logical-properties-and-values": [true, {"severity": "warning"}],
         "plugin/use-logical-units": [true, {"severity": "warning"}],
         "plugin/no-unsupported-browser-features": [true, {"severity": "warning"}],
-        "max-nesting-depth": 4,
-        "selector-max-compound-selectors": 4,
+        "max-nesting-depth": 6,
+        "selector-max-compound-selectors": 6,
         "declaration-block-no-duplicate-properties": true
     }
 }

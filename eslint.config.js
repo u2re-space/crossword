@@ -1,6 +1,5 @@
 /** @type {import('eslint').Linter.Config} */
 export default {
-    extends: ["@antfu/eslint-config"],
     languageOptions: {
         "ecmaVersion": "latest",
         "sourceType": "module"
@@ -9,18 +8,24 @@ export default {
         "reportUnusedDisableDirectives": true
     },
     rules: {
-        semi: ["warn", "never"],
-        quotes: ["warn", "single", {"allowTemplateLiterals": true}],
+        semi: ["warn", "always"],
+        quotes: ["warn", "double", {"allowTemplateLiterals": true}],
         indent: ["warn", 4, {"SwitchCase": 1, "flatTernaryExpressions": true}],
-        braceStyle: ["warn", "stroustrup", {"allowSingleLine": true}],
+        braceStyle: ["warn", "1tbs", {"allowSingleLine": true}],
         nonblockStatementBodyPosition: ["warn", "any"],
         curly: ["warn", "all"],
-        commaDangle: ["warn", "always-multiline"],
+        commaDangle: ["warn", "never"],
         objectCurlySpacing: ["warn", "always"],
         arrayBracketSpacing: ["warn", "never"],
         spaceBeforeBlocks: ["warn", "always"],
         keywordSpacing: ["warn", {"before": true, "after": true}],
         noMixedSpacesAndTabs: ["warn"],
+        "arrow-parens": ["warn", "always"],
+        "space-unary-ops": ["warn", {"words": true, "nonwords": false}],
+        "func-call-spacing": ["warn", "never"],
+        "space-in-parens": ["warn", "never"],
+        "comma-spacing": ["warn", {"before": false, "after": true}],
+        "semi-spacing": ["warn", {"before": false, "after": true}]
     },
     settings: {
         "import/parsers": {
