@@ -14,7 +14,7 @@ export const TimelineSection: SectionConfig = {
                 {
                     path: "timeline.source",
                     label: "Source file",
-                    type: "select",
+                    type: "text",
                     helper: "Files inside /docs/preferences appear in this list.",
                     options: [{ value: "", label: "(auto)" }]
                 }

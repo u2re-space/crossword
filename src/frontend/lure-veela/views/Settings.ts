@@ -281,7 +281,23 @@ export const Settings = async () => {
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
     const customModelInput = fieldRefs.get("ai.customModel") as HTMLInputElement | undefined;
     const customModelGroup = groupRefs.get("ai:custom-model");
-    const timelineSelectEl = fieldRefs.get("timeline.source") as HTMLSelectElement | undefined;
+    const timelineInputEl = fieldRefs.get("timeline.source") as HTMLInputElement | undefined;
+
+    //
+    const timelineRecentSelect = H`<select class="field-control" style="margin-block-start: 0.5rem; inline-size: 100%;">
+        <option value="">Select recent file...</option>
+    </select>` as HTMLSelectElement;
+
+    if (timelineInputEl) {
+        timelineInputEl.parentElement?.append(timelineRecentSelect);
+        timelineRecentSelect.addEventListener("change", () => {
+            if (timelineRecentSelect.value) {
+                timelineInputEl.value = timelineRecentSelect.value;
+                timelineInputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            timelineRecentSelect.value = "";
+        });
+    }
 
     const syncCustomVisibility = () => {
         if (!modelSelectEl || !customModelGroup || !customModelInput) return;
@@ -373,15 +389,15 @@ export const Settings = async () => {
     };
 
     const updateTimelineSelect = async (settings: AppSettings) => {
-        if (!timelineSelectEl) return;
-        const saved = settings.timeline?.source?.trim?.() ?? "";
-        timelineSelectEl.replaceChildren(new Option("(auto)", ""));
-        const options = await loadTimelineSources();
-        options.forEach((name) => timelineSelectEl.appendChild(new Option(name, name)));
-        if (saved && !options.includes(saved)) {
-            timelineSelectEl.appendChild(new Option(saved, saved));
+        if (timelineInputEl) {
+            const saved = settings.timeline?.source?.trim?.() ?? "";
+            timelineInputEl.value = saved;
         }
-        timelineSelectEl.value = saved;
+        if (timelineRecentSelect) {
+            timelineRecentSelect.replaceChildren(new Option("Select recent file...", ""));
+            const options = await loadTimelineSources();
+            options.forEach((name) => timelineRecentSelect.appendChild(new Option(name, name)));
+        }
     };
 
     function activateSection(key: SectionKey) {
