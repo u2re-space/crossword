@@ -2,7 +2,6 @@
 // Unified with design system variables and mixins
 
 @use "sass:list";
-
 @use "veela-lib" as *;
 @use "../../library/mixins" as ui;
 @use "../../library/tokens" as t;
@@ -64,10 +63,12 @@
         transition:
             block-size var(--duration-normal) var(--ease-out),
             display var(--duration-normal) var(--ease-out),
-            padding-block var(--duration-normal) var(--ease-out);
+            padding-block var(--duration-normal) var(--ease-out),
+            opacity var(--duration-normal) var(--ease-out);
         transition-duration: var(--duration-normal);
         transition-delay: 0s;
         transition-behavior: allow-discrete;
+        opacity: 0;
     }
 
     &[data-open] #{$selector}:not(:empty) {
@@ -330,6 +331,12 @@ $card-variants: (
 
     .card {
         --current: var(--primary);
+        --card-gap: var(--space-lg);
+        --card-padding: var(--padding-md);
+        --card-radius: var(--radius-lg);
+        --card-avatar-size: 40px;
+
+        // Initial Reset for Swipe
         --card-swipe-offset: 0px;
         --card-swipe-progress: 0;
 
@@ -344,6 +351,7 @@ $card-variants: (
         --card-gradient-angle: 128deg;
         @include card-shadows(2, 0.08, 0.08, $card-ambient-default);
 
+        // Standard Palette
         --color-red: var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1)));
         --color-yellow: var(--color-warning, oklch(0.86 0.09 100 / 1));
         --color-green: var(--color-success, oklch(0.72 0.13 150 / 1));
@@ -358,24 +366,22 @@ $card-variants: (
         --color-tint: var(--card-surface-tint);
 
         display: grid;
+        // Improved Layout for better adaptability
+        grid-template-areas:
+            "avatar content actions"
+            "footer footer footer";
         grid-template-columns:
-            minmax(0px, max-content)
-            minmax(0px, 1fr)
-            minmax(0px, max-content)
-            minmax(0px, max-content);
-        grid-auto-rows: minmax(0px, max-content);
-        grid-auto-flow: column;
-        column-fill: balance;
-        align-items: center;
+            minmax(0, max-content)
+            minmax(0, 1fr)
+            minmax(0, max-content);
+        align-items: start;
         gap: var(--space-lg);
-        row-gap: var(--card-gap);
+        row-gap: var(--gap-sm);
         place-self: center;
 
         transition: var(--transition-all);
         transition-duration: var(--duration-normal);
         transition-delay: 0s;
-
-        //
         transition-behavior: allow-discrete;
         interpolate-size: allow-keywords;
 
@@ -394,7 +400,6 @@ $card-variants: (
         background-repeat: no-repeat;
         background-origin: border-box;
 
-        //
         @include solid-colorize("&", ("shade": var(--card-surface-tone), "scope": "selector"));
 
         & {
@@ -402,8 +407,19 @@ $card-variants: (
             min-inline-size: fit-content !important;
             max-inline-size: 60rem !important;
 
-            //
-            perspective: 1000;
+            perspective: 1000px;
+            // Apply swipe offset here to the main container
+            // But since we want to reveal the background, we might need to move the content instead
+            // For now, we follow the existing pattern where the whole card moves?
+            // No, usually swipe reveals actions BEHIND.
+            // The 'card-swipe-preview' is absolute.
+            // Let's assume we translate the CONTENT of the card, not the card itself.
+            // However, the existing implementation translated the whole card or its direct children.
+            // Looking at the provided file:
+            // `transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);` was on the `.card` itself.
+            // This moves the WHOLE card. If the swipe preview is inside, it moves with it?
+            // Ah, swipe preview has `transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));`
+            // So it counter-translates to stay in place while the card moves. Clever.
             transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
         }
 
@@ -429,25 +445,51 @@ $card-variants: (
             user-select: none;
         }
 
+        // Content Layer
         > :not(.card-swipe-preview) {
             position: relative;
-            z-index: 1;
+            z-index: 2; // Above the swipe preview
         }
 
+        // Swipe Preview Layer (Behind content)
         .card-swipe-preview {
             position: absolute;
             inset: 0;
             padding: var(--card-padding);
-            display: none;
-            grid-template-columns: repeat(2, minmax(0px, 1fr));
+            display: none; // Hidden by default, shown via JS or query?
+            // Actually JS toggles data attributes, but structure is always there
+            // `display: none` in original code.
+            display: grid; // We need it to be visible for the counter-transform to work?
+            // Wait, if it's `display: none`, it won't render.
+            // The original code had `display: none` and `@container (inline-size <= 720px) { display: grid; }`
+            // We should probably keep it hidden unless needed or rely on JS/Container.
+            grid-template-columns: 1fr 1fr;
             gap: var(--gap-md);
             pointer-events: none;
-            z-index: 0;
+            z-index: 0; // Behind content
             align-items: center;
-            justify-content: space-between;
+            justify-items: center;
+
+            // Counter-transform to appear stationary while card moves
             transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));
             opacity: clamp(0, var(--card-swipe-progress, 0), 1);
             transition: opacity var(--duration-fast) var(--ease-out);
+
+            // Only show when swiping or ready to swipe
+            display: none;
+        }
+
+        // Enable swipe preview on touch devices or small screens
+        @media (pointer: coarse) or (max-width: 768px) {
+            .card-swipe-preview {
+                display: grid;
+            }
+        }
+
+        // Fallback for when JS activates swipe mode
+        &[data-swiping="true"] .card-swipe-preview,
+        &[data-swipe-ready="true"] .card-swipe-preview {
+            display: grid;
         }
 
         .card-swipe-action {
@@ -461,13 +503,14 @@ $card-variants: (
             padding: var(--padding-xs) var(--padding-md);
             border-radius: var(--radius-pill, 999px);
             background: color-mix(in oklch, var(--current) 24%, transparent);
-            color: --c2-on-surface(var(--text-tint-primary, 90%), var(--current));
+            color: var(--on-surface);
             box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--current) 50%, transparent);
             opacity: 0;
-            transform: translateX(0);
+            transform: scale(0.8);
             transition:
                 opacity var(--duration-normal) var(--ease-out),
-                transform var(--duration-normal) var(--ease-out);
+                transform var(--duration-normal) var(--ease-out),
+                background-color var(--duration-fast) var(--ease-out);
 
             ui-icon {
                 --icon-color: currentColor;
@@ -475,7 +518,7 @@ $card-variants: (
         }
 
         .card-swipe-action.is-edit {
-            justify-self: flex-start;
+            justify-self: start;
             background: linear-gradient(
                 90deg,
                 color-mix(in oklch, var(--color-green) 60%, transparent),
@@ -484,7 +527,7 @@ $card-variants: (
         }
 
         .card-swipe-action.is-remove {
-            justify-self: flex-end;
+            justify-self: end;
             background: linear-gradient(
                 270deg,
                 color-mix(in oklch, var(--color-red) 68%, transparent),
@@ -494,18 +537,18 @@ $card-variants: (
 
         &[data-swipe-action="edit"],
         &[data-swipe-success="edit"] {
-            --card-shadow-outline: 0 0 0 1.5px color-mix(
+            --card-shadow-outline: 0 0 0 2px color-mix(
                 in oklch,
-                var(--color-green) calc(var(--card-swipe-progress, 0) * 85%),
+                var(--color-green) calc(var(--card-swipe-progress, 0) * 100%),
                 transparent
             );
         }
 
         &[data-swipe-action="remove"],
         &[data-swipe-success="remove"] {
-            --card-shadow-outline: 0 0 0 1.5px color-mix(
+            --card-shadow-outline: 0 0 0 2px color-mix(
                 in oklch,
-                var(--color-red) calc(var(--card-swipe-progress, 0) * 85%),
+                var(--color-red) calc(var(--card-swipe-progress, 0) * 100%),
                 transparent
             );
         }
@@ -513,15 +556,16 @@ $card-variants: (
         &[data-swipe-action="edit"] .card-swipe-action.is-edit,
         &[data-swipe-success="edit"] .card-swipe-action.is-edit {
             opacity: clamp(0, var(--card-swipe-progress, 0), 1);
-            transform: translateX(calc((1 - var(--card-swipe-progress, 0)) * -35%));
+            transform: scale(1);
         }
 
         &[data-swipe-action="remove"] .card-swipe-action.is-remove,
         &[data-swipe-success="remove"] .card-swipe-action.is-remove {
             opacity: clamp(0, var(--card-swipe-progress, 0), 1);
-            transform: translateX(calc((1 - var(--card-swipe-progress, 0)) * 35%));
+            transform: scale(1);
         }
 
+        // Variants
         &:not([data-variant]),
         &[data-variant="default"] {
             --current: var(--surface-container-high, var(--primary));
@@ -573,13 +617,14 @@ $card-variants: (
             @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
         }
 
-        @container (inline-size <= 720px) {
-            .card-swipe-preview {
-                display: grid;
-            }
-        }
-
+        // Responsive Layout adjustments
         @container (inline-size <= 460px) {
+            grid-template-areas:
+                "avatar content"
+                "actions actions"
+                "footer footer";
+            grid-template-columns: minmax(0, max-content) 1fr;
+
             --card-gradient-angle: 110deg;
             --card-overlay-strength-base: clamp(
                 0.2,
@@ -587,33 +632,22 @@ $card-variants: (
                 0.4
             );
             @include card-sync-vars;
+
+            .card-actions {
+                justify-self: start;
+                width: 100%;
+                justify-content: space-between;
+            }
         }
 
-        li {
-            @include text-truncate;
-            font-size: inherit;
-            color: currentColor;
-            padding: 0;
-            margin: 0;
-            display: inline;
-            overflow: hidden;
-        }
-
-        .card-title {
-            white-space: nowrap;
-        }
-
-        *:not(ui-icon, br, ui-longtext, input):empty {
-            display: none;
-        }
-
+        // Child Elements Mapping to Grid
         .card-avatar {
+            grid-area: avatar;
             --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
 
             inline-size: var(--card-avatar-size);
             block-size: var(--card-avatar-size);
             min-inline-size: var(--card-avatar-size);
-            grid-column: 1 / 1 span;
             border-radius: 50%;
             line-height: 0;
             background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.03));
@@ -632,6 +666,49 @@ $card-variants: (
             ui-icon {
                 --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
             }
+        }
+
+        .card-props {
+            grid-area: content;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap-2xs);
+        }
+
+        .card-actions {
+            grid-area: actions;
+            @include card-inline();
+            overflow: visible;
+            align-self: center;
+
+            & > .action {
+                padding: var(--padding-xs) var(--padding-md);
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                transition: var(--transition-colors);
+                box-shadow: var(--shadow-sm);
+
+                @include ui.inline-toolbar(var(--gap-xs));
+                @include ui.tonal-surface(surface, var(--surface-opacity-subtle));
+                @include flex-center;
+
+                &:hover {
+                     @include ui.tonal-surface(surface, var(--surface-opacity-default));
+                }
+            }
+
+            @container (inline-size <= 400px) {
+                // display: none; // Don't hide actions entirely on mobile, wrap them
+                flex-wrap: wrap;
+            }
+        }
+
+        // Footer area containing description, expanded content, links
+        .card-description,
+        .card-content,
+        .card-links {
+            grid-column: 1 / -1; // Span full width
+            // grid-area: footer; // Can't use same area name for multiple elements easily in grid-template-areas
         }
 
         .card-description,
@@ -690,6 +767,7 @@ $card-variants: (
 
         .card-title {
             @include card-inline("title-small", var(--gap-xs), true);
+            white-space: nowrap;
         }
 
         .card-kind {
@@ -701,15 +779,14 @@ $card-variants: (
         .card-time {
             @include card-inline();
             @include card-color(var(--text-tint-muted, 60%));
-        }
-
-        .card-props {
-            display: flex;
-            inline-size: stretch;
-            flex-direction: column;
-            gap: var(--gap-xs);
-            justify-items: center;
-            align-content: flex-start;
+            font-size: var(--font-xs);
+            grid-area: content; // Overlap/Append to content area?
+            // Or maybe make it part of the props flex column via nesting in JS
+            // But here it's a sibling.
+            // Let's place it
+            grid-column: 2;
+            grid-row: 2;
+            margin-block-start: var(--gap-xs);
         }
 
         button {
@@ -720,32 +797,7 @@ $card-variants: (
             padding: var(--padding-md);
         }
 
-        .card-actions {
-            @include card-inline();
-
-            & {
-                overflow: visible;
-            }
-
-            & > .action {
-                padding: var(--padding-xs) var(--padding-md);
-                border-radius: var(--radius-sm);
-                cursor: pointer;
-                transition: var(--transition-colors);
-                box-shadow: var(--shadow-sm);
-
-                @include ui.inline-toolbar(var(--gap-xs));
-                @include ui.tonal-surface(surface, var(--surface-opacity-subtle));
-                @include flex-center;
-            }
-
-            @container (inline-size <= 400px) {
-                display: none;
-            }
-        }
-
         .card-links {
-            grid-column: 1 / -1;
             font-size: t.$font-sm;
             color: --c2-on-surface(
                 var(--text-tint-muted),
@@ -792,6 +844,12 @@ $card-variants: (
             }
         }
 
+        @container (inline-size <= 600px) {
+             .card-actions > .action span {
+                display: none !important;
+            }
+        }
+
         .card-description-content,
         .card-properties {
             @include card-list-reset();
@@ -819,12 +877,20 @@ $card-variants: (
         .card-description-content {
             font-size: t.$font-xs;
         }
-    }
 
-    @container (inline-size <= 600px) {
-        .card .action span {
-            display: none !important;
+        // Helpers to hide empty elements
+        *:not(ui-icon, br, ui-longtext, input):empty {
+            display: none;
+        }
+
+        li {
+            @include text-truncate;
+            font-size: inherit;
+            color: currentColor;
+            padding: 0;
+            margin: 0;
+            display: inline;
+            overflow: hidden;
         }
     }
 }
-

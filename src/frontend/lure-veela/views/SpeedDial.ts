@@ -97,7 +97,7 @@ const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactiv
 };
 
 const deriveCellFromEvent = (ev?: MouseEvent): GridCell =>{
-    const grid = document.querySelector<HTMLElement>("#home .speed-dial-layer--items");
+    const grid = document.querySelector<HTMLElement>("#home .speed-dial-grid");
     if (!grid || !ev) return [0, 0];
     const rect = grid.getBoundingClientRect();
     if (!rect?.width || !rect?.height) return [0, 0];
@@ -134,26 +134,22 @@ function makeWallpaper() {
 export function SpeedDial(makeView: any) {
     viewMaker = makeView;
 
-    const renderIcon = (item: SpeedDialItem)=>{
-        return H`<div class="layered-wrap shadow-wrap ui-ws-item" data-speed-dial-item ref=${(el)=>attachItemNode(item, el as HTMLElement, true)}>
-            <div data-shape="square" class="shaped"><ui-icon style="z-index: 2;" icon=${item.icon}></ui-icon></div>
-        </div>`;
-    };
-
-    const renderLabel = (item: SpeedDialItem)=>{
-        return H`<div class="ui-ws-item-label" data-speed-dial-item ref=${(el)=>attachItemNode(item, el as HTMLElement, false)}>
-            <span>${item.label}</span>
+    const renderItem = (item: SpeedDialItem)=>{
+        return H`<div class="ui-ws-item" data-speed-dial-item ref=${(el)=>attachItemNode(item, el as HTMLElement, true)}>
+            <div data-shape="square" class="ui-ws-item-icon shaped">
+                <ui-icon style="z-index: 2;" icon=${item.icon}></ui-icon>
+            </div>
+            <div class="ui-ws-item-label" style="background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">
+                <span style="background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">${getRefValue(item.label)}</span>
+            </div>
         </div>`;
     };
 
     const oRef = orientRef();
     return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef} prop:orient=${oRef}>
         ${makeWallpaper()}
-        <div class="speed-dial-layer speed-dial-layer--items sd-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
-            ${M(items, renderIcon)}
-        </div>
-        <div class="speed-dial-layer speed-dial-layer--labels sd-grid sd-grid--labels" data-layer="labels" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
-            ${M(items, renderLabel)}
+        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
+            ${M(items, renderItem)}
         </div>
     </div>`;
 }

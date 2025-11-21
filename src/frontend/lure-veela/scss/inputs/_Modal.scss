@@ -39,7 +39,6 @@
         gap: var(--gap-xs);
         box-sizing: border-box;
         overflow: hidden;
-        perspective: 1000;
 
         // Responsive sizing
         inline-size: fit-content;
@@ -55,6 +54,12 @@
         color: var(--on-surface-color);
         padding: var(--padding-lg);
         border-radius: var(--radius-lg);
+
+        backface-visibility: hidden;
+        transform: translateZ(0px);
+        perspective: 1000;
+        content-visibility: auto;
+        contain: strict;
 
         // Mobile overrides
         @media (max-width: 600px) {

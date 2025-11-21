@@ -178,7 +178,136 @@
             padding: var(--padding-xs);
             border-radius: var(--radius-sm);
             @include ui.tonal-surface(surface, var(--surface-opacity-emphasis), var(--radius-sm));
+            background-color: transparent;
             pointer-events: none;
+        }
+    }
+
+    // Speed Dial (Home) Styles
+    .speed-dial-root {
+        --speed-dial-icon-size: 48px;
+        --speed-dial-gap: var(--gap-sm);
+        --speed-dial-label-color: var(--on-surface, #fff);
+        /*--speed-dial-label-shadow: 0 1px 2px rgba(0,0,0,0.5);*/
+
+        // Ensure it fills the screen
+        inline-size: 100%;
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .speed-dial-grid {
+        // This depends on ui-gridbox mixin behaving as a grid
+        display: grid;
+        // Default layout if mixin fails or is overridden
+        /*grid-template-columns: repeat(var(--layout-c, 4), 1fr);
+        grid-template-rows: repeat(var(--layout-r, 8), 1fr);*/
+        gap: 0; // Gap handled by grid placement logic usually, or padding in items
+        padding: var(--padding-lg);
+
+        inline-size: 100%;
+        block-size: 100%;
+        pointer-events: none; // Background click should go through if needed, but items are auto
+
+        place-content: center;
+        place-items: center;
+
+        // Items
+        .ui-ws-item {
+            background-color: transparent;
+            pointer-events: auto;
+            display: grid;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--gap-xs);
+            aspect-ratio: 1 / 1;
+            overflow: visible;
+
+            // Center in cell
+            place-self: center;
+
+            // Visuals
+            transition: transform var(--transition-fast) var(--ease-out);
+            cursor: pointer;
+
+            &:hover {
+                transform: scale(1.05);
+
+                .ui-ws-item-icon {
+                    @include ui.tonal-surface(surface-container-high, var(--surface-opacity-default), var(--radius-lg), null, 2);
+                }
+            }
+
+            &:active {
+                transform: scale(0.95);
+            }
+
+            .ui-ws-item-icon {
+                /*inline-size: var(--speed-dial-icon-size);
+                block-size: var(--speed-dial-icon-size);*/
+                @include flex-center;
+                border-radius: var(--radius-lg);
+                /*background: color-mix(in oklch, var(--surface-container-low, #fff) 80%, transparent);*/
+                /*box-shadow: var(--shadow-md);*/
+                transition: background-color var(--transition-colors), box-shadow var(--transition-colors);
+                grid-column: 1 / -1;
+                grid-row: 1 / -1;
+
+                ui-icon {
+                    --icon-size: 24px;
+                    color: var(--on-surface-variant);
+                }
+            }
+
+            .ui-ws-item-label {
+                max-inline-size: 100px; // Limit width
+                background-color: transparent;
+                pointer-events: none;
+                text-align: center;
+                place-content: center;
+                place-items: center;
+                grid-column: 1 / -1;
+                grid-row: 1 / -1;
+                transform: translateZ(0px) translateY(100%);
+
+                span {
+                    display: block;
+                    @include ui.text-label("label-medium");
+                    color: var(--speed-dial-label-color);
+                    /*text-shadow: var(--speed-dial-label-shadow);*/
+
+                    // Truncate
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    padding-inline: var(--padding-xs);
+                    background: rgba(0,0,0,0.2); // Subtle backdrop for readability
+                    border-radius: var(--radius-sm);
+                    pointer-events: none;
+                    text-align: center;
+                }
+            }
+
+            &:active {
+                will-change: transform;
+            }
+
+            &[data-dragging] {
+                will-change: transform;
+                cursor: grabbing;
+
+                .ui-ws-item-label {
+                    opacity: 0.0;
+                    pointer-events: none;
+                }
+            }
+        }
+
+        // Adjust for mobile
+        @media (max-width: 600px) {
+            --speed-dial-icon-size: 40px;
+            padding: var(--padding-sm);
         }
     }
 }
