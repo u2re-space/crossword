@@ -165,10 +165,10 @@
                         & {
                             position: relative;
                             isolation: isolate;
-                            border-radius: var(--radius-md);
-                            transition: color var(--transition-colors), background-color var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
+                            border-radius: var(--radius-full);
+                            transition: color var(--transition-colors), background-color var(--transition-colors);
                             color: color-mix(in oklch, var(--on-surface, currentColor) 72%, transparent);
-                            transform: translate3d(0, 0, 0);
+                            min-block-size: 3.5rem; // 56px
                         }
 
                         &::before {
@@ -178,69 +178,42 @@
                             border-radius: inherit;
                             background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 18%, transparent);
                             opacity: 0;
-                            transform: scale3d(0.98, 0.98, 1);
+                            transform: scale3d(0.4, 1, 1);
                             transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
                             pointer-events: none;
                         }
 
                         &::after {
-                            content: "";
-                            position: absolute;
-                            inset-block: clamp(0.35rem, 0.6lh, 1.25rem);
-                            inset-inline-start: calc(var(--gap-sm) * -0.6);
-                            inline-size: max(0.2rem, 3px);
-                            border-radius: var(--radius-full);
-                            background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 48%, transparent);
-                            opacity: 0;
-                            transform: scale3d(1, 0.4, 1);
-                            transition: opacity var(--transition-colors), transform var(--transition-medium, var(--transition-colors));
-                            pointer-events: none;
+                            display: none; // Remove the small indicator
                         }
 
                         &:where(:hover, :focus-visible, :focus, :active) {
                             color: color-mix(in oklch, var(--on-surface, currentColor) 94%, transparent);
-                            transform: translate3d(0.08rem, 0, 0);
 
                             &::before {
                                 opacity: 0.55;
                                 transform: scale3d(1, 1, 1);
                             }
 
-                            &::after {
-                                opacity: 0.6;
-                                transform: scale3d(1, 1, 1);
-                            }
-
                             ui-icon {
                                 color: color-mix(in oklch, var(--on-surface, currentColor) 94%, transparent);
-                                transform: scale3d(1.05, 1.05, 1);
                             }
                         }
 
                         &[data-active="true"] {
-                            color: color-mix(in oklch, var(--on-primary, var(--on-surface, currentColor)) 94%, transparent);
+                            color: color-mix(in oklch, var(--on-secondary-container, var(--on-surface, currentColor)) 100%, transparent);
                             font-weight: var(--font-weight-semibold);
-                            letter-spacing: 0.02em;
-                            transform: translate3d(0.12rem, 0, 0);
+                            letter-spacing: 0.01em;
 
                             &::before {
-                                opacity: 0.85;
-                                transform: scale3d(1, 1, 1);
-                                background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 36%, transparent);
-                                box-shadow:
-                                    0 6px 18px color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 14%, transparent),
-                                    0 0 0 1px color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 22%, transparent);
-                            }
-
-                            &::after {
                                 opacity: 1;
                                 transform: scale3d(1, 1, 1);
-                                background: color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 92%, transparent);
+                                background: var(--secondary-container, color-mix(in oklch, var(--primary, var(--color-primary, currentColor)) 25%, transparent));
+                                box-shadow: none;
                             }
 
                             ui-icon {
-                                color: color-mix(in oklch, var(--on-primary, var(--on-surface, currentColor)) 94%, transparent);
-                                transform: scale3d(1.06, 1.06, 1);
+                                color: currentColor;
                             }
                         }
 

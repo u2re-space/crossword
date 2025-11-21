@@ -74,9 +74,8 @@
             //
             button {
                 max-block-size: stretch;
-                border-radius: var(--radius-sm);
-                padding: var(--padding-xs);
-                aspect-ratio: auto;
+                border-radius: var(--radius-full);
+                padding: var(--padding-sm);
                 pointer-events: auto;
 
                 //
