@@ -30,14 +30,16 @@
     .field-editor {
         display: grid;
         gap: 0.5rem;
+        min-inline-size: 0; // Prevent grid blowout
     }
 
     //
     .field-inputs {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); // Better responsiveness
         gap: 0.5rem;
         align-items: center;
+        min-inline-size: 0;
     }
 
     //
@@ -62,8 +64,19 @@
             display: grid;
             grid-template-columns: 1fr auto auto;
             align-items: center;
+            place-content: center;
+            place-items: center;
+            text-align: start;
 
             label {
+                inline-size: stretch;
+                display: flex;
+                align-items: center;
+                place-content: center;
+                place-items: center;
+                text-align: start;
+                justify-content: start;
+
                 @include font-style("&", ("size": "sm", "weight": 500));
             }
 

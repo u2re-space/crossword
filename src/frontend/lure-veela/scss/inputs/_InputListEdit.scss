@@ -16,10 +16,17 @@
         padding: var(--padding-md);
         border-radius: var(--radius-md);
 
+        // Mobile adjustment for padding
+        @media (max-width: 600px) {
+            padding: var(--padding-sm);
+            gap: var(--space-sm);
+        }
+
         &-parts {
             display: inline-grid;
             flex-direction: column;
             gap: var(--space-sm);
+            grid-column: 1 / -1; // Ensure parts take full width
         }
 
         &-part {

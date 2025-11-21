@@ -22,6 +22,14 @@
         perspective: 1000;
 
         @include ui.glass-backdrop();
+
+        // Mobile adjustment
+        @media (max-width: 600px) {
+            padding: 0;
+            align-items: end; // Bottom sheet style on mobile? Or just centered?
+            // Let's stick to centered but full width/height if needed or small padding
+            padding: var(--space-xs);
+        }
     }
 
     //
@@ -33,16 +41,36 @@
         overflow: hidden;
         perspective: 1000;
 
-        //
-        min-inline-size: min(92dvw, 33.75rem); max-inline-size: min(99dvw, 40rem);
-        min-block-size: min(94dvh, 45rem); max-block-size: min(94dvh, 45rem);
-        inline-size: min(100%, 40rem);;
+        // Responsive sizing
+        inline-size: fit-content;
+        min-inline-size: min(calc(100cqi - 1rem), 40rem);
+        max-inline-size: stretch;
+
+        block-size: max-content;
+        min-block-size: max(calc(90dvb - 1rem), 20rem);
+        max-block-size: max(95dvb, 50rem);
+
         line-height: normal;
-        block-size: stretch;
         background-color: var(--surface-color);
         color: var(--on-surface-color);
         padding: var(--padding-lg);
         border-radius: var(--radius-lg);
+
+        // Mobile overrides
+        @media (max-width: 600px) {
+            inline-size: fit-content;
+            min-inline-size: min(calc(100cqi - 1rem), 40rem);
+            max-inline-size: stretch;
+
+            //
+            min-block-size: max(calc(90dvb - 1rem), 20rem);
+            max-block-size: max(95dvb, 50rem);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0; // If bottom sheet
+            // But generic modal:
+            border-radius: var(--radius-lg);
+            padding: var(--padding-md);
+            margin: 0;
+        }
 
         //
         @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-md));
@@ -114,6 +142,11 @@
             min-inline-size: 0px;
 
             //
+            grid-template-columns: minmax(0px, 1fr);
+            place-content: center;
+            place-items: center;
+
+            //
             &:last-of-type {
                 border-block-end: none;
             }
@@ -159,6 +192,9 @@
 
         //
         .modal-fields {
+            inline-size: stretch;
+            min-inline-size: fit-content;
+            max-inline-size: stretch;
             padding-inline: var(--space-sm);
             max-block-size: stretch;
             block-size: fit-content;
@@ -179,8 +215,6 @@
             text-align: start;
             justify-content: start;
             justify-items: start;
-            inline-size: stretch;
-            min-inline-size: 0px;
 
             //
             .contacts-group, .modal-field {
@@ -198,13 +232,15 @@
 
                 //
                 inline-size: stretch;
-                min-inline-size: 0px;
+                min-inline-size: fit-content;
+                max-inline-size: stretch;
 
                 //
                 label {
                     text-align: start;
-                    justify-content: start;
-                    justify-items: start;
+                    align-content: start;
+                    align-items: start;
+                    align-self: start;
                 }
             }
         }
