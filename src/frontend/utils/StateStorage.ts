@@ -15,7 +15,7 @@ export interface SpeedDialItemMeta {
 
 export interface SpeedDialPersistedItem {
     id: string;
-    cell: GridCell;
+    cell: ReturnType<typeof makeReactive<GridCell>>;
     icon: string;
     label: string;
     action: string;
@@ -33,6 +33,7 @@ export interface SpeedDialItem {
 }
 
 export const NAVIGATION_SHORTCUTS = [
+    { view: "home", label: "Home", icon: "house-line" },
     { view: "task", label: "Plan", icon: "calendar-dots" },
     { view: "event", label: "Events", icon: "calendar-range" },
     { view: "bonus", label: "Bonuses", icon: "ticket" },
@@ -61,7 +62,7 @@ const generateItemId = () => {
 const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     {
         id: "shortcut-docs",
-        cell: [0, 1],
+        cell: makeReactive([0, 1]),
         icon: "book-open-text",
         label: "Docs",
         action: "open-link",
@@ -69,18 +70,50 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-roadmap",
-        cell: [1, 1],
+        cell: makeReactive([1, 1]),
         icon: "signpost",
         label: "Roadmap",
         action: "open-link",
         meta: { href: "https://github.com/u2re-space/unite-2.man", description: "Manifest notes" }
+    },
+    {
+        id: "shortcut-fest-live",
+        cell: makeReactive([2, 1]),
+        icon: "github-logo",
+        label: "Fest Live",
+        action: "open-link",
+        meta: { href: "https://github.com/fest-live", description: "Fest Live Organization" }
+    },
+    {
+        id: "shortcut-l2ne-dev",
+        cell: makeReactive([3, 1]),
+        icon: "user",
+        label: "L2NE Dev",
+        action: "open-link",
+        meta: { href: "https://github.com/L2NE-dev", description: "L2NE Developer Profile" }
+    },
+    {
+        id: "shortcut-u2re-space",
+        cell: makeReactive([0, 2]),
+        icon: "planet",
+        label: "U2RE Space",
+        action: "open-link",
+        meta: { href: "https://github.com/u2re-space/", description: "U2RE Space Organization" }
+    },
+    {
+        id: "shortcut-telegram",
+        cell: makeReactive([1, 2]),
+        icon: "telegram-logo",
+        label: "Telegram",
+        action: "open-link",
+        meta: { href: "https://t.me/u2re_space", description: "U2RE Space Telegram" }
     }
 ];
 
 const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     ...NAVIGATION_SHORTCUTS.slice(0, 4).map((target, index) => ({
         id: `shortcut-${target.view}`,
-        cell: [index, 0] as GridCell,
+        cell: makeReactive([index, 0]),
         icon: target.icon,
         label: target.label,
         action: "open-view",
@@ -88,7 +121,7 @@ const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     })),
     {
         id: "shortcut-explorer",
-        cell: [2, 0],
+        cell: makeReactive([2, 0]),
         icon: "books",
         label: "Explorer",
         action: "open-view",
@@ -96,7 +129,7 @@ const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-settings",
-        cell: [3, 0],
+        cell: makeReactive([3, 0]),
         icon: "gear-six",
         label: "Settings",
         action: "open-view",
@@ -120,11 +153,11 @@ const splitDefaultEntries = (entries: SpeedDialPersistedItem[]) => {
 const { records: DEFAULT_SPEED_DIAL_RECORDS, metaEntries: DEFAULT_META_ENTRIES } = splitDefaultEntries(DEFAULT_SPEED_DIAL_DATA);
 const legacyMetaBuffer: Array<[string, SpeedDialItemMeta]> = [];
 
-const ensureCell = (cell?: GridCell): GridCell => {
-    if (Array.isArray(cell) && cell.length >= 2) {
-        return [Number(cell[0]) || 0, Number(cell[1]) || 0];
+const ensureCell = (cell?: ReturnType<typeof makeReactive<GridCell>>): ReturnType<typeof makeReactive<GridCell>> => {
+    if (cell && Array.isArray(cell) && cell.length >= 2) {
+        return makeReactive([Number(cell[0]) || 0, Number(cell[1]) || 0]);
     }
-    return [0, 0];
+    return makeReactive([0, 0]);
 };
 
 const createMetaState = (meta: SpeedDialItemMeta = {}) => {
@@ -216,13 +249,13 @@ export const removeSpeedDialMeta = (id: string) => {
 };
 
 const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
-    return {
+    return makeReactive({
         id: config.id || generateItemId(),
         cell: makeReactive(ensureCell(config.cell)),
         icon: stringRef(config.icon || "sparkle"),
         label: stringRef(config.label || "Shortcut"),
         action: config.action || "open-view"
-    };
+    }) as any;
 };
 
 const unwrapRef = (value: any, fallback?: string) => {
@@ -235,7 +268,7 @@ const unwrapRef = (value: any, fallback?: string) => {
 const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
     return {
         id: item.id,
-        cell: [item.cell?.[0] ?? 0, item.cell?.[1] ?? 0] as GridCell,
+        cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
         icon: unwrapRef(item.icon, "sparkle"),
         label: unwrapRef(item.label, "Shortcut"),
         action: item.action
@@ -296,6 +329,48 @@ const flushLegacyMetaBuffer = () => {
 flushLegacyMetaBuffer();
 syncMetaActionsForAllItems();
 
+const ensureExternalShortcuts = () => {
+    let changed = false;
+    EXTERNAL_SHORTCUTS.forEach((shortcut) => {
+        const exists = speedDialItems?.find?.((item) => item?.id === shortcut.id);
+        if (!exists) {
+            const item = createStatefulItem(shortcut);
+            // Ensure label and icon are set correctly if they are refs in item but strings in shortcut
+            if (shortcut.label && item.label && typeof item.label === 'object' && 'value' in item.label) {
+                item.label.value = shortcut.label;
+            }
+            if (shortcut.icon && item.icon && typeof item.icon === 'object' && 'value' in item.icon) {
+                item.icon.value = shortcut.icon;
+            }
+
+            speedDialItems.push(makeReactive(item) as any);
+            ensureSpeedDialMeta(item.id, shortcut.meta);
+            changed = true;
+        } else {
+            // Update existing items with potentially new meta (e.g. links)
+            const currentMeta = getSpeedDialMeta(shortcut.id);
+            if (shortcut.meta && currentMeta) {
+                if (shortcut.meta.href !== currentMeta.href) {
+                    currentMeta.href = shortcut.meta.href;
+                    changed = true;
+                }
+                if (shortcut.meta.description !== currentMeta.description) {
+                    currentMeta.description = shortcut.meta.description;
+                    changed = true;
+                }
+            } else if (shortcut.meta && !currentMeta) {
+                 ensureSpeedDialMeta(shortcut.id, shortcut.meta);
+                 changed = true;
+            }
+        }
+    });
+    if (changed) {
+        persistSpeedDialItems();
+        persistSpeedDialMeta();
+    }
+};
+ensureExternalShortcuts();
+
 export const persistSpeedDialItems = () => (speedDialItems as any)?.$save?.();
 
 export const findSpeedDialItem = (id?: string | null) => {
@@ -303,7 +378,7 @@ export const findSpeedDialItem = (id?: string | null) => {
     return speedDialItems?.find?.((item) => item?.id === id) || null;
 };
 
-export const createEmptySpeedDialItem = (cell: GridCell = [0, 0]): SpeedDialItem => {
+export const createEmptySpeedDialItem = (cell: ReturnType<typeof makeReactive> = makeReactive([0, 0])): SpeedDialItem => {
     const item = createStatefulItem({
         id: generateItemId(),
         cell,
@@ -316,7 +391,7 @@ export const createEmptySpeedDialItem = (cell: GridCell = [0, 0]): SpeedDialItem
 };
 
 export const addSpeedDialItem = (item: SpeedDialItem) => {
-    speedDialItems?.push?.(item);
+    speedDialItems?.push?.(makeReactive(item) as any);
     const metaChanged = syncMetaActionFromItem(item);
     persistSpeedDialItems();
     if (metaChanged) {
@@ -328,9 +403,9 @@ export const addSpeedDialItem = (item: SpeedDialItem) => {
 export const upsertSpeedDialItem = (item: SpeedDialItem) => {
     const existingIndex = speedDialItems?.findIndex?.((entry) => entry?.id === item?.id) ?? -1;
     if (existingIndex === -1) {
-        speedDialItems?.push?.(item);
+        speedDialItems?.push?.(makeReactive(item) as any);
     } else if (speedDialItems[existingIndex] !== item) {
-        speedDialItems.splice(existingIndex, 1, item);
+        speedDialItems.splice(existingIndex, 1, makeReactive(item) as any);
     }
     const metaChanged = syncMetaActionFromItem(item);
     persistSpeedDialItems();
@@ -359,14 +434,27 @@ export const snapshotSpeedDialItem = (item: SpeedDialItem) => {
     return {
         state: {
             id: item.id,
-            cell: [item.cell?.[0] ?? 0, item.cell?.[1] ?? 0] as GridCell,
+            cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
             icon: unwrapRef(item.icon, ""),
             label: unwrapRef(item.label, "")
         },
-        desc: {
+            desc: {
             action: resolvedAction,
             meta: metaSnapshot
         }
     };
 };
+
+const WALLPAPER_KEY = "cw::workspace::wallpaper";
+export const wallpaperState = makeUIState(WALLPAPER_KEY, () => makeReactive({
+    src: "./assets/imgs/test.jpg",
+    opacity: 1,
+    blur: 0
+}), (raw) => makeReactive(raw || {
+    src: "./assets/imgs/test.jpg",
+    opacity: 1,
+    blur: 0
+}), (state) => ({ ...state })) as unknown as { src: string; opacity: number; blur: number };
+
+export const persistWallpaper = () => (wallpaperState as any)?.$save?.();
 

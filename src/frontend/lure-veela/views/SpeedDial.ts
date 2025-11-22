@@ -1,5 +1,5 @@
-import { makeReactive } from "fest/object";
-import { ctxMenuTrigger, H, orientRef, M, Q } from "fest/lure";
+import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
+import { ctxMenuTrigger, E, H, orientRef, M, Q, provide } from "fest/lure";
 import { bindInteraction } from "fest/fl-ui";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
@@ -16,10 +16,13 @@ import {
     getSpeedDialMeta,
     ensureSpeedDialMeta,
     NAVIGATION_SHORTCUTS,
+    wallpaperState,
+    persistWallpaper,
     type SpeedDialItem,
     type GridCell
 } from "@rs-frontend/utils/StateStorage";
 import { MOCElement } from "fest/dom";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 let viewMaker: any = null;
 const layout = makeReactive([4, 8]);
@@ -55,11 +58,18 @@ const buildDescriptor = (item: SpeedDialItem) => {
     };
 };
 
+//
+const bindCell = (el: HTMLElement, args: any) => {
+    const { item } = args;
+    const cell = item?.cell ?? [0, 0];
+    E(el, { style: { "--cell-x": propRef(cell, 0), "--cell-y": propRef(cell, 1) } });
+};
+
 const runItemAction = (item: SpeedDialItem, actionId?: string, extras: { event?: Event; initiator?: HTMLElement } = {}) => {
     const resolvedAction = resolveItemAction(item, actionId);
     const action = actionRegistry.get(resolvedAction);
     if (!action) { toastError("Action is unavailable"); return; }
-    const meta = getSpeedDialMeta(item.id);
+    //const $meta = getSpeedDialMeta(item.id);
     const context = {
         id: item.id,
         items,
@@ -77,7 +87,7 @@ const runItemAction = (item: SpeedDialItem, actionId?: string, extras: { event?:
 
 const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactive = true) => {
     if (!el) return;
-    const args = { layout, items, item };
+    const args = { layout, items, item, meta };
     el.dataset.id = item.id;
     el.dataset.speedDialItem = "true";
     el.addEventListener("dragstart", (ev)=>ev.preventDefault());
@@ -93,7 +103,17 @@ const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactiv
             openItemEditor(item);
         });
     }
-    bindInteraction(el, args);
+
+    if (el.dataset.layer === "labels") {
+        el.style.pointerEvents = "none";
+        // needs to bind cell
+        bindCell(el, args);
+    }
+    if (el.dataset.layer === "icons") {
+        el.style.pointerEvents = "auto";
+        el.style.cursor = "pointer";
+        bindInteraction(el, args);
+    }
 };
 
 const deriveCellFromEvent = (ev?: MouseEvent): GridCell =>{
@@ -121,35 +141,85 @@ const createMenuEntryForAction = (actionId: string, item: SpeedDialItem, fallbac
 };
 
 //
-const BACKGROUND_IMAGE = "./assets/imgs/test.jpg";
+const pickWallpaper = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+            const dir = "/images/wallpaper/";
+            await writeFileSmart(null, dir, file);
+            const path = `${dir}${file.name}`;
+            wallpaperState.src = path;
+            persistWallpaper();
+            toastSuccess("Wallpaper updated");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to set wallpaper");
+        }
+    };
+    input.click();
+};
 
 //
 function makeWallpaper() {
     const oRef = orientRef();
-    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${BACKGROUND_IMAGE}></canvas>`;
+    console.log(wallpaperState);
+    const srcRef = stringRef("./assets/imgs/test.jpg");
+    subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.jpg");
+    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
     return CE;
 }
 
 //
+const handleWallpaperDrop = async (event: DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+        try {
+            const dir = "/images/wallpaper/";
+            await writeFileSmart(null, dir, file);
+            const path = `${dir}${file.name}`;
+            wallpaperState.src = path;
+            persistWallpaper();
+            toastSuccess("Wallpaper updated");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to set wallpaper");
+        }
+    }
+};
+
 export function SpeedDial(makeView: any) {
     viewMaker = makeView;
 
-    const renderItem = (item: SpeedDialItem)=>{
-        return H`<div class="ui-ws-item" data-speed-dial-item ref=${(el)=>attachItemNode(item, el as HTMLElement, true)}>
+    const renderIconItem = (item: SpeedDialItem)=>{
+        return H`<div class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
             <div data-shape="square" class="ui-ws-item-icon shaped">
                 <ui-icon style="z-index: 2;" icon=${item.icon}></ui-icon>
             </div>
-            <div class="ui-ws-item-label" style="background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">
-                <span style="background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">${getRefValue(item.label)}</span>
+        </div>`;
+    };
+
+    const renderLabelItem = (item: SpeedDialItem)=>{
+        return H`<div style="pointer-events: none;" class="ui-ws-item" data-speed-dial-item data-layer="labels" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
+            <div class="ui-ws-item-label" style="pointer-events: none; background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">
+                <span style="pointer-events: none; background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">${getRefValue(item.label)}</span>
             </div>
         </div>`;
     };
 
     const oRef = orientRef();
-    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef} prop:orient=${oRef}>
+    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef} prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
         ${makeWallpaper()}
         <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
-            ${M(items, renderItem)}
+            ${M(items, renderLabelItem)}
+        </div>
+        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
+            ${M(items, renderIconItem)}
         </div>
     </div>`;
 }
@@ -294,14 +364,17 @@ export function createCtxMenu() {
     const ctxMenuDesc = {
         openedWith: null,
         items: [],
+        meta: {},
         context: null,
         buildItems(details){
             const targetEl = (details.event?.target as HTMLElement | null)?.closest?.("[data-speed-dial-item]");
             const itemId = targetEl?.getAttribute?.("data-id");
             const item = findSpeedDialItem(itemId);
             const context = {
+                items,
                 type: item ? "item" : "void",
                 item,
+                meta,
                 event: details.event,
                 guessedCell: deriveCellFromEvent(details.event),
                 initiator: targetEl as HTMLElement
@@ -315,8 +388,8 @@ export function createCtxMenu() {
                     createMenuEntryForAction(currentAction || "open-view", item, "Run action")
                 ]);
                 const utilities: any[] = [];
-                const meta = getSpeedDialMeta(item.id);
-                if (meta?.href) {
+                const $meta = getSpeedDialMeta(item.id);
+                if ($meta?.href) {
                     utilities.push(createMenuEntryForAction("open-link", item, "Open link"));
                     utilities.push(createMenuEntryForAction("copy-link", item, "Copy link"));
                 }
@@ -348,6 +421,11 @@ export function createCtxMenu() {
                     action: ()=>{
                         openItemEditor(undefined, { suggestedCell: context.guessedCell });
                     }
+                }, {
+                    id: "change-wallpaper",
+                    label: "Change wallpaper",
+                    icon: "image",
+                    action: pickWallpaper
                 }],
                 NAVIGATION_SHORTCUTS.map((shortcut)=>({
                     id: `open-${shortcut.view}`,

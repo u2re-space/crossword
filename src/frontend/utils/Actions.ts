@@ -137,7 +137,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
                 const text = await file.text();
                 const json = JSON.parse(text);
                 if (typeof json !== 'object') throw new Error("Invalid JSON");
-                
+
                 await saveSettings(json);
                 if (viewPage && viewPage.reloadSettings) {
                     await viewPage.reloadSettings(json);
@@ -153,10 +153,11 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     ["open-link", async (context: any, entityDesc: EntityDescriptor)=>{
-        const meta = context?.meta?.get?.(context?.id) || null;
+        const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
+        const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
+        const href = meta?.href || item?.href || context?.shortcut?.href || context?.href;
 
         //
-        const href = meta?.href || context?.shortcut?.href || context?.href;
         if (!href) { toastError("Link is missing"); return; }
 
         //
@@ -169,11 +170,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
-    ["copy-link", async (context: any, entityDesc: EntityDescriptor)=>{
-        const meta = context?.meta?.get?.(context?.id) || null;
-
-        //
-        const href = meta?.href || context?.shortcut?.href || context?.href;
+    ["copy-link", async (context: any, entityDesc: EntityDescriptor) => {
+        const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
+        const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
+        const href = meta?.href || item?.href || context?.shortcut?.href || context?.href;
         if (!href) { toastError("Nothing to copy"); return; }
 
         //
@@ -205,8 +205,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
-    ["open-view", async (context: any, entityDesc: EntityDescriptor)=>{
-        const targetView = context?.meta?.view || (entityDesc as any)?.view || entityDesc?.type;
+    ["open-view", async (context: any, entityDesc: EntityDescriptor) => {
+        const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
+        const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
+        const targetView = meta?.view || (entityDesc as any)?.view || entityDesc?.type;
         if (!targetView) {
             toastError("No view target");
             return;

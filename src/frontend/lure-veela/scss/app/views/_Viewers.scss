@@ -23,6 +23,8 @@
         transform: translateZ(0px);
         content-visibility: auto;
         contain: strict;
+        inline-size: stretch;
+        max-inline-size: stretch;
     }
 
     //
@@ -32,6 +34,13 @@
         inline-size: stretch;
         block-size: stretch;
         contain: strict;
+        content-visibility: auto;
+
+        //
+        max-block-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: 0px;
+        min-block-size: 0px;
 
         //
         grid-template-columns: minmax(0px, 1fr);
@@ -73,6 +82,10 @@
         contain: strict;
 
         //
+        min-inline-size: 0px;
+        max-inline-size: stretch;
+
+        //
         &.viewer-section {
             background-color: transparent;
         }
@@ -100,6 +113,10 @@
         padding: 0;
         border-radius: var(--radius-sm);
 
+        //
+        min-inline-size: 0px;
+        max-inline-size: stretch;
+
         & > h2 {
             letter-spacing: 0.01em;
 
@@ -124,23 +141,33 @@
         }
 
         .viewer-tab-content {
-            overflow-x: hidden;
-            scrollbar-gutter: auto;
-            touch-action: manipulation;
-            pointer-events: auto;
-            align-content: start;
-
-            //
             @include ui.vstack(var(--gap-xs));
             @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1);
             @include scrollable("y");
 
+            //
             & {
                 box-shadow: none;
                 perspective: 1000;
                 transform: translateZ(0px);
                 content-visibility: auto;
                 contain: strict;
+
+                //
+                overflow-x: hidden;
+                scrollbar-gutter: auto;
+                touch-action: manipulation;
+                pointer-events: auto;
+                align-content: start;
+
+                //
+                inline-size: stretch;
+                max-inline-size: stretch !important;
+                min-inline-size: none;
+
+                //
+                overflow-wrap: break-word;
+                text-overflow: ellipsis;
             }
 
             .viewer-tab-content-header {
@@ -156,6 +183,19 @@
                 @include ui.vstack(var(--gap-xs));
                 pointer-events: none;
                 block-size: max-content;
+
+                //
+                min-inline-size: 0px;
+                max-inline-size: stretch;
+                min-block-size: 0px;
+                max-block-size: none;
+                inline-size: stretch;
+
+                //
+                box-shadow: none;
+                perspective: 1000;
+                transform: translateZ(0px);
+                content-visibility: auto;
             }
         }
     }
@@ -185,12 +225,6 @@
 
     // Speed Dial (Home) Styles
     .speed-dial-root {
-        --speed-dial-icon-size: 48px;
-        --speed-dial-gap: var(--gap-sm);
-        --speed-dial-label-color: var(--on-surface, #fff);
-        /*--speed-dial-label-shadow: 0 1px 2px rgba(0,0,0,0.5);*/
-
-        // Ensure it fills the screen
         inline-size: 100%;
         block-size: 100%;
         overflow: hidden;
@@ -220,12 +254,17 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: var(--gap-xs);
             aspect-ratio: 1 / 1;
             overflow: visible;
+            position: relative;
 
-            // Center in cell
+            text-align: center;
+            place-content: center;
+            place-items: center;
             place-self: center;
+
+            grid-template-columns: minmax(0px, 1fr);
+            grid-template-rows: minmax(0px, 1fr);
 
             // Visuals
             transition: transform var(--transition-fast) var(--ease-out);
@@ -244,24 +283,48 @@
             }
 
             .ui-ws-item-icon {
-                /*inline-size: var(--speed-dial-icon-size);
-                block-size: var(--speed-dial-icon-size);*/
-                @include flex-center;
+                display: grid;
                 border-radius: var(--radius-lg);
                 /*background: color-mix(in oklch, var(--surface-container-low, #fff) 80%, transparent);*/
                 /*box-shadow: var(--shadow-md);*/
                 transition: background-color var(--transition-colors), box-shadow var(--transition-colors);
                 grid-column: 1 / -1;
                 grid-row: 1 / -1;
+                aspect-ratio: 1 / 1;
+
+                position: relative;
+                text-align: center;
+                place-content: center;
+                place-items: center;
+                line-height: 0;
+
+                inline-size: stretch;
+                block-size: stretch;
+                min-inline-size: fit-content;
+                min-block-size: fit-content;
+                max-inline-size: stretch;
+                max-block-size: stretch;
+                padding: 0.5rem;
 
                 ui-icon {
-                    --icon-size: 24px;
+                    --icon-size: clamp(2rem, 100%, 3rem);
                     color: var(--on-surface-variant);
+                    aspect-ratio: 1 / 1;
+                    max-inline-size: var(--icon-size, 2rem);
+                    max-block-size: var(--icon-size, 2rem);
+                    min-inline-size: fit-content;
+                    min-block-size: fit-content;
+                    inline-size: var(--icon-size, 2rem);
+                    block-size: var(--icon-size, 2rem);
+                    object-fit: contain;
+                    object-position: center;
+                    line-height: 0;
                 }
             }
 
             .ui-ws-item-label {
-                max-inline-size: 100px; // Limit width
+                position: absolute;
+                inset: 0;
                 background-color: transparent;
                 pointer-events: none;
                 text-align: center;
@@ -269,23 +332,43 @@
                 place-items: center;
                 grid-column: 1 / -1;
                 grid-row: 1 / -1;
-                transform: translateZ(0px) translateY(100%);
+                transform: translateY(calc(50% + 1rem)) translateZ(0px);
+                white-space: nowrap;
+
+                inline-size: 100%;
+                min-inline-size: 0px;
+                min-block-size: 1px;
+                block-size: 100%;
+                line-height: 0;
+                overflow: visible;
+                display: grid;
 
                 span {
-                    display: block;
+                    display: flex;
+                    place-content: center;
+                    place-items: center;
+
                     @include ui.text-label("label-medium");
                     color: var(--speed-dial-label-color);
                     /*text-shadow: var(--speed-dial-label-shadow);*/
 
                     // Truncate
                     white-space: nowrap;
-                    overflow: hidden;
                     text-overflow: ellipsis;
                     padding-inline: var(--padding-xs);
                     background: rgba(0,0,0,0.2); // Subtle backdrop for readability
                     border-radius: var(--radius-sm);
                     pointer-events: none;
                     text-align: center;
+                    line-height: 0;
+                    inline-size: stretch;
+
+                    min-block-size: 1px;
+                    block-size: fit-content;
+                    max-block-size: fit-content;
+                    overflow: visible;
+                    max-inline-size: stretch;
+                    min-inline-size: 1px;
                 }
             }
 
@@ -302,12 +385,14 @@
                     pointer-events: none;
                 }
             }
-        }
 
-        // Adjust for mobile
-        @media (max-width: 600px) {
-            --speed-dial-icon-size: 40px;
-            padding: var(--padding-sm);
+            &[data-layer="labels"] {
+                z-index: 0;
+            }
+
+            &[data-layer="icons"] {
+                z-index: 99;
+            }
         }
     }
 }

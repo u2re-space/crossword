@@ -8,7 +8,7 @@ import "fest/fl-ui";
 //
 import { Sidebar } from "./Sidebar";
 import { MakeCardElement } from "../items/Cards";
-import { dropFile, hashTargetRef } from "fest/lure";
+import { hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
 import { createCtxMenu, SpeedDial } from "../views/SpeedDial";
 import { ViewPage } from "../views/Viewer";
@@ -35,8 +35,7 @@ const implementTestDrop = (mountElement: HTMLElement) => {
         const eventTarget = event?.target as HTMLElement;
         if (eventTarget?.matches?.("#app") || eventTarget?.querySelector?.("#app")) {
             event.preventDefault();
-            const file = event.dataTransfer?.files[0];
-            if (file && file.type.startsWith("image/")) { dropFile(file, "/images/")?.catch?.(console.warn.bind(console)); }
+            // Wallpaper drop moved to SpeedDial view
         }
     });
 }
@@ -53,14 +52,14 @@ const generateId = (path: string)=>{
 
 
 //
-export const CURRENT_VIEW = hashTargetRef(location.hash || "task", false);
+export const CURRENT_VIEW = hashTargetRef(location.hash || "home", false);
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
 
 export async function frontend(mountElement) {
     await initDOM(document.body);
     await loadInlineStyle(style);
-    
+
     startGeoTracking();
     startTimeTracking();
     // Ideally this should be triggered by user interaction

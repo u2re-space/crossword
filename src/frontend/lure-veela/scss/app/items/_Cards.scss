@@ -38,6 +38,13 @@
         font-size: var(--font-xs);
         display: inline-block;
         line-height: inherit;
+
+        overflow-wrap: break-word;
+        text-overflow: ellipsis;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: fit-content;
+
         @include make-wraps;
     }
 
@@ -392,7 +399,9 @@ $card-variants: (
         interpolate-size: allow-keywords;
 
         user-select: none;
-        inline-size: stretch;
+        inline-size: stretch !important;
+        max-inline-size: min(60rem, 100%) !important;
+        min-inline-size: fit-content !important;
         order: var(--card-order, initial);
         block-size: max-content;
         pointer-events: auto;
@@ -409,9 +418,9 @@ $card-variants: (
         @include solid-colorize("&", ("shade": var(--card-surface-tone), "scope": "selector"));
 
         & {
-            inline-size: stretch !important;
-            min-inline-size: fit-content !important;
-            max-inline-size: 60rem !important;
+            inline-size: stretch;
+            min-inline-size: fit-content;
+            max-inline-size: min(60rem, 100%);
 
             perspective: 1000px;
             // Apply swipe offset here to the main container
@@ -724,11 +733,27 @@ $card-variants: (
         .card-content,
         .card-links {
             grid-column: 1 / -1; // Span full width
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+
+            //
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
             // grid-area: footer; // Can't use same area name for multiple elements easily in grid-template-areas
         }
 
         .card-description,
         .card-content {
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+
+            //
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
+
+            //
             @include card-stack(var(--text-tint-secondary, 74%));
 
             .card-label {
@@ -738,6 +763,8 @@ $card-variants: (
                 line-height: normal;
                 display: flex;
                 flex-direction: row;
+                overflow-wrap: break-word;
+                text-overflow: ellipsis;
 
                 &:empty,
                 &:has(+ ul:empty) {
@@ -783,7 +810,16 @@ $card-variants: (
 
         .card-title {
             @include card-inline("title-small", var(--gap-xs), true);
-            white-space: nowrap;
+            white-space: normal;
+
+            //
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+
+            //
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
         }
 
         .card-kind {
@@ -873,11 +909,31 @@ $card-variants: (
             line-height: var(--leading-relaxed);
             text-align: start;
 
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+
+            //
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
+
             p {
+                overflow-wrap: break-word;
+                text-overflow: ellipsis;
+                inline-size: stretch;
+                max-inline-size: stretch;
+                min-inline-size: fit-content;
+
                 @include card-rich-text(var(--text-tint-primary, 92%));
             }
 
             span {
+                overflow-wrap: break-word;
+                text-overflow: ellipsis;
+                inline-size: stretch;
+                max-inline-size: stretch;
+                min-inline-size: fit-content;
+
                 @include card-rich-text(var(--text-tint-primary, 92%));
 
                 &:first-of-type {
@@ -892,6 +948,11 @@ $card-variants: (
 
         .card-description-content {
             font-size: t.$font-xs;
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: fit-content;
         }
 
         // Helpers to hide empty elements
