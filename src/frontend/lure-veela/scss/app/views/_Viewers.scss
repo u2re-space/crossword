@@ -304,10 +304,10 @@
                 min-block-size: fit-content;
                 max-inline-size: stretch;
                 max-block-size: stretch;
-                padding: 0.5rem;
+                padding: 1rem;
 
                 ui-icon {
-                    --icon-size: clamp(1.5rem, 100%, 2rem);
+                    --icon-size: clamp(2rem, 100%, 3rem);
                     color: var(--on-surface-variant);
                     aspect-ratio: 1 / 1;
                     max-inline-size: var(--icon-size, 2rem);
