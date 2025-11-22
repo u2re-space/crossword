@@ -124,14 +124,15 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             downloadDeps: true,
             inputMap: true
         }),*/
-        ...(isBuild ? [] : [
+        //...(isBuild ? [] :
+        ...[
             viteStaticCopy({
                 targets: [
-                    { src: resolve(__dirname, 'src/pwa/manifest.json'), dest: resolve(__dirname, './dist/pwa/') },
-                    { src: resolve(__dirname, 'src/pwa/icons/icon.svg'), dest: resolve(__dirname, './dist/pwa/icons/') }
+                    { src: resolve(__dirname, './src/pwa/manifest.json'), dest: resolve(__dirname, './dist/pwa/') },
+                    { src: resolve(__dirname, './src/pwa/icons/icon.svg'), dest: resolve(__dirname, './dist/pwa/icons/') }
                 ]
             })
-        ]),
+        ],
         VitePWA({
             srcDir: resolve(__dirname, "./src/pwa/"),
             dstDir: resolve(__dirname, "./dist/"),
