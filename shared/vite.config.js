@@ -141,13 +141,11 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             injectRegister: 'auto',
             selfDestroying: false,
             mode: 'development',
-            workbox: {
-                maximumFileSizeToCacheInBytes: 1024 * 1024 * 8,
-                globIgnores: ['**/index.html']
-            },
+            // workbox options are ignored when using injectManifest
             injectManifest: {
                 injectionPoint: undefined,
                 maximumFileSizeToCacheInBytes: 1024 * 1024 * 16,
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
             },
             includeAssets: [
                 resolve(__dirname, './src/pwa/icons/icon.svg')

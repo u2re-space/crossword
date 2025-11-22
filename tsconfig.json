@@ -58,7 +58,7 @@
         "types": ["chrome"],
         "baseUrl": "./",
         "composite": true,
-        "lib": ["dom", "esnext", "webworker"],
+        "lib": ["ESNext", "DOM", "WebWorker"],
         "module": "ESNext",
         "target": "ESNext",
         "resolveJsonModule": true,

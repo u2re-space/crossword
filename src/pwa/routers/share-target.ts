@@ -5,7 +5,7 @@ import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
 //
-export const makeShareTarget = ()=>{
+export const makeShareTarget = () => {
 
     //
     return registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {

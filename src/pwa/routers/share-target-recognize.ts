@@ -3,7 +3,7 @@ import { controlChannel, DOC_DIR, initiateAnalyzeAndRecognizeData, isMarkdown } 
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
 //
-export const makeShareTargetRecognize = ()=>{
+export const makeShareTargetRecognize = () => {
 
     //
     return registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e: any) => {

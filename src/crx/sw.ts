@@ -9,6 +9,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const source = message.source || null;
         handleMakeTimeline(source).then((result) => {
             sendResponse(result);
+        }).catch((error) => {
+            console.error("Timeline generation failed:", error);
+            sendResponse({ error: error.message });
         });
         return true; // Indicates that the response is asynchronous
     }
@@ -28,7 +31,9 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "recognize-content") {
         if (tab?.id) {
-             chrome.tabs.sendMessage(tab.id, { type: "RECOGNIZE_CONTENT", info });
+             chrome.tabs.sendMessage(tab.id, { type: "RECOGNIZE_CONTENT", info }).catch(err => {
+                 console.warn("Could not send message to tab", tab.id, err);
+             });
         }
     }
 });
