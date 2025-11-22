@@ -213,7 +213,7 @@ export function SpeedDial(makeView: any) {
     };
 
     const oRef = orientRef();
-    return H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" orient=${oRef} prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
+    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
         ${makeWallpaper()}
         <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
             ${M(items, renderLabelItem)}
@@ -222,6 +222,9 @@ export function SpeedDial(makeView: any) {
             ${M(items, renderIconItem)}
         </div>
     </div>`;
+
+    //
+    return box;
 }
 
 //

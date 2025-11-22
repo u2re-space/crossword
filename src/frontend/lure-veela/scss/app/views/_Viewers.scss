@@ -307,7 +307,7 @@
                 padding: 0.5rem;
 
                 ui-icon {
-                    --icon-size: clamp(2rem, 100%, 3rem);
+                    --icon-size: clamp(1.5rem, 100%, 2rem);
                     color: var(--on-surface-variant);
                     aspect-ratio: 1 / 1;
                     max-inline-size: var(--icon-size, 2rem);
@@ -332,8 +332,9 @@
                 place-items: center;
                 grid-column: 1 / -1;
                 grid-row: 1 / -1;
-                transform: translateY(calc(50% + 1rem)) translateZ(0px);
+                transform: translateY(calc(50% + 0.75rem)) translateZ(0px);
                 white-space: nowrap;
+                aspect-ratio: auto;
 
                 inline-size: 100%;
                 min-inline-size: 0px;
