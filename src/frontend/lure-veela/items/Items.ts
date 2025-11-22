@@ -7,6 +7,7 @@ import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "@rs-frontend/utils/Utils";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
+import { registerEntity, unregisterEntity } from "@rs-core/service/EntityRegistry";
 
 //
 const MakeItemsLoaderForTabPage = <
@@ -160,6 +161,13 @@ export const CollectItemsForTabPage = <
     observe(loader.dataRef, (newItem, index, oldItem) => {
         const item = newItem ?? oldItem;
         const forAddOrDelete = newItem != null;
+
+        // Register/Unregister globally
+        if (forAddOrDelete && newItem) {
+            registerEntity(newItem);
+        } else if (!forAddOrDelete && oldItem) {
+            unregisterEntity(oldItem);
+        }
 
         //
         const day = cleanToDay(item), kind = item?.kind;

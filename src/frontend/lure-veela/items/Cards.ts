@@ -1,9 +1,12 @@
 import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, type CardRenderOptions } from "@rs-frontend/utils/Formatted";
-import { H, M } from "fest/lure";
+import { H, M, bindBeh } from "fest/lure";
 import { formatAsTime } from "@rs-core/utils/TimeUtils";
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
+import { GeoState, isNearby } from "@rs-core/service/GeoService";
+import { TimeState, isNow, registerEventForNotification } from "@rs-core/service/TimeService";
+import { findEntities } from "@rs-core/service/EntityRegistry";
 
 //
 import { marked } from "marked";
@@ -107,6 +110,54 @@ export const MakeCardElement = <
     </div>
     ${linksPlaceholder}
 </div>` as HydratedCardElement;
+
+    //
+    if (entityItem?.properties?.location?.coordinate) {
+        const { latitude, longitude } = entityItem.properties.location.coordinate;
+        bindBeh(card, GeoState, () => {
+            const nearby = isNearby(latitude, longitude);
+            card.classList.toggle("is-nearby", nearby);
+        });
+    } else if (entityItem?.properties?.usableIn || entityItem?.properties?.usableFor) {
+        // Check for related entities (Bonus/Promo case)
+        bindBeh(card, GeoState, () => {
+            let nearby = false;
+            const checkList = [
+                ...(entityItem.properties?.usableIn || []),
+                ...(entityItem.properties?.usableFor || [])
+            ];
+
+            for (const pattern of checkList) {
+                if (typeof pattern === 'string') {
+                    const matches = findEntities(pattern);
+                    for (const entity of matches) {
+                        if (entity.properties?.location?.coordinate) {
+                            const { latitude, longitude } = entity.properties.location.coordinate;
+                            if (isNearby(latitude, longitude)) {
+                                nearby = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (nearby) break;
+            }
+            
+            card.classList.toggle("is-nearby", nearby);
+        });
+    }
+
+    //
+    if (entityItem?.properties?.begin_time) {
+        bindBeh(card, TimeState, () => {
+            const active = isNow(entityItem.properties.begin_time, entityItem.properties.end_time);
+            card.classList.toggle("is-now", active);
+        });
+        
+        if (entityItem.id && entityItem.title && (entityDesc.type === 'task' || entityDesc.type === 'event')) {
+            registerEventForNotification(String(entityItem.id), entityItem.title, entityItem.properties.begin_time);
+        }
+    }
     const orderValue = options?.order;
     if (typeof orderValue === "number" && Number.isFinite(orderValue)) {
         try {

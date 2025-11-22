@@ -54,9 +54,17 @@ const generateId = (path: string)=>{
 
 //
 export const CURRENT_VIEW = hashTargetRef(location.hash || "task", false);
+import { startGeoTracking } from "@rs-core/service/GeoService";
+import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
+
 export async function frontend(mountElement) {
     await initDOM(document.body);
     await loadInlineStyle(style);
+    
+    startGeoTracking();
+    startTimeTracking();
+    // Ideally this should be triggered by user interaction
+    requestNotificationPermission();
 
     //
     const entityViews = new Map([

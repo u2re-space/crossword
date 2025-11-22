@@ -329,6 +329,12 @@ $card-variants: (
         initial-value: 0;
     }
 
+    @keyframes card-pulse {
+        0% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
+        50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-blue) 20%, transparent), var(--card-shadow-base); }
+        100% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
+    }
+
     .card {
         --current: var(--primary);
         --card-gap: var(--space-lg);
@@ -421,6 +427,16 @@ $card-variants: (
             // Ah, swipe preview has `transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));`
             // So it counter-translates to stay in place while the card moves. Clever.
             transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
+
+            &.is-nearby {
+                --card-shadow-outline: 0 0 0 3px var(--color-green);
+                transition: box-shadow 0.3s ease;
+            }
+
+            &.is-now {
+                --card-shadow-outline: 0 0 0 3px var(--color-blue);
+                animation: card-pulse 2s infinite;
+            }
         }
 
         &:where([data-swiping], [data-swipe-action]) {
