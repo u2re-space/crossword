@@ -24,15 +24,15 @@ export const AdditionalSection: SectionConfig = {
             ]
         },
         {
-            key: "actions",
-            label: "Actions",
-            description: "Quick actions for the workspace.",
-            fields: []
-        },
-        {
             key: "wallpaper",
             label: "Wallpaper",
             description: "Customize the workspace background.",
+            fields: []
+        },
+        {
+            key: "actions",
+            label: "Actions",
+            description: "Quick actions for the workspace.",
             fields: []
         },
         {
