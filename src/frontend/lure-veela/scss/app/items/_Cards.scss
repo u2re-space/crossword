@@ -43,7 +43,7 @@
         text-overflow: ellipsis;
         inline-size: stretch;
         max-inline-size: stretch;
-        min-inline-size: fit-content;
+        min-inline-size: 0px;
 
         @include make-wraps;
     }
@@ -82,6 +82,9 @@
         display: flex;
         opacity: 1;
         block-size: max-content;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: 0px;
         padding-block: var(--padding-sm);
         interpolate-size: allow-keywords;
     }
@@ -130,6 +133,9 @@ $card-variants: (
     display: $display;
     line-height: inherit;
     block-size: max-content;
+    inline-size: stretch;
+    max-inline-size: stretch;
+    min-inline-size: 0px;
     overflow: hidden;
 }
 
@@ -159,6 +165,9 @@ $card-variants: (
     opacity: 1;
     grid-column: 1 / -1;
     block-size: max-content;
+    inline-size: stretch;
+    max-inline-size: stretch;
+    min-inline-size: 0px;
     box-sizing: border-box;
     overflow: hidden;
     padding-block: var(--padding-sm);
@@ -188,6 +197,9 @@ $card-variants: (
     padding: 0;
     line-height: var(--leading-tight);
     text-align: start;
+    inline-size: stretch;
+    max-inline-size: stretch;
+    min-inline-size: 0px;
 }
 
 @mixin card-rich-text($tint) {
@@ -384,9 +396,9 @@ $card-variants: (
             "avatar content actions"
             "footer footer footer";
         grid-template-columns:
-            minmax(0, max-content)
-            minmax(0, 1fr)
-            minmax(0, max-content);
+            minmax(0px, max-content)
+            minmax(0px, 1fr)
+            minmax(0px, max-content);
         align-items: start;
         gap: var(--space-lg);
         row-gap: var(--gap-sm);
@@ -401,7 +413,7 @@ $card-variants: (
         user-select: none;
         inline-size: stretch !important;
         max-inline-size: min(60rem, 100%) !important;
-        min-inline-size: fit-content !important;
+        min-inline-size: 0px;
         order: var(--card-order, initial);
         block-size: max-content;
         pointer-events: auto;
@@ -419,7 +431,7 @@ $card-variants: (
 
         & {
             inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
             max-inline-size: min(60rem, 100%);
 
             perspective: 1000px;
@@ -648,7 +660,7 @@ $card-variants: (
                 "avatar content"
                 "actions actions"
                 "footer footer";
-            grid-template-columns: minmax(0, max-content) 1fr;
+            grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr);
 
             --card-gradient-angle: 110deg;
             --card-overlay-strength-base: clamp(
@@ -739,7 +751,7 @@ $card-variants: (
             //
             inline-size: stretch;
             max-inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
             // grid-area: footer; // Can't use same area name for multiple elements easily in grid-template-areas
         }
 
@@ -751,7 +763,7 @@ $card-variants: (
             //
             inline-size: stretch;
             max-inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
 
             //
             @include card-stack(var(--text-tint-secondary, 74%));
@@ -793,6 +805,9 @@ $card-variants: (
                     @include can-wrap-text;
                     display: list-item;
                     block-size: max-content;
+                    inline-size: stretch;
+                    max-inline-size: stretch;
+                    min-inline-size: 0px;
                 }
             }
         }
@@ -815,11 +830,23 @@ $card-variants: (
             //
             overflow-wrap: break-word;
             text-overflow: ellipsis;
+            overflow: hidden;
 
             //
             inline-size: stretch;
             max-inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
+
+            span, h1, h2, h3, h4, h5, h6 {
+                overflow-wrap: break-word;
+                text-overflow: ellipsis;
+                overflow: hidden;
+
+                //
+                inline-size: stretch;
+                max-inline-size: stretch;
+                min-inline-size: 0px;
+            }
         }
 
         .card-kind {
@@ -915,14 +942,14 @@ $card-variants: (
             //
             inline-size: stretch;
             max-inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
 
             p {
                 overflow-wrap: break-word;
                 text-overflow: ellipsis;
                 inline-size: stretch;
                 max-inline-size: stretch;
-                min-inline-size: fit-content;
+                min-inline-size: 0px;
 
                 @include card-rich-text(var(--text-tint-primary, 92%));
             }
@@ -932,7 +959,7 @@ $card-variants: (
                 text-overflow: ellipsis;
                 inline-size: stretch;
                 max-inline-size: stretch;
-                min-inline-size: fit-content;
+                min-inline-size: 0px;
 
                 @include card-rich-text(var(--text-tint-primary, 92%));
 
@@ -952,7 +979,7 @@ $card-variants: (
             text-overflow: ellipsis;
             inline-size: stretch;
             max-inline-size: stretch;
-            min-inline-size: fit-content;
+            min-inline-size: 0px;
         }
 
         // Helpers to hide empty elements
