@@ -42,8 +42,8 @@
 
         //
         @include ui.inline-toolbar(var(--gap-xs));
-        @include backdrop-blur("subtle");
         @include ui.tonal-surface(surface, var(--surface-opacity-subtle), var(--radius-lg), null, 1);
+        @include backdrop-blur("subtle");
         @include container-clamped(stretch, max-content);
 
         //
@@ -53,6 +53,7 @@
             margin: 0px;
             margin-inline: 0px;
             box-shadow: none;
+            background-color: transparent;
         }
 
         //
@@ -62,7 +63,7 @@
 
         .button-set {
             @include ui.inline-toolbar(var(--gap-md));
-            @include ui.tonal-surface(surface-container, var(--surface-opacity-default, 0.08), var(--radius-lg), var(--padding-sm));
+            @include ui.tonal-surface(surface-container, var(--surface-opacity-subtle, 0.00), var(--radius-lg), var(--padding-sm));
             @include container-clamped(stretch, stretch);
             flex-wrap: nowrap;
 
@@ -79,6 +80,7 @@
                 pointer-events: auto;
 
                 //
+                @include ui.tonal-surface(surface-container, calc(var(--surface-opacity-subtle, 0.00) + 0.02), var(--radius-lg), var(--padding-sm));
                 @include ui.inline-toolbar(var(--gap-sm));
                 @include toolbar-button;
                 @include flex-center;

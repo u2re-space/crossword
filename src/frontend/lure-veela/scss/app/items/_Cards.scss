@@ -25,8 +25,8 @@
         white-space: pre-line;
         content: "\A\n\r,";
         overflow-wrap: break-word;
-        inline-size: stretch;
-        line-height: inherit;
+        inline-size: fit-content;
+        line-height: normal;
     }
 
     :where(span, a)::first-letter {
@@ -37,15 +37,23 @@
     a {
         font-size: var(--font-xs);
         display: inline-block;
-        line-height: inherit;
 
         overflow-wrap: break-word;
         text-overflow: ellipsis;
+        inline-size: fit-content;
+        max-inline-size: stretch;
+        min-inline-size: 0px;
+        line-height: 1.6;
+
+        @include make-wraps;
+    }
+
+    p {
+        white-space: pre-line;
+        line-height: 1.6;
         inline-size: stretch;
         max-inline-size: stretch;
         min-inline-size: 0px;
-
-        @include make-wraps;
     }
 
     :where(a) {
@@ -82,7 +90,7 @@
         display: flex;
         opacity: 1;
         block-size: max-content;
-        inline-size: stretch;
+        inline-size: fit-content;
         max-inline-size: stretch;
         min-inline-size: 0px;
         padding-block: var(--padding-sm);
@@ -123,7 +131,25 @@ $card-variants: (
 @mixin card-reset-item {
     margin: 0;
     padding: 0;
-    line-height: inherit;
+    line-height: normal;
+
+    //
+    white-space: nowrap;
+    word-break: nowrap;
+    flex-direction: row;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    overflow-wrap: normal;
+    text-wrap: nowrap;
+
+    //
+    max-inline-size: stretch;
+    min-inline-size: 0px;
+    inline-size: fit-content;
+    block-size: max-content;
+
+    //
+    text-align: start;
 }
 
 @mixin card-list-reset($display: block, $list-style: none) {
@@ -131,12 +157,17 @@ $card-variants: (
     padding: 0;
     list-style: $list-style;
     display: $display;
-    line-height: inherit;
+    line-height: normal;
     block-size: max-content;
-    inline-size: stretch;
+    inline-size: fit-content;
     max-inline-size: stretch;
     min-inline-size: 0px;
     overflow: hidden;
+
+    //
+    flex-direction: column;
+    white-space: nowrap;
+    word-break: nowrap;
 }
 
 @mixin card-inline($type: "body-small", $gap: var(--gap-xs), $truncate: false) {
@@ -165,7 +196,7 @@ $card-variants: (
     opacity: 1;
     grid-column: 1 / -1;
     block-size: max-content;
-    inline-size: stretch;
+    inline-size: fit-content;
     max-inline-size: stretch;
     min-inline-size: 0px;
     box-sizing: border-box;
@@ -191,15 +222,15 @@ $card-variants: (
 @mixin card-paragraph {
     @include can-wrap-text;
     display: inline-block;
-    inline-size: stretch;
+    inline-size: fit-content;
     block-size: max-content;
     margin: 0;
     padding: 0;
     line-height: var(--leading-tight);
     text-align: start;
-    inline-size: stretch;
     max-inline-size: stretch;
     min-inline-size: 0px;
+    white-space: pre-line;
 }
 
 @mixin card-rich-text($tint) {
@@ -207,14 +238,26 @@ $card-variants: (
     font-weight: var(--font-weight-thin);
     @include card-color($tint);
 
+    //
     margin: 0;
     padding: 0;
     display: block;
     gap: var(--gap-xs);
     list-style: none;
-    line-height: inherit;
+    line-height: 1.6;
     text-align: start;
 
+    //
+    text-wrap: pretty;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    text-overflow: ellipsis;
+    inline-size: fit-content;
+    max-inline-size: stretch;
+    min-inline-size: 0px;
+
+    //
     &::first-letter {
         text-transform: uppercase;
     }
@@ -244,7 +287,7 @@ $card-variants: (
     $shadow,
     $overlay,
     $secondary,
-    $tint-range: (-0.12, -0.02, -0.8)
+    $tint-range: (-0.1, -0.02, -0.6)
 ) {
     --card-surface-tone-base: #{$tone};
     --card-border-alpha-base: #{$border};
@@ -357,16 +400,16 @@ $card-variants: (
     .card {
         --current: var(--primary);
         --card-gap: var(--space-lg);
-        --card-padding: var(--padding-md);
-        --card-radius: var(--radius-lg);
-        --card-avatar-size: 40px;
+        --card-padding: var(--padding-lg);
+        --card-radius: var(--radius-md);
+        --card-avatar-size: 48px;
 
         // Initial Reset for Swipe
         --card-swipe-offset: 0px;
         --card-swipe-progress: 0;
 
         @include card-surface-vars(
-            clamp(0.06, var(--surface-opacity-default), 0.14),
+            clamp(0.06, var(--surface-opacity-subtle), 0.14),
             clamp(0.12, calc(var(--card-surface-tone-base) * 2.1), 0.22),
             clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.24),
             clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34),
@@ -390,6 +433,8 @@ $card-variants: (
         --color-shade: var(--card-surface-tone);
         --color-tint: var(--card-surface-tint);
 
+        place-items: center;
+        place-content: center;
         display: grid;
         // Improved Layout for better adaptability
         grid-template-areas:
@@ -427,7 +472,7 @@ $card-variants: (
         background-repeat: no-repeat;
         background-origin: border-box;
 
-        @include solid-colorize("&", ("shade": var(--card-surface-tone), "scope": "selector"));
+        @include solid-colorize("&", ("shade": var(--card-surface-tone, 0), "scope": "selector"));
 
         & {
             inline-size: stretch;
@@ -483,9 +528,44 @@ $card-variants: (
         }
 
         // Content Layer
-        > :not(.card-swipe-preview) {
+        & > :not(.card-swipe-preview) {
             position: relative;
             z-index: 2; // Above the swipe preview
+        }
+
+        // default text wrapping for span and a
+        span, a {
+            text-wrap: pretty;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            text-overflow: ellipsis;
+            inline-size: fit-content;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
+            line-height: 1.6;
+        }
+
+        ul {
+            display: flex;
+            flex-direction: column;
+            flex-wrap: nowrap;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
+            block-size: max-content;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            text-align: start;
+        }
+
+        // allow text selection for code and pre
+        code, pre {
+            user-select: text;
+            cursor: text;
+            font-family: var(--font-family-mono, var(--font-family-monospace, monospace));
         }
 
         // Swipe Preview Layer (Behind content)
@@ -496,7 +576,7 @@ $card-variants: (
             display: none; // Hidden by default, shown via JS or query?
             // Actually JS toggles data attributes, but structure is always there
             // `display: none` in original code.
-            display: grid; // We need it to be visible for the counter-transform to work?
+            //display: grid; // We need it to be visible for the counter-transform to work?
             // Wait, if it's `display: none`, it won't render.
             // The original code had `display: none` and `@container (inline-size <= 720px) { display: grid; }`
             // We should probably keep it hidden unless needed or rely on JS/Container.
@@ -513,7 +593,7 @@ $card-variants: (
             transition: opacity var(--duration-fast) var(--ease-out);
 
             // Only show when swiping or ready to swipe
-            display: none;
+            //display: none;
         }
 
         // Enable swipe preview on touch devices or small screens
@@ -607,7 +687,7 @@ $card-variants: (
         &[data-variant="default"] {
             --current: var(--surface-container-high, var(--primary));
             @include card-surface-vars(
-                clamp(0.08, calc(var(--surface-opacity-default) * 1.2), 0.18),
+                clamp(0.08, calc(var(--surface-opacity-subtle) * 1.2), 0.18),
                 clamp(0.14, calc(var(--card-surface-tone-base) * 1.8), 0.28),
                 clamp(0.16, calc(var(--card-surface-tone-base) * 1.9), 0.28),
                 clamp(0.22, calc(var(--card-surface-tone-base) * 1.9), 0.38),
@@ -626,7 +706,7 @@ $card-variants: (
         &[data-variant="blur"] {
             --current: var(--primary);
             @include card-surface-vars(
-                clamp(0.18, calc(var(--surface-opacity-default) * 2.6), 0.36),
+                clamp(0.18, calc(var(--surface-opacity-subtle) * 2.6), 0.36),
                 clamp(0.18, calc(var(--card-surface-tone-base) * 1.06), 0.32),
                 clamp(0.22, calc(var(--card-surface-tone-base) * 1.24), 0.38),
                 clamp(0.28, calc(var(--card-surface-tone-base) * 1.3), 0.44),
@@ -638,18 +718,18 @@ $card-variants: (
         }
 
         &:where(:hover, :focus-visible, :focus, :active) {
-            --card-surface-tone: min(0.6, calc(var(--card-surface-tone-base) + 0.06));
-            --card-border-alpha: min(0.46, calc(var(--card-border-alpha-base) + 0.08));
-            --card-shadow-strength: min(0.5, calc(var(--card-shadow-strength-base) + 0.1));
-            --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.1));
-            --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.06));
-            @include card-shadows(2, 0.12, 0.18, $card-ambient-hover);
+            --card-surface-tone: min(0.6, calc(var(--card-surface-tone-base) + 0.02));
+            --card-border-alpha: min(0.46, calc(var(--card-border-alpha-base) + 0.04));
+            --card-shadow-strength: min(0.44, calc(var(--card-shadow-strength-base) + 0.06));
+            --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.06));
+            --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.03));
+            @include card-shadows(2, 0.08, 0.12, $card-ambient-hover);
         }
 
         &[data-open] {
-            --card-surface-tone: min(0.56, calc(var(--card-surface-tone-base) + 0.04));
+            --card-surface-tone: min(0.52, calc(var(--card-surface-tone-base) + 0.03));
             --card-shadow-strength: min(0.46, calc(var(--card-shadow-strength-base) + 0.08));
-            --card-overlay-strength: min(0.6, calc(var(--card-overlay-strength-base) + 0.06));
+            --card-overlay-strength: min(0.54, calc(var(--card-overlay-strength-base) + 0.06));
             --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
             @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
         }
@@ -671,9 +751,12 @@ $card-variants: (
             @include card-sync-vars;
 
             .card-actions {
+                display: flex;
                 justify-self: start;
-                width: 100%;
+                inline-size: stretch;
                 justify-content: space-between;
+                flex-direction: row;
+                flex-wrap: nowrap;
             }
         }
 
@@ -709,29 +792,37 @@ $card-variants: (
             grid-area: content;
             display: flex;
             flex-direction: column;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
+            text-align: start;
             gap: var(--gap-2xs);
         }
 
         .card-actions {
-            grid-area: actions;
             @include card-inline();
+
+            inline-size: stretch;
+            grid-area: actions;
             overflow: visible;
             align-self: center;
+            justify-content: space-between;
+
+            flex-direction: row;
+            flex-wrap: nowrap;
 
             & > .action {
                 padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);
                 cursor: pointer;
                 transition: var(--transition-colors);
-                box-shadow: var(--shadow-sm);
 
                 @include ui.inline-toolbar(var(--gap-xs));
-                @include ui.tonal-surface(surface, var(--surface-opacity-subtle));
+                @include ui.tonal-surface(surface, var(--surface-opacity-emphasis));
                 @include flex-center;
 
-                &:hover {
-                     @include ui.tonal-surface(surface, var(--surface-opacity-default));
-                }
+                box-shadow: none;
+                filter: none;
             }
 
             @container (inline-size <= 400px) {
@@ -745,38 +836,35 @@ $card-variants: (
         .card-content,
         .card-links {
             grid-column: 1 / -1; // Span full width
-            overflow-wrap: break-word;
+            overflow-wrap: normal;
+            word-break: break-word;
             text-overflow: ellipsis;
+            text-wrap: pretty;
 
             //
             inline-size: stretch;
             max-inline-size: stretch;
             min-inline-size: 0px;
+            flex-direction: column;
+            line-height: 1.6;
+            white-space: pre-line;
             // grid-area: footer; // Can't use same area name for multiple elements easily in grid-template-areas
         }
 
         .card-description,
         .card-content {
-            overflow-wrap: break-word;
-            text-overflow: ellipsis;
-
-            //
-            inline-size: stretch;
-            max-inline-size: stretch;
-            min-inline-size: 0px;
-
-            //
             @include card-stack(var(--text-tint-secondary, 74%));
 
+            //
+            & { inline-size: stretch; }
+
+            //
             .card-label {
+                @include card-rich-text(var(--text-tint-secondary, 74%));
+
                 margin-block: var(--gap-xs);
                 opacity: 0.8;
                 font-size: var(--font-sm);
-                line-height: normal;
-                display: flex;
-                flex-direction: row;
-                overflow-wrap: break-word;
-                text-overflow: ellipsis;
 
                 &:empty,
                 &:has(+ ul:empty) {
@@ -805,7 +893,7 @@ $card-variants: (
                     @include can-wrap-text;
                     display: list-item;
                     block-size: max-content;
-                    inline-size: stretch;
+                    inline-size: fit-content;
                     max-inline-size: stretch;
                     min-inline-size: 0px;
                 }
@@ -833,17 +921,17 @@ $card-variants: (
             overflow: hidden;
 
             //
-            inline-size: stretch;
+            inline-size: fit-content;
             max-inline-size: stretch;
             min-inline-size: 0px;
 
-            span, h1, h2, h3, h4, h5, h6 {
+            a, span, h1, h2, h3, h4, h5, h6 {
                 overflow-wrap: break-word;
                 text-overflow: ellipsis;
                 overflow: hidden;
 
                 //
-                inline-size: stretch;
+                inline-size: fit-content;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
             }
@@ -859,6 +947,14 @@ $card-variants: (
             @include card-inline();
             @include card-color(var(--text-tint-muted, 60%));
             font-size: var(--font-xs);
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
+            text-align: start;
+            place-items: center;
+            place-content: center;
+            align-content: flex-start;
+            block-size: stretch;
             grid-area: content; // Overlap/Append to content area?
             // Or maybe make it part of the props flex column via nesting in JS
             // But here it's a sibling.
@@ -874,6 +970,9 @@ $card-variants: (
             user-drag: none;
             -webkit-user-drag: none;
             padding: var(--padding-md);
+            box-shadow: none;
+            filter: none;
+            border-radius: 50cqmin;
         }
 
         .card-links {
@@ -933,7 +1032,6 @@ $card-variants: (
         .card-properties {
             @include card-list-reset();
             font-size: t.$font-sm;
-            line-height: var(--leading-relaxed);
             text-align: start;
 
             overflow-wrap: break-word;
@@ -945,6 +1043,7 @@ $card-variants: (
             min-inline-size: 0px;
 
             p {
+                white-space: pre-line;
                 overflow-wrap: break-word;
                 text-overflow: ellipsis;
                 inline-size: stretch;
@@ -955,9 +1054,10 @@ $card-variants: (
             }
 
             span {
-                overflow-wrap: break-word;
+                white-space: normal;
+                overflow-wrap: nowrap;
                 text-overflow: ellipsis;
-                inline-size: stretch;
+                inline-size: fit-content;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
 

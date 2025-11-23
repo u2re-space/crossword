@@ -297,9 +297,9 @@ Currently we used native CSS custom functions (and own implementations for veela
 
 **Interactive state variables:**
 
-- `--hover-lift` - 0.08
-- `--active-lift` - 0.1
-- `--focus-lift` - 0.12
+- `--hover-lift` - 0.03
+- `--active-lift` - 0.05
+- `--focus-lift` - 0.02
 
 **Shadow variables:**
 
