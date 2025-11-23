@@ -116,7 +116,59 @@ export const writeWithTryRecognize = async (dir: string, file: File) => {
     }
 }
 
+//
+export const pasteIntoClipboardWithRecognize = async () => {
+    try {
+        // clipboard first
+        if ((navigator.clipboard as any)?.read) {
+            const items = await (navigator.clipboard as any).read();
+            for (const item of items) {
+                for (const type of item.types) {
+                    const blob = await item.getType(type);
+                    if (blob) {
+                        const data = await analyzeRecognizeUnified(blob)?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+                        if (data) { return navigator.clipboard.writeText(data)?.then?.(() => true)?.catch?.(console.warn.bind(console)); }
+                    }
+                }
+            }
+        }
 
+        // text fallback
+        const text = await navigator.clipboard.readText()?.then?.((text) => text?.trim?.())?.catch?.(console.warn.bind(console));
+        if (text && text.trim()) {
+            const data = await analyzeRecognizeUnified(text)?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+            if (data) { return navigator.clipboard.writeText(data)?.then?.(() => true)?.catch?.(console.warn.bind(console)); }
+        }
+    } catch (e) { console.warn(e); return false; }
+    return false;
+}
+
+//
+export const pasteAndAnalyze = async () => {
+    try {
+        // clipboard first
+        if ((navigator.clipboard as any)?.read) {
+            const items = await (navigator.clipboard as any).read();
+            for (const item of items) {
+                for (const type of item.types) {
+                    const blob = await item.getType(type);
+                    if (blob) {
+                        const data = await postShareTarget({file: blob as any})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+                        if (data) { return true; }
+                    }
+                }
+            }
+        }
+
+        // text fallback
+        const text = await navigator.clipboard.readText()?.then?.((text) => text?.trim?.())?.catch?.(console.warn.bind(console));
+        if (text && text.trim()) {
+            const data = await postShareTarget({text: text})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+            if (data) { return true; }
+        }
+    } catch (e) { console.warn(e); return false; }
+    return false;
+}
 
 //
 export const pasteIntoDir = async (dir: string) => {

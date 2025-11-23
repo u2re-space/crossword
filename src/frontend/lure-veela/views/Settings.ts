@@ -280,12 +280,25 @@ export const Settings = async () => {
                 body.append(H`<div class="mcp-actions">${addButton}</div>` as HTMLElement);
             } else if (section.key === 'additional') {
                 if (group.key === 'actions') {
+                    // Add Share clipboard button
+                    const shareClipboardBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("share-clipboard")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
+                        <ui-icon icon="share"></ui-icon>
+                        <span>Share Clipboard</span>
+                    </button>`;
+                    body.append(shareClipboardBtn);
+                } else
+                if (group.key === 'bluetooth') {
+                    // Add Bluetooth Enable Acceptance button
+                    const enableBluetoothBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("bluetooth-enable-acceptance")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
+                        <ui-icon icon="bluetooth"></ui-icon>
+                        <span>Enable Bluetooth Acceptance</span>
+                    </button>`;
                     // Add Paste button
-                    const pasteBtn = H`<button type="button" class="btn btn-secondary" on:click=${whenPasteInto}>
+                    const pasteBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("bluetooth-share-clipboard")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
                         <ui-icon icon="clipboard"></ui-icon>
                         <span>Paste from Bluetooth</span>
                     </button>`;
-                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${pasteBtn}</div>`;
+                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${pasteBtn}${enableBluetoothBtn}</div>`;
                     body.append(actionsContainer);
                 } else
                 if (group.key === 'synchronization') {

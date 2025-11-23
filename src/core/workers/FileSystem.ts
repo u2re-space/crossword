@@ -88,9 +88,9 @@ export const getMarkDownFromFile = async (handle: any) => {
 //
 export const getJSONFromFile = async (handle: any) => {
     if (Array.isArray(handle)) handle = handle?.[0];
-    if (!handle) return {};
+    if (!handle) return null;
     const json = await handle?.getFile?.();
-    return JSOX.parse(await json?.text?.() || "{}") as any;
+    return parseJsonSafely(await json?.text?.() || "{}");
 }
 
 //
@@ -146,7 +146,9 @@ export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
 export const writeJSON = async (data: any | any[], dir: any | null = null) => {
     if (!data) return;
     const writeOne = async (obj: any, index = 0) => {
-        if (!obj) return; obj = typeof obj === "string" ? JSOX.parse(obj) as any : obj; if (!obj) return;
+        if (!obj) return;
+        obj = parseJsonSafely(obj);
+        if (!obj) return;
 
         // if entity type is not registered, trying to detect it
         const entityType = obj?.type ?? detectEntityTypeByJSON(obj) ?? "unknown";
@@ -249,20 +251,24 @@ export const handleDataTransferInputEvent = (dataTransfer: DataTransfer | null, 
     }
 }
 
-
+//
+const parseJsonSafely = (text: string | null | undefined) => {
+    if (!text) return null;
+    try {
+        return JSOX.parse(text) as any; } catch (_) { try { return JSON.parse(text) as any; } catch (_) { console.warn("Failed to parse JSON", text); return null; } }
+}
 
 // one of handler
 export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target') => {
     const fd = new FormData();
     if (payload.text) fd.append('text', payload.text);
     if (payload.url) fd.append('url', payload.url);
-    if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+    if (payload.file) fd.append('files', payload.file as any, (payload.file as any)?.name || 'pasted');
 
     //
-    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
-    return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
-        return json?.results?.map?.((res) => res?.data)?.filter?.((data) => data != null);
-    });
+    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd })?.catch?.(console.warn.bind(console)); if (!resp) return [];
+    const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}"); if (!json) return [];
+    return json?.results?.map?.((res) => res?.data)?.filter?.((data) => (!!data?.trim?.()));
 };
 
 //
@@ -271,17 +277,17 @@ export const postShareTargetRecognize = (targetDir: string = "/docs/preferences/
         const fd = new FormData();
         if (payload.text) fd.append('text', payload.text);
         if (payload.url) fd.append('url', payload.url);
-        if (payload.file) fd.append('files', payload.file as any, (payload as any)?.file?.name || 'pasted');
+        if (payload.file) fd.append('files', payload.file as any, (payload.file as any)?.name || 'pasted');
         fd.append('targetDir', targetDir);
 
         //
-        const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd }).catch(console.warn.bind(console));
-        return resp?.json?.()?.catch?.(console.warn.bind(console))?.then?.((json) => {
-            return json?.results?.filter?.((data) => (!!data?.data?.trim?.()))?.map?.((res) => res?.data);
-        });
+        const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd })?.catch?.(console.warn.bind(console));
+        if (!resp) return [];
+        const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+        if (!json) return [];
+        return json?.results?.filter?.((data) => (!!data?.data?.trim?.()))?.map?.((res) => res?.data);
     }
 }
-
 
 //
 export type IntakeOptions = {
@@ -323,8 +329,12 @@ const writeTextDependsByPossibleType = async (payload: string | null | undefined
     if (!payload) return;
 
     //
+    let json = {} as any;
+    json = parseJsonSafely(payload || "{}");
+    if (!json) return;
+
+    //
     try {
-        const json = JSOX.parse(payload || "{}") as any;
         if (!entityType) entityType = detectEntityTypeByJSON(json);
         return writeJSON(json, (entityType == 'task' || entityType == 'timeline') ? '/timeline/' : `data/${entityType}/`);
     } catch (e) {
@@ -374,19 +384,13 @@ export async function flushQueueIntoOPFS() {
     return Promise.all(results.map((result) => {
         const { data, name, path, subId, dataType, directory } = result as any;
         if (dataType === "json") {
-            const jsonData = typeof data === "string" ? JSOX.parse(data) as any : data;
+            let jsonData = parseJsonSafely(data);
+            if (!jsonData) return;
             return writeJSON(jsonData, directory?.trim?.());
         } else {
             return writeMarkDown(data, directory?.trim?.() + name?.trim?.());
         }
     }));
-}
-
-//
-try {
-    flushQueueIntoOPFS()?.catch?.(console.warn.bind(console));
-} catch (e) {
-    console.warn(e);
 }
 
 //
@@ -446,7 +450,9 @@ export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {
 
         //
         const file = await fileHandle.getFile();
-        const item = JSOX.parse(await file?.text?.() || "{}") as any;
+        let item = null
+        item = parseJsonSafely(await file?.text?.() || "{}");
+        if (!item) return;
         (item as any).__name = name;
         (item as any).__path = `${DIR}${name}`;
         return item;

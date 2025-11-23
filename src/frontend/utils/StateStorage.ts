@@ -139,6 +139,8 @@ const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     ...EXTERNAL_SHORTCUTS
 ];
 
+
+
 const splitDefaultEntries = (entries: SpeedDialPersistedItem[]) => {
     const records: SpeedDialRecord[] = [];
     const metaEntries: Array<[string, SpeedDialItemMeta]> = [];
@@ -219,10 +221,52 @@ const unpackMetaRegistry = (raw?: any) => {
     return registryFromEntries(entries.length ? entries : DEFAULT_META_ENTRIES);
 };
 
-export const speedDialMeta = makeUIState(META_STORAGE_KEY, createInitialMetaRegistry, unpackMetaRegistry, packMetaRegistry) as unknown as SpeedDialMetaRegistry;
+const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
+    return {
+        id: item.id,
+        cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
+        icon: unwrapRef(item.icon, "sparkle"),
+        label: unwrapRef(item.label, "Shortcut"),
+        action: item.action
+    };
+};
 
+
+
+const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
+    return makeReactive({
+        id: config.id || generateItemId(),
+        cell: makeReactive(ensureCell(config.cell)),
+        icon: stringRef(config.icon || "sparkle"),
+        label: stringRef(config.label || "Shortcut"),
+        action: config.action || "open-view"
+    }) as any;
+};
+
+
+const createInitialState = () => makeReactive(DEFAULT_SPEED_DIAL_RECORDS.map(createStatefulItem));
+const unpackState = (raw?: SpeedDialPersistedItem[]) => {
+    const source = Array.isArray(raw) && raw.length ? raw : DEFAULT_SPEED_DIAL_DATA;
+    const records = source.map((entry) => {
+        const { meta, ...record } = entry;
+        if (meta) {
+            legacyMetaBuffer.push([entry.id, { action: entry.action, ...meta }]);
+        } else {
+            legacyMetaBuffer.push([entry.id, { action: entry.action }]);
+        }
+        return record as SpeedDialRecord;
+    });
+    return makeReactive(records.map(createStatefulItem));
+};
+const packState = (collection: SpeedDialItem[]) => collection.map(serializeItemState);
+
+//
+export const speedDialMeta = makeUIState(META_STORAGE_KEY, createInitialMetaRegistry, unpackMetaRegistry, packMetaRegistry) as unknown as SpeedDialMetaRegistry;
+export const speedDialItems = makeUIState(STORAGE_KEY, createInitialState, unpackState, packState) as unknown as SpeedDialItem[];
+export const persistSpeedDialItems = () => (speedDialItems as any)?.$save?.();
 export const persistSpeedDialMeta = () => (speedDialMeta as any)?.$save?.();
 
+//
 export const getSpeedDialMeta = (id?: string | null) => {
     if (!id) return null;
     return speedDialMeta?.get?.(id) ?? null;
@@ -249,15 +293,7 @@ export const removeSpeedDialMeta = (id: string) => {
     return removed;
 };
 
-const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
-    return makeReactive({
-        id: config.id || generateItemId(),
-        cell: makeReactive(ensureCell(config.cell)),
-        icon: stringRef(config.icon || "sparkle"),
-        label: stringRef(config.label || "Shortcut"),
-        action: config.action || "open-view"
-    }) as any;
-};
+
 
 const unwrapRef = (value: any, fallback?: string) => {
     if (value && typeof value === "object" && "value" in value) {
@@ -266,33 +302,8 @@ const unwrapRef = (value: any, fallback?: string) => {
     return value ?? fallback;
 };
 
-const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
-    return {
-        id: item.id,
-        cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
-        icon: unwrapRef(item.icon, "sparkle"),
-        label: unwrapRef(item.label, "Shortcut"),
-        action: item.action
-    };
-};
 
-const createInitialState = () => makeReactive(DEFAULT_SPEED_DIAL_RECORDS.map(createStatefulItem));
-const unpackState = (raw?: SpeedDialPersistedItem[]) => {
-    const source = Array.isArray(raw) && raw.length ? raw : DEFAULT_SPEED_DIAL_DATA;
-    const records = source.map((entry) => {
-        const { meta, ...record } = entry;
-        if (meta) {
-            legacyMetaBuffer.push([entry.id, { action: entry.action, ...meta }]);
-        } else {
-            legacyMetaBuffer.push([entry.id, { action: entry.action }]);
-        }
-        return record as SpeedDialRecord;
-    });
-    return makeReactive(records.map(createStatefulItem));
-};
-const packState = (collection: SpeedDialItem[]) => collection.map(serializeItemState);
 
-export const speedDialItems = makeUIState(STORAGE_KEY, createInitialState, unpackState, packState) as unknown as SpeedDialItem[];
 
 const syncMetaActionFromItem = (item?: SpeedDialItem | null) => {
     if (!item) return false;
@@ -371,8 +382,6 @@ const ensureExternalShortcuts = () => {
     }
 };
 ensureExternalShortcuts();
-
-export const persistSpeedDialItems = () => (speedDialItems as any)?.$save?.();
 
 export const findSpeedDialItem = (id?: string | null) => {
     if (!id) return null;

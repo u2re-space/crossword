@@ -2,8 +2,8 @@ import type { EntityDescriptor } from "@rs-core/utils/Types";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
-import { handleClipboardItems, sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite } from "./FileOps";
+import { sendToEntityPipeline, type shareTargetFormData } from "@rs-core/workers/FileSystem";
+import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite, pasteAndAnalyze, pasteIntoClipboardWithRecognize } from "./FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
@@ -14,9 +14,6 @@ import { JSOX } from "jsox";
 
 
 
-
-
-
 //
 const SERVICE_UUID = '12345678-1234-5678-1234-5678abcdef01';
 const CHAR_UUID    = '12345678-1234-5678-1234-5678abcdef02';
@@ -24,13 +21,27 @@ const CHAR_UUID    = '12345678-1234-5678-1234-5678abcdef02';
 let characteristic;
 
 //
-async function startListening() {
+async function connect() {
     const device = await (navigator as any)?.bluetooth?.requestDevice?.({
         filters: [{ services: [SERVICE_UUID] }]
     })?.catch?.(console.warn.bind(console));
     const server = await device?.gatt?.connect?.()?.catch?.(console.warn.bind(console));
     const service = await server?.getPrimaryService?.(SERVICE_UUID)?.catch?.(console.warn.bind(console));
     characteristic = await service?.getCharacteristic?.(CHAR_UUID)?.catch?.(console.warn.bind(console));
+    return characteristic;
+}
+
+//
+async function startListening() {
+    /*const device = await (navigator as any)?.bluetooth?.requestDevice?.({
+        filters: [{ services: [SERVICE_UUID] }]
+    })?.catch?.(console.warn.bind(console));
+    const server = await device?.gatt?.connect?.()?.catch?.(console.warn.bind(console));
+    const service = await server?.getPrimaryService?.(SERVICE_UUID)?.catch?.(console.warn.bind(console));
+    await service?.getCharacteristic?.(CHAR_UUID)?.catch?.(console.warn.bind(console));
+*/
+
+    characteristic ??= (await connect()?.catch?.(console.warn.bind(console))) ?? characteristic;
     characteristic?.addEventListener?.('characteristicvaluechanged', async (event) => {
         const value = event?.target?.value;
         const decoder = new TextDecoder();
@@ -43,16 +54,7 @@ async function startListening() {
         }
     });
     await characteristic?.startNotifications?.();
-}
-
-//
-async function connect() {
-    const device = await (navigator as any)?.bluetooth?.requestDevice?.({
-        filters: [{ services: [SERVICE_UUID] }]
-    })?.catch?.(console.warn.bind(console));
-    const server = await device?.gatt?.connect?.()?.catch?.(console.warn.bind(console));
-    const service = await server?.getPrimaryService?.(SERVICE_UUID);
-    characteristic = await service?.getCharacteristic?.(CHAR_UUID);
+    return true;
 }
 
 // needs to connect with special button...
@@ -69,24 +71,27 @@ export const whenPasteInto = async () => {
 }
 
 //
+/*
 try {
     startListening?.()?.catch?.(console.warn.bind(console));
 } catch (e) {
     console.warn(e);
 }
-
+*/
 
 
 //
 export const iconsPerAction = new Map<string, string>([
+    ["bluetooth-enable-acceptance", "bluetooth"],
     ["bluetooth-share-clipboard", "bluetooth"],
+    ["share-clipboard", "share"],
     ["add", "file-plus"],
     ["upload", "cube-focus"],
     ["generate", "magic-wand"],
     ["debug-gen", "bug"],
     ["paste-and-recognize", "clipboard"],
+    ["paste-and-analyze", "clipboard"],
     ["snip-and-recognize", "crop"],
-
     ["file-refresh", "arrows-clockwise"],
     ["file-mount", "screwdriver"],
     ["file-download", "download"],
@@ -103,11 +108,14 @@ export const iconsPerAction = new Map<string, string>([
 
 //
 export const actionColors = new Map<string, string>([
+    ["share-clipboard", "red"],
+    ["bluetooth-enable-acceptance", "blue"],
     ["bluetooth-share-clipboard", "blue"],
     ["add", "green"],
     ["upload", "blue"],
     ["generate", "purple"],
     ["debug-gen", "red"],
+    ["paste-and-analyze", "orange"],
     ["paste-and-recognize", "orange"],
     ["snip-and-recognize", "yellow"],
     ["apply-settings", "green"],
@@ -121,7 +129,9 @@ export const actionColors = new Map<string, string>([
 
 //
 export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
+    ["bluetooth-enable-acceptance", () => "Enable Bluetooth acceptance"],
     ["bluetooth-share-clipboard", () => "Paste data into Bluetooth"],
+    ["share-clipboard", () => "Share clipboard"],
     ["file-upload", (entityDesc: EntityDescriptor) => `Upload file`],
     ["file-download", (entityDesc: EntityDescriptor) => `Download file`],
     ["file-mount", (entityDesc: EntityDescriptor) => `Mount directory`],
@@ -130,7 +140,8 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
     ["upload", (entityDesc: EntityDescriptor) => `Upload and recognize`], //${entityDesc.label}
     ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
     ["debug-gen", (entityDesc: EntityDescriptor) => `Generate debug tasks for ${entityDesc.label}`],
-    ["paste-and-recognize", (entityDesc: EntityDescriptor) => "Paste and recognize"],
+    ["paste-and-analyze", (entityDesc: EntityDescriptor) => "Paste and analyze"],
+    ["paste-and-recognize", (entityDesc: EntityDescriptor) => "Recognize from/to clipboard"],
     ["snip-and-recognize", (entityDesc: EntityDescriptor) => "Snip and recognize"],
     ["apply-settings", (entityDesc: EntityDescriptor)=>"Save settings"],
     ["import-settings", () => "Import settings"],
@@ -177,19 +188,90 @@ const ensureHashNavigation = (view: string, viewMaker?: any, props?: any) => {
 };
 
 
+//
+const clientShare = (payload: shareTargetFormData | any): Promise<boolean> => {
+    return navigator?.share?.(payload)?.then?.(() => true)?.catch?.((e) => { console.warn(e); return false; });
+}
+
 
 //
 export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
 
 //
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
-    ["bluetooth-share-clipboard", async () => {
+    ["bluetooth-enable-acceptance", async () => {
         try {
-            whenPasteInto();
-            toastSuccess("Clipboard shared");
+            await startListening()?.catch?.(console.warn.bind(console));
         } catch (e) {
             console.warn(e);
-            toastError("Failed to share clipboard");
+            toastError("Failed to enable Bluetooth acceptance");
+        }
+    }],
+
+    //
+    ["bluetooth-share-clipboard", async () => {
+        try {
+            await whenPasteInto()?.catch?.(console.warn.bind(console));
+            toastSuccess("Pasted data into Bluetooth");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to paste from Bluetooth");
+        }
+    }],
+
+    //
+    ["paste-and-recognize", async (): Promise<boolean> => {
+        try {
+            const success = await pasteIntoClipboardWithRecognize()?.catch?.(console.warn.bind(console));
+            if (!success) { toastError("Failed to paste for recognition"); return false; }
+            toastSuccess("Pasted data for recognition"); return true;
+        } catch (e) { console.warn(e); toastError("Failed to paste for recognition"); return false; }
+    }],
+
+    //
+    ["share-clipboard", async () => {
+        const items = await navigator?.clipboard?.read?.()?.catch?.(console.warn.bind(console));
+        let fileToShare: string | File | Blob | null = null;
+
+        //
+        if (!items?.length) {
+            fileToShare = await navigator?.clipboard?.readText?.()?.catch?.(console.warn.bind(console)) as string | null;
+            if (!fileToShare) { toastError("Clipboard is empty."); return false; }
+        }
+
+        //
+        let multipleFiles: (File | Blob)[] = [];
+        for (const item of items || []) {
+            if (fileToShare) break;
+            for (const type of (item?.types || [])) {
+                if (type === 'image/png' || type === 'image/jpeg') {
+                    const file = await item?.getType?.(type)?.catch?.(console.warn.bind(console)) as File | Blob | null;
+                    if (file && (file instanceof File || file instanceof Blob))
+                        { multipleFiles.push(file as File | Blob); }
+                    break;
+                }
+            }
+        }
+
+        //
+        if (!multipleFiles?.length && !fileToShare) {
+            fileToShare = await navigator?.clipboard?.readText?.()?.catch?.(console.warn.bind(console)) as string | null;
+            if (!fileToShare) { toastError("Clipboard is empty."); return false; }
+        }
+
+        //
+        if (!navigator?.canShare) { toastError("This browser cannot share files via Web Share API."); return false; }
+
+        // try smart share by type
+        if (multipleFiles?.length && navigator?.canShare?.({ files: multipleFiles as any })) {
+            return clientShare({ title: 'Shared by CW from clipboard...', files: multipleFiles as any })?.catch?.(console.warn.bind(console));
+        } else
+        if (fileToShare) {
+            if ((fileToShare as any) instanceof URL || URL.canParse(fileToShare as any)) {
+                return clientShare({ url: (fileToShare as any)?.href ?? fileToShare as string | URL })?.catch?.(console.warn.bind(console));
+            } else {
+                return clientShare({ text: fileToShare as string })?.catch?.(console.warn.bind(console));
+            }
         }
     }],
 
@@ -433,31 +515,19 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     //
-    ["paste-and-recognize", async () => {
+    ["paste-and-analyze", async () => {
         try {
-            if (navigator.clipboard && (navigator.clipboard as any).read) {
-                const items = await (navigator.clipboard as any).read();
-                await handleClipboardItems(items, (payload) => intake(payload));
-                return;
-            }
-            const text = await navigator.clipboard.readText();
-            if (text && text.trim()) { await intake({ text }); }
-        } catch (e) { console.warn(e); }
+            const success = await pasteAndAnalyze()?.catch?.(console.warn.bind(console));
+            if (!success) { toastError("Failed to paste and recognize"); return false; }
+            toastSuccess("Pasted data for analyze"); return true;
+        } catch (e) { console.warn(e); toastError("Failed to paste and recognize"); }
     }],
 
     //
     ["snip-and-recognize", async () => {
-        try {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.multiple = false;
-            input.onchange = async () => {
-                const file = input.files?.[0];
-                if (file) await intake({ file });
-            };
-            input.click();
-        } catch (e) { console.warn(e); }
+        // TODO! implement chrome functionality here...
+        toastError("Snip and analyze is not implemented yet");
+        return false;
     }]
 ]);
 

@@ -36,6 +36,12 @@ export const AdditionalSection: SectionConfig = {
             fields: []
         },
         {
+            key: "bluetooth",
+            label: "Bluetooth",
+            description: "Bluetooth settings.",
+            fields: []
+        },
+        {
             key: "synchronization",
             label: "Synchronization",
             description: "Synchronize the workspace with external services.",
