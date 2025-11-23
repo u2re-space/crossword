@@ -1,4 +1,6 @@
+import { encode } from "@toon-format/toon";
 import { actionWithDataType, getDataKindByMIMEType, typesForKind, type DataInput, type DataKind } from "./GPT-Config";
+import { JSOX } from "jsox";
 
 //
 export const getUsableData = async (data: DataInput) => {
@@ -36,7 +38,7 @@ export const getUsableData = async (data: DataInput) => {
 
     // is not Blob or File, so it's (may be) string (if not string, try to parse it as JSON)
     let result = data?.dataSource;
-    try { result = (typeof data?.dataSource != "object") ? data?.dataSource : JSON.stringify(data?.dataSource); } catch (e) { console.warn(e); }
+    try { result = (typeof data?.dataSource != "object") ? data?.dataSource : encode(data?.dataSource); } catch (e) { console.warn(e); }
 
     //
     return {
@@ -112,22 +114,22 @@ export class GPTResponses {
 
     //
     async giveForRequest(whatIsIt: string) {
-        this.pending.push({
+        this?.pending?.push?.({
             type: "message",
             role: "user",
             content: [{ type: "input_text", text: "Additional data for request: " }, { type: "input_text", text: whatIsIt }]
         });
-        return this.pending[this.pending.length - 1];
+        return this?.pending?.[this?.pending?.length - 1];
     }
 
     // for responses (not first requests)
     async askToDoAction(action: string) {
-        this.pending.push({
+        this?.pending?.push?.({
             type: "message",
             role: "user",
             content: [{ type: "input_text", text: action }]
         });
-        return this.pending[this.pending.length - 1];
+        return this?.pending?.[this?.pending?.length - 1];
     }
 
     //
@@ -140,20 +142,20 @@ export class GPTResponses {
     async sendRequest(effort: "low" | "medium" | "high" = "low", verbosity: "low" | "medium" | "high" = "low", prevResponseId: string | null = null) {
         effort ??= "low";
         verbosity ??= "low";
-        const response = await fetch(`${this.apiUrl}/responses`, {
+        const response = await fetch(`${this?.apiUrl}/responses`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                ...(this.apiKey ? { "Authorization": `Bearer ${this.apiKey}` } : {})
+                ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})
             },
             body: JSON.stringify({
                 model: this.model,
-                tools: Array.from(this.tools.values())?.filter?.((tool: any) => !!tool),
-                input: [...this.pending]?.filter?.((item: any) => !!item),
+                tools: Array.from(this?.tools?.values?.() || [])?.filter?.((tool: any) => !!tool),
+                input: [...this?.pending]?.filter?.((item: any) => !!item),
                 reasoning: { "effort": effort },
                 text: { verbosity: verbosity },
                 max_output_tokens: 400000,
-                previous_response_id: (this.responseId = (prevResponseId || this.responseId)),
+                previous_response_id: (this.responseId = (prevResponseId || this?.responseId)),
                 instructions: "Give results only in valid JSON formatted (\`https://json-schema.org/draft/2020-12/\`), no any additional text or comments. You may give in any other format only if explicitly stated in instructions."
             }),
         })?.catch?.((e) => { console.warn(e); return null; });
@@ -171,11 +173,11 @@ export class GPTResponses {
         if (!resp) return null;
 
         //
-        this.responseId = resp?.id || this.responseId;
-        this.messages.push(...(this.pending || [])); this.pending?.splice?.(0, this.pending.length);
+        this.responseId = resp?.id || this?.responseId;
+        this?.messages?.push?.(...(this?.pending || [])); this?.pending?.splice?.(0, this?.pending?.length);
         this.messages.push(...(resp?.output || []));
 
-        // Try best-effort extraction of textual content to feed callers that JSON.parse the result
+        // Try best-effort extraction of textual content to feed callers that JSOX.parse the result
         const extractText = (r: any): string | null => {
             try {
                 if (!r) return null;
@@ -204,12 +206,12 @@ export class GPTResponses {
         const text = extractText(resp);
         if (text != null) return text;
         // Fallback: return last message content as JSON string
-        try { return JSON.parse(resp?.output ?? resp); } catch { /* noop */ }
+        try { return JSOX.parse(resp?.output ?? resp) as any; } catch { /* noop */ }
         return "";
     }
 
     //
-    getResponseId() { return this.responseId; }
-    getMessages() { return this.messages; }
-    getPending() { return this.pending; }
+    getResponseId() { return this?.responseId; }
+    getMessages() { return this?.messages; }
+    getPending() { return this?.pending; }
 }

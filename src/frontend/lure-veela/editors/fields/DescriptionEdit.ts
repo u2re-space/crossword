@@ -1,5 +1,6 @@
 import { isReactive, makeReactive, propRef } from "fest/object";
 import { H, M } from "fest/lure";
+import { JSOX } from "jsox";
 
 //
 const editBindings = new WeakMap<any, FieldWithKey>();
@@ -71,8 +72,8 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
         // possible, reactive value or DOM element
         if (typeof value == "object" && (value != null || "value" in value)) { value = value.value; } else
 
-            // possibly, JSON string
-            if (typeof value == "object" && value != null) value = JSON.stringify(value);
+        // possibly, JSON string
+        if (typeof value == "object" && value != null) value = JSOX.stringify(value) as any;
 
         // debug input value and index
         console.log("saveEvent", value, index);

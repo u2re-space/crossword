@@ -1,5 +1,6 @@
 import { createClient, type FileStat } from "webdav/web"
 import { getDirectoryHandle, readFile } from "fest/lure"
+import { JSOX } from "jsox";
 
 //
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
@@ -84,7 +85,7 @@ export const idbPutSettings = async (value: any, key: string = SETTINGS_KEY): Pr
 export const loadSettings = async (): Promise<AppSettings> => {
     try {
         const raw = await idbGetSettings();
-        const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const stored = typeof raw === "string" ? JSOX.parse(raw) as any : raw;
         if (stored && typeof stored === "object") {
             return {
                 ai: {
@@ -98,7 +99,7 @@ export const loadSettings = async (): Promise<AppSettings> => {
     } catch (e) {
         console.warn(e);
     }
-    return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    return JSOX.parse(JSOX.stringify(DEFAULT_SETTINGS as any) as string) as unknown as AppSettings;
 };
 
 //

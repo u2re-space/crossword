@@ -17,7 +17,7 @@ export const handleMakeTimeline = async (source: string | null): Promise<MakeTim
         if (!timelineGenerator) {
             return { ok: false, results: [], error: "Failed to initialize timeline generator" };
         }
-        
+
         console.log("Timeline Generator:", timelineGenerator);
 
         // Request new timeline

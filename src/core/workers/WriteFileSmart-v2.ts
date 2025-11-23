@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "fest/lure";
+import { JSOX } from "jsox";
 
 //
 export const sanitizeFileName = (name: string, fallbackExt = "") => {
@@ -94,7 +95,7 @@ function dedupeArray(items: any[], opts: { arrayKey?: string | string[] }) {
                     result.push(it);
                 }
             } else {
-                // Фолбэк — по JSON.stringify
+                // Фолбэк — по JSOX.stringify
                 const sig = safeStableStringify(it);
                 if (!stringifiedSet.has(sig)) {
                     stringifiedSet.add(sig);
@@ -169,7 +170,7 @@ async function readFileAsJson(root: any | null, fullPath: string): Promise<any |
         if (!existing) return null;
         const text = await blobToText(existing);
         if (!text?.trim()) return null;
-        return JSON.parse(text);
+        return JSOX.parse(text);
     } catch {
         return null;
     }
@@ -227,7 +228,7 @@ export const writeFileSmart = async (
             let incomingJson: any;
             if (file instanceof File || file instanceof Blob) {
                 const txt = await blobToText(file);
-                incomingJson = txt?.trim() ? JSON.parse(txt) : {};
+                incomingJson = txt?.trim() ? JSOX.parse(txt) : {};
             } else {
                 incomingJson = file; // неизвестно, но попробуем
             }
@@ -239,8 +240,8 @@ export const writeFileSmart = async (
                 ? mergeDeepUnique(existingJson, incomingJson, { arrayStrategy, arrayKey })
                 : incomingJson;
 
-            // Нормализуем undefined -> null/удаление ключей (JSON.stringify не поддерживает undefined)
-            const jsonString = JSON.stringify(merged, null, jsonSpace);
+            // Нормализуем undefined -> null/удаление ключей (JSOX.stringify не поддерживает undefined)
+            const jsonString = JSON.stringify(merged, undefined, jsonSpace);
 
             //
             const toWrite = new File([jsonString], finalName, { type: 'application/json' });

@@ -9,11 +9,15 @@
  *           Можно вернуть undefined, чтобы пропустить запись.
  * @property {(name:string, fullPath:string) => boolean} [filter]
  *           Доп. фильтр по имени/пути (true — обрабатывать).
- * @property {number} [indent=2] Кол-во пробелов для JSON.stringify
+ * @property {number} [indent=2] Кол-во пробелов для JSOX.stringify
  * @property {boolean} [dryRun=false] Если true — только показывает, что было бы изменено, без записи.
  * @property {boolean} [prettyStable=true] Если true — сортирует ключи (стабильный вывод).
  */
 
+import { JSOX } from "jsox";
+
+
+//
 interface OpfsModifyOptions {
     dirPath: string;
     transform: (data: any, ctx: { path: string, name: string, fullPath: string }) => any | Promise<any>;
@@ -53,11 +57,15 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
 
             let data;
             try {
-                data = originalText.trim() === '' ? null : JSON.parse(originalText);
-            } catch (e) {
-                console.warn(`JSON parse error: ${fullPath}`, e);
-                errors++;
-                continue;
+                data = originalText.trim() === '' ? null : JSOX.parse(originalText) as any;
+            } catch (_) {
+                try {
+                    data = originalText.trim() === '' ? null : JSON.parse(originalText) as any;
+                } catch (e) {
+                    console.warn(`JSON parse error: ${fullPath}`, e);
+                    errors++;
+                    continue;
+                }
             }
 
             const result = await transform(data, { path: normDirPath, name, fullPath });
@@ -67,7 +75,7 @@ export async function opfsModifyJson(options: OpfsModifyOptions) {
                 continue;
             }
 
-            const newText = serializeJson(result, { indent, prettyStable });
+            const newText = serializeJSON(result as any, { indent, prettyStable });
 
             if (normalizeEol(newText) === normalizeEol(originalText)) {
                 processed++;
@@ -130,9 +138,9 @@ async function* walk(dirHandle, basePath = '') {
     }
 }
 
-function serializeJson(obj, { indent = 2, prettyStable = true } = {}) {
+function serializeJSON(obj, { indent = 2, prettyStable = true } = {}) {
     const replacer = prettyStable ? stableReplacer : undefined;
-    return JSON.stringify(obj, replacer, indent) + '\n';
+    return JSON.stringify(obj as any, replacer, indent) + '\n';
 }
 
 // Стабильная сортировка ключей для детерминированного вывода

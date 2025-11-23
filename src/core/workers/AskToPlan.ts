@@ -18,13 +18,15 @@ export const generateNewPlan = async () => {
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
 
     //
-    await startTracking?.()?.catch?.(console.warn.bind(console));
+    try {
+        startTracking?.()?.catch?.(console.warn.bind(console));
+    } catch (e) {
+        console.warn(e);
+    }
 
     //
     try {
         const source = await loadPlanSource();
-
-        //
         const timelineForm = new FormData();
         timelineForm.append("source", source || "");
 

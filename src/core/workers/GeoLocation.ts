@@ -1,7 +1,7 @@
 //
 const broadcastChannel = new BroadcastChannel('geolocation');
 const broadcast = (coords: GeolocationPosition) => {
-    //navigator.sendBeacon('/api/geo', JSON.stringify(coords));
+    //navigator.sendBeacon('/api/geo', JSOX.stringify(coords));
     broadcastChannel.postMessage({
         timestamp: coords?.timestamp || Date.now(),
         coords: coords?.toJSON?.() || "{}"

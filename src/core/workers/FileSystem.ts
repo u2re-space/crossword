@@ -6,6 +6,7 @@ import { fixEntityId } from "@rs-core/template/EntityId";
 import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
+import { JSOX } from "jsox";
 
 //
 /*
@@ -89,7 +90,7 @@ export const getJSONFromFile = async (handle: any) => {
     if (Array.isArray(handle)) handle = handle?.[0];
     if (!handle) return {};
     const json = await handle?.getFile?.();
-    return JSON.parse(await json?.text?.() || "{}");
+    return JSOX.parse(await json?.text?.() || "{}") as any;
 }
 
 //
@@ -145,7 +146,7 @@ export const suitableDirsByEntityTypes = (entityTypes: string[]) => {
 export const writeJSON = async (data: any | any[], dir: any | null = null) => {
     if (!data) return;
     const writeOne = async (obj: any, index = 0) => {
-        if (!obj) return; obj = typeof obj === "string" ? JSON.parse(obj) : obj; if (!obj) return;
+        if (!obj) return; obj = typeof obj === "string" ? JSOX.parse(obj) as any : obj; if (!obj) return;
 
         // if entity type is not registered, trying to detect it
         const entityType = obj?.type ?? detectEntityTypeByJSON(obj) ?? "unknown";
@@ -154,7 +155,7 @@ export const writeJSON = async (data: any | any[], dir: any | null = null) => {
         if (!dir) dir = suitableDirsByEntityTypes([entityType])?.[0]; dir = dir?.trim?.();
         let fileName = (fixEntityId(obj) || obj?.name || `${Date.now()}`)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
         fileName = fileName?.trim?.(); fileName = fileName?.endsWith?.(".json") ? fileName : (fileName + ".json");
-        return writeFileSmart(null, `${dir}${fileName}`, new File([JSON.stringify(obj)], fileName, { type: 'application/json' }))?.catch?.(console.warn.bind(console));
+        return writeFileSmart(null, `${dir}${fileName}`, new File([JSOX.stringify(obj as any) as string], fileName, { type: 'application/json' }))?.catch?.(console.warn.bind(console));
     };
 
     //
@@ -323,7 +324,7 @@ const writeTextDependsByPossibleType = async (payload: string | null | undefined
 
     //
     try {
-        const json = JSON.parse(payload || "{}");
+        const json = JSOX.parse(payload || "{}") as any;
         if (!entityType) entityType = detectEntityTypeByJSON(json);
         return writeJSON(json, (entityType == 'task' || entityType == 'timeline') ? '/timeline/' : `data/${entityType}/`);
     } catch (e) {
@@ -373,7 +374,7 @@ export async function flushQueueIntoOPFS() {
     return Promise.all(results.map((result) => {
         const { data, name, path, subId, dataType, directory } = result as any;
         if (dataType === "json") {
-            const jsonData = typeof data === "string" ? JSON.parse(data) : data;
+            const jsonData = typeof data === "string" ? JSOX.parse(data) as any : data;
             return writeJSON(jsonData, directory?.trim?.());
         } else {
             return writeMarkDown(data, directory?.trim?.() + name?.trim?.());
@@ -426,7 +427,7 @@ export const writeTimelineTask = async (task: any) => {
 
     //
     const filePath = `${TIMELINE_DIR}${fileName}`;
-    const file = new File([JSON.stringify(task)], fileName, { type: 'application/json' });
+    const file = new File([JSOX.stringify(task as any) as string], fileName, { type: 'application/json' });
     return writeFileSmart(null, filePath, file)?.catch?.(console.error.bind(console));
 }
 
@@ -445,7 +446,7 @@ export const loadAllTimelines = async (DIR: string = TIMELINE_DIR) => {
 
         //
         const file = await fileHandle.getFile();
-        const item = JSON.parse(await file?.text?.() || "{}");
+        const item = JSOX.parse(await file?.text?.() || "{}") as any;
         (item as any).__name = name;
         (item as any).__path = `${DIR}${name}`;
         return item;

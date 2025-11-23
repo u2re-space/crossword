@@ -1,5 +1,6 @@
 import { makeReactive, observe, safe } from "fest/object";
 import { Promised } from "fest/core";
+import { JSOX } from "jsox";
 
 //
 const STORE = "cache";
@@ -48,7 +49,7 @@ export const realtimeStates = makeReactive({
 //
 const editableArray = (category: any, items: any[]) => {
     const wrapped = makeReactive(items);
-    observe(wrapped, (item, index) => idbPut(category?.id, JSON.stringify(safe(wrapped)))?.catch?.(console.warn.bind(console)));
+    observe(wrapped, (item, index) => idbPut(category?.id, JSOX.stringify(safe(wrapped) as any))?.catch?.(console.warn.bind(console)));
     return wrapped;
 }
 
@@ -56,10 +57,10 @@ const editableArray = (category: any, items: any[]) => {
 const observeCategory = (category: any) => {
     Object.defineProperty(category, "items", {
         get: () => { // get will get new array from indexedDB, for prevent data corruption
-            return Promised((async () => editableArray(category, JSON.parse(await idbGet(category?.id) ?? "[]")))());
+            return Promised((async () => editableArray(category, JSOX.parse(await idbGet(category?.id) ?? "[]") as any))());
         },
         set: (value: any) => {
-            idbPut(category?.id, JSON.stringify(safe(value)))?.catch?.(console.warn.bind(console));
+            idbPut(category?.id, JSOX.stringify(safe(value) as any))?.catch?.(console.warn.bind(console));
         }
     });
     return category;
@@ -159,7 +160,7 @@ export const dataCategories = makeReactive([
 const broadcastChannel = new BroadcastChannel('geolocation');
 broadcastChannel.addEventListener('message', (e) => {
     if (e.data.coords) {
-        (realtimeStates as any).coords = (typeof e.data.coords == "string" ? JSON.parse(e.data.coords) : e.data.coords) || {};
+        (realtimeStates as any).coords = (typeof e.data.coords == "string" ? JSOX.parse(e.data.coords) as any : e.data.coords) || {};
         (realtimeStates as any).timestamp = Date.now();
         (realtimeStates as any).time = new Date();
     }

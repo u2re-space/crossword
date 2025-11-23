@@ -1,5 +1,6 @@
 import { makeObjectAssignable, makeReactive, stringRef, safe } from "fest/object";
 import { makeUIState } from "fest/lure/extension/core/UIState";
+import { JSOX } from "jsox";
 
 export type GridCell = [number, number];
 
@@ -49,7 +50,7 @@ const fallbackClone = <T>(value: T): T => {
     if (typeof structuredClone === "function") {
         return structuredClone(safe(value));
     }
-    return JSON.parse(JSON.stringify(value));
+    return JSOX.parse(JSOX.stringify(value)) as any;
 };
 
 const generateItemId = () => {

@@ -15,6 +15,10 @@
  */
 
 //
+import { encode } from "@toon-format/toon";
+import { JSOX } from "jsox";
+
+//
 import { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
@@ -72,27 +76,27 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
     }*/
 
     // attach some factors (except finished)
-    await gptResponses.giveForRequest("factors: \`" + JSON.stringify(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+    await gptResponses?.giveForRequest?.(`factors: \`${encode(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time) as any)}\`\n`);
 
     // attach some events (except finished)
-    await gptResponses.giveForRequest("events: \`" + JSON.stringify(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time)) + "\`\n");
+    await gptResponses?.giveForRequest?.(`events: \`${encode(filterEvents(await readJSONs(EVENTS_DIR), (realtimeStates as any)?.time))}\`\n`);
 
     //
     if (sourcePath) {
-        await gptResponses.giveForRequest("preferences: \`\`\`" + JSON.stringify(await readOneMarkDown(sourcePath)) + "\`\`\`\n");
+        await gptResponses?.giveForRequest?.(`preferences: \`\`\`${encode(await readOneMarkDown(sourcePath))}\`\`\`\n`);
     } else {
-        await gptResponses.giveForRequest("preferences: " + "Make generic working plan for next 7 days..." + "\n");
+        await gptResponses?.giveForRequest?.(`preferences: Make generic working plan for next 7 days...\n`);
     }
 
     //
-    await gptResponses.askToDoAction(["primary_request:",
+    await gptResponses?.askToDoAction?.([`primary_request:`,
         "Analyze starting and existing data, and get be ready to make a new timeline (preferences data will be attached later)...",
         "Also, can you provide markdown pre-formatted verbose data about what you have analyzed and what you will do?",
         "Give ready status in JSON format: \`{ ready: boolean, reason: string, verbose_data: string }\`"
     ]?.join?.("\n"));
 
     // load all of those into context
-    const readyStatus = JSON.parse(await gptResponses.sendRequest("high", "high") || "{ ready: false, reason: \"No attached data\", keywords: [] }");
+    const readyStatus = JSOX.parse(await gptResponses?.sendRequest?.("high", "high") || "{ ready: false, reason: \"No attached data\", keywords: [] }") as any;
     if (!readyStatus?.ready) {
         console.error("timeline", readyStatus);
         return { timeline: [], keywords: [] };
@@ -110,11 +114,11 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
 
     // attach exists timeline
     if (existsTimeline) {
-        await gptResponses.giveForRequest("current_timeline: \`" + JSON.stringify(existsTimeline) + "\`\n");
+        await gptResponses?.giveForRequest?.(`current_timeline: \`${encode(existsTimeline)}\`\n`);
     }
 
     //
-    const encodedRealtimeState = JSON.stringify({
+    const encodedRealtimeState = encode({
         time: (realtimeStates as any).time?.toISOString?.(),
         timestamp: (realtimeStates as any).timestamp,
         coords: (realtimeStates as any).coords?.toJSON?.(),
@@ -123,18 +127,18 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     });
 
     // use real-time state (oriented on current time and location)
-    await gptResponses.giveForRequest("current_states: \`" + encodedRealtimeState + "\`\n");
-    await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
-    await gptResponses.askToDoAction([
+    await gptResponses?.giveForRequest?.(`current_states: \`${encodedRealtimeState}\`\n`);
+    await gptResponses?.giveForRequest?.(AI_OUTPUT_SCHEMA);
+    await gptResponses?.askToDoAction?.([
         "Make timeline plan in JSON format, according to given schema. Follow by our preferences is was presented...",
-        "Write in JSON format, \`[ array of entity of \"task\" type ]\`"
+        "Write in JSON format, \`[ array of entity of \"task\" type ]\`, according to given schema."
     ].join?.("\n"));
 
     //
-    const existsResponseId = gptResponses.getResponseId();
-    const raw = await gptResponses.sendRequest()?.catch?.(console.warn.bind(console));
-    const timelines = raw ? JSON.parse(raw) : "{ ready: false, reason: \"No attached data\", keywords: [] }";
-    gptResponses.beginFromResponseId(existsResponseId);
+    const existsResponseId = gptResponses?.getResponseId?.();
+    const raw = await gptResponses?.sendRequest?.()?.catch?.(console.warn.bind(console));
+    const timelines = raw ? JSOX.parse(raw) as any : "{ ready: false, reason: \"No attached data\", keywords: [] }";
+    gptResponses?.beginFromResponseId?.(existsResponseId as string | null);
 
     //
     timelines?.forEach?.((entity: any) => fixEntityId(entity));

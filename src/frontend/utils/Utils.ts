@@ -2,6 +2,7 @@ import { createDayDescriptor, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import type { ChapterDescriptor, DayDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import { JSOX } from "jsox";
 
 //
 export const $unfiltered = <
@@ -85,7 +86,10 @@ export const GET_OR_CACHE = async (file: File | Blob | Promise<File | Blob> | nu
     try { file = await file; } catch (e) { file = null; console.warn(e); }; if (file == null) return null;
     if (cachedPerFile.has(file)) return cachedPerFile.get(file);
     if (file?.type != "application/json") { return cachedPerFile.get(file); };
-    const obj = JSON.parse(await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+
+    //
+    const raw = await file?.text?.()?.catch?.(console.warn.bind(console)) || "{}";
+    let obj = {} as any; try { obj = JSOX.parse(raw) as any; } catch (_) { try { obj = JSON.parse(raw) as any; } catch (e) { console.warn(e); } }
     if (file) { cachedPerFile.set(file, obj); }
     return obj;
 };
@@ -93,7 +97,7 @@ export const GET_OR_CACHE = async (file: File | Blob | Promise<File | Blob> | nu
 // if any other argument isn't working, such as File object (for example, while exclusion)
 export const GET_OR_CACHE_BY_NAME = async (fileName: string, file?: File | Blob | Promise<File | Blob> | null) => {
     try { file = await file; } catch (e) { file = null; console.warn(e); }; if (fileName == null) return null;
-    if (cachedPerFileName.has(fileName)) return cachedPerFileName.get(fileName);;
+    if (cachedPerFileName.has(fileName)) return cachedPerFileName.get(fileName);
     const obj = file != null ? await GET_OR_CACHE(file) : cachedPerFileName?.get(fileName);
     if (fileName) { cachedPerFileName.set(fileName, obj); }
     return obj;

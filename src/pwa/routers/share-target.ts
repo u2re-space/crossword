@@ -3,6 +3,7 @@ import { controlChannel, initiateConversionProcedure } from "./shared";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
+import { JSOX } from "jsox";
 
 //
 export const makeShareTarget = () => {
@@ -37,7 +38,7 @@ export const makeShareTarget = () => {
 
                 // try avoid using AI when data structure is known
                 if (text) {
-                    let json: any = text ? JSON.parse(text) : [];
+                    let json: any = text ? JSOX.parse(text) as any : [];
                     json = json?.entities || json;
                     let types = json ? detectEntityTypeByJSON(json) : [];
                     if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {

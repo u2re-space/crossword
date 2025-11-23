@@ -12,6 +12,9 @@
  */
 
 //
+import { JSOX } from "jsox";
+
+//
 const BASE_URL = process.env.NEXT_PUBLIC_STORAGE_URL || "http://localhost:3000";
 
 //
@@ -27,7 +30,7 @@ export class SharedStorage {
     }
 
     doRequest(url: string, method: string, body?: any) {
-        return fetch(url, { method, body: body ? JSON.stringify(body) : undefined, headers: { "Content-Type": "application/json", "Authorization": `Bearer ${this.apiKey}` } });
+        return fetch(url, { method, body: body ? JSOX.stringify(body as any) as string : undefined, headers: { "Content-Type": "application/json", "Authorization": `Bearer ${this.apiKey}` } });
     }
 
     async get(key: string) {

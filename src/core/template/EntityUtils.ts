@@ -5,6 +5,8 @@
  * Detects by fields, such as 'kind', some 'properties', structure, keywords, etc.
  */
 
+import { JSOX } from "jsox";
+
 //
 export type SectionKey = "main" | "schedule" | "properties" | "contacts" | "relations" | "meta";
 export type EntityFieldRule = {
@@ -531,7 +533,7 @@ export const detectEntityTypeByJSON = (unknownJSON: any) => {
     let mostSuitableType = "unknown";
 
     //
-    unknownJSON = typeof unknownJSON == "string" ? JSON.parse(unknownJSON) : unknownJSON;
+    unknownJSON = typeof unknownJSON == "string" ? JSOX.parse(unknownJSON) as any : unknownJSON;
     if (typeof unknownJSON != "object") { return mostSuitableType; }
 
     // direct type detection
@@ -601,6 +603,6 @@ export const detectEntityTypeByJSON = (unknownJSON: any) => {
 
 // for multiple entities (array)
 export const detectEntityTypesByJSONs = (unknownJSONs: any[] | any) => {
-    unknownJSONs = typeof unknownJSONs == "string" ? JSON.parse(unknownJSONs) : unknownJSONs;
+    unknownJSONs = typeof unknownJSONs == "string" ? JSOX.parse(unknownJSONs) as any : unknownJSONs;
     return (Array.isArray(unknownJSONs) ? unknownJSONs?.map?.((unknownJSON) => detectEntityTypeByJSON(unknownJSON)) || [] : [detectEntityTypeByJSON(unknownJSONs)]);
 }

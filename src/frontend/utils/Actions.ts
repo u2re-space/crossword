@@ -10,6 +10,7 @@ import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";
 import { getDirectoryHandle, mountAsRoot } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
+import { JSOX } from "jsox";
 
 
 
@@ -130,7 +131,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     ["export-settings", async () => {
         try {
             const settings = await loadSettings();
-            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+            const blob = new Blob([JSOX.stringify(settings as any) as string], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -155,7 +156,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             if (!file) return;
             try {
                 const text = await file.text();
-                const json = JSON.parse(text);
+                const json = JSOX.parse(text) as any;
                 if (typeof json !== 'object') throw new Error("Invalid JSON");
 
                 await saveSettings(json);
@@ -220,7 +221,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             snapshot.desc.meta.action = snapshot.desc.action;
         }
         try {
-            await copyTextToClipboard(JSON.stringify(snapshot, null, 2));
+            await copyTextToClipboard(JSOX.stringify(snapshot as any) as string);
             toastSuccess("Shortcut saved to clipboard");
         } catch (error) {
             console.warn(error);
@@ -333,7 +334,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             const fileName = (`${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
             const fname = (fileName || entityDesc.type || "unknown")?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')?.trim?.()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, "");
             const path = `${(entityDesc.DIR || "/")}${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""); (result as any).__path = path;
-            const file = new File([JSON.stringify(result, null, 2)], `${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""), { type: "application/json" });
+            const file = new File([JSOX.stringify(result as any) as string], `${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""), { type: "application/json" });
             await writeFileSmart(null, path, file, { ensureJson: true, sanitize: true });
             toastSuccess(`${entityDesc.label} saved`);
         } catch (e) {

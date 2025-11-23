@@ -7,6 +7,7 @@ import { makeReactive, stringRef, propRef } from "fest/object";
 // helpful imports (all from `@rs-core/template/*`, such as `EntityUtils`, `EntityId`, etc.)
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { generateEntityId, fixEntityId, type EntityLike } from "@rs-core/template/EntityId";
+import { JSOX } from "jsox";
 
 // field editors
 import { DateEntryEdit } from "./fields/DateEdit";
@@ -324,7 +325,7 @@ export const makeEntityEdit = async (
             // Write to file
             try {
                 const path = makePath(editableEntity as EntityInterface<any, any>, entityDesc);
-                const jsonData = JSON.stringify(editableEntity, null, 2);
+                const jsonData = JSOX.stringify(editableEntity, undefined, 2) as any;
                 await writeFile(null, path, jsonData);
 
                 // Update original entity

@@ -97,7 +97,7 @@ Some additional actions:
 
 Get results in JSON wrapped format:
 
-\`\`\`json
+\`\`\`toon
 [...{
     "keywords_and_tags": string[],
     "recognized_data": any[],
@@ -141,7 +141,7 @@ Some additional actions:
 
 Get results in JSON wrapped format:
 
-\`\`\`json
+\`\`\`toon
 [...{
     "keywords_and_tags": string[],
     "recognized_data": any[],

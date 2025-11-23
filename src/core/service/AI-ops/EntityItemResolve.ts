@@ -10,11 +10,10 @@ import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 import { fixEntityId } from "@rs-core/template/EntityId";
+import { JSOX } from "jsox";
 
 //
-export const resolveEntity = async (gptResponses: GPTResponses) => {
-
-    //
+export const resolveEntity = async (gptResponses: GPTResponses | null = null) => {
     const askResolveStep = () => {
         return [
             "# Request: resolve best to match entities by their types and IDs (merge if possible).", "",
@@ -26,9 +25,9 @@ export const resolveEntity = async (gptResponses: GPTResponses) => {
     }
 
     //
-    await gptResponses.giveForRequest(AI_OUTPUT_SCHEMA);
-    await gptResponses.askToDoAction(askResolveStep()?.join?.("\n"));
-    const parsed = JSON.parse(await gptResponses.sendRequest("low", "low") || "{}");
+    await gptResponses?.giveForRequest?.(AI_OUTPUT_SCHEMA);
+    await gptResponses?.askToDoAction?.(askResolveStep()?.join?.("\n"));
+    const parsed = JSOX.parse(await gptResponses?.sendRequest?.("low", "low") || "{}") as unknown as { entities: any[], keywords: string[], short_description: string };
     parsed?.entities?.forEach?.((entity: any) => fixEntityId(entity));
     console.log("Step 3 response - resolve entity response: ", parsed);
     return parsed;

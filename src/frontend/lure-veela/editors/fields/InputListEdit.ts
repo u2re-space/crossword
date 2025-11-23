@@ -1,6 +1,7 @@
 // similar to DescriptorEdit, but use input[type="@N"]
-import { computed, isReactive, makeReactive, propRef, wrapSetAsArray } from "fest/object";
+import { computed, isReactive, makeReactive, propRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
+import { JSOX } from "jsox";
 
 //
 const editBindings = new WeakMap<any, FieldWithKey>();
@@ -174,8 +175,8 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         // possible, reactive value or DOM element
         if (typeof value == "object" && (value != null || "value" in value)) { value = value.value; } else
 
-            // possibly, JSON string
-            if (typeof value == "object" && value != null) value = JSON.stringify(value);
+        // possibly, JSON string
+        if (typeof value == "object" && value != null) value = JSOX.stringify(value) as any;
 
         // debug input value and index
         console.log("saveEvent", value, index);
