@@ -252,10 +252,11 @@ export const handleDataTransferInputEvent = (dataTransfer: DataTransfer | null, 
 }
 
 //
-const parseJsonSafely = (text: string | null | undefined) => {
+const parseJsonSafely = (text: string | null | undefined | any) => {
     if (!text) return null;
+    if (typeof text != "string") { return text; };
     try {
-        return JSOX.parse(text) as any; } catch (_) { try { return JSON.parse(text) as any; } catch (_) { console.warn("Failed to parse JSON", text); return null; } }
+        return JSOX.parse(text) as any; } catch (_) { try { return JSON.parse(text) as any; } catch (_) { console.warn("Failed to parse JSON", text); return text; } }
 }
 
 // one of handler
