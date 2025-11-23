@@ -219,13 +219,13 @@ export const makeEntityEdit = async (
     const propertiesFields = getFieldsForType(entityDesc.type || options.entityType || "task");
 
     // Create main (general) field elements
-    const fieldElements = GENERAL_FIELDS.map(config => {
+    const fieldElements = GENERAL_FIELDS?.map?.((config: FieldConfig) => {
         const fieldEditor = createFieldElement(editableEntity, config);
         return { config, ...fieldEditor };
-    });
+    }) || [];
 
     // Create properties field elements
-    fieldElements.push(...(propertiesFields.map(config => {
+    fieldElements.push(...(propertiesFields?.map?.((config: FieldConfig) => {
         const fieldEditor = createFieldElement(editableEntityProperties, config);
         return { config, ...fieldEditor };
     }) || []));
@@ -238,8 +238,8 @@ export const makeEntityEdit = async (
     const validationErrors = makeReactive<Record<string, string>>({});
 
     // Group fields by section
-    const generalFieldEls = fieldElements.slice(0, GENERAL_FIELDS.length);
-    const propertyFieldEls = fieldElements.slice(GENERAL_FIELDS.length);
+    const generalFieldEls = fieldElements?.slice?.(0, GENERAL_FIELDS?.length || 0);
+    const propertyFieldEls = fieldElements?.slice?.(GENERAL_FIELDS?.length || 0);
 
     // Modal content
     const modalContent = H`<div class="rs-modal-backdrop" ref=${backdropRef}>
@@ -257,7 +257,7 @@ export const makeEntityEdit = async (
                     </div>
                 </section>
 
-                ${propertyFieldEls.length > 0 ? H`<section class="modal-section">
+                ${propertyFieldEls?.length > 0 ? H`<section class="modal-section">
                     <h3 class="modal-section-title">${entityDesc.label || "Entity"} Details</h3>
                     <div class="modal-section-fields">
                         ${M(propertyFieldEls, (fieldEl) => fieldEl.block)}

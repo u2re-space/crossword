@@ -67,17 +67,17 @@ export async function frontend(mountElement) {
 
     //
     const entityViews = new Map([
-        ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["pending", "in_progress", "completed", "failed", "delayed", "canceled", "other", "all"], availableActions: ["generate", "debug-gen", "upload", "paste-and-recognize"] }],
-        ["event", { icon: "calendar", label: "Event", groupedBy: "days", tabs: ["education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["action", { icon: "island", label: "Action", tabs: ["other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["service", { icon: "headset", label: "Service", tabs: ["medical", "education", "consultation", "advice", "mentoring", "training", "item", "thing", "other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["item", { icon: "calculator", label: "Item", groupedBy: "usability", tabs: ["other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["skill", { icon: "hand-palm", label: "Skill", tabs: ["other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["vendor", { icon: "trademark", label: "Vendor", tabs: ["other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["place", { icon: "buildings", label: "Place", groupedBy: "country", tabs: ["other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["factor", { icon: "umbrella", label: "Factor", tabs: ["weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "news", "other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["person", { icon: "address-book", label: "Contact", tabs: ["dear", "specialist", "consultant", "coach", "mentor", "helper", "assistant", "friend", "family", "relative", "other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }],
-        ["bonus", { icon: "ticket", label: "Bonus", groupedBy: "usability", tabs: ["loyalty", "discount", "cashback", "other", "all"], availableActions: ["add", "upload", "paste-and-recognize"] }]
+        ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["all", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"], availableActions: ["generate", "paste-and-recognize", "add", "debug-gen"] }],
+        ["event", { icon: "calendar", label: "Event", groupedBy: "days", tabs: ["all","education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other"], availableActions: ["upload", "add", "paste-and-recognize"] }],
+        ["action", { icon: "island", label: "Action", tabs: ["all", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["service", { icon: "headset", label: "Service", tabs: ["all", "medical", "education", "consultation", "advice", "mentoring", "training", "item", "thing", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["item", { icon: "calculator", label: "Item", groupedBy: "usability", tabs: ["all", "currency", "book", "electronics", "furniture", "medicine", "tools", "software", "consumables", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["skill", { icon: "hand-palm", label: "Skill", tabs: ["all", "skill", "knowledge", "ability", "trait", "experience", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["vendor", { icon: "trademark", label: "Vendor", tabs: ["all", "vendor", "company", "organization", "institution", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["place", { icon: "buildings", label: "Place", groupedBy: "country", tabs: ["all", "placement", "place", "school", "university", "service", "clinic", "pharmacy", "hospital", "library", "market", "location", "shop", "restaurant", "cafe", "bar", "hotel", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["factor", { icon: "umbrella", label: "Factor", tabs: ["all", "weather", "health", "family", "relationships", "job", "traffic", "business", "economy", "politics", "news", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["person", { icon: "address-book", label: "Contact", tabs: ["all", "dear", "specialist", "consultant", "coach", "mentor", "helper", "assistant", "friend", "family", "relative", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }],
+        ["bonus", { icon: "ticket", label: "Bonus", groupedBy: "usability", tabs: ["all", "loyalty", "discount", "cashback", "other"], availableActions: ["upload", "paste-and-recognize", "add"] }]
     ])
 
     //

@@ -15,8 +15,8 @@ import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/
 
 //
 export const iconsPerAction = new Map<string, string>([
-    ["add", "user-plus"],
-    ["upload", "upload"],
+    ["add", "file-plus"],
+    ["upload", "cube-focus"],
     ["generate", "magic-wand"],
     ["debug-gen", "bug"],
     ["paste-and-recognize", "clipboard"],
@@ -36,7 +36,22 @@ export const iconsPerAction = new Map<string, string>([
     ["open-view", "compass"]
 ]);
 
-
+//
+export const actionColors = new Map<string, string>([
+    ["add", "green"],
+    ["upload", "blue"],
+    ["generate", "purple"],
+    ["debug-gen", "red"],
+    ["paste-and-recognize", "orange"],
+    ["snip-and-recognize", "yellow"],
+    ["apply-settings", "green"],
+    ["import-settings", "blue"],
+    ["export-settings", "purple"],
+    ["open-link", "orange"],
+    ["copy-link", "yellow"],
+    ["copy-state-desc", "purple"],
+    ["open-view", "green"]
+]);
 
 //
 export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
@@ -59,6 +74,7 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
     ["open-view", (entityDesc: EntityDescriptor | any) => `Open ${entityDesc?.label || "view"}`]
 ]);
 
+//
 const copyTextToClipboard = async (text: string) => {
     if (!text?.length) throw new Error("empty");
     if (navigator?.clipboard?.writeText) {
@@ -97,6 +113,8 @@ const ensureHashNavigation = (view: string, viewMaker?: any, props?: any) => {
 
 //
 export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
+
+//
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
     ["apply-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
         viewPage = await viewPage;
@@ -108,6 +126,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
+    //
     ["export-settings", async () => {
         try {
             const settings = await loadSettings();
@@ -125,6 +144,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
+    //
     ["import-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         viewPage = await viewPage;
         const input = document.createElement('input');
@@ -152,6 +172,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         input.click();
     }],
 
+    //
     ["open-link", async (context: any, entityDesc: EntityDescriptor)=>{
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
@@ -170,6 +191,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
+    //
     ["copy-link", async (context: any, entityDesc: EntityDescriptor) => {
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
@@ -186,6 +208,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
+    //
     ["copy-state-desc", async (context: any)=>{
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const snapshot = snapshotSpeedDialItem(item);
@@ -205,6 +228,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
     }],
 
+    //
     ["open-view", async (context: any, entityDesc: EntityDescriptor) => {
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
@@ -216,8 +240,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         ensureHashNavigation(targetView, context?.viewMaker, context?.meta);
     }],
 
-
-
+    //
     ["file-upload", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
         viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
@@ -230,6 +253,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         });
     }],
 
+    //
     ["file-mount", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
@@ -307,13 +331,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
             //
             const fileName = (`${entityDesc.type}-${crypto.randomUUID()}`).replace(/\s+/g, "-").toLowerCase();
-            const fname = (fileName || entityDesc.type)?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-');
-            const path = `${entityDesc.DIR || ""}${fname}.json`;
-
-            //
-            (result as any).__path = path;
-            const file = new File([JSON.stringify(result, null, 2)], `${fileName}.json`, { type: "application/json" });
-            await writeFileSmart(null, entityDesc.DIR || "/", file, { ensureJson: true, sanitize: true });
+            const fname = (fileName || entityDesc.type || "unknown")?.toString?.()?.toLowerCase?.()?.replace?.(/\s+/g, '-')?.replace?.(/[^a-z0-9_\-+#&]/g, '-')?.trim?.()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, "");
+            const path = `${(entityDesc.DIR || "/")}${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""); (result as any).__path = path;
+            const file = new File([JSON.stringify(result, null, 2)], `${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""), { type: "application/json" });
+            await writeFileSmart(null, path, file, { ensureJson: true, sanitize: true });
             toastSuccess(`${entityDesc.label} saved`);
         } catch (e) {
             console.warn(e);
@@ -346,6 +367,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         } catch (e) { console.warn(e); }
     }],
 
+    //
     ["snip-and-recognize", async () => {
         try {
             const input = document.createElement('input');
