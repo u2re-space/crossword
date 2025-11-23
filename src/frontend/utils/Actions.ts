@@ -574,10 +574,17 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             toastError("Failed to record speech recognition");
             return;
         }
-        const response = await generateNewPlan((await (recognition.promise as Promise<string>)?.catch?.(console.warn.bind(console)))?.trim?.() || "");
-        if (!response) { toastError(`Failed to generate ${entityDesc.label}`); return; }
-        toastSuccess(`Plan generated...`);
-        recognition.stop();
+
+        //
+        const content = (await (recognition.promise as Promise<string>)?.catch?.(console.warn.bind(console)))?.trim?.() || null;
+        try { recognition?.stop?.(); } catch (e) { console.warn(e); }
+        if (content) {
+            const response = await generateNewPlan(content);
+            if (!response) { toastError(`Failed to generate ${entityDesc.label}`); return; }
+            toastSuccess(`Plan generated...`);
+        } else {
+            toastError("No content to generate");
+        }
     }],
 
     //
