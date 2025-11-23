@@ -6,11 +6,10 @@ import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 import { JSOX } from "jsox";
 
 //
-export const makeShareTarget = () => {
+export const makeCommitAnalyze = () => {
 
-    //
-    return registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
-        const meantime = Promise.try(async () => {
+    const makeAnalyze = (e: any) => {
+        return Promise.try(async () => {
             //const url = new URL(e.request.url);
             const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
             const inputs = {
@@ -66,12 +65,22 @@ export const makeShareTarget = () => {
 
             // @ts-ignore
             const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-            if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
+            if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'commit-result', results })?.catch?.(console.warn.bind(console));
 
             //
-            //return new Response(JSON.stringify({ ok: true, results }, null, 2), { status: 200, statusText: 'OK', headers: { 'Content-Type': 'application/json' } });
             return results;
-        })?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('share target results', rs); return rs; });
+        })?.catch?.(console.warn.bind(console));
+    }
+
+    //
+    return registerRoute(({ url }) => url?.pathname == "/commit-analyze", async (e: any) => {
+        // make redirect to index.html
+        return new Response(JSON.stringify(await makeAnalyze?.(e)?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('analyze results', rs); return rs; })), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }, "POST")
+
+    // for PWA compatibility
+    return registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
+        makeAnalyze?.(e)?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('analyze results', rs); return rs; });
 
         // make redirect to index.html
         return new Response(null, { status: 302, headers: { Location: '/' } });

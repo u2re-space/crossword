@@ -18,14 +18,14 @@ export const makeTimeline = () => {
 
                 // @ts-ignore
                 const clientsArr = await (clients as any)?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-                if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
+                if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'commit-result', results })?.catch?.(console.warn.bind(console));
             }
 
             //
             return results;
-        })?.catch?.(console.warn.bind(console))?.then?.((rs)=>{ console.log('timeline results', rs); return rs; });
+        })?.catch?.(console.warn.bind(console));
 
         //
-        return new Response(null, { status: 302, headers: { Location: '/' } });
+        return new Response(JSON.stringify(await meantime?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('timeline results', rs); return rs; })), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }, "POST");
 }

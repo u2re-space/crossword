@@ -259,7 +259,7 @@ const parseJsonSafely = (text: string | null | undefined) => {
 }
 
 // one of handler
-export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT = '/share-target') => {
+export const postCommitAnalyze = async (payload: shareTargetFormData, API_ENDPOINT = '/commit-analyze') => {
     const fd = new FormData();
     if (payload.text) fd.append('text', payload.text);
     if (payload.url) fd.append('url', payload.url);
@@ -272,8 +272,8 @@ export const postShareTarget = async (payload: shareTargetFormData, API_ENDPOINT
 };
 
 //
-export const postShareTargetRecognize = (targetDir: string = "/docs/preferences/") => {
-    return async (payload: shareTargetFormData, API_ENDPOINT = '/share-target-recognize') => {
+export const postCommitRecognize = (targetDir: string = "/docs/preferences/") => {
+    return async (payload: shareTargetFormData, API_ENDPOINT = '/commit-recognize') => {
         const fd = new FormData();
         if (payload.text) fd.append('text', payload.text);
         if (payload.url) fd.append('url', payload.url);
@@ -348,7 +348,7 @@ export const sendToEntityPipeline = async (payload: shareTargetFormData, options
     const normalized = await normalizePayload(payload);
     const next = options.beforeSend ? await options.beforeSend(normalized) : normalized;
     if (!next.file && (next.text || next.url)) return writeTextDependsByPossibleType(next.text || next.url, entityType);
-    return handleDataTransferFiles(next.file ? [next.file] : [], postShareTarget);
+    return handleDataTransferFiles(next.file ? [next.file] : [], postCommitAnalyze);
 };
 
 //

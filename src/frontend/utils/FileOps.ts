@@ -1,5 +1,5 @@
 import { getDirectoryHandle } from "fest/lure";
-import { handleDataTransferFiles, postShareTarget, postShareTargetRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
+import { handleDataTransferFiles, postCommitAnalyze, postCommitRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { sanitizeFileName, writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
@@ -61,7 +61,7 @@ export const openPickerAndRecognize = async (dir: string, accept = "*/*", multip
         input.onchange = async () => {
             dir = dir?.trim?.();
             dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postShareTargetRecognize(dir))); }
+            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postCommitRecognize(dir))); }
             catch { resolve(); }
         };
         input.click();
@@ -79,7 +79,7 @@ export const openPickerAndAnalyze = async (dir: string, accept = "*/*", multiple
         input.onchange = async () => {
             dir = dir?.trim?.();
             dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postShareTarget)); }
+            try { resolve(await handleDataTransferFiles(input.files || ([] as any), postCommitAnalyze)); }
             catch { resolve(); }
         };
         input.click();
@@ -140,7 +140,6 @@ export const pasteIntoClipboardWithRecognize = async () => {
             if (data) { return navigator.clipboard.writeText(data)?.then?.(() => true)?.catch?.(console.warn.bind(console)); }
         }
     } catch (e) { console.warn(e); return false; }
-    return false;
 }
 
 //
@@ -153,7 +152,7 @@ export const pasteAndAnalyze = async () => {
                 for (const type of item.types) {
                     const blob = await item.getType(type);
                     if (blob) {
-                        const data = await postShareTarget({file: blob as any})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+                        const data = await postCommitAnalyze({file: blob as any})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
                         if (data) { return true; }
                     }
                 }
@@ -163,7 +162,7 @@ export const pasteAndAnalyze = async () => {
         // text fallback
         const text = await navigator.clipboard.readText()?.then?.((text) => text?.trim?.())?.catch?.(console.warn.bind(console));
         if (text && text.trim()) {
-            const data = await postShareTarget({text: text})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+            const data = await postCommitAnalyze({text: text})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
             if (data) { return true; }
         }
     } catch (e) { console.warn(e); return false; }

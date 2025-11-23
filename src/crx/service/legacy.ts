@@ -27,13 +27,11 @@ export const enableLegacyTestCode = (chrome) => {
     // sending to service worker URL, but in chrome extension useless idea, because itself is chrome service worker
     chrome.runtime.onMessage.addListener(async (message) => {
         if (message?.type === "snip-image" && message.src) {
-            //const { postShareTarget } = await import("@rs-core/service/Cache");
-            //await postShareTarget({ text: message.src });
+            // TODO! implement snip-image
             return true;
         }
         if (message?.type === "recognize-text" && message.text) {
-            //const { postShareTarget } = await import("@rs-core/service/Cache");
-            //await postShareTarget({ text: message.text });
+            // TODO! implement recognize-text
             return true;
         }
     });

@@ -5,8 +5,8 @@ import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 //
-import { makeShareTarget } from './routers/share-target';
-import { makeShareTargetRecognize } from './routers/share-target-recognize';
+import { makeCommitAnalyze } from './routers/commit-analyze';
+import { makeCommitRecognize } from './routers/commit-recognize';
 import { makeTimeline } from './routers/make-timeline';
 
 //
@@ -19,8 +19,8 @@ if (manifest) {
 
 //
 const routes = [
-    makeShareTarget,
-    makeShareTargetRecognize,
+    makeCommitAnalyze,
+    makeCommitRecognize,
     makeTimeline
 ].map((makeRoute) => makeRoute());
 

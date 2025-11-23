@@ -1,5 +1,5 @@
 import { ableToShowImage, encodeWithJSquash } from "@rs-core/utils/ImageProcess";
-import { postShareTarget } from "@rs-core/workers/FileSystem";
+import { postCommitAnalyze } from "@rs-core/workers/FileSystem";
 
 // send to any available content script to trigger copy text
 export const COPY_HACK = (ext, data, tabId?) => {
@@ -45,7 +45,7 @@ export const enableCapture = (ext) => {
 
                     //
                     let error: any = null;
-                    const data = await postShareTarget({ url: dataUrl })?.catch?.(e => { error = e; return null; });
+                    const data = await postCommitAnalyze({ url: dataUrl })?.catch?.(e => { error = e; return null; });
                     const res = { data, ok: !!data, error };
 
                     //

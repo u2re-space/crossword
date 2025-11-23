@@ -79,7 +79,6 @@ try {
 }
 */
 
-
 //
 export const iconsPerAction = new Map<string, string>([
     ["bluetooth-enable-acceptance", "bluetooth"],
@@ -89,7 +88,7 @@ export const iconsPerAction = new Map<string, string>([
     ["upload", "cube-focus"],
     ["generate", "magic-wand"],
     ["debug-gen", "bug"],
-    ["paste-and-recognize", "clipboard"],
+    ["paste-and-recognize", "asterisk"],
     ["paste-and-analyze", "clipboard"],
     ["snip-and-recognize", "crop"],
     ["file-refresh", "arrows-clockwise"],

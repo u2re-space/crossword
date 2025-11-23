@@ -3,10 +3,10 @@ import { controlChannel, DOC_DIR, initiateAnalyzeAndRecognizeData, isMarkdown } 
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
 //
-export const makeShareTargetRecognize = () => {
+export const makeCommitRecognize = () => {
 
     //
-    return registerRoute(({ url }) => url?.pathname == "/share-target-recognize", async (e: any) => {
+    return registerRoute(({ url }) => url?.pathname == "/commit-recognize", async (e: any) => {
         const meantime = Promise.try(async () => {
             //const url = new URL(e.request.url);
             const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
@@ -63,16 +63,13 @@ export const makeShareTargetRecognize = () => {
 
             // @ts-ignore
             const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-            if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'share-result', results })?.catch?.(console.warn.bind(console));
+            if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'commit-result', results })?.catch?.(console.warn.bind(console));
 
             //
             return results;
-        })?.catch?.(console.warn.bind(console))?.then?.((rs)=>{
-            console.log('share target recognize results', rs);
-            return rs;
-        });
+        })?.catch?.(console.warn.bind(console));
 
         //
-        return new Response(null, { status: 302, headers: { Location: '/' } });
+        return new Response(JSON.stringify(await meantime?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('recognize results', rs); return rs; })), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }, "POST")
 }
