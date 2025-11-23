@@ -13,7 +13,7 @@ export const loadPlanSource = async (): Promise<string | null> => {
 };
 
 //
-export const generateNewPlan = async () => {
+export const generateNewPlan = async (speechPrompt: string | null = null) => {
     const settings = await loadSettings();
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
 
@@ -26,9 +26,10 @@ export const generateNewPlan = async () => {
 
     //
     try {
-        const source = await loadPlanSource();
+        let source = await loadPlanSource();
         const timelineForm = new FormData();
         timelineForm.append("source", source || "");
+        timelineForm.append("text", speechPrompt?.trim?.() || "");
 
         //
         return fetch("/make-timeline", {

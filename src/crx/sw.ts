@@ -7,7 +7,8 @@ enableCapture(chrome);
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'MAKE_TIMELINE') {
         const source = message.source || null;
-        handleMakeTimeline(source).then((result) => {
+        const speechPrompt = message.speechPrompt || null;
+        handleMakeTimeline(source, speechPrompt).then((result) => {
             sendResponse(result);
         }).catch((error) => {
             console.error("Timeline generation failed:", error);

@@ -11,6 +11,7 @@ import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Setti
 import { getDirectoryHandle, mountAsRoot } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
 import { JSOX } from "jsox";
+import { stringRef } from "fest-src/fest/object/index";
 
 
 
@@ -87,6 +88,7 @@ export const iconsPerAction = new Map<string, string>([
     ["add", "file-plus"],
     ["upload", "cube-focus"],
     ["generate", "magic-wand"],
+    ["record-speech-recognition", "microphone"],
     ["debug-gen", "bug"],
     ["paste-and-recognize", "asterisk"],
     ["paste-and-analyze", "clipboard"],
@@ -113,6 +115,7 @@ export const actionColors = new Map<string, string>([
     ["add", "green"],
     ["upload", "blue"],
     ["generate", "purple"],
+    ["record-speech-recognition", "microphone"],
     ["debug-gen", "red"],
     ["paste-and-analyze", "orange"],
     ["paste-and-recognize", "orange"],
@@ -138,6 +141,7 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
     ["add", (entityDesc: EntityDescriptor) => `Add ${entityDesc.label}`],
     ["upload", (entityDesc: EntityDescriptor) => `Upload and recognize`], //${entityDesc.label}
     ["generate", (entityDesc: EntityDescriptor) => `Generate ${entityDesc.label}`],
+    ["record-speech-recognition", (entityDesc: EntityDescriptor) => `Record speech recognition`],
     ["debug-gen", (entityDesc: EntityDescriptor) => `Generate debug tasks for ${entityDesc.label}`],
     ["paste-and-analyze", (entityDesc: EntityDescriptor) => "Paste and analyze"],
     ["paste-and-recognize", (entityDesc: EntityDescriptor) => "Recognize from/to clipboard"],
@@ -186,15 +190,106 @@ const ensureHashNavigation = (view: string, viewMaker?: any, props?: any) => {
     }
 };
 
-
 //
-const clientShare = (payload: shareTargetFormData | any): Promise<boolean> => {
-    return navigator?.share?.(payload)?.then?.(() => true)?.catch?.((e) => { console.warn(e); return false; });
+export const clientShare = async (data: any) => {
+    if (navigator?.canShare) {
+        return navigator?.canShare?.(data) ? navigator?.share?.(data) : false;
+    }
+    return false;
 }
 
+//
+Promise.try(async () => {
+    // @ts-ignore
+    const recognition = typeof SpeechRecognition != "undefined" ? new SpeechRecognition() : null;
+    if (!recognition) { toastError("Speech recognition is not supported by this browser"); return null; }
+
+    //
+    let diagnostic = ""; // @ts-ignore
+    SpeechRecognition?.available?.({ langs: [navigator.language] })?.then?.((result: any) => {
+        if (result === "unavailable") {
+            diagnostic = `${navigator.language} not available to download at this time. Sorry!`;
+        } else if (result === "available") {
+            console.log("Ready to receive a color command.");
+        } else {
+            diagnostic = `${navigator.language} language pack downloading`;
+
+            // @ts-ignore
+            SpeechRecognition?.install?.({ langs: [navigator.language] })?.then?.((result) => {
+                if (result) {
+                    diagnostic = `${navigator.language} language pack downloaded. Try again.`;
+                } else {
+                    diagnostic = `${navigator.language} language pack failed to download. Try again later.`;
+                }
+                console.log(diagnostic);
+            })?.catch?.(console.warn.bind(console));
+        }
+        console.log(diagnostic);
+    });
+});
+
+
 
 //
-export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "bonus" }).catch(console.warn);
+export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) => {
+    // @ts-ignore
+    const recognition = typeof SpeechRecognition != "undefined" ? new SpeechRecognition() : null;
+    if (!recognition) {
+        toastError("Speech recognition is not supported by this browser");
+        return null;
+    }
+
+    //
+    recognition.lang = navigator.language;
+    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.alterations = 0.8;
+    recognition.maxAlternatives = 1;
+
+    //
+    const promised = Promise.withResolvers<string>();
+    const writingRef = stringRef("");
+    let prepare: string[] = [];
+    recognition.onresult = (event) => {
+        prepare.push(event.results[0][0].transcript as string);
+    }
+    recognition.onend = () => {
+        writingRef.value = prepare.join(" ");
+        console.log("writingRef.value", writingRef.value);
+        console.log("prepare", prepare);
+        promised.resolve(writingRef.value);
+    }
+    recognition.onerror = (event) => {
+        promised.reject(event.error);
+    }
+
+    //
+    document.addEventListener("pointerup", (ev) => {
+        if (userInputHoldUntilStop) {
+            ev?.stopPropagation?.();
+            ev?.stopImmediatePropagation?.();
+            ev?.preventDefault?.();
+            recognition.stop()?.catch?.(console.warn.bind(console));
+        }
+    }, { once: true, capture: true });
+
+    //
+    document.addEventListener("pointercancel", (ev) => {
+        if (userInputHoldUntilStop) {
+            ev?.stopPropagation?.();
+            ev?.stopImmediatePropagation?.();
+            ev?.preventDefault?.();
+            recognition.stop()?.catch?.(console.warn.bind(console));
+        }
+    }, { once: true, capture: true });
+
+    //
+    recognition.start()?.catch?.(console.warn.bind(console));
+    return { stop() { recognition.stop(); }, writing: writingRef.value, recognized: promised.promise, promise: promised.promise };
+}
+
+//
+let lastSpeechRecogTime = 0;
 
 //
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
@@ -466,15 +561,43 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     //
-    ["generate", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
-        viewPage = await viewPage;
-        const response = await generateNewPlan();
-        //viewPage?.$refresh?.();
-        if (!response) {
-            toastError(`Failed to generate ${entityDesc.label}`);
+    ["record-speech-recognition", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        if ((Date.now() - lastSpeechRecogTime) < 1000) {
+            console.warn("Speech recognition throttled");
             return;
-        };
+        }; lastSpeechRecogTime = Date.now();
+
+        //
+        viewPage = await viewPage;
+        const recognition = recordSpeechRecognition();
+        if (!recognition) {
+            toastError("Failed to record speech recognition");
+            return;
+        }
+        const response = await generateNewPlan((await (recognition.promise as Promise<string>)?.catch?.(console.warn.bind(console)))?.trim?.() || "");
+        if (!response) { toastError(`Failed to generate ${entityDesc.label}`); return; }
         toastSuccess(`Plan generated...`);
+        recognition.stop();
+    }],
+
+    //
+    ["generate", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
+        setTimeout(async () => {
+            if ((Date.now() - lastSpeechRecogTime) < 1000) {
+                console.warn("Timeline generation throttled");
+                return;
+            }; lastSpeechRecogTime = Date.now();
+
+            //
+            viewPage = await viewPage;
+            const response = await generateNewPlan();
+            //viewPage?.$refresh?.();
+            if (!response) {
+                toastError(`Failed to generate ${entityDesc.label}`);
+                return;
+            };
+            toastSuccess(`Plan generated...`);
+        }, 100);
     }],
 
     //
@@ -530,6 +653,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }]
 ]);
 
+//
 const registerNavigationActions = ()=>{
     NAVIGATION_SHORTCUTS.forEach((shortcut)=>{
         const actionId = `open-view-${shortcut.view}`;

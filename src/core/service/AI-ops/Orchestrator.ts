@@ -10,10 +10,10 @@ export interface MakeTimelineResult {
     error?: any;
 }
 
-export const handleMakeTimeline = async (source: string | null): Promise<MakeTimelineResult> => {
+export const handleMakeTimeline = async (source: string | null, speechPrompt: string | null): Promise<MakeTimelineResult> => {
     try {
         // Initialize generator if needed
-        timelineGenerator ||= await createTimelineGenerator(source).catch(console.warn);
+        timelineGenerator ||= await createTimelineGenerator(source, speechPrompt).catch(console.warn);
         if (!timelineGenerator) {
             return { ok: false, results: [], error: "Failed to initialize timeline generator" };
         }

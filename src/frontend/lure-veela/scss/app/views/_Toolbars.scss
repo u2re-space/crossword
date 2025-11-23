@@ -47,7 +47,7 @@
         @include container-clamped(stretch, max-content);
 
         //
-        & { min-block-size: 0px; block-size: fit-content; max-block-size: 4rem; }
+        & { min-block-size: 0px; block-size: fit-content; max-block-size: min(5rem, 100%); }
         & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
         & {
             margin: 0px;

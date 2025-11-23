@@ -62,18 +62,13 @@ export const filterEvents = (events: any[], currentTime: Date, maxDays: number =
 
 
 //
-export const createTimelineGenerator = async (sourcePath: string | null = null) => {
+export const createTimelineGenerator = async (sourcePath: string | null = null, speechPrompt: string | null = null) => {
     const settings = await loadSettings();
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
 
     //
     const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.1");
     console.log(gptResponses);
-
-    //
-    /*if (settings?.ai?.mcp?.serverLabel && settings.ai.mcp.origin && settings.ai.mcp.clientKey && settings.ai.mcp.secretKey) {
-        await gptResponses.useMCP(settings.ai.mcp.serverLabel, settings.ai.mcp.origin, settings.ai.mcp.clientKey, settings.ai.mcp.secretKey)?.catch?.(console.warn.bind(console));
-    }*/
 
     // attach some factors (except finished)
     await gptResponses?.giveForRequest?.(`factors: \`${encode(filterFactors(await readJSONs(FACTORS_DIR), (realtimeStates as any)?.time) as any)}\`\n`);
@@ -84,8 +79,16 @@ export const createTimelineGenerator = async (sourcePath: string | null = null) 
     //
     if (sourcePath) {
         await gptResponses?.giveForRequest?.(`preferences: \`\`\`${encode(await readOneMarkDown(sourcePath))}\`\`\`\n`);
-    } else {
+    } else
+
+    // if no both source path and speech prompt, so make generic working plan for next 7 days
+    if (!speechPrompt?.trim?.()?.length) {
         await gptResponses?.giveForRequest?.(`preferences: Make generic working plan for next 7 days...\n`);
+    }
+
+    // additional speech prompt
+    if (speechPrompt?.trim?.()?.length) {
+        await gptResponses?.giveForRequest?.(`speech_prompt: \`${encode(speechPrompt)}\`\n`);
     }
 
     //

@@ -1,6 +1,6 @@
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
-import { dumpAll, dumpAndClear } from "@rs-core/store/IDBQueue";
-import { getDirectoryHandle, getFileHandle, writeFile } from "fest/lure";
+import { dumpAndClear } from "@rs-core/store/IDBQueue";
+import { getDirectoryHandle, getFileHandle } from "fest/lure";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { opfsModifyJson } from "./OPFSMod";
@@ -373,17 +373,30 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
 
 //
 const controlChannel = new BroadcastChannel('rs-sw');
-controlChannel.addEventListener('message', (event) => {
-    if (event.data.type === 'pending-write') {
+controlChannel.addEventListener('message', async (event) => {
+    if (event.data.type === 'commit-result') {
         flushQueueIntoOPFS();
     }
 });
+
+// Try recover from previous session
+if (typeof navigator !== "undefined" && 'storage' in navigator && typeof navigator.storage.getDirectory === 'function') {
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback?.(() => {
+            flushQueueIntoOPFS();
+        });
+    } else {
+        setTimeout(() => {
+            flushQueueIntoOPFS();
+        }, 1000);
+    }
+}
 
 //
 export async function flushQueueIntoOPFS() {
     const results = await dumpAndClear();
     return Promise.all(results.map((result) => {
-        const { data, name, path, subId, dataType, directory } = result as any;
+        const { data, name, dataType, directory } = result as any;
         if (dataType === "json") {
             let jsonData = parseJsonSafely(data);
             if (!jsonData) return;

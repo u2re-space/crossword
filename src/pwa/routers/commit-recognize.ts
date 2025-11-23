@@ -59,11 +59,7 @@ export const makeCommitRecognize = () => {
 
             //
             await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
-            try { controlChannel.postMessage({ type: 'pending-write' }); } catch (e) { console.warn(e); }
-
-            // @ts-ignore
-            const clientsArr = await clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.catch?.(console.warn.bind(console));
-            if (clientsArr?.length) clientsArr[0]?.postMessage?.({ type: 'commit-result', results })?.catch?.(console.warn.bind(console));
+            try { controlChannel.postMessage({ type: 'commit-result', results: results as any[] }) } catch (e) { console.warn(e); }
 
             //
             return results;
