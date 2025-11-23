@@ -14,8 +14,72 @@ import { JSOX } from "jsox";
 
 
 
+
+
+
+//
+const SERVICE_UUID = '12345678-1234-5678-1234-5678abcdef01';
+const CHAR_UUID    = '12345678-1234-5678-1234-5678abcdef02';
+
+let characteristic;
+
+//
+async function startListening() {
+    const device = await (navigator as any)?.bluetooth?.requestDevice?.({
+        filters: [{ services: [SERVICE_UUID] }]
+    })?.catch?.(console.warn.bind(console));
+    const server = await device?.gatt?.connect?.()?.catch?.(console.warn.bind(console));
+    const service = await server?.getPrimaryService?.(SERVICE_UUID)?.catch?.(console.warn.bind(console));
+    characteristic = await service?.getCharacteristic?.(CHAR_UUID)?.catch?.(console.warn.bind(console));
+    characteristic?.addEventListener?.('characteristicvaluechanged', async (event) => {
+        const value = event?.target?.value;
+        const decoder = new TextDecoder();
+        const text = decoder.decode(value.buffer);
+
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {
+            console.error('Ошибка записи в буфер обмена:', e);
+        }
+    });
+    await characteristic?.startNotifications?.();
+}
+
+//
+async function connect() {
+    const device = await (navigator as any)?.bluetooth?.requestDevice?.({
+        filters: [{ services: [SERVICE_UUID] }]
+    })?.catch?.(console.warn.bind(console));
+    const server = await device?.gatt?.connect?.()?.catch?.(console.warn.bind(console));
+    const service = await server?.getPrimaryService?.(SERVICE_UUID);
+    characteristic = await service?.getCharacteristic?.(CHAR_UUID);
+}
+
+// needs to connect with special button...
+export const whenPasteInto = async () => {
+    if (!characteristic) {
+        await connect();
+    }
+    const text = await navigator.clipboard.readText()?.catch?.(console.warn.bind(console));
+    if (text) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(text);
+        await characteristic?.writeValue?.(data);
+    }
+}
+
+//
+try {
+    startListening?.()?.catch?.(console.warn.bind(console));
+} catch (e) {
+    console.warn(e);
+}
+
+
+
 //
 export const iconsPerAction = new Map<string, string>([
+    ["bluetooth-share-clipboard", "bluetooth"],
     ["add", "file-plus"],
     ["upload", "cube-focus"],
     ["generate", "magic-wand"],
@@ -39,6 +103,7 @@ export const iconsPerAction = new Map<string, string>([
 
 //
 export const actionColors = new Map<string, string>([
+    ["bluetooth-share-clipboard", "blue"],
     ["add", "green"],
     ["upload", "blue"],
     ["generate", "purple"],
@@ -56,6 +121,7 @@ export const actionColors = new Map<string, string>([
 
 //
 export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) => string>([
+    ["bluetooth-share-clipboard", () => "Paste data into Bluetooth"],
     ["file-upload", (entityDesc: EntityDescriptor) => `Upload file`],
     ["file-download", (entityDesc: EntityDescriptor) => `Download file`],
     ["file-mount", (entityDesc: EntityDescriptor) => `Mount directory`],
@@ -117,7 +183,18 @@ export const intake = (payload) => sendToEntityPipeline(payload, { entityType: "
 
 //
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
-    ["apply-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any)=>{
+    ["bluetooth-share-clipboard", async () => {
+        try {
+            whenPasteInto();
+            toastSuccess("Clipboard shared");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to share clipboard");
+        }
+    }],
+
+
+    ["apply-settings", async (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => {
         viewPage = await viewPage;
         const forms = viewPage.forms;
         const tabsState = viewPage.tabsState;

@@ -23,7 +23,7 @@ export type GroupConfig = {
     fields: FieldConfig[];
 };
 
-export type SectionKey = "ai" | "mcp" | "webdav" | "timeline";
+export type SectionKey = "ai" | "mcp" | "webdav" | "timeline" | "additional";
 
 export type SectionConfig = {
     key: SectionKey;
@@ -58,6 +58,9 @@ export type AppSettings = {
     timeline?: {
         source?: string;
     };
+    appearance?: {
+        theme?: "light" | "dark" | "auto";
+    };
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -76,5 +79,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     },
     timeline: {
         source: ""
+    },
+    appearance: {
+        theme: "auto"
     }
 };

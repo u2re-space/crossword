@@ -55,9 +55,11 @@ const generateId = (path: string)=>{
 export const CURRENT_VIEW = hashTargetRef(location.hash || "home", false);
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
+import { initTheme } from "@rs-frontend/utils/Theme";
 
 export async function frontend(mountElement) {
     await initDOM(document.body);
+    initTheme();
     await loadInlineStyle(style);
 
     startGeoTracking();
@@ -126,7 +128,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "settings") {
             element = Settings();
-            actions = makeToolbar(["apply-settings", "import-settings", "export-settings"], {
+            actions = makeToolbar(["apply-settings", "import-settings", "export-settings", "bluetooth-share-clipboard"], {
                 label: "Settings",
                 type: registryKey,
                 DIR: `/`

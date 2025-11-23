@@ -93,7 +93,8 @@ export const loadSettings = async (): Promise<AppSettings> => {
                     mcp: (stored as any)?.ai?.mcp || []
                 },
                 webdav: { ...DEFAULT_SETTINGS.webdav, ...(stored as any)?.webdav },
-                timeline: { ...DEFAULT_SETTINGS.timeline, ...(stored as any)?.timeline }
+                timeline: { ...DEFAULT_SETTINGS.timeline, ...(stored as any)?.timeline },
+                appearance: { ...DEFAULT_SETTINGS.appearance, ...(stored as any)?.appearance }
             };
         }
     } catch (e) {
@@ -121,6 +122,11 @@ export const saveSettings = async (settings: AppSettings) => {
             ...(DEFAULT_SETTINGS.timeline || {}),
             ...(current.timeline || {}),
             ...(settings.timeline || {})
+        },
+        appearance: {
+            ...(DEFAULT_SETTINGS.appearance || {}),
+            ...(current.appearance || {}),
+            ...(settings.appearance || {})
         }
     };
     await idbPutSettings(merged);

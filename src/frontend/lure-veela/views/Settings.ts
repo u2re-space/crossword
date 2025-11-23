@@ -10,22 +10,51 @@ import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
 //
 import { getByPath, loadSettings, saveSettings, slugify } from "@rs-core/config/Settings";
 import { loadTimelineSources } from "@rs-core/workers/FileSystem";
+import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
 import { AISection } from "@rs-core/config/sections/AISection";
 import { MCPSection } from "@rs-core/config/sections/MCPSection";
 import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
 import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
+import { AdditionalSection } from "@rs-core/config/sections/AdditionalSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
-import { computed, propRef, stringRef } from "fest/object";
+import { propRef, stringRef } from "fest/object";
+import { actionRegistry, whenPasteInto } from "@rs-frontend/utils/Actions";
+import { wallpaperState, persistWallpaper } from "@rs-frontend/utils/StateStorage";
+import { applyTheme } from "@rs-frontend/utils/Theme";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
     AISection,
     MCPSection,
     WebDavSection,
-    TimelineSection
+    TimelineSection,
+    AdditionalSection
 ];
+
+//
+const pickWallpaper = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+            const dir = "/images/wallpaper/";
+            await writeFileSmart(null, dir, file);
+            const path = `${dir}${file.name}`;
+            wallpaperState.src = path;
+            persistWallpaper();
+            toastSuccess("Wallpaper updated");
+        } catch (e) {
+            console.warn(e);
+            toastError("Failed to set wallpaper");
+        }
+    };
+    input.click();
+};
 
 //
 export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as SectionKey[];
@@ -105,7 +134,7 @@ export const Settings = async () => {
         const field = H`<label class="field">
             <span class="field-label">${label}</span>
             ${control}
-        </label>` as HTMLElement;
+            </label>` as HTMLElement;
         fieldRefs.set(`mcp.${mcpId}.${fieldName}`, control);
         return field;
     };
@@ -249,6 +278,46 @@ export const Settings = async () => {
 
                 //
                 body.append(H`<div class="mcp-actions">${addButton}</div>` as HTMLElement);
+            } else if (section.key === 'additional') {
+                if (group.key === 'actions') {
+                    // Add Paste button
+                    const pasteBtn = H`<button type="button" class="btn btn-secondary" on:click=${whenPasteInto}>
+                        <ui-icon icon="clipboard"></ui-icon>
+                        <span>Paste from Bluetooth</span>
+                    </button>`;
+                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${pasteBtn}</div>`;
+                    body.append(actionsContainer);
+                } else
+                if (group.key === 'synchronization') {
+                    // Add Synchronization button
+                    /*const synchronizationBtn = H`<button type="button" class="btn btn-secondary" on:click=${synchronizeWorkspace}>
+                        <ui-icon icon="sync"></ui-icon>
+                        <span>Synchronize Workspace</span>
+                    </button>`;
+                    body.append(synchronizationBtn);*/
+
+                    // Add Import/Export buttons
+                    const importBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("import-settings")?.(null as any, null as any, container)}>
+                        <ui-icon icon="upload-simple"></ui-icon>
+                        <span>Import Settings</span>
+                    </button>`;
+                    const exportBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("export-settings")?.(null as any, null as any, container)}>
+                        <ui-icon icon="download-simple"></ui-icon>
+                        <span>Export Settings</span>
+                    </button>`;
+                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${importBtn}${exportBtn}</div>`;
+                    body.append(actionsContainer);
+                } else
+                if (group.key === 'wallpaper') {
+                    const wallpaperBtn = H`<button type="button" class="btn btn-primary" on:click=${pickWallpaper}>
+                        <ui-icon icon="image"></ui-icon>
+                        <span>Change Wallpaper</span>
+                    </button>`;
+                    body.append(wallpaperBtn);
+                }
+
+                // Still allow regular fields in addition to custom buttons if any
+                group.fields.forEach((field) => body.append(createField(field)));
             } else {
                 // Regular field handling
                 group.fields.forEach((field) => body.append(createField(field)));
@@ -272,10 +341,11 @@ export const Settings = async () => {
     const tabsState: { value: SectionKey } = propRef(panelsWrapper, "currentTab", SETTINGS_SECTIONS[0].key);
 
     // styles broken for that... TODO: fix
-    const statusBar = H`<div class="settings-actions" role="status" prop:hidden=${computed(statusText, (text) => !text?.trim())}>
+    /*const statusBar = H`<div class="settings-actions" role="status" prop:hidden=${computed(statusText, (text) => !text?.trim())}>
         <span class="save-status" aria-live="polite">${statusText}</span>
     </div>` as HTMLElement;
-    container.append(panelsWrapper/*, statusBar*/);
+    container.append(panelsWrapper, statusBar);*/
+    container.append(panelsWrapper);
 
     //
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
@@ -492,6 +562,9 @@ export const Settings = async () => {
             },
             timeline: {
                 source: readValue("timeline.source")
+            },
+            appearance: {
+                theme: readValue("appearance.theme") as any || "auto"
             }
         };
 
@@ -500,6 +573,7 @@ export const Settings = async () => {
             settings = await saveSettings(next);
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
+            applyTheme(settings.appearance?.theme);
             statusText.value = "Saved";
             toastSuccess("Settings updated");
             syncCustomVisibility();
@@ -524,6 +598,7 @@ export const Settings = async () => {
         applySettingsToForm(settings);
         applyModelSelection(settings);
         syncCustomVisibility();
+        applyTheme(settings.appearance?.theme);
         toastSuccess("Settings reloaded");
     };
     return container as HTMLElement;

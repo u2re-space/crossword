@@ -72,6 +72,10 @@
                 max-block-size: none;
                 overflow: visible;
                 max-inline-size: stretch;
+
+                place-content: center;
+                place-items: center;
+                text-align: center;
             }
 
             &:not(.is-collapsible) {
@@ -330,6 +334,31 @@
             &:where(:hover, :focus-visible):not(.is-active) {
                 @include surface(var(--surface-opacity-default));
             }
+        }
+    }
+
+    .settings-actions-group {
+        display: flex;
+        gap: var(--gap-sm);
+        padding: var(--padding-sm);
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--surface-opacity-subtle), var(--surface-opacity-muted));
+        border: 0px none transparent;
+
+        place-content: center;
+        place-items: center;
+        text-align: center;
+        overflow: visible;
+
+        header, p {
+            place-content: center;
+            place-items: center;
+            text-align: center;
+            line-height: normal;
+            block-size: max-content;
+            max-block-size: none;
+            min-inline-size: 0;
+            inline-size: max-content;
         }
     }
 
