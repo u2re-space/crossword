@@ -121,13 +121,17 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     }
 
     //
+    const userTimeZone = Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone || "UTC";
+    const timezoneOffset = new Date()?.getTimezoneOffset?.() || 0;
     const encodedRealtimeState = encode({
         time: (realtimeStates as any).time?.toISOString?.(),
         timestamp: (realtimeStates as any).timestamp,
         coords: (realtimeStates as any).coords?.toJSON?.(),
         otherProps: (realtimeStates as any).otherProps,
         cards: (realtimeStates as any).cards,
-        language: navigator?.language || "ru-RU"
+        language: navigator?.language || "ru-RU",
+        timezone: userTimeZone,
+        timezoneOffset: timezoneOffset
     });
 
     // use real-time state (oriented on current time and location)

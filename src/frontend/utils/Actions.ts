@@ -2,7 +2,6 @@ import type { EntityDescriptor } from "@rs-core/utils/Types";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
 import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
-import { sendToEntityPipeline, type shareTargetFormData } from "@rs-core/workers/FileSystem";
 import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite, pasteAndAnalyze, pasteIntoClipboardWithRecognize } from "./FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
@@ -238,6 +237,9 @@ export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) 
         toastError("Speech recognition is not supported by this browser");
         return null;
     }
+
+    // TODO! auto detect language by browser settings
+    recognition.lang = navigator?.language || "ru-RU";
 
     //
     recognition.interimResults = false;
