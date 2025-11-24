@@ -9,13 +9,13 @@
     "categories": ["productivity", "lifestyle", "finance", "navigation"],
     "icons": [
         {
-            "src": "./icons/icon-duotone.svg",
+            "src": "./icons/icon-duotone.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "./icons/icon-duotone.svg",
+            "src": "./icons/icon-duotone.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "monochrome"

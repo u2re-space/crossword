@@ -240,7 +240,6 @@ export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) 
     }
 
     //
-    recognition.lang = navigator.language;
     recognition.interimResults = false;
     recognition.continuous = true;
     recognition.alterations = 0.8;
