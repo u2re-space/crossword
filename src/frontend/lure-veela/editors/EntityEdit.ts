@@ -383,48 +383,51 @@ export const makeEvents = (
     return {
         doDelete: async (ev: Event) => {
             ev?.stopPropagation?.();
-            const path = makePath(entityItem, entityDesc);
-            try { await removeFile(null, path); } catch (e) { console.warn(e); }
-            const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
-            card?.remove?.();
+            requestIdleCallback(async () => {
+                const path = makePath(entityItem, entityDesc);
+                try { await removeFile(null, path); } catch (e) { console.warn(e); }
+                const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityItem?.id || entityItem?.name}"]`);
+                card?.remove?.();
+            });
         },
         doEdit: async (ev: Event) => {
             ev?.stopPropagation?.();
+            requestAnimationFrame(async () => {
+                // Open entity editor modal
+                try {
+                    const updatedEntity = await makeEntityEdit(entityItem, entityDesc, {
+                        description: `Edit ${entityDesc.label} information`,
+                        submitLabel: "Save Changes",
+                        validateEntity: true,
+                    });
 
-            // Open entity editor modal
-            try {
-                const updatedEntity = await makeEntityEdit(entityItem, entityDesc, {
-                    description: `Edit ${entityDesc.label} information`,
-                    submitLabel: "Save Changes",
-                    validateEntity: true,
-                });
+                    // If entity was updated, refresh the card in the UI
+                    if (updatedEntity) {
+                        const entityAny = updatedEntity as any;
+                        const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityAny?.id || entityAny?.name}"]`);
+                        if (card) {
+                            (card as any)?.$updateInfo?.(entityAny);
 
-                // If entity was updated, refresh the card in the UI
-                if (updatedEntity) {
-                    const entityAny = updatedEntity as any;
-                    const card = (ev?.target as HTMLElement)?.closest?.(`.card[data-id="${entityAny?.id || entityAny?.name}"]`);
-                    if (card) {
-                        (card as any)?.$updateInfo?.(entityAny);
+                            // Update card content
+                            const titleEl = (card as any)?.querySelector('.card-title');
+                            if (titleEl && entityAny.title) titleEl.textContent = entityAny.title;
 
-                        // Update card content
-                        const titleEl = (card as any)?.querySelector('.card-title');
-                        if (titleEl && entityAny.title) titleEl.textContent = entityAny.title;
+                            const nameEl = (card as any)?.querySelector('.card-name');
+                            if (nameEl && entityAny.name) nameEl.textContent = entityAny.name;
 
-                        const nameEl = (card as any)?.querySelector('.card-name');
-                        if (nameEl && entityAny.name) nameEl.textContent = entityAny.name;
-
-                        const descEl = (card as any)?.querySelector('.card-description');
-                        if (descEl && entityAny.description) {
-                            const desc = Array.isArray(entityAny.description)
-                                ? entityAny.description.join('\n')
-                                : entityAny.description;
-                            descEl.textContent = desc;
+                            const descEl = (card as any)?.querySelector('.card-description');
+                            if (descEl && entityAny.description) {
+                                const desc = Array.isArray(entityAny.description)
+                                    ? entityAny.description.join('\n')
+                                    : entityAny.description;
+                                descEl.textContent = desc;
+                            }
                         }
                     }
+                } catch (error) {
+                    console.error("Failed to edit entity:", error);
                 }
-            } catch (error) {
-                console.error("Failed to edit entity:", error);
-            }
+            });
         }
     }
 }

@@ -26,10 +26,12 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
     }} on:tab-close=${(ev: any)=>{
         const tabName = ev?.tabName;
         if (tabName) {
-            existsViews.delete(tabName);
-            if (currentView.value == tabName) {
-                currentView.value = "home";
-            }
+            requestIdleCallback(() => {
+                existsViews.delete(tabName);
+                if (currentView.value == tabName) {
+                    currentView.value = "home";
+                }
+            });
         }
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
