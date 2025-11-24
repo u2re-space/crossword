@@ -255,7 +255,9 @@ export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) 
         prepare.push(event.results[0][0].transcript as string);
     }
     recognition.onend = () => {
-        writingRef.value = prepare.join(" ");
+        // should be at least 2 words to be valid speech prompt
+        const result = prepare?.join?.(" ")?.trim?.();
+        writingRef.value = result?.split?.(/\s+/)?.length >= 2 ? result : "";
         console.log("writingRef.value", writingRef.value);
         console.log("prepare", prepare);
         promised.resolve(writingRef.value);

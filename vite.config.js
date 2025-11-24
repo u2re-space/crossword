@@ -51,9 +51,9 @@ const createCrxConfig = () => {
 
     //
     const crxOutput = objectAssign({}, baseOutput, {
-        entryFileNames: "app/[name]-[hash].js",
-        chunkFileNames: "modules/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]",
+        entryFileNames: "app/[name].js",
+        chunkFileNames: "modules/[name].js",
+        assetFileNames: "assets/[name][extname]",
         inlineDynamicImports: false,
         manualChunks: (id) => {
             if (id.includes('node_modules')) {

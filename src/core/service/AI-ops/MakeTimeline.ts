@@ -82,12 +82,12 @@ export const createTimelineGenerator = async (sourcePath: string | null = null, 
     } else
 
     // if no both source path and speech prompt, so make generic working plan for next 7 days
-    if (!speechPrompt?.trim?.()?.length) {
+    if (!speechPrompt?.trim?.() || !speechPrompt?.trim?.()?.length) {
         await gptResponses?.giveForRequest?.(`preferences: Make generic working plan for next 7 days...\n`);
     }
 
     // additional speech prompt
-    if (speechPrompt?.trim?.()?.length) {
+    if (speechPrompt?.trim?.() && speechPrompt?.trim?.()?.length) {
         await gptResponses?.giveForRequest?.(`speech_prompt: \`${encode(speechPrompt)}\`\n`);
     }
 

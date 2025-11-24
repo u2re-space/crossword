@@ -7,16 +7,15 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
     const contentView = H`<div class="view-box">
         <div class="toolbar" style="will-change: contents; background-color: transparent;">
             ${C(computed(currentView, (key)=>{
-                const a = makeView(key)?.[0]
-
-                return a;
+                // Avoid layout thrashing
+                if (key == null) return null;
+                return makeView(key)?.[0] || null;
             }))}
         </div>
         <div class="content" style="will-change: contents;">
             ${C(computed(currentView, (key)=>{
-                const b = makeView(key)?.[1]
-
-                return b;
+                if (key == null) return null;
+                return makeView(key)?.[1] || null;
             }))}
         </div>
     </div>`;

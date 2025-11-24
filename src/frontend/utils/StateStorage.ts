@@ -221,6 +221,13 @@ const unpackMetaRegistry = (raw?: any) => {
     return registryFromEntries(entries.length ? entries : DEFAULT_META_ENTRIES);
 };
 
+const unwrapRef = (value: any, fallback?: string) => {
+    if (value && typeof value === "object" && "value" in value) {
+        return value.value ?? fallback;
+    }
+    return value ?? fallback;
+};
+
 const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
     return {
         id: item.id,
@@ -294,13 +301,6 @@ export const removeSpeedDialMeta = (id: string) => {
 };
 
 
-
-const unwrapRef = (value: any, fallback?: string) => {
-    if (value && typeof value === "object" && "value" in value) {
-        return value.value ?? fallback;
-    }
-    return value ?? fallback;
-};
 
 
 

@@ -98,29 +98,55 @@ export async function frontend(mountElement) {
     //
     const existsViews: Map<string, any> = makeReactive(new Map<string, any>()) as Map<string, any>;
     const makeView = (registryKey, props?: any)=>{
+        if (!registryKey) return null;
         let actions: any = {};
         let element: any = null;
 
         //
-        if (!registryKey) return null;
-
-        //
         if (existsViews.has(registryKey)) {
+            const cached = existsViews.get(registryKey);
             if (props?.focus == true || props?.focus == null) {
-                CURRENT_VIEW.value = registryKey;
+                // Defer focus slightly to allow UI update
+                if (CURRENT_VIEW.value !== registryKey) {
+                    requestAnimationFrame(() => { CURRENT_VIEW.value = registryKey; });
+                }
             }
-            return existsViews.get(registryKey);
+            return cached;
         }
 
         // exists views
         const entityView = entityViews.get(registryKey);
         if (entityView) {
-            element = makeEntityView(registryKey, entityView);
+            // latest LUR.E supports promises for views
+            const promised = Promise.withResolvers<any>();
+            const toolbarPromise = Promise.withResolvers<any>();
+
+            // Defer heavy view creation
+            requestIdleCallback(() => {
+                promised.resolve(element = makeEntityView(registryKey, entityView));
+                toolbarPromise.resolve(actions = makeToolbar(entityView?.availableActions || [], {
+                    label: entityView?.label || registryKey,
+                    type: registryKey,
+                    DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
+                }, element));
+
+                existsViews.set(registryKey, [actions, element]);
+            });
+
+            // use by promise
+            element = promised.promise;
+            actions = toolbarPromise.promise;
+            existsViews.set(registryKey, [actions, element]);
+
+            // Return placeholder or partial while loading?
+            // For now, synchronous creation as fallback if IdleCallback is too slow/unsupported or we need immediate result
+            // Actually, let's keep synchronous creation for first load but optimize the set
+            /*element = makeEntityView(registryKey, entityView);
             actions = makeToolbar(entityView?.availableActions || [], {
                 label: entityView?.label || registryKey,
                 type: registryKey,
                 DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
-            }, element);
+            }, element);*/
         }
 
 
@@ -170,30 +196,43 @@ export async function frontend(mountElement) {
         //
         if (!element) return;
 
-
-
-        // TODO: custom views
-
         //
         if (element) {
-            existsViews.set(registryKey, [actions, element]);
+            // Batch update for reactive map
+            /*requestAnimationFrame(() => {
+
+            });*/
+
+            if (!existsViews.has(registryKey)) {
+                existsViews.set(registryKey, [actions, element]);
+            }
+            // Temporary return for immediate use
+            //return [actions, element];
         }
 
         //
         if (element instanceof Promise) {
             element?.then?.((el)=>{ // provoke re-render of async element
-                (existsViews?.get?.(registryKey))[1] = el;
-                if (CURRENT_VIEW?.value == registryKey) { CURRENT_VIEW?.[$trigger]?.(); };
+                const current = existsViews.get(registryKey);
+                if (current) {
+                    current[1] = el;
+                    // Trigger update efficiently
+                    if (CURRENT_VIEW?.value == registryKey) {
+                        requestAnimationFrame(() => CURRENT_VIEW?.[$trigger]?.());
+                    }
+                }
             });
         }
 
         //
         if (props?.focus == true || props?.focus == null) {
-            CURRENT_VIEW.value = registryKey;
+            if (CURRENT_VIEW.value !== registryKey) {
+                requestAnimationFrame(() => { CURRENT_VIEW.value = registryKey; });
+            }
         }
 
         //
-        return existsViews?.get?.(registryKey);
+        return [actions, element];
     }
 
     //

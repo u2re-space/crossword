@@ -21,7 +21,8 @@ const generateActionButton = (action: string, entityDesc: EntityDescriptor, view
             minHoldTime: 180,
             maxHoldTime: 200,
             maxOffsetRadius: 10,
-            anyPointer: true
+            anyPointer: true,
+            mouseImmediate: false,
         }, (e: any) => actionRegistry.get(altAction)?.(e, entityDesc, viewPage));
     }
 

@@ -332,6 +332,8 @@
                 place-items: center;
                 grid-column: 1 / -1;
                 grid-row: 1 / -1;
+                perspective: 1000;
+                backface-visibility: hidden;
                 transform: translateY(calc(50% + 0.75rem)) translateZ(0px);
                 white-space: nowrap;
                 aspect-ratio: auto;
@@ -343,6 +345,7 @@
                 line-height: 0;
                 overflow: visible;
                 display: grid;
+                filter: none;
 
                 span {
                     display: flex;
@@ -389,10 +392,12 @@
 
             &[data-layer="labels"] {
                 z-index: 0;
+                filter: none;
             }
 
             &[data-layer="icons"] {
                 z-index: 99;
+                filter: none;
             }
         }
     }
