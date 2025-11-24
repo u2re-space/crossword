@@ -49,7 +49,13 @@ export const realtimeStates = makeReactive({
 //
 const editableArray = (category: any, items: any[]) => {
     const wrapped = makeReactive(items);
-    observe(wrapped, (item, index) => idbPut(category?.id, JSOX.stringify(safe(wrapped) as any))?.catch?.(console.warn.bind(console)));
+    let timeout: any;
+    observe(wrapped, (item, index) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            idbPut(category?.id, JSOX.stringify(safe(wrapped) as any))?.catch?.(console.warn.bind(console));
+        }, 100);
+    });
     return wrapped;
 }
 
@@ -120,7 +126,7 @@ export const dataCategories = makeReactive([
     }),
     $wrapCategory({
         label: "Vendors",
-        id: "place"
+        id: "vendor"
     }),
     $wrapCategory({
         label: "Persons",
@@ -130,10 +136,10 @@ export const dataCategories = makeReactive([
         label: "Skills",
         id: "skill"
     }),
-    $wrapCategory({
+    /*$wrapCategory({
         label: "Entertainments",
         id: "entertainment"
-    }),
+    }),*/
     $wrapCategory({
         label: "Vehicles",
         id: "vehicle"
@@ -143,7 +149,7 @@ export const dataCategories = makeReactive([
         id: "reward"
     }),
     $wrapCategory({
-        label: "Fins",
+        label: "Fines",
         id: "fine"
     }),
     $wrapCategory({

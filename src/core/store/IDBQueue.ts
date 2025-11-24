@@ -1,7 +1,8 @@
-// queue-idb.ts
+import { JSOX } from "jsox";
+
 export const DB_NAME = 'req-queue';
 export const STORE = 'queue';
-const DB_VERSION = 3; // увеличьте, если меняете схему/индексы
+export const DB_VERSION = 3; // увеличьте, если меняете схему/индексы
 
 type QueueRecord<T = unknown> = {
   id?: number;
@@ -375,4 +376,68 @@ export async function popAllUnlocked<T = unknown>(full = false): Promise<Array<T
   } finally {
     db.close();
   }
+}
+
+// Remove old items from queue
+export async function prune(maxAgeMs = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+  const now = Date.now();
+  const cutoff = now - maxAgeMs;
+  const db = await idbOpen();
+  try {
+    return await withTx<number>(db, 'readwrite', async (store) => {
+      let count = 0;
+      const req = store.openCursor();
+      await new Promise<void>((res, rej) => {
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) return res();
+          const rec = cursor.value as QueueRecord;
+          if (rec.enqueuedAt < cutoff) {
+            cursor.delete();
+            count++;
+          }
+          cursor.continue();
+        };
+        req.onerror = () => rej(req.error);
+      });
+      return count;
+    });
+  } finally {
+    db.close();
+  }
+}
+
+// Remove duplicate payloads from queue
+export async function deduplicate(): Promise<number> {
+    const db = await idbOpen();
+    try {
+        return await withTx<number>(db, 'readwrite', async (store) => {
+            const hashes = new Set<string>();
+            let count = 0;
+            const req = store.openCursor();
+             await new Promise<void>((res, rej) => {
+                req.onsuccess = () => {
+                   const cursor = req.result;
+                   if (!cursor) return res();
+                   const rec = cursor.value as QueueRecord;
+                   try {
+                       const hash = JSOX.stringify(rec.payload);
+                       if (hashes.has(hash)) {
+                           cursor.delete();
+                           count++;
+                       } else {
+                           hashes.add(hash);
+                       }
+                   } catch (e) {
+                       // ignore serialization errors
+                   }
+                   cursor.continue();
+                };
+                req.onerror = () => rej(req.error);
+             });
+             return count;
+        });
+    } finally {
+        db.close();
+    }
 }

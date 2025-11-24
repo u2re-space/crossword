@@ -142,6 +142,24 @@ export class GPTResponses {
     async sendRequest(effort: "low" | "medium" | "high" = "low", verbosity: "low" | "medium" | "high" = "low", prevResponseId: string | null = null) {
         effort ??= "low";
         verbosity ??= "low";
+
+        // De-duplicate pending items
+        const uniquePending = new Map();
+        for (const item of this.pending) {
+            if (!item) continue;
+            try {
+                // Create a unique key for the item
+                const key = typeof item === 'object' ? JSOX.stringify(item) : String(item);
+                if (!uniquePending.has(key)) {
+                    uniquePending.set(key, item);
+                }
+            } catch (e) {
+                // If JSOX fails, fallback to using the item as is (if it's simple) or just keep it
+                uniquePending.set(Math.random().toString(), item);
+            }
+        }
+        const filteredInput = Array.from(uniquePending.values());
+
         const response = await fetch(`${this?.apiUrl}/responses`, {
             method: "POST",
             headers: {
@@ -151,7 +169,7 @@ export class GPTResponses {
             body: JSON.stringify({
                 model: this.model,
                 tools: Array.from(this?.tools?.values?.() || [])?.filter?.((tool: any) => !!tool),
-                input: [...this?.pending]?.filter?.((item: any) => !!item),
+                input: filteredInput,
                 reasoning: { "effort": effort },
                 text: { verbosity: verbosity },
                 max_output_tokens: 400000,

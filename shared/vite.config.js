@@ -305,7 +305,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     return {
         "base": "",
-        rollupOptions, plugins, resolve: $resolve, build, css, optimizeDeps, server,
+        rollupOptions, plugins, resolve: $resolve, build, css, optimizeDeps, server, worker: {format: 'es'},
         define: { 'process.env': {} }
     };
 }
