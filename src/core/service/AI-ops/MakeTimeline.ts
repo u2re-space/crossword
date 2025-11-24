@@ -127,6 +127,7 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
         coords: (realtimeStates as any).coords?.toJSON?.(),
         otherProps: (realtimeStates as any).otherProps,
         cards: (realtimeStates as any).cards,
+        language: navigator?.language || "ru-RU"
     });
 
     // use real-time state (oriented on current time and location)
