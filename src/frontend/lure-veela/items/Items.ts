@@ -24,14 +24,29 @@ const MakeItemsLoaderForTabPage = <
     //
     let loadLocked = false;
     let loaderDebounceTimer: any = null;
+    let dHandle: any = null;
+
+    const dispose = () => {
+        dHandle?.dispose?.();
+        dHandle = null;
+    };
+
     const load = async () => {
-        if (loadLocked) return { dataRef, load };
+        if (loadLocked) return { dataRef, load, dispose };
         loadLocked = true;
 
         //
-        const dHandle = openDirectory(null, sourceRef.DIR, { create: true }); await dHandle;
+        dHandle = openDirectory(null, sourceRef.DIR, { create: true }); await dHandle;
         const loader = async () => {
-            const handleMap = await Promise.all(await Array.fromAsync(await dHandle?.entries?.() ?? []));
+            // Use getMap() instead of entries() to leverage the worker-backed map
+            // The map is already populated by openDirectory via worker
+            const map = dHandle.getMap();
+            // We need to trigger an update/fetch if it's empty or stale? 
+            // openDirectory handles the initial fetch.
+            
+            // We iterate over the map keys
+            const handleMap = Array.from(map.entries());
+            
             const refs = await Promise.all(handleMap?.map?.(async ($pair: any, index: number) => {
                 try {
                     const forAddOrDelete = $pair != null;
@@ -107,11 +122,11 @@ const MakeItemsLoaderForTabPage = <
         // do sorting by days abd time before rendering
         //dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
         loadLocked = false;
-        return { dataRef, load };
+        return { dataRef, load, dispose };
     }
 
     //
-    return { dataRef, load };
+    return { dataRef, load, dispose };
 }
 
 //
@@ -254,10 +269,11 @@ export const CollectItemsForTabPage = <
     bindDropToDir(root as any, sourceRef.DIR);
 
     //
-    /*(root as any).dispose = () => {
+    (root as any).dispose = () => {
+        loader.dispose();
         loader.dataRef?.splice?.(0, loader.dataRef?.length ?? 0);
         loader.dataRef.length = 0; // TODO: fix in reactive library
-    };*/
+    };
 
     //
     root.addEventListener('contentvisibilityautostatechange', (e: any) => { firstTimeLoad?.(); });
