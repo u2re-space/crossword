@@ -78,6 +78,7 @@
                 border-radius: var(--radius-full);
                 padding: var(--padding-sm);
                 pointer-events: auto;
+                touch-action: none;
 
                 //
                 @include ui.tonal-surface(surface-container, calc(var(--surface-opacity-subtle, 0.00) + 0.02), var(--radius-lg), var(--padding-sm));
@@ -85,11 +86,13 @@
                 @include toolbar-button;
                 @include flex-center;
 
+                //
                 & {
                     min-inline-size: 0px;
                     min-block-size: 0px;
                     inline-size: fit-content;
                     block-size: fit-content;
+                    touch-action: none;
                 }
 
                 //
