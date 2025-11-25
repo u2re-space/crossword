@@ -6,7 +6,7 @@ import { makeReactive, $trigger } from "fest/object";
 import "fest/fl-ui";
 
 //
-import { applyActive, Sidebar } from "./Sidebar";
+import { Sidebar } from "./Sidebar";
 import { MakeCardElement } from "../items/Cards";
 import { hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
@@ -113,7 +113,7 @@ export async function frontend(mountElement) {
                 if (CURRENT_VIEW.value !== registryKey) {
                     requestAnimationFrame(() => {
                         CURRENT_VIEW.value = registryKey;
-                        applyActive(registryKey, null, existsViews);
+                        //applyActive(registryKey, null, existsViews);
                     });
                 }
             }
@@ -252,7 +252,7 @@ export async function frontend(mountElement) {
             if (CURRENT_VIEW.value !== registryKey) {
                 requestAnimationFrame(() => {
                     CURRENT_VIEW.value = registryKey;
-                    applyActive(registryKey, null, existsViews);
+                    //applyActive(registryKey, null, existsViews);
                 });
             }
         }
