@@ -6,7 +6,10 @@
 @use "../../library/mixins" as ui;
 @use "../../library/tokens" as t;
 
-// Legacy text wrapping mixins - preserved for backward compatibility
+// -----------------------------------------------------------------------------
+// Meta-level (Mixins, Functions, Animations, Properties)
+// -----------------------------------------------------------------------------
+
 @mixin make-wraps {
     @include text-wrap;
 
@@ -84,6 +87,7 @@
         transition-delay: 0s;
         transition-behavior: allow-discrete;
         opacity: 0;
+        overflow: hidden;
     }
 
     &[data-open] #{$selector}:not(:empty) {
@@ -313,83 +317,19 @@ $card-variants: (
 }
 
 @layer rs-cards {
-    @property --card-surface-tone {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.12;
-    }
-
-    @property --card-surface-tint {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: -0.08;
-    }
-
-    @property --card-border-alpha {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.18;
-    }
-
-    @property --card-overlay-strength {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.24;
-    }
-
-    @property --card-overlay-secondary {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.14;
-    }
-
-    @property --card-surface-tone-base {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.12;
-    }
-
-    @property --card-border-alpha-base {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.18;
-    }
-
-    @property --card-shadow-strength-base {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.18;
-    }
-
-    @property --card-overlay-strength-base {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.24;
-    }
-
-    @property --card-overlay-secondary-base {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0.14;
-    }
-
-    @property --card-gradient-angle {
-        syntax: "<angle>";
-        inherits: true;
-        initial-value: 128deg;
-    }
-
-    @property --card-swipe-offset {
-        syntax: "<length>";
-        inherits: true;
-        initial-value: 0px;
-    }
-
-    @property --card-swipe-progress {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 0;
-    }
+    @property --card-surface-tone { syntax: "<number>"; inherits: true; initial-value: 0.12; }
+    @property --card-surface-tint { syntax: "<number>"; inherits: true; initial-value: -0.08; }
+    @property --card-border-alpha { syntax: "<number>"; inherits: true; initial-value: 0.18; }
+    @property --card-overlay-strength { syntax: "<number>"; inherits: true; initial-value: 0.24; }
+    @property --card-overlay-secondary { syntax: "<number>"; inherits: true; initial-value: 0.14; }
+    @property --card-surface-tone-base { syntax: "<number>"; inherits: true; initial-value: 0.12; }
+    @property --card-border-alpha-base { syntax: "<number>"; inherits: true; initial-value: 0.18; }
+    @property --card-shadow-strength-base { syntax: "<number>"; inherits: true; initial-value: 0.18; }
+    @property --card-overlay-strength-base { syntax: "<number>"; inherits: true; initial-value: 0.24; }
+    @property --card-overlay-secondary-base { syntax: "<number>"; inherits: true; initial-value: 0.14; }
+    @property --card-gradient-angle { syntax: "<angle>"; inherits: true; initial-value: 128deg; }
+    @property --card-swipe-offset { syntax: "<length>"; inherits: true; initial-value: 0px; }
+    @property --card-swipe-progress { syntax: "<number>"; inherits: true; initial-value: 0; }
 
     @keyframes card-pulse {
         0% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
@@ -398,16 +338,20 @@ $card-variants: (
     }
 
     .card {
+        // ---------------------------------------------------------------------
+        // Properties
+        // ---------------------------------------------------------------------
         --current: var(--primary);
         --card-gap: var(--space-lg);
         --card-padding: var(--padding-lg);
         --card-radius: var(--radius-md);
         --card-avatar-size: 48px;
 
-        // Initial Reset for Swipe
+        // Swipe State
         --card-swipe-offset: 0px;
         --card-swipe-progress: 0;
 
+        // Palette & Vars
         @include card-surface-vars(
             clamp(0.06, var(--surface-opacity-subtle), 0.14),
             clamp(0.12, calc(var(--card-surface-tone-base) * 2.1), 0.22),
@@ -416,27 +360,23 @@ $card-variants: (
             clamp(0.1, calc(var(--card-overlay-strength-base) * 0.52), 0.24)
         );
         @include card-sync-vars;
-        --card-gradient-angle: 128deg;
         @include card-shadows(2, 0.08, 0.08, $card-ambient-default);
 
-        // Standard Palette
+        // Colors
+        --card-gradient-angle: 128deg;
         --color-red: var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1)));
         --color-yellow: var(--color-warning, oklch(0.86 0.09 100 / 1));
         --color-green: var(--color-success, oklch(0.72 0.13 150 / 1));
         --color-blue: var(--color-info, oklch(0.65 0.12 240 / 1));
         --color-purple: var(--md3-tertiary, oklch(0.62 0.22 310 / 1));
-        --color-orange: color-mix(
-            in oklch,
-            var(--color-warning, oklch(0.82 0.12 80 / 1)) 70%,
-            var(--color-danger, var(--md3-error, oklch(0.6 0.24 25 / 1))) 30%
-        );
+        --color-orange: color-mix(in oklch, var(--color-warning) 70%, var(--color-danger) 30%);
         --color-shade: var(--card-surface-tone);
         --color-tint: var(--card-surface-tint);
 
-        place-items: center;
-        place-content: center;
+        // ---------------------------------------------------------------------
+        // Box/Layout
+        // ---------------------------------------------------------------------
         display: grid;
-        // Improved Layout for better adaptability
         grid-template-areas:
             "avatar content actions"
             "footer footer footer";
@@ -445,95 +385,129 @@ $card-variants: (
             minmax(0px, 1fr)
             minmax(0px, max-content);
         align-items: start;
+        place-items: center;
+        place-content: center;
+        place-self: center;
         gap: var(--space-lg);
         row-gap: var(--gap-sm);
-        place-self: center;
 
-        transition: var(--transition-all);
-        transition-duration: var(--duration-normal);
-        transition-delay: 0s;
-        transition-behavior: allow-discrete;
-        interpolate-size: allow-keywords;
-
-        user-select: none;
+        box-sizing: border-box;
         inline-size: stretch !important;
         max-inline-size: min(60rem, 100%) !important;
         min-inline-size: 0px;
-        order: var(--card-order, initial);
         block-size: max-content;
-        pointer-events: auto;
-        overflow: hidden;
+        padding: var(--card-padding);
+        order: var(--card-order, initial);
+
+        // ---------------------------------------------------------------------
+        // Rendering
+        // ---------------------------------------------------------------------
         position: relative;
         isolation: isolate;
+        transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
+        will-change: transform; // Optimize swipe performance
 
+        // ---------------------------------------------------------------------
+        // Decorations
+        // ---------------------------------------------------------------------
         border-radius: var(--card-radius);
-        padding: var(--card-padding);
+        border-width: 0.5px;
+        box-shadow: var(--card-shadow-base), var(--card-shadow-outline), var(--card-shadow-ambient);
+
+        // ---------------------------------------------------------------------
+        // Interaction
+        // ---------------------------------------------------------------------
+        user-select: none;
+        pointer-events: auto;
+        touch-action: pan-y; // Handle horizontal swipe manually
+
+        // ---------------------------------------------------------------------
+        // Colorization
+        // ---------------------------------------------------------------------
         background-blend-mode: plus-lighter, normal;
         background-repeat: no-repeat;
         background-origin: border-box;
-
         @include solid-colorize("&", ("shade": var(--card-surface-tone, 0), "scope": "selector"));
 
-        & {
-            inline-size: stretch;
-            min-inline-size: 0px;
-            max-inline-size: min(60rem, 100%);
+        // ---------------------------------------------------------------------
+        // Animations
+        // ---------------------------------------------------------------------
+        transition: var(--transition-all);
+        transition-duration: var(--duration-normal);
+        transition-behavior: allow-discrete;
+        interpolate-size: allow-keywords;
 
-            perspective: 1000px;
-            // Apply swipe offset here to the main container
-            // But since we want to reveal the background, we might need to move the content instead
-            // For now, we follow the existing pattern where the whole card moves?
-            // No, usually swipe reveals actions BEHIND.
-            // The 'card-swipe-preview' is absolute.
-            // Let's assume we translate the CONTENT of the card, not the card itself.
-            // However, the existing implementation translated the whole card or its direct children.
-            // Looking at the provided file:
-            // `transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);` was on the `.card` itself.
-            // This moves the WHOLE card. If the swipe preview is inside, it moves with it?
-            // Ah, swipe preview has `transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));`
-            // So it counter-translates to stay in place while the card moves. Clever.
-            transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
+        // ---------------------------------------------------------------------
+        // Typography
+        // ---------------------------------------------------------------------
+        line-height: normal;
 
-            &.is-nearby {
-                --card-shadow-outline: 0 0 0 3px var(--color-green);
-                transition: box-shadow 0.3s ease;
-            }
+        // ---------------------------------------------------------------------
+        // Specifics: Swipe & Interaction States
+        // ---------------------------------------------------------------------
 
-            &.is-now {
-                --card-shadow-outline: 0 0 0 3px var(--color-blue);
-                animation: card-pulse 2s infinite;
+        &.is-nearby {
+            --card-shadow-outline: 0 0 0 3px var(--color-green);
+            transition: box-shadow 0.3s ease;
+        }
+
+        &.is-now {
+            --card-shadow-outline: 0 0 0 3px var(--color-blue);
+            animation: card-pulse 2s infinite;
+        }
+
+        // Swipe active state: disable transitions for direct tracking
+        &:where([data-swiping="true"]) {
+            transition: none !important;
+            overflow: visible; // Allow preview to be seen outside clipped area
+
+            // Disable interactions on content while swiping
+            & > :not(.card-swipe-preview) {
+                pointer-events: none;
             }
         }
 
-        &:where([data-swiping], [data-swipe-action]) {
+        &:where([data-swipe-action]) {
             will-change: transform;
         }
 
-        &,
-        & * {
-            touch-action: pan-y;
-            line-height: normal;
+        &:where(:hover, :focus-visible, :focus, :active) {
+            --card-surface-tone: min(0.6, calc(var(--card-surface-tone-base) + 0.02));
+            --card-border-alpha: min(0.46, calc(var(--card-border-alpha-base) + 0.04));
+            --card-shadow-strength: min(0.44, calc(var(--card-shadow-strength-base) + 0.06));
+            --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.06));
+            --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.03));
+            @include card-shadows(2, 0.08, 0.12, $card-ambient-hover);
         }
 
-        &,
-        &:hover,
-        &:active {
-            box-shadow: var(--card-shadow-base), var(--card-shadow-outline), var(--card-shadow-ambient);
-            border-width: 0.5px;
+        &[data-open] {
+            --card-surface-tone: min(0.52, calc(var(--card-surface-tone-base) + 0.03));
+            --card-shadow-strength: min(0.46, calc(var(--card-shadow-strength-base) + 0.08));
+            --card-overlay-strength: min(0.54, calc(var(--card-overlay-strength-base) + 0.06));
+            --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
+            @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
         }
+
+        // ---------------------------------------------------------------------
+        // Children / Nested Elements
+        // ---------------------------------------------------------------------
 
         * {
             pointer-events: none;
             user-select: none;
         }
 
-        // Content Layer
-        & > :not(.card-swipe-preview) {
-            position: relative;
-            z-index: 2; // Above the swipe preview
+        &, & * {
+            touch-action: pan-y;
         }
 
-        // default text wrapping for span and a
+        // Content Layer (Foreground)
+        & > :not(.card-swipe-preview) {
+            position: relative;
+            z-index: 2;
+        }
+
+        // General text wrapping
         span, a {
             text-wrap: pretty;
             white-space: normal;
@@ -561,52 +535,42 @@ $card-variants: (
             text-align: start;
         }
 
-        // allow text selection for code and pre
         code, pre {
             user-select: text;
             cursor: text;
             font-family: var(--font-family-mono, var(--font-family-monospace, monospace));
         }
 
-        // Swipe Preview Layer (Behind content)
+        // ---------------------------------------------------------------------
+        // Swipe Preview (Background Layer)
+        // ---------------------------------------------------------------------
         .card-swipe-preview {
+            // Box/Layout
+            display: grid;
             position: absolute;
             inset: 0;
-            padding: var(--card-padding);
-            display: none; // Hidden by default, shown via JS or query?
-            // Actually JS toggles data attributes, but structure is always there
-            // `display: none` in original code.
-            //display: grid; // We need it to be visible for the counter-transform to work?
-            // Wait, if it's `display: none`, it won't render.
-            // The original code had `display: none` and `@container (inline-size <= 720px) { display: grid; }`
-            // We should probably keep it hidden unless needed or rely on JS/Container.
             grid-template-columns: 1fr 1fr;
             gap: var(--gap-md);
-            pointer-events: none;
-            z-index: 0; // Behind content
+            padding: var(--card-padding);
             align-items: center;
             justify-items: center;
 
-            // Counter-transform to appear stationary while card moves
-            transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));
+            // Rendering
+            z-index: 0; // Behind content
             opacity: clamp(0, var(--card-swipe-progress, 0), 1);
+            transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));
+
+            // Interaction
+            pointer-events: none;
+
+            // Animation
             transition: opacity var(--duration-fast) var(--ease-out);
+            // Counter-transform must NOT transition during swipe to match card movement perfectly
+            // But since .card has transition: none during swipe, this inherits?
+            // Actually this element doesn't have transition property for transform set above.
 
-            // Only show when swiping or ready to swipe
-            //display: none;
-        }
-
-        // Enable swipe preview on touch devices or small screens
-        @media (pointer: coarse) or (max-width: 768px) {
-            .card-swipe-preview {
-                display: grid;
-            }
-        }
-
-        // Fallback for when JS activates swipe mode
-        &[data-swiping="true"] .card-swipe-preview,
-        &[data-swipe-ready="true"] .card-swipe-preview {
-            display: grid;
+            color: var(--on-surface-color, currentColor);
+            --icon-color: var(--on-surface-color, currentColor);
         }
 
         .card-swipe-action {
@@ -632,57 +596,38 @@ $card-variants: (
             ui-icon {
                 --icon-color: currentColor;
             }
+
+            &.is-edit {
+                justify-self: start;
+                background: linear-gradient(90deg, color-mix(in oklch, var(--color-green) 60%, transparent), transparent);
+            }
+
+            &.is-remove {
+                justify-self: end;
+                background: linear-gradient(270deg, color-mix(in oklch, var(--color-red) 68%, transparent), transparent);
+            }
         }
 
-        .card-swipe-action.is-edit {
-            justify-self: start;
-            background: linear-gradient(
-                90deg,
-                color-mix(in oklch, var(--color-green) 60%, transparent),
-                transparent
-            );
-        }
-
-        .card-swipe-action.is-remove {
-            justify-self: end;
-            background: linear-gradient(
-                270deg,
-                color-mix(in oklch, var(--color-red) 68%, transparent),
-                transparent
-            );
-        }
-
-        &[data-swipe-action="edit"],
-        &[data-swipe-success="edit"] {
-            --card-shadow-outline: 0 0 0 2px color-mix(
-                in oklch,
-                var(--color-green) calc(var(--card-swipe-progress, 0) * 100%),
-                transparent
-            );
-        }
-
-        &[data-swipe-action="remove"],
-        &[data-swipe-success="remove"] {
-            --card-shadow-outline: 0 0 0 2px color-mix(
-                in oklch,
-                var(--color-red) calc(var(--card-swipe-progress, 0) * 100%),
-                transparent
-            );
-        }
-
+        // Active swipe feedback
         &[data-swipe-action="edit"] .card-swipe-action.is-edit,
-        &[data-swipe-success="edit"] .card-swipe-action.is-edit {
-            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
-            transform: scale(1);
-        }
-
+        &[data-swipe-success="edit"] .card-swipe-action.is-edit,
         &[data-swipe-action="remove"] .card-swipe-action.is-remove,
         &[data-swipe-success="remove"] .card-swipe-action.is-remove {
             opacity: clamp(0, var(--card-swipe-progress, 0), 1);
             transform: scale(1);
         }
 
+        &[data-swipe-action="edit"], &[data-swipe-success="edit"] {
+            --card-shadow-outline: 0 0 0 2px color-mix(in oklch, var(--color-green) calc(var(--card-swipe-progress, 0) * 100%), transparent);
+        }
+
+        &[data-swipe-action="remove"], &[data-swipe-success="remove"] {
+            --card-shadow-outline: 0 0 0 2px color-mix(in oklch, var(--color-red) calc(var(--card-swipe-progress, 0) * 100%), transparent);
+        }
+
+        // ---------------------------------------------------------------------
         // Variants
+        // ---------------------------------------------------------------------
         &:not([data-variant]),
         &[data-variant="default"] {
             --current: var(--surface-container-high, var(--primary));
@@ -717,24 +662,10 @@ $card-variants: (
             backdrop-filter: blur(18px) saturate(125%);
         }
 
-        &:where(:hover, :focus-visible, :focus, :active) {
-            --card-surface-tone: min(0.6, calc(var(--card-surface-tone-base) + 0.02));
-            --card-border-alpha: min(0.46, calc(var(--card-border-alpha-base) + 0.04));
-            --card-shadow-strength: min(0.44, calc(var(--card-shadow-strength-base) + 0.06));
-            --card-overlay-strength: min(0.64, calc(var(--card-overlay-strength-base) + 0.06));
-            --card-overlay-secondary: min(0.36, calc(var(--card-overlay-secondary-base) + 0.03));
-            @include card-shadows(2, 0.08, 0.12, $card-ambient-hover);
-        }
+        // ---------------------------------------------------------------------
+        // Child Layout Mapping (Grid Areas)
+        // ---------------------------------------------------------------------
 
-        &[data-open] {
-            --card-surface-tone: min(0.52, calc(var(--card-surface-tone-base) + 0.03));
-            --card-shadow-strength: min(0.46, calc(var(--card-shadow-strength-base) + 0.08));
-            --card-overlay-strength: min(0.54, calc(var(--card-overlay-strength-base) + 0.06));
-            --card-overlay-secondary: min(0.32, calc(var(--card-overlay-secondary-base) + 0.05));
-            @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
-        }
-
-        // Responsive Layout adjustments
         @container (inline-size <= 460px) {
             grid-template-areas:
                 "avatar content"
@@ -743,11 +674,7 @@ $card-variants: (
             grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr);
 
             --card-gradient-angle: 110deg;
-            --card-overlay-strength-base: clamp(
-                0.2,
-                calc(clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34) + 0.04),
-                0.4
-            );
+            --card-overlay-strength-base: clamp(0.2, calc(clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34) + 0.04), 0.4);
             @include card-sync-vars;
 
             .card-actions {
@@ -760,7 +687,6 @@ $card-variants: (
             }
         }
 
-        // Child Elements Mapping to Grid
         .card-avatar {
             grid-area: avatar;
             --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
@@ -826,42 +752,33 @@ $card-variants: (
             }
 
             @container (inline-size <= 400px) {
-                // display: none; // Don't hide actions entirely on mobile, wrap them
                 flex-wrap: wrap;
             }
         }
 
-        // Footer area containing description, expanded content, links
         .card-description,
         .card-content,
         .card-links {
-            grid-column: 1 / -1; // Span full width
+            grid-column: 1 / -1;
             overflow-wrap: normal;
             word-break: break-word;
             text-overflow: ellipsis;
             text-wrap: pretty;
-
-            //
             inline-size: stretch;
             max-inline-size: stretch;
             min-inline-size: 0px;
             flex-direction: column;
             line-height: 1.6;
             white-space: pre-line;
-            // grid-area: footer; // Can't use same area name for multiple elements easily in grid-template-areas
         }
 
         .card-description,
         .card-content {
             @include card-stack(var(--text-tint-secondary, 74%));
-
-            //
             & { inline-size: stretch; }
 
-            //
             .card-label {
                 @include card-rich-text(var(--text-tint-secondary, 74%));
-
                 margin-block: var(--gap-xs);
                 opacity: 0.8;
                 font-size: var(--font-sm);
@@ -875,7 +792,6 @@ $card-variants: (
             ul {
                 @include card-list-reset();
                 @include card-color(var(--text-tint-muted, 60%));
-
                 opacity: 0.8;
                 list-style-position: inside;
                 font-variant-numeric: tabular-nums;
@@ -914,13 +830,9 @@ $card-variants: (
         .card-title {
             @include card-inline("title-small", var(--gap-xs), true);
             white-space: normal;
-
-            //
             overflow-wrap: break-word;
             text-overflow: ellipsis;
             overflow: hidden;
-
-            //
             inline-size: fit-content;
             max-inline-size: stretch;
             min-inline-size: 0px;
@@ -929,8 +841,6 @@ $card-variants: (
                 overflow-wrap: break-word;
                 text-overflow: ellipsis;
                 overflow: hidden;
-
-                //
                 inline-size: fit-content;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
@@ -955,10 +865,6 @@ $card-variants: (
             place-content: center;
             align-content: flex-start;
             block-size: stretch;
-            grid-area: content; // Overlap/Append to content area?
-            // Or maybe make it part of the props flex column via nesting in JS
-            // But here it's a sibling.
-            // Let's place it
             grid-column: 2;
             grid-row: 2;
             margin-block-start: var(--gap-xs);
@@ -977,10 +883,7 @@ $card-variants: (
 
         .card-links {
             font-size: t.$font-sm;
-            color: --c2-on-surface(
-                var(--text-tint-muted),
-                var(--current, var(--color-primary, var(--md3-primary, #6750a4)))
-            );
+            color: --c2-on-surface(var(--text-tint-muted), var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
 
             @include ui.vstack(var(--gap-xs));
 
@@ -1008,7 +911,6 @@ $card-variants: (
             user-drag: auto;
             -webkit-user-drag: auto;
             text-decoration: none;
-
             @include text-color(0);
 
             &:where(:hover, :focus-visible, :focus, :active) {
@@ -1033,11 +935,8 @@ $card-variants: (
             @include card-list-reset();
             font-size: t.$font-sm;
             text-align: start;
-
             overflow-wrap: break-word;
             text-overflow: ellipsis;
-
-            //
             inline-size: stretch;
             max-inline-size: stretch;
             min-inline-size: 0px;
@@ -1049,7 +948,6 @@ $card-variants: (
                 inline-size: stretch;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
-
                 @include card-rich-text(var(--text-tint-primary, 92%));
             }
 
@@ -1060,7 +958,6 @@ $card-variants: (
                 inline-size: fit-content;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
-
                 @include card-rich-text(var(--text-tint-primary, 92%));
 
                 &:first-of-type {
@@ -1082,7 +979,6 @@ $card-variants: (
             min-inline-size: 0px;
         }
 
-        // Helpers to hide empty elements
         *:not(ui-icon, br, ui-longtext, input):empty {
             display: none;
         }
@@ -1098,3 +994,4 @@ $card-variants: (
         }
     }
 }
+

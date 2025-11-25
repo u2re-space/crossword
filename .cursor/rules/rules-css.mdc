@@ -49,6 +49,36 @@ alwaysApply: false
 
 ---
 
+## Grouping and decompose
+
+**I propose to decompose by mixin/group types:**
+- meta-level (`@mixin`'s, `@keyframes`, `@property`'ies, `@function`'s)
+- properties (`--var-name`'s, `var(--var-name)`'s)
+- box/layout (such as padding, margin, border, display, grid, flex, etc.)
+- rendering  (optimizations, effects, filters, smooth, etc.)
+- decorations (such as icons, images, etc.)
+- interaction (such as hover, focus, active, disabled, pointer-events, cursor, user-select, etc.)
+- colorization (such as color, background, border, etc.)
+- container/media (such as container, media, breakpoints, etc.)
+- animations (such as animation, transition, view-transition, etc.)
+- typography (such as font, size, weight, line-height, letter-spacing, etc.)
+- specifics (such as specific for components, pages, etc.)
+
+**And text render group types:**
+- wrap-able
+- semi-wrap-able
+- not-wrap-able
+- heading-specific
+
+**And colorization group types:**
+- solid (surface, contrast)
+- blurred (glossy, backdrop)
+- tinted (transparent, overlay)
+- shaded (darkened, overlay)
+- toned (colored, overlay)
+
+---
+
 ## Layout, Responsiveness & Adaptivity
 
 - Design with responsiveness in mind:

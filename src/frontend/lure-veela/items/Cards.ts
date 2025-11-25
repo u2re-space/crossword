@@ -67,7 +67,7 @@ export const MakeCardElement = <
     const handleCardToggle = (ev: Event) => {
         const target = ev.currentTarget as HTMLElement | null;
         if (!target) return;
-        if (target.dataset.swipeLock === "true") {
+        if (target.getAttribute("data-swipe-lock") === "true") {
             ev.preventDefault();
             ev.stopPropagation();
             return;
@@ -76,7 +76,7 @@ export const MakeCardElement = <
         target.toggleAttribute("data-open");
     };
     const card = H`<div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
-    <div class="card-swipe-preview" aria-hidden="true">
+    <div class="card-swipe-preview">
         <div class="card-swipe-action is-edit">
             <ui-icon icon=${editIcon}></ui-icon>
             <span>${editLabel}</span>
@@ -142,7 +142,7 @@ export const MakeCardElement = <
                 }
                 if (nearby) break;
             }
-            
+
             card.classList.toggle("is-nearby", nearby);
         });
     }
@@ -153,7 +153,7 @@ export const MakeCardElement = <
             const active = isNow(entityItem.properties.begin_time, entityItem.properties.end_time);
             card.classList.toggle("is-now", active);
         });
-        
+
         if (entityItem.id && entityItem.title && (entityDesc.type === 'task' || entityDesc.type === 'event')) {
             registerEventForNotification(String(entityItem.id), entityItem.title, entityItem.properties.begin_time);
         }
@@ -162,14 +162,14 @@ export const MakeCardElement = <
     if (typeof orderValue === "number" && Number.isFinite(orderValue)) {
         try {
             card.style.order = Math.trunc(orderValue).toString();
-            card.dataset.order = card.style.order;
+            card.setAttribute("data-order", card.style.order);
             card.style.setProperty("--card-order", card.style.order);
         } catch (e) {
             console.warn("Failed to set card order", e);
         }
     }
 
-    card.dataset.swipeLock = "false";
+    card.setAttribute("data-swipe-lock", "false");
     setupSwipeGestures(card, events);
 
     //
@@ -223,7 +223,8 @@ export const MakeCardElement = <
 
 type SwipeAction = "edit" | "remove";
 
-const shouldHandlePointer = (ev: PointerEvent) => ev.pointerType === "touch" || ev.pointerType === "pen";
+// temporary all for debug
+const shouldHandlePointer = (ev: PointerEvent) => true/*ev.pointerType === "touch" || ev.pointerType === "pen"*/;
 
 const isSwipeEnvironment = () => {
     if (typeof window === "undefined") return false;
@@ -240,11 +241,11 @@ const isSwipeEnvironment = () => {
 };
 
 const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
-    if (!isSwipeEnvironment() || card.dataset.swipeHandlersApplied === "true") {
+    if (!isSwipeEnvironment() || card.getAttribute("data-swipe-handlers-applied") === "true") {
         return;
     }
 
-    card.dataset.swipeHandlersApplied = "true";
+    card.setAttribute("data-swipe-handlers-applied", "true");
 
     let pointerId: number | null = null;
     let startX = 0;
@@ -257,7 +258,7 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
         const progress = Math.min(Math.abs(offset) / SWIPE_TRIGGER_PX, 1);
         card.style.setProperty("--card-swipe-progress", progress.toString());
         if (progress >= 1) {
-            card.dataset.swipeReady = "true";
+            card.setAttribute("data-swipe-ready", "true");
         } else {
             card.removeAttribute("data-swipe-ready");
         }
@@ -270,7 +271,7 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
         }
         currentOffset = 0;
         isSwiping = false;
-        card.dataset.swipeLock = "false";
+        card.setAttribute("data-swipe-lock", "false");
         card.removeAttribute("data-swiping");
         card.removeAttribute("data-swipe-ready");
         card.removeAttribute("data-swipe-action");
@@ -279,9 +280,9 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
     };
 
     const showSuccess = (action: SwipeAction) => {
-        card.dataset.swipeSuccess = action;
+        card.setAttribute("data-swipe-success", action);
         window.setTimeout(() => {
-            if (card.dataset.swipeSuccess === action) {
+            if (card.getAttribute("data-swipe-success") === action) {
                 card.removeAttribute("data-swipe-success");
             }
         }, 360);
@@ -329,8 +330,8 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
             }
             if (Math.abs(deltaX) >= SWIPE_MIN_DISTANCE && Math.abs(deltaX) > Math.abs(deltaY)) {
                 isSwiping = true;
-                card.dataset.swiping = "true";
-                card.dataset.swipeLock = "true";
+                card.setAttribute("data-swiping", "true");
+                card.setAttribute("data-swipe-lock", "true");
             } else {
                 return;
             }
@@ -340,7 +341,7 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
         const constrained = Math.max(Math.min(deltaX, SWIPE_MAX_DISTANCE), -SWIPE_MAX_DISTANCE);
         currentOffset = constrained;
         const action: SwipeAction = constrained >= 0 ? "edit" : "remove";
-        card.dataset.swipeAction = action;
+        card.setAttribute("data-swipe-action", action);
         applySwipeVisuals(constrained);
     };
 
