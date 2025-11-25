@@ -1,8 +1,9 @@
-export type FieldType = "text" | "password" | "select";
+export type FieldType = "text" | "password" | "select" | "color-palette";
 
 export type FieldOption = {
     value: string;
     label: string;
+    color?: string;
 };
 
 export type FieldConfig = {
@@ -60,6 +61,10 @@ export type AppSettings = {
     };
     appearance?: {
         theme?: "light" | "dark" | "auto";
+        color?: string;
+    };
+    speech?: {
+        language?: string;
     };
 };
 
@@ -81,6 +86,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
         source: ""
     },
     appearance: {
-        theme: "auto"
+        theme: "auto",
+        color: ""
+    },
+    speech: {
+        language: typeof navigator !== "undefined" ? navigator.language : "en-US"
     }
 };

@@ -273,7 +273,7 @@ $card-variants: (
 
 @mixin card-shadows($elevation, $border-delta, $shadow-delta, $ambient: $card-ambient-default) {
     --card-shadow-base: var(--md3-elevation-#{$elevation}, md3-elevation(#{$elevation}));
-    --card-shadow-outline: 0 0 0 1px color-mix(
+    --card-shadow-outline: 0 0 0 0.5rem color-mix(
         in oklch,
         var(--current, var(--color-primary, var(--md3-primary, #6750a4))) calc((var(--card-border-alpha) + #{$border-delta}) * 100%),
         transparent
@@ -415,7 +415,7 @@ $card-variants: (
                 letter-spacing: 0.08em;
 
                 // Glow effect
-                filter: drop-shadow(0 0 8px color-mix(in oklch, var(--glow-color, currentColor) 60%, transparent));
+                filter: drop-shadow(0 0 1rem color-mix(in oklch, var(--glow-color, currentColor) 90%, transparent));
 
                 // Icon sizing
                 ui-icon {
@@ -427,11 +427,13 @@ $card-variants: (
                 transition: transform 0.1s linear;
 
                 &.is-edit {
+                    --current: var(--color-green);
                     --glow-color: var(--color-green);
                     transform-origin: left center;
                 }
 
                 &.is-remove {
+                    --current: var(--color-red);
                     --glow-color: var(--color-red);
                     transform-origin: right center;
                 }
@@ -645,11 +647,13 @@ $card-variants: (
         // Active swipe feedback
         // Logic for triggering glow effect based on swipe action
         &[data-swipe-action="edit"], &[data-swipe-success="edit"] {
-            --card-shadow-outline: 0 0 0 2px color-mix(in oklch, var(--color-green) calc(var(--card-swipe-progress, 0) * 100%), transparent);
+            --current: var(--color-green);
+            --card-shadow-outline: 0 0 0 0.5rem color-mix(in oklch, var(--color-green) calc(var(--card-swipe-progress, 0) * 100%), transparent);
         }
 
         &[data-swipe-action="remove"], &[data-swipe-success="remove"] {
-            --card-shadow-outline: 0 0 0 2px color-mix(in oklch, var(--color-red) calc(var(--card-swipe-progress, 0) * 100%), transparent);
+            --current: var(--color-red);
+            --card-shadow-outline: 0 0 0 0.5rem color-mix(in oklch, var(--color-red) calc(var(--card-swipe-progress, 0) * 100%), transparent);
         }
 
         // ---------------------------------------------------------------------

@@ -249,13 +249,12 @@
         // Items
         .ui-ws-item {
             background-color: transparent;
-            pointer-events: auto;
+            pointer-events: none;
             display: grid;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             aspect-ratio: 1 / 1;
-            overflow: visible;
             position: relative;
 
             text-align: center;
@@ -266,9 +265,16 @@
             grid-template-columns: minmax(0px, 1fr);
             grid-template-rows: minmax(0px, 1fr);
 
+            box-shadow: none;
+            filter: drop-shadow(0px 0px 0.25rem #0004) !important;
+
             // Visuals
             transition: transform var(--transition-fast) var(--ease-out);
-            cursor: pointer;
+            contain: none;
+            overflow: visible;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
 
             &:hover {
                 transform: scale(1.05);
@@ -285,18 +291,20 @@
             .ui-ws-item-icon {
                 display: grid;
                 border-radius: var(--radius-lg);
-                /*background: color-mix(in oklch, var(--surface-container-low, #fff) 80%, transparent);*/
-                /*box-shadow: var(--shadow-md);*/
                 transition: background-color var(--transition-colors), box-shadow var(--transition-colors);
                 grid-column: 1 / -1;
                 grid-row: 1 / -1;
                 aspect-ratio: 1 / 1;
 
+                pointer-events: auto;
                 position: relative;
                 text-align: center;
                 place-content: center;
                 place-items: center;
                 line-height: 0;
+                overflow: hidden;
+                contain: strict;
+                cursor: pointer;
 
                 inline-size: stretch;
                 block-size: stretch;
@@ -306,9 +314,12 @@
                 max-block-size: stretch;
                 padding: 1rem;
 
+                box-shadow: none;
+                filter: none;
+
                 ui-icon {
                     --icon-size: clamp(2rem, 100%, 3rem);
-                    color: var(--on-surface-variant);
+                    color: var(--on-surface-variant, var(--on-surface-color, currentColor));
                     aspect-ratio: 1 / 1;
                     max-inline-size: var(--icon-size, 2rem);
                     max-block-size: var(--icon-size, 2rem);
@@ -319,10 +330,14 @@
                     object-fit: contain;
                     object-position: center;
                     line-height: 0;
+
+                    filter: drop-shadow(0px 0px 0.25rem oklch(from var(--on-surface-variant, var(--on-surface-color, currentColor)) l c h / 0.4));
                 }
             }
 
             .ui-ws-item-label {
+                @include solid-colorize("&");
+
                 position: absolute;
                 inset: 0;
                 background-color: transparent;
@@ -335,6 +350,7 @@
                 perspective: 1000;
                 backface-visibility: hidden;
                 transform: translateY(calc(50% + 0.75rem)) translateZ(0px);
+                color: var(--on-surface-color, currentColor);
                 white-space: nowrap;
                 aspect-ratio: auto;
 
@@ -353,8 +369,7 @@
                     place-items: center;
 
                     @include ui.text-label("label-medium");
-                    color: var(--speed-dial-label-color);
-                    /*text-shadow: var(--speed-dial-label-shadow);*/
+                    color: var(--on-surface-color, currentColor);
 
                     // Truncate
                     white-space: nowrap;
@@ -373,6 +388,8 @@
                     overflow: visible;
                     max-inline-size: stretch;
                     min-inline-size: 1px;
+
+                    text-shadow: 0px 0px 0.25rem #0004;
                 }
             }
 

@@ -73,6 +73,7 @@
                 overflow: visible;
                 max-inline-size: stretch;
 
+                padding-inline: var(--padding-xl, 1.5rem);
                 place-content: center;
                 place-items: center;
                 text-align: center;
@@ -87,6 +88,7 @@
                 block-size: max-content;
                 max-block-size: none;
                 inline-size: stretch;
+                padding-inline: var(--padding-xl, 1.5rem);
             }
 
             &.is-collapsible {
@@ -103,8 +105,13 @@
                 }
 
                 .group-body {
+                    inline-size: stretch;
+                    max-inline-size: stretch;
+                    min-inline-size: 0px;
+                    block-size: fit-content;
                     padding: 0 var(--padding-lg) var(--padding-lg);
                     display: grid;
+                    grid-template-columns: minmax(0px, 1fr);
                     gap: var(--gap-md);
 
                     place-content: center;
@@ -158,7 +165,16 @@
 
             .group-body {
                 display: grid;
+                grid-template-columns: minmax(0px, 1fr);
+                inline-size: stretch;
+                max-inline-size: stretch;
+                min-inline-size: 0px;
+                block-size: fit-content;
                 gap: var(--gap-md);
+
+                place-content: center;
+                place-items: center;
+                text-align: center;
             }
         }
     }
@@ -405,6 +421,24 @@
                 transform: rotate(90deg);
             }
         }
+    }
+
+    .color-option {
+        --current: #{"attr(data-color type(<color>))"};
+        background-color: #{"attr(data-color type(<color>))"} !important;
+        min-inline-size: fit-content; min-block-size: fit-content;
+        inline-size: 2.5rem; block-size: 2.5rem;
+        max-inline-size: 2.5rem; max-block-size: 2.5rem;
+        border-radius: 50%;
+        border: 2px solid transparent; cursor: pointer;
+        aspect-ratio: 1 / 1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-size: 0;
+        line-height: 0;
+        padding: 1rem;
+        margin: 0;
+        outline: none;
+        appearance: none;
     }
 
     .mcp-config {

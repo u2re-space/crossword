@@ -230,7 +230,7 @@ Promise.try(async () => {
 
 
 //
-export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) => {
+export const recordSpeechRecognition = async (userInputHoldUntilStop: boolean = true) => {
     // @ts-ignore
     const recognition = typeof SpeechRecognition != "undefined" ? new SpeechRecognition() : null;
     if (!recognition) {
@@ -238,8 +238,9 @@ export const recordSpeechRecognition = (userInputHoldUntilStop: boolean = true) 
         return null;
     }
 
-    // TODO! auto detect language by browser settings
-    recognition.lang = navigator?.language || "ru-RU";
+    //
+    const settings = await loadSettings();
+    recognition.lang = settings?.speech?.language || navigator?.language || "ru-RU";
 
     //
     recognition.interimResults = false;
@@ -572,7 +573,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
 
         //
         viewPage = await viewPage;
-        const recognition = recordSpeechRecognition();
+        const recognition = await recordSpeechRecognition();
         if (!recognition) {
             toastError("Failed to record speech recognition");
             return;

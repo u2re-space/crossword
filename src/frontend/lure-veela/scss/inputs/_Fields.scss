@@ -26,6 +26,40 @@
         resize: vertical;
     }
 
+    .field {
+        inline-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: 0px;
+
+        block-size: fit-content;
+
+        place-content: center;
+        place-items: center;
+        text-align: center;
+
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+
+        & > * {
+            inline-size: stretch;
+            block-size: fit-content;
+        }
+    }
+
+    .field-control {
+        inline-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: 0px;
+        block-size: fit-content;
+    }
+
+    .field-label {
+        margin-block: var(--space-sm);
+        inline-size: fit-content;
+        max-inline-size: stretch;
+    }
+
     // Date/Time Editor Styles
     .field-editor {
         display: grid;

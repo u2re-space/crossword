@@ -80,23 +80,53 @@ export const Settings = async () => {
     //
     const createField = (config: FieldConfig) => {
         const id = `settings-${slugify(config.path)}-${fieldRefs.size}`;
-        let control: HTMLInputElement | HTMLSelectElement;
+        let control: HTMLInputElement | HTMLSelectElement | HTMLElement;
+
         if (config.type === "select") {
             const select = H`<select class="field-control" id=${id} name=${config.path}></select>` as HTMLSelectElement;
             (config.options ?? []).forEach((opt) => select.appendChild(new Option(opt.label, opt.value)));
             control = select;
+        } else if (config.type === "color-palette") {
+            const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
+            const palette = H`<div class="color-palette-grid" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>` as HTMLElement;
+
+            (config.options ?? []).forEach(opt => {
+                const btn = H`<button type="button" class="color-option" data-color=${opt.color} title=${opt.label} data-value=${opt.value}></button>` as HTMLButtonElement;
+
+                btn.onclick = () => {
+                    hidden.value = opt.value;
+                    // Update visual selection
+                    const allBtns = palette.querySelectorAll('.color-option');
+                    allBtns.forEach(b => (b as HTMLElement).style.borderColor = 'transparent');
+                    btn.style.borderColor = 'var(--text-primary, #fff)'; // highlight selected
+
+                    // Live preview
+                    if (config.path === "appearance.color") {
+                        document.documentElement.style.setProperty("--current", opt.value);
+                        document.documentElement.style.setProperty("--primary", opt.value);
+                        document.body.style.setProperty("--current", opt.value);
+                        document.body.style.setProperty("--primary", opt.value);
+                    }
+                };
+                palette.append(btn);
+            });
+
+            const wrapper = H`<div>${palette}${hidden}</div>`;
+            control = hidden;
         } else {
             const input = H`<input class="field-control" id=${id} name=${config.path} type=${config.type === "password" ? "password" : "text"} placeholder=${config.placeholder ?? ""} />` as HTMLInputElement;
             input.autocomplete = "off";
             control = input;
         }
+
         control.dataset.path = config.path;
-        const field = H`<label class="field">
-            <span class="field-label">${config.label}</span>
-            ${control}
+        const field = H`<div class="field">
+            <label class="field-label">${config.label}</label>
+            ${config.type === "color-palette" ? (control.parentElement as HTMLElement) : control}
             ${config.helper ? H`<span class="field-hint">${config.helper}</span>` : null}
-        </label>` as HTMLElement;
-        fieldRefs.set(config.path, control);
+        </div>` as HTMLElement;
+
+        fieldRefs.set(config.path, control as any);
         fieldMeta.set(config.path, config);
         return field;
     };
@@ -131,10 +161,10 @@ export const Settings = async () => {
         const control = H`<input class="field-control" id=${fieldId} name=${`mcp.${mcpId}.${fieldName}`} type=${type} placeholder=${placeholder} />` as HTMLInputElement;
         control.dataset.mcpId = mcpId;
         control.dataset.fieldName = fieldName;
-        const field = H`<label class="field">
-            <span class="field-label">${label}</span>
+        const field = H`<div class="field">
+            <label class="field-label">${label}</label>
             ${control}
-            </label>` as HTMLElement;
+            </div>` as HTMLElement;
         fieldRefs.set(`mcp.${mcpId}.${fieldName}`, control);
         return field;
     };
@@ -302,13 +332,6 @@ export const Settings = async () => {
                     body.append(actionsContainer);
                 } else
                 if (group.key === 'synchronization') {
-                    // Add Synchronization button
-                    /*const synchronizationBtn = H`<button type="button" class="btn btn-secondary" on:click=${synchronizeWorkspace}>
-                        <ui-icon icon="sync"></ui-icon>
-                        <span>Synchronize Workspace</span>
-                    </button>`;
-                    body.append(synchronizationBtn);*/
-
                     // Add Import/Export buttons
                     const importBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("import-settings")?.(null as any, null as any, container)}>
                         <ui-icon icon="upload-simple"></ui-icon>
@@ -353,11 +376,6 @@ export const Settings = async () => {
     ></ui-tabbed-box>` as HTMLElement;
     const tabsState: { value: SectionKey } = propRef(panelsWrapper, "currentTab", SETTINGS_SECTIONS[0].key);
 
-    // styles broken for that... TODO: fix
-    /*const statusBar = H`<div class="settings-actions" role="status" prop:hidden=${computed(statusText, (text) => !text?.trim())}>
-        <span class="save-status" aria-live="polite">${statusText}</span>
-    </div>` as HTMLElement;
-    container.append(panelsWrapper, statusBar);*/
     container.append(panelsWrapper);
 
     //
@@ -416,10 +434,23 @@ export const Settings = async () => {
             } else if (stringValue) {
                 control.appendChild(new Option(stringValue, stringValue, true, true));
             } else {
-                control.selectedIndex = 0;
+                control.selectedIndex = 0; // Default to first if not found
             }
         } else {
             control.value = stringValue;
+            // Update visual state for color palette
+            if (control.type === "hidden" && control.parentElement?.querySelector(".color-palette-grid")) {
+                 const palette = control.parentElement.querySelector(".color-palette-grid");
+                 if (palette) {
+                     palette.querySelectorAll('.color-option').forEach(b => {
+                        if ((b as HTMLElement).dataset.value === stringValue) {
+                            (b as HTMLElement).style.borderColor = 'var(--text-primary, #fff)';
+                        } else {
+                            (b as HTMLElement).style.borderColor = 'transparent';
+                        }
+                     });
+                 }
+            }
         }
     };
 
@@ -506,6 +537,29 @@ export const Settings = async () => {
     //
     let settings = await loadSettings();
 
+    // Populate Speech languages
+    const speechLangField = fieldMeta.get("speech.language");
+    if (speechLangField && typeof navigator !== "undefined" && navigator.languages) {
+        // Use a Set to avoid duplicates if any, though navigator.languages shouldn't have them
+        const uniqueLangs = Array.from(new Set(navigator.languages));
+        speechLangField.options = uniqueLangs.map(lang => ({ value: lang, label: lang }));
+        // If navigator.language is not in the list (e.g. specialized), add it
+        if (navigator.language && !uniqueLangs.includes(navigator.language)) {
+             speechLangField.options.unshift({ value: navigator.language, label: navigator.language });
+        }
+
+        const select = fieldRefs.get("speech.language") as HTMLSelectElement;
+        if (select) {
+            select.innerHTML = "";
+             // Add a default option if none
+            if (speechLangField.options.length === 0) {
+                 select.appendChild(new Option("Default (en-US)", "en-US"));
+            } else {
+                speechLangField.options.forEach(opt => select.appendChild(new Option(opt.label, opt.value)));
+            }
+        }
+    }
+
     // Load existing MCP configurations BEFORE applying settings
     renderMCPs(settings);
 
@@ -514,6 +568,14 @@ export const Settings = async () => {
     applySettingsToForm(settings);
     applyModelSelection(settings);
     syncCustomVisibility();
+
+    // Apply color settings
+    if (settings.appearance?.color) {
+        document.documentElement.style.setProperty("--current", settings.appearance.color);
+        document.documentElement.style.setProperty("--primary", settings.appearance.color);
+        document.body.style.setProperty("--current", settings.appearance.color);
+        document.body.style.setProperty("--primary", settings.appearance.color);
+    }
 
     //
     const handleFormInput = (event: Event) => {
@@ -577,7 +639,11 @@ export const Settings = async () => {
                 source: readValue("timeline.source")
             },
             appearance: {
-                theme: readValue("appearance.theme") as any || "auto"
+                theme: readValue("appearance.theme") as any || "auto",
+                color: readValue("appearance.color")
+            },
+            speech: {
+                language: readValue("speech.language")
             }
         };
 
@@ -587,6 +653,15 @@ export const Settings = async () => {
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
             applyTheme(settings.appearance?.theme);
+
+            // Apply color
+            if (settings.appearance?.color) {
+                document.documentElement.style.setProperty("--current", settings.appearance.color);
+                document.documentElement.style.setProperty("--primary", settings.appearance.color);
+                document.body.style.setProperty("--current", settings.appearance.color);
+                document.body.style.setProperty("--primary", settings.appearance.color);
+            }
+
             statusText.value = "Saved";
             toastSuccess("Settings updated");
             syncCustomVisibility();
@@ -612,6 +687,12 @@ export const Settings = async () => {
         applyModelSelection(settings);
         syncCustomVisibility();
         applyTheme(settings.appearance?.theme);
+        if (settings.appearance?.color) {
+            document.documentElement.style.setProperty("--current", settings.appearance.color);
+            document.documentElement.style.setProperty("--primary", settings.appearance.color);
+            document.body.style.setProperty("--current", settings.appearance.color);
+            document.body.style.setProperty("--primary", settings.appearance.color);
+        }
         toastSuccess("Settings reloaded");
     };
     return container as HTMLElement;

@@ -110,8 +110,6 @@ const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactiv
         bindCell(el, args);
     }
     if (el.dataset.layer === "icons") {
-        el.style.pointerEvents = "auto";
-        el.style.cursor = "pointer";
         bindInteraction(el, args);
     }
 };
@@ -197,7 +195,7 @@ export function SpeedDial(makeView: any) {
     viewMaker = makeView;
 
     const renderIconItem = (item: SpeedDialItem)=>{
-        return H`<div class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
+        return H`<div style="pointer-events: none;" class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
             <div data-shape="square" class="ui-ws-item-icon shaped">
                 <ui-icon style="z-index: 2;" icon=${item.icon}></ui-icon>
             </div>
@@ -212,10 +210,11 @@ export function SpeedDial(makeView: any) {
         </div>`;
     };
 
+    //
     const oRef = orientRef();
     const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
         ${makeWallpaper()}
-        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
+        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8; color-scheme: dark;">
             ${M(items, renderLabelItem)}
         </div>
         <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">

@@ -27,7 +27,11 @@ export const closeToastLayer = () => {
 export const showToast = (message: string, kind: ToastKind = "info") => {
     if (!message) return;
     const layer = ensureLayer();
-    const toast = H`<div class="rs-toast" data-kind=${kind}>${message}</div>` as HTMLElement;
+    
+    // improved a11y
+    const role = (kind === "error" || kind === "warning") ? "alert" : "status";
+    
+    const toast = H`<div class="rs-toast" data-kind=${kind} role=${role}>${message}</div>` as HTMLElement;
     layer.appendChild(toast);
 
     requestAnimationFrame(() => toast.setAttribute("data-visible", "true"));
@@ -58,3 +62,4 @@ export const showToast = (message: string, kind: ToastKind = "info") => {
 export const toastSuccess = (message: string) => showToast(message, "success");
 export const toastError = (message: string) => showToast(message, "error");
 export const toastWarning = (message: string) => showToast(message, "warning");
+export const toastInfo = (message: string) => showToast(message, "info");
