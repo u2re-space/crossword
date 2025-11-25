@@ -160,7 +160,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "settings") {
             element = Settings();
-            actions = makeToolbar(["apply-settings", "import-settings", "export-settings", "share-clipboard", "paste-and-recognize" ], {
+            actions = makeToolbar(["apply-settings", "import-settings", "export-settings", "paste-and-recognize", "share-clipboard"], {
                 label: "Settings",
                 type: registryKey,
                 DIR: `/`
