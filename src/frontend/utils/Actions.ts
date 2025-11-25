@@ -181,11 +181,15 @@ const ensureHashNavigation = (view: string, viewMaker?: any, props?: any) => {
     if (!view || typeof window === "undefined") return;
 
     //
-    viewMaker?.(view, props); const hash = `#${view}`;
-    if (window.location.hash === hash) {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
+    if (viewMaker) {
+        viewMaker?.(view, props);
     } else {
-        window.location.hash = hash;
+        const hash = `#${view?.replace?.(/^#/, "") ?? view}`;
+        if (window.location.hash === hash) {
+            window.dispatchEvent(new HashChangeEvent("hashchange"));
+        } else {
+            window.location.hash = hash;
+        }
     }
 };
 

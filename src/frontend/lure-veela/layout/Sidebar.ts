@@ -8,15 +8,13 @@ export const applyActive = (name?: string | null, oldView?: string | null, exist
 
     //
     requestAnimationFrame(() => {
-        if (name && (oldView ||= currentView?.value) != name) {
-            if (oldView && existsViews?.has?.(oldView)) {
-                const existView = existsViews?.get?.(oldView);
-                if (existView) {
-                    const view = _makeView?.(name) || null;
-                    if (view) {
-                        replaceChildren(existView?.[0]?.parentNode, view?.[0], null, -1, existView?.[0]);
-                        replaceChildren(existView?.[1]?.parentNode, view?.[1], null, -1, existView?.[1]);
-                    }
+        if (name && oldView && existsViews?.has?.(oldView)) {
+            const existView = existsViews?.get?.(oldView);
+            if (existView) {
+                const view = _makeView?.(name) || existsViews?.get?.(name) || null;
+                if (view) {
+                    replaceChildren(existView?.[0]?.parentNode, view?.[0], null, -1, existView?.[0]);
+                    replaceChildren(existView?.[1]?.parentNode, view?.[1], null, -1, existView?.[1]);
                 }
             }
         }

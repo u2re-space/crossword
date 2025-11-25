@@ -6,7 +6,7 @@ import { makeReactive, $trigger } from "fest/object";
 import "fest/fl-ui";
 
 //
-import { Sidebar } from "./Sidebar";
+import { applyActive, Sidebar } from "./Sidebar";
 import { MakeCardElement } from "../items/Cards";
 import { hashTargetRef } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
@@ -111,7 +111,10 @@ export async function frontend(mountElement) {
             if (props?.focus == true || props?.focus == null) {
                 // Defer focus slightly to allow UI update
                 if (CURRENT_VIEW.value !== registryKey) {
-                    requestAnimationFrame(() => { CURRENT_VIEW.value = registryKey; });
+                    requestAnimationFrame(() => {
+                        CURRENT_VIEW.value = registryKey;
+                        applyActive(registryKey, null, existsViews);
+                    });
                 }
             }
             return cached;
@@ -136,7 +139,12 @@ export async function frontend(mountElement) {
                 element?.setAttribute?.("data-view-id", registryKey);
                 actions?.setAttribute?.("data-view-id", registryKey);
 
-                existsViews.set(registryKey, [actions, element]);
+                //
+                const cached = existsViews.get(registryKey);
+                if (cached) {
+                    cached[0] = actions;
+                    cached[1] = element;
+                }
             });
 
             // use by promise
@@ -191,7 +199,10 @@ export async function frontend(mountElement) {
 
         //
         if (registryKey == "home") {
-            element = SpeedDial(makeView);
+            // TODO: handle props support
+            element = SpeedDial((view, props) => {
+                CURRENT_VIEW.value = view;
+            });
             actions = makeToolbar([], {
                 label: "",
                 type: registryKey,
@@ -239,7 +250,10 @@ export async function frontend(mountElement) {
         //
         if (props?.focus == true || props?.focus == null) {
             if (CURRENT_VIEW.value !== registryKey) {
-                requestAnimationFrame(() => { CURRENT_VIEW.value = registryKey; });
+                requestAnimationFrame(() => {
+                    CURRENT_VIEW.value = registryKey;
+                    applyActive(registryKey, null, existsViews);
+                });
             }
         }
 

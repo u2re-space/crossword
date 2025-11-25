@@ -38,7 +38,7 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
     }
 
     //
-    applyActive(currentView?.value, [...existsViews?.keys?.()]?.[0] || "home", existsViews, makeView, currentView);
+    applyActive(currentView?.value, [...existsViews?.keys?.()]?.[0] || currentView?.value || "home", existsViews, makeView, currentView);
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
