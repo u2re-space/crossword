@@ -75,7 +75,7 @@ export const MakeCardElement = <
 
         target.toggleAttribute("data-open");
     };
-    const card = H`<div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
+    const card = H`<div class="card-wrap" data-order=${options?.order ?? ""}>
     <div class="card-swipe-preview">
         <div class="card-swipe-action is-edit">
             <ui-icon icon=${editIcon}></ui-icon>
@@ -86,6 +86,7 @@ export const MakeCardElement = <
             <span>${deleteLabel}</span>
         </div>
     </div>
+    <div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
     <div class="card-avatar">
         <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
     </div>
@@ -109,18 +110,21 @@ export const MakeCardElement = <
         <ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityItem?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
     </div>
     ${linksPlaceholder}
+    </div>
 </div>` as HydratedCardElement;
+
+    const cardInner = card.querySelector(".card") as HTMLElement;
 
     //
     if (entityItem?.properties?.location?.coordinate) {
         const { latitude, longitude } = entityItem.properties.location.coordinate;
-        bindBeh(card, GeoState, () => {
+        bindBeh(cardInner, GeoState, () => {
             const nearby = isNearby(latitude, longitude);
-            card.classList.toggle("is-nearby", nearby);
+            cardInner.classList.toggle("is-nearby", nearby);
         });
     } else if (entityItem?.properties?.usableIn || entityItem?.properties?.usableFor) {
         // Check for related entities (Bonus/Promo case)
-        bindBeh(card, GeoState, () => {
+        bindBeh(cardInner, GeoState, () => {
             let nearby = false;
             const checkList = [
                 ...(entityItem.properties?.usableIn || []),
@@ -143,15 +147,15 @@ export const MakeCardElement = <
                 if (nearby) break;
             }
 
-            card.classList.toggle("is-nearby", nearby);
+            cardInner.classList.toggle("is-nearby", nearby);
         });
     }
 
     //
     if (entityItem?.properties?.begin_time) {
-        bindBeh(card, TimeState, () => {
+        bindBeh(cardInner, TimeState, () => {
             const active = isNow(entityItem.properties.begin_time, entityItem.properties.end_time);
-            card.classList.toggle("is-now", active);
+            cardInner.classList.toggle("is-now", active);
         });
 
         if (entityItem.id && entityItem.title && (entityDesc.type === 'task' || entityDesc.type === 'event')) {
@@ -169,8 +173,8 @@ export const MakeCardElement = <
         }
     }
 
-    card.setAttribute("data-swipe-lock", "false");
-    setupSwipeGestures(card, events);
+    cardInner.setAttribute("data-swipe-lock", "false");
+    setupSwipeGestures(cardInner, events, card);
 
     //
     const updateCardInfo = ($entityItem: E = entityItem) => {
@@ -223,8 +227,7 @@ export const MakeCardElement = <
 
 type SwipeAction = "edit" | "remove";
 
-// temporary all for debug
-const shouldHandlePointer = (ev: PointerEvent) => true/*ev.pointerType === "touch" || ev.pointerType === "pen"*/;
+const shouldHandlePointer = (ev: PointerEvent) => ev?.pointerType === "touch" || ev?.pointerType === "pen";
 
 const isSwipeEnvironment = () => {
     if (typeof window === "undefined") return false;
@@ -240,7 +243,7 @@ const isSwipeEnvironment = () => {
     return (hasCoarsePointer || hoverNone || hasTouchPoints) && narrowViewport;
 };
 
-const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
+const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers, wrapper: HTMLElement) => {
     if (!isSwipeEnvironment() || card.getAttribute("data-swipe-handlers-applied") === "true") {
         return;
     }
@@ -254,9 +257,15 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
     let isSwiping = false;
 
     const applySwipeVisuals = (offset: number) => {
+        // Apply offset to card (for transform)
         card.style.setProperty("--card-swipe-offset", `${offset}px`);
+
+        // Calculate progress for wrapper (for preview opacity/glow)
         const progress = Math.min(Math.abs(offset) / SWIPE_TRIGGER_PX, 1);
-        card.style.setProperty("--card-swipe-progress", progress.toString());
+
+        // Set properties on wrapper for the preview to react
+        wrapper.style.setProperty("--card-swipe-progress", progress.toString());
+
         if (progress >= 1) {
             card.setAttribute("data-swipe-ready", "true");
         } else {
@@ -276,7 +285,7 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers) => {
         card.removeAttribute("data-swipe-ready");
         card.removeAttribute("data-swipe-action");
         card.style.setProperty("--card-swipe-offset", "0px");
-        card.style.setProperty("--card-swipe-progress", "0");
+        wrapper.style.setProperty("--card-swipe-progress", "0");
     };
 
     const showSuccess = (action: SwipeAction) => {

@@ -337,6 +337,108 @@ $card-variants: (
         100% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
     }
 
+    .card-wrap {
+        // ---------------------------------------------------------------------
+        // Box/Layout
+        // ---------------------------------------------------------------------
+        display: grid;
+        grid-template-areas: "card";
+        grid-template-columns: 100%;
+        grid-template-rows: auto;
+
+        position: relative;
+        isolation: isolate;
+        place-self: center;
+
+        box-sizing: border-box;
+        inline-size: stretch !important;
+        max-inline-size: min(60rem, 100%) !important;
+        min-inline-size: 0px;
+        block-size: max-content;
+
+        padding: 0;
+        margin: 0;
+
+        // ---------------------------------------------------------------------
+        // Interaction
+        // ---------------------------------------------------------------------
+        order: var(--card-order, initial);
+        user-select: none;
+        pointer-events: auto;
+        touch-action: pan-y;
+
+        // ---------------------------------------------------------------------
+        // Swipe State (inherited from element style usually, but defined here for context)
+        // ---------------------------------------------------------------------
+        --card-swipe-offset: 0px;
+        --card-swipe-progress: 0;
+        --card-padding: var(--padding-lg);
+        --card-radius: var(--radius-md);
+
+        & > * {
+            grid-area: card;
+        }
+
+        // ---------------------------------------------------------------------
+        // Swipe Preview (Background Layer)
+        // ---------------------------------------------------------------------
+        .card-swipe-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--card-padding);
+
+            // Rendering
+            z-index: 1;
+            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
+
+            // Interaction
+            pointer-events: none;
+
+            // Animation
+            transition: opacity var(--duration-fast) var(--ease-out);
+
+            // Styling
+            color: var(--on-surface-color, currentColor);
+            --icon-color: var(--on-surface-color, currentColor);
+
+            .card-swipe-action {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: var(--gap-xs);
+
+                // Visuals
+                font-size: clamp(var(--font-xs), 1cqmin, var(--font-sm));
+                font-weight: var(--font-weight-medium);
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+
+                // Glow effect
+                filter: drop-shadow(0 0 8px color-mix(in oklch, var(--glow-color, currentColor) 60%, transparent));
+
+                // Icon sizing
+                ui-icon {
+                    font-size: 1.5rem;
+                }
+
+                // Scaling effect
+                transform: scale(calc(0.8 + (var(--card-swipe-progress, 0) * 0.4)));
+                transition: transform 0.1s linear;
+
+                &.is-edit {
+                    --glow-color: var(--color-green);
+                    transform-origin: left center;
+                }
+
+                &.is-remove {
+                    --glow-color: var(--color-red);
+                    transform-origin: right center;
+                }
+            }
+        }
+    }
+
     .card {
         // ---------------------------------------------------------------------
         // Properties
@@ -346,10 +448,6 @@ $card-variants: (
         --card-padding: var(--padding-lg);
         --card-radius: var(--radius-md);
         --card-avatar-size: 48px;
-
-        // Swipe State
-        --card-swipe-offset: 0px;
-        --card-swipe-progress: 0;
 
         // Palette & Vars
         @include card-surface-vars(
@@ -397,7 +495,7 @@ $card-variants: (
         min-inline-size: 0px;
         block-size: max-content;
         padding: var(--card-padding);
-        order: var(--card-order, initial);
+        // order: var(--card-order, initial); // Moved to wrapper
 
         // ---------------------------------------------------------------------
         // Rendering
@@ -406,6 +504,7 @@ $card-variants: (
         isolation: isolate;
         transform: translate3d(var(--card-swipe-offset, 0px), 0, 0);
         will-change: transform; // Optimize swipe performance
+        z-index: 2; // Always above preview
 
         // ---------------------------------------------------------------------
         // Decorations
@@ -459,12 +558,12 @@ $card-variants: (
         // Swipe active state: disable transitions for direct tracking
         &:where([data-swiping="true"]) {
             transition: none !important;
-            overflow: visible; // Allow preview to be seen outside clipped area
+            // overflow: visible; // No longer needed with wrapper approach
 
             // Disable interactions on content while swiping
-            & > :not(.card-swipe-preview) {
+            /* & > :not(.card-swipe-preview) {
                 pointer-events: none;
-            }
+            } */
         }
 
         &:where([data-swipe-action]) {
@@ -488,6 +587,11 @@ $card-variants: (
             @include card-shadows(3, 0.14, 0.22, $card-ambient-open);
         }
 
+        &:active {
+            will-change: transform;
+            transition: none;
+        }
+
         // ---------------------------------------------------------------------
         // Children / Nested Elements
         // ---------------------------------------------------------------------
@@ -502,10 +606,7 @@ $card-variants: (
         }
 
         // Content Layer (Foreground)
-        & > :not(.card-swipe-preview) {
-            position: relative;
-            z-index: 2;
-        }
+        // No longer needed to select > :not(.card-swipe-preview)
 
         // General text wrapping
         span, a {
@@ -541,82 +642,8 @@ $card-variants: (
             font-family: var(--font-family-mono, var(--font-family-monospace, monospace));
         }
 
-        // ---------------------------------------------------------------------
-        // Swipe Preview (Background Layer)
-        // ---------------------------------------------------------------------
-        .card-swipe-preview {
-            // Box/Layout
-            display: grid;
-            position: absolute;
-            inset: 0;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--gap-md);
-            padding: var(--card-padding);
-            align-items: center;
-            justify-items: center;
-
-            // Rendering
-            z-index: 0; // Behind content
-            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
-            transform: translateX(calc(var(--card-swipe-offset, 0px) * -1));
-
-            // Interaction
-            pointer-events: none;
-
-            // Animation
-            transition: opacity var(--duration-fast) var(--ease-out);
-            // Counter-transform must NOT transition during swipe to match card movement perfectly
-            // But since .card has transition: none during swipe, this inherits?
-            // Actually this element doesn't have transition property for transform set above.
-
-            color: var(--on-surface-color, currentColor);
-            --icon-color: var(--on-surface-color, currentColor);
-        }
-
-        .card-swipe-action {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--gap-xs);
-            font-size: clamp(var(--font-xs), 1cqmin, var(--font-sm));
-            font-weight: var(--font-weight-medium);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: var(--padding-xs) var(--padding-md);
-            border-radius: var(--radius-pill, 999px);
-            background: color-mix(in oklch, var(--current) 24%, transparent);
-            color: var(--on-surface);
-            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--current) 50%, transparent);
-            opacity: 0;
-            transform: scale(0.8);
-            transition:
-                opacity var(--duration-normal) var(--ease-out),
-                transform var(--duration-normal) var(--ease-out),
-                background-color var(--duration-fast) var(--ease-out);
-
-            ui-icon {
-                --icon-color: currentColor;
-            }
-
-            &.is-edit {
-                justify-self: start;
-                background: linear-gradient(90deg, color-mix(in oklch, var(--color-green) 60%, transparent), transparent);
-            }
-
-            &.is-remove {
-                justify-self: end;
-                background: linear-gradient(270deg, color-mix(in oklch, var(--color-red) 68%, transparent), transparent);
-            }
-        }
-
         // Active swipe feedback
-        &[data-swipe-action="edit"] .card-swipe-action.is-edit,
-        &[data-swipe-success="edit"] .card-swipe-action.is-edit,
-        &[data-swipe-action="remove"] .card-swipe-action.is-remove,
-        &[data-swipe-success="remove"] .card-swipe-action.is-remove {
-            opacity: clamp(0, var(--card-swipe-progress, 0), 1);
-            transform: scale(1);
-        }
-
+        // Logic for triggering glow effect based on swipe action
         &[data-swipe-action="edit"], &[data-swipe-success="edit"] {
             --card-shadow-outline: 0 0 0 2px color-mix(in oklch, var(--color-green) calc(var(--card-swipe-progress, 0) * 100%), transparent);
         }
@@ -994,4 +1021,3 @@ $card-variants: (
         }
     }
 }
-
