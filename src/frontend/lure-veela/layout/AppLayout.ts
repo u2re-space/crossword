@@ -8,14 +8,12 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
         <div class="toolbar" style="will-change: contents; background-color: transparent;">
             ${C(computed(currentView, (key)=>{
                 // Avoid layout thrashing
-                if (key == null) return null;
-                return makeView(key)?.[0] || null;
+                return makeView(key || "home")?.[0] || null;
             }))}
         </div>
         <div class="content" style="will-change: contents;">
             ${C(computed(currentView, (key)=>{
-                if (key == null) return null;
-                return makeView(key)?.[1] || null;
+                return makeView(key || "home")?.[1] || null;
             }))}
         </div>
     </div>`;
@@ -28,6 +26,9 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
         if (tabName) {
             requestIdleCallback(() => {
                 existsViews.delete(tabName);
+                document.querySelectorAll?.(`[data-view-id="${tabName}"]`)?.forEach?.((el: any)=>{ el?.remove?.(); });
+
+                //
                 if (currentView.value == tabName) {
                     currentView.value = "home";
                 }

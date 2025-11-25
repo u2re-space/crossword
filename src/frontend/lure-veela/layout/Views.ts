@@ -103,6 +103,9 @@ export async function frontend(mountElement) {
         let element: any = null;
 
         //
+        registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
+
+        //
         if (existsViews.has(registryKey)) {
             const cached = existsViews.get(registryKey);
             if (props?.focus == true || props?.focus == null) {
@@ -129,6 +132,9 @@ export async function frontend(mountElement) {
                     type: registryKey,
                     DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
                 }, element));
+
+                element?.setAttribute?.("data-view-id", registryKey);
+                actions?.setAttribute?.("data-view-id", registryKey);
 
                 existsViews.set(registryKey, [actions, element]);
             });
@@ -203,6 +209,10 @@ export async function frontend(mountElement) {
 
             });*/
 
+            element?.setAttribute?.("data-view-id", registryKey);
+            actions?.setAttribute?.("data-view-id", registryKey);
+
+            //
             if (!existsViews.has(registryKey)) {
                 existsViews.set(registryKey, [actions, element]);
             }
@@ -216,6 +226,8 @@ export async function frontend(mountElement) {
                 const current = existsViews.get(registryKey);
                 if (current) {
                     current[1] = el;
+                    el?.setAttribute?.("data-view-id", registryKey);
+                    actions?.setAttribute?.("data-view-id", registryKey);
                     // Trigger update efficiently
                     if (CURRENT_VIEW?.value == registryKey) {
                         requestAnimationFrame(() => CURRENT_VIEW?.[$trigger]?.());
@@ -236,7 +248,7 @@ export async function frontend(mountElement) {
     }
 
     //
-    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, makeView));
+    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, existsViews, makeView));
     mountElement?.append?.(layout);
     mountElement?.append?.(createCtxMenu());
 

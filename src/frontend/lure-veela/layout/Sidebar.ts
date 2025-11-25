@@ -1,25 +1,36 @@
 import { subscribe, addToCallChain } from "fest/object";
-import { H, M } from "fest/lure";
+import { H, M, replaceChildren } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
 
 //
-export const Sidebar: any = (currentView: { value: string }, entityViews, _makeView: (key: string)=>any) => {
-
-    //
+export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string)=>any) => {
     const fallbackLinks = NAVIGATION_SHORTCUTS.filter(({ view }) => !entityViews?.has?.(view));
     const sidebar = H`<nav slot="sidebar" class="sidebar c2-surface" aria-label="Primary" style="content-visibility: visible"><ul>
     ${M(entityViews, (frag, name) => H`<li><a target="_self" href="#${name}" data-name="${name}"><ui-icon icon="${frag?.icon}" style="pointer-events: none"></ui-icon><span>${frag?.label}</span></a></li>`)}
     ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-name="${frag.view}"><ui-icon icon="${frag.icon}" style="pointer-events: none"></ui-icon><span>${frag.label}</span></a></li>`)}
 </ul></nav>`;
 
+    //
     if (currentView) {
-        currentView.value ||= [...entityViews?.keys?.()]?.[0] || currentView.value;
+        currentView.value ||= [...existsViews?.keys?.()]?.[0] || "home";
     }
 
-    const normalize = (name?: string | null) => (name ?? "").replace(/^#/, "");
-    let lastActiveName: string | null = null;
+    //
+    const applyActive = (name?: string | null, oldView?: string | null) => {
+        if (name && (oldView ||= currentView?.value) != name) {
+            if (oldView && existsViews.has(oldView)) {
+                const existView = existsViews.get(oldView);
+                if (existView) {
+                    const view = _makeView(name);
+                    replaceChildren(existView?.[0]?.parentNode, view?.[0], null, -1, existView?.[0]);
+                    replaceChildren(existView?.[1]?.parentNode, view?.[1], null, -1, existView?.[1]);
+                }
+            }
 
-    const applyActive = (name?: string | null) => {
+            //
+            currentView.value = name || currentView.value;
+        };
+        /*
         const activeName = normalize(name) || normalize(currentView?.value);
         if (!activeName || activeName === lastActiveName) {
             return;
@@ -45,16 +56,16 @@ export const Sidebar: any = (currentView: { value: string }, entityViews, _makeV
 
         //
         lastActiveName = nextActive ? (normalize((nextActive as any)?.name || (nextActive as any)?.dataset?.name) || activeName) : null;
+    */
     };
 
     applyActive(currentView?.value);
 
     const unsubscribe = currentView
-        ? subscribe([currentView, "value"], (nextValue) => applyActive(nextValue as string))
+        ? subscribe([currentView, "value"], (nextValue, _, oldValue) => applyActive(nextValue as string, oldValue))
         : null;
 
     const hashListener = () => applyActive(window.location.hash);
-
     window.addEventListener("hashchange", hashListener, { passive: true });
 
     const closeSidebar = () => {
