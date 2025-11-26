@@ -172,8 +172,8 @@ export async function frontend(mountElement) {
 
             // Defer heavy view creation
             requestIdleCallback(async () => {
-                promised.resolve(element = await makeEntityView(registryKey, entityView));
-                toolbarPromise.resolve(actions = await makeToolbar(entityView?.availableActions || [], {
+                promised.resolve(element = makeEntityView(registryKey, entityView));
+                toolbarPromise.resolve(actions = makeToolbar(entityView?.availableActions || [], {
                     label: entityView?.label || registryKey,
                     type: registryKey,
                     DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`

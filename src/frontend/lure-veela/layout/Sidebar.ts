@@ -17,7 +17,7 @@ export const applyActive = (name?: string | null, oldView?: string | null, exist
             }
 
             // remove redundant elements if still remains
-            requestIdleCallback(() => {
+            requestAnimationFrame(() => {
                 if (existsViews && (currentView?.value ?? name) != oldView) {
                     document.querySelectorAll(`[data-view-id="${oldView}"]`)?.forEach?.((el: any) => { el?.remove?.(); });
                 }
