@@ -652,16 +652,9 @@ export const Settings = async () => {
             settings = await saveSettings(next);
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
-            applyTheme(settings.appearance?.theme);
+            applyTheme(settings);
 
-            // Apply color
-            if (settings.appearance?.color) {
-                document.documentElement.style.setProperty("--current", settings.appearance.color);
-                document.documentElement.style.setProperty("--primary", settings.appearance.color);
-                document.body.style.setProperty("--current", settings.appearance.color);
-                document.body.style.setProperty("--primary", settings.appearance.color);
-            }
-
+            //
             statusText.value = "Saved";
             toastSuccess("Settings updated");
             syncCustomVisibility();
@@ -686,13 +679,7 @@ export const Settings = async () => {
         applySettingsToForm(settings);
         applyModelSelection(settings);
         syncCustomVisibility();
-        applyTheme(settings.appearance?.theme);
-        if (settings.appearance?.color) {
-            document.documentElement.style.setProperty("--current", settings.appearance.color);
-            document.documentElement.style.setProperty("--primary", settings.appearance.color);
-            document.body.style.setProperty("--current", settings.appearance.color);
-            document.body.style.setProperty("--primary", settings.appearance.color);
-        }
+        applyTheme(settings);
         toastSuccess("Settings reloaded");
     };
     return container as HTMLElement;

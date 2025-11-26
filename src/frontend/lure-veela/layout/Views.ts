@@ -59,7 +59,9 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
-    await initDOM(document.body); initTheme(); loadInlineStyle(style);
+    await initDOM(document.body);
+    await loadInlineStyle(style);
+    await initTheme();
 
     //
     startGeoTracking();
