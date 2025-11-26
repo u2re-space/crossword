@@ -134,15 +134,13 @@ export async function frontend(mountElement) {
         });
 
         //
-        if (registryKey != "home") {
-            const options: any = {
-                id: registryKey,
-                priority: 10,
-                close: () => { onClose(registryKey, CURRENT_VIEW, existsViews, makeView); },
-                isActive: () => CURRENT_VIEW?.value == registryKey
-            };
-            registerCloseable(options);
-        }
+        const options: any = {
+            id: registryKey,
+            priority: registryKey != "home" ? 10 : 0,
+            close: () => { onClose(registryKey, CURRENT_VIEW, existsViews, makeView); },
+            isActive: () => CURRENT_VIEW?.value == registryKey
+        };
+        registerCloseable(options);
 
         //
         return existsViews.get(registryKey);
