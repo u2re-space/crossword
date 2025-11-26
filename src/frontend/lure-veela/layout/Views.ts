@@ -1,4 +1,4 @@
-import { AppLayout } from "./AppLayout";
+import { AppLayout, onClose } from "./AppLayout";
 import { loadInlineStyle, initialize as initDOM } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
 
@@ -8,7 +8,7 @@ import "fest/fl-ui";
 //
 import { Sidebar } from "./Sidebar";
 import { MakeCardElement } from "../items/Cards";
-import { hashTargetRef } from "fest/lure";
+import { hashTargetRef, initBackNavigation, registerCloseable, registerTask, type ITask } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
 import { createCtxMenu, SpeedDial } from "../views/SpeedDial";
 import { ViewPage } from "../views/Viewer";
@@ -52,7 +52,7 @@ const generateId = (path: string)=>{
 
 
 //
-export const CURRENT_VIEW = hashTargetRef(location.hash || "home", false);
+export const CURRENT_VIEW = hashTargetRef(location.hash || "#home", false);
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
 import { initTheme } from "@rs-frontend/utils/Theme";
@@ -62,6 +62,12 @@ export async function frontend(mountElement) {
     await initDOM(document.body);
     await loadInlineStyle(style);
     await initTheme();
+
+    // Initialize back navigation for mobile back gesture/button support
+    initBackNavigation({
+        preventDefaultNavigation: true,
+        pushInitialState: true
+    });
 
     //
     startGeoTracking();
@@ -95,31 +101,66 @@ export async function frontend(mountElement) {
         }, entityView?.tabs || [], tabOrganizer as any, entityView?.availableActions || [], MakeCardElement);
     };
 
+    //registerElement
+    const registerElement = (registryKey: string, toolbarWithElement: [HTMLElement, HTMLElement], existsViews: Map<string, any>) => {
+        registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
+        if (!registryKey || !toolbarWithElement?.[1]) return null;
 
+        //
+        if (existsViews.has(registryKey)) {
+            return existsViews.get(registryKey);
+        }
+
+        //
+        existsViews.set(registryKey, toolbarWithElement);
+        toolbarWithElement[0]?.setAttribute?.("data-view-id", registryKey);
+        toolbarWithElement[1]?.setAttribute?.("data-view-id", registryKey);
+
+        // also, reassign in array is promise
+        (toolbarWithElement[0] as any)?.then?.((e) => {
+            toolbarWithElement[0] = e;
+            e?.setAttribute?.("data-view-id", registryKey);
+        });
+
+        // also, reassign in array is promise
+        (toolbarWithElement[1] as any)?.then?.((e) => {
+            toolbarWithElement[1] = e;
+            e?.setAttribute?.("data-view-id", registryKey);
+
+            // Trigger update efficiently
+            if (CURRENT_VIEW?.value == registryKey) {
+                CURRENT_VIEW?.[$trigger]?.();
+            }
+        });
+
+        //
+        if (registryKey != "home") {
+            const options: any = {
+                id: registryKey,
+                priority: 10,
+                close: () => { onClose(registryKey, CURRENT_VIEW, existsViews, makeView); },
+                isActive: () => CURRENT_VIEW?.value == registryKey
+            };
+            registerCloseable(options);
+        }
+
+        //
+        return existsViews.get(registryKey);
+    }
 
     //
     const existsViews: Map<string, any> = makeReactive(new Map<string, any>()) as Map<string, any>;
     const makeView = (registryKey, props?: any)=>{
+        if (!registryKey) return null; registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
         if (!registryKey) return null;
+
+        //
         let actions: any = {};
         let element: any = null;
 
         //
-        registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
-
-        //
         if (existsViews.has(registryKey)) {
-            const cached = existsViews.get(registryKey);
-            if (props?.focus == true || props?.focus == null) {
-                // Defer focus slightly to allow UI update
-                if (CURRENT_VIEW.value !== registryKey) {
-                    requestAnimationFrame(() => {
-                        CURRENT_VIEW.value = registryKey;
-                        //applyActive(registryKey, null, existsViews);
-                    });
-                }
-            }
-            return cached;
+            return existsViews.get(registryKey);
         }
 
         // exists views
@@ -130,16 +171,13 @@ export async function frontend(mountElement) {
             const toolbarPromise = Promise.withResolvers<any>();
 
             // Defer heavy view creation
-            requestIdleCallback(() => {
-                promised.resolve(element = makeEntityView(registryKey, entityView));
-                toolbarPromise.resolve(actions = makeToolbar(entityView?.availableActions || [], {
+            requestIdleCallback(async () => {
+                promised.resolve(element = await makeEntityView(registryKey, entityView));
+                toolbarPromise.resolve(actions = await makeToolbar(entityView?.availableActions || [], {
                     label: entityView?.label || registryKey,
                     type: registryKey,
                     DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
                 }, element));
-
-                element?.setAttribute?.("data-view-id", registryKey);
-                actions?.setAttribute?.("data-view-id", registryKey);
 
                 //
                 const cached = existsViews.get(registryKey);
@@ -147,25 +185,17 @@ export async function frontend(mountElement) {
                     cached[0] = actions;
                     cached[1] = element;
                 }
+
+                //
+                element?.setAttribute?.("data-view-id", registryKey);
+                actions?.setAttribute?.("data-view-id", registryKey);
             });
 
             // use by promise
             element = promised.promise;
             actions = toolbarPromise.promise;
-            existsViews.set(registryKey, [actions, element]);
-
-            // Return placeholder or partial while loading?
-            // For now, synchronous creation as fallback if IdleCallback is too slow/unsupported or we need immediate result
-            // Actually, let's keep synchronous creation for first load but optimize the set
-            /*element = makeEntityView(registryKey, entityView);
-            actions = makeToolbar(entityView?.availableActions || [], {
-                label: entityView?.label || registryKey,
-                type: registryKey,
-                DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
-            }, element);*/
+            return registerElement(registryKey, [actions, element], existsViews);
         }
-
-
 
         //
         if (registryKey == "settings") {
@@ -202,9 +232,7 @@ export async function frontend(mountElement) {
         //
         if (registryKey == "home") {
             // TODO: handle props support
-            element = SpeedDial((view, props) => {
-                CURRENT_VIEW.value = view;
-            });
+            element = SpeedDial((view, props) => { CURRENT_VIEW.value = view; });
             actions = makeToolbar([], {
                 label: "",
                 type: registryKey,
@@ -216,55 +244,17 @@ export async function frontend(mountElement) {
         if (!element) return;
 
         //
-        if (element) {
-            // Batch update for reactive map
-            /*requestAnimationFrame(() => {
-
-            });*/
-
-            element?.setAttribute?.("data-view-id", registryKey);
-            actions?.setAttribute?.("data-view-id", registryKey);
-
-            //
-            if (!existsViews.has(registryKey)) {
-                existsViews.set(registryKey, [actions, element]);
-            }
-            // Temporary return for immediate use
-            //return [actions, element];
+        if (element && !existsViews.has(registryKey)) {
+            return registerElement(registryKey, [actions, element], existsViews);
         }
 
         //
-        if (element instanceof Promise) {
-            element?.then?.((el)=>{ // provoke re-render of async element
-                const current = existsViews.get(registryKey);
-                if (current) {
-                    current[1] = el;
-                    el?.setAttribute?.("data-view-id", registryKey);
-                    actions?.setAttribute?.("data-view-id", registryKey);
-                    // Trigger update efficiently
-                    if (CURRENT_VIEW?.value == registryKey) {
-                        requestAnimationFrame(() => CURRENT_VIEW?.[$trigger]?.());
-                    }
-                }
-            });
-        }
-
-        //
-        if (props?.focus == true || props?.focus == null) {
-            if (CURRENT_VIEW.value !== registryKey) {
-                requestAnimationFrame(() => {
-                    CURRENT_VIEW.value = registryKey;
-                    //applyActive(registryKey, null, existsViews);
-                });
-            }
-        }
-
-        //
-        return [actions, element];
+        return;
     }
 
     //
-    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, Sidebar(CURRENT_VIEW, entityViews, existsViews, makeView));
+    const $sidebar = Sidebar(CURRENT_VIEW, entityViews, existsViews, makeView);
+    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, $sidebar);
     mountElement?.append?.(layout);
     mountElement?.append?.(createCtxMenu());
 

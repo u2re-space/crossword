@@ -1,5 +1,5 @@
 import { makeReactive, propRef, stringRef, subscribe, computed } from "fest/object";
-import { ctxMenuTrigger, E, H, orientRef, M, Q, provide } from "fest/lure";
+import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal } from "fest/lure";
 import { bindInteraction } from "fest/fl-ui";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
@@ -322,7 +322,10 @@ const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell }
     actionSelect?.addEventListener("change", toggleFieldVisibility);
     toggleFieldVisibility();
 
+    let unregisterBackNav: (() => void) | null = null;
+
     const closeModal = ()=>{
+        unregisterBackNav?.();
         modal?.remove?.();
         document.removeEventListener("keydown", escHandler);
     };
@@ -339,6 +342,9 @@ const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell }
             closeModal();
         }
     });
+
+    // Register modal with back navigation system for mobile back gesture support
+    unregisterBackNav = registerModal(modal as HTMLElement, undefined, closeModal);
 
     form?.addEventListener("submit", (ev)=>{
         ev?.preventDefault?.();
