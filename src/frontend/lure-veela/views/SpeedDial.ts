@@ -69,9 +69,17 @@ const buildDescriptor = (item: SpeedDialItem) => {
 const bindCell = (el: HTMLElement, args: any) => {
     const { item } = args;
     const cell = item?.cell ?? [0, 0];
-    E(el, { style: { "--cell-x": propRef(cell, 0), "--cell-y": propRef(cell, 1) } });
+    E(el, {
+        style: {
+            "--cell-x": propRef(cell, 0),
+            "--cell-y": propRef(cell, 1),
+            "--p-cell-x": propRef(cell, 0),
+            "--p-cell-y": propRef(cell, 1)
+        }
+    });
 };
 
+//
 const runItemAction = (item: SpeedDialItem, actionId?: string, extras: { event?: Event; initiator?: HTMLElement } = {}) => {
     const resolvedAction = resolveItemAction(item, actionId);
     const action = actionRegistry.get(resolvedAction);
