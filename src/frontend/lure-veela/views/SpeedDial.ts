@@ -167,7 +167,7 @@ function makeWallpaper() {
     console.log(wallpaperState);
     const srcRef = stringRef("./assets/imgs/test.jpg");
     subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.jpg");
-    const CE = H`<canvas style="inline-size: 100%; block-size: 100%; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
+    const CE = H`<canvas style="min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
     return CE;
 }
 
