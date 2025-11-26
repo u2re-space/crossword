@@ -468,7 +468,6 @@
         }
 
         &:where(:hover, :focus-visible, :focus-within) {
-            box-shadow: 0 8px 24px var(--surface-opacity-muted);
             border-color: var(--primary-opacity-default);
             border-width: 0;
 

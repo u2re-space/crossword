@@ -6,7 +6,7 @@
     // Enhanced toast layer
     #rs-toast-layer {
         position: fixed;
-        inset-block-end: 0;
+        inset-block-end: 10dvb;
         inset-inline: 0;
         z-index: 10000;
         pointer-events: none;
@@ -20,7 +20,7 @@
         gap: var(--space-sm);
 
         // Limit height to avoid covering top UI elements if stack grows too large
-        max-block-size: 80vh;
+        max-block-size: 80dvb;
         overflow: hidden;
 
         // Clip content that goes outside (for clean enter/exit animations if needed)

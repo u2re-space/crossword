@@ -728,7 +728,6 @@ $card-variants: (
             border-radius: 50%;
             line-height: 0;
             background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.03));
-            box-shadow: var(--shadow-inset-strong);
             aspect-ratio: 1 / 1;
 
             @include surface(0.8);
