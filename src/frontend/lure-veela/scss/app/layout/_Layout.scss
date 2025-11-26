@@ -165,7 +165,7 @@
                         & {
                             position: relative;
                             isolation: isolate;
-                            border-radius: var(--radius-full);
+                            border-radius: var(--radius-md);
                             transition: color var(--transition-colors), background-color var(--transition-colors);
                             color: color-mix(in oklch, var(--on-surface, currentColor) 72%, transparent);
                             min-block-size: 3.5rem; // 56px

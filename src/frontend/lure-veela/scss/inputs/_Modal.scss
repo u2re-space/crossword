@@ -22,14 +22,6 @@
         perspective: 1000;
 
         @include ui.glass-backdrop();
-
-        // Mobile adjustment
-        @media (max-width: 600px) {
-            padding: 0;
-            align-items: end; // Bottom sheet style on mobile? Or just centered?
-            // Let's stick to centered but full width/height if needed or small padding
-            padding: var(--space-xs);
-        }
     }
 
     //
@@ -53,6 +45,7 @@
         background-color: var(--surface-color);
         color: var(--on-surface-color);
         padding: var(--padding-lg);
+        padding-block-end: var(--space-md);
         border-radius: var(--radius-lg);
 
         backface-visibility: hidden;
