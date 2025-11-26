@@ -1,9 +1,10 @@
-export type FieldType = "text" | "password" | "select" | "color-palette";
+export type FieldType = "text" | "password" | "select" | "color-palette" | "shape-palette" | "number-select";
 
 export type FieldOption = {
     value: string;
     label: string;
     color?: string;
+    shape?: string;
 };
 
 export type FieldConfig = {
@@ -42,6 +43,12 @@ export type MCPConfig = {
     secretKey: string;
 };
 
+export type GridShape =
+    | "square" | "squircle" | "circle" | "rounded" | "blob"     // Border-radius based
+    | "hexagon" | "diamond" | "star" | "badge" | "heart"        // Clip-path polygonal
+    | "clover" | "flower"                                        // Clip-path decorative
+    | "egg" | "tear" | "wavy";                                           // Asymmetric / procedural
+
 export type AppSettings = {
     ai?: {
         apiKey?: string;
@@ -65,6 +72,11 @@ export type AppSettings = {
     };
     speech?: {
         language?: string;
+    };
+    grid?: {
+        columns?: number;
+        rows?: number;
+        shape?: GridShape;
     };
 };
 
@@ -91,5 +103,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
     },
     speech: {
         language: typeof navigator !== "undefined" ? navigator.language : "en-US"
+    },
+    grid: {
+        columns: 4,
+        rows: 8,
+        shape: "square"
     }
 };

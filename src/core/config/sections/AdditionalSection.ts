@@ -48,6 +48,66 @@ export const AdditionalSection: SectionConfig = {
             ]
         },
         {
+            key: "grid-layout",
+            label: "Grid Layout",
+            description: "Configure the home screen grid layout.",
+            fields: [
+                {
+                    path: "grid.columns",
+                    label: "Columns",
+                    type: "number-select",
+                    helper: "Number of columns (4-6)",
+                    options: [
+                        { value: "4", label: "4 Columns" },
+                        { value: "5", label: "5 Columns" },
+                        { value: "6", label: "6 Columns" }
+                    ]
+                },
+                {
+                    path: "grid.rows",
+                    label: "Rows",
+                    type: "number-select",
+                    helper: "Number of rows (6-12)",
+                    options: [
+                        { value: "6", label: "6 Rows" },
+                        { value: "7", label: "7 Rows" },
+                        { value: "8", label: "8 Rows" },
+                        { value: "9", label: "9 Rows" },
+                        { value: "10", label: "10 Rows" },
+                        { value: "11", label: "11 Rows" },
+                        { value: "12", label: "12 Rows" }
+                    ]
+                },
+                {
+                    path: "grid.shape",
+                    label: "Icon Shape",
+                    type: "shape-palette",
+                    helper: "Shape of grid item icons",
+                    options: [
+                        // Border-radius based (simple)
+                        { value: "square", label: "Square", shape: "square" },
+                        { value: "squircle", label: "Squircle", shape: "squircle" },
+                        { value: "circle", label: "Circle", shape: "circle" },
+                        { value: "rounded", label: "Rounded", shape: "rounded" },
+                        { value: "blob", label: "Blob", shape: "blob" },
+                        // Clip-path polygonal
+                        { value: "hexagon", label: "Hexagon", shape: "hexagon" },
+                        { value: "diamond", label: "Diamond", shape: "diamond" },
+                        { value: "star", label: "Star", shape: "star" },
+                        { value: "badge", label: "Badge", shape: "badge" },
+                        { value: "heart", label: "Heart", shape: "heart" },
+                        // Clip-path decorative
+                        { value: "clover", label: "Clover", shape: "clover" },
+                        { value: "flower", label: "Flower", shape: "flower" },
+                        // Asymmetric / procedural
+                        { value: "tear", label: "Tear", shape: "tear" },
+                        { value: "egg", label: "Egg", shape: "egg" },
+                        { value: "wavy", label: "Wavy", shape: "wavy" }
+                    ]
+                }
+            ]
+        },
+        {
             key: "speech",
             label: "Speech Recognition",
             description: "Configure speech recognition settings.",

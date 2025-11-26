@@ -468,3 +468,57 @@ export const wallpaperState = makeUIState(WALLPAPER_KEY, () => makeReactive({
 
 export const persistWallpaper = () => (wallpaperState as any)?.$save?.();
 
+export type GridShape = "square" | "squircle" | "circle" | "rounded" | "hexagon" | "diamond";
+
+export interface GridLayoutSettings {
+    columns: number;
+    rows: number;
+    shape: GridShape;
+}
+
+const GRID_LAYOUT_KEY = "cw::workspace::grid-layout";
+export const gridLayoutState = makeUIState(GRID_LAYOUT_KEY, () => makeReactive({
+    columns: 4,
+    rows: 8,
+    shape: "square" as GridShape
+}), (raw) => makeReactive(raw || {
+    columns: 4,
+    rows: 8,
+    shape: "square" as GridShape
+}), (state) => ({ ...state })) as unknown as GridLayoutSettings;
+
+export const persistGridLayout = () => (gridLayoutState as any)?.$save?.();
+
+export const applyGridSettings = (settings?: { grid?: GridLayoutSettings }) => {
+    const gridConfig = settings?.grid || gridLayoutState;
+    const columns = gridConfig?.columns ?? 4;
+    const rows = gridConfig?.rows ?? 8;
+    const shape = gridConfig?.shape ?? "square";
+
+    // Update the reactive state
+    if (gridLayoutState) {
+        gridLayoutState.columns = columns;
+        gridLayoutState.rows = rows;
+        gridLayoutState.shape = shape;
+        persistGridLayout();
+    }
+
+    // Apply to all speed-dial grids via data attributes (for CSS to consume)
+    document.querySelectorAll('.speed-dial-grid').forEach(grid => {
+        const el = grid as HTMLElement;
+        el.dataset.gridColumns = String(columns);
+        el.dataset.gridRows = String(rows);
+        el.dataset.gridShape = shape;
+    });
+
+    // Update CSS custom properties on root for grid layout
+    document.documentElement.dataset.gridColumns = String(columns);
+    document.documentElement.dataset.gridRows = String(rows);
+    document.documentElement.dataset.gridShape = shape;
+};
+
+// Apply grid settings on load
+if (typeof window !== "undefined") {
+    requestAnimationFrame(() => applyGridSettings());
+}
+

@@ -1,4 +1,4 @@
-import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
+import { makeReactive, propRef, stringRef, subscribe, computed } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide } from "fest/lure";
 import { bindInteraction } from "fest/fl-ui";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
@@ -18,6 +18,7 @@ import {
     NAVIGATION_SHORTCUTS,
     wallpaperState,
     persistWallpaper,
+    gridLayoutState,
     type SpeedDialItem,
     type GridCell
 } from "@rs-frontend/utils/StateStorage";
@@ -25,9 +26,15 @@ import { MOCElement } from "fest/dom";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 let viewMaker: any = null;
-const layout = makeReactive([4, 8]);
+const layout = makeReactive([gridLayoutState.columns ?? 4, gridLayoutState.rows ?? 8]);
 const items = speedDialItems;
 const meta = speedDialMeta;
+
+// Subscribe to grid layout changes
+subscribe(gridLayoutState, () => {
+    layout[0] = gridLayoutState.columns ?? 4;
+    layout[1] = gridLayoutState.rows ?? 8;
+});
 const resolveItemAction = (item: SpeedDialItem, override?: string) => {
     if (override) return override;
     const entry = getSpeedDialMeta(item.id);
@@ -194,30 +201,34 @@ const handleWallpaperDrop = async (event: DragEvent) => {
 export function SpeedDial(makeView: any) {
     viewMaker = makeView;
 
+    const columnsRef = propRef(gridLayoutState, "columns", 4);
+    const rowsRef = propRef(gridLayoutState, "rows", 8);
+    const shapeRef = propRef(gridLayoutState, "shape", "square");
+
     const renderIconItem = (item: SpeedDialItem)=>{
-        return H`<div style="pointer-events: none;" class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
-            <div data-shape="square" class="ui-ws-item-icon shaped">
-                <ui-icon style="z-index: 2;" icon=${item.icon}></ui-icon>
+        return H`<div class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
+            <div data-shape=${shapeRef} class="ui-ws-item-icon shaped">
+                <ui-icon icon=${item.icon}></ui-icon>
             </div>
         </div>`;
     };
 
     const renderLabelItem = (item: SpeedDialItem)=>{
-        return H`<div style="pointer-events: none;" class="ui-ws-item" data-speed-dial-item data-layer="labels" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
-            <div class="ui-ws-item-label" style="pointer-events: none; background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">
-                <span style="pointer-events: none; background-color: transparent; box-shadow: none; filter: none; pointer-events: none;">${getRefValue(item.label)}</span>
+        return H`<div style="background-color: transparent;" class="ui-ws-item" data-speed-dial-item data-layer="labels" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
+            <div class="ui-ws-item-label" style="background-color: transparent;">
+                <span style="background-color: transparent;">${getRefValue(item.label)}</span>
             </div>
         </div>`;
     };
 
     //
     const oRef = orientRef();
-    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" style="display: grid; grid-template-columns: minmax(0px, 1fr); grid-template-rows: minmax(0px, 1fr); pointer-events: auto; inline-size: 100%; block-size: 100%; inset: 0; position: fixed; background-color: transparent;" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
+    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
         ${makeWallpaper()}
-        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8; color-scheme: dark;">
+        <div style="background-color: transparent; color-scheme: dark;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderLabelItem)}
         </div>
-        <div class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" style="--layout-c: 4; --layout-r: 8;">
+        <div style="background-color: transparent;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderIconItem)}
         </div>
     </div>`;

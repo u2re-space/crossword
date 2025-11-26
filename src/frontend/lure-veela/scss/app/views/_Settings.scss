@@ -441,6 +441,76 @@
         appearance: none;
     }
 
+    // Shape palette grid styles
+    .shape-palette-grid {
+        display: flex;
+        gap: var(--gap-sm);
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        align-items: center;
+        padding: var(--padding-xs);
+    }
+
+    .shape-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--gap-xs);
+        padding: var(--padding-sm);
+        border-radius: var(--radius-md);
+        border: 2px solid transparent;
+        cursor: pointer;
+        background: transparent;
+        transition: all var(--transition-fast) ease-out;
+        min-inline-size: 4.5rem;
+        aspect-ratio: 1 / 1.2;
+        block-size: max-content;
+
+        @include surface(var(--surface-opacity-subtle));
+
+        &:hover {
+            @include surface(var(--surface-opacity-default));
+            transform: translateY(-2px);
+        }
+
+        &.is-selected {
+            border-color: var(--primary, currentColor);
+            @include surface(var(--contrast-opacity-subtle));
+        }
+
+        .shape-preview {
+            inline-size: 2.5rem;
+            block-size: 2.5rem;
+            background-color: var(--on-surface, currentColor);
+            opacity: 0.7;
+            transition: all var(--transition-fast) ease-out;
+            aspect-ratio: 1 / 1;
+        }
+
+        &.is-selected .shape-preview {
+            opacity: 1;
+            background-color: var(--primary, currentColor);
+        }
+
+        &:hover .shape-preview {
+            opacity: 1;
+            /*transform: scale(1.1);*/
+        }
+
+        .shape-label {
+            font-size: var(--font-xs);
+            color: var(--on-surface, currentColor);
+            opacity: 0.7;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        &.is-selected .shape-label {
+            opacity: 1;
+            font-weight: var(--font-weight-medium);
+        }
+    }
+
     .mcp-config {
         border-radius: var(--radius-lg);
         padding: var(--padding-lg);

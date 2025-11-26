@@ -1,5 +1,6 @@
 import { loadSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
+import { applyGridSettings } from "@rs-frontend/utils/StateStorage";
 
 //
 export const applyTheme = (settings: AppSettings) => {
@@ -14,6 +15,11 @@ export const applyTheme = (settings: AppSettings) => {
         document.body.style.setProperty("--primary", settings.appearance.color);
         root.style.setProperty("--current", settings.appearance.color);
         root.style.setProperty("--primary", settings.appearance.color);
+    }
+
+    // Apply grid settings
+    if (settings.grid) {
+        applyGridSettings(settings);
     }
 };
 

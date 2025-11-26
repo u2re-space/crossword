@@ -4,8 +4,9 @@ import { H } from "fest/lure";
 import { toastError, toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
 
 //
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig } from "@rs-core/config/SettingsTypes";
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
+import { applyGridSettings } from "@rs-frontend/utils/StateStorage";
 
 //
 import { getByPath, loadSettings, saveSettings, slugify } from "@rs-core/config/Settings";
@@ -82,7 +83,7 @@ export const Settings = async () => {
         const id = `settings-${slugify(config.path)}-${fieldRefs.size}`;
         let control: HTMLInputElement | HTMLSelectElement | HTMLElement;
 
-        if (config.type === "select") {
+        if (config.type === "select" || config.type === "number-select") {
             const select = H`<select class="field-control" id=${id} name=${config.path}></select>` as HTMLSelectElement;
             (config.options ?? []).forEach((opt) => select.appendChild(new Option(opt.label, opt.value)));
             control = select;
@@ -113,6 +114,35 @@ export const Settings = async () => {
 
             const wrapper = H`<div>${palette}${hidden}</div>`;
             control = hidden;
+        } else if (config.type === "shape-palette") {
+            const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
+            const palette = H`<div class="shape-palette-grid"></div>` as HTMLElement;
+
+            (config.options ?? []).forEach(opt => {
+                const btn = H`<button type="button" class="shape-option" title=${opt.label} data-value=${opt.value}>
+                    <span class="shape-preview shaped" data-shape=${opt.shape || opt.value}></span>
+                    <span class="shape-label">${opt.label}</span>
+                </button>` as HTMLButtonElement;
+
+                btn.onclick = () => {
+                    hidden.value = opt.value;
+                    // Update visual selection
+                    const allBtns = palette.querySelectorAll('.shape-option');
+                    allBtns.forEach(b => b.classList.remove('is-selected'));
+                    btn.classList.add('is-selected');
+
+                    // Live preview for grid shape
+                    if (config.path === "grid.shape") {
+                        document.querySelectorAll('.speed-dial-grid').forEach(grid => {
+                            (grid as HTMLElement).dataset.gridShape = opt.value;
+                        });
+                    }
+                };
+                palette.append(btn);
+            });
+
+            const wrapper = H`<div>${palette}${hidden}</div>`;
+            control = hidden;
         } else {
             const input = H`<input class="field-control" id=${id} name=${config.path} type=${config.type === "password" ? "password" : "text"} placeholder=${config.placeholder ?? ""} />` as HTMLInputElement;
             input.autocomplete = "off";
@@ -122,7 +152,7 @@ export const Settings = async () => {
         control.dataset.path = config.path;
         const field = H`<div class="field">
             <label class="field-label">${config.label}</label>
-            ${config.type === "color-palette" ? (control.parentElement as HTMLElement) : control}
+            ${(config.type === "color-palette" || config.type === "shape-palette") ? (control.parentElement as HTMLElement) : control}
             ${config.helper ? H`<span class="field-hint">${config.helper}</span>` : null}
         </div>` as HTMLElement;
 
@@ -451,6 +481,19 @@ export const Settings = async () => {
                      });
                  }
             }
+            // Update visual state for shape palette
+            if (control.type === "hidden" && control.parentElement?.querySelector(".shape-palette-grid")) {
+                 const palette = control.parentElement.querySelector(".shape-palette-grid");
+                 if (palette) {
+                     palette.querySelectorAll('.shape-option').forEach(b => {
+                        if ((b as HTMLElement).dataset.value === stringValue) {
+                            b.classList.add('is-selected');
+                        } else {
+                            b.classList.remove('is-selected');
+                        }
+                     });
+                 }
+            }
         }
     };
 
@@ -644,6 +687,11 @@ export const Settings = async () => {
             },
             speech: {
                 language: readValue("speech.language")
+            },
+            grid: {
+                columns: parseInt(readValue("grid.columns"), 10) || DEFAULT_SETTINGS.grid?.columns || 4,
+                rows: parseInt(readValue("grid.rows"), 10) || DEFAULT_SETTINGS.grid?.rows || 8,
+                shape: (readValue("grid.shape") as GridShape) || DEFAULT_SETTINGS.grid?.shape || "square"
             }
         };
 
@@ -653,6 +701,7 @@ export const Settings = async () => {
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
             applyTheme(settings);
+            applyGridSettings(settings);
 
             //
             statusText.value = "Saved";
