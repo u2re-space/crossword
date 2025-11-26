@@ -1,5 +1,5 @@
 import { makeReactive, propRef, subscribe } from "fest/object";
-import { H, C, setIgnoreNextPopState } from "fest/lure";
+import { H, C } from "fest/lure";
 
 //
 let skipCreateNewView = false;
@@ -11,13 +11,19 @@ export const onClose = (tabName: string, currentView: { value: string }, existsV
         //
         const oldView = (tabName || currentView.value)?.replace?.(/^#/, "") ?? (tabName || currentView.value);
         const toReplace = ([...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home")?.replace?.(/^#/, "") ?? "home";
+        
+        // We need to know if we are closing the ACTIVE view
+        const isClosingActive = (currentView.value == oldView);
+
         if (existsViews.has(oldView)) existsViews.delete(oldView);
-        if (currentView.value == oldView && existsViews.has(oldView)) {
-            if (oldView != toReplace && existsViews.has(toReplace)) {
-                skipCreateNewView = true;
-                setIgnoreNextPopState(true);
-                currentView.value = toReplace;
-            }
+
+        if (isClosingActive) {
+            // Use replaceState to avoid pushing this "close" action as a new navigation step
+            const newHash = toReplace == "home" ? "" : toReplace;
+            history.replaceState(null, "", "#" + newHash);
+
+            // Update the view reference. hashTargetLink will see the URL matches and skip pushState
+            currentView.value = toReplace;
         }
     }
 }
