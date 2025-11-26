@@ -7,7 +7,7 @@ import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";
-import { getDirectoryHandle, mountAsRoot } from "fest/lure";
+import { getDirectoryHandle, mountAsRoot, setIgnoreNextPopState } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
 import { JSOX } from "jsox";
 import { stringRef } from "fest-src/fest/object/index";
@@ -185,9 +185,12 @@ const ensureHashNavigation = (view: string, viewMaker?: any, props?: any) => {
         viewMaker?.(view, props);
     } else {
         const hash = `#${view?.replace?.(/^#/, "") ?? view}`;
-        if (window.location.hash === hash) {
+        if (window.location.hash == hash) {
+            setIgnoreNextPopState(true);
             window.dispatchEvent(new HashChangeEvent("hashchange"));
-        } else {
+        } else
+        if (window.location.hash != hash) {
+            setIgnoreNextPopState(true);
             window.location.hash = hash;
         }
     }

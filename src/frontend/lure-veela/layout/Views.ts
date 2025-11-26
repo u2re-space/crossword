@@ -65,7 +65,7 @@ export async function frontend(mountElement) {
 
     // Initialize back navigation for mobile back gesture/button support
     initBackNavigation({
-        preventDefaultNavigation: true,
+        preventDefaultNavigation: false,
         pushInitialState: true
     });
 
@@ -102,17 +102,18 @@ export async function frontend(mountElement) {
     };
 
     //registerElement
-    const registerElement = (registryKey: string, toolbarWithElement: [HTMLElement, HTMLElement], existsViews: Map<string, any>) => {
+    const addElement = (registryKey: string, toolbarWithElement: [HTMLElement, HTMLElement], existsViews: Map<string, any>) => {
         registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
         if (!registryKey || !toolbarWithElement?.[1]) return null;
 
         //
         if (existsViews.has(registryKey)) {
             return existsViews.get(registryKey);
+        } else {
+            existsViews.set(registryKey, toolbarWithElement);
         }
 
         //
-        existsViews.set(registryKey, toolbarWithElement);
         toolbarWithElement[0]?.setAttribute?.("data-view-id", registryKey);
         toolbarWithElement[1]?.setAttribute?.("data-view-id", registryKey);
 
@@ -137,8 +138,9 @@ export async function frontend(mountElement) {
         const options: any = {
             id: registryKey,
             priority: registryKey != "home" ? 10 : 0,
-            close: () => { onClose(registryKey, CURRENT_VIEW, existsViews, makeView); },
-            isActive: () => CURRENT_VIEW?.value == registryKey
+            close: () => { onClose(registryKey, CURRENT_VIEW, existsViews); return (registryKey != "home" ? false : true); },
+            isActive: () => (CURRENT_VIEW?.value == registryKey || document.querySelector(`[data-view-id="${registryKey}"]`) != null || document.querySelector(`#registryKey`)),
+            get hashId() { return registryKey; }
         };
         registerCloseable(options);
 
@@ -192,7 +194,7 @@ export async function frontend(mountElement) {
             // use by promise
             element = promised.promise;
             actions = toolbarPromise.promise;
-            return registerElement(registryKey, [actions, element], existsViews);
+            return addElement(registryKey, [actions, element], existsViews);
         }
 
         //
@@ -243,7 +245,7 @@ export async function frontend(mountElement) {
 
         //
         if (element && !existsViews.has(registryKey)) {
-            return registerElement(registryKey, [actions, element], existsViews);
+            return addElement(registryKey, [actions, element], existsViews);
         }
 
         //

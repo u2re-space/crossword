@@ -1,30 +1,5 @@
-import { H, M, replaceChildren } from "fest/lure";
+import { H, M } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
-
-//
-export const applyActive = (name?: string | null, oldView?: string | null, existsViews?: Map<string, any>, _makeView?: (key: string) => any, currentView?: { value: string }) => {
-    name = name?.replace?.(/^#/, "") ?? name;
-    oldView = oldView?.replace?.(/^#/, "") ?? oldView;
-
-    //
-    if (name && oldView) {
-        const view = _makeView?.(name) || existsViews?.get?.(name) || null;
-        const existView = existsViews?.get?.(oldView);
-        requestAnimationFrame(() => {
-            if (view && existView && name != oldView) {
-                replaceChildren(existView?.[0]?.parentNode, view?.[0], null, -1, existView?.[0]);
-                replaceChildren(existView?.[1]?.parentNode, view?.[1], null, -1, existView?.[1]);
-            }
-
-            // remove redundant elements if still remains
-            requestAnimationFrame(() => {
-                if (existsViews && (currentView?.value ?? name) != oldView) {
-                    document.querySelectorAll(`[data-view-id="${oldView}"]`)?.forEach?.((el: any) => { el?.remove?.(); });
-                }
-            });
-        });
-    }
-}
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string) => any) => {
