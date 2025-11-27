@@ -126,6 +126,13 @@ const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactiv
     }
     if (el.dataset.layer === "icons") {
         bindInteraction(el, args);
+        const cell = item?.cell ?? [0, 0];
+        E(el, {
+            style: {
+                "--cell-x": propRef(cell, 0),
+                "--cell-y": propRef(cell, 1)
+            }
+        });
     }
 };
 

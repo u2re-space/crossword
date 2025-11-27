@@ -1,6 +1,5 @@
-import { H, M } from "fest/lure";
+import { H, M, navigate } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
-import { registerSidebar } from "../../../../shared/fest/lure/extension/tasking/BackNavigation";
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string) => any) => {
@@ -21,13 +20,14 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
     // navigation wiring for ui-tabbed-box
     sidebar?.addEventListener?.("click", (ev: any) => {
         ev?.preventDefault?.();
-        const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');
-        if (!a) return;
+        const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');  if (!a) return;
         const name = a?.getAttribute?.('data-name');
 
         // reactive INP side effect avoid
         requestAnimationFrame(() => {
-            if (currentView && name && name != currentView?.value) { currentView.value = name; };
+            if (currentView && name && name != (currentView?.value?.replace?.(/^#/, "") ?? currentView?.value)) {
+                navigate(`#${name}`, existsViews.has(name || "home"));
+            };
         });
 
         //
@@ -36,7 +36,7 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
 
     //
     // Auto-register with back navigation when attached
-    const tryRegister = () => {
+    /*const tryRegister = () => {
         if (!sidebar?.isConnected) {
             requestAnimationFrame(tryRegister);
             return;
@@ -53,10 +53,10 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
                 return true;
             });
         }
-    };
+    };*/
 
     // Try to register
-    requestAnimationFrame(tryRegister);
+    //requestAnimationFrame(tryRegister);
 
     //
     return sidebar;

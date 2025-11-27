@@ -1,50 +1,51 @@
 import { makeReactive, propRef, subscribe } from "fest/object";
 import { H, C } from "fest/lure";
+import { navigate, historyState } from "fest/lure";
+import { isPrimitive } from "fest-src/fest/core/index";
 
 //
 let skipCreateNewView = false;
-export const onClose = (tabName: string, currentView: { value: string }, existsViews: Map<string, any>)=>{
+export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
     if (tabName) {
         tabName = tabName?.replace?.(/^#/, "") ?? tabName;
         if (!tabName || tabName == "home") return;
 
         //
-        const oldView = (tabName || currentView.value)?.replace?.(/^#/, "") ?? (tabName || currentView.value);
-        const toReplace = ([...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home")?.replace?.(/^#/, "") ?? "home";
+        const curView = isPrimitive(currentView) ? (currentView?.replace?.(/^#/, "") ?? currentView) : ((currentView as { value: string })?.value?.replace?.(/^#/, "") ?? (currentView as { value: string })?.value);
+        const oldView = (tabName || curView)?.replace?.(/^#/, "");
+        const toReplace = ([...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home")?.replace?.(/^#/, "");
 
         // We need to know if we are closing the ACTIVE view
-        const isClosingActive = (currentView.value == oldView);
-
-        if (existsViews.has(oldView)) existsViews.delete(oldView);
-
-        if (isClosingActive) {
+        if (existsViews.has(oldView) && oldView != "home" && (closingView != (toReplace || currentView?.value) || !closingView)) existsViews.delete(oldView);
+        if (curView == oldView) {
             // Use replaceState to avoid pushing this "close" action as a new navigation step
-            const newHash = toReplace == "home" ? "" : toReplace;
-            history.replaceState(null, "", "#" + newHash);
+            navigate(`#${toReplace || "home"}`, existsViews.has(toReplace || "home"));
 
             // Update the view reference. hashTargetLink will see the URL matches and skip pushState
-            currentView.value = toReplace;
+            //currentView.value = toReplace;
         }
     }
 }
 
 
 //https://192.168.0.200/#home
-export const AppLayout = (currentView: { value: string }, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
+export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
     //
-    if (currentView && !currentView.value) {
-        currentView.value ||= [...existsViews?.keys?.()]?.filter?.(k => k != "home")?.[0] || "home";
+    if (currentView && !isPrimitive(currentView) && !currentView.value) {
+        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != "home")?.[0] || "home";
     }
-
-    //
-    /*const choice = computed(currentView, (key)=>{
-        // Avoid layout thrashing
-        return (makeView(key || "home") || makeView("home")) || (existsViews?.get?.(key || "home") || existsViews?.get?.("home"));
-    })*/
 
     //
     const rPair = makeReactive([document.createComment(""), document.createComment("")])
     const setView = async (key) => {
+        key = key?.replace?.(/^#/, "") ?? key;
+
+        // `skipCreateNewView` should depending on replace or push state happened
+        if (!skipCreateNewView) {
+            skipCreateNewView = ((historyState as any)?.action == "REPLACE" || (historyState as any)?.action == "POP" || (historyState as any)?.action == "BACK");
+        }
+
+        //
         const ext = (existsViews?.get?.(key || "home") || existsViews?.get?.("home"));
         const npr = (skipCreateNewView ? ext : (await makeView(key || "home") || await makeView("home"))) || ext;
         skipCreateNewView = false;
@@ -58,7 +59,7 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
 
     //
     subscribe([currentView, "value"], setView)
-    setView(currentView.value || "home");
+    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home");
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
@@ -72,10 +73,10 @@ export const AppLayout = (currentView: { value: string }, existsViews: Map<strin
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev)=>{
-        if (ev?.newTab && currentView.value != ev?.newTab && ev?.target == $layout && existsViews.has(ev?.newTab)) {
+        if (ev?.newTab && (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") != ev?.newTab && ev?.target == $layout && existsViews.has(ev?.newTab || "home")) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                currentView.value = ev.newTab ?? currentView.value;
+                navigate(`#${ev.newTab ?? (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "")}`, existsViews.has(ev?.newTab || "home"));
             });
         };
     }} on:tab-close=${(ev: any) => {

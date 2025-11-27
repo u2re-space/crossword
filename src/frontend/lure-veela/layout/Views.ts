@@ -8,7 +8,7 @@ import "fest/fl-ui";
 //
 import { Sidebar } from "./Sidebar";
 import { MakeCardElement } from "../items/Cards";
-import { hashTargetRef, initBackNavigation, registerCloseable, registerTask, type ITask } from "fest/lure";
+import { initBackNavigation, registerCloseable, historyViewRef, historyState } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../utils/Utils";
 import { createCtxMenu, SpeedDial } from "../views/SpeedDial";
 import { ViewPage } from "../views/Viewer";
@@ -50,10 +50,14 @@ const generateId = (path: string)=>{
     return `${filename}-${randHash}`;
 }
 
-
+//
+const checkIsActive = (registryKey: string, closingView: string) => {
+    console.log(registryKey);
+    return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, ""));
+}
 
 //
-export const CURRENT_VIEW = hashTargetRef(location.hash || "#home", false);
+export const CURRENT_VIEW = historyViewRef(location.hash || "#home", { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
 import { initTheme } from "@rs-frontend/utils/Theme";
@@ -124,12 +128,12 @@ export async function frontend(mountElement) {
                 priority: registryKey != "home" ? 10 : 0,
                 // Pass element as WeakRef for auto-cleanup when detached
                 element: new WeakRef(el),
-                close: () => {
-                    onClose(registryKey, CURRENT_VIEW, existsViews);
+                close: (closingView: string) => {
+                    onClose(registryKey, CURRENT_VIEW, existsViews, closingView);
                     unregister();
                     return (registryKey != "home" ? false : true);
                 },
-                isActive: () => (CURRENT_VIEW?.value == registryKey || location.hash == `#${registryKey}`),
+                isActive: (closingView: string) => checkIsActive(registryKey, closingView),
                 get hashId() { return registryKey; }
             };
             const unregister = registerCloseable(options);
@@ -150,11 +154,6 @@ export async function frontend(mountElement) {
                 e?.setAttribute?.("data-view-id", registryKey);
 
                 setupBackNav(e);
-
-                // Trigger update efficiently
-                if (CURRENT_VIEW?.value == registryKey) {
-                    CURRENT_VIEW?.[$trigger]?.();
-                }
             });
         } else {
             setupBackNav(toolbarWithElement[1]);
