@@ -1,6 +1,6 @@
 import { makeReactive, propRef, stringRef, subscribe, computed } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries } from "fest/lure";
-import { bindInteraction } from "fest/fl-ui";
+import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
 import {
