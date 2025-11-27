@@ -50,6 +50,7 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
             (host as any)._backUnreg = registerSidebar(host, host?.getProperty?.("sidebarOpened") ?? host?.sidebarOpened, () => {
                 closeSidebar();
                 // Optional: focus handling or other cleanup
+                return true;
             });
         }
     };
