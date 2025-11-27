@@ -1,5 +1,5 @@
 import { makeReactive, propRef, stringRef, subscribe, computed } from "fest/object";
-import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal } from "fest/lure";
+import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries } from "fest/lure";
 import { bindInteraction } from "fest/fl-ui";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
@@ -22,7 +22,7 @@ import {
     type SpeedDialItem,
     type GridCell
 } from "@rs-frontend/utils/StateStorage";
-import { MOCElement } from "fest/dom";
+import { isInFocus, MOCElement } from "fest/dom";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 let viewMaker: any = null;
@@ -187,24 +187,22 @@ function makeWallpaper() {
 }
 
 //
-const handleWallpaperDrop = async (event: DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const file = event.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-        try {
-            const dir = "/images/wallpaper/";
-            await writeFileSmart(null, dir, file);
-            const path = `${dir}${file.name}`;
-            wallpaperState.src = path;
-            persistWallpaper();
-            toastSuccess("Wallpaper updated");
-        } catch (e) {
-            console.warn(e);
-            toastError("Failed to set wallpaper");
-        }
+const handleWallpaperDropOrPaste = (event: DragEvent | ClipboardEvent) => {
+    if (isInFocus(event?.target as HTMLElement, "#home") ||
+        isInFocus(event?.target as HTMLElement, "#home:is(:hover, :focus, :focus-visible), #home:has(:hover, :focus, :focus-visible)", "child")
+    ) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleIncomingEntries(((event as any).clipboardData || (event as any).dataTransfer), "/images/wallpaper/", null, (file, path) => {
+            if (file.type.startsWith("image/")) {
+                wallpaperState.src = path;
+                persistWallpaper();
+                toastSuccess("Wallpaper updated");
+            }
+        });
     }
 };
+
 
 export function SpeedDial(makeView: any) {
     viewMaker = makeView;
@@ -231,7 +229,7 @@ export function SpeedDial(makeView: any) {
 
     //
     const oRef = orientRef();
-    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${handleWallpaperDrop}>
+    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
         ${makeWallpaper()}
         <div style="background-color: transparent; color-scheme: dark;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderLabelItem)}
@@ -240,6 +238,9 @@ export function SpeedDial(makeView: any) {
             ${M(items, renderIconItem)}
         </div>
     </div>`;
+
+    //
+    box.onPaste = (ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev);
 
     //
     return box;

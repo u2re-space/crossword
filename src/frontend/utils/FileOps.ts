@@ -1,4 +1,4 @@
-import { getDirectoryHandle } from "fest/lure";
+import { getDirectoryHandle, handleIncomingEntries } from "fest/lure";
 import { handleDataTransferFiles, postCommitAnalyze, postCommitRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { sanitizeFileName, writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
@@ -14,13 +14,9 @@ export const bindDropToDir = (host: HTMLElement, dir: string) => {
         ev.preventDefault();
         delete (host as any).dataset.dragover;
         try {
-            const files: File[] = Array.from(ev.dataTransfer?.files ?? []);
-            for (const file of files) {
-                dir = dir?.trim?.();
-                dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-                await writeFileSmart(null, dir, file);
-            }
-            host.dispatchEvent(new CustomEvent('dir-dropped', { detail: { count: files.length }, bubbles: true }));
+            await handleIncomingEntries(ev.dataTransfer, dir);
+            const count = (ev.dataTransfer?.items?.length || ev.dataTransfer?.files?.length || 0);
+            host.dispatchEvent(new CustomEvent('dir-dropped', { detail: { count }, bubbles: true }));
         } catch (e) { console.warn(e); }
     };
     host.addEventListener('dragover', onDragOver);
@@ -172,31 +168,33 @@ export const pasteAndAnalyze = async () => {
 //
 export const pasteIntoDir = async (dir: string) => {
     try {
-        // Rich clipboard first
-        if ((navigator.clipboard as any)?.read) {
-            const items = await (navigator.clipboard as any).read();
-            for (const item of items) {
-                for (const type of item.types) {
-                    const blob = await item.getType(type);
-                    const ext = type.split('/').pop() || '';
-                    const file = new File([blob], sanitizeFileName(`pasted-${Date.now()}.${ext}`), { type });
-                    dir = dir?.trim?.();
-                    dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-                    await writeWithTryRecognize(dir, file);
-                }
+        // Use unified handler for paste
+        // We need to get data from clipboard first
+        let success = false;
+        try {
+            // @ts-ignore
+            const clipboardItems = await navigator.clipboard.read();
+            if (clipboardItems && clipboardItems.length > 0) {
+                 await handleIncomingEntries(clipboardItems, dir);
+                 success = true;
             }
-            return true;
-        }
+        } catch {}
 
-        // Text fallback
-        const text = await navigator.clipboard.readText();
-        if (text && text.trim()) {
-            const file = new File([text], sanitizeFileName(`pasted-${Date.now()}.txt`), { type: 'text/plain' });
-            dir = dir?.trim?.();
-            dir = dir?.endsWith?.('/') ? dir : (dir + '/');
-            await writeWithTryRecognize(dir, file);
-            return true;
+        if (!success) {
+             const text = await navigator.clipboard.readText();
+             if (text) {
+                 // Create a simple object that handleIncomingEntries understands for text
+                 // or just use handleIncomingEntries with text if I adapted it?
+                 // handleIncomingEntries handles text/uri-list or text/plain via getData interface
+                 // Let's construct a mock DataTransfer-like object or just use internal logic
+                 // Actually, handleIncomingEntries handles 'getData' check.
+                 await handleIncomingEntries({
+                     getData: (type: string) => type === "text/plain" ? text : ""
+                 }, dir);
+                 success = true;
+             }
         }
+        return success;
     } catch (e) { console.warn(e); }
     return false;
 }

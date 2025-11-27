@@ -19,6 +19,7 @@ import { makeToolbar } from "../items/Actions";
 import { Settings } from "../views/Settings";
 import { DataExplorer } from "../views/DataExplorer";
 import { MakeMarkdownView } from "../views/Markdown";
+import { initGlobalClipboard } from "fest/lure";
 
 //
 const implementTestDrop = (mountElement: HTMLElement) => {
@@ -59,9 +60,7 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
-    await initDOM(document.body);
-    await loadInlineStyle(style);
-    await initTheme();
+    await initDOM(document.body); loadInlineStyle(style); initTheme();
 
     // Initialize back navigation for mobile back gesture/button support
     initBackNavigation({
@@ -70,6 +69,7 @@ export async function frontend(mountElement) {
     });
 
     //
+    initGlobalClipboard();
     startGeoTracking();
     startTimeTracking();
     requestNotificationPermission();
