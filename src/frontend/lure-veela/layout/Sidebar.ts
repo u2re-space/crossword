@@ -1,5 +1,6 @@
 import { H, M } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
+import { registerSidebar } from "../../../../shared/fest/lure/extension/tasking/BackNavigation";
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string) => any) => {
@@ -11,14 +12,14 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
 
     //
     const closeSidebar = () => {
-        const host = sidebar.closest("ui-box-with-sidebar") as any;
-        if (host?.sidebarOpened?.value) {
-            host.sidebarOpened.value = false;
+        const host = sidebar?.matches?.("ui-box-with-sidebar, ui-tabbed-with-sidebar") ? sidebar as any : sidebar?.closest?.("ui-box-with-sidebar, ui-tabbed-with-sidebar") as any;
+        if (host?.sidebarOpened) {
+            host.sidebarOpened = false;
         }
     };
 
     // navigation wiring for ui-tabbed-box
-    sidebar.addEventListener?.("click", (ev: any) => {
+    sidebar?.addEventListener?.("click", (ev: any) => {
         ev?.preventDefault?.();
         const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');
         if (!a) return;
@@ -32,6 +33,29 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
         //
         closeSidebar();
     });
+
+    //
+    // Auto-register with back navigation when attached
+    const tryRegister = () => {
+        if (!sidebar?.isConnected) {
+            requestAnimationFrame(tryRegister);
+            return;
+        }
+
+        //
+        const host = sidebar?.matches?.("ui-box-with-sidebar, ui-tabbed-with-sidebar") ? sidebar as any : sidebar?.closest?.("ui-box-with-sidebar, ui-tabbed-with-sidebar") as any;
+        if (host && (host?.getProperty?.("sidebarOpened") ?? host?.sidebarOpened)) {
+            // Prevent multiple registrations
+            if ((host as any)._backUnreg) return;
+            (host as any)._backUnreg = registerSidebar(host, host?.getProperty?.("sidebarOpened") ?? host?.sidebarOpened, () => {
+                closeSidebar();
+                // Optional: focus handling or other cleanup
+            });
+        }
+    };
+
+    // Try to register
+    requestAnimationFrame(tryRegister);
 
     //
     return sidebar;

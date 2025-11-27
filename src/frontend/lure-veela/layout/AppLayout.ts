@@ -11,7 +11,7 @@ export const onClose = (tabName: string, currentView: { value: string }, existsV
         //
         const oldView = (tabName || currentView.value)?.replace?.(/^#/, "") ?? (tabName || currentView.value);
         const toReplace = ([...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home")?.replace?.(/^#/, "") ?? "home";
-        
+
         // We need to know if we are closing the ACTIVE view
         const isClosingActive = (currentView.value == oldView);
 

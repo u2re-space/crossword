@@ -117,32 +117,48 @@ export async function frontend(mountElement) {
         toolbarWithElement[0]?.setAttribute?.("data-view-id", registryKey);
         toolbarWithElement[1]?.setAttribute?.("data-view-id", registryKey);
 
-        // also, reassign in array is promise
-        (toolbarWithElement[0] as any)?.then?.((e) => {
-            toolbarWithElement[0] = e;
-            e?.setAttribute?.("data-view-id", registryKey);
-        });
-
-        // also, reassign in array is promise
-        (toolbarWithElement[1] as any)?.then?.((e) => {
-            toolbarWithElement[1] = e;
-            e?.setAttribute?.("data-view-id", registryKey);
-
-            // Trigger update efficiently
-            if (CURRENT_VIEW?.value == registryKey) {
-                CURRENT_VIEW?.[$trigger]?.();
-            }
-        });
-
         //
-        const options: any = {
-            id: registryKey,
-            priority: registryKey != "home" ? 10 : 0,
-            close: () => { onClose(registryKey, CURRENT_VIEW, existsViews); return (registryKey != "home" ? false : true); },
-            isActive: () => (CURRENT_VIEW?.value == registryKey || document.querySelector(`[data-view-id="${registryKey}"]`) != null || document.querySelector(`#registryKey`)),
-            get hashId() { return registryKey; }
+        const setupBackNav = (el: HTMLElement) => {
+            const options: any = {
+                id: registryKey,
+                priority: registryKey != "home" ? 10 : 0,
+                // Pass element as WeakRef for auto-cleanup when detached
+                element: new WeakRef(el),
+                close: () => {
+                    onClose(registryKey, CURRENT_VIEW, existsViews);
+                    unregister();
+                    return (registryKey != "home" ? false : true);
+                },
+                isActive: () => (CURRENT_VIEW?.value == registryKey || location.hash == `#${registryKey}`),
+                get hashId() { return registryKey; }
+            };
+            const unregister = registerCloseable(options);
         };
-        registerCloseable(options);
+
+        // also, reassign in array is promise
+        if ((toolbarWithElement[0] as any)?.then) {
+            (toolbarWithElement[0] as any).then((e) => {
+                toolbarWithElement[0] = e;
+                e?.setAttribute?.("data-view-id", registryKey);
+            });
+        }
+
+        // also, reassign in array is promise
+        if ((toolbarWithElement[1] as any)?.then) {
+            (toolbarWithElement[1] as any).then((e) => {
+                toolbarWithElement[1] = e;
+                e?.setAttribute?.("data-view-id", registryKey);
+
+                setupBackNav(e);
+
+                // Trigger update efficiently
+                if (CURRENT_VIEW?.value == registryKey) {
+                    CURRENT_VIEW?.[$trigger]?.();
+                }
+            });
+        } else {
+            setupBackNav(toolbarWithElement[1]);
+        }
 
         //
         return existsViews.get(registryKey);
