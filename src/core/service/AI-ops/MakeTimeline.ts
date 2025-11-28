@@ -154,9 +154,6 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     // log timeline
     console.log("timeline", timelines);
 
-    // write timeline
-    //await writeTimelineTasks(timelines);
-
-    // return timeline
+    // return timeline (writing is handled by the router via ServiceHelper queue)
     return timelines;
 }

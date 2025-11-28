@@ -1,6 +1,8 @@
 import { registerRoute } from "workbox-routing";
 import { controlChannel } from "./shared";
-import { handleMakeTimeline } from "@rs-core/service/AI-ops/Orchestrator";
+import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
+import { queueEntityForWriting, pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
+import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 
 //
 export const makeTimeline = () => {
@@ -11,15 +13,25 @@ export const makeTimeline = () => {
 
             //
             const speechPrompt = fd?.get?.('text')?.toString?.()?.trim?.() || null;
-            const results: any = await handleMakeTimeline(source, speechPrompt);
+            const gptResponses = await createTimelineGenerator(source, speechPrompt) as GPTResponses | null;
+            const timelineResults = await requestNewTimeline(gptResponses as GPTResponses) as any[] || [];
 
             //
-            if (results?.length > 0) {
-                try { controlChannel.postMessage({ type: 'commit-result', results: [results] as any[] }) } catch (e) { console.warn(e); }
+            if (timelineResults?.length > 0) {
+                // Queue each timeline task for writing to OPFS
+                const queuedResults = timelineResults?.map?.((task) => {
+                    return queueEntityForWriting(task, task?.type || "task", "json");
+                })?.filter?.(Boolean) || [];
+
+                // Push to IDB queue for persistence
+                await pushToIDBQueue(queuedResults)?.catch?.(console.warn.bind(console));
+
+                // Notify to trigger flush
+                try { controlChannel.postMessage({ type: 'commit-result', results: queuedResults }) } catch (e) { console.warn(e); }
             }
 
             //
-            return results;
+            return timelineResults;
         })?.catch?.(console.warn.bind(console));
 
         //

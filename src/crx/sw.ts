@@ -1,6 +1,8 @@
+import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
-import { handleMakeTimeline } from "@rs-core/service/AI-ops/Orchestrator";
+import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 
+//
 enableCapture(chrome);
 
 // Handle messages from Extension UI or Content Scripts
@@ -8,8 +10,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'MAKE_TIMELINE') {
         const source = message.source || null;
         const speechPrompt = message.speechPrompt || null;
-        handleMakeTimeline(source, speechPrompt).then((result) => {
-            sendResponse(result);
+        createTimelineGenerator(source, speechPrompt).then(async (gptResponses) => {
+            sendResponse(await (requestNewTimeline(gptResponses as GPTResponses) as unknown as any[] || []));
         }).catch((error) => {
             console.error("Timeline generation failed:", error);
             sendResponse({ error: error.message });
@@ -25,7 +27,7 @@ chrome.runtime.onInstalled.addListener(() => {
         title: "Recognize Content (AI)",
         contexts: ["selection", "page", "image"]
     });
-    
+
     // Add settings shortcut if needed, though it's usually in the popup
 });
 
