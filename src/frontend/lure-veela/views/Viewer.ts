@@ -1,16 +1,21 @@
 import { H } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../../utils/HookEvent";
-import { makeReactive, ref } from "fest/object";
+import { makeReactive} from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
+import { makeActions } from "../items/Actions";
 import { CollectItemsForTabPage, MakeItemBy } from "../items/Items";
 
-// =============================================================================
-// View Page Component
-// =============================================================================
+//
+const makeFragment = (children: HTMLElement[]) => {
+    const fragment = document.createDocumentFragment();
+    children.forEach(child => fragment.appendChild(child));
+    return fragment;
+}
 
+//
 export const ViewPage = <
     T extends EntityDescriptor = EntityDescriptor,
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
@@ -19,64 +24,40 @@ export const ViewPage = <
     entityDesc: T,
     chapters: C[] | (() => C[]),
     filtered: (item: E, desc: C) => boolean,
-    _availableActions: string[],
+    availableActions: string[],
     ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any
 ) => {
-    // Simple loading state using refs
-    const loadingState = ref<string>('idle');
-    const loadedTabs = new Set<string>();
 
     const viewPage: any = {
         $section: null,
-        $refresh: () => {},
-        $dispose: () => {}
+        $refresh: () => { }
     };
 
-    // Tab content factory
+    //
     const tabsRef = makeReactive(new Map()) as Map<string, HTMLElement | null | string | any>;
-
-    const createTabLoader = (chap: C, key: string) => {
-        return () => {
-            loadingState.value = 'loading';
-
-            const content = CollectItemsForTabPage<T, E, C>(
-                entityDesc,
-                chap,
-                chap != null ? filtered : () => true,
-                (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
-            );
-
-            loadedTabs.add(key);
-            loadingState.value = 'loaded';
-
-            return content;
-        };
-    };
-
     const reloadTabs = () => {
-        const chaptersArray = typeof chapters === "function" ? chapters() : chapters;
-
-        chaptersArray.forEach((chap: C) => {
+        // TODO: add reactive chapters support...
+        (typeof chapters === "function" ? chapters() : chapters).map((chap: C) => {
             const key = (chap as any)?.id || (chap as any)?.title || String(chap);
-            if (key && !tabsRef.has(key)) {
-                tabsRef.set(key, createTabLoader(chap, key));
+            if (key) {
+                if (tabsRef.has(key)) { /* currently, unknown action... */ } else {
+                    tabsRef.set(key, () => CollectItemsForTabPage<T, E, C>(
+                        entityDesc, chap, chap != null ? filtered : () => true,
+                        (entityItem: E) => MakeItemBy<E, T>(entityItem, entityDesc, ItemMaker, {})
+                    ))
+                }
             }
-        });
-    };
+        })
+    }
 
-    // Debounced refresh for subsequent calls
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    viewPage.$refresh = () => {
-        if (refreshTimer) clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(() => {
-            reloadTabs();
-        }, 100);
-    };
+    //
+    viewPage.$refresh = () => { reloadTabs?.(); };
+    viewPage.$refresh?.();
 
-    // Initial load - call directly to populate tabs before element creation
-    reloadTabs();
+    //
+    document.addEventListener("rs-fs-changed", (ev) => viewPage.$refresh?.());
 
-    // Tabbed box
+    // TODO: add support for reactive maps of tabs in `ui-tabbed-box`
     const tabbed = H`<ui-tabbed-box
         prop:tabs=${tabsRef}
         prop:renderTabName=${renderTabName}
@@ -85,59 +66,25 @@ export const ViewPage = <
         class="all"
     ></ui-tabbed-box>`;
 
-    // Section
-    const section = H`<section
-        id="${entityDesc.type}"
-        class="viewer-section"
-    >
-        ${tabbed}
-    </section>` as HTMLElement;
-
-    viewPage.$section = section;
-
-    // File drop/paste handling
-    const intake = async (payload: any) => {
-        loadingState.value = 'loading';
-        try {
-            await sendToEntityPipeline(payload, { entityType: entityDesc.type });
-            loadingState.value = 'loaded';
-        } catch (e) {
-            loadingState.value = 'error';
-            console.warn(e);
-        }
-    };
-
+    //
+    const section = H`<section id="${entityDesc.type}" class="viewer-section">${tabbed}</section>` as HTMLElement; viewPage.$section = section;
+    const intake = (payload) => sendToEntityPipeline(payload, { entityType: entityDesc.type }).catch(console.warn);
     implementDropEvent(section, intake);
     implementPasteEvent(section, intake);
 
-    // Event listeners
-    const eventListeners: Array<[EventTarget, string, EventListener]> = [];
+    //
+    section.addEventListener('contentvisibilityautostatechange', (e: any) => { viewPage.$refresh?.(); });
+    section.addEventListener('visibilitychange', (e: any) => { viewPage.$refresh?.(); });
+    section.addEventListener('focusin', (e: any) => { viewPage.$refresh?.(); });
+    document.addEventListener("rs-fs-changed", () => { viewPage.$refresh?.(); });
 
-    const addListener = (target: EventTarget, event: string, handler: EventListener) => {
-        target.addEventListener(event, handler);
-        eventListeners.push([target, event, handler]);
-    };
-
-    addListener(section, 'contentvisibilityautostatechange', () => viewPage.$refresh());
-    addListener(section, 'visibilitychange', () => viewPage.$refresh());
-    addListener(section, 'focusin', () => viewPage.$refresh());
-    addListener(document, 'rs-fs-changed', () => viewPage.$refresh());
-
-    // Cleanup
-    viewPage.$dispose = () => {
-        eventListeners.forEach(([target, event, handler]) => {
-            target.removeEventListener(event, handler);
-        });
-        if (refreshTimer) clearTimeout(refreshTimer);
-    };
-
-    // Initial visibility check
+    // after append and appear in pages, try to first signal
     requestAnimationFrame(() => {
         if (section?.checkVisibility?.()) {
-            viewPage.$refresh();
+            viewPage.$refresh?.();
         }
     });
 
+    //
     return section;
 }
-
