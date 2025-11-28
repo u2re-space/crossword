@@ -1,5 +1,6 @@
 import { H, M, navigate } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
+import { isPrimitive } from "fest-src/fest/core/utils/Primitive";
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string) => any) => {
@@ -20,13 +21,16 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
     // navigation wiring for ui-tabbed-box
     sidebar?.addEventListener?.("click", (ev: any) => {
         ev?.preventDefault?.();
-        const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]');  if (!a) return;
-        const name = a?.getAttribute?.('data-name') || (location.hash?.replace?.(/^#/, "") || "home");
+        const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]'); if (!a) return;
+        const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
+        const name = (a?.getAttribute?.('data-name')?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
 
         // reactive INP side effect avoid
         requestAnimationFrame(() => {
-            if (currentView && name && name != (currentView?.value?.replace?.(/^#/, "") ?? currentView?.value)) {
-                navigate(`#${name}`, existsViews.has(name || "home"));
+            const $currentView = isPrimitive(currentView) ? currentView : ((currentView as { value: string }) as any);
+            const curView = ($currentView?.replace?.(/^#/, "") ?? ($currentView as { value: string })?.value)?.replace?.(/^#/, "");
+            if (name && name != curView) {
+                navigate(`#${name}`, existsViews.has(name));
             };
         });
 

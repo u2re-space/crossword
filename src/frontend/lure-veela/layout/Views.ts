@@ -51,13 +51,13 @@ const generateId = (path: string)=>{
 }
 
 //
+const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
 const checkIsActive = (registryKey: string, closingView: string) => {
-    console.log(registryKey);
-    return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, ""));
+    return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || $defaultView);
 }
 
 //
-export const CURRENT_VIEW = historyViewRef(location.hash?.replace?.(/^#/, "") || "home", { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
+export const CURRENT_VIEW = historyViewRef(`#${$defaultView}`, { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
 import { initTheme } from "@rs-frontend/utils/Theme";

@@ -6,6 +6,7 @@ import { isPrimitive } from "fest-src/fest/core/index";
 //
 let skipCreateNewView = false;
 export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
+    //const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
     if (tabName) {
         tabName = tabName?.replace?.(/^#/, "") ?? tabName;
         if (!tabName || tabName == "home") return;
@@ -13,13 +14,13 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
         //
         const curView = isPrimitive(currentView) ? (currentView?.replace?.(/^#/, "") ?? currentView) : ((currentView as { value: string })?.value?.replace?.(/^#/, "") ?? (currentView as { value: string })?.value);
         const oldView = (tabName || curView)?.replace?.(/^#/, "");
-        const toReplace = ([...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home")?.replace?.(/^#/, "");
+        const toReplace = [...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home";
 
         // We need to know if we are closing the ACTIVE view
         if (existsViews.has(oldView) && oldView != "home" && (closingView != (toReplace || currentView?.value) || !closingView)) existsViews.delete(oldView);
         if (curView == oldView) {
             // Use replaceState to avoid pushing this "close" action as a new navigation step
-            navigate(`#${toReplace || "home"}`, existsViews.has(toReplace || "home"));
+            navigate(`#${toReplace}`, existsViews.has(toReplace));
 
             // Update the view reference. hashTargetLink will see the URL matches and skip pushState
             //currentView.value = toReplace;
@@ -27,18 +28,19 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
     }
 }
 
-
+//
+const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
 //https://192.168.0.200/#home
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
-    //
     if (currentView && !isPrimitive(currentView) && !currentView.value) {
-        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != "home")?.[0] || (location.hash?.replace?.(/^#/, "") || "home");
+        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != $defaultView)?.[0] || $defaultView;
     }
 
     //
     const rPair = makeReactive([document.createComment(""), document.createComment("")])
     const setView = async (key) => {
         key = key?.replace?.(/^#/, "") ?? key;
+        const $defaultView = "home";
 
         // `skipCreateNewView` should depending on replace or push state happened
         if (!skipCreateNewView) {
@@ -46,8 +48,8 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         }
 
         //
-        const ext = (existsViews?.get?.(key || (location.hash?.replace?.(/^#/, "") || "home")) || existsViews?.get?.(location.hash?.replace?.(/^#/, "") || "home"));
-        const npr = (skipCreateNewView ? ext : (await makeView(key || (location.hash?.replace?.(/^#/, "") || "home")) || await makeView(location.hash?.replace?.(/^#/, "") || "home"))) || ext;
+        const ext = (existsViews?.get?.(key || $defaultView) || existsViews?.get?.($defaultView));
+        const npr = (skipCreateNewView ? ext : (await makeView(key || $defaultView) || await makeView($defaultView))) || ext;
         skipCreateNewView = false;
         rPair[0] = await (npr?.[0] ?? rPair[0]);
         rPair[1] = await (npr?.[1] ?? rPair[1]);
@@ -59,7 +61,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
     //
     subscribe([currentView, "value"], setView)
-    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || (location.hash?.replace?.(/^#/, "") || "home"));
+    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || $defaultView);
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
@@ -72,11 +74,14 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     </div>`;
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
-    const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev)=>{
-        if (ev?.newTab && (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") != ev?.newTab && ev?.target == $layout && existsViews.has(ev?.newTab || (location.hash?.replace?.(/^#/, "") || "home"))) {
+    const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev) => {
+        const $defaultView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
+        const newTab = (ev?.newTab?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
+        const curTab = ((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
+        if (newTab && curTab != newTab && ev?.target == $layout && existsViews.has(newTab)) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                navigate(`#${ev.newTab ?? (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "")}`, existsViews.has(ev?.newTab || (location.hash?.replace?.(/^#/, "") || "home")));
+                navigate(`#${newTab}`, existsViews.has(newTab));
             });
         };
     }} on:tab-close=${(ev: any) => {
