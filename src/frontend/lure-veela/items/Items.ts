@@ -1,15 +1,99 @@
 import { H, M, openDirectory } from "fest/lure";
-import { $trigger, isReactive, makeReactive, numberRef, observableByMap, observe, subscribe } from "fest/object";
+import { $trigger, isReactive, makeReactive, numberRef, observe, subscribe } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, getComparableTimeValue, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
-import { MakeCardElement } from "./Cards";
+import { MakeCardElement, MakeLazyCardElement, type LazyCardOptions } from "./Cards";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS, REMOVE_IF_HAS_SIMILAR, SPLICE_INTO_ONCE } from "@rs-frontend/utils/Utils";
+import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS } from "@rs-frontend/utils/Utils";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
 import { registerEntity, unregisterEntity } from "@rs-core/service/EntityRegistry";
 
-//
+// =============================================================================
+// Progressive Loading Configuration
+// =============================================================================
+
+const INITIAL_BATCH_SIZE = 10;
+const LAZY_LOAD_ROOT_MARGIN = '400px 0px';
+const LOAD_DEBOUNCE_MS = 50;
+const BATCH_PROCESS_SIZE = 5; // Process files in batches for better performance
+
+// =============================================================================
+// OPFS Loading Utilities
+// =============================================================================
+
+// Batch processor for parallel file loading with concurrency limit
+const processBatch = async <T, R>(
+    items: T[],
+    processor: (item: T, index: number) => Promise<R>,
+    batchSize: number = BATCH_PROCESS_SIZE
+): Promise<R[]> => {
+    const results: R[] = [];
+
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+            batch.map((item, idx) => processor(item, i + idx).catch(() => null as unknown as R))
+        );
+        results.push(...batchResults);
+
+        // Yield to main thread between batches
+        if (i + batchSize < items.length) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+
+    return results;
+};
+
+// Cache for file content to avoid re-reading unchanged files
+const fileContentCache = new Map<string, { content: any; lastModified: number }>();
+
+const getCachedOrLoad = async <T>(
+    name: string,
+    fileHandle: any,
+    forceRefresh = false
+): Promise<T | null> => {
+    try {
+        const file = await fileHandle?.getFile?.();
+        if (!file) return null;
+
+        const lastModified = file.lastModified || 0;
+        const cached = fileContentCache.get(name);
+
+        // Return cached if not stale
+        if (!forceRefresh && cached && cached.lastModified >= lastModified) {
+            return cached.content as T;
+        }
+
+        // Load and cache
+        const content = await GET_OR_CACHE_BY_NAME(name, Promise.resolve(file));
+        if (content) {
+            fileContentCache.set(name, { content, lastModified });
+        }
+
+        return content as T;
+    } catch (e) {
+        console.warn(`Failed to load file: ${name}`, e);
+        return null;
+    }
+};
+
+// Cleanup old cache entries
+const pruneCache = (maxEntries = 500) => {
+    if (fileContentCache.size > maxEntries) {
+        const entries = Array.from(fileContentCache.entries());
+        entries
+            .sort((a, b) => a[1].lastModified - b[1].lastModified)
+            .slice(0, entries.length - maxEntries)
+            .forEach(([key]) => fileContentCache.delete(key));
+    }
+};
+
+// =============================================================================
+// Items Loader with Optimized OPFS Access
+// =============================================================================
+
 const MakeItemsLoaderForTabPage = <
     T extends EntityDescriptor = EntityDescriptor,
     E extends EntityInterface<any, any> = EntityInterface<any, any>,
@@ -21,111 +105,134 @@ const MakeItemsLoaderForTabPage = <
 ) => {
     const dataRef: E[] = makeReactive([]) as E[];
 
-    //
     let loadLocked = false;
-    let loaderDebounceTimer: any = null;
+    let loaderDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     let dHandle: any = null;
+    let loadGeneration = 0; // Track load generations to avoid stale updates
 
     const dispose = () => {
+        if (loaderDebounceTimer) {
+            clearTimeout(loaderDebounceTimer);
+            loaderDebounceTimer = null;
+        }
         dHandle?.dispose?.();
         dHandle = null;
+        loadGeneration++;
+    };
+
+    const isValidJsonFile = (name: string): boolean => {
+        const trimmed = name?.trim?.() || '';
+        return trimmed.endsWith('.json') && !trimmed.endsWith('.crswap');
+    };
+
+    const processFileEntry = async (
+        entry: [string, any],
+        _index: number,
+        currentGeneration: number
+    ): Promise<E | null> => {
+        // Abort if generation changed (newer load started)
+        if (currentGeneration !== loadGeneration) return null;
+
+        const [name, fileHandle] = entry;
+        if (!isValidJsonFile(name)) return null;
+
+        try {
+            const obj = await getCachedOrLoad<any>(name, fileHandle);
+            if (!obj || currentGeneration !== loadGeneration) return null;
+
+            let processedObj = obj as E;
+            if (typeof obj === 'object') {
+                processedObj = (isReactive(obj) ? obj : makeReactive(obj)) as E;
+                (processedObj as any).__name = name;
+                (processedObj as any).__path = `${sourceRef.DIR}${name}`;
+            }
+
+            // Check filter
+            if (filtered(processedObj, chapterRef as C)) {
+                return processedObj;
+            }
+
+            return null;
+        } catch (e) {
+            console.warn(`Error loading item: ${name}`, e);
+            return null;
+        }
     };
 
     const load = async () => {
         if (loadLocked) return { dataRef, load, dispose };
         loadLocked = true;
 
-        //
-        dHandle = openDirectory(null, sourceRef.DIR, { create: true }); await dHandle;
-        const loader = async () => {
-            // Use getMap() instead of entries() to leverage the worker-backed map
-            // The map is already populated by openDirectory via worker
-            const map = dHandle.getMap();
-            // We need to trigger an update/fetch if it's empty or stale? 
-            // openDirectory handles the initial fetch.
-            
-            // We iterate over the map keys
-            const handleMap = Array.from(map.entries());
-            
-            const refs = await Promise.all(handleMap?.map?.(async ($pair: any, index: number) => {
-                try {
-                    const forAddOrDelete = $pair != null;
-                    const [name, fileHandle] = $pair as any;
-                    const obj = await GET_OR_CACHE_BY_NAME(name, fileHandle?.getFile?.()?.catch?.(console.warn.bind(console)))?.catch?.(console.warn.bind(console));
+        const currentGeneration = ++loadGeneration;
 
-                    //
-                    if (!forAddOrDelete) {
-                        if (typeof index == "number" && index >= 0) {
-                            REMOVE_IF_HAS_SIMILAR(dataRef, obj as E, index);
-                        } else {
-                            REMOVE_IF_HAS(dataRef, obj as E);
+        try {
+            dHandle = openDirectory(null, sourceRef.DIR, { create: true });
+            await dHandle;
+
+            const loader = async () => {
+                if (currentGeneration !== loadGeneration) return;
+
+                const map = dHandle.getMap();
+                const handleMap = Array.from(map.entries()) as [string, any][];
+
+                // Process in batches for better performance
+                const refs = await processBatch(
+                    handleMap,
+                    (entry, index) => processFileEntry(entry, index, currentGeneration),
+                    BATCH_PROCESS_SIZE
+                );
+
+                // Abort if generation changed
+                if (currentGeneration !== loadGeneration) return;
+
+                // Filter out nulls and merge
+                const validRefs = refs.filter((ref): ref is E => ref !== null);
+                mergeByExists(dataRef as any, validRefs as any);
+
+                // Remove items that no longer exist in the directory or don't match filter
+                const currentNames = new Set(handleMap.map(([name]) => name));
+                for (let i = dataRef.length - 1; i >= 0; i--) {
+                    const item = dataRef[i];
+                    if (item) {
+                        const itemName = (item as any).__name || (item as any).name;
+                        const existsInDir = currentNames.has(itemName);
+                        const matchesFilter = existsInDir &&
+                            isValidJsonFile(itemName) &&
+                            filtered(item, chapterRef as C);
+
+                        if (!matchesFilter) {
+                            dataRef.splice(i, 1);
                         }
                     }
-
-                    //
-                    if (obj) {
-                        let processedObj = obj as E;
-                        if (typeof obj == "object") {
-                            processedObj = (isReactive(obj) ? obj : makeReactive(obj)) as E;
-                            (processedObj as any).__name = name;
-                            (processedObj as any).__path = `${sourceRef.DIR}${name}`;
-                        }
-
-                        // TODO? needs to replace push with splice adding with index saving order?
-                        if (
-                            !name?.trim?.()?.endsWith?.(".crswap") &&
-                            name?.trim?.()?.endsWith?.(".json") &&
-                            filtered(processedObj, chapterRef as C) &&
-                            forAddOrDelete
-                        ) { SPLICE_INTO_ONCE(dataRef, processedObj, index); };
-
-                        //
-                        return processedObj;
-                    }
-
-                    //
-                    return obj;
-                } catch {
-                    console.warn("Error loading item");
                 }
-            }));
 
-            //
-            mergeByExists(dataRef, refs);
+                // Periodically prune cache
+                pruneCache();
+            };
 
-            //
-            // Remove items that no longer match the filter (when filter changes, e.g., switching tabs)
-            for (let i = dataRef.length - 1; i >= 0; i--) {
-                const item = dataRef[i];
-                if (item) {
-                    const itemName = (item as any).__name || (item as any).name;
-                    const shouldKeep = itemName &&
-                        itemName.trim?.()?.endsWith?.(".json") &&
-                        !itemName.trim?.()?.endsWith?.(".crswap") &&
-                        filtered(item, chapterRef as C);
-                    if (!shouldKeep) {
-                        dataRef.splice(i, 1);
-                    }
+            const debouncedLoader = () => {
+                if (loaderDebounceTimer) {
+                    clearTimeout(loaderDebounceTimer);
                 }
-            }
+                loaderDebounceTimer = setTimeout(() => {
+                    loader().catch(console.warn.bind(console));
+                }, LOAD_DEBOUNCE_MS);
+            };
+
+            // Initial load
+            await loader().catch(console.warn.bind(console));
+
+            // Subscribe to changes
+            subscribe(dHandle?.getMap?.() ?? [], debouncedLoader);
+        } catch (e) {
+            console.warn('Error in items loader:', e);
+        } finally {
+            loadLocked = false;
         }
 
-        //
-        const debouncedLoader = () => {
-            if (loaderDebounceTimer) { clearTimeout(loaderDebounceTimer); }
-            loaderDebounceTimer = setTimeout(() => loader(), 50);
-        };
-
-        //
-        await loader()?.catch?.(console.warn.bind(console)); subscribe(dHandle?.getMap?.() ?? [], debouncedLoader);
-
-        // do sorting by days abd time before rendering
-        //dataRef?.sort?.((a: E, b: E) => (parseAndGetCorrectTime(b?.properties?.begin_time ?? 0) - parseAndGetCorrectTime(a?.properties?.begin_time ?? 0)));
-        loadLocked = false;
         return { dataRef, load, dispose };
-    }
+    };
 
-    //
     return { dataRef, load, dispose };
 }
 
@@ -138,7 +245,7 @@ export const CollectItemsForTabPage = <
     sourceRef: T,
     chapterRef: C,
     filtered: (item: E, desc: C) => boolean,
-    ItemRenderer: (item: E, desc: T) => any
+    ItemRenderer: (item: E, desc: T, options?: LazyCardOptions) => any
 ) => {
     //
     const loader = MakeItemsLoaderForTabPage(sourceRef, chapterRef, filtered);
@@ -155,15 +262,31 @@ export const CollectItemsForTabPage = <
     const maxTimestampRef = numberRef(0);
 
     //
-    subscribe([loader.dataRef, Symbol.iterator], (v, p, o) => {
+    subscribe([loader.dataRef, Symbol.iterator], () => {
         minTimestampRef.value = Math.min(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
         maxTimestampRef.value = Math.max(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
     })
 
     //
+    let renderedCount = 0;
     const makeItemEl = (item) => {
-        const itemEl = ItemRenderer(item as E, sourceRef as T);
-        if (itemEl) { itemEl.style.order = (computeTimelineOrderInsideOfDay(item, chapterRef) || 0); };
+        const order = computeTimelineOrderInsideOfDay(item, chapterRef) || 0;
+        const isInitialBatch = renderedCount < INITIAL_BATCH_SIZE;
+        renderedCount++;
+
+        // Use lazy loading for items beyond initial batch
+        const options: LazyCardOptions = {
+            order,
+            rootMargin: LAZY_LOAD_ROOT_MARGIN
+        };
+
+        const itemEl = isInitialBatch
+            ? ItemRenderer(item as E, sourceRef as T, options)
+            : MakeLazyCardElement(item as E, sourceRef as T, options);
+
+        if (itemEl) {
+            itemEl.style.order = String(order);
+        }
         return itemEl;
     };
 
@@ -173,7 +296,7 @@ export const CollectItemsForTabPage = <
     const subgroups = makeReactive([]) as any[];
 
     //
-    observe(loader.dataRef, (newItem, index, oldItem) => {
+    observe(loader.dataRef, (newItem, _index, oldItem) => {
         const item = newItem ?? oldItem;
         const forAddOrDelete = newItem != null;
 
@@ -266,7 +389,9 @@ export const CollectItemsForTabPage = <
     subgroupsEl.boundParent = subgroupBody;
 
     //
-    bindDropToDir(root as any, sourceRef.DIR);
+    if (sourceRef.DIR) {
+        bindDropToDir(root as any, sourceRef.DIR);
+    }
 
     //
     (root as any).dispose = () => {
@@ -276,9 +401,9 @@ export const CollectItemsForTabPage = <
     };
 
     //
-    root.addEventListener('contentvisibilityautostatechange', (e: any) => { firstTimeLoad?.(); });
-    root.addEventListener('visibilitychange', (e: any) => { firstTimeLoad?.(); });
-    root.addEventListener('focusin', (e: any) => { firstTimeLoad?.(); });
+    root.addEventListener('contentvisibilityautostatechange', () => { firstTimeLoad?.(); });
+    root.addEventListener('visibilitychange', () => { firstTimeLoad?.(); });
+    root.addEventListener('focusin', () => { firstTimeLoad?.(); });
 
     // after append and appear in pages, try to first signal
     requestAnimationFrame(() => {
@@ -295,8 +420,8 @@ export const CollectItemsForTabPage = <
 export const MakeItemBy = <E extends EntityInterface<any, any> = EntityInterface<any, any>, T extends EntityDescriptor = EntityDescriptor>(
     entityItem: E,
     entityDesc: T,
-    ItemMaker: (entityItem: E, entityDesc: T, options?: any) => any = MakeCardElement,
-    options: any = {}
+    ItemMaker: (entityItem: E, entityDesc: T, options?: LazyCardOptions) => any = MakeCardElement,
+    options: LazyCardOptions = {}
 ) => {
     if (!entityItem) return null;
     return ItemMaker(entityItem, entityDesc, options);

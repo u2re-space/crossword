@@ -1,6 +1,7 @@
-import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, type CardRenderOptions } from "@rs-frontend/utils/Formatted";
+import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, type CardRenderOptions, sanitizeDocSnippet, truncateDocSnippet } from "@rs-frontend/utils/Formatted";
 import { H, M, bindBeh } from "fest/lure";
-import { formatAsTime } from "@rs-core/utils/TimeUtils";
+import { propRef } from "fest/object";
+import { formatAsTime, formatAsDate, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
@@ -11,8 +12,8 @@ import { findEntities } from "@rs-core/service/EntityRegistry";
 //
 import { marked } from "marked";
 import markedKatex from "marked-katex-extension";
-import { makeEvents, objectExcludeNotExists } from "@rs-frontend/lure-veela/editors/EntityEdit";
-import { makePropertyDesc } from "./Elements";
+import { makeEvents } from "@rs-frontend/lure-veela/editors/EntityEdit";
+import { makePropertyDesc, formatPhoneElement, formatEmailElement, renderAddress } from "./Elements";
 marked.use(markedKatex({
     throwOnError: false,
     nonStandard: true
@@ -21,12 +22,289 @@ marked.use(markedKatex({
 type CardEventHandlers = ReturnType<typeof makeEvents>;
 type HydratedCardElement = HTMLElement & {
     $updateInfo?: (entity?: EntityInterface<any, any>) => void;
+    $setVisible?: (visible: boolean) => void;
+    $isLoaded?: boolean;
 };
 
 const SWIPE_TRIGGER_PX = 72;
 const SWIPE_MAX_DISTANCE = 144;
 const SWIPE_BREAKPOINT = 720;
 const SWIPE_MIN_DISTANCE = 8;
+
+// Priority properties to display prominently
+const PRIORITY_PROPS = new Set([
+    'status', 'location', 'phone', 'email', 'code', 'price',
+    'begin_time', 'end_time', 'members', 'contacts', 'usableFor', 'usableIn'
+]);
+
+// Properties to exclude from display
+const EXCLUDED_PROPS = new Set([
+    'begin_time', 'end_time', 'status', 'variant'
+]);
+
+// Status badge colors
+const STATUS_VARIANTS: Record<string, string> = {
+    'pending': 'orange',
+    'in-progress': 'blue',
+    'active': 'blue',
+    'completed': 'green',
+    'done': 'green',
+    'cancelled': 'red',
+    'failed': 'red',
+    'expired': 'purple'
+};
+
+//
+const getStatusVariant = (status: string | undefined): string => {
+    if (!status) return 'default';
+    const normalized = status.toLowerCase().replace(/\s+/g, '-');
+    return STATUS_VARIANTS[normalized] || 'default';
+};
+
+//
+const formatPromoCode = (code: string | undefined) => {
+    if (!code?.trim()) return null;
+    return H`<div class="card-promo-code" data-action="copy-code">
+        <ui-icon icon="ticket"></ui-icon>
+        <span class="code-value">${code.trim()}</span>
+        <ui-icon icon="copy" class="copy-hint"></ui-icon>
+    </div>`;
+};
+
+//
+const formatPrice = (price: number | string | undefined, currency?: string) => {
+    if (price == null || price === '') return null;
+    const formatted = typeof price === 'number'
+        ? new Intl.NumberFormat(navigator.language, {
+            style: currency ? 'currency' : 'decimal',
+            currency: currency || undefined,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(price)
+        : String(price);
+    return H`<div class="card-price">
+        <ui-icon icon="currency-circle-dollar"></ui-icon>
+        <span>${formatted}</span>
+    </div>`;
+};
+
+//
+const formatStatus = (status: string | undefined) => {
+    if (!status?.trim()) return null;
+    const variant = getStatusVariant(status);
+    return H`<div class="card-status-badge" data-variant="${variant}">
+        <span>${status}</span>
+    </div>`;
+};
+
+//
+const formatTags = (tags: string[] | undefined) => {
+    if (!tags?.length) return null;
+    return H`<div class="card-tags">
+        ${tags.slice(0, 5).map(tag => H`<span class="card-tag">${tag}</span>`)}
+        ${tags.length > 5 ? H`<span class="card-tag-more">+${tags.length - 5}</span>` : null}
+    </div>`;
+};
+
+//
+const formatLinks = (links: string[] | any[] | undefined) => {
+    if (!links?.length) return null;
+    return H`<div class="card-links-list">
+        ${links.slice(0, 3).map(link => {
+            const url = typeof link === 'string' ? link : link?.url || link?.href;
+            const label = typeof link === 'string' ? new URL(url).hostname : (link?.label || link?.title || new URL(url).hostname);
+            return H`<a class="card-link" href="${url}" target="_blank" rel="noopener">
+                <ui-icon icon="link"></ui-icon>
+                <span>${label}</span>
+            </a>`;
+        })}
+    </div>`;
+};
+
+//
+const formatContactInfo = (entity: EntityInterface<any, any>) => {
+    const phones = entity?.properties?.phone || entity?.properties?.phones;
+    const emails = entity?.properties?.email || entity?.properties?.emails;
+    const contacts = entity?.properties?.contacts;
+
+    const elements: any[] = [];
+
+    if (phones) {
+        const phoneList = Array.isArray(phones) ? phones : [phones];
+        phoneList.slice(0, 2).forEach(phone => {
+            const el = formatPhoneElement(phone);
+            if (el) elements.push(el);
+        });
+    }
+
+    if (emails) {
+        const emailList = Array.isArray(emails) ? emails : [emails];
+        emailList.slice(0, 2).forEach(email => {
+            const el = formatEmailElement(email);
+            if (el) elements.push(el);
+        });
+    }
+
+    if (contacts && typeof contacts === 'string') {
+        elements.push(H`<span class="card-contact-text">${contacts}</span>`);
+    }
+
+    return elements.length ? H`<div class="card-contacts">${elements}</div>` : null;
+};
+
+//
+const formatLocationInfo = (location: any) => {
+    if (!location) return null;
+
+    const address = location?.address;
+    const coordinate = location?.coordinate;
+    const name = location?.name || location?.title;
+
+    const parts: any[] = [];
+
+    if (name) {
+        parts.push(H`<span class="location-name">${name}</span>`);
+    }
+
+    if (address) {
+        const addressEl = renderAddress(address);
+        if (addressEl) {
+            parts.push(H`<span class="location-address">${addressEl}</span>`);
+        }
+    }
+
+    if (coordinate?.latitude && coordinate?.longitude) {
+        parts.push(H`<a class="location-coords" href="geo:${coordinate.latitude},${coordinate.longitude}" target="_blank">
+            <ui-icon icon="map-pin"></ui-icon>
+        </a>`);
+    }
+
+    return parts.length ? H`<div class="card-location">
+        <ui-icon icon="map-pin"></ui-icon>
+        ${parts}
+    </div>` : null;
+};
+
+//
+const formatMembers = (members: string[] | any[] | undefined) => {
+    if (!members?.length) return null;
+    return H`<div class="card-members">
+        <ui-icon icon="users"></ui-icon>
+        <span class="members-count">${members.length} member${members.length > 1 ? 's' : ''}</span>
+    </div>`;
+};
+
+//
+const formatUsability = (usableFor: string[] | undefined, usableIn: string[] | undefined) => {
+    const items = [...(usableFor || []), ...(usableIn || [])];
+    if (!items.length) return null;
+
+    return H`<div class="card-usability">
+        <ui-icon icon="storefront"></ui-icon>
+        <span>${items.slice(0, 3).join(', ')}${items.length > 3 ? ` +${items.length - 3}` : ''}</span>
+    </div>`;
+};
+
+//
+const formatAvailability = (availability: any) => {
+    if (!availability) return null;
+
+    const parts: string[] = [];
+    if (availability.count) parts.push(`${availability.count} left`);
+    if (availability.days?.length) parts.push(availability.days.slice(0, 3).join(', '));
+    if (availability.time?.length) parts.push(availability.time[0]);
+
+    return parts.length ? H`<div class="card-availability">
+        <ui-icon icon="clock"></ui-icon>
+        <span>${parts.join(' • ')}</span>
+    </div>` : null;
+};
+
+//
+const formatQuickInfo = (entity: EntityInterface<any, any>, _entityDesc?: EntityDescriptor) => {
+    const elements: any[] = [];
+    const props = entity?.properties || {};
+
+    // Status badge
+    const statusEl = formatStatus(props.status);
+    if (statusEl) elements.push(statusEl);
+
+    // Price (for items/services)
+    if (props.price != null) {
+        const priceEl = formatPrice(props.price, props.currency);
+        if (priceEl) elements.push(priceEl);
+    }
+
+    // Promo code (for bonus)
+    if (props.code) {
+        const codeEl = formatPromoCode(props.code);
+        if (codeEl) elements.push(codeEl);
+    }
+
+    // Location
+    if (props.location) {
+        const locationEl = formatLocationInfo(props.location);
+        if (locationEl) elements.push(locationEl);
+    }
+
+    // Members (for tasks/events)
+    if (props.members?.length) {
+        const membersEl = formatMembers(props.members);
+        if (membersEl) elements.push(membersEl);
+    }
+
+    // Usability (for bonus/promo)
+    if (props.usableFor?.length || props.usableIn?.length) {
+        const usabilityEl = formatUsability(props.usableFor, props.usableIn);
+        if (usabilityEl) elements.push(usabilityEl);
+    }
+
+    // Availability (for bonus)
+    if (props.availability) {
+        const availabilityEl = formatAvailability(props.availability);
+        if (availabilityEl) elements.push(availabilityEl);
+    }
+
+    // Contact info
+    const contactEl = formatContactInfo(entity);
+    if (contactEl) elements.push(contactEl);
+
+    return elements.length ? H`<div class="card-quick-info">${elements}</div>` : null;
+};
+
+//
+const formatExpandedProperties = (entity: EntityInterface<any, any>) => {
+    const props = entity?.properties || {};
+    const filteredProps = Object.entries(props).filter(([key]) =>
+        !EXCLUDED_PROPS.has(key) && !PRIORITY_PROPS.has(key)
+    );
+
+    if (!filteredProps.length) return null;
+
+    return H`<ul class="card-properties">${M(
+        makeObjectEntries(Object.fromEntries(filteredProps)),
+        (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0])
+    )}</ul>`;
+};
+
+//
+const createCardSkeleton = (order?: number | null): HydratedCardElement => {
+    const skeleton = H`<div class="card-wrap card-skeleton" data-order=${order ?? ""}>
+        <div class="card">
+            <div class="card-avatar skeleton-pulse"></div>
+            <div class="card-props">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-subtitle"></div>
+            </div>
+            <div class="card-quick-info">
+                <div class="skeleton-line skeleton-short"></div>
+            </div>
+        </div>
+    </div>` as HydratedCardElement;
+
+    skeleton.$isLoaded = false;
+    return skeleton;
+};
 
 //
 export const MakeCardElement = <
@@ -36,34 +314,47 @@ export const MakeCardElement = <
     entityItem: E,
     entityDesc: T,
     options: CardRenderOptions = {}
-) => {
+): HydratedCardElement | null => {
     if (!entityItem) return null;
 
     //
     const begin_time = formatAsTime(entityItem?.properties?.begin_time) || "";
     const end_time = formatAsTime(entityItem?.properties?.end_time) || "";
     const variant = entityItem?.variant || entityItem?.properties?.variant || "default";
+
+    // Process description
     let description = entityItem?.description || "";
+    let descriptionPreview = "";
 
-    //
-    if (typeof description === "string" && countLines(description) <= 1) {
-        description = description?.split?.(",") ?? [];
+    if (typeof description === "string") {
+        descriptionPreview = truncateDocSnippet(sanitizeDocSnippet(description), 120);
+        if (countLines(description) <= 1) {
+            description = description?.split?.(",") ?? [];
+        }
+    } else if (Array.isArray(description)) {
+        descriptionPreview = truncateDocSnippet(sanitizeDocSnippet(description.join(' ')), 120);
     }
 
+    // Time range element with enhanced styling
     let timeRangeElement = null;
-    if (begin_time && end_time) {
-        timeRangeElement = H`<div class="card-time">${begin_time} - ${end_time}</div>`;
-    }
+    if (begin_time || end_time) {
+        const beginDate = parseDateCorrectly(entityItem?.properties?.begin_time);
+        const showDate = beginDate && !isToday(beginDate);
 
-    //<span class="card-label">Entity: </span><ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityDesc)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
+        timeRangeElement = H`<div class="card-time">
+            <ui-icon icon="clock"></ui-icon>
+            ${showDate ? H`<span class="time-date">${formatAsDate(entityItem?.properties?.begin_time)}</span>` : null}
+            <span class="time-range">${begin_time}${end_time ? ` – ${end_time}` : ''}</span>
+        </div>`;
+    }
 
     //
     const events = makeEvents(entityItem, entityDesc);
-    const linksPlaceholder = H`<div class="card-links"></div>` as HTMLElement;
     const editIcon = iconsPerAction.get("edit") ?? "pencil";
     const deleteIcon = iconsPerAction.get("delete") ?? "trash";
     const editLabel = labelsPerAction.get("edit")?.(entityDesc) ?? "Edit";
     const deleteLabel = labelsPerAction.get("delete")?.(entityDesc) ?? "Remove";
+
     const handleCardToggle = (ev: Event) => {
         const target = ev.currentTarget as HTMLElement | null;
         if (!target) return;
@@ -72,48 +363,105 @@ export const MakeCardElement = <
             ev.stopPropagation();
             return;
         }
-
         target.toggleAttribute("data-open");
     };
-    const card = H`<div class="card-wrap" data-order=${options?.order ?? ""}>
-    <div class="card-swipe-preview">
-        <div class="card-swipe-action is-edit">
-            <ui-icon icon=${editIcon}></ui-icon>
-            <span>${editLabel}</span>
+
+    const handleCodeCopy = (ev: Event) => {
+        const target = ev.currentTarget as HTMLElement;
+        const code = target.querySelector('.code-value')?.textContent?.trim();
+        if (code) {
+            navigator.clipboard.writeText(code);
+            target.setAttribute('data-copied', 'true');
+            setTimeout(() => target.removeAttribute('data-copied'), 1500);
+        }
+        ev.stopPropagation();
+    };
+
+    // Quick info section
+    const quickInfoEl = formatQuickInfo(entityItem, entityDesc);
+
+    // Tags
+    const tagsEl = formatTags(entityItem?.tags);
+
+    // Links
+    const linksEl = formatLinks(entityItem?.properties?.links);
+
+    // Image preview
+    const imageEl = entityItem?.image ? H`<div class="card-image-preview">
+        <img src="${propRef(entityItem, "image")}" alt="" loading="lazy" decoding="async" />
+    </div>` : null;
+
+    // Entity type icon
+    const typeIcon = getTypeIcon(entityDesc.type);
+
+    const card = H`<div class="card-wrap" data-order=${options?.order ?? ""} data-type="${entityDesc.type}">
+        <div class="card-swipe-preview">
+            <div class="card-swipe-action is-edit">
+                <ui-icon icon=${editIcon}></ui-icon>
+                <span>${editLabel}</span>
+            </div>
+            <div class="card-swipe-action is-remove">
+                <ui-icon icon=${deleteIcon}></ui-icon>
+                <span>${deleteLabel}</span>
+            </div>
         </div>
-        <div class="card-swipe-action is-remove">
-            <ui-icon icon=${deleteIcon}></ui-icon>
-            <span>${deleteLabel}</span>
+        <div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
+            <div class="card-header">
+                <div class="card-avatar" data-type="${entityDesc.type}">
+                    <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
+                </div>
+                <div class="card-props">
+                    <div class="card-title-row">
+                        <h3 class="card-title">${entityItem?.title || entityItem?.name || entityDesc.label}</h3>
+                        <span class="card-type-badge">
+                            <ui-icon icon="${typeIcon}"></ui-icon>
+                        </span>
+                    </div>
+                    ${entityItem?.kind ? H`<span class="card-kind">${entityItem.kind}</span>` : null}
+                </div>
+                ${timeRangeElement}
+            </div>
+
+            ${quickInfoEl}
+            ${tagsEl}
+
+            ${descriptionPreview ? H`<p class="card-description-preview">${descriptionPreview}</p>` : null}
+
+            <div class="card-actions">
+                <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
+                <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+            </div>
+
+            <div class="card-expanded">
+                ${imageEl}
+
+                ${description && (Array.isArray(description) ? description.length : description.trim()) ? H`<div class="card-description">
+                    <span class="card-label">Description</span>
+                    <div class="card-description-content">
+                        ${H(marked.parse((Array.isArray(description) ? description?.map?.((frag) => wrapBySpan(frag?.trim?.()))?.join("<br>") : wrapBySpan(description?.trim?.()))?.trim?.() || ""))}
+                    </div>
+                </div>` : null}
+
+                ${linksEl ? H`<div class="card-section">
+                    <span class="card-label">Links</span>
+                    ${linksEl}
+                </div>` : null}
+
+                <div class="card-content">
+                    <span class="card-label">Properties</span>
+                    ${formatExpandedProperties(entityItem)}
+                </div>
+            </div>
         </div>
-    </div>
-    <div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
-    <div class="card-avatar">
-        <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
-    </div>
-    <div class="card-props">
-        <ul class="card-title"><li>${entityItem?.title || entityItem?.name || entityDesc.label}</li></ul>
-        <ul class="card-kind"><li>${entityItem?.kind}</li></ul>
-    </div>
-    ${timeRangeElement}
-    <div class="card-actions">
-        <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
-        <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
-    </div>
-    <div class="card-description">
-        <span class="card-label">Description: </span>
-        <div class="card-description-content">
-            ${H(marked.parse((Array.isArray(description) ? description?.map?.((frag) => wrapBySpan(frag?.trim?.()))?.join("<br>") : wrapBySpan(description?.trim?.()))?.trim?.() || ""))}
-        </div>
-    </div>
-    <div class="card-content">
-        <span class="card-label">Properties: </span>
-        <ul class="card-properties">${M(makeObjectEntries(objectExcludeNotExists(entityItem?.properties)), (frag: any) => makePropertyDesc(MAKE_LABEL(frag?.[0]), frag?.[1], frag?.[0]))}</ul>
-    </div>
-    ${linksPlaceholder}
-    </div>
-</div>` as HydratedCardElement;
+    </div>` as HydratedCardElement;
 
     const cardInner = card.querySelector(".card") as HTMLElement;
+
+    // Bind promo code copy handler
+    const promoCodeEl = card.querySelector('.card-promo-code');
+    if (promoCodeEl) {
+        promoCodeEl.addEventListener('click', handleCodeCopy);
+    }
 
     //
     if (entityItem?.properties?.location?.coordinate) {
@@ -123,7 +471,6 @@ export const MakeCardElement = <
             cardInner.classList.toggle("is-nearby", nearby);
         });
     } else if (entityItem?.properties?.usableIn || entityItem?.properties?.usableFor) {
-        // Check for related entities (Bonus/Promo case)
         bindBeh(cardInner, GeoState, () => {
             let nearby = false;
             const checkList = [
@@ -162,6 +509,7 @@ export const MakeCardElement = <
             registerEventForNotification(String(entityItem.id), entityItem.title, entityItem.properties.begin_time);
         }
     }
+
     const orderValue = options?.order;
     if (typeof orderValue === "number" && Number.isFinite(orderValue)) {
         try {
@@ -178,52 +526,54 @@ export const MakeCardElement = <
 
     //
     const updateCardInfo = ($entityItem: E = entityItem) => {
-        // Update card content
         const titleEl = card.querySelector('.card-title');
         if (titleEl && $entityItem.title) titleEl.textContent = $entityItem.title;
-
-        const nameEl = card.querySelector('.card-name');
-        if (nameEl && $entityItem.name) nameEl.textContent = $entityItem.name;
-
-        const descEl = card.querySelector('.card-description');
-        if (descEl && $entityItem.description) {
-            const desc = Array.isArray($entityItem.description)
-                ? $entityItem.description.join('\n')
-                : $entityItem.description;
-            descEl.textContent = desc;
-        }
 
         const kindEl = card.querySelector('.card-kind');
         if (kindEl && $entityItem.kind) kindEl.textContent = $entityItem.kind;
 
-        const timeRangeEl = card.querySelector('.card-time');
-        if (timeRangeEl && $entityItem.properties?.begin_time && $entityItem.properties?.end_time) timeRangeEl.textContent = `${formatAsTime($entityItem.properties?.begin_time)} - ${formatAsTime($entityItem.properties?.end_time)}`;
-
-        const linksEl = card.querySelector('.card-links');
-        if (linksEl && $entityItem.properties?.links) {
-            linksEl.textContent = $entityItem.properties?.links.join('\n');
+        const timeRangeEl = card.querySelector('.card-time .time-range');
+        if (timeRangeEl && $entityItem.properties?.begin_time) {
+            const bt = formatAsTime($entityItem.properties?.begin_time);
+            const et = formatAsTime($entityItem.properties?.end_time);
+            timeRangeEl.textContent = `${bt}${et ? ` – ${et}` : ''}`;
         }
 
-        const tagsEl = card.querySelector('.card-tags');
-        if (tagsEl && $entityItem.tags) {
-            tagsEl.textContent = $entityItem.tags.join('\n');
-        }
-
-        const imageEl = card.querySelector<HTMLImageElement>('.card-image');
+        const imageEl = card.querySelector<HTMLImageElement>('.card-image-preview img');
         if (imageEl && $entityItem.image) {
             imageEl.src = $entityItem.image;
         }
-
-        const variantEl = card.querySelector('.card-variant');
-        if (variantEl && $entityItem.variant) {
-            variantEl.textContent = $entityItem.variant;
-        }
-    }
+    };
 
     //
     card.$updateInfo = updateCardInfo as HydratedCardElement["$updateInfo"];
+    card.$isLoaded = true;
     return card;
-}
+};
+
+//
+const getTypeIcon = (type: string | undefined): string => {
+    const icons: Record<string, string> = {
+        'task': 'check-square',
+        'event': 'calendar',
+        'person': 'user',
+        'place': 'map-pin',
+        'service': 'briefcase',
+        'item': 'package',
+        'factor': 'activity',
+        'bonus': 'gift',
+        'skill': 'star'
+    };
+    return icons[type || ''] || 'file';
+};
+
+//
+const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear();
+};
 
 type SwipeAction = "edit" | "remove";
 
@@ -257,13 +607,8 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers, wrappe
     let isSwiping = false;
 
     const applySwipeVisuals = (offset: number) => {
-        // Apply offset to card (for transform)
         card.style.setProperty("--card-swipe-offset", `${offset}px`);
-
-        // Calculate progress for wrapper (for preview opacity/glow)
         const progress = Math.min(Math.abs(offset) / SWIPE_TRIGGER_PX, 1);
-
-        // Set properties on wrapper for the preview to react
         wrapper.style.setProperty("--card-swipe-progress", progress.toString());
 
         if (progress >= 1) {
@@ -368,4 +713,107 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers, wrappe
     card.addEventListener("pointermove", handlePointerMove, { passive: false });
     card.addEventListener("pointerup", finalizeSwipe, { passive: true });
     card.addEventListener("pointercancel", finalizeSwipe, { passive: true });
+};
+
+// =============================================================================
+// Progressive/Lazy Loading Support
+// =============================================================================
+
+export interface LazyCardOptions extends CardRenderOptions {
+    onVisible?: () => void;
+    rootMargin?: string;
+    threshold?: number;
+}
+
+const cardObserver = new WeakMap<HTMLElement, IntersectionObserver>();
+const pendingCards = new WeakMap<HTMLElement, { entity: any; desc: any; options: LazyCardOptions }>();
+
+//
+export const createLazyCardPlaceholder = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    T extends EntityDescriptor = EntityDescriptor
+>(
+    entityItem: E,
+    entityDesc: T,
+    options: LazyCardOptions = {}
+): HydratedCardElement => {
+    const placeholder = createCardSkeleton(options.order);
+
+    // Store entity data for lazy hydration
+    pendingCards.set(placeholder, { entity: entityItem, desc: entityDesc, options });
+
+    // Set up intersection observer for lazy loading
+    const observer = new IntersectionObserver(
+        (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting) {
+                    const target = entry.target as HydratedCardElement;
+                    hydrateLazyCard(target);
+                    observer.unobserve(target);
+                    cardObserver.delete(target);
+                }
+            }
+        },
+        {
+            rootMargin: options.rootMargin || '200px 0px',
+            threshold: options.threshold || 0
+        }
+    );
+
+    observer.observe(placeholder);
+    cardObserver.set(placeholder, observer);
+
+    return placeholder;
+};
+
+//
+const hydrateLazyCard = (placeholder: HydratedCardElement) => {
+    const data = pendingCards.get(placeholder);
+    if (!data || placeholder.$isLoaded) return;
+
+    const { entity, desc, options } = data;
+
+    // Create the real card
+    const realCard = MakeCardElement(entity, desc, options);
+    if (!realCard) {
+        placeholder.remove();
+        return;
+    }
+
+    // Animate the transition
+    realCard.classList.add('card-hydrating');
+
+    // Replace placeholder with real card
+    placeholder.parentNode?.replaceChild(realCard, placeholder);
+
+    // Trigger enter animation
+    requestAnimationFrame(() => {
+        realCard.classList.remove('card-hydrating');
+        realCard.classList.add('card-hydrated');
+    });
+
+    // Cleanup
+    pendingCards.delete(placeholder);
+    options.onVisible?.();
+};
+
+//
+export const MakeLazyCardElement = <
+    E extends EntityInterface<any, any> = EntityInterface<any, any>,
+    T extends EntityDescriptor = EntityDescriptor
+>(
+    entityItem: E,
+    entityDesc: T,
+    options: LazyCardOptions = {}
+): HydratedCardElement | null => {
+    if (!entityItem) return null;
+
+    // For items that should load immediately (first batch), use regular cards
+    const order = options.order ?? 0;
+    if (typeof order === 'number' && order < 10) {
+        return MakeCardElement(entityItem, entityDesc, options);
+    }
+
+    // For items further down, use lazy loading
+    return createLazyCardPlaceholder(entityItem, entityDesc, options);
 };
