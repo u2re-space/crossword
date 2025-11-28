@@ -770,15 +770,24 @@ $card-variants: (
             @include card-sync-vars;
 
             .card-actions {
-                display: flex;
-                justify-self: stretch;
-                inline-size: stretch;
-                justify-content: space-between;
-                flex-direction: row;
-                flex-wrap: nowrap;
+                & {
+                    display: flex;
+                    justify-self: stretch;
+                    inline-size: stretch;
+                    justify-content: flex-start;//space-between;
+                    justify-items: start;
+                    flex-direction: row;
+                    flex-wrap: nowrap;
+                }
 
                 & > * {
                     inline-size: fit-content;
+                    flex-basis: fit-content;
+                }
+
+                /* mobile screens too small to show actions, so hope to gestures */
+                .action {
+                    display: none !important;
                 }
             }
         }
@@ -825,16 +834,18 @@ $card-variants: (
         .card-actions {
             @include card-inline();
 
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            align-items: center;
-            justify-content: flex-start;
-            gap: var(--gap-sm);
-            inline-size: stretch;
-            overflow: visible;
-            padding-block-start: var(--gap-xs);
-            border-block-start: 1px solid color-mix(in oklch, var(--on-surface) 8%, transparent);
+            & {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                align-items: center;
+                justify-content: flex-start;
+                gap: var(--gap-sm);
+                inline-size: stretch;
+                overflow: visible;
+                padding-block-start: var(--gap-xs);
+                border-block-start: 1px solid color-mix(in oklch, var(--on-surface) 8%, transparent);
+            }
 
             & > * {
                 inline-size: fit-content;
@@ -892,15 +903,21 @@ $card-variants: (
                 .card-kind,
                 .card-type-badge {
                     margin-inline-end: 0;
-                    flex-basis: 100%;
+                    flex-basis: fit-content;
+                    inline-size: fit-content;
                     justify-content: center;
+                    max-inline-size: stretch;
+                    min-inline-size: 0px;
                 }
 
                 .card-promo-code {
                     order: 0;
-                    flex-basis: 100%;
+                    flex-basis: fit-content;
+                    inline-size: fit-content;
                     margin-inline: 0;
                     justify-content: center;
+                    max-inline-size: stretch;
+                    min-inline-size: 0px;
                 }
             }
         }
