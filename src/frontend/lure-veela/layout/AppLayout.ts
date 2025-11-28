@@ -32,7 +32,7 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
     //
     if (currentView && !isPrimitive(currentView) && !currentView.value) {
-        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != "home")?.[0] || "home";
+        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != "home")?.[0] || (location.hash?.replace?.(/^#/, "") || "home");
     }
 
     //
@@ -46,8 +46,8 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         }
 
         //
-        const ext = (existsViews?.get?.(key || "home") || existsViews?.get?.("home"));
-        const npr = (skipCreateNewView ? ext : (await makeView(key || "home") || await makeView("home"))) || ext;
+        const ext = (existsViews?.get?.(key || (location.hash?.replace?.(/^#/, "") || "home")) || existsViews?.get?.(location.hash?.replace?.(/^#/, "") || "home"));
+        const npr = (skipCreateNewView ? ext : (await makeView(key || (location.hash?.replace?.(/^#/, "") || "home")) || await makeView(location.hash?.replace?.(/^#/, "") || "home"))) || ext;
         skipCreateNewView = false;
         rPair[0] = await (npr?.[0] ?? rPair[0]);
         rPair[1] = await (npr?.[1] ?? rPair[1]);
@@ -59,7 +59,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
     //
     subscribe([currentView, "value"], setView)
-    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home");
+    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || (location.hash?.replace?.(/^#/, "") || "home"));
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
@@ -73,10 +73,10 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev)=>{
-        if (ev?.newTab && (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") != ev?.newTab && ev?.target == $layout && existsViews.has(ev?.newTab || "home")) {
+        if (ev?.newTab && (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") != ev?.newTab && ev?.target == $layout && existsViews.has(ev?.newTab || (location.hash?.replace?.(/^#/, "") || "home"))) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                navigate(`#${ev.newTab ?? (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "")}`, existsViews.has(ev?.newTab || "home"));
+                navigate(`#${ev.newTab ?? (isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "")}`, existsViews.has(ev?.newTab || (location.hash?.replace?.(/^#/, "") || "home")));
             });
         };
     }} on:tab-close=${(ev: any) => {

@@ -547,19 +547,15 @@ $card-variants: (
         // Box/Layout
         // ---------------------------------------------------------------------
         display: grid;
-        grid-template-areas:
-            "avatar content actions"
-            "footer footer footer";
-        grid-template-columns:
-            minmax(0px, max-content)
-            minmax(0px, 1fr)
-            minmax(0px, max-content);
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        grid-auto-flow: row;
         align-items: start;
-        place-items: center;
-        place-content: center;
+        justify-items: stretch;
+        place-content: start stretch;
         place-self: center;
-        gap: var(--space-lg);
-        row-gap: var(--gap-sm);
+        gap: var(--gap-sm);
+        row-gap: var(--gap-md);
 
         box-sizing: border-box;
         inline-size: stretch !important;
@@ -764,23 +760,18 @@ $card-variants: (
         }
 
         // ---------------------------------------------------------------------
-        // Child Layout Mapping (Grid Areas)
+        // Child Layout Mapping
         // ---------------------------------------------------------------------
 
+        // Actions row layout adjustment for narrow viewports
         @container (inline-size <= 460px) {
-            grid-template-areas:
-                "avatar content"
-                "actions actions"
-                "footer footer";
-            grid-template-columns: minmax(0px, max-content) minmax(0px, 1fr);
-
             --card-gradient-angle: 110deg;
             --card-overlay-strength-base: clamp(0.2, calc(clamp(0.18, calc(var(--card-surface-tone-base) * 1.8), 0.34) + 0.04), 0.4);
             @include card-sync-vars;
 
             .card-actions {
                 display: flex;
-                justify-self: start;
+                justify-self: stretch;
                 inline-size: stretch;
                 justify-content: space-between;
                 flex-direction: row;
@@ -789,7 +780,6 @@ $card-variants: (
         }
 
         .card-avatar {
-            grid-area: avatar;
             --icon-color: --c2-surface(0, var(--current, var(--color-primary, var(--md3-primary, #6750a4))));
 
             inline-size: var(--card-avatar-size);
@@ -815,7 +805,6 @@ $card-variants: (
         }
 
         .card-props {
-            grid-area: content;
             display: flex;
             flex-direction: column;
             inline-size: stretch;
@@ -823,21 +812,54 @@ $card-variants: (
             min-inline-size: 0px;
             text-align: start;
             gap: var(--gap-2xs);
+
+            &:empty {
+                display: none;
+            }
         }
 
         .card-actions {
             @include card-inline();
 
-            inline-size: stretch;
-            grid-area: actions;
-            overflow: visible;
-            align-self: center;
-            justify-content: space-between;
-
+            display: flex;
             flex-direction: row;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: var(--gap-sm);
+            inline-size: stretch;
+            overflow: visible;
+            padding-block-start: var(--gap-xs);
+            border-block-start: 1px solid color-mix(in oklch, var(--on-surface) 8%, transparent);
 
+            // Kind badge styling
+            .card-kind {
+                @include card-color(var(--text-tint-muted, 60%));
+                font-size: var(--font-xs);
+                font-weight: var(--font-weight-medium);
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                padding: var(--padding-xs) var(--padding-sm);
+                border-radius: var(--radius-full);
+                background: color-mix(in oklch, var(--on-surface) 8%, transparent);
+            }
+
+            // Type badge
+            .card-type-badge {
+                margin-inline-end: auto;
+            }
+
+            // Promo code in actions area
+            .card-promo-code {
+                order: 1;
+                flex-shrink: 0;
+                margin-inline-start: auto;
+                margin-inline-end: var(--gap-sm);
+            }
+
+            // Action buttons
             & > .action {
+                order: 2;
                 padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);
                 cursor: pointer;
@@ -849,17 +871,35 @@ $card-variants: (
 
                 box-shadow: none;
                 filter: none;
+
+                &:hover {
+                    @include ui.tonal-surface(surface, calc(var(--surface-opacity-emphasis) + 0.06));
+                }
             }
 
             @container (inline-size <= 400px) {
                 flex-wrap: wrap;
+                justify-content: center;
+
+                .card-kind,
+                .card-type-badge {
+                    margin-inline-end: 0;
+                    flex-basis: 100%;
+                    justify-content: center;
+                }
+
+                .card-promo-code {
+                    order: 0;
+                    flex-basis: 100%;
+                    margin-inline: 0;
+                    justify-content: center;
+                }
             }
         }
 
         .card-description,
         .card-content,
         .card-links {
-            grid-column: 1 / -1;
             overflow-wrap: normal;
             word-break: break-word;
             text-overflow: ellipsis;
@@ -943,17 +983,86 @@ $card-variants: (
             font-weight: var(--font-weight-semibold);
         }
 
-        .card-kind {
-            @include card-inline();
-            @include card-color(var(--text-tint-muted, 60%));
-            margin-block-start: var(--gap-xs);
-        }
 
         // -----------------------------------------------------------------
-        // Card Header (New Layout)
+        // Card Header (Enhanced Grid Layout)
         // -----------------------------------------------------------------
         .card-header {
-            display: contents;
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns:
+                [avatar-start] var(--card-avatar-size)
+                [avatar-end content-start] minmax(0px, 1fr)
+                [content-end];
+            grid-template-rows:
+                [title-start] auto
+                [title-end meta-start] auto
+                [meta-end info-start] auto
+                [info-end desc-start] auto
+                [desc-end];
+            column-gap: var(--space-md);
+            row-gap: var(--gap-xs);
+            align-items: start;
+            inline-size: stretch;
+            place-content: center;
+            place-items: center;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
+
+            // Avatar placement
+            .card-avatar {
+                grid-column: avatar-start / avatar-end;
+                grid-row: title-start / meta-end;
+                align-self: start;
+                justify-self: center;
+            }
+
+            // Title row placement
+            .card-title-row {
+                grid-column: content-start / content-end;
+                grid-row: title-start / title-end;
+                justify-self: stretch;
+                align-self: center;
+            }
+
+            // Props/meta info placement
+            .card-props {
+                grid-column: content-start / content-end;
+                grid-row: meta-start / meta-end;
+                justify-self: start;
+
+                &:empty {
+                    display: none;
+                }
+            }
+
+            // Time placement
+            .card-time {
+                inline-size: stretch;
+                grid-column: content-start / content-end;
+                grid-row: meta-start / meta-end;
+                justify-self: center;
+                margin-block-start: 0;
+                flex-direction: row;
+                justify-content: end;
+            }
+
+            // Quick info placement
+            .card-quick-info {
+                grid-column: 1 / -1;
+                grid-row: info-start / info-end;
+                padding-block: var(--gap-xs);
+                padding-block-start: var(--gap-md);
+                flex-direction: column;
+                text-align: start;
+                align-items: flex-start;
+            }
+
+            // Description preview placement
+            .card-description-preview {
+                grid-column: 1 / -1;
+                grid-row: desc-start / desc-end;
+            }
         }
 
         .card-title-row {
@@ -967,6 +1076,58 @@ $card-variants: (
             .card-title {
                 flex: 1;
                 min-inline-size: 0;
+            }
+        }
+
+        // Narrow viewport: stack avatar above content
+        @container (inline-size <= 320px) {
+            .card-header {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto;
+                row-gap: var(--gap-sm);
+                justify-items: center;
+                text-align: center;
+                place-content: center;
+                place-items: center;
+
+                .card-avatar {
+                    grid-column: 1;
+                    grid-row: 1;
+                    justify-self: center;
+                }
+
+                .card-title-row {
+                    grid-column: 1;
+                    grid-row: 2;
+                    justify-self: center;
+                    text-align: center;
+                }
+
+                .card-props,
+                .card-time {
+                    grid-column: 1;
+                    grid-row: 3;
+                    justify-self: center;
+                }
+
+                .card-time {
+                    place-self: center;
+                    text-align: center;
+                    justify-content: end;
+                }
+
+                .card-quick-info {
+                    grid-column: 1;
+                    grid-row: 4;
+                    align-items: center;
+                    text-align: center;
+                }
+
+                .card-description-preview {
+                    grid-column: 1;
+                    grid-row: 5;
+                    text-align: center;
+                }
             }
         }
 
@@ -990,16 +1151,24 @@ $card-variants: (
         // Quick Info Section
         // -----------------------------------------------------------------
         .card-quick-info {
-            grid-column: 1 / -1;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: var(--gap-sm);
-            padding-block: var(--padding-xs);
+            row-gap: var(--gap-xs);
             font-size: var(--font-xs);
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
 
             &:empty {
                 display: none;
+            }
+
+            // Vertical layout for multiple info items
+            &:has(> :nth-child(4)) {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
 
@@ -1166,11 +1335,13 @@ $card-variants: (
         // Tags
         // -----------------------------------------------------------------
         .card-tags {
-            grid-column: 1 / -1;
             display: flex;
             flex-wrap: wrap;
+            align-items: center;
             gap: var(--gap-xs);
-            padding-block: var(--padding-xs);
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
 
             &:empty {
                 display: none;
@@ -1201,7 +1372,6 @@ $card-variants: (
         // Description Preview (Collapsed)
         // -----------------------------------------------------------------
         .card-description-preview {
-            grid-column: 1 / -1;
             @include card-color(var(--text-tint-muted, 60%));
             font-size: var(--font-sm);
             line-height: 1.5;
@@ -1212,6 +1382,9 @@ $card-variants: (
             text-overflow: ellipsis;
             margin: 0;
             padding: 0;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
 
             &:empty {
                 display: none;
@@ -1222,13 +1395,14 @@ $card-variants: (
         // Expanded Content Section
         // -----------------------------------------------------------------
         .card-expanded {
-            grid-column: 1 / -1;
             display: none;
             flex-direction: column;
             gap: var(--gap-md);
             padding-block-start: var(--padding-md);
             border-block-start: 1px solid color-mix(in oklch, var(--on-surface) 10%, transparent);
-            margin-block-start: var(--padding-sm);
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0px;
 
             &:empty {
                 display: none;
@@ -1314,21 +1488,19 @@ $card-variants: (
             max-inline-size: stretch;
             min-inline-size: 0px;
             text-align: start;
-            place-items: center;
-            place-content: center;
-            align-content: flex-start;
+            align-items: center;
             block-size: max-content;
-            grid-column: 2;
-            grid-row: 2;
-            margin-block-start: var(--gap-xs);
+            gap: var(--gap-xs);
 
             ui-icon {
                 --icon-color: currentColor;
                 flex-shrink: 0;
+                font-size: var(--icon-size-sm);
             }
 
             .time-date {
-                opacity: 0.8;
+                opacity: 0.7;
+                font-size: var(--font-2xs, 0.65rem);
             }
 
             .time-range {

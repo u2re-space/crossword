@@ -57,7 +57,7 @@ const checkIsActive = (registryKey: string, closingView: string) => {
 }
 
 //
-export const CURRENT_VIEW = historyViewRef(location.hash || "#home", { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
+export const CURRENT_VIEW = historyViewRef(location.hash?.replace?.(/^#/, "") || "home", { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
 import { startGeoTracking } from "@rs-core/service/GeoService";
 import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
 import { initTheme } from "@rs-frontend/utils/Theme";

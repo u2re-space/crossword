@@ -225,20 +225,10 @@ const formatQuickInfo = (entity: EntityInterface<any, any>, _entityDesc?: Entity
     const elements: any[] = [];
     const props = entity?.properties || {};
 
-    // Status badge
-    const statusEl = formatStatus(props.status);
-    if (statusEl) elements.push(statusEl);
-
     // Price (for items/services)
     if (props.price != null) {
         const priceEl = formatPrice(props.price, props.currency);
         if (priceEl) elements.push(priceEl);
-    }
-
-    // Promo code (for bonus)
-    if (props.code) {
-        const codeEl = formatPromoCode(props.code);
-        if (codeEl) elements.push(codeEl);
     }
 
     // Location
@@ -377,8 +367,14 @@ export const MakeCardElement = <
         ev.stopPropagation();
     };
 
+    // Status badge
+    const statusEl = formatStatus(entityItem?.properties.status);
+
     // Quick info section
     const quickInfoEl = formatQuickInfo(entityItem, entityDesc);
+
+    // Promo code element (for actions area)
+    const promoCodeEl = formatPromoCode(entityItem?.properties?.code);
 
     // Tags
     const tagsEl = formatTags(entityItem?.tags);
@@ -410,24 +406,26 @@ export const MakeCardElement = <
                 <div class="card-avatar" data-type="${entityDesc.type}">
                     <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
                 </div>
+                <div class="card-title-row">
+                    <h3 class="card-title">${entityItem?.title || entityItem?.name || entityDesc.label}</h3>
+                </div>
                 <div class="card-props">
-                    <div class="card-title-row">
-                        <h3 class="card-title">${entityItem?.title || entityItem?.name || entityDesc.label}</h3>
-                        <span class="card-type-badge">
-                            <ui-icon icon="${typeIcon}"></ui-icon>
-                        </span>
-                    </div>
-                    ${entityItem?.kind ? H`<span class="card-kind">${entityItem.kind}</span>` : null}
+
                 </div>
                 ${timeRangeElement}
+                ${quickInfoEl}
+                ${descriptionPreview ? H`<p class="card-description-preview">${descriptionPreview}</p>` : null}
             </div>
 
-            ${quickInfoEl}
             ${tagsEl}
 
-            ${descriptionPreview ? H`<p class="card-description-preview">${descriptionPreview}</p>` : null}
-
             <div class="card-actions">
+                ${entityItem?.kind ? H`<span class="card-kind">${entityItem.kind}</span>` : null}
+                ${statusEl}
+                <span class="card-type-badge">
+                    <ui-icon icon="${typeIcon}"></ui-icon>
+                </span>
+                ${promoCodeEl}
                 <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
                 <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
             </div>
@@ -458,9 +456,9 @@ export const MakeCardElement = <
     const cardInner = card.querySelector(".card") as HTMLElement;
 
     // Bind promo code copy handler
-    const promoCodeEl = card.querySelector('.card-promo-code');
-    if (promoCodeEl) {
-        promoCodeEl.addEventListener('click', handleCodeCopy);
+    const promoCodeDomEl = card.querySelector('.card-promo-code');
+    if (promoCodeDomEl) {
+        promoCodeDomEl.addEventListener('click', handleCodeCopy);
     }
 
     //
