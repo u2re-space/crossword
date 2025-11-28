@@ -823,7 +823,7 @@ $card-variants: (
 
             display: flex;
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
             justify-content: flex-start;
             gap: var(--gap-sm);
