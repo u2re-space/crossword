@@ -776,6 +776,10 @@ $card-variants: (
                 justify-content: space-between;
                 flex-direction: row;
                 flex-wrap: nowrap;
+
+                & > * {
+                    inline-size: fit-content;
+                }
             }
         }
 
@@ -831,6 +835,10 @@ $card-variants: (
             overflow: visible;
             padding-block-start: var(--gap-xs);
             border-block-start: 1px solid color-mix(in oklch, var(--on-surface) 8%, transparent);
+
+            & > * {
+                inline-size: fit-content;
+            }
 
             // Kind badge styling
             .card-kind {
