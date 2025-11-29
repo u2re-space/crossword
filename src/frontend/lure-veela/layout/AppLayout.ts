@@ -6,7 +6,7 @@ import { isPrimitive } from "fest-src/fest/core/index";
 //
 let skipCreateNewView = false;
 export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
-    if (tabName) {
+    if (tabName?.replace?.(/^#/, "") && (tabName?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || !closingView?.replace?.(/^#/, ""))) {
         tabName = tabName?.replace?.(/^#/, "") ?? tabName;
         if (!tabName || tabName == "home") return;
 
@@ -16,13 +16,14 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
         const toReplace = [...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home";
 
         // We need to know if we are closing the ACTIVE view
-        if (existsViews.has(oldView) && oldView != "home" && (closingView != (toReplace || currentView?.value) || !closingView)) existsViews.delete(oldView);
-        if (curView == oldView) {
+        if (existsViews.has(oldView) && toReplace != oldView && oldView != "home") {
+            existsViews.delete(oldView);
+        }
+
+        //
+        if (curView == oldView || toReplace != curView) {
             // Use replaceState to avoid pushing this "close" action as a new navigation step
             navigate(`#${toReplace}`, existsViews.has(toReplace));
-
-            // Update the view reference. hashTargetLink will see the URL matches and skip pushState
-            //currentView.value = toReplace;
         }
     }
 }
