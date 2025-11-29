@@ -53,7 +53,7 @@ const generateId = (path: string)=>{
 //
 const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
 const checkIsActive = (registryKey: string, closingView: string) => {
-    return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || $defaultView);
+    return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, ""));
 }
 
 //

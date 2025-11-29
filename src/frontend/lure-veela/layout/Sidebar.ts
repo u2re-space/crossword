@@ -22,8 +22,7 @@ ${M(fallbackLinks, (frag) => H`<li><a target="_self" href="#${frag.view}" data-n
     sidebar?.addEventListener?.("click", (ev: any) => {
         ev?.preventDefault?.();
         const a = ev?.target?.matches?.('a[data-name]') ? ev?.target : ev?.target?.closest?.('a[data-name]'); if (!a) return;
-        const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
-        const name = (a?.getAttribute?.('data-name')?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
+        const name = (a?.getAttribute?.('data-name')?.replace?.(/^#/, "") || "home")?.replace?.(/^#/, "");
 
         // reactive INP side effect avoid
         requestAnimationFrame(() => {

@@ -6,7 +6,6 @@ import { isPrimitive } from "fest-src/fest/core/index";
 //
 let skipCreateNewView = false;
 export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
-    //const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
     if (tabName) {
         tabName = tabName?.replace?.(/^#/, "") ?? tabName;
         if (!tabName || tabName == "home") return;
@@ -40,7 +39,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     const rPair = makeReactive([document.createComment(""), document.createComment("")])
     const setView = async (key) => {
         key = key?.replace?.(/^#/, "") ?? key;
-        const $defaultView = "home";
+        const $homeView = "home";
 
         // `skipCreateNewView` should depending on replace or push state happened
         if (!skipCreateNewView) {
@@ -48,8 +47,8 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         }
 
         //
-        const ext = (existsViews?.get?.(key || $defaultView) || existsViews?.get?.($defaultView));
-        const npr = (skipCreateNewView ? ext : (await makeView(key || $defaultView) || await makeView($defaultView))) || ext;
+        const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView));
+        const npr = (skipCreateNewView ? ext : (await makeView(key || $homeView) || await makeView($homeView))) || ext;
         skipCreateNewView = false;
         rPair[0] = await (npr?.[0] ?? rPair[0]);
         rPair[1] = await (npr?.[1] ?? rPair[1]);
@@ -61,7 +60,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
     //
     subscribe([currentView, "value"], setView)
-    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || $defaultView);
+    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home");
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">
@@ -75,9 +74,9 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev) => {
-        const $defaultView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
-        const newTab = (ev?.newTab?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
-        const curTab = ((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || $defaultView)?.replace?.(/^#/, "");
+        const $homeView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
+        const newTab = (ev?.newTab?.replace?.(/^#/, "") || $homeView)?.replace?.(/^#/, "");
+        const curTab = ((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home")?.replace?.(/^#/, "");
         if (newTab && curTab != newTab && ev?.target == $layout && existsViews.has(newTab)) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
