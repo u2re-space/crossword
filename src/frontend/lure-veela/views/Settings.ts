@@ -6,7 +6,7 @@ import { toastError, toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-core/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
-import { applyGridSettings } from "@rs-frontend/utils/StateStorage";
+import { applyGridSettings, type GridLayoutSettings } from "@rs-frontend/utils/StateStorage";
 
 //
 import { getByPath, loadSettings, saveSettings, slugify } from "@rs-core/config/Settings";
@@ -21,7 +21,7 @@ import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
 import { AdditionalSection } from "@rs-core/config/sections/AdditionalSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
 import { propRef, stringRef } from "fest/object";
-import { actionRegistry, whenPasteInto } from "@rs-frontend/utils/Actions";
+import { actionRegistry } from "@rs-frontend/utils/Actions";
 import { wallpaperState, persistWallpaper } from "@rs-frontend/utils/StateStorage";
 import { applyTheme } from "@rs-frontend/utils/Theme";
 
@@ -701,7 +701,7 @@ export const Settings = async () => {
             await updateTimelineSelect(settings);
             applyModelSelection(settings);
             applyTheme(settings);
-            applyGridSettings(settings);
+            applyGridSettings({ grid: settings.grid as unknown as GridLayoutSettings });
 
             //
             statusText.value = "Saved";

@@ -56,6 +56,7 @@ export type AppSettings = {
         model?: string;
         customModel?: string;
         mcp?: MCPConfig[];
+        shareTargetMode?: "analyze" | "recognize";
     };
     webdav?: {
         url?: string;
@@ -86,7 +87,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
         baseUrl: "",
         model: "gpt-5.1",
         customModel: "",
-        mcp: []
+        mcp: [],
+        shareTargetMode: "analyze"
     },
     webdav: {
         url: "http://localhost:6065",

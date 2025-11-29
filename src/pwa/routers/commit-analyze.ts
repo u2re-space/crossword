@@ -6,79 +6,73 @@ import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 import { JSOX } from "jsox";
 
 //
-export const makeCommitAnalyze = () => {
+export const commitAnalyze = (e: any) => {
+    return Promise.try(async () => {
+        //const url = new URL(e.request.url);
+        const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
+        const inputs = {
+            title: fd.get('title'),
+            text: fd.get('text'),
+            url: fd.get('url'),
+            files: fd.getAll('files') // File[]
+        };
 
-    const makeAnalyze = (e: any) => {
-        return Promise.try(async () => {
-            //const url = new URL(e.request.url);
-            const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
-            const inputs = {
-                title: fd.get('title'),
-                text: fd.get('text'),
-                url: fd.get('url'),
-                files: fd.getAll('files') // File[]
-            };
+        //
+        const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
+        const results: any[] = [];
+
+        //
+        for (const file of files) {
+            const source = file || inputs?.text || inputs?.url;
+            if (!source) continue;
 
             //
-            const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
-            const results: any[] = [];
+            const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
+                (source == inputs?.text ? inputs.text :
+                    (await fetch(source)
+                        ?.then?.((res) => res.text())
+                        ?.catch?.(console.warn.bind(console)) || ""));
 
-            //
-            for (const file of files) {
-                const source = file || inputs?.text || inputs?.url;
-                if (!source) continue;
-
-                //
-                const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
-                    (source == inputs?.text ? inputs.text :
-                        (await fetch(source)
-                            ?.then?.((res) => res.text())
-                            ?.catch?.(console.warn.bind(console)) || ""));
-
-                // try avoid using AI when data structure is known
-                if (text) {
-                    let json: any = text ? JSOX.parse(text) as any : [];
-                    json = json?.entities || json;
-                    let types = json ? detectEntityTypeByJSON(json) : [];
-                    if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {
-                        json?.map?.((entity, i) => {
-                            const type = types[i];
-                            if (type && type != "unknown") results.push(queueEntityForWriting(entity, type, "json"));
-                        }); continue;
-                    }
-                }
-
-                //
-                try {
-                    const resultsRaw = await initiateConversionProcedure(source);
-                    resultsRaw?.entities?.forEach((entity) => {
-                        results.push(queueEntityForWriting(entity, entity?.type, "json"));
-                    });
-                } catch (err) {
-                    results.push({ status: 'error', error: String(err) });
+            // try avoid using AI when data structure is known
+            if (text) {
+                let json: any = text ? JSOX.parse(text) as any : [];
+                json = json?.entities || json;
+                let types = json ? detectEntityTypeByJSON(json) : [];
+                if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {
+                    json?.map?.((entity, i) => {
+                        const type = types[i];
+                        if (type && type != "unknown") results.push(queueEntityForWriting(entity, type, "json"));
+                    }); continue;
                 }
             }
 
             //
-            await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
+            try {
+                const resultsRaw = await initiateConversionProcedure(source);
+                resultsRaw?.entities?.forEach((entity) => {
+                    results.push(queueEntityForWriting(entity, entity?.type, "json"));
+                });
+            } catch (err) {
+                results.push({ status: 'error', error: String(err) });
+            }
+        }
+
+        //
+        await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
+
+        // needs to delay to make sure the results are pushed to the IDB queue
+        requestIdleCallback(() => {
             try { controlChannel.postMessage({ type: 'commit-result', results: results as any[] }) } catch (e) { console.warn(e); }
+        }, { timeout: 100 });
 
-            //
-            return results;
-        })?.catch?.(console.warn.bind(console));
-    }
+        //
+        return results;
+    })?.catch?.(console.warn.bind(console));
+}
 
-    //
+//
+export const makeCommitAnalyze = () => {
     return registerRoute(({ url }) => url?.pathname == "/commit-analyze", async (e: any) => {
-        // make redirect to index.html
-        return new Response(JSON.stringify(await makeAnalyze?.(e)?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('analyze results', rs); return rs; })), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }, "POST")
-
-    // for PWA compatibility
-    return registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
-        makeAnalyze?.(e)?.catch?.(console.warn.bind(console))?.then?.(rs=>{ console.log('analyze results', rs); return rs; });
-
-        // make redirect to index.html
-        return new Response(null, { status: 302, headers: { Location: '/' } });
+        return new Response(JSON.stringify(await commitAnalyze?.(e)?.then?.(rs=>{ console.log('analyze results', rs); return rs; })?.catch?.(console.warn.bind(console))), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }, "POST")
 }

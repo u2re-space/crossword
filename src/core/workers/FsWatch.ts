@@ -9,7 +9,7 @@ const channel = new BroadcastChannel('rs-fs'), watchers = new Map<string, Set<()
 channel.addEventListener('close', () => watchers.clear());
 channel.addEventListener('message', (event: MessageEvent) => {
     const payload = event?.data;
-    if (!payload || payload.type !== 'commit-result') return;
+    if (!payload || (payload.type !== 'commit-result' && payload.type !== 'commit-to-clipboard')) return;
     const results: any[] = payload?.results ?? [];
     if (!Array.isArray(results) || !results.length) return;
     for (const [dir, listeners] of watchers.entries()) {

@@ -25,12 +25,16 @@ export const closeToastLayer = () => {
 
 //
 export const showToast = (message: string, kind: ToastKind = "info") => {
+    // isn't DOM-ready yet
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+
+    //
     if (!message) return;
     const layer = ensureLayer();
-    
+
     // improved a11y
     const role = (kind === "error" || kind === "warning") ? "alert" : "status";
-    
+
     const toast = H`<div class="rs-toast" data-kind=${kind} role=${role}>${message}</div>` as HTMLElement;
     layer.appendChild(toast);
 

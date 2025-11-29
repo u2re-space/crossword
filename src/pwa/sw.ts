@@ -6,8 +6,10 @@ import { ExpirationPlugin } from 'workbox-expiration'
 
 //
 import { makeCommitAnalyze } from './routers/commit-analyze';
-import { makeCommitRecognize } from './routers/commit-recognize';
+import { commitRecognize, makeCommitRecognize } from './routers/commit-recognize';
 import { makeTimeline } from './routers/make-timeline';
+import { commitAnalyze } from './routers/commit-analyze';
+import { loadSettings } from '@rs-core/config/Settings';
 
 //
 // @ts-ignore
@@ -23,6 +25,23 @@ const routes = [
     makeCommitRecognize,
     makeTimeline
 ].map((makeRoute) => makeRoute());
+
+// for PWA compatibility
+registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
+    const settings = await loadSettings();
+    if (!settings || !settings?.ai || !settings.ai?.apiKey) return new Response(null, { status: 302, headers: { Location: '/' } });
+
+    //
+    let results: any = [];
+    if (settings?.ai?.shareTargetMode == "recognize") {
+        results = await commitRecognize?.(e)?.then?.(rs => { console.log('recognize results', rs); return rs; })?.catch?.(console.warn.bind(console));
+    } else {
+        results = await commitAnalyze?.(e)?.then?.(rs => { console.log('analyze results', rs); return rs; })?.catch?.(console.warn.bind(console));
+    }
+
+    // needs to make redirect to index.html and handle to copy data to clipboard
+    return new Response(null, { status: 302, headers: { Location: '/' } });
+}, "POST")
 
 //
 setDefaultHandler(new NetworkFirst({

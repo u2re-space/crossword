@@ -7,6 +7,7 @@ import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
+import { toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
 
 //
 /*
@@ -368,14 +369,19 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
     }
 };
 
-
-//?.filter?.((result) => (!!result?.data?.trim?.() && result.status == 'queued'))?
-
 //
 const controlChannel = new BroadcastChannel('rs-sw');
 controlChannel.addEventListener('message', async (event) => {
-    if (event.data.type === 'commit-result') {
-        flushQueueIntoOPFS();
+    const payload = event?.data;
+    if (!payload || (payload.type !== 'commit-result' && payload.type !== 'commit-to-clipboard')) return;
+    if (payload.type === 'commit-result') {
+        await flushQueueIntoOPFS();
+        toastSuccess("Data has been saved to the filesystem.");
+    } else
+    if (event.data.type === 'commit-to-clipboard') {
+        const data = event.data.results?.map?.((result) => result?.data)?.join?.("\n");
+        await navigator?.clipboard?.writeText?.(data)?.catch?.(console.warn.bind(console));
+        toastSuccess("Data has been copied to clipboard.");
     }
 });
 
