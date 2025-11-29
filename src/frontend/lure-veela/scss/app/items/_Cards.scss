@@ -708,6 +708,10 @@ $card-variants: (
             user-select: text;
             cursor: text;
             font-family: var(--font-family-mono, var(--font-family-monospace, monospace));
+
+            &:where(:-webkit-autofill, :autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active) {
+                font-family: var(--font-family-mono, var(--font-family-monospace, monospace));
+            }
         }
 
         // Active swipe feedback
@@ -1237,6 +1241,10 @@ $card-variants: (
                 font-weight: var(--font-weight-semibold);
                 letter-spacing: 0.08em;
                 color: var(--color-purple);
+
+                &:where(:-webkit-autofill, :autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active) {
+                    font-family: var(--font-family-mono);
+                }
             }
 
             .copy-hint {

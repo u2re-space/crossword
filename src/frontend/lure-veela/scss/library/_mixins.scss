@@ -21,17 +21,29 @@
     @include md3-typography($token);
     font-family: t.$font-family-base;
     @if $align != null { text-align: $align; }
+
+    &:where(:-webkit-autofill, :autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active) {
+        font-family: t.$font-family-base;
+    }
 }
 
 @mixin text-body($token: "body-medium") {
     @include md3-typography($token);
     font-family: t.$font-family-base;
+
+    &:where(:-webkit-autofill, :autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active) {
+        font-family: t.$font-family-base;
+    }
 }
 
 @mixin text-label($token: "label-large", $uppercase: false) {
     @include md3-typography($token);
     font-family: t.$font-family-base;
     @if $uppercase { text-transform: uppercase; }
+
+    &:where(:-webkit-autofill, :autofill, :-webkit-autofill:hover, :-webkit-autofill:focus, :-webkit-autofill:active) {
+        font-family: t.$font-family-base;
+    }
 }
 
 @mixin font-nums-tabular { font-variant-numeric: tabular-nums; }
