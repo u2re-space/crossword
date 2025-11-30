@@ -129,9 +129,9 @@ export async function frontend(mountElement) {
                 // Pass element as WeakRef for auto-cleanup when detached
                 element: new WeakRef(el),
                 close: (closingView: string) => {
-                    onClose(registryKey, CURRENT_VIEW, existsViews, closingView);
-                    unregister();
-                    return (registryKey != "home" ? false : true);
+                    const isClosed = onClose(registryKey, CURRENT_VIEW, existsViews, closingView);
+                    if (isClosed) { unregister?.(); return true; }
+                    return false;
                 },
                 isActive: (closingView: string) => checkIsActive(registryKey, closingView),
                 get hashId() { return registryKey; }

@@ -6,6 +6,7 @@ import { isPrimitive } from "fest-src/fest/core/index";
 //
 let skipCreateNewView = false;
 export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
+    let isClosed = false;
     if (tabName?.replace?.(/^#/, "") && (tabName?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || !closingView?.replace?.(/^#/, ""))) {
         tabName = tabName?.replace?.(/^#/, "") ?? tabName;
         if (!tabName || tabName == "home") return;
@@ -17,15 +18,16 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
 
         // We need to know if we are closing the ACTIVE view
         if (existsViews.has(oldView) && toReplace != oldView && oldView != "home") {
-            existsViews.delete(oldView);
+            existsViews.delete(oldView); isClosed = true;
         }
 
         //
-        if (curView == oldView || toReplace != curView) {
+        if ((curView == oldView || toReplace != curView) && isClosed) {
             // Use replaceState to avoid pushing this "close" action as a new navigation step
             navigate(`#${toReplace}`, existsViews.has(toReplace));
         }
     }
+    return isClosed;
 }
 
 //
