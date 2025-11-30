@@ -201,6 +201,8 @@
     .view-box > section {
         pointer-events: auto;
         touch-action: manipulation;
+        overflow: hidden;
+        contain: strict;
 
         //
         margin-inline: 0px;
@@ -226,7 +228,6 @@
         perspective: 1000;
         transform: translateZ(0px);
         content-visibility: auto;
-        contain: strict;
 
         //
         min-inline-size: 0px;

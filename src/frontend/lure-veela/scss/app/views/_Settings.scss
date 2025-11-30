@@ -32,6 +32,11 @@
             touch-action: pan-y;
         }
 
+        [data-shape] {
+            pointer-events: none;
+            touch-action: pan-y;
+        }
+
         .panel-header {
             display: grid;
             gap: var(--gap-xs);
@@ -213,6 +218,8 @@
         inline-size: stretch;
         block-size: stretch;
         background-color: transparent;
+        overflow: hidden;
+        contain: strict;
 
         header {
             line-height: normal;
