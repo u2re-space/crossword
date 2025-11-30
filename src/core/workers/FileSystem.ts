@@ -7,7 +7,7 @@ import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
-import { toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
 
 //
 /*
@@ -199,7 +199,7 @@ export const handleDataByType = async (item: File | string | Blob, handler: (pay
             const type = item.split(';')[0].split(':')[1];
             return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
         } else
-            if (URL.canParse(item)) { return handler({ url: item } as any); }
+            if (URL.canParse(item?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) { return handler({ url: item } as any); }
     } else
         if (item instanceof File || item instanceof Blob) {
             return handler({ file: item } as any);
@@ -327,7 +327,7 @@ export const normalizePayload = async (payload: shareTargetFormData): Promise<sh
 //
 const writeTextDependsByPossibleType = async (payload: string | null | undefined, entityType: string) => {
     if (!payload) return;
-    if (URL.canParse(payload)) payload = (await fetch(payload).then(res => res.text())?.catch?.(console.warn.bind(console))) || "";
+    if (URL.canParse(payload?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) payload = (await fetch(payload).then(res => res.text())?.catch?.(console.warn.bind(console))) || "";
     if (!payload) return;
 
     //
@@ -370,19 +370,48 @@ export const loadTimelineSources = async (dir: string = "/docs/preferences") => 
 };
 
 //
-const controlChannel = new BroadcastChannel('rs-sw');
-controlChannel.addEventListener('message', async (event) => {
-    const payload = event?.data;
-    if (!payload || (payload.type !== 'commit-result' && payload.type !== 'commit-to-clipboard')) return;
-    if (payload.type === 'commit-result') {
-        await flushQueueIntoOPFS();
-        toastSuccess("Data has been saved to the filesystem.");
+export const extractRecognizedData = (unknownData: any) => {
+    // potentially JSON string
+    try { unknownData = typeof unknownData == "string" ? JSON.parse(unknownData?.trim?.() || "[]") : unknownData; } catch (e) {}
+    if (unknownData?.recognized_data) { return extractRecognizedData(unknownData?.recognized_data); };
+
+    //
+    if (typeof unknownData == "string" && unknownData?.trim?.()) {
+        return unknownData?.trim?.();
     } else
-    if (event.data.type === 'commit-to-clipboard') {
-        const data = event.data.results?.map?.((result) => result?.data)?.join?.("\n");
-        await navigator?.clipboard?.writeText?.(data)?.catch?.(console.warn.bind(console));
-        toastSuccess("Data has been copied to clipboard.");
+    if (Array.isArray(unknownData) && unknownData?.length) {
+        return unknownData?.map?.((item: any) => extractRecognizedData(item))?.filter?.((item: any) => (item && typeof item === "string"))?.join?.("\n") || "";
     }
+    return "";
+}
+
+//
+export const controlChannel = new BroadcastChannel('rs-sw');
+controlChannel.addEventListener('message', (event: MessageEvent) => {
+    const payload = event?.data as any;
+    if (!payload || (payload?.type !== 'commit-result' && payload?.type !== 'commit-to-clipboard')) return;
+    if (payload?.type === 'commit-result') {
+        flushQueueIntoOPFS?.()?.then?.(() => {
+            toastSuccess("Data has been saved to the filesystem.");
+        })?.catch?.((e) => {
+            console.warn("Failed to save data to filesystem.", e, payload);
+            toastError("Failed to save data to filesystem.");
+        });
+    } else
+        if (payload?.type === 'commit-to-clipboard') {
+            const data = payload?.results
+                ?.map?.((result: any) => extractRecognizedData(result?.data?.recognized_data || result?.data))
+                ?.filter?.((result: any) => (result && typeof result === "string"))?.join?.("\n") || "";
+            if (data?.trim?.()) {
+                navigator?.clipboard?.writeText?.(data)?.then?.(() => {
+                    toastSuccess("Data has been copied to clipboard.");
+                })?.catch?.((e) => {
+                    console.warn("Failed to copy data to clipboard.", e, data);
+                    toastError("Failed to copy data to clipboard. Data is not copied.");
+                });
+            } else
+                { toastError("Failed to copy data to clipboard. Data is empty."); }
+        }
 });
 
 // Try recover from previous session

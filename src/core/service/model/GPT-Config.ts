@@ -136,7 +136,7 @@ export const detectDataKindFromContent = (content: string): DataKind => {
     }
 
     // Check for URL
-    if (URL.canParse(trimmed)) return "url";
+    if (URL.canParse(trimmed?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) return "url";
 
     // Check for base64 image
     if (trimmed.startsWith("data:image/") && trimmed.includes(";base64,")) return "input_image";
@@ -199,18 +199,18 @@ Some additional actions:
 
 ---
 
-Get results in JSON wrapped format:
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { or [ and end with } or ].
 
-\`\`\`toon
-[...{
-    "keywords_and_tags": string[],
-    "recognized_data": any[],
-    "verbose_data": string,
-    "using_ready": boolean,
-    "confidence": number,
-    "suggested_type": string
-}]
-\`\`\`
+Expected output structure:
+{
+    "keywords_and_tags": ["string array"],
+    "recognized_data": ["any array"],
+    "verbose_data": "markdown string",
+    "using_ready": true,
+    "confidence": 0.95,
+    "suggested_type": "document_type"
+}
 `;
 
         case "input_text":
@@ -248,19 +248,19 @@ Some additional actions:
 
 ---
 
-Get results in JSON wrapped format:
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { or [ and end with } or ].
 
-\`\`\`toon
-[...{
-    "keywords_and_tags": string[],
-    "recognized_data": any[],
-    "verbose_data": string,
-    "using_ready": boolean,
-    "confidence": number,
-    "suggested_type": string,
-    "suggested_modifications": object[]
-}]
-\`\`\`
+Expected output structure:
+{
+    "keywords_and_tags": ["string array"],
+    "recognized_data": ["any array"],
+    "verbose_data": "markdown string",
+    "using_ready": true,
+    "confidence": 0.95,
+    "suggested_type": "entity_type",
+    "suggested_modifications": []
+}
 `;
     }
     return contextPrompt || "";
@@ -352,15 +352,16 @@ Rules for modification:
 4. Return the complete modified entity, not just the changes.
 5. If a modification cannot be applied, include it in the "errors" array with explanation.
 
-Output format:
-\`\`\`json
+CRITICAL: Output ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "modified_entity": { /* complete modified entity */ },
     "changes_made": [ /* list of applied changes */ ],
     "errors": [ /* list of failed modifications with reasons */ ],
     "warnings": [ /* non-critical issues */ ]
 }
-\`\`\`
 `;
 
 //
@@ -373,15 +374,16 @@ Selection rules:
 3. Include confidence scores for fuzzy matches.
 4. Group similar results to avoid duplicates.
 
-Output format:
-\`\`\`json
+CRITICAL: Output ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "selected_items": [ /* items matching criteria */ ],
     "total_matches": number,
     "filter_stats": { /* breakdown by filter */ },
     "suggestions": [ /* related items that might be relevant */ ]
 }
-\`\`\`
 `;
 
 //
@@ -395,13 +397,14 @@ Merge rules:
 4. Preserve IDs and relationships.
 5. Track the source of each merged field.
 
-Output format:
-\`\`\`json
+CRITICAL: Output ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "merged_entity": { /* result of merge */ },
     "conflicts_resolved": [ /* list of conflicts and how they were resolved */ ],
     "sources_used": [ /* which source contributed what */ ],
     "merge_confidence": number
 }
-\`\`\`
 `;

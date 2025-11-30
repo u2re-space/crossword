@@ -1,11 +1,18 @@
 import { registerRoute } from "workbox-routing";
-import { controlChannel, DOC_DIR, initiateAnalyzeAndRecognizeData, isMarkdown } from "./shared";
+import {
+    controlChannel,
+    DOC_DIR,
+    initiateAnalyzeAndRecognizeData,
+    detectInputType,
+    getExtensionForType,
+    tryToTimeout,
+    type DetectedDataType
+} from "./shared";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
 //
 export const commitRecognize = (e: any) => {
     return Promise.try(async () => {
-        //const url = new URL(e.request.url);
         const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
         const inputs = {
             title: fd.get('title'),
@@ -16,41 +23,119 @@ export const commitRecognize = (e: any) => {
         };
 
         //
-        const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
+        const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [(inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null];
         const results: any[] = [];
 
         //
         for (const file of files) {
-            const source = file || inputs?.text || inputs?.url;
+            const source = file || ((inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null);
             if (!source) continue;
 
-            //
-            const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
-                (source == inputs?.text ? inputs.text :
-                    (await fetch(source)
-                        ?.then?.((res) => res.text())
-                        ?.catch?.(console.warn.bind(console)) || ""));
+            // Extract text content based on source type
+            let text: string = "";
+            let isImage = false;
 
-            // try avoid using AI when data structure is known
-            if (text && isMarkdown(text, source)) {
-                const subId = Date.now();
-                const directory = inputs?.targetDir || DOC_DIR;
-                const name = `pasted-${subId}.md`;//source instanceof File ? source?.name : `pasted-${subId}.md`;
+            if (source instanceof File || source instanceof Blob) {
+                // Check if it's an image first
+                if (source.type?.startsWith?.("image/")) {
+                    isImage = true;
+                } else {
+                    text = await source.text?.()?.catch?.(() => "") || "";
+                }
+            } else if (typeof source === "string") {
+                if (source == (inputs?.text?.trim?.() || null)) {
+                    text = source;
+                } else if (URL.canParse(source?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
+                    // It's a URL - try to fetch content
+                    text = await fetch(source)
+                        ?.then?.((res) => res.text())
+                        ?.catch?.(() => "") || "";
+                } else {
+                    text = source;
+                }
+            }
+
+            // Detect input type with comprehensive analysis
+            const detection = detectInputType(text?.trim?.() || null, source);
+            console.log("[commit-recognize] Detection result:", {
+                type: detection.type,
+                confidence: detection.confidence,
+                needsAI: detection.needsAI,
+                hints: detection.hints
+            });
+
+            const subId = Date.now();
+            const directory = inputs?.targetDir || DOC_DIR;
+
+            // Process based on detected type and AI requirement
+            if (!detection.needsAI && detection.confidence >= 0.7) {
+                // High confidence detection - process without AI
+                const ext = getExtensionForType(detection.type);
+                const name = `pasted-${subId}${ext}`;
                 const path = `${directory}${name}`;
-                results.push({ status: 'queued', data: text, path, name, subId, directory, dataType: "markdown" });
+
+                // Format data based on type
+                let processedData = text;
+                if (detection.type === "json") {
+                    try {
+                        // Pretty-print JSON for readability
+                        processedData = JSON.stringify(JSON.parse(text?.trim?.() || "[]"), null, 2);
+                    } catch { /* keep original */ }
+                }
+
+                results.push({
+                    status: 'queued',
+                    data: processedData,
+                    path,
+                    name,
+                    subId,
+                    directory,
+                    dataType: detection.type,
+                    detection: {
+                        confidence: detection.confidence,
+                        hints: detection.hints
+                    }
+                });
                 continue;
             }
 
-            //
+            // Needs AI processing (low confidence or complex type)
             try {
-                const subId = Date.now();
-                const { data, ok, error } = await initiateAnalyzeAndRecognizeData(source);
-                const directory = inputs?.targetDir || DOC_DIR;
-                const name = `pasted-${subId}.md`;
+                const $recognizedData = await initiateAnalyzeAndRecognizeData(isImage ? source : (text?.trim?.() || source));
+
+                // Determine final data type from AI response or detection
+                const finalType: DetectedDataType = $recognizedData?.ok
+                    ? (detection.type !== "unknown" ? detection.type : "markdown")
+                    : detection.type;
+
+                const ext  = getExtensionForType(finalType);
+                const name = `pasted-${subId}${ext}`;
                 const path = `${directory}${name}`;
-                results.push({ status: ok ? 'queued' : 'error', error, directory, data, path, name, subId, dataType: "markdown" });
+
+                results.push({
+                    status: $recognizedData?.ok ? 'queued' : 'error',
+                    error: $recognizedData?.error,
+                    directory,
+                    data: $recognizedData?.data,
+                    path,
+                    name,
+                    subId,
+                    dataType: finalType,
+                    detection: {
+                        originalType: detection.type,
+                        confidence: detection.confidence,
+                        hints: detection.hints,
+                        aiProcessed: true
+                    }
+                });
             } catch (err) {
-                results.push({ status: 'error', error: String(err) });
+                results.push({
+                    status: 'error',
+                    error: String(err),
+                    subId,
+                    dataType: detection.type,
+                    detection
+                });
             }
         }
 
@@ -58,9 +143,9 @@ export const commitRecognize = (e: any) => {
         await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
 
         // needs to delay to make sure the results are pushed to the IDB queue
-        requestIdleCallback(() => {
+        tryToTimeout(() => {
             try { controlChannel.postMessage({ type: 'commit-to-clipboard', results: results as any[] }) } catch (e) { console.warn(e); }
-        }, { timeout: 100 });
+        }, 100);
 
         //
         return results;

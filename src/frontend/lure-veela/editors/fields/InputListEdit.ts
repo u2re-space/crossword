@@ -61,7 +61,7 @@ const URL_BY_TYPE = (value: any, description: FieldDescription) => {
 
 //
 const IS_URL = (value: any) => {
-    if (URL.canParse(value, location.origin ?? "")) return true;
+    if (URL.canParse(value?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) return true;
     return (value.startsWith("http") || value.startsWith("//") || value.startsWith("www.") || value.startsWith("mailto:") || value.startsWith("tel:") || value.startsWith("https:") || value.startsWith("ftp:") || value.startsWith("file:") || value.startsWith("data:"));
 }
 

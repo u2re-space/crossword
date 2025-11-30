@@ -1,5 +1,5 @@
 import { registerRoute } from "workbox-routing";
-import { controlChannel, initiateConversionProcedure } from "./shared";
+import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout } from "./shared";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
@@ -23,32 +23,62 @@ export const commitAnalyze = (e: any) => {
 
         //
         for (const file of files) {
-            const source = file || inputs?.text || inputs?.url;
+            const source = file || ((inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null);
             if (!source) continue;
 
-            //
-            const text: string = (source instanceof File || source instanceof Blob) ? (source?.type?.startsWith?.("image/") ? "" : (await source?.text?.())) :
-                (source == inputs?.text ? inputs.text :
-                    (await fetch(source)
-                        ?.then?.((res) => res.text())
-                        ?.catch?.(console.warn.bind(console)) || ""));
+            // Extract text content based on source type
+            let text: string = "";
+            let isImage = false;
 
-            // try avoid using AI when data structure is known
-            if (text) {
-                let json: any = text ? JSOX.parse(text) as any : [];
+            //
+            if (source instanceof File || source instanceof Blob) {
+                // Check if it's an image first
+                if (source.type?.startsWith?.("image/")) {
+                    isImage = true;
+                } else {
+                    text = await source.text?.()?.catch?.(() => "") || "";
+                }
+            } else if (typeof source === "string") {
+                if (source == (inputs?.text?.trim?.() || null)) {
+                    text = source;
+                } else if (URL.canParse(source?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
+                    // It's a URL - try to fetch content
+                    text = await fetch(source)
+                        ?.then?.((res) => res.text())
+                        ?.catch?.(() => "") || "";
+                } else {
+                    text = source;
+                }
+            }
+
+            // Detect input type with comprehensive analysis
+            const detection = detectInputType(text?.trim?.() || null, source);
+            console.log("[commit-recognize] Detection result:", {
+                type: detection.type,
+                confidence: detection.confidence,
+                needsAI: detection.needsAI,
+                hints: detection.hints
+            });
+
+            //
+            if (text?.trim?.() && detection.type === "json" && detection.confidence >= 0.7) {
+                let json: any = text?.trim?.() && typeof text == "string" ? JSOX.parse(text?.trim?.() || "[]") as any : [];
                 json = json?.entities || json;
+
+                // detect entity types by JSON
                 let types = json ? detectEntityTypeByJSON(json) : [];
                 if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {
                     json?.map?.((entity, i) => {
                         const type = types[i];
                         if (type && type != "unknown") results.push(queueEntityForWriting(entity, type, "json"));
-                    }); continue;
+                    });
+                    continue;
                 }
             }
 
             //
             try {
-                const resultsRaw = await initiateConversionProcedure(source);
+                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source);
                 resultsRaw?.entities?.forEach((entity) => {
                     results.push(queueEntityForWriting(entity, entity?.type, "json"));
                 });
@@ -61,9 +91,9 @@ export const commitAnalyze = (e: any) => {
         await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
 
         // needs to delay to make sure the results are pushed to the IDB queue
-        requestIdleCallback(() => {
+        tryToTimeout(() => {
             try { controlChannel.postMessage({ type: 'commit-result', results: results as any[] }) } catch (e) { console.warn(e); }
-        }, { timeout: 100 });
+        }, 100);
 
         //
         return results;

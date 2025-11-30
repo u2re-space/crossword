@@ -3,7 +3,7 @@ import "fest/fl-ui";
 
 //
 const makeURL = (src: any)=>{
-    if (URL.canParse(src)) {
+    if (URL.canParse(src?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
         return src;
     } else
     if (src instanceof Blob || src instanceof File) {

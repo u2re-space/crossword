@@ -3,8 +3,6 @@
  * Supports multiple input formats, batch recognition, and intelligent data extraction.
  */
 
-import { encode } from "@toon-format/toon";
-import { JSOX } from "jsox";
 import { loadSettings } from "@rs-core/config/Settings";
 import {
     getUsableData,
@@ -17,6 +15,7 @@ import {
     type DataKind,
     type DataContext
 } from "@rs-core/service/model/GPT-Config";
+import { extractJSONFromAIResponse } from "@rs-core/utils/AIResponseParser";
 
 //
 export type RecognitionMode = "auto" | "image" | "text" | "structured" | "mixed";
@@ -96,10 +95,12 @@ Additional analysis:
 - Identify any logos or branding
 - Note image quality issues that may affect recognition
 
-If nothing found, return "No data recognized".
+If nothing found, return: {"ok": false, "error": "No data recognized"}
 
-Return in JSON format:
-\`\`\`json
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "recognized_data": [...],
     "keywords_and_tags": [...],
@@ -109,7 +110,6 @@ Return in JSON format:
     "confidence": 0.0-1.0,
     "quality_notes": [...]
 }
-\`\`\`
 `;
 
 //
@@ -141,8 +141,10 @@ Additional processing:
 - Extract metadata if present
 - Normalize encoding issues
 
-Return handled data as Markdown string, without any additional comments, wrapped in JSON:
-\`\`\`json
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "recognized_data": [...],
     "keywords_and_tags": [...],
@@ -150,7 +152,6 @@ Return handled data as Markdown string, without any additional comments, wrapped
     "source_format": "...",
     "confidence": 0.0-1.0
 }
-\`\`\`
 `;
 
 //
@@ -176,15 +177,16 @@ For each entity found, extract:
 - properties: relevant attributes
 - description: markdown description
 
-Return in JSON format:
-\`\`\`json
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations, no prose.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "entities": [...],
     "keywords": [...],
     "short_description": "markdown summary",
     "extraction_confidence": 0.0-1.0
 }
-\`\`\`
 `;
 
 //
@@ -362,8 +364,17 @@ export const recognizeWithContext = async (
             return result;
         }
 
-        const parsed = JSOX.parse(raw);
+        // Use robust JSON extraction to handle markdown-wrapped responses
+        const parseResult = extractJSONFromAIResponse<any>(raw);
+        if (!parseResult.ok) {
+            console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+            result.errors.push(parseResult.error || "Failed to parse AI response");
+            // Attempt to use raw text as fallback
+            result.verbose_data = raw;
+            return result;
+        }
 
+        const parsed = parseResult.data;
         result.ok = true;
         result.recognized_data = parsed?.recognized_data || [parsed?.verbose_data || raw];
         result.keywords_and_tags = parsed?.keywords_and_tags || parsed?.keywords || [];
@@ -457,10 +468,16 @@ export const extractEntities = async (
             return { ok: false, error: "No response" };
         }
 
-        const parsed = JSOX.parse(raw);
+        // Use robust JSON extraction to handle markdown-wrapped responses
+        const parseResult = extractJSONFromAIResponse<any>(raw);
+        if (!parseResult.ok) {
+            console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+            return { ok: false, error: parseResult.error || "Failed to parse AI response" };
+        }
+
         return {
             ok: true,
-            data: parsed?.entities || [],
+            data: parseResult.data?.entities || [],
             responseId: gpt.getResponseId()
         };
 
@@ -497,12 +514,15 @@ Extraction rules:
 ${rulesDescription}
         `);
 
+        // Note: Using cleaner prompt without markdown code blocks
         await gpt.askToDoAction(`
 Extract data according to the rules.
 For each rule, find matching content and normalize it.
 
-Return:
-\`\`\`json
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "extractions": [
         {
@@ -515,7 +535,6 @@ Return:
     ],
     "missing_required": ["list of required fields not found"]
 }
-\`\`\`
         `);
 
         const raw = await gpt.sendRequest("medium", "low", null, {
@@ -525,8 +544,14 @@ Return:
 
         if (!raw) return results;
 
-        const parsed = JSOX.parse(raw);
-        return parsed?.extractions || [];
+        // Use robust JSON extraction to handle markdown-wrapped responses
+        const parseResult = extractJSONFromAIResponse<any>(raw);
+        if (!parseResult.ok) {
+            console.warn("JSON extraction failed in extractByRules:", parseResult.error);
+            return results;
+        }
+
+        return parseResult.data?.extractions || [];
 
     } catch (e) {
         console.error("Error in extractByRules:", e);
@@ -611,6 +636,7 @@ ${baseResult.verbose_data || baseResult.recognized_data.join("\n")}
 \`\`\`
         `);
 
+        // Note: Using cleaner prompt without markdown code blocks
         await gpt.askToDoAction(`
 Extract and normalize the following types: ${enabledNormalizations.join(", ")}
 
@@ -621,8 +647,10 @@ Normalization rules:
 - dates: ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
 - addresses: structured with street, city, country if detectable
 
-Return:
-\`\`\`json
+CRITICAL OUTPUT FORMAT: Return ONLY valid JSON. No markdown code blocks, no explanations.
+Your response must start with { and end with }.
+
+Expected output structure:
 {
     "phones": ["..."],
     "emails": ["..."],
@@ -630,7 +658,6 @@ Return:
     "dates": ["..."],
     "addresses": [{ "raw": "...", "structured": {...} }]
 }
-\`\`\`
         `);
 
         const raw = await gpt.sendRequest("medium", "low", null, {
@@ -639,8 +666,14 @@ Return:
         });
 
         if (raw) {
-            const parsed = JSOX.parse(raw);
-            Object.assign(normalized, parsed);
+            // Use robust JSON extraction to handle markdown-wrapped responses
+            const parseResult = extractJSONFromAIResponse<any>(raw);
+            if (parseResult.ok && parseResult.data) {
+                Object.assign(normalized, parseResult.data);
+            } else {
+                console.warn("JSON extraction failed in normalization:", parseResult.error);
+                baseResult.warnings.push("Normalization JSON parsing partially failed");
+            }
         }
 
     } catch (e) {

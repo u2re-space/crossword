@@ -17,6 +17,10 @@ import {
     type ModificationInstruction
 } from "./GPT-Config";
 import { JSOX } from "jsox";
+import {
+    extractJSONFromAIResponse,
+    STRICT_JSON_INSTRUCTIONS
+} from "@rs-core/utils/AIResponseParser";
 
 //
 export type RequestOptions = {
@@ -70,7 +74,7 @@ export const getUsableData = async (data: DataInput) => {
         // be aware, this may be base64 encoded image
         if (
             (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) ||
-            URL.canParse(data?.dataSource?.trim?.()) ||
+            URL.canParse(data?.dataSource?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || "")) ||
             (typesForKind?.[effectiveKind] == "input_image")
         ) {
             return {
@@ -248,6 +252,12 @@ export class GPTResponses {
         }
         const filteredInput = Array.from(uniquePending.values());
 
+        // Build strict JSON instructions for json response format
+        // Following OpenAI Responses API best practices
+        const jsonInstructions = options?.responseFormat === "json"
+            ? STRICT_JSON_INSTRUCTIONS
+            : undefined;
+
         const requestBody: any = {
             model: this.model,
             tools: Array.from(this?.tools?.values?.() || [])?.filter?.((tool: any) => !!tool),
@@ -256,9 +266,7 @@ export class GPTResponses {
             text: { verbosity: verbosity },
             max_output_tokens: options?.maxTokens || 400000,
             previous_response_id: (this.responseId = (prevResponseId || this?.responseId)),
-            instructions: options?.responseFormat === "json"
-                ? "Give results only in valid JSON formatted (`https://json-schema.org/draft/2020-12/`), no any additional text or comments. You may give in any other format only if explicitly stated in instructions."
-                : undefined
+            instructions: jsonInstructions
         };
 
         // Add temperature if specified
@@ -368,10 +376,16 @@ export class GPTResponses {
                 return { ok: false, error: "No response from AI" };
             }
 
-            const parsed = JSOX.parse(raw);
+            // Use robust JSON extraction to handle markdown-wrapped responses
+            const parseResult = extractJSONFromAIResponse<any>(raw);
+            if (!parseResult.ok) {
+                console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+                return { ok: false, error: parseResult.error || "Failed to parse AI response" };
+            }
+
             return {
                 ok: true,
-                data: parsed?.modified_entity || parsed,
+                data: parseResult.data?.modified_entity || parseResult.data,
                 responseId: this.responseId
             };
         } catch (e) {
@@ -417,10 +431,16 @@ Return matching items with relevance scores.
                 return { ok: false, error: "No response from AI" };
             }
 
-            const parsed = JSOX.parse(raw);
+            // Use robust JSON extraction to handle markdown-wrapped responses
+            const parseResult = extractJSONFromAIResponse<any>(raw);
+            if (!parseResult.ok) {
+                console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+                return { ok: false, error: parseResult.error || "Failed to parse AI response" };
+            }
+
             return {
                 ok: true,
-                data: parsed?.selected_items || parsed,
+                data: parseResult.data?.selected_items || parseResult.data,
                 responseId: this.responseId
             };
         } catch (e) {
@@ -464,10 +484,16 @@ Return the merged entity with conflict resolution details.
                 return { ok: false, error: "No response from AI" };
             }
 
-            const parsed = JSOX.parse(raw);
+            // Use robust JSON extraction to handle markdown-wrapped responses
+            const parseResult = extractJSONFromAIResponse<any>(raw);
+            if (!parseResult.ok) {
+                console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+                return { ok: false, error: parseResult.error || "Failed to parse AI response" };
+            }
+
             return {
                 ok: true,
-                data: parsed?.merged_entity || parsed,
+                data: parseResult.data?.merged_entity || parseResult.data,
                 responseId: this.responseId
             };
         } catch (e) {
@@ -490,6 +516,7 @@ Return the merged entity with conflict resolution details.
             await this.giveForRequest(`reference_entity: \`${encode(referenceEntity)}\`\n`);
             await this.giveForRequest(`candidate_set: \`${encode(candidateSet)}\`\n`);
 
+            // Note: We still show expected format in prompt but ask for raw JSON output
             await this.askToDoAction(`
 Find items in the candidate set that are similar to the reference entity.
 Consider semantic similarity, not just exact matches.
@@ -501,8 +528,7 @@ Compare:
 
 Return items with similarity score >= ${similarityThreshold}
 
-Output format:
-\`\`\`json
+Expected output structure:
 {
     "similar_items": [
         { "item": {...}, "similarity": 0.85, "match_reasons": [...] }
@@ -510,7 +536,6 @@ Output format:
     "potential_duplicates": [...],
     "related_but_different": [...]
 }
-\`\`\`
             `);
 
             const raw = await this.sendRequest("medium", "medium", null, {
@@ -522,10 +547,16 @@ Output format:
                 return { ok: false, error: "No response from AI" };
             }
 
-            const parsed = JSOX.parse(raw);
+            // Use robust JSON extraction to handle markdown-wrapped responses
+            const parseResult = extractJSONFromAIResponse<any>(raw);
+            if (!parseResult.ok) {
+                console.warn("JSON extraction failed:", parseResult.error, "Raw:", parseResult.raw);
+                return { ok: false, error: parseResult.error || "Failed to parse AI response" };
+            }
+
             return {
                 ok: true,
-                data: parsed?.similar_items || [],
+                data: parseResult.data?.similar_items || [],
                 responseId: this.responseId
             };
         } catch (e) {
@@ -547,14 +578,13 @@ Output format:
             const batch = items.slice(i, i + batchSize);
 
             await this.giveForRequest(`batch_items: \`${encode(batch)}\`\n`);
+            // Note: We show expected format but ask for raw JSON
             await this.askToDoAction(`
 Process this batch of ${batch.length} items:
 ${operation}
 
 Return processed items in same order.
-\`\`\`json
-{ "processed": [...], "failed": [...] }
-\`\`\`
+Expected output: { "processed": [...], "failed": [...] }
             `);
 
             const raw = await this.sendRequest("medium", "low", null, {
@@ -562,13 +592,16 @@ Return processed items in same order.
             });
 
             if (raw) {
-                try {
-                    const parsed = JSOX.parse(raw);
-                    results.push(...(parsed?.processed || []));
-                    if (parsed?.failed?.length) {
-                        errors.push(...parsed.failed.map((f: any) => f?.error || "Unknown error"));
+                // Use robust JSON extraction to handle markdown-wrapped responses
+                const parseResult = extractJSONFromAIResponse<any>(raw);
+                if (parseResult.ok && parseResult.data) {
+                    results.push(...(parseResult.data?.processed || []));
+                    if (parseResult.data?.failed?.length) {
+                        errors.push(...parseResult.data.failed.map((f: any) => f?.error || "Unknown error"));
                     }
-                } catch { /* parsing error */ }
+                } else {
+                    console.warn("Batch parsing failed:", parseResult.error);
+                }
             }
         }
 
@@ -623,11 +656,14 @@ export const quickRecognize = async (
         return { ok: false, error: "No response" };
     }
 
-    try {
-        return { ok: true, data: JSOX.parse(raw) };
-    } catch {
-        return { ok: true, data: raw };
+    // Use robust JSON extraction to handle markdown-wrapped responses
+    const parseResult = extractJSONFromAIResponse<any>(raw);
+    if (parseResult.ok) {
+        return { ok: true, data: parseResult.data };
     }
+
+    // Fallback to raw text if JSON extraction fails
+    return { ok: true, data: raw };
 }
 
 //

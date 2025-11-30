@@ -347,7 +347,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
                 if (type === 'image/png' || type === 'image/jpeg') {
                     const file = await item?.getType?.(type)?.catch?.(console.warn.bind(console)) as File | Blob | null;
                     if (file && (file instanceof File || file instanceof Blob))
-                        { multipleFiles.push(file as File | Blob); }
+                        { multipleFiles.push(file instanceof File ? file : new File([file], `clipboard-image-${Date.now()}.${type.split('/')[1]}`, { type: file.type })); }
                     break;
                 }
             }
@@ -367,7 +367,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             return clientShare({ title: 'Shared by CW from clipboard...', files: multipleFiles as any })?.catch?.(console.warn.bind(console));
         } else
         if (fileToShare) {
-            if ((fileToShare as any) instanceof URL || URL.canParse(fileToShare as any)) {
+            if ((fileToShare as any) instanceof URL || URL.canParse(fileToShare?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
                 return clientShare({ url: (fileToShare as any)?.href ?? fileToShare as string | URL })?.catch?.(console.warn.bind(console));
             } else {
                 return clientShare({ text: fileToShare as string })?.catch?.(console.warn.bind(console));

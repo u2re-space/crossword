@@ -598,9 +598,9 @@ export const quickProcess = async (
     for (const action of actions) {
         switch (action) {
             case "recognize":
-                const recResult = await orchestrator.recognize(result as any);
+                const recResult = await orchestrator.recognize(result as any) as RecognitionResult;
                 if (recResult.ok) {
-                    result = recResult.recognized_data;
+                    result = recResult.recognized_data?.[0];
                 }
                 break;
 
