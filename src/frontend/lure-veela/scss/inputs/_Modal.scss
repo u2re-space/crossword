@@ -77,6 +77,11 @@
         @include scrollable("y");
 
         //
+        &, & :where(button, input, textarea, select) {
+            touch-action: pan-y;
+        }
+
+        //
         &, & :where(*) { box-sizing: border-box; touch-action: pan-y; }
         &, &:focus-visible, &:focus { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; pointer-events: auto; touch-action: pan-y; }
 

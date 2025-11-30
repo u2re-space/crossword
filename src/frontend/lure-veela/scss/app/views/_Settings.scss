@@ -28,6 +28,10 @@
             border-width: 0px;
         }
 
+        &, & :where(button, input, textarea, select) {
+            touch-action: pan-y;
+        }
+
         .panel-header {
             display: grid;
             gap: var(--gap-xs);
