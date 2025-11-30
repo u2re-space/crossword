@@ -10,7 +10,7 @@ const generateActionButton = (action: string, entityDesc: EntityDescriptor, view
     }
 
     //
-    const button = H`<button style="touch-action: none;" type="button" on:click=${(e: any) => actionRegistry.get(action)?.(e, entityDesc, viewPage)}>
+    const button = H`<button type="button" style="touch-action: none;" on:click=${(e: any) => actionRegistry.get(action)?.(e, entityDesc, viewPage)}>
         <ui-icon icon=${iconsPerAction.get(action)}></ui-icon>
         <span>${labelsPerAction.get(action)?.(entityDesc)}</span>
     </button>`;
