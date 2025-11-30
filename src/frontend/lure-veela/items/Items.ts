@@ -379,7 +379,7 @@ export const CollectItemsForTabPage = <
     });
 
     //
-    const subgroupBody = H`<div class="viewer-tab-content-body">${subgroupsEl}</div>`
+    const subgroupBody = H`<div class="viewer-tab-content-body" data-load-state="pending">${subgroupsEl}</div>` as HTMLElement;
     const root = H`<div class="viewer-tab-content tab-content" data-name="${sourceRef?.type}">
         <div class="viewer-tab-content-header">${sourceRef?.label || sourceRef?.type}</div>
         ${subgroupBody}
@@ -387,6 +387,29 @@ export const CollectItemsForTabPage = <
     root.addEventListener('dir-dropped', () => firstTimeLoad?.());
     (root as any).reloadList = firstTimeLoad;
     subgroupsEl.boundParent = subgroupBody;
+
+    // Track loading state and update data-load-state attribute
+    const updateLoadState = () => {
+        const hasContent = subgroups.length > 0;
+        const state = firstTimeLoaded ? (hasContent ? 'loaded' : 'empty') : 'pending';
+        subgroupBody.dataset.loadState = state;
+    };
+
+    // Update load state when subgroups change
+    subscribe([subgroups, Symbol.iterator], updateLoadState);
+
+    // Wrap firstTimeLoad to update state after load completes
+    const originalFirstTimeLoad = firstTimeLoad;
+    const wrappedFirstTimeLoad = () => {
+        subgroupBody.dataset.loadState = 'loading';
+        originalFirstTimeLoad();
+        // Give loader time to populate, then update state
+        setTimeout(updateLoadState, LOAD_DEBOUNCE_MS + 100);
+    };
+    const firstTimeLoadWithState = () => {
+        if (firstTimeLoaded) return;
+        wrappedFirstTimeLoad();
+    };
 
     //
     if (sourceRef.DIR) {
@@ -401,14 +424,14 @@ export const CollectItemsForTabPage = <
     };
 
     //
-    root.addEventListener('contentvisibilityautostatechange', () => { firstTimeLoad?.(); });
-    root.addEventListener('visibilitychange', () => { firstTimeLoad?.(); });
-    root.addEventListener('focusin', () => { firstTimeLoad?.(); });
+    root.addEventListener('contentvisibilityautostatechange', () => { firstTimeLoadWithState?.(); });
+    root.addEventListener('visibilitychange', () => { firstTimeLoadWithState?.(); });
+    root.addEventListener('focusin', () => { firstTimeLoadWithState?.(); });
 
     // after append and appear in pages, try to first signal
     requestAnimationFrame(() => {
         if (root?.checkVisibility?.()) {
-            firstTimeLoad?.();
+            firstTimeLoadWithState?.();
         }
     });
 

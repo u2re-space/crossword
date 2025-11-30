@@ -390,7 +390,7 @@ export const MakeCardElement = <
     // Entity type icon
     const typeIcon = getTypeIcon(entityDesc.type);
 
-    const card = H`<div class="card-wrap" data-order=${options?.order ?? ""} data-type="${entityDesc.type}">
+    const card = H`<div class="card-wrap" data-order=${(options?.order ? propRef(options, "order") : "") || ""} data-type="${propRef(entityItem, "type")}">
         <div class="card-swipe-preview">
             <div class="card-swipe-action is-edit">
                 <ui-icon icon=${editIcon}></ui-icon>
@@ -401,10 +401,10 @@ export const MakeCardElement = <
                 <span>${deleteLabel}</span>
             </div>
         </div>
-        <div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${entityDesc.type}" class="card" on:click=${handleCardToggle}>
+        <div data-id=${entityItem?.id || entityItem?.name} data-variant="${variant}" data-type="${propRef(entityItem, "type")}" class="card" on:click=${handleCardToggle}>
             <div class="card-header">
-                <div class="card-avatar" data-type="${entityDesc.type}">
-                    <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${entityItem?.icon}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
+                <div class="card-avatar" data-type="${propRef(entityItem, "type")}">
+                    <div class="avatar-inner">${entityItem?.icon ? H`<ui-icon icon=${propRef(entityItem, "icon")}></ui-icon>` : cropFirstLetter(entityItem?.title ?? entityDesc.label ?? "C")}</div>
                 </div>
                 <div class="card-title-row">
                     <h3 class="card-title">${entityItem?.title || entityItem?.name || entityDesc.label}</h3>
@@ -420,14 +420,14 @@ export const MakeCardElement = <
             ${tagsEl}
 
             <div class="card-actions">
-                ${entityItem?.kind ? H`<span class="card-kind">${entityItem.kind}</span>` : null}
+                ${propRef(entityItem, "kind") ? H`<span class="card-kind">${propRef(entityItem, "kind")}</span>` : null}
                 ${statusEl}
-                <span class="card-type-badge">
+                ${typeIcon ? H`<span class="card-type-badge">
                     <ui-icon icon="${typeIcon}"></ui-icon>
-                </span>
+                </span>` : null}
                 ${promoCodeEl}
-                <button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>
-                <button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>
+                ${events.doEdit ? H`<button class="action" on:click=${events.doEdit}><ui-icon icon="pencil"></ui-icon><span>Edit</span></button>` : null}
+                ${events.doDelete ? H`<button class="action" on:click=${events.doDelete}><ui-icon icon="trash"></ui-icon><span>Delete</span></button>` : null}
             </div>
 
             <div class="card-expanded">

@@ -378,8 +378,8 @@
                     }
                 }
 
-                // Empty body state
-                &:empty {
+                // Loading state - show spinner only when actively loading
+                &[data-load-state="loading"]:empty {
                     min-block-size: 80px;
                     display: grid;
                     place-content: center;
@@ -393,6 +393,30 @@
                         border-radius: var(--radius-full);
                         animation: viewer-spinner 0.8s linear infinite;
                     }
+                }
+
+                // Empty state after load completed - show "No items" message
+                &[data-load-state="empty"]:empty,
+                &[data-load-state="loaded"]:empty {
+                    min-block-size: 80px;
+                    display: grid;
+                    place-content: center;
+
+                    &::after {
+                        content: "No items to display";
+                        color: var(--on-surface-variant);
+                        @include ui.text-label("label-medium");
+                        opacity: 0.6;
+                        animation: viewer-fade-in 0.3s ease-out;
+                    }
+                }
+
+                // Pending state (initial, before load starts) - subtle placeholder
+                &[data-load-state="pending"]:empty {
+                    min-block-size: 40px;
+                    display: grid;
+                    place-content: center;
+                    opacity: 0.4;
                 }
             }
         }
@@ -422,18 +446,9 @@
                 }
             }
 
-            // Loading placeholder for items
+            // Empty subgroup items - hide entire subgroup when empty
             &:empty {
-                min-block-size: 60px;
-                background: linear-gradient(
-                    90deg,
-                    oklch(from var(--surface-container) l c h / 0.5) 0%,
-                    oklch(from var(--surface-container-high) l c h / 0.5) 50%,
-                    oklch(from var(--surface-container) l c h / 0.5) 100%
-                );
-                background-size: 200% 100%;
-                animation: viewer-skeleton-shimmer 1.5s ease-in-out infinite;
-                border-radius: var(--radius-md);
+                display: none;
             }
         }
 
