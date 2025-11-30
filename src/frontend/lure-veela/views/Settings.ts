@@ -411,6 +411,7 @@ export const Settings = async () => {
     //
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
     const customModelInput = fieldRefs.get("ai.customModel") as HTMLInputElement | undefined;
+    const shareTargetModeSelectEl = fieldRefs.get("ai.shareTargetMode") as HTMLSelectElement | undefined;
     const customModelGroup = groupRefs.get("ai:custom-model");
     const timelineInputEl = fieldRefs.get("timeline.source") as HTMLInputElement | undefined;
 
@@ -441,7 +442,13 @@ export const Settings = async () => {
         }
     };
 
+    const syncShareTargetModeSelection = () => {
+        if (!shareTargetModeSelectEl) return;
+        shareTargetModeSelectEl.value = DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze";
+    };
+
     modelSelectEl?.addEventListener("change", syncCustomVisibility);
+    shareTargetModeSelectEl?.addEventListener("change", syncShareTargetModeSelection);
     customModelInput?.addEventListener("focus", () => {
         if (modelSelectEl && modelSelectEl.value !== "custom") {
             modelSelectEl.value = "custom";
@@ -499,10 +506,15 @@ export const Settings = async () => {
 
     const applySettingsToForm = (settings: AppSettings) => {
         fieldRefs.forEach((control, path) => {
-            if (path === "ai.model" || path === "ai.customModel" || path === "timeline.source" || path.startsWith("mcp.")) return;
+            if (path === "ai.shareTargetMode" || path === "ai.model" || path === "ai.customModel" || path === "timeline.source" || path.startsWith("mcp.")) return;
             const value = getByPath(settings, path);
             setControlValue(control, value ?? "");
         });
+
+        // Apply share target mode
+        if (shareTargetModeSelectEl) {
+            setControlValue(shareTargetModeSelectEl, settings.ai?.shareTargetMode || DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze");
+        }
 
         // Apply MCP configurations
         if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
@@ -668,6 +680,7 @@ export const Settings = async () => {
             ai: {
                 apiKey: readValue("ai.apiKey"),
                 baseUrl: readValue("ai.baseUrl"),
+                shareTargetMode: readValue("ai.shareTargetMode") as "analyze" | "recognize" || DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze",
                 model: isCustomSelected ? "custom" : modelSelection,
                 customModel: isCustomSelected ? customIdentifier : "",
                 mcp: mcpConfigurations
