@@ -31,22 +31,22 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
 }
 
 //
-const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
 //https://192.168.0.200/#home
+const $defaultView = (location?.hash?.replace?.(/^#/, "") || "home");
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
-    if (currentView && !isPrimitive(currentView) && !currentView.value) {
-        (currentView as { value: string }).value ||= [...existsViews?.keys?.()]?.filter?.(k => k != $defaultView)?.[0] || $defaultView;
-    }
-
-    //
     const rPair = makeReactive([document.createComment(""), document.createComment("")])
-    const setView = async (key) => {
+    const setView = async (key: string, forceCreateNewView?: boolean) => {
         key = key?.replace?.(/^#/, "") ?? key;
         const $homeView = "home";
 
         // `skipCreateNewView` should depending on replace or push state happened
-        if (!skipCreateNewView) {
-            skipCreateNewView = ((historyState as any)?.action == "REPLACE" || (historyState as any)?.action == "POP" || (historyState as any)?.action == "BACK");
+        if (!skipCreateNewView && !forceCreateNewView && (historyState as any)?.action != null) {
+            skipCreateNewView ||= ["REPLACE", "POP", "BACK"]?.includes?.((historyState as any)?.action);
+        }
+
+        //
+        if (forceCreateNewView || !key || key == $homeView) {
+            skipCreateNewView = false;
         }
 
         //
@@ -62,8 +62,18 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     (sidebar as any).skipCreateNewView = (value: boolean = false) => { skipCreateNewView = value; };
 
     //
-    subscribe([currentView, "value"], setView)
-    setView((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home");
+    // Initialize current view
+    requestAnimationFrame(() => {
+        if (currentView && !currentView?.value?.replace?.(/^#/, "")) {
+            (currentView as { value: string }).value = $defaultView;
+        }
+
+        //
+        setView(currentView?.value?.replace?.(/^#/, "") || "home", true);
+        requestAnimationFrame(() => subscribe([currentView, "value"], (value: any) => {
+            setView(value?.replace?.(/^#/, "") || "home", false);
+        }));
+    });
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
     const contentView = H`<div class="view-box">

@@ -1,6 +1,7 @@
 import { AppLayout, onClose } from "./AppLayout";
-import { loadInlineStyle, initialize as initDOM } from "fest/dom";
+import { loadInlineStyle } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
+import { initialize as initDOM } from "fest/veela";
 
 //
 import "fest/fl-ui";
@@ -51,7 +52,7 @@ const generateId = (path: string)=>{
 }
 
 //
-const $defaultView = (location.hash?.replace?.(/^#/, "") || "home");
+const $defaultView = (location?.hash?.replace?.(/^#/, "") || "home");
 const checkIsActive = (registryKey: string, closingView: string) => {
     return (registryKey?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, ""));
 }

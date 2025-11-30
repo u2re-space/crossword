@@ -5,7 +5,6 @@ import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
-import { makeActions } from "../items/Actions";
 import { CollectItemsForTabPage, MakeItemBy } from "../items/Items";
 
 //
