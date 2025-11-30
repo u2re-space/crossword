@@ -442,13 +442,7 @@ export const Settings = async () => {
         }
     };
 
-    const syncShareTargetModeSelection = () => {
-        if (!shareTargetModeSelectEl) return;
-        shareTargetModeSelectEl.value = DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze";
-    };
-
     modelSelectEl?.addEventListener("change", syncCustomVisibility);
-    shareTargetModeSelectEl?.addEventListener("change", syncShareTargetModeSelection);
     customModelInput?.addEventListener("focus", () => {
         if (modelSelectEl && modelSelectEl.value !== "custom") {
             modelSelectEl.value = "custom";
