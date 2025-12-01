@@ -880,6 +880,11 @@ $card-variants: (
                 margin-inline-end: var(--gap-sm);
             }
 
+            ui-icon {
+                min-inline-size: 1.25rem;
+                min-block-size: 1.25rem;
+            }
+
             // Action buttons
             & > .action {
                 order: 2;
@@ -894,6 +899,15 @@ $card-variants: (
 
                 box-shadow: none;
                 filter: none;
+
+                span, label {
+                    display: none !important;
+                }
+
+                ui-icon {
+                    min-inline-size: 1.5rem;
+                    min-block-size: 1.5rem;
+                }
 
                 &:hover {
                     @include ui.tonal-surface(surface, calc(var(--surface-opacity-emphasis) + 0.06));
@@ -1044,6 +1058,11 @@ $card-variants: (
                 grid-row: title-start / meta-end;
                 align-self: start;
                 justify-self: center;
+
+                ui-icon {
+                    min-inline-size: 1.5rem;
+                    min-block-size: 1.5rem;
+                }
             }
 
             // Title row placement
@@ -1105,6 +1124,7 @@ $card-variants: (
             .card-title {
                 flex: 1;
                 min-inline-size: 0;
+                margin-inline-end: 3.5rem;
             }
         }
 

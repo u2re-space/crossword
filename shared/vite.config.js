@@ -51,70 +51,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
 
     const terserOptions = {
         ecma: 2025,
-        keep_classnames: false,
-        keep_fnames: false,
         module: true,
-        toplevel: true,
-        mangle: {
-            eval: true,
-            keep_classnames: false,
-            keep_fnames: false,
-            module: true,
-            toplevel: true,
-            properties: {
-                builtins: true,
-                keep_quoted: "strict",
-                undeclared: true,
-                only_annotated: true,
-                reserved: ["register", "resolve", "reject", "undefined"]
-            }
-        },
-        compress: {
-            ecma: 2025,
-            keep_classnames: false,
-            keep_fnames: false,
-            keep_infinity: false,
-            reduce_vars: true,
-            reduce_funcs: true,
-            pure_funcs: [],
-            arguments: true,
-            expression: true,
-            module: true,
-            passes: 3,
-            side_effects: true,
-            pure_getters: true,
-            typeofs: true,
-            toplevel: true,
-            unsafe: true,
-            unsafe_Function: true,
-            unsafe_comps: true,
-            unsafe_arrows: true,
-            unsafe_math: true,
-            unsafe_symbols: true,
-            unsafe_undefined: true,
-            unsafe_methods: true,
-            unsafe_regexp: true,
-            unsafe_proto: true,
-            warnings: true,
-            unused: true,
-            booleans_as_integers: true,
-            hoist_funs: true,
-            hoist_vars: true,
-            properties: true,
-            // don't use in debug mode
-            //drop_console: true
-        },
-        format: {
-            braces: false,
-            comments: false,
-            ecma: 2025,
-            //indent_level: 0,
-            semicolons: true,
-            shebang: true,
-            quote_style: 0,
-            wrap_iife: true,
-            ascii_only: true,
-        }
+        toplevel: true
     };
 
     //
@@ -205,6 +143,19 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const css = {
         postcss: postcssConfig,
+        preprocessorOptions: {
+            scss: {
+                api: "modern",
+                quietDeps: true,
+                charset: false,
+                precision: 8,
+                quietDeps: true,
+                charset: false,
+                precision: 8,
+                quietDeps: true,
+                charset: false,
+            }
+        }
     }
 
     //
@@ -224,7 +175,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             resolve(__dirname, './test/*.ts')
         ],
         entries: [resolve(__dirname, './src/index.ts')],
-        force: true
+        force: true,
+        optimizeDeps: {
+            include: ['**/*.scss'], // Include all .scss files
+        }
     }
 
     //
@@ -279,8 +233,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         cssCodeSplit: false,
         chunkSizeWarningLimit: 2048,
         assetsInlineLimit: 1024 * 16,
-        minify: false, // "terser",
-        sourcemap: 'hidden',
+        minify: isBuild ? "terser" : false,
+        sourcemap: false,
         modulePreload: {
             polyfill: true,
             include: [

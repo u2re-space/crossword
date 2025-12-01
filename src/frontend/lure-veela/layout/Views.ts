@@ -1,5 +1,5 @@
 import { AppLayout, onClose } from "./AppLayout";
-import { loadInlineStyle } from "fest/dom";
+import { loadAsAdopted } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
 import { initialize as initDOM } from "fest/veela";
 
@@ -65,8 +65,10 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
+    //
+    await initDOM(document.body);
+    await loadAsAdopted(style);
     await Promise.allSettled([
-        initDOM(document.body),
         initTheme(),
         initBackNavigation({
             preventDefaultNavigation: false,
@@ -79,9 +81,6 @@ export async function frontend(mountElement) {
     ])?.catch?.((error) => {
         console.warn("Failed to initialize some services", error);
     });
-
-    //
-    loadInlineStyle(style)
 
     //
     const entityViews = new Map([

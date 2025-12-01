@@ -45,12 +45,12 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
 }, "POST")
 
 //
-setDefaultHandler(new NetworkFirst({
+setDefaultHandler(new CacheFirst({
     cacheName: 'default-cache',
     plugins: [
         new ExpirationPlugin({
-            maxEntries: 50,
-            maxAgeSeconds: 24 * 60 * 60 // 1 day
+            maxEntries: 120,
+            maxAgeSeconds: 1800
         })
     ]
 }));
@@ -62,8 +62,8 @@ registerRoute(
         cacheName: 'assets-cache',
         plugins: [
             new ExpirationPlugin({
-                maxEntries: 50,
-                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+                maxEntries: 120,
+                maxAgeSeconds: 1800
             })
         ]
     })
@@ -77,7 +77,7 @@ registerRoute(
         plugins: [
             new ExpirationPlugin({
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 24 * 60 * 60 // 60 days
+                maxAgeSeconds: 24 * 60 * 60 // 1 day
             })
         ]
     })

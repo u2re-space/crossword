@@ -88,11 +88,22 @@
 
                 //
                 & {
-                    min-inline-size: 0px;
+                    min-inline-size: fit-content;
                     min-block-size: 0px;
-                    inline-size: fit-content;
+                    inline-size: max-content;
                     block-size: fit-content;
                     touch-action: none;
+                    flex-direction: row;
+                    flex-wrap: nowrap;
+                    max-inline-size: stretch;
+                    padding: 0.25rem;
+                }
+
+                //
+                ui-icon {
+                    padding: 0.25rem;
+                    min-block-size: 1.5rem;
+                    min-inline-size: 1.5rem;
                 }
 
                 //
@@ -100,6 +111,9 @@
                     display: block;
                     color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-primary, 92%), transparent);
                     padding-inline-end: var(--padding-xs);
+                    max-inline-size: stretch;
+                    inline-size: fit-content;
+                    min-inline-size: fit-content;
 
                     @include ui.text-body("body-small");
                 }
