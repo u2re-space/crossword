@@ -83,20 +83,6 @@ registerRoute(
     })
 );
 
-// Navigation
-registerRoute(
-    ({ request }) => request.mode === 'navigate',
-    new NetworkFirst({
-        cacheName: 'html-cache',
-        plugins: [
-            new ExpirationPlugin({
-                maxEntries: 10,
-                maxAgeSeconds: 24 * 60 * 60 // 1 day
-            })
-        ]
-    })
-);
-
 // fallback to app-shell for document request
 setCatchHandler(({ event }: any): Promise<Response> => {
     switch (event?.request?.destination) {
@@ -128,6 +114,34 @@ self.addEventListener('notificationclick', (event: any) => {
     );
 });
 
-// @ts-ignore // lifecycle
-self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); }); // @ts-ignore
-self.addEventListener('activate', (e) => { e.waitUntil((self as any).clients.claim()); });
+// @ts-ignore // lifecycle - enable navigation preload for faster loads
+self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        Promise.all([
+            (self as any).clients.claim(),
+            // Enable Navigation Preload if supported
+            (self as any).registration?.navigationPreload?.enable?.()
+        ])
+    );
+});
+
+// Use preload response for navigation when available
+registerRoute(
+    ({ request }) => request.mode === 'navigate',
+    async ({ event, request }: any) => {
+        try {
+            // Try to use the navigation preload response if available
+            const preloadResponse = await event?.preloadResponse;
+            if (preloadResponse) return preloadResponse;
+
+            // Otherwise fall back to network
+            const networkResponse = await fetch(request);
+            return networkResponse;
+        } catch {
+            // Fall back to cache
+            const cached = await caches.match('/');
+            return cached || Response.error();
+        }
+    }
+);
