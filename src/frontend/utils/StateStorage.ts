@@ -457,11 +457,11 @@ export const snapshotSpeedDialItem = (item: SpeedDialItem) => {
 
 const WALLPAPER_KEY = "cw::workspace::wallpaper";
 export const wallpaperState = makeUIState(WALLPAPER_KEY, () => makeReactive({
-    src: "./assets/imgs/test.jpg",
+    src: "./assets/imgs/test.webp",
     opacity: 1,
     blur: 0
 }), (raw) => makeReactive(raw || {
-    src: "./assets/imgs/test.jpg",
+    src: "./assets/imgs/test.webp",
     opacity: 1,
     blur: 0
 }), (state) => ({ ...state })) as unknown as { src: string; opacity: number; blur: number };
