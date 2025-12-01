@@ -65,7 +65,8 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
-    await initDOM(document.body); loadInlineStyle(style); initTheme();
+    loadInlineStyle(style); initTheme();
+    initDOM(document.body);
 
     // Initialize back navigation for mobile back gesture/button support
     initBackNavigation({
