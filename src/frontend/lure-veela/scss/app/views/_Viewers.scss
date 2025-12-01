@@ -214,8 +214,6 @@
         display: grid;
         grid-template-columns: minmax(0px, 1fr);
         grid-template-rows: minmax(0px, 1fr);
-        inline-size: stretch;
-        block-size: stretch;
         gap: var(--gap-xs);
         flex-grow: 1;
 
@@ -225,13 +223,18 @@
         @include container-clamped(stretch, stretch);
 
         //
+        min-inline-size: 0px;
+        min-block-size: 0px;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        inline-size: stretch;
+        block-size: stretch;
+        box-sizing: border-box;
+
+        //
         perspective: 1000;
         transform: translateZ(0px);
         content-visibility: auto;
-
-        //
-        min-inline-size: 0px;
-        max-inline-size: stretch;
 
         //
         &.viewer-section {
@@ -263,8 +266,14 @@
 
         //
         min-inline-size: 0px;
+        min-block-size: 0px;
         max-inline-size: stretch;
+        max-block-size: stretch;
+        inline-size: stretch;
+        block-size: stretch;
+        box-sizing: border-box;
 
+        //
         & > h2 {
             letter-spacing: 0.01em;
 
@@ -303,6 +312,15 @@
 
             //
             & {
+                min-inline-size: 0px;
+                min-block-size: 0px;
+                max-inline-size: stretch;
+                max-block-size: stretch;
+                inline-size: stretch;
+                block-size: stretch;
+                box-sizing: border-box;
+
+                //
                 box-shadow: none;
                 perspective: 1000;
                 transform: translateZ(0px);
@@ -315,11 +333,6 @@
                 touch-action: manipulation;
                 pointer-events: auto;
                 align-content: start;
-
-                //
-                inline-size: stretch;
-                max-inline-size: stretch !important;
-                min-inline-size: none;
 
                 //
                 overflow-wrap: break-word;
@@ -515,8 +528,13 @@
         grid-template-columns: minmax(0px, 1fr);
         grid-template-rows: minmax(0px, 1fr);
         pointer-events: auto;
-        inline-size: 100%;
-        block-size: 100%;
+        min-inline-size: 0px;
+        min-block-size: 0px;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        inline-size: stretch;
+        block-size: stretch;
+        box-sizing: border-box;
         inset: 0;
         position: fixed;
         background-color: transparent;
@@ -554,8 +572,13 @@
         grid-template-columns: repeat(var(--cs-layout-c, 4), minmax(0px, 1fr));
         grid-template-rows: repeat(var(--cs-layout-r, 8), minmax(0px, 1fr));
 
-        inline-size: 100%;
-        block-size: 100%;
+        min-inline-size: 0px;
+        min-block-size: 0px;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        inline-size: stretch;
+        block-size: stretch;
+        box-sizing: border-box;
         pointer-events: none; // Background click should go through if needed, but items are auto
 
         place-content: center;
