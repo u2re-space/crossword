@@ -218,6 +218,7 @@ export function SpeedDial(makeView: any) {
     const rowsRef = propRef(gridLayoutState, "rows", 8);
     const shapeRef = propRef(gridLayoutState, "shape", "square");
 
+    //
     const renderIconItem = (item: SpeedDialItem)=>{
         return H`<div class="ui-ws-item" data-speed-dial-item data-layer="icons" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
             <div data-shape=${shapeRef} class="ui-ws-item-icon shaped">
@@ -226,6 +227,7 @@ export function SpeedDial(makeView: any) {
         </div>`;
     };
 
+    //
     const renderLabelItem = (item: SpeedDialItem)=>{
         return H`<div style="background-color: transparent;" class="ui-ws-item" data-speed-dial-item data-layer="labels" ref=${(el) => attachItemNode(item, el as HTMLElement, true)}>
             <div class="ui-ws-item-label" style="background-color: transparent;">
@@ -236,7 +238,7 @@ export function SpeedDial(makeView: any) {
 
     //
     const oRef = orientRef();
-    const box = H`<div style="pointer-events: auto;" id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
+    const box = H`<div style="pointer-events: auto; position: relative; contain: strict; overflow: hidden;" id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
         ${makeWallpaper()}
         <div style="background-color: transparent; color-scheme: dark; pointer-events: none;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderLabelItem)}
