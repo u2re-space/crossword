@@ -65,10 +65,8 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
-    //
-    await initDOM(document.body);
-    await loadAsAdopted(style);
-    await Promise.allSettled([
+    initDOM(document.body)?.then?.(()=>loadAsAdopted(style));
+    Promise.allSettled([
         initTheme(),
         initBackNavigation({
             preventDefaultNavigation: false,

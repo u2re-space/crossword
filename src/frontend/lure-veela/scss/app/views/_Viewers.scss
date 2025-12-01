@@ -176,7 +176,7 @@
 
     //
     .view-box {
-        grid-row: content-row;
+        grid-row: content-row !important;
         grid-column: 1 / -1;
         inline-size: stretch;
         block-size: stretch;
@@ -207,7 +207,7 @@
         //
         margin-inline: 0px;
         margin-block-start: var(--padding-sm);
-        grid-row: content;
+        grid-row: content-row !important;
         box-shadow: none;
 
         //
