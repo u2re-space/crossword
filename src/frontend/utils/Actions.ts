@@ -298,6 +298,21 @@ export const recordSpeechRecognition = async (userInputHoldUntilStop: boolean = 
 let lastSpeechRecogTime = 0;
 
 //
+function isSameOrigin(url: string) {
+    return new URL(url, window.location.href).origin === window.location.origin;
+}
+
+//
+const throttleToRun = (cb: (...args: any[]) => Promise<any>, timeout: number = 1000) => {
+    let lastTime = 0;
+    return async (...args: any[]) => {
+        const now = Date.now();
+        if (now - lastTime > timeout) { lastTime = now; return await cb(...args); }
+        return null;
+    }
+}
+
+//
 export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, any>, entityDesc: EntityDescriptor, viewPage?: any) => any>([
     ["bluetooth-enable-acceptance", async () => {
         try {
@@ -433,7 +448,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     }],
 
     //
-    ["open-link", async (context: any, entityDesc: EntityDescriptor)=>{
+    ["open-link", throttleToRun(async (context: any, entityDesc: EntityDescriptor) => {
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
         const href = meta?.href || item?.href || context?.shortcut?.href || context?.href;
@@ -441,15 +456,15 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         //
         if (!href) { toastError("Link is missing"); return; }
 
-        //
-        const target = meta?.target || context?.shortcut?.target || context?.target || "_blank";
+        // TODO: detect origin of the link and open in the same tab if same origin
+        const target = isSameOrigin(href) ? "_self" : "_blank";
         try {
             window?.open?.(href, target, "noopener,noreferrer");
         } catch (error) {
             console.warn(error);
             toastError("Unable to open link");
         }
-    }],
+    }, 100)],
 
     //
     ["copy-link", async (context: any, entityDesc: EntityDescriptor) => {
