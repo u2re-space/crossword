@@ -112,14 +112,6 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
 ];
 
 const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
-    ...NAVIGATION_SHORTCUTS.slice(0, 4).map((target, index) => ({
-        id: `shortcut-${target.view}`,
-        cell: makeReactive([index, 0]),
-        icon: target.icon,
-        label: target.label,
-        action: "open-view",
-        meta: { view: target.view }
-    })),
     {
         id: "shortcut-explorer",
         cell: makeReactive([2, 0]),

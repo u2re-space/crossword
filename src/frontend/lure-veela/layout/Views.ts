@@ -65,20 +65,23 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
-    loadInlineStyle(style); initTheme();
-    initDOM(document.body);
-
-    // Initialize back navigation for mobile back gesture/button support
-    initBackNavigation({
-        preventDefaultNavigation: false,
-        pushInitialState: true
+    await Promise.allSettled([
+        initDOM(document.body),
+        initTheme(),
+        initBackNavigation({
+            preventDefaultNavigation: false,
+            pushInitialState: true
+        }),
+        initGlobalClipboard(),
+        startGeoTracking(),
+        startTimeTracking(),
+        requestNotificationPermission()
+    ])?.catch?.((error) => {
+        console.warn("Failed to initialize some services", error);
     });
 
     //
-    initGlobalClipboard();
-    startGeoTracking();
-    startTimeTracking();
-    requestNotificationPermission();
+    loadInlineStyle(style)
 
     //
     const entityViews = new Map([

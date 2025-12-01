@@ -189,7 +189,7 @@ function makeWallpaper() {
     console.log(wallpaperState);
     const srcRef = stringRef("./assets/imgs/test.webp");
     subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.webp");
-    const CE = H`<canvas style="min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
+    const CE = H`<canvas style="pointer-events: none; min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; position: fixed; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
     return CE;
 }
 
@@ -236,12 +236,12 @@ export function SpeedDial(makeView: any) {
 
     //
     const oRef = orientRef();
-    const box = H`<div id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
+    const box = H`<div style="pointer-events: auto;" id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
         ${makeWallpaper()}
-        <div style="background-color: transparent; color-scheme: dark;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
+        <div style="background-color: transparent; color-scheme: dark; pointer-events: none;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderLabelItem)}
         </div>
-        <div style="background-color: transparent;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
+        <div style="background-color: transparent; pointer-events: none;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderIconItem)}
         </div>
     </div>`;
