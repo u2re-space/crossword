@@ -272,7 +272,7 @@ const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridC
 const coordinateRef = typeof document != "undefined" ? pointerRef() : [numberRef(0), numberRef(0)];
 
 //
-const handleWallpaperDropOrPaste = async (event: DragEvent | ClipboardEvent) => {
+const handleWallpaperDropOrPaste = (event: DragEvent | ClipboardEvent) => {
     if (isInFocus(event?.target as HTMLElement, "#home") ||
         isInFocus(event?.target as HTMLElement, "#home:is(:hover, :focus, :focus-visible), #home:has(:hover, :focus, :focus-visible)", "child")
     ) {
@@ -280,13 +280,14 @@ const handleWallpaperDropOrPaste = async (event: DragEvent | ClipboardEvent) => 
         const dataTransfer = isPaste ? (event as ClipboardEvent).clipboardData : (event as DragEvent).dataTransfer;
 
         if (isPaste) {
-            const pasteHandled = await handleSpeedDialPaste(event as ClipboardEvent);
-            if (pasteHandled) return;
+            handleSpeedDialPaste(event as ClipboardEvent)
         }
 
         event.preventDefault();
         event.stopPropagation();
+
         handleIncomingEntries(dataTransfer || ((event as any).clipboardData || (event as any).dataTransfer), "/images/wallpaper/", null, (file, path) => {
+            console.log(file, path);
             if (file.type.startsWith("image/")) {
                 wallpaperState.src = path;
                 persistWallpaper();

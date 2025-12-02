@@ -605,7 +605,7 @@ export const parseSpeedDialItemFromURL = (urlText: string, suggestedCell?: GridC
 export const createSpeedDialItemFromClipboard = async (suggestedCell?: GridCell): Promise<SpeedDialItem | null> => {
     try {
         let clipboardText = "";
-        
+
         try {
             clipboardText = await navigator.clipboard.readText();
         } catch (e) {
@@ -616,15 +616,14 @@ export const createSpeedDialItemFromClipboard = async (suggestedCell?: GridCell)
         if (!clipboardText || !clipboardText.trim()) return null;
 
         const trimmed = clipboardText.trim();
-        
+
         const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed) || /^[^\s]+\.[a-z]{2,}(\/|$)/i.test(trimmed);
-        
-        if (isURL) {
+
+        if (isURL && URL.canParse(trimmed, typeof window !== "undefined" ? window.location.origin : undefined)) {
             return parseSpeedDialItemFromURL(trimmed, suggestedCell);
         }
 
         const isJSON = (trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"));
-        
         if (isJSON) {
             const parsed = parseSpeedDialItemFromJSON(trimmed, suggestedCell);
             if (parsed) return parsed;
