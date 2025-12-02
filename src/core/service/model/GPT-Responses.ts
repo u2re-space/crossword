@@ -276,6 +276,8 @@ export class GPTResponses {
 
         const response = await fetch(`${this?.apiUrl}/responses`, {
             method: "POST",
+            priority: 'auto',
+            keepalive: true,
             headers: {
                 "Content-Type": "application/json",
                 ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})

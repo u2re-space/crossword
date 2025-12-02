@@ -34,6 +34,8 @@ export const generateNewPlan = async (speechPrompt: string | null = null) => {
         //
         return fetch("/make-timeline", {
             method: "POST",
+            priority: 'auto',
+            keepalive: true,
             body: timelineForm,
         })?.catch?.(console.warn.bind(console));
     } catch (e) {

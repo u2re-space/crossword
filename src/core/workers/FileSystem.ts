@@ -268,7 +268,7 @@ export const postCommitAnalyze = async (payload: shareTargetFormData, API_ENDPOI
     if (payload.file) fd.append('files', payload.file as any, (payload.file as any)?.name || 'pasted');
 
     //
-    const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd })?.catch?.(console.warn.bind(console)); if (!resp) return [];
+    const resp = await fetch(API_ENDPOINT, { method: 'POST', priority: 'auto', keepalive: true, body: fd })?.catch?.(console.warn.bind(console)); if (!resp) return [];
     const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}"); if (!json) return [];
     return json?.results?.map?.((res) => res?.data)?.filter?.((data) => (!!data?.trim?.()));
 };
@@ -283,7 +283,7 @@ export const postCommitRecognize = (targetDir: string = "/docs/preferences/") =>
         fd.append('targetDir', targetDir);
 
         //
-        const resp = await fetch(API_ENDPOINT, { method: 'POST', body: fd })?.catch?.(console.warn.bind(console));
+        const resp = await fetch(API_ENDPOINT, { method: 'POST', priority: 'auto', keepalive: true, body: fd })?.catch?.(console.warn.bind(console));
         if (!resp) return [];
         const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
         if (!json) return [];

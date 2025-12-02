@@ -47,6 +47,11 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
 //
 setDefaultHandler(new CacheFirst({
     cacheName: 'default-cache',
+    fetchOptions: {
+        credentials: 'include',
+        priority: 'auto',
+        cache: 'force-cache'
+    },
     plugins: [
         new ExpirationPlugin({
             maxEntries: 120,
@@ -60,6 +65,11 @@ registerRoute(
     ({ request }) => request.destination === 'script' || request.destination === 'style',
     new StaleWhileRevalidate({
         cacheName: 'assets-cache',
+        fetchOptions: {
+            credentials: 'include',
+            priority: 'high',
+            cache: 'default'
+        },
         plugins: [
             new ExpirationPlugin({
                 maxEntries: 120,
@@ -74,6 +84,11 @@ registerRoute(
     ({ request }) => request.destination === 'image',
     new CacheFirst({
         cacheName: 'image-cache',
+        fetchOptions: {
+            credentials: 'include',
+            priority: 'auto',
+            cache: 'force-cache'
+        },
         plugins: [
             new ExpirationPlugin({
                 maxEntries: 100,

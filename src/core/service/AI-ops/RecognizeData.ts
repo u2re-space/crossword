@@ -224,6 +224,8 @@ export const recognizeByInstructions = async (
 
     const r: any = await fetch(`${settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
         method: 'POST',
+        priority: 'auto',
+        keepalive: true,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
