@@ -1,5 +1,5 @@
-import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
-import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries } from "fest/lure";
+import { makeReactive, numberRef, propRef, stringRef, subscribe } from "fest/object";
+import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerRef } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
@@ -23,8 +23,9 @@ import {
     type SpeedDialItem,
     type GridCell
 } from "@rs-frontend/utils/StateStorage";
-import { isInFocus, MOCElement } from "fest/dom";
+import { getBoundingOrientRect, isInFocus, MOCElement, orientOf } from "fest/dom";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { convertOrientPxToCX, cvt_cs_to_os, type GridItemType } from "fest/core";
 
 let viewMaker: any = null;
 const layout = makeReactive([gridLayoutState.columns ?? 4, gridLayoutState.rows ?? 8]);
@@ -137,18 +138,63 @@ const attachItemNode = (item: SpeedDialItem, el?: HTMLElement | null, interactiv
     }
 };
 
+const floorCell = (cell: [number, number]): [number, number] => {
+    return [Math.floor(cell[0]), Math.floor(cell[1])];
+};
+
+const roundCell = (cell: [number, number]): [number, number] => {
+    return [Math.round(cell[0]), Math.round(cell[1])];
+};
+
+const clampCell = (cell: [number, number]): [number, number] => {
+    return [Math.max(0, Math.min(cell[0], layout[0] - 1)), Math.max(0, Math.min(cell[1], layout[1] - 1))];
+};
+
+//
+const getSpanOffset = (bounds: DOMRect | null, layoutSnapshot: [number, number] | null, size: [number, number] | null, orient: number | null): [number, number] => {
+    if (!bounds || !layoutSnapshot || !size || orient == null) { return [0, 0]; }
+    const safeLayout: [number, number] = [
+        Math.max(layoutSnapshot?.[0] || 0, 1),
+        Math.max(layoutSnapshot?.[1] || 0, 1)
+    ];
+    const orientedSize: [number, number] = orient % 2 ? [size?.[1] || 1, size?.[0] || 1] : [size?.[0] || 1, size?.[1] || 1];
+    const cellSize: [number, number] = [
+        (orientedSize[0] || 1) / safeLayout[0],
+        (orientedSize[1] || 1) / safeLayout[1]
+    ];
+    const spanX = Math.max((bounds?.width || cellSize[0]) / (cellSize[0] || 1), 1);
+    const spanY = Math.max((bounds?.height || cellSize[1]) / (cellSize[1] || 1), 1);
+    return [(spanX - 1) / 2, (spanY - 1) / 2];
+};
+
 const deriveCellFromEvent = (ev?: MouseEvent): GridCell =>{
     const grid = document.querySelector<HTMLElement>("#home .speed-dial-grid");
     if (!grid || !ev) return [0, 0];
     const rect = grid.getBoundingClientRect();
-    if (!rect?.width || !rect?.height) return [0, 0];
-    const relX = Math.min(Math.max(ev.clientX - rect.left, 0), rect.width);
-    const relY = Math.min(Math.max(ev.clientY - rect.top, 0), rect.height);
-    const cols = Number(layout?.[0] ?? 4) || 4;
-    const rows = Number(layout?.[1] ?? 8) || 8;
-    const col = Math.min(cols - 1, Math.max(0, Math.round((relX / rect.width) * (cols - 1))));
-    const row = Math.min(rows - 1, Math.max(0, Math.round((relY / rect.height) * (rows - 1))));
-    return [col, row];
+
+    //
+    const orient = orientOf(grid);
+    const coord = cvt_cs_to_os([ev?.clientX - (rect?.left || 0), ev?.clientY - (rect?.top || 0)], [rect?.width || 0, rect?.height || 0], orient)
+    const projected = convertOrientPxToCX(coord, { layout: [layout[0], layout[1]] as [number, number], size: [rect?.width || 0, rect?.height || 0] as [number, number], item: {} as GridItemType, list: [], items: new Map() }, orient);
+    const spanOffset = getSpanOffset(null, [layout[0], layout[1]] as [number, number], [rect?.width || 0, rect?.height || 0] as [number, number], orient);
+    projected[0] += spanOffset[0];
+    projected[1] += spanOffset[1];
+    return clampCell(floorCell(projected));
+};
+
+const deriveCellFromCoordinate = (coordinate: [number, number]): GridCell =>{
+    const grid = document.querySelector<HTMLElement>("#home .speed-dial-grid");
+    if (!grid || !coordinate) return [0, 0];
+    const rect = grid.getBoundingClientRect();
+
+    //
+    const orient = orientOf(grid);
+    const coord = cvt_cs_to_os([coordinate[0] - (rect?.left || 0), coordinate[1] - (rect?.top || 0)], [rect?.width || 0, rect?.height || 0], orient)
+    const projected = convertOrientPxToCX(coord, { layout: [layout[0], layout[1]] as [number, number], size: [rect?.width || 0, rect?.height || 0] as [number, number], item: {} as GridItemType, list: [], items: new Map() }, orient);
+    const spanOffset = getSpanOffset(null, [layout[0], layout[1]] as [number, number], [rect?.width || 0, rect?.height || 0] as [number, number], orient);
+    projected[0] += spanOffset[0];
+    projected[1] += spanOffset[1];
+    return clampCell(floorCell(projected));
 };
 
 const createMenuEntryForAction = (actionId: string, item: SpeedDialItem, fallbackLabel: string = "") => {
@@ -206,7 +252,7 @@ const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridC
     event.stopPropagation();
 
     try {
-        const item = await createSpeedDialItemFromClipboard(suggestedCell);
+        const item = await createSpeedDialItemFromClipboard(suggestedCell ?? deriveCellFromCoordinate([coordinateRef[0].value, coordinateRef[1].value]));
         if (!item) {
             return false;
         }
@@ -221,6 +267,9 @@ const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridC
         return false;
     }
 };
+
+//
+const coordinateRef = typeof document != "undefined" ? pointerRef() : [numberRef(0), numberRef(0)];
 
 //
 const handleWallpaperDropOrPaste = async (event: DragEvent | ClipboardEvent) => {
@@ -293,8 +342,8 @@ export function SpeedDial(makeView: any) {
 }
 
 //
-const openItemEditor = (item?: SpeedDialItem, opts: { suggestedCell?: GridCell } = {})=>{
-    const workingItem = item ?? createEmptySpeedDialItem(opts?.suggestedCell ?? [0, 0]);
+const openItemEditor = (item?: SpeedDialItem, opts?: { suggestedCell?: GridCell })=>{
+    const workingItem = item ?? createEmptySpeedDialItem(opts?.suggestedCell ?? deriveCellFromCoordinate([coordinateRef[0].value, coordinateRef[1].value]));
     const isNew = !item;
     const workingMeta = ensureSpeedDialMeta(workingItem.id);
     const draft = {
@@ -503,7 +552,7 @@ export function createCtxMenu() {
                     label: "Create shortcut",
                     icon: "plus",
                     action: ()=>{
-                        openItemEditor(undefined, { suggestedCell: context.guessedCell });
+                        openItemEditor(undefined, { suggestedCell: context.guessedCell ?? deriveCellFromCoordinate([coordinateRef[0].value, coordinateRef[1].value]) });
                     }
                 }, {
                     id: "paste-shortcut",
@@ -511,7 +560,7 @@ export function createCtxMenu() {
                     icon: "clipboard",
                     action: async ()=>{
                         try {
-                            const item = await createSpeedDialItemFromClipboard(context.guessedCell);
+                            const item = await createSpeedDialItemFromClipboard(context.guessedCell ?? deriveCellFromCoordinate([coordinateRef[0].value, coordinateRef[1].value]));
                             if (!item) {
                                 toastError("Clipboard does not contain a valid URL or shortcut JSON");
                                 return;
