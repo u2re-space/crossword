@@ -514,3 +514,126 @@ if (typeof window !== "undefined") {
     requestAnimationFrame(() => applyGridSettings());
 }
 
+//
+export const parseSpeedDialItemFromJSON = (jsonText: string, suggestedCell?: GridCell): SpeedDialItem | null => {
+    try {
+        const parsed = JSOX.parse(jsonText) as any;
+        if (!parsed || typeof parsed !== "object") return null;
+
+        const state = parsed.state || parsed;
+        const desc = parsed.desc || parsed.meta || {};
+
+        if (!state || typeof state !== "object") return null;
+
+        const cellValue = state.cell && Array.isArray(state.cell) && state.cell.length >= 2
+            ? [Number(state.cell[0]) || 0, Number(state.cell[1]) || 0] as GridCell
+            : (suggestedCell || [0, 0] as GridCell);
+
+        const item = createStatefulItem({
+            id: state.id || generateItemId(),
+            cell: cellValue,
+            icon: state.icon || desc.icon || "sparkle",
+            label: state.label || desc.label || "Shortcut",
+            action: desc.action || state.action || "open-view"
+        });
+
+        const meta: SpeedDialItemMeta = {
+            action: desc.action || state.action || "open-view",
+            ...(desc.meta || desc || {}),
+            ...(state.meta || {})
+        };
+
+        if (meta.href) {
+            meta.action = meta.action || "open-link";
+        } else if (meta.view) {
+            meta.action = meta.action || "open-view";
+        }
+
+        ensureSpeedDialMeta(item.id, meta);
+        return item;
+    } catch (e) {
+        console.warn("Failed to parse JSON for speed dial item:", e);
+        return null;
+    }
+};
+
+//
+export const parseSpeedDialItemFromURL = (urlText: string, suggestedCell?: GridCell): SpeedDialItem | null => {
+    try {
+        const trimmed = urlText.trim();
+        if (!trimmed) return null;
+
+        let url: URL;
+        try {
+            url = new URL(trimmed);
+        } catch {
+            try {
+                url = new URL(trimmed, typeof window !== "undefined" ? window.location.href : undefined);
+            } catch {
+                return null;
+            }
+        }
+
+        const hostname = url.hostname || "";
+        const domain = hostname.replace(/^www\./, "");
+        const pathname = url.pathname || "";
+        const label = domain || url.host || "Link";
+
+        const item = createStatefulItem({
+            id: generateItemId(),
+            cell: suggestedCell || [0, 0],
+            icon: "link",
+            label,
+            action: "open-link"
+        });
+
+        const meta: SpeedDialItemMeta = {
+            action: "open-link",
+            href: url.href,
+            description: `${label}${pathname ? ` - ${pathname}` : ""}`
+        };
+
+        ensureSpeedDialMeta(item.id, meta);
+        return item;
+    } catch (e) {
+        console.warn("Failed to parse URL for speed dial item:", e);
+        return null;
+    }
+};
+
+//
+export const createSpeedDialItemFromClipboard = async (suggestedCell?: GridCell): Promise<SpeedDialItem | null> => {
+    try {
+        let clipboardText = "";
+        
+        try {
+            clipboardText = await navigator.clipboard.readText();
+        } catch (e) {
+            console.warn("Failed to read clipboard text:", e);
+            return null;
+        }
+
+        if (!clipboardText || !clipboardText.trim()) return null;
+
+        const trimmed = clipboardText.trim();
+        
+        const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed) || /^[^\s]+\.[a-z]{2,}(\/|$)/i.test(trimmed);
+        
+        if (isURL) {
+            return parseSpeedDialItemFromURL(trimmed, suggestedCell);
+        }
+
+        const isJSON = (trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"));
+        
+        if (isJSON) {
+            const parsed = parseSpeedDialItemFromJSON(trimmed, suggestedCell);
+            if (parsed) return parsed;
+        }
+
+        return null;
+    } catch (e) {
+        console.warn("Failed to create speed dial item from clipboard:", e);
+        return null;
+    }
+};
+

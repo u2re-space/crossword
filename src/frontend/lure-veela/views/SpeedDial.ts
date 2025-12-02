@@ -1,4 +1,4 @@
-import { makeReactive, propRef, stringRef, subscribe, computed } from "fest/object";
+import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
@@ -19,6 +19,7 @@ import {
     wallpaperState,
     persistWallpaper,
     gridLayoutState,
+    createSpeedDialItemFromClipboard,
     type SpeedDialItem,
     type GridCell
 } from "@rs-frontend/utils/StateStorage";
@@ -194,13 +195,49 @@ function makeWallpaper() {
 }
 
 //
-const handleWallpaperDropOrPaste = (event: DragEvent | ClipboardEvent) => {
+const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridCell) => {
+    if (!isInFocus(event?.target as HTMLElement, "#home") &&
+        !isInFocus(event?.target as HTMLElement, "#home:is(:hover, :focus, :focus-visible), #home:has(:hover, :focus, :focus-visible)", "child")
+    ) {
+        return false;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+        const item = await createSpeedDialItemFromClipboard(suggestedCell);
+        if (!item) {
+            return false;
+        }
+
+        addSpeedDialItem(item);
+        persistSpeedDialItems();
+        persistSpeedDialMeta();
+        toastSuccess("Shortcut created from clipboard");
+        return true;
+    } catch (e) {
+        console.warn("Failed to paste speed dial item:", e);
+        return false;
+    }
+};
+
+//
+const handleWallpaperDropOrPaste = async (event: DragEvent | ClipboardEvent) => {
     if (isInFocus(event?.target as HTMLElement, "#home") ||
         isInFocus(event?.target as HTMLElement, "#home:is(:hover, :focus, :focus-visible), #home:has(:hover, :focus, :focus-visible)", "child")
     ) {
+        const isPaste = event instanceof ClipboardEvent;
+        const dataTransfer = isPaste ? (event as ClipboardEvent).clipboardData : (event as DragEvent).dataTransfer;
+
+        if (isPaste) {
+            const pasteHandled = await handleSpeedDialPaste(event as ClipboardEvent);
+            if (pasteHandled) return;
+        }
+
         event.preventDefault();
         event.stopPropagation();
-        handleIncomingEntries(((event as any).clipboardData || (event as any).dataTransfer), "/images/wallpaper/", null, (file, path) => {
+        handleIncomingEntries(dataTransfer || ((event as any).clipboardData || (event as any).dataTransfer), "/images/wallpaper/", null, (file, path) => {
             if (file.type.startsWith("image/")) {
                 wallpaperState.src = path;
                 persistWallpaper();
@@ -238,7 +275,7 @@ export function SpeedDial(makeView: any) {
 
     //
     const oRef = orientRef();
-    const box = H`<div style="pointer-events: auto; position: relative; contain: strict; overflow: hidden;" id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${(ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev)}>
+    const box = H`<div style="pointer-events: auto; position: relative; contain: strict; overflow: hidden;" id="home" data-mixin="ui-orientbox" class="speed-dial-root" prop:orient=${oRef} on:dragover=${(ev: DragEvent) => ev.preventDefault()} on:drop=${(ev: DragEvent) => handleWallpaperDropOrPaste(ev)} prop:onPaste=${async (ev: ClipboardEvent) => await handleWallpaperDropOrPaste(ev)}>
         ${makeWallpaper()}
         <div style="background-color: transparent; color-scheme: dark; pointer-events: none;" class="speed-dial-grid" data-layer="items" data-mixin="ui-gridbox" data-grid-columns=${columnsRef} data-grid-rows=${rowsRef} data-grid-shape=${shapeRef}>
             ${M(items, renderLabelItem)}
@@ -249,7 +286,7 @@ export function SpeedDial(makeView: any) {
     </div>`;
 
     //
-    box.onPaste = (ev: ClipboardEvent) => handleWallpaperDropOrPaste(ev);
+    box.onPaste = async (ev: ClipboardEvent) => await handleWallpaperDropOrPaste(ev);
 
     //
     return box;
@@ -421,9 +458,11 @@ export function createCtxMenu() {
             if (item) {
                 const currentAction = resolveItemAction(item);
                 const sections: any[] = [];
-                sections.push([
-                    createMenuEntryForAction(currentAction || "open-view", item, "Run action")
-                ]);
+                if (currentAction != "open-link") {
+                    sections.push([
+                        createMenuEntryForAction(currentAction || "open-view", item, "Run action")
+                    ]);
+                }
                 const utilities: any[] = [];
                 const $meta = getSpeedDialMeta(item.id);
                 if ($meta?.href) {
@@ -441,12 +480,20 @@ export function createCtxMenu() {
                         toastSuccess("Shortcut removed");
                     } }
                 ]);
-                sections.push(NAVIGATION_SHORTCUTS.map((shortcut)=>({
+                sections.push([
+                    { id: "open-explorer", label: "Explorer", icon: "books", action: ()=>{
+                        actionRegistry.get(`open-view-explorer`)?.({ id: "", items, meta, viewMaker }, {})
+                    } },
+                    { id: "open-settings", label: "Settings", icon: "gear-six", action: ()=>{
+                        actionRegistry.get(`open-view-settings`)?.({ id: "", items, meta, viewMaker }, {})
+                    } }
+                ]);
+                /*sections.push(NAVIGATION_SHORTCUTS.map((shortcut)=>({
                     id: `open-${shortcut.view}`,
                     label: `Open ${shortcut.label}`,
                     icon: shortcut.icon,
                     action: ()=>actionRegistry.get(`open-view-${shortcut.view}`)?.({id: itemId || "", items, meta, shortcut, viewMaker}, item)
-                })));
+                })));*/
                 return sections.filter((section)=>section?.length);
             }
 
@@ -459,19 +506,45 @@ export function createCtxMenu() {
                         openItemEditor(undefined, { suggestedCell: context.guessedCell });
                     }
                 }, {
+                    id: "paste-shortcut",
+                    label: "Paste shortcut",
+                    icon: "clipboard",
+                    action: async ()=>{
+                        try {
+                            const item = await createSpeedDialItemFromClipboard(context.guessedCell);
+                            if (!item) {
+                                toastError("Clipboard does not contain a valid URL or shortcut JSON");
+                                return;
+                            }
+                            addSpeedDialItem(item);
+                            persistSpeedDialItems();
+                            persistSpeedDialMeta();
+                            toastSuccess("Shortcut created from clipboard");
+                        } catch (e) {
+                            console.warn(e);
+                            toastError("Failed to paste shortcut");
+                        }
+                    }
+                }, {
                     id: "change-wallpaper",
                     label: "Change wallpaper",
                     icon: "image",
                     action: pickWallpaper
-                }],
-                NAVIGATION_SHORTCUTS.map((shortcut)=>({
+                    }],
+                [{ id: "open-explorer", label: "Explorer", icon: "books", action: ()=>{
+                    actionRegistry.get(`open-view-explorer`)?.({ id: "", items, meta, viewMaker }, {})
+                } },
+                { id: "open-settings", label: "Settings", icon: "gear-six", action: ()=>{
+                    actionRegistry.get(`open-view-settings`)?.({ id: "", items, meta, viewMaker }, {})
+                } }]
+                /*NAVIGATION_SHORTCUTS.map((shortcut)=>({
                     id: `open-${shortcut.view}`,
                     label: `Open ${shortcut.label}`,
                     icon: shortcut.icon,
                     action: ()=>{
                         actionRegistry.get(`open-view-${shortcut.view}`)?.({ id: "", items, meta, shortcut, viewMaker }, {})
                     }
-                }))
+                }))*/
             ];
             return emptySections;
         }
