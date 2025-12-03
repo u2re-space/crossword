@@ -52,7 +52,13 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     const terserOptions = {
         ecma: 2025,
         module: true,
-        toplevel: true
+        toplevel: true,
+        compress: {
+            passes: 3,
+            drop_console: false,
+            pure_getters: true,
+        },
+        mangle: true,
     };
 
     //
