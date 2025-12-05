@@ -1,8 +1,7 @@
-import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
-import { H, C, provide, orientRef } from "fest/lure";
+import { makeReactive, propRef, subscribe } from "fest/object";
+import { H, C } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
 import { isPrimitive } from "fest-src/fest/core/index";
-import { wallpaperState } from "@rs-frontend/utils/StateStorage";
 import { SpeedDial } from "../views/SpeedDial";
 
 //
@@ -86,7 +85,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         if (ev?.target == $layout) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                navigate(`#${newTab || "home"}`, newTab && existsViews.has(newTab || "home") && newTab != "home");
+                navigate(`#${newTab || "home"}`, existsViews.has(newTab || "home"));
             });
         };
     }} on:tab-close=${(ev: any) => {

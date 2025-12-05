@@ -37,7 +37,7 @@
 
             //
             & {
-                background-color: --c2-surface(0.15, var(--current, currentColor));
+                background-color: transparent;
 
                 border: none 0 transparent;
                 outline: none 0 transparent;
@@ -49,6 +49,7 @@
                 content-visibility: auto;
                 block-size: stretch;
                 padding: 0px;
+                padding-block: 0.25rem;
                 padding-inline: 0.25rem;
             }
 
@@ -91,7 +92,7 @@
 
                 //
                 @include container-clamped(stretch, max-content);
-                @include ui.tonal-list(surface, var(--surface-opacity-subtle), var(--radius-md), 0);
+                @include ui.tonal-list(surface, var(--surface-opacity-subtle), var(--radius-sm), 0);
 
                 //
                 &, &:focus {
@@ -143,7 +144,7 @@
                         & {
                             position: relative;
                             isolation: isolate;
-                            border-radius: var(--radius-md);
+                            border-radius: var(--radius-sm);
                             transition: color var(--transition-colors), background-color var(--transition-colors);
                             color: color-mix(in oklch, var(--on-surface, currentColor) 72%, transparent);
                             min-block-size: 3.5rem; // 56px
