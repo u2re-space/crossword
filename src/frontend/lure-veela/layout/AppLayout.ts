@@ -83,11 +83,10 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev) => {
         const $homeView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
         const newTab = (ev?.newTab?.replace?.(/^#/, "") || $homeView)?.replace?.(/^#/, "");
-        const curTab = ((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home")?.replace?.(/^#/, "");
-        if (ev?.target == $layout && (existsViews.has(newTab) || newTab == "home" || !newTab)) {
+        if (ev?.target == $layout) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                navigate(`#${newTab || "home"}`, existsViews.has(newTab || "home") || newTab == "home");
+                navigate(`#${newTab || "home"}`, newTab && existsViews.has(newTab || "home") && newTab != "home");
             });
         };
     }} on:tab-close=${(ev: any) => {
