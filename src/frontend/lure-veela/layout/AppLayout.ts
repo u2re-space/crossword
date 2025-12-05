@@ -1,7 +1,8 @@
-import { makeReactive, propRef, subscribe } from "fest/object";
-import { H, C } from "fest/lure";
+import { makeReactive, propRef, stringRef, subscribe } from "fest/object";
+import { H, C, provide, orientRef } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
 import { isPrimitive } from "fest-src/fest/core/index";
+import { wallpaperState } from "@rs-frontend/utils/StateStorage";
 
 //
 let skipCreateNewView = false;
@@ -28,6 +29,15 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
         }
     }
     return isClosed;
+}
+
+//
+export function makeWallpaper() {
+    const oRef = orientRef();
+    const srcRef = stringRef("./assets/imgs/test.webp");
+    subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.webp");
+    const CE = H`<canvas slot="underlay" style="pointer-events: none; min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
+    return CE;
 }
 
 //
@@ -76,16 +86,6 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     });
 
     // TODO: add support for async loading views (Object.TS, LUR.E)
-    const contentView = H`<div class="view-box">
-        <div class="toolbar" style="will-change: contents; background-color: transparent;">
-            ${C(propRef(rPair, 0))}
-        </div>
-        <div class="content" style="will-change: contents;">
-            ${C(propRef(rPair, 1))}
-        </div>
-    </div>`;
-
-    // TODO: add support for async loading views (Object.TS, LUR.E)
     const $layout = H`<ui-tabbed-with-sidebar on:tab-changed=${(ev) => {
         const $homeView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
         const newTab = (ev?.newTab?.replace?.(/^#/, "") || $homeView)?.replace?.(/^#/, "");
@@ -103,7 +103,13 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         });
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
-        ${contentView}
+        <div class="toolbar" style="will-change: contents; background-color: transparent;" slot="bar">
+            ${C(propRef(rPair, 0))}
+        </div>
+        <div class="content" style="will-change: contents;">
+            ${C(propRef(rPair, 1))}
+        </div>
+        ${makeWallpaper()}
     </ui-tabbed-with-sidebar>`;
 
     return $layout;
