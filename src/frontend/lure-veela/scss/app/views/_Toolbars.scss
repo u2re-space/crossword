@@ -12,7 +12,8 @@
         display: flex;
         flex-direction: column;
         block-size: max-content;
-        inline-size: stretch;
+        inline-size: fit-content;
+        max-inline-size: stretch;
         grid-row: toolbar;
         box-shadow: none;
         padding-inline: 0px;
@@ -29,6 +30,8 @@
         place-items: center;
         place-self: center;
         pointer-events: none;
+        inline-size: fit-content;
+        max-inline-size: stretch;
 
         box-sizing: border-box;
         box-shadow: none;
@@ -41,7 +44,7 @@
 
         //
         & { min-block-size: 0px; block-size: fit-content; max-block-size: min(5rem, 100%); }
-        & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
+        & { min-inline-size: 0px; inline-size: fit-content; max-inline-size: stretch; }
         & {
             margin: 0px;
             margin-inline: 0px;
@@ -68,7 +71,7 @@
             //
             &:empty { display: none; }
             & { min-block-size: 0px; block-size: fit-content; max-block-size: stretch; }
-            & { min-inline-size: 0px; inline-size: stretch; max-inline-size: stretch; }
+            & { min-inline-size: 0px; inline-size: fit-content; max-inline-size: stretch; }
 
             //
             button {

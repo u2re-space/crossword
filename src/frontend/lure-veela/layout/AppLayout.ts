@@ -97,10 +97,10 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
         ${SpeedDial((view: string, props: any) => { currentView.value = view; })}
-        <div class="toolbar" style="will-change: contents; background-color: transparent;" slot="bar">
+        <div class="toolbar" style="pointer-events: none; will-change: contents; background-color: transparent;" slot="bar">
             ${C(propRef(rPair, 0))}
         </div>
-        <div class="content" style="will-change: contents;">
+        <div class="content" style="pointer-events: none; will-change: contents;">
             ${C(propRef(rPair, 1))}
         </div>
     </ui-tabbed-with-sidebar>`;
