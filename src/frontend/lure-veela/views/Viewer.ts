@@ -6,6 +6,7 @@ import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { CollectItemsForTabPage, MakeItemBy } from "../items/Items";
+import { orientRef } from "fest/lure";
 
 //
 const makeFragment = (children: HTMLElement[]) => {
@@ -58,6 +59,7 @@ export const ViewPage = <
 
     // TODO: add support for reactive maps of tabs in `ui-tabbed-box`
     const tabbed = H`<ui-tabbed-box
+        orient=${orientRef()}
         prop:tabs=${tabsRef}
         prop:renderTabName=${renderTabName}
         currentTab=${"all"}

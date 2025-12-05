@@ -21,6 +21,7 @@ import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
 import { AdditionalSection } from "@rs-core/config/sections/AdditionalSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
 import { propRef, stringRef } from "fest/object";
+import { orientRef } from "fest/lure";
 import { actionRegistry } from "@rs-frontend/utils/Actions";
 import { wallpaperState, persistWallpaper } from "@rs-frontend/utils/StateStorage";
 import { applyTheme } from "@rs-frontend/utils/Theme";
@@ -398,6 +399,8 @@ export const Settings = async () => {
 
     //
     const panelsWrapper = H`<ui-tabbed-box
+        orient=${orientRef()}
+        toolbar-opened=${false}
         prop:tabs=${tabbed}
         prop:renderTabName=${renderTabName}
         currentTab=${SETTINGS_SECTIONS[0].key}

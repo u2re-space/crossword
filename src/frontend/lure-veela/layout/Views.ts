@@ -1,4 +1,4 @@
-import { AppLayout, onClose } from "./AppLayout";
+import { $comment$, $toolbar$, AppLayout, onClose } from "./AppLayout";
 import { loadAsAdopted } from "fest/dom";
 import { makeReactive, $trigger } from "fest/object";
 import { initialize as initDOM } from "fest/veela";
@@ -246,15 +246,10 @@ export async function frontend(mountElement) {
             }, element);
         }
 
-        //
+        // home now inside of app-layout
         if (registryKey == "home") {
-            // TODO: handle props support
-            element = SpeedDial((view, props) => { CURRENT_VIEW.value = view; });
-            actions = makeToolbar([], {
-                label: "",
-                type: registryKey,
-                DIR: `/`
-            }, element);
+            element = $comment$;
+            actions = $toolbar$;
         }
 
         //

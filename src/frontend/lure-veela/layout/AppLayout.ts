@@ -3,6 +3,7 @@ import { H, C, provide, orientRef } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
 import { isPrimitive } from "fest-src/fest/core/index";
 import { wallpaperState } from "@rs-frontend/utils/StateStorage";
+import { SpeedDial } from "../views/SpeedDial";
 
 //
 let skipCreateNewView = false;
@@ -32,17 +33,10 @@ export const onClose = (tabName: string, currentView: any, existsViews: Map<stri
 }
 
 //
-export function makeWallpaper() {
-    const oRef = orientRef();
-    const srcRef = stringRef("./assets/imgs/test.webp");
-    subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.webp");
-    const CE = H`<canvas slot="underlay" style="pointer-events: none; min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
-    return CE;
-}
-
-//
 //https://192.168.0.200/#home
 const $defaultView = (location?.hash?.replace?.(/^#/, "") || "home");
+export const $comment$ = document.createComment("");
+export const $toolbar$ = document.createComment("");
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
     const rPair = makeReactive([document.createComment(""), document.createComment("")])
     const setView = async (key: string, forceCreateNewView?: boolean) => {
@@ -60,11 +54,11 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         }
 
         //
-        const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView));
+        const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView)) || [$toolbar$, $comment$];
         const npr = (skipCreateNewView ? ext : (await makeView(key || $homeView) || await makeView($homeView))) || ext;
         skipCreateNewView = false;
-        rPair[0] = await (npr?.[0] ?? rPair[0]);
-        rPair[1] = await (npr?.[1] ?? rPair[1]);
+        rPair[0] = (await npr?.[0]) || $toolbar$;
+        rPair[1] = (await npr?.[1]) || $comment$;
     }
 
     //
@@ -90,10 +84,10 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         const $homeView = "home";//(location.hash?.replace?.(/^#/, "") || "home");
         const newTab = (ev?.newTab?.replace?.(/^#/, "") || $homeView)?.replace?.(/^#/, "");
         const curTab = ((isPrimitive(currentView) ? currentView : (currentView as { value: string }).value)?.replace?.(/^#/, "") || "home")?.replace?.(/^#/, "");
-        if (newTab && curTab != newTab && ev?.target == $layout && existsViews.has(newTab)) {
+        if (ev?.target == $layout && (existsViews.has(newTab) || newTab == "home" || !newTab)) {
             requestAnimationFrame(() => {
                 skipCreateNewView = true;
-                navigate(`#${newTab}`, existsViews.has(newTab));
+                navigate(`#${newTab || "home"}`, existsViews.has(newTab || "home") || newTab == "home");
             });
         };
     }} on:tab-close=${(ev: any) => {
@@ -103,13 +97,13 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         });
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
+        ${SpeedDial((view: string, props: any) => { currentView.value = view; })}
         <div class="toolbar" style="will-change: contents; background-color: transparent;" slot="bar">
             ${C(propRef(rPair, 0))}
         </div>
         <div class="content" style="will-change: contents;">
             ${C(propRef(rPair, 1))}
         </div>
-        ${makeWallpaper()}
     </ui-tabbed-with-sidebar>`;
 
     return $layout;

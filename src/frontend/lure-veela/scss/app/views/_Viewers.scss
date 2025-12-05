@@ -192,6 +192,10 @@
 
                 // Smooth transitions for content changes
                 transition: opacity var(--transition-normal);
+
+                //
+                background-color: oklch(from var(--surface-color) l c h / 0.9);
+                backdrop-filter: blur(0.5rem);
             }
 
             // Empty state styling
@@ -292,6 +296,7 @@
     .subgroup {
         @include ui.vstack(var(--gap-xs));
         pointer-events: none;
+        text-align: center;
 
         // Subgroup entry animation
         animation: viewer-slide-in 0.25s ease-out backwards;
@@ -324,15 +329,18 @@
             text-align: center;
             padding: var(--padding-xs);
             border-radius: var(--radius-sm);
-            @include ui.tonal-surface(surface, var(--surface-opacity-emphasis), var(--radius-sm));
-            background-color: transparent;
+            @include ui.tonal-surface(surface, 0, var(--radius-sm));
+
+            background-color: oklch(from var(--surface-color) l c h / 0.6);
             pointer-events: none;
+            inline-size: fit-content;
+            justify-self: center;
 
             // Sticky header behavior for long lists
             position: sticky;
             inset-block-start: 0;
             z-index: 10;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(2px);
         }
 
         // Collapsed state for performance optimization

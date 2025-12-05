@@ -21,6 +21,7 @@
             //
             grid-template-columns: minmax(0px, 1fr);
             grid-column: 1 / -1;
+            border-radius: 0px;
 
             //
             @include flex-center;
@@ -57,6 +58,7 @@
             grid-template-rows: [toolbar] minmax(0px, max-content) [content] minmax(0px, 1fr);
             display: grid;
             box-shadow: none;
+            border-radius: 0px;
         }
 
         //
@@ -85,6 +87,10 @@
             @include container-clamped(stretch, stretch);
 
             //
+            background-color: transparent;
+            background-image: none;
+
+            //
             min-inline-size: 0px;
             min-block-size: 0px;
             max-inline-size: stretch;
@@ -97,6 +103,7 @@
             perspective: 1000;
             transform: translateZ(0px);
             content-visibility: auto;
+            border-radius: 0px;
 
             //
             &.viewer-section {
@@ -105,6 +112,10 @@
 
             & {
                 border-radius: 0px;
+            }
+
+            &.data-view {
+                background-color: --c2-surface(0.15, var(--current))
             }
         }
 
@@ -141,7 +152,5 @@
                 @include ui.text-heading("title-medium");
             }
         }
-
-
     }
 }

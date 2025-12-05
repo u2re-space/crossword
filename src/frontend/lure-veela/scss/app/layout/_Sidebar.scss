@@ -33,10 +33,12 @@
 
             //
             @include ui.vstack(var(--gap-xs));
-            @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), var(--radius-lg), var(--padding-sm), 1, true);
+            @include ui.tonal-surface(surface-container-low, var(--surface-opacity-subtle), 0px, var(--padding-sm), 1, true);
 
             //
             & {
+                background-color: --c2-surface(0.15, var(--current, currentColor));
+
                 border: none 0 transparent;
                 outline: none 0 transparent;
                 max-block-size: stretch;
@@ -46,6 +48,8 @@
                 contain: strict;
                 content-visibility: auto;
                 block-size: stretch;
+                padding: 0px;
+                padding-inline: 0.25rem;
             }
 
             //
@@ -87,7 +91,7 @@
 
                 //
                 @include container-clamped(stretch, max-content);
-                @include ui.tonal-list(surface, var(--surface-opacity-default), var(--radius-md), 0);
+                @include ui.tonal-list(surface, var(--surface-opacity-subtle), var(--radius-md), 0);
 
                 //
                 &, &:focus {
