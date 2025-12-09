@@ -88,6 +88,10 @@ export const loadSettings = async (): Promise<AppSettings> => {
         const stored = typeof raw === "string" ? JSOX.parse(raw) as any : raw;
         if (stored && typeof stored === "object") {
             return {
+                core: {
+                    ...DEFAULT_SETTINGS.core,
+                    ...(stored as any)?.core
+                },
                 ai: {
                     ...DEFAULT_SETTINGS.ai, ...(stored as any)?.ai,
                     mcp: (stored as any)?.ai?.mcp || []
@@ -109,6 +113,11 @@ export const loadSettings = async (): Promise<AppSettings> => {
 export const saveSettings = async (settings: AppSettings) => {
     const current = await loadSettings();
     const merged: AppSettings = {
+        core: {
+            ...(DEFAULT_SETTINGS.core || {}),
+            ...(current.core || {}),
+            ...(settings.core || {})
+        },
         ai: {
             ...(DEFAULT_SETTINGS.ai || {}),
             ...(current.ai || {}),
@@ -287,7 +296,7 @@ const uploadOPFSToWebDav = async (
 
                 if (isDir) {
                     const dirPathNoSlash = joinPath(path, name, false);
-                    const exists = await webDavClient.exists(dirPathNoSlash).catch((e) => { return false; });
+                    const exists = await webDavClient.exists(dirPathNoSlash).catch((_e) => { return false; });
                     if (!exists) {
                         await webDavClient.createDirectory(dirPathNoSlash, { recursive: true }).catch(console.warn);
                     }
@@ -308,7 +317,7 @@ const uploadOPFSToWebDav = async (
                 //
                 if (!remoteStat || localMtime > remoteMtime) {
                     await webDavClient.putFileContents(fullFilePath, await fileContent.arrayBuffer(), { overwrite: true })
-                        .catch((e) => { return null; });
+                        .catch((_e) => { return null; });
                 }
             })
     );
@@ -337,6 +346,9 @@ export const WebDavSync = (address: string, options: any = {}) => {
 export const currentWebDav: { sync: any } = { sync: null };
 (async () => {
     const settings = await loadSettings();
+    if (settings?.core?.mode === "endpoint" && settings?.core?.preferBackendSync) {
+        return;
+    }
     if (!settings?.webdav?.url) return;
     const client = WebDavSync(settings.webdav.url, {
         //authType: AuthType.Digest,
@@ -353,6 +365,10 @@ export const currentWebDav: { sync: any } = { sync: null };
 //
 export const updateWebDavSettings = async (settings: any) => {
     settings ||= await loadSettings();
+    if (settings?.core?.mode === "endpoint" && settings?.core?.preferBackendSync) {
+        currentWebDav.sync = null;
+        return;
+    }
     if (!settings?.webdav?.url) return;
     currentWebDav.sync = WebDavSync(settings.webdav.url, {
         //authType: AuthType.Digest,
@@ -368,10 +384,10 @@ export const updateWebDavSettings = async (settings: any) => {
 //
 (async () => {
     if (typeof window !== "undefined") {
-        addEventListener("pagehide", (ev) => {
+        addEventListener("pagehide", (_ev) => {
             currentWebDav?.sync?.upload?.();
         });
-        addEventListener("beforeunload", (event) => {
+        addEventListener("beforeunload", (_event) => {
             currentWebDav?.sync?.upload?.();
         })
     }

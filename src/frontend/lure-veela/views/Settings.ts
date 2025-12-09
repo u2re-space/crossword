@@ -14,11 +14,9 @@ import { loadTimelineSources } from "@rs-core/workers/FileSystem";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
-import { AISection } from "@rs-core/config/sections/AISection";
-import { MCPSection } from "@rs-core/config/sections/MCPSection";
-import { WebDavSection } from "@rs-core/config/sections/WebDavSection";
-import { TimelineSection } from "@rs-core/config/sections/TimelineSection";
-import { AdditionalSection } from "@rs-core/config/sections/AdditionalSection";
+import { AppSection } from "@rs-core/config/sections/AppSection";
+import { CoreSection } from "@rs-core/config/sections/CoreSection";
+import { RuntimeSection } from "@rs-core/config/sections/RuntimeSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
 import { propRef, stringRef } from "fest/object";
 import { orientRef } from "fest/lure";
@@ -28,11 +26,9 @@ import { applyTheme } from "@rs-frontend/utils/Theme";
 
 //
 export const SETTINGS_SECTIONS: SectionConfig[] = [
-    AISection,
-    MCPSection,
-    WebDavSection,
-    TimelineSection,
-    AdditionalSection
+    RuntimeSection,
+    CoreSection,
+    AppSection
 ];
 
 //
@@ -83,11 +79,18 @@ export const Settings = async () => {
     const createField = (config: FieldConfig) => {
         const id = `settings-${slugify(config.path)}-${fieldRefs.size}`;
         let control: HTMLInputElement | HTMLSelectElement | HTMLElement;
+        let renderedControl: HTMLElement;
 
         if (config.type === "select" || config.type === "number-select") {
             const select = H`<select class="field-control" id=${id} name=${config.path}></select>` as HTMLSelectElement;
             (config.options ?? []).forEach((opt) => select.appendChild(new Option(opt.label, opt.value)));
             control = select;
+            renderedControl = select;
+        } else if (config.type === "textarea") {
+            const textarea = H`<textarea class="field-control" id=${id} name=${config.path} rows="4" spellcheck="false"></textarea>` as HTMLTextAreaElement;
+            textarea.placeholder = config.placeholder ?? "";
+            control = textarea;
+            renderedControl = textarea;
         } else if (config.type === "color-palette") {
             const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
             const palette = H`<div class="color-palette-grid" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>` as HTMLElement;
@@ -113,8 +116,9 @@ export const Settings = async () => {
                 palette.append(btn);
             });
 
-            const wrapper = H`<div>${palette}${hidden}</div>`;
+            const wrapper = H`<div>${palette}${hidden}</div>` as HTMLElement;
             control = hidden;
+            renderedControl = wrapper;
         } else if (config.type === "shape-palette") {
             const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
             const palette = H`<div class="shape-palette-grid"></div>` as HTMLElement;
@@ -142,18 +146,20 @@ export const Settings = async () => {
                 palette.append(btn);
             });
 
-            const wrapper = H`<div>${palette}${hidden}</div>`;
+            const wrapper = H`<div>${palette}${hidden}</div>` as HTMLElement;
             control = hidden;
+            renderedControl = wrapper;
         } else {
             const input = H`<input class="field-control" id=${id} name=${config.path} type=${config.type === "password" ? "password" : "text"} placeholder=${config.placeholder ?? ""} />` as HTMLInputElement;
             input.autocomplete = "off";
             control = input;
+            renderedControl = input;
         }
 
         control.dataset.path = config.path;
         const field = H`<div class="field">
             <label class="field-label">${config.label}</label>
-            ${(config.type === "color-palette" || config.type === "shape-palette") ? (control.parentElement as HTMLElement) : control}
+            ${renderedControl}
             ${config.helper ? H`<span class="field-hint">${config.helper}</span>` : null}
         </div>` as HTMLElement;
 
@@ -232,7 +238,7 @@ export const Settings = async () => {
         };
         mcpConfigs.push(newConfig);
 
-        const mcpGroup = groupRefs.get('mcp:mcp-management');
+        const mcpGroup = groupRefs.get('core:mcp-management');
         if (mcpGroup) {
             const body = mcpGroup.querySelector('.group-body') as HTMLElement;
             if (body) {
@@ -324,7 +330,7 @@ export const Settings = async () => {
             const { root, body } = createGroup(section.key, group);
 
             // Special handling for MCP section
-            if (section.key === 'mcp' && group.key === 'mcp-management') {
+            if (group.key === 'mcp-management') {
                 // Add MCP management buttons
                 const addButton = H`<button type="button" class="btn btn-primary add-mcp" on:click=${addMCPConfig}>
                     <ui-icon icon="plus"></ui-icon>
@@ -339,7 +345,7 @@ export const Settings = async () => {
 
                 //
                 body.append(H`<div class="mcp-actions">${addButton}</div>` as HTMLElement);
-            } else if (section.key === 'additional') {
+            } else if (section.key === 'app') {
                 if (group.key === 'actions') {
                     // Add Share clipboard button
                     const shareClipboardBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("share-clipboard")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
@@ -415,7 +421,7 @@ export const Settings = async () => {
     const modelSelectEl = fieldRefs.get("ai.model") as HTMLSelectElement | undefined;
     const customModelInput = fieldRefs.get("ai.customModel") as HTMLInputElement | undefined;
     const shareTargetModeSelectEl = fieldRefs.get("ai.shareTargetMode") as HTMLSelectElement | undefined;
-    const customModelGroup = groupRefs.get("ai:custom-model");
+    const customModelGroup = groupRefs.get("core:custom-model");
     const timelineInputEl = fieldRefs.get("timeline.source") as HTMLInputElement | undefined;
 
     //
@@ -505,7 +511,11 @@ export const Settings = async () => {
         fieldRefs.forEach((control, path) => {
             if (path === "ai.shareTargetMode" || path === "ai.model" || path === "ai.customModel" || path === "timeline.source" || path.startsWith("mcp.")) return;
             const value = getByPath(settings, path);
-            setControlValue(control, value ?? "");
+            if (Array.isArray(value) || typeof value === "object") {
+                setControlValue(control, JSON.stringify(value ?? "", null, 2));
+            } else {
+                setControlValue(control, value ?? "");
+            }
         });
 
         // Apply share target mode
@@ -637,6 +647,15 @@ export const Settings = async () => {
     };
 
     //
+    const parseJSONSafe = <T = any>(value: string, fallback: T): T => {
+        if (!value) return fallback;
+        try {
+            return JSON.parse(value) as T;
+        } catch {
+            return fallback;
+        }
+    };
+
     const handleSubmit = async (event: SubmitEvent) => {
         const submittedForm = event.target;
         if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.classList.contains('settings-form')) return;
@@ -673,7 +692,29 @@ export const Settings = async () => {
         });
 
         //
+        const encryptRaw = readValue("core.encrypt");
+        const preferBackendSyncRaw = readValue("core.preferBackendSync");
+
+        const httpTargets = parseJSONSafe(readValue("core.ops.httpTargets"), []);
+        const wsTargets = parseJSONSafe(readValue("core.ops.wsTargets"), []);
+        const syncTargets = parseJSONSafe(readValue("core.ops.syncTargets"), []);
+        const allowUnencryptedRaw = readValue("core.ops.allowUnencrypted");
+
         const next: AppSettings = {
+            core: {
+                mode: (readValue("core.mode") as any) || DEFAULT_SETTINGS.core?.mode || "native",
+                endpointUrl: readValue("core.endpointUrl"),
+                userId: readValue("core.userId"),
+                userKey: readValue("core.userKey"),
+                encrypt: encryptRaw === "true" || encryptRaw === "1" || encryptRaw === "yes",
+                preferBackendSync: preferBackendSyncRaw === "true" || preferBackendSyncRaw === "1" || preferBackendSyncRaw === "yes",
+                ops: {
+                    allowUnencrypted: allowUnencryptedRaw === "true" || allowUnencryptedRaw === "1" || allowUnencryptedRaw === "yes",
+                    httpTargets: Array.isArray(httpTargets) ? httpTargets : [],
+                    wsTargets: Array.isArray(wsTargets) ? wsTargets : [],
+                    syncTargets: Array.isArray(syncTargets) ? syncTargets : []
+                }
+            },
             ai: {
                 apiKey: readValue("ai.apiKey"),
                 baseUrl: readValue("ai.baseUrl"),

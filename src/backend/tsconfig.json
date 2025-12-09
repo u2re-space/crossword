@@ -1,0 +1,37 @@
+{
+    "include": ["./server.ts"],
+    "exclude": ["./dist/**/*"],
+    "baseUrl": "./",
+    "compilerOptions": {
+        "paths": {
+            "@rs-core/*": ["../core/*"],
+            "@rs-frontend/*": ["../frontend/*"],
+            "@rs-shared/*": ["../../shared/*"],
+            "@rs-test/*": ["../../test/*"]
+        },
+        "outDir": "./dist/",
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": ["ESNext", "DOM", "WebWorker"],
+        "types": ["chrome"],
+        "esModuleInterop": true,
+        "strict": true,
+        "noEmit": true,
+        "forceConsistentCasingInFileNames": true,
+        "allowJs": true,
+        "allowImportingTsExtensions": true,
+        "allowArbitraryExtensions": true,
+        "allowSyntheticDefaultImports": true,
+        "allowUmdGlobalAccess": true,
+        "allowUnreachableCode": true,
+        "allowUnusedLabels": true,
+        "noImplicitAny": false,
+        "declaration": false,
+        "noImplicitThis": false,
+        "inlineSources": true,
+        "inlineSourceMap": true,
+        "sourceMap": false,
+        "experimentalDecorators": true
+    }
+}

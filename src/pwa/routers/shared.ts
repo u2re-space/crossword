@@ -29,6 +29,27 @@ export const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob 
     });
 }
 
+export const callBackendIfAvailable = async <T = any>(path: string, payload: Record<string, any>): Promise<T | null> => {
+    const settings = await loadSettings();
+    const core = settings?.core || {};
+    if (core?.mode !== "endpoint") return null;
+    if (!core?.endpointUrl || !core?.userId || !core?.userKey) return null;
+    const url = new URL(path, core.endpointUrl).toString();
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: core.userId, userKey: core.userKey, ...payload })
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return json as T;
+    } catch (e) {
+        console.warn(e);
+        return null;
+    }
+};
+
 //
 export const initiateConversionProcedure = async (dataSource: string | Blob | File | any) => {
     const settings = await loadSettings();

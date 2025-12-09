@@ -1,5 +1,5 @@
 import { registerRoute } from "workbox-routing";
-import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout } from "./shared";
+import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout, callBackendIfAvailable } from "./shared";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
@@ -16,6 +16,20 @@ export const commitAnalyze = (e: any) => {
             url: fd.get('url'),
             files: fd.getAll('files') // File[]
         };
+
+        // Endpoint mode shortcut
+        const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/analyze", {
+            title: inputs.title,
+            text: inputs.text,
+            url: inputs.url
+        });
+        if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
+            await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
+            tryToTimeout(() => {
+                try { controlChannel.postMessage({ type: 'commit-result', results: backendResponse.results as any[] }) } catch (e) { console.warn(e); }
+            }, 100);
+            return backendResponse.results;
+        }
 
         //
         const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];

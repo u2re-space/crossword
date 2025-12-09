@@ -6,7 +6,8 @@ import {
     detectInputType,
     getExtensionForType,
     tryToTimeout,
-    type DetectedDataType
+    type DetectedDataType,
+    callBackendIfAvailable
 } from "./shared";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
@@ -21,6 +22,21 @@ export const commitRecognize = (e: any) => {
             files: fd.getAll('files'), // File[]
             targetDir: fd.get('targetDir')
         };
+
+        // Endpoint mode shortcut
+        const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/recognize", {
+            title: inputs.title,
+            text: inputs.text,
+            url: inputs.url,
+            targetDir: inputs.targetDir
+        });
+        if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
+            await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
+            tryToTimeout(() => {
+                try { controlChannel.postMessage({ type: 'commit-to-clipboard', results: backendResponse.results as any[] }) } catch (e) { console.warn(e); }
+            }, 100);
+            return backendResponse.results;
+        }
 
         //
         const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [(inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null];

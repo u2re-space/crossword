@@ -1,4 +1,4 @@
-export type FieldType = "text" | "password" | "select" | "color-palette" | "shape-palette" | "number-select";
+export type FieldType = "text" | "password" | "select" | "color-palette" | "shape-palette" | "number-select" | "textarea";
 
 export type FieldOption = {
     value: string;
@@ -25,7 +25,7 @@ export type GroupConfig = {
     fields: FieldConfig[];
 };
 
-export type SectionKey = "ai" | "mcp" | "webdav" | "timeline" | "additional";
+export type SectionKey = "runtime" | "core" | "app" | "ai" | "mcp" | "webdav" | "timeline" | "additional";
 
 export type SectionConfig = {
     key: SectionKey;
@@ -33,6 +33,17 @@ export type SectionConfig = {
     icon: string;
     description: string;
     groups: GroupConfig[];
+};
+
+export type CoreMode = "native" | "endpoint";
+
+export type RemoteTarget = {
+    id: string;
+    label?: string;
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    unencrypted?: boolean;
 };
 
 export type MCPConfig = {
@@ -50,6 +61,20 @@ export type GridShape =
     | "egg" | "tear" | "wavy";                                           // Asymmetric / procedural
 
 export type AppSettings = {
+    core?: {
+        mode?: CoreMode;
+        endpointUrl?: string;
+        userId?: string;
+        userKey?: string;
+        encrypt?: boolean;
+        preferBackendSync?: boolean;
+        ops?: {
+            allowUnencrypted?: boolean;
+            httpTargets?: RemoteTarget[];
+            wsTargets?: RemoteTarget[];
+            syncTargets?: RemoteTarget[];
+        };
+    };
     ai?: {
         apiKey?: string;
         baseUrl?: string;
@@ -82,6 +107,20 @@ export type AppSettings = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
+    core: {
+        mode: "native",
+        endpointUrl: "http://localhost:6065",
+        userId: "",
+        userKey: "",
+        encrypt: false,
+        preferBackendSync: true,
+        ops: {
+            allowUnencrypted: false,
+            httpTargets: [],
+            wsTargets: [],
+            syncTargets: []
+        }
+    },
     ai: {
         apiKey: "",
         baseUrl: "",
