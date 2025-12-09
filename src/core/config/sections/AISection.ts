@@ -25,17 +25,6 @@ export const AISection: SectionConfig = {
             ]
         },
         {
-            key: "share-mode",
-            label: "Share target mode",
-            description: "Select the target mode for sharing.",
-            fields: [
-                { path: "ai.shareTargetMode", label: "Share target mode", type: "select", options: [
-                    { value: "analyze", label: "Analyze" },
-                    { value: "recognize", label: "Recognize" }
-                ] }
-            ]
-        },
-        {
             key: "custom-model",
             label: "Custom model",
             description: "Provide a fully-qualified model identifier.",

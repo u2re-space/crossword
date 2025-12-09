@@ -24,6 +24,22 @@ export const RuntimeSection: SectionConfig = {
             ]
         },
         {
+            key: "share-target",
+            label: "Share target action",
+            description: "Pick which action runs for incoming share-target posts.",
+            fields: [
+                {
+                    path: "ai.shareTargetMode",
+                    label: "Share target action",
+                    type: "select",
+                    options: [
+                        { value: "analyze", label: "Analyze" },
+                        { value: "recognize", label: "Recognize" }
+                    ]
+                }
+            ]
+        },
+        {
             key: "endpoint-access",
             label: "Endpoint access",
             description: "Credentials for shared endpoint mode.",
