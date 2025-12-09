@@ -17,6 +17,22 @@ export type UsersIndex = Record<string, UserRecord>;
 
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 
+const DEFAULT_USER_ID = "test";
+const DEFAULT_USER_KEY = "developer123";
+
+const ensureDefaultUser = (users: UsersIndex) => {
+    if (users[DEFAULT_USER_ID]) return users;
+    return {
+        ...users,
+        [DEFAULT_USER_ID]: {
+            userId: DEFAULT_USER_ID,
+            userKeyHash: hashKey(DEFAULT_USER_KEY),
+            encrypt: false,
+            createdAt: Date.now()
+        }
+    };
+};
+
 const deriveKey = (userKey: string, userId: string) => {
     const salt = createHash("sha256").update(userId).digest();
     return scryptSync(userKey, salt, 32);
@@ -51,7 +67,12 @@ const loadJson = async <T>(filePath: string, fallback: T): Promise<T> => {
     }
 };
 
-export const loadUsers = async (): Promise<UsersIndex> => loadJson<UsersIndex>(USERS_FILE, {});
+export const loadUsers = async (): Promise<UsersIndex> => {
+    const loaded = await loadJson<UsersIndex>(USERS_FILE, {});
+    const users = ensureDefaultUser(loaded);
+    if (users !== loaded) await saveUsers(users);
+    return users;
+};
 
 export const saveUsers = async (users: UsersIndex) => {
     await ensureDataDirs();
