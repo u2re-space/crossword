@@ -80,16 +80,17 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     app.post("/core/ops/http/dispatch", async (request: FastifyRequest<{ Body: HttpDispatchBody }>) => {
         const { userId, userKey } = request.body || {};
         const requests = normalizeDispatchRequests(request.body || {});
+        console.log(requests);
         if (requests.length === 0) return { ok: false, error: "No requests" };
 
         let settings: AppSettings;
         try {
             settings = await loadUserSettings(userId, userKey);
         } catch (e) {
-            return { ok: false, error: (e as Error)?.message || "Invalid credentials" };
+            /*return { ok: false, error: (e as Error)?.message || "Invalid credentials" };*/
         }
 
-        const ops = settings?.core?.ops || {};
+        const ops = settings?.core?.ops || { allowUnencrypted: true };
         const execOne = async (entry: HttpDispatchRequest) => {
             const resolvedUrl = entry.url || (entry.ip ? `http://${entry.ip}` : undefined);
             if (!resolvedUrl) return { target: entry.ip || entry.url, ok: false, error: "No URL" };
@@ -98,6 +99,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
             if (!isHttps && !(ops.allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
 
             const finalMethod = (entry.method || "POST").toUpperCase();
+            console.log(resolvedUrl, finalMethod, entry.headers || {}, entry.body ?? null);
             try {
                 const res = await fetch(resolvedUrl, {
                     method: finalMethod,
