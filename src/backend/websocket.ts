@@ -10,10 +10,12 @@ type ClientInfo = {
     userKey: string;
     ws: WebSocket;
     id: string;
+    namespace: string;
 };
 
 export type WsHub = {
     broadcast: (userId: string, payload: any) => void;
+    multicast: (userId: string, payload: any, namespace?: string, excludeId?: string) => void;
     notify: (userId: string, type: string, data?: any) => void;
     sendTo: (clientId: string, payload: any) => void;
     close: () => Promise<void>;
@@ -23,6 +25,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const server = app.server;
     const wss = new WebSocketServer({ server, path: "/ws" });
     const clients = new Map<WebSocket, ClientInfo>();
+    const namespaces = new Map<string, Map<string, ClientInfo>>();
 
     const verify = async (userId?: string, userKey?: string) => {
         if (!userId || !userKey) return null;
@@ -38,39 +41,53 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const params = new URL(req.url || "", "http://localhost").searchParams;
         const userId = params.get("userId") || undefined;
         const userKey = params.get("userKey") || undefined;
+        const namespace = params.get("ns") || params.get("namespace") || userId;
         const settings = await verify(userId, userKey);
         if (!settings || !userId || !userKey) {
             ws.close(4001, "Invalid credentials");
             return;
         }
-        const info: ClientInfo = { userId, userKey, ws, id: randomUUID() };
+        const info: ClientInfo = { userId, userKey, ws, id: randomUUID(), namespace: namespace || userId };
         clients.set(ws, info);
+        if (!namespaces.has(info.userId)) namespaces.set(info.userId, new Map());
+        namespaces.get(info.userId)!.set(info.id, info);
 
         ws.on("message", async (data) => {
             let parsed: any;
             try { parsed = JSON.parse(data.toString()); } catch { return; }
-            const { type, payload, targetId } = parsed || {};
+            const { type, payload, targetId, namespace: msgNamespace } = parsed || {};
             // Simple forwarding: if targetId matches a client, relay
             if (targetId) {
                 const target = [...clients.values()].find((c) => c.id === targetId || c.userId === targetId);
                 target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
             } else {
                 // broadcast to same userId
-                broadcast(info.userId, { type, payload, from: info.id });
+                multicast(info.userId, { type, payload, from: info.id }, msgNamespace || info.namespace, info.id);
             }
         });
 
         ws.on("close", () => {
             clients.delete(ws);
+            namespaces.get(info.userId)?.delete(info.id);
+            if (namespaces.get(info.userId)?.size === 0) namespaces.delete(info.userId);
         });
 
         ws.send(JSON.stringify({ type: "welcome", id: info.id, userId }));
     });
 
+    const multicast = (userId: string, payload: any, namespace?: string, excludeId?: string) => {
+        const targetNamespace = namespace || userId;
+        const byUser = namespaces.get(userId);
+        if (!byUser) return;
+        byUser.forEach((client) => {
+            if (client.namespace === targetNamespace && client.id !== excludeId) {
+                client.ws.send(JSON.stringify(payload));
+            }
+        });
+    };
+
     const broadcast = (userId: string, payload: any) => {
-        [...clients.values()]
-            .filter((c) => c.userId === userId)
-            .forEach((c) => c.ws.send(JSON.stringify(payload)));
+        multicast(userId, payload, undefined);
     };
 
     const notify = (userId: string, type: string, data?: any) => {
@@ -87,5 +104,5 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         await new Promise<void>((resolve) => { wss.close(() => resolve()); });
     };
 
-    return { broadcast, notify, sendTo, close };
+    return { broadcast, multicast, notify, sendTo, close };
 };
