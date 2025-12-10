@@ -128,3 +128,13 @@ concepts/prompts/original
 ./concepts/prompts/original/*
 ./concepts/prompts/original/
 ./concepts/prompts/original
+
+#
+.data
+./.data
+backend/.data
+src/backend/.data
+.data/*
+src/backend/.data/*
+backend/.data/*
+./.data/*
