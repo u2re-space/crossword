@@ -124,7 +124,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     ai: {
         apiKey: "",
         baseUrl: "",
-        model: "gpt-5.1",
+        model: "gpt-5.2",
         customModel: "",
         mcp: [],
         shareTargetMode: "analyze"

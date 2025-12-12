@@ -19,6 +19,7 @@ export const AISection: SectionConfig = {
                     type: "select",
                     options: [
                         { value: "gpt-5.1", label: "gpt-5.1" },
+                        { value: "gpt-5.2", label: "gpt-5.2" },
                         { value: "custom", label: "Custom..." }
                     ]
                 }

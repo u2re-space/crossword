@@ -1,6 +1,6 @@
 /*
  * Chrome Extension Service for AI-powered data recognition.
- * Enhanced version with support for GPT-5.1 Responses API features.
+ * Enhanced version with support for GPT-5.2 Responses API features.
  */
 
 import { loadSettings } from "@rs-core/config/Settings";
@@ -8,7 +8,7 @@ import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 import { detectDataKindFromContent, type DataKind, type DataContext } from "@rs-core/service/model/GPT-Config";
 
 //
-const DEFAULT_MODEL = 'gpt-5.1';
+const DEFAULT_MODEL = 'gpt-5.2';
 const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
 const ENDPOINT = '/responses';
 

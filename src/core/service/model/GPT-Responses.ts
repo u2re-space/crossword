@@ -113,7 +113,7 @@ export class GPTResponses {
     private apiKey: string;
     private apiSecret: string;
     private apiUrl: string = "https://api.proxyapi.ru/openai/v1";
-    private model: string = "gpt-5.1";
+    private model: string = "gpt-5.2";
     private responseId?: string | null = null;
 
     protected pending: any[] = [];
@@ -640,7 +640,7 @@ export const createGPTInstance = (
         apiKey,
         apiUrl || "https://api.proxyapi.ru/openai/v1",
         "",
-        model || "gpt-5.1"
+        model || "gpt-5.2"
     );
 }
 
