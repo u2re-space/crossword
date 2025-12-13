@@ -6,10 +6,12 @@
 
 import { encode } from "@toon-format/toon";
 import { JSOX } from "jsox";
-import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses";
-import { type DataFilter, type ModificationInstruction, buildModificationPrompt } from "../model/GPT-Config";
-import { loadSettings } from "@rs-core/config/Settings";
-import { fixEntityId } from "@rs-core/template/EntityId";
+import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses.ts";
+import { type DataFilter, type ModificationInstruction, buildModificationPrompt } from "../model/GPT-Config.ts";
+import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
+import { fixEntityId } from "../../template/EntityId.ts";
+
+export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
 export type ModifyEntityOptions = {
     preserveId?: boolean;
@@ -44,16 +46,17 @@ export type BatchModificationResult = {
 }
 
 //
-const getGPTInstance = async (): Promise<GPTResponses | null> => {
-    const settings = await loadSettings();
-    if (!settings?.ai?.apiKey) {
+const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
+    const settings = await getRuntimeSettings();
+    const apiKey = config?.apiKey || settings?.ai?.apiKey;
+    if (!apiKey) {
         console.warn("No API key configured");
         return null;
     }
     return createGPTInstance(
-        settings.ai.apiKey,
-        settings.ai.baseUrl,
-        settings.ai.model
+        apiKey,
+        config?.baseUrl || settings?.ai?.baseUrl,
+        config?.model || settings?.ai?.model
     );
 }
 
@@ -109,7 +112,8 @@ const diffObjects = (original: any, modified: any, path: string = ""): ChangeRec
 export const modifyEntityByPrompt = async (
     entity: any,
     prompt: string,
-    options: ModifyEntityOptions = {}
+    options: ModifyEntityOptions = {},
+    config?: AIConfig
 ): Promise<ModificationResult> => {
     const result: ModificationResult = {
         ok: false,
@@ -121,7 +125,7 @@ export const modifyEntityByPrompt = async (
     };
 
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             result.errors.push("Failed to initialize GPT instance");
             return result;
@@ -210,7 +214,8 @@ Apply the requested modifications and return:
 export const modifyEntityByInstructions = async (
     entity: any,
     instructions: ModificationInstruction[],
-    options: ModifyEntityOptions = {}
+    options: ModifyEntityOptions = {},
+    config?: AIConfig
 ): Promise<ModificationResult> => {
     const result: ModificationResult = {
         ok: false,
@@ -222,7 +227,7 @@ export const modifyEntityByInstructions = async (
     };
 
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             result.errors.push("Failed to initialize GPT instance");
             return result;
@@ -304,7 +309,8 @@ export const batchModifyEntities = async (
     entities: any[],
     prompt: string,
     options: ModifyEntityOptions = {},
-    batchSize: number = 5
+    batchSize: number = 5,
+    config?: AIConfig
 ): Promise<BatchModificationResult> => {
     const result: BatchModificationResult = {
         ok: true,
@@ -319,7 +325,7 @@ export const batchModifyEntities = async (
         const batch = entities.slice(i, i + batchSize);
 
         const batchPromises = batch.map(entity =>
-            modifyEntityByPrompt(entity, prompt, options)
+            modifyEntityByPrompt(entity, prompt, options, config)
         );
 
         const batchResults = await Promise.all(batchPromises);
@@ -343,7 +349,8 @@ export const batchModifyEntities = async (
 export const smartMergeEntities = async (
     primary: any,
     secondary: any,
-    conflictResolution: "prefer_primary" | "prefer_secondary" | "prefer_newer" | "ask_ai" = "ask_ai"
+    conflictResolution: "prefer_primary" | "prefer_secondary" | "prefer_newer" | "ask_ai" = "ask_ai",
+    config?: AIConfig
 ): Promise<ModificationResult> => {
     const result: ModificationResult = {
         ok: false,
@@ -355,7 +362,7 @@ export const smartMergeEntities = async (
     };
 
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             result.errors.push("Failed to initialize GPT instance");
             return result;

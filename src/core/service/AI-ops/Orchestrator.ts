@@ -8,11 +8,11 @@ import { JSOX } from "jsox";
 import { encode } from "@toon-format/toon";
 
 // Service imports
-import { loadSettings } from "@rs-core/config/Settings";
-import { createGPTInstance, GPTResponses, type AIResponse } from "../model/GPT-Responses";
-import { type DataContext, type DataFilter, type ModificationInstruction } from "../model/GPT-Config";
-import { fixEntityId } from "@rs-core/template/EntityId";
-import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
+import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
+import { createGPTInstance, GPTResponses, type AIResponse } from "../model/GPT-Responses.ts";
+import { type DataContext, type DataFilter, type ModificationInstruction } from "../model/GPT-Config.ts";
+import { fixEntityId } from "../../template/EntityId.ts";
+import { detectEntityTypeByJSON } from "../../template/EntityUtils.ts";
 
 // AI-ops imports
 import {
@@ -22,7 +22,7 @@ import {
     smartRecognize,
     type RecognitionResult,
     type BatchRecognitionResult
-} from "./RecognizeData";
+} from "./RecognizeData.ts";
 
 import {
     modifyEntityByPrompt,
@@ -31,7 +31,7 @@ import {
     smartMergeEntities,
     type ModificationResult,
     type BatchModificationResult
-} from "./AIDataModifier";
+} from "./AIDataModifier.ts";
 
 import {
     selectData,
@@ -44,9 +44,9 @@ import {
     type SelectionOptions,
     type SelectionResult,
     type SimilarityResult
-} from "./AIDataSelector";
+} from "./AIDataSelector.ts";
 
-import { resolveEntity } from "./EntityItemResolve";
+import { resolveEntity } from "./EntityItemResolve.ts";
 
 //
 export type OrchestratorConfig = {
@@ -99,7 +99,7 @@ export class AIOrchestrator {
     //
     async initialize(): Promise<boolean> {
         try {
-            const settings = await loadSettings();
+            const settings = this.config.apiKey ? null : await getRuntimeSettings();
             const apiKey = this.config.apiKey || settings?.ai?.apiKey;
 
             if (!apiKey) {
@@ -168,7 +168,7 @@ export class AIOrchestrator {
             if (cached) return cached;
         }
 
-        const result = await recognizeWithContext(data, options?.context || {});
+        const result = await recognizeWithContext(data, options?.context || {}, "auto", this.config);
 
         if (result.ok) {
             this.setCache(cacheKey, result);
@@ -182,14 +182,14 @@ export class AIOrchestrator {
         items: (File | Blob | string)[],
         context?: DataContext
     ): Promise<BatchRecognitionResult> {
-        return batchRecognize(items, context);
+        return batchRecognize(items, context, 3, this.config);
     }
 
     //
     async extractEntitiesFromData(
         data: File | Blob | string
     ): Promise<AIResponse<any[]>> {
-        return extractEntities(data);
+        return extractEntities(data, this.config);
     }
 
     //
@@ -202,7 +202,7 @@ export class AIOrchestrator {
             extractEntities?: boolean;
         }
     ): Promise<RecognitionResult & { entities?: any[] }> {
-        return smartRecognize(data, hints);
+        return smartRecognize(data, hints, this.config);
     }
 
     // === MODIFICATION OPERATIONS ===
@@ -216,7 +216,7 @@ export class AIOrchestrator {
         return modifyEntityByPrompt(entity, prompt, {
             preserveId: options?.preserveId ?? true,
             preserveType: options?.preserveType ?? true
-        });
+        }, this.config);
     }
 
     //
@@ -224,7 +224,7 @@ export class AIOrchestrator {
         entity: any,
         instructions: ModificationInstruction[]
     ): Promise<ModificationResult> {
-        return modifyEntityByInstructions(entity, instructions);
+        return modifyEntityByInstructions(entity, instructions, {}, this.config);
     }
 
     //
@@ -232,7 +232,7 @@ export class AIOrchestrator {
         entities: any[],
         prompt: string
     ): Promise<BatchModificationResult> {
-        return batchModifyEntities(entities, prompt);
+        return batchModifyEntities(entities, prompt, {}, 5, this.config);
     }
 
     //
@@ -241,7 +241,7 @@ export class AIOrchestrator {
         secondary: any,
         strategy?: "prefer_primary" | "prefer_secondary" | "prefer_newer" | "ask_ai"
     ): Promise<ModificationResult> {
-        return smartMergeEntities(primary, secondary, strategy);
+        return smartMergeEntities(primary, secondary, strategy, this.config);
     }
 
     // === SELECTION OPERATIONS ===
@@ -266,7 +266,7 @@ export class AIOrchestrator {
             fields: options?.fields,
             minScore: options?.minScore,
             mode: "semantic"
-        });
+        }, this.config);
     }
 
     //
@@ -275,7 +275,7 @@ export class AIOrchestrator {
         candidates: T[],
         threshold?: number
     ): Promise<SimilarityResult<T>[]> {
-        return findSimilar(reference, candidates, threshold);
+        return findSimilar(reference, candidates, threshold, 10, this.config);
     }
 
     //
@@ -283,7 +283,7 @@ export class AIOrchestrator {
         data: T[],
         fields?: string[]
     ): Promise<{ groups: T[][]; duplicateCount: number }> {
-        return findDuplicates(data, fields);
+        return findDuplicates(data, fields, 0.8, this.config);
     }
 
     //
@@ -291,7 +291,7 @@ export class AIOrchestrator {
         data: T[],
         goal: string
     ): Promise<DataFilter[]> {
-        return suggestFilters(data, goal);
+        return suggestFilters(data, goal, this.config);
     }
 
     //

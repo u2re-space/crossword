@@ -1,7 +1,9 @@
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
 
-const ROOT = import.meta.dirname;
+import { moduleDirname } from "./runtime.ts";
+
+const ROOT = moduleDirname(import.meta);
 
 export const DATA_DIR = path.resolve(ROOT, "../../.data");
 export const SETTINGS_FILE = path.join(DATA_DIR, "core-settings.json");

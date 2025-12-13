@@ -1,5 +1,5 @@
 {
-    "include": ["./server.ts"],
+    "include": ["**/*.ts"],
     "exclude": ["./dist/**/*"],
     "baseUrl": "./",
     "compilerOptions": {
@@ -14,7 +14,6 @@
         "module": "ESNext",
         "moduleResolution": "bundler",
         "lib": ["ESNext", "DOM", "WebWorker"],
-        "types": ["chrome"],
         "esModuleInterop": true,
         "strict": true,
         "noEmit": true,

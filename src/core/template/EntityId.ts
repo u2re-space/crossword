@@ -1,4 +1,38 @@
-import { parseAndGetCorrectTime, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
+// NOTE: backend-friendly minimal time parsing helpers.
+// We intentionally keep this file free of heavy/browser-only dependencies (e.g. `fest/*`).
+type TimeType = { timestamp?: number; iso_date?: string; date?: string };
+
+export function parseDateCorrectly(str?: Date | TimeType | string | number | null | undefined): Date | null {
+    if (str == null) return null;
+    if (str instanceof Date) return Number.isFinite(str.getTime()) ? str : null;
+    if (typeof str === "number") {
+        const d = new Date(str);
+        return Number.isFinite(d.getTime()) ? d : null;
+    }
+    if (typeof str === "object") {
+        const anyObj: any = str as any;
+        if (anyObj.timestamp != null) return parseDateCorrectly(anyObj.timestamp);
+        if (anyObj.iso_date != null) return parseDateCorrectly(anyObj.iso_date);
+        if (anyObj.date != null) return parseDateCorrectly(anyObj.date);
+    }
+    if (typeof str === "string") {
+        const trimmed = str.trim();
+        if (!trimmed) return null;
+        // Try numeric timestamp in string form
+        if (/^\d+$/.test(trimmed)) {
+            const num = Number(trimmed);
+            const d = new Date(num);
+            if (Number.isFinite(d.getTime())) return d;
+        }
+        const d = new Date(trimmed);
+        return Number.isFinite(d.getTime()) ? d : null;
+    }
+    return null;
+}
+
+export function parseAndGetCorrectTime(str?: Date | TimeType | string | number | null | undefined): number {
+    return parseDateCorrectly(str)?.getTime?.() ?? Date.now();
+}
 
 export type EntityLike = {
     id?: string | null;

@@ -3,19 +3,19 @@
  * Supports multiple input formats, batch recognition, and intelligent data extraction.
  */
 
-import { loadSettings } from "@rs-core/config/Settings";
+import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
 import {
     getUsableData,
     GPTResponses,
     createGPTInstance,
     type AIResponse
-} from "@rs-core/service/model/GPT-Responses";
+} from "../model/GPT-Responses.ts";
 import {
     detectDataKindFromContent,
     type DataKind,
     type DataContext
-} from "@rs-core/service/model/GPT-Config";
-import { extractJSONFromAIResponse } from "@rs-core/utils/AIResponseParser";
+} from "../model/GPT-Config.ts";
+import { extractJSONFromAIResponse } from "../../utils/AIResponseParser.ts";
 
 //
 export type RecognitionMode = "auto" | "image" | "text" | "structured" | "mixed";
@@ -190,15 +190,16 @@ Expected output structure:
 `;
 
 //
-const getGPTInstance = async (): Promise<GPTResponses | null> => {
-    const settings = await loadSettings();
-    if (!settings?.ai?.apiKey) {
-        return null;
-    }
+export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
+
+const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
+    const settings = await getRuntimeSettings();
+    const apiKey = config?.apiKey || settings?.ai?.apiKey;
+    if (!apiKey) return null;
     return createGPTInstance(
-        settings.ai.apiKey,
-        settings.ai.baseUrl,
-        settings.ai.model
+        apiKey,
+        config?.baseUrl || settings?.ai?.baseUrl,
+        config?.model || settings?.ai?.model
     );
 }
 
@@ -206,11 +207,12 @@ const getGPTInstance = async (): Promise<GPTResponses | null> => {
 export const recognizeByInstructions = async (
     input: any,
     instructions: string,
-    sendResponse?: (result: any) => void
+    sendResponse?: (result: any) => void,
+    config?: AIConfig
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    const settings = (await loadSettings())?.ai;
+    const settings = (await getRuntimeSettings())?.ai;
 
-    const token = settings?.apiKey;
+    const token = config?.apiKey || settings?.apiKey;
     if (!token) {
         const result = { ok: false, error: "No API key or input" };
         sendResponse?.(result);
@@ -222,7 +224,7 @@ export const recognizeByInstructions = async (
         return result;
     }
 
-    const r: any = await fetch(`${settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
+    const r: any = await fetch(`${config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
         method: 'POST',
         priority: 'auto',
         keepalive: true,
@@ -231,7 +233,7 @@ export const recognizeByInstructions = async (
             'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            model: settings?.model || DEFAULT_MODEL,
+            model: config?.model || settings?.model || DEFAULT_MODEL,
             input,
             reasoning: { "effort": "medium" },
             text: { verbosity: "medium" },
@@ -256,23 +258,26 @@ export const recognizeByInstructions = async (
 //
 export const recognizeImageData = async (
     input: any,
-    sendResponse?: (result: any) => void
+    sendResponse?: (result: any) => void,
+    config?: AIConfig
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse);
+    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, config);
 };
 
 //
 export const convertTextualData = async (
     input: any,
-    sendResponse?: (result: any) => void
+    sendResponse?: (result: any) => void,
+    config?: AIConfig
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse);
+    return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse, config);
 };
 
 //
 export const analyzeRecognizeUnified = async (
     rawData: File | Blob | string,
-    sendResponse?: (result: any) => void
+    sendResponse?: (result: any) => void,
+    config?: AIConfig
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
     const content = await getUsableData({ dataSource: rawData });
     const input = [{
@@ -281,8 +286,8 @@ export const analyzeRecognizeUnified = async (
         content: [content]
     }];
     return content?.type == "input_image"
-        ? recognizeImageData(input, sendResponse)
-        : convertTextualData(input, sendResponse);
+        ? recognizeImageData(input, sendResponse, config)
+        : convertTextualData(input, sendResponse, config);
 };
 
 // === NEW ENHANCED FUNCTIONS ===
@@ -291,7 +296,8 @@ export const analyzeRecognizeUnified = async (
 export const recognizeWithContext = async (
     data: File | Blob | string,
     context: DataContext,
-    mode: RecognitionMode = "auto"
+    mode: RecognitionMode = "auto",
+    config?: AIConfig
 ): Promise<RecognitionResult> => {
     const startTime = performance.now();
 
@@ -309,7 +315,7 @@ export const recognizeWithContext = async (
     };
 
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             result.errors.push("No GPT instance available");
             return result;
@@ -397,7 +403,8 @@ export const recognizeWithContext = async (
 export const batchRecognize = async (
     items: (File | Blob | string)[],
     context?: DataContext,
-    concurrency: number = 3
+    concurrency: number = 3,
+    config?: AIConfig
 ): Promise<BatchRecognitionResult> => {
     const startTime = performance.now();
 
@@ -418,7 +425,7 @@ export const batchRecognize = async (
         const batch = items.slice(i, i + concurrency);
 
         const promises = batch.map(item =>
-            recognizeWithContext(item, context || {})
+            recognizeWithContext(item, context || {}, "auto", config)
         );
 
         const batchResults = await Promise.all(promises);
@@ -444,10 +451,11 @@ export const batchRecognize = async (
 
 //
 export const extractEntities = async (
-    data: File | Blob | string
+    data: File | Blob | string,
+    config?: AIConfig
 ): Promise<AIResponse<any[]>> => {
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             return { ok: false, error: "No GPT instance" };
         }
@@ -569,12 +577,13 @@ export const smartRecognize = async (
         language?: string;
         domain?: string;
         extractEntities?: boolean;
-    }
+    },
+    config?: AIConfig
 ): Promise<RecognitionResult & { entities?: any[] }> => {
     const baseResult = await recognizeWithContext(data, {
         entityType: hints?.expectedType,
         searchTerms: hints?.domain ? [hints.domain] : undefined
-    });
+    }, "auto", config);
 
     if (!baseResult.ok) {
         return baseResult;
@@ -582,7 +591,7 @@ export const smartRecognize = async (
 
     // Optionally extract entities
     if (hints?.extractEntities) {
-        const entityResult = await extractEntities(data);
+        const entityResult = await extractEntities(data, config);
         return {
             ...baseResult,
             entities: entityResult.ok ? entityResult.data : undefined

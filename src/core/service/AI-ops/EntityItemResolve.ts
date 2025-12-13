@@ -5,11 +5,10 @@
  */
 
 //
-import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
+import type { GPTResponses } from "../model/GPT-Responses.ts";
 
-// @ts-ignore
-import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
-import { fixEntityId } from "@rs-core/template/EntityId";
+import { loadEntitiesSchemaMarkdown } from "../../template/EntitiesSchema.ts";
+import { fixEntityId } from "../../template/EntityId.ts";
 import { JSOX } from "jsox";
 
 //
@@ -25,7 +24,8 @@ export const resolveEntity = async (gptResponses: GPTResponses | null = null) =>
     }
 
     //
-    await gptResponses?.giveForRequest?.(AI_OUTPUT_SCHEMA);
+    const schema = await loadEntitiesSchemaMarkdown();
+    if (schema) await gptResponses?.giveForRequest?.(schema);
     await gptResponses?.askToDoAction?.(askResolveStep()?.join?.("\n"));
     const parsed = JSOX.parse(await gptResponses?.sendRequest?.("low", "low") || "{}") as unknown as { entities: any[], keywords: string[], short_description: string };
     parsed?.entities?.forEach?.((entity: any) => fixEntityId(entity));

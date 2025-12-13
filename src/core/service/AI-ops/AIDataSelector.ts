@@ -6,9 +6,11 @@
 
 import { encode } from "@toon-format/toon";
 import { JSOX } from "jsox";
-import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses";
-import { type DataFilter, DATA_SELECTION_PROMPT } from "../model/GPT-Config";
-import { loadSettings } from "@rs-core/config/Settings";
+import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses.ts";
+import { type DataFilter, DATA_SELECTION_PROMPT } from "../model/GPT-Config.ts";
+import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
+
+export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
 export type SearchMode = "exact" | "fuzzy" | "semantic" | "ai";
 export type SortDirection = "asc" | "desc";
@@ -75,16 +77,17 @@ export type GroupedResult<T = any> = {
 }
 
 //
-const getGPTInstance = async (): Promise<GPTResponses | null> => {
-    const settings = await loadSettings();
-    if (!settings?.ai?.apiKey) {
+const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
+    const settings = await getRuntimeSettings();
+    const apiKey = config?.apiKey || settings?.ai?.apiKey;
+    if (!apiKey) {
         console.warn("No API key configured");
         return null;
     }
     return createGPTInstance(
-        settings.ai.apiKey,
-        settings.ai.baseUrl,
-        settings.ai.model
+        apiKey,
+        config?.baseUrl || settings?.ai?.baseUrl,
+        config?.model || settings?.ai?.model
     );
 }
 
@@ -323,7 +326,8 @@ export const selectData = async <T = any>(
 //
 export const aiSemanticSearch = async <T = any>(
     data: T[],
-    query: SearchQuery
+    query: SearchQuery,
+    config?: AIConfig
 ): Promise<SelectionResult<T>> => {
     const result: SelectionResult<T> = {
         ok: false,
@@ -339,7 +343,7 @@ export const aiSemanticSearch = async <T = any>(
     };
 
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             result.error = "No GPT instance available";
             return result;
@@ -418,10 +422,11 @@ export const findSimilar = async <T = any>(
     reference: T,
     candidates: T[],
     threshold: number = 0.5,
-    topK: number = 10
+    topK: number = 10,
+    config?: AIConfig
 ): Promise<SimilarityResult<T>[]> => {
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             console.warn("No GPT instance for similarity search");
             return [];
@@ -513,10 +518,11 @@ export const groupBy = <T = any>(
 export const findDuplicates = async <T = any>(
     data: T[],
     fields: string[] = ["name", "title"],
-    similarityThreshold: number = 0.8
+    similarityThreshold: number = 0.8,
+    config?: AIConfig
 ): Promise<{ groups: T[][]; duplicateCount: number }> => {
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             return { groups: [], duplicateCount: 0 };
         }
@@ -576,10 +582,11 @@ Return:
 //
 export const suggestFilters = async <T = any>(
     data: T[],
-    goal: string
+    goal: string,
+    config?: AIConfig
 ): Promise<DataFilter[]> => {
     try {
-        const gpt = await getGPTInstance();
+        const gpt = await getGPTInstance(config);
         if (!gpt) {
             return [];
         }

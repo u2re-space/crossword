@@ -15,12 +15,27 @@ import {
     type DataContext,
     type DataFilter,
     type ModificationInstruction
-} from "./GPT-Config";
+} from "./GPT-Config.ts";
 import { JSOX } from "jsox";
 import {
     extractJSONFromAIResponse,
     STRICT_JSON_INSTRUCTIONS
-} from "@rs-core/utils/AIResponseParser";
+} from "../../utils/AIResponseParser.ts";
+
+const hasFile = () => typeof (globalThis as any).File !== "undefined";
+const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";
+
+const toBase64 = (bytes: Uint8Array): string => {
+    // Node
+    if (typeof (globalThis as any).Buffer !== "undefined") {
+        return (globalThis as any).Buffer.from(bytes).toString("base64");
+    }
+    // Browser
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    // @ts-ignore
+    return typeof btoa === "function" ? btoa(binary) : "";
+};
 
 //
 export type RequestOptions = {
@@ -46,10 +61,17 @@ export type AIResponse<T = unknown> = {
 
 //
 export const getUsableData = async (data: DataInput) => {
-    if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
+    const FileCtor = hasFile() ? (globalThis as any).File : undefined;
+    const BlobCtor = hasBlob() ? (globalThis as any).Blob : undefined;
+    const isFileOrBlob =
+        (BlobCtor && data?.dataSource instanceof BlobCtor) ||
+        (FileCtor && data?.dataSource instanceof FileCtor);
+
+    if (isFileOrBlob) {
         if (typesForKind?.[data?.dataKind || "input_text"] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
             const BASE64URL = `data:${data?.dataSource?.type};base64,`; // @ts-ignore
-            const URL = BASE64URL + await (new Uint8Array(await data?.dataSource?.arrayBuffer())?.toBase64?.({ alphabet: "base64" }));
+            const bytes = new Uint8Array(await data?.dataSource?.arrayBuffer());
+            const URL = BASE64URL + toBase64(bytes);
             return {
                 "type": "input_image",
                 "detail": "auto",
