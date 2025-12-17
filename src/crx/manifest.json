@@ -1,13 +1,14 @@
 {
     "manifest_version": 3,
     "name": "CrossWord",
-    "description": "CrossWord Chrome Extension",
+    "description": "Chrome extension for AI recognition, markdown viewing, and optional New Tab",
     "version": "1.0.0",
     "action": {
-        "default_popup": "popup/index.html"
+        "default_popup": "popup/index.html",
+        "default_title": "CrossWord"
     },
     "chrome_url_overrides": {
-        "newtab": "popup/index.html"
+        "newtab": "newtab/index.html"
     },
     "options_ui": {
         "page": "settings/index.html",
@@ -31,7 +32,8 @@
         "contextMenus",
         "nativeMessaging",
         "tabCapture",
-        "downloads"
+        "downloads",
+        "webNavigation"
     ],
     "content_security_policy": {
         "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
@@ -50,7 +52,14 @@
                 "file://**/*"
             ],
             "js": ["content/main.ts"],
-            "run_at": "document_idle"
+            "run_at": "document_start"
         }
-    ]
+    ],
+    "web_accessible_resources": [{
+        "resources": [
+            "markdown/viewer.html",
+            "assets/*"
+        ],
+        "matches": ["<all_urls>"]
+    }]
 }

@@ -23,6 +23,11 @@
                     }
 
                     /* */
+                    :where(*) {
+                        box-sizing: border-box;
+                    }
+
+                    /* */
                     body {
                         display: grid;
                         grid-template-columns: minmax(0px, 1fr);
@@ -39,6 +44,9 @@
                         place-items: center;
                         align-content: start;
                         align-items: start;
+
+                        min-block-size: max(100cqb, 100dvb);
+                        inline-size: min(100cqi, 100dvi);
                     }
 
                     /* */

@@ -23,6 +23,10 @@ import { MakeMarkdownView } from "../views/Markdown";
 import { initGlobalClipboard } from "fest/lure";
 
 //
+import { UIPhosphorIcon } from "fest/icon";
+console.log(UIPhosphorIcon);
+
+//
 const implementTestDrop = (mountElement: HTMLElement) => {
     //
     mountElement?.addEventListener?.("dragover", (event) => {
@@ -65,6 +69,23 @@ import { initTheme } from "@rs-frontend/utils/Theme";
 
 //
 export async function frontend(mountElement) {
+
+    await Promise.allSettled([
+        document.requestStorageAccess(),
+        navigator.permissions.query({ name: "storage-access" as PermissionName }),
+        navigator.permissions.query({ name: "top-level-storage-access" as PermissionName }),
+        navigator.permissions.query({ name: "geolocation" as PermissionName }),
+        navigator.permissions.query({ name: "clipboard-write" as PermissionName }),
+        navigator.permissions.query({ name: "clipboard-read" as PermissionName }),
+        navigator.permissions.query({ name: "notifications" as PermissionName }),
+        navigator.permissions.query({ name: "microphone" as PermissionName }),
+    ]).then((results) => {
+        console.log("Permissions granted", results);
+    })?.catch?.((error) => {
+        console.log("Permissions denied", error);
+    });
+
+
     initDOM(document.body)?.then?.(()=>loadAsAdopted(style));
     Promise.allSettled([
         initTheme(),

@@ -1,0 +1,68 @@
+.basic-settings {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.basic-settings h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.basic-settings .card {
+  border: 1px solid var(--basic-border);
+  border-radius: 12px;
+  padding: 12px;
+  background: transparent;
+  display: grid;
+  gap: 10px;
+}
+
+.basic-settings .card h3 {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.basic-settings .field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.basic-settings .field > span {
+  opacity: 0.9;
+}
+
+.basic-settings input,
+.basic-settings select {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--basic-border);
+  background: var(--basic-btn);
+  color: var(--basic-btn-fg);
+  outline: none;
+}
+
+.basic-settings .field.checkbox {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content 1fr;
+  align-items: center;
+}
+
+.basic-settings .actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.basic-settings .note {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.basic-settings .ext-note {
+  font-size: 12px;
+  opacity: 0.8;
+}
+

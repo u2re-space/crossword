@@ -1,0 +1,136 @@
+@layer choice-screen {
+  :root {
+    --choice-bg: #ffffff;
+    --choice-fg: #111111;
+    --choice-card: #f3f4f6;
+    --choice-border: rgba(0, 0, 0, 0.14);
+    --choice-muted: rgba(0, 0, 0, 0.68);
+    --choice-focus: rgba(59, 130, 246, 0.45);
+    --choice-primary: #111111;
+    --choice-primary-fg: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --choice-bg: #0b0b0c;
+      --choice-fg: #f5f5f5;
+      --choice-card: #141416;
+      --choice-border: rgba(255, 255, 255, 0.14);
+      --choice-muted: rgba(255, 255, 255, 0.72);
+      --choice-focus: rgba(147, 197, 253, 0.38);
+      --choice-primary: #f5f5f5;
+      --choice-primary-fg: #0b0b0c;
+    }
+  }
+
+  .choice.container {
+    inline-size: min(720px, 100%);
+    margin-inline: auto;
+    margin-block: 0;
+    margin-block-start: calc(0.5 * min(80cqb, 32rem));
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    justify-items: stretch;
+    color: var(--choice-fg);
+    background: var(--choice-bg);
+    border: 1px solid var(--choice-border);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    max-block-size: min(80cqb, 32rem);
+  }
+
+  .choice-header {
+    font-size: 18px;
+    font-weight: 750;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  .choice-countdown {
+    font-size: 13px;
+    color: var(--choice-muted);
+  }
+
+  .choice-reasons {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--choice-muted);
+  }
+
+  .choice-remember {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--choice-card);
+    border: 1px solid var(--choice-border);
+    user-select: none;
+  }
+
+  .choice-remember input[type="checkbox"] {
+    inline-size: 18px;
+    block-size: 18px;
+    accent-color: var(--choice-primary);
+  }
+
+  .choice-remember span {
+    font-size: 13px;
+    color: var(--choice-fg);
+    opacity: 0.92;
+  }
+
+  .choice.container button {
+    appearance: none;
+    border: 1px solid var(--choice-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    background: var(--choice-card);
+    color: var(--choice-fg);
+    transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .choice.container button.big {
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: 650;
+  }
+
+  .choice.container button.recommended {
+    background: var(--choice-primary);
+    color: var(--choice-primary-fg);
+    border-color: transparent;
+  }
+
+  .choice.container button.faint {
+    opacity: 0.95;
+  }
+
+  .choice.container button:hover {
+    transform: translateY(-1px);
+  }
+
+  .choice.container button:active {
+    transform: translateY(0px);
+  }
+
+  .choice.container button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--choice-focus);
+  }
+
+  @media (max-inline-size: 520px) {
+    .choice.container {
+      inline-size: 100%;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: none;
+    }
+  }
+}

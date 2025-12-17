@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 //
-import { toastError, toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
 
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-core/config/SettingsTypes";
@@ -520,7 +520,7 @@ export const Settings = async () => {
 
         // Apply share target mode
         if (shareTargetModeSelectEl) {
-            setControlValue(shareTargetModeSelectEl, settings.ai?.shareTargetMode || DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze");
+            setControlValue(shareTargetModeSelectEl, settings.ai?.shareTargetMode || DEFAULT_SETTINGS.ai?.shareTargetMode || "recognize");
         }
 
         // Apply MCP configurations
@@ -718,7 +718,7 @@ export const Settings = async () => {
             ai: {
                 apiKey: readValue("ai.apiKey"),
                 baseUrl: readValue("ai.baseUrl"),
-                shareTargetMode: readValue("ai.shareTargetMode") as "analyze" | "recognize" || DEFAULT_SETTINGS.ai?.shareTargetMode || "analyze",
+                shareTargetMode: (readValue("ai.shareTargetMode") as "analyze" | "recognize") || DEFAULT_SETTINGS.ai?.shareTargetMode || "recognize",
                 model: isCustomSelected ? "custom" : modelSelection,
                 customModel: isCustomSelected ? customIdentifier : "",
                 mcp: mcpConfigurations

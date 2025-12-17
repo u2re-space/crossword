@@ -68,6 +68,7 @@ export type AppSettings = {
         userKey?: string;
         encrypt?: boolean;
         preferBackendSync?: boolean;
+        ntpEnabled?: boolean;
         ops?: {
             allowUnencrypted?: boolean;
             httpTargets?: RemoteTarget[];
@@ -114,6 +115,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         userKey: "",
         encrypt: false,
         preferBackendSync: true,
+        ntpEnabled: false,
         ops: {
             allowUnencrypted: false,
             httpTargets: [],
@@ -127,7 +129,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         model: "gpt-5.2",
         customModel: "",
         mcp: [],
-        shareTargetMode: "analyze"
+        shareTargetMode: "recognize"
     },
     webdav: {
         url: "http://localhost:6065",

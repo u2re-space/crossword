@@ -7,7 +7,7 @@ import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
-import { toastError, toastSuccess } from "@rs-frontend/lure-veela/items/Toast";
+import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
 
 //
 /*

@@ -1,9 +1,9 @@
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/workers/DebugTaskGenerator";
-import { makeEntityEdit } from "@rs-frontend/lure-veela/editors/EntityEdit";
+import { makeEntityEdit } from "@rs-frontend/faint/editors/EntityEdit";
 import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite, pasteAndAnalyze, pasteIntoClipboardWithRecognize } from "./FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/lure-veela/items/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/faint/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";

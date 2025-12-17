@@ -38,13 +38,19 @@ const manifest = await readFile(resolve(__dirname, "./src/crx/manifest.json"), {
 
 const crxInputs = {
     popup: resolve(__dirname, "./src/crx/popup/index.html"),
+    newtab: resolve(__dirname, "./src/crx/newtab/index.html"),
     settings: resolve(__dirname, "./src/crx/settings/index.html"),
+    "markdown-viewer": resolve(__dirname, "./src/crx/markdown/viewer.html"),
     content: resolve(__dirname, "./src/crx/content/main.ts"),
     background: resolve(__dirname, "./src/crx/sw.ts")
 };
 
 const createCrxConfig = () => {
-    const crxPlugin = crx({ manifest, browser: "chrome" });
+    const crxPlugin = crx({
+        manifest,
+        browser: "chrome",
+        contentScripts: { injectCss: true },
+    });
     const basePlugins = (baseConfig?.plugins || []).filter((plugin) => plugin?.name !== "vite:singlefile");
     const baseRollup = baseConfig?.build?.rollupOptions ?? {};
     const baseOutput = Array.isArray(baseRollup.output) ? baseRollup.output[0] : (baseRollup.output ?? {});
@@ -72,6 +78,7 @@ const createCrxConfig = () => {
     });
 
     return objectAssign({}, baseConfig, {
+        base: "./",
         plugins: [...basePlugins, crxPlugin],
         build: objectAssign({}, baseConfig?.build, {
             lib: undefined,

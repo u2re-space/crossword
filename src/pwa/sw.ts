@@ -33,10 +33,10 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
 
     //
     let results: Promise<any> = new Promise((resolve, reject) => {
-        if (settings?.ai?.shareTargetMode == "recognize") {
-            commitRecognize?.(e)?.then?.(rs => { console.log('recognize results', rs); resolve(rs); })?.catch?.(reject);
-        } else {
+        if (settings?.ai?.shareTargetMode == "analyze") {
             commitAnalyze?.(e)?.then?.(rs => { console.log('analyze results', rs); resolve(rs); })?.catch?.(reject);
+        } else {
+            commitRecognize?.(e)?.then?.(rs => { console.log('recognize results', rs); resolve(rs); })?.catch?.(reject);
         }
     });
 

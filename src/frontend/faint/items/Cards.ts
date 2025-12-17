@@ -12,7 +12,7 @@ import { findEntities } from "@rs-core/service/EntityRegistry";
 //
 import { marked } from "marked";
 import markedKatex from "marked-katex-extension";
-import { makeEvents } from "@rs-frontend/lure-veela/editors/EntityEdit";
+import { makeEvents } from "@rs-frontend/faint/editors/EntityEdit";
 import { makePropertyDesc, formatPhoneElement, formatEmailElement, renderAddress } from "./Elements";
 marked.use(markedKatex({
     throwOnError: false,
