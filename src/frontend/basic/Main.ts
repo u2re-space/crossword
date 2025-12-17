@@ -24,6 +24,7 @@ type HistoryEntry = {
 };
 
 const HISTORY_KEY = "rs-basic-history";
+const LAST_SRC_KEY = "rs-basic-last-src";
 const DEFAULT_MD = "# CrossWord (Basic)\n\nOpen a markdown file or paste content here.\n";
 const MARKDOWN_EXTENSION_PATTERN = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
 
@@ -34,6 +35,22 @@ const safeJsonParse = <T>(raw: string | null, fallback: T): T => {
     return v ?? fallback;
   } catch {
     return fallback;
+  }
+};
+
+const loadLastSrc = () => {
+  try {
+    return localStorage.getItem(LAST_SRC_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+
+const saveLastSrc = (src: string) => {
+  try {
+    localStorage.setItem(LAST_SRC_KEY, src);
+  } catch {
+    // ignore
   }
 };
 
@@ -134,7 +151,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
   const state = {
     view: (options.initialView || "markdown") as BasicView,
-    markdown: options.initialMarkdown ?? safeJsonParse<string>(localStorage.getItem("rs-basic-markdown"), DEFAULT_MD),
+    markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
     editing: false,
     busy: false,
     message: "",
@@ -144,7 +161,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
   const persistMarkdown = () => {
     try {
-      localStorage.setItem("rs-basic-markdown", state.markdown);
+      if (state.markdown) localStorage.setItem("rs-basic-markdown", state.markdown);
     } catch {
       // ignore
     }
@@ -201,15 +218,16 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       await mdView.setMarkdown(state.markdown);
     };
 
-    const isMobile = typeof window !== "undefined" && window.matchMedia?.("(max-width: 720px)")?.matches;
+    const isMobile = typeof window !== "undefined" && window.matchMedia?.("(max-inline-size: 720px)")?.matches;
     const mode = isMobile ? (state.editing ? "edit" : "view") : state.editing ? "split" : "view";
     wrapper.dataset.mode = mode;
 
-    const applyMarkdown = async (text: string) => {
+    const applyMarkdown = async (text: string, src?: string) => {
       const md = text || "";
       state.markdown = md;
       editor.value = md;
       persistMarkdown();
+      saveLastSrc(src?.trim?.() || "");
       await mdView.setMarkdown(md);
     };
 
@@ -241,7 +259,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
       const fromUrl = await readMdFromUrlIfPossible(raw);
       if (fromUrl != null) {
-        await applyMarkdown(fromUrl);
+        await applyMarkdown(fromUrl, raw);
         return;
       }
       await applyMarkdown(raw);
@@ -263,7 +281,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
       const fromUrl = await readMdFromUrlIfPossible(raw);
       if (fromUrl != null) {
-        await applyMarkdown(fromUrl);
+        await applyMarkdown(fromUrl, raw);
         return;
       }
       await applyMarkdown(raw);
@@ -321,6 +339,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         applyBtn?.addEventListener("click", () => {
           state.markdown = h.after || "";
           persistMarkdown();
+          saveLastSrc("");
           state.view = "markdown";
           void render();
         });
@@ -388,6 +407,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       if (after) {
         state.markdown = after;
         persistMarkdown();
+        saveLastSrc("");
         state.message = "Done.";
       } else {
         state.message = res?.error || "No output.";
@@ -495,6 +515,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       .then((text) => {
         state.markdown = text || "";
         persistMarkdown();
+        saveLastSrc("");
         state.view = "markdown";
         void render();
       })
@@ -510,6 +531,20 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       applyTheme(root, state.lastSavedTheme);
     })
     .catch(() => applyTheme(root, "auto" as any));
+
+  // In PWA / regular web app: if the last opened markdown was a URL, try to refresh it.
+  // If offline, cached `rs-basic-markdown` will remain.
+  //if (!options.initialMarkdown) {
+    const lastSrc = loadLastSrc();
+    if (lastSrc) {
+        void readMdFromUrlIfPossible(lastSrc).then((text) => {
+            if (!text) return;
+            state.markdown = text;
+            persistMarkdown();
+            void render();
+        });
+    }
+    //}
 
   void render();
 };

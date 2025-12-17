@@ -93,6 +93,18 @@ export const ChoiceScreen = (opts: {
 export default async function frontend(mountElement: HTMLElement) {
   const defaultChoice: FrontendChoice = "basic";
 
+  const hash = (location.hash || "").replace(/^#/, "").trim().toLowerCase();
+  if (hash === "basic") {
+    const run = await loadSubApp("basic");
+    run?.(mountElement);
+    return;
+  }
+  if (hash === "faint") {
+    const run = await loadSubApp("faint");
+    run?.(mountElement);
+    return;
+  }
+
   if (isExtension()) {
     const run = await loadSubApp(defaultChoice);
     run?.(mountElement);
