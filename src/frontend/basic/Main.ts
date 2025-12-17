@@ -70,6 +70,12 @@ const applyTheme = (root: HTMLElement, theme: AppSettings["appearance"] extends 
   const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
   const resolved = theme === "dark" ? "dark" : theme === "light" ? "light" : prefersDark ? "dark" : "light";
   root.dataset.theme = resolved;
+  // Drive scheme-aware styling (used by the markdown-view styles).
+  try {
+    root.style.colorScheme = resolved;
+  } catch {
+    // ignore
+  }
 };
 
 const getSpeechPrompt = async (): Promise<string | null> => {
