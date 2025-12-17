@@ -89,7 +89,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             mode: 'development',
             // workbox options are ignored when using injectManifest
             injectManifest: {
-                injectionPoint: undefined,
+                injectionPoint: "self.__WB_MANIFEST",
                 maximumFileSizeToCacheInBytes: 1024 * 1024 * 16,
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
             },
