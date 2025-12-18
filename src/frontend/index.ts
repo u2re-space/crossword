@@ -68,10 +68,11 @@ export const ChoiceScreen = (opts: {
   onChoose: (choice: FrontendChoice, remember: boolean) => void;
   initialRemember?: boolean;
 }) => {
-  const headerText = H`<header class="choice-header">I made two sub-projects…</header>` as HTMLElement;
+  const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
   const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Basic</b> version is the default.</div>` as HTMLElement;
 
   const countdown = H`<div class="choice-countdown">Auto-start in <b>${opts.seconds}</b>s…</div>` as HTMLElement;
+  const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
   const remember = H`<label class="choice-remember">
     <input type="checkbox" />
     <span>Remember my choice</span>
@@ -86,7 +87,40 @@ export const ChoiceScreen = (opts: {
   unstableFaint.addEventListener("click", () => opts.onChoose("faint", Boolean(rememberInput?.checked)));
 
   const container = H`<div class="choice container"></div>` as HTMLElement;
-  container.append(headerText, countdown, bigBasicButton, unstableFaint, remember, reasonsText);
+
+  const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
+  menu.append(bigBasicButton, unstableFaint);
+
+  // Minimal boot-menu keyboard navigation (↑/↓ + Enter)
+  const options = [bigBasicButton, unstableFaint];
+  let idx = 0;
+  const focusAt = (nextIdx: number) => {
+    const len = options.length;
+    if (!len) return;
+    idx = ((nextIdx % len) + len) % len;
+    options[idx]?.focus?.();
+  };
+  container.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusAt(idx + 1);
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      focusAt(idx - 1);
+      return;
+    }
+    if (e.key === "Enter") {
+      const el = document.activeElement as HTMLElement | null;
+      const btn = el?.closest?.("button") as HTMLButtonElement | null;
+      btn?.click?.();
+    }
+  });
+
+  container.append(headerText, countdown, hint, menu, remember, reasonsText);
+
+  queueMicrotask(() => focusAt(0));
   return { container, countdownEl: countdown };
 };
 

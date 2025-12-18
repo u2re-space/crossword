@@ -1,26 +1,37 @@
 @layer choice-screen {
   :root {
-    --choice-bg: #ffffff;
-    --choice-fg: #111111;
-    --choice-card: #f3f4f6;
-    --choice-border: rgba(0, 0, 0, 0.14);
-    --choice-muted: rgba(0, 0, 0, 0.68);
-    --choice-focus: rgba(59, 130, 246, 0.45);
-    --choice-primary: #111111;
-    --choice-primary-fg: #ffffff;
+    /* Boot-menu inspired palette (GRUB / Win7-like). Static, no dynamic colors. */
+    --choice-bg: #05070c;
+    --choice-fg: #e9edf2;
+    --choice-card: rgba(0, 0, 0, 0.55);
+    --choice-border: rgba(255, 255, 255, 0.18);
+    --choice-muted: rgba(233, 237, 242, 0.72);
+    --choice-focus: rgba(152, 208, 255, 0.42);
+    --choice-primary: #9ad0ff;
+    --choice-primary-fg: #001018;
+    --choice-highlight-bg: #e9edf2;
+    --choice-highlight-fg: #0a0f14;
+    --choice-highlight-border: rgba(255, 255, 255, 0.55);
+
+    /* Typography */
+    --choice-font: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --choice-bg: #0b0b0c;
-      --choice-fg: #f5f5f5;
-      --choice-card: #141416;
-      --choice-border: rgba(255, 255, 255, 0.14);
-      --choice-muted: rgba(255, 255, 255, 0.72);
-      --choice-focus: rgba(147, 197, 253, 0.38);
-      --choice-primary: #f5f5f5;
-      --choice-primary-fg: #0b0b0c;
-    }
+  :where(html, body) {
+    block-size: 100%;
+    min-block-size: 100%;
+    background: var(--choice-bg);
+    color: var(--choice-fg);
+    font-family: var(--choice-font);
+  }
+
+  :where(body) {
+    margin: 0;
+    /* Win7-ish dark blue glow + subtle scanlines */
+    background:
+      radial-gradient(1200px 700px at 50% 22%, rgba(88, 140, 255, 0.28) 0%, rgba(12, 32, 72, 0.32) 42%, rgba(0, 0, 0, 0.75) 75%, rgba(0, 0, 0, 0.92) 100%),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0px, rgba(255, 255, 255, 0.035) 1px, transparent 2px, transparent 4px);
+    background-color: var(--choice-bg);
   }
 
   .choice.container {
@@ -30,32 +41,60 @@
     margin-block-start: calc(0.5 * min(80cqb, 32rem));
     padding: 16px;
     display: grid;
-    gap: 12px;
+    gap: 10px;
     align-content: start;
     justify-items: stretch;
     color: var(--choice-fg);
-    background: var(--choice-bg);
+    background: var(--choice-card);
     border: 1px solid var(--choice-border);
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    border-radius: 6px;
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.72),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    font-family: var(--choice-font);
     max-block-size: min(80cqb, 32rem);
+    position: relative;
+  }
+
+  .choice.container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   }
 
   .choice-header {
-    font-size: 18px;
-    font-weight: 750;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.2;
     margin: 0;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
   .choice-countdown {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--choice-muted);
+    line-height: 1.35;
+  }
+
+  .choice-hint {
+    font-size: 12px;
+    color: var(--choice-muted);
+    line-height: 1.35;
+  }
+
+  .choice-menu {
+    display: grid;
+    gap: 6px;
+    padding-block: 6px;
+    border-block: 1px solid rgba(255, 255, 255, 0.10);
   }
 
   .choice-reasons {
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--choice-muted);
   }
@@ -64,10 +103,10 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: var(--choice-card);
-    border: 1px solid var(--choice-border);
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     user-select: none;
   }
 
@@ -78,34 +117,48 @@
   }
 
   .choice-remember span {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--choice-fg);
     opacity: 0.92;
   }
 
   .choice.container button {
     appearance: none;
-    border: 1px solid var(--choice-border);
-    border-radius: 14px;
-    padding: 12px 14px;
-    font-size: 14px;
+    inline-size: 100%;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: var(--choice-font);
     line-height: 1;
     cursor: pointer;
-    background: var(--choice-card);
+    background: transparent;
     color: var(--choice-fg);
-    transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    text-align: start;
+    position: relative;
+  }
+
+  .choice.container button::before {
+    content: ">";
+    position: absolute;
+    inset-inline-start: 10px;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    color: color-mix(in oklab, var(--choice-muted) 70%, transparent);
+  }
+
+  .choice.container button {
+    padding-inline-start: 28px;
   }
 
   .choice.container button.big {
-    padding: 14px 16px;
-    font-size: 15px;
-    font-weight: 650;
+    font-size: 13px;
+    font-weight: 700;
   }
 
   .choice.container button.recommended {
-    background: var(--choice-primary);
-    color: var(--choice-primary-fg);
-    border-color: transparent;
+    font-weight: 800;
   }
 
   .choice.container button.faint {
@@ -113,22 +166,30 @@
   }
 
   .choice.container button:hover {
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .choice.container button:active {
-    transform: translateY(0px);
+    background: rgba(255, 255, 255, 0.09);
   }
 
   .choice.container button:focus-visible {
     outline: none;
+    background: var(--choice-highlight-bg);
+    color: var(--choice-highlight-fg);
+    border-color: var(--choice-highlight-border);
     box-shadow: 0 0 0 3px var(--choice-focus);
+  }
+
+  .choice.container button:focus-visible::before {
+    color: var(--choice-highlight-fg);
   }
 
   @media (max-inline-size: 520px) {
     .choice.container {
       inline-size: 100%;
-      border-radius: 14px;
+      border-radius: 6px;
       padding: 14px;
       box-shadow: none;
     }

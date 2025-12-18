@@ -1,19 +1,21 @@
 .basic-settings {
   padding: 14px;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .basic-settings h2 {
   margin: 0;
   font-size: 18px;
+  letter-spacing: 0.01em;
 }
 
 .basic-settings .card {
   border: 1px solid var(--basic-border);
-  border-radius: 12px;
+  border-radius: var(--basic-radius-lg);
   padding: 12px;
-  background: transparent;
+  background: var(--basic-surface-container-high);
+  box-shadow: var(--basic-elev-0);
   display: grid;
   gap: 10px;
 }
@@ -22,6 +24,7 @@
   margin: 0;
   font-size: 14px;
   opacity: 0.95;
+  letter-spacing: 0.01em;
 }
 
 .basic-settings .field {
@@ -32,16 +35,27 @@
 
 .basic-settings .field > span {
   opacity: 0.9;
+  color: var(--basic-on-surface-variant);
 }
 
 .basic-settings input,
 .basic-settings select {
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--basic-border);
-  background: var(--basic-btn);
-  color: var(--basic-btn-fg);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
+  background: var(--basic-surface-container-highest);
+  color: var(--basic-on-surface);
   outline: none;
+  transition:
+    background-color var(--basic-motion-fast),
+    border-color var(--basic-motion-fast),
+    box-shadow var(--basic-motion-fast);
+}
+
+.basic-settings input:focus-visible,
+.basic-settings select:focus-visible {
+  border-color: color-mix(in oklab, var(--basic-primary) 65%, var(--basic-outline-variant));
+  box-shadow: var(--basic-focus-ring);
 }
 
 .basic-settings .field.checkbox {
@@ -59,10 +73,12 @@
 .basic-settings .note {
   font-size: 12px;
   opacity: 0.9;
+  color: var(--basic-on-surface-variant);
 }
 
 .basic-settings .ext-note {
   font-size: 12px;
   opacity: 0.8;
+  color: var(--basic-on-surface-variant);
 }
 
