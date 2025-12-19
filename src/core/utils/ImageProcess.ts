@@ -20,6 +20,9 @@ export const removeAnyDataPrefix = (b64url: string) => {
     return b64url?.replace?.('data:image/png;base64,', "")?.replace?.(/data:image\/jpeg;base64,/, "");
 }
 
+// alias for compatibility
+export const removeAnyPrefix = removeAnyDataPrefix;
+
 //
 export const getMimeFromDataURL = (data_url: string) => {
     return data_url?.match?.(/data:image\/(.*);base64,/)?.[1] || "image/png";

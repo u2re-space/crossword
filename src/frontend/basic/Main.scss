@@ -144,6 +144,7 @@
   box-shadow: var(--basic-elev-0);
   user-select: none;
   touch-action: manipulation;
+  pointer-events: auto;
 }
 
 .btn.small {

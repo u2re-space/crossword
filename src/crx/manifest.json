@@ -18,31 +18,30 @@
         "service_worker": "sw.ts",
         "type": "module"
     },
-    "icons": {
-        "512": "assets/512x.png"
-    },
     "permissions": [
         "tabs",
         "storage",
         "activeTab",
         "scripting",
-        "background",
         "clipboardWrite",
         "clipboardRead",
         "contextMenus",
         "nativeMessaging",
         "tabCapture",
         "downloads",
-        "webNavigation"
+        "webNavigation",
+        "offscreen"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://u2re.space https://*.u2re.space *;",
         "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' 'wasm-eval' http://**/* https://**/* file://**/*; child-src 'self';"
     },
     "host_permissions": [
         "<all_urls>",
         "file://**/*",
-        "file:///**/*"
+        "file:///**/*",
+        "https://u2re.space/*",
+        "https://*.u2re.space/*"
     ],
     "content_scripts": [
         {
@@ -58,8 +57,12 @@
     "web_accessible_resources": [{
         "resources": [
             "markdown/viewer.html",
+            "offscreen/copy.html",
             "assets/*"
         ],
         "matches": ["<all_urls>"]
-    }]
+    }],
+    "icons": {
+        "512": "icons/icon.png"
+    }
 }

@@ -132,11 +132,20 @@ export const recognizeByInstructions = async (
     sendResponse?: (result: RecognizeResult) => void,
     options: ExtendedRecognizeOptions = {}
 ): Promise<RecognizeResult> => {
-    const settings = (await loadSettings())?.ai;
+    let settings;
+    try {
+        settings = (await loadSettings())?.ai;
+    } catch (e) {
+        console.error("Failed to load settings:", e);
+        const result = { ok: false, error: "Failed to load settings" };
+        sendResponse?.(result);
+        return result;
+    }
 
     const token = settings?.apiKey;
     if (!token) {
-        const result = { ok: false, error: "No API key or input" };
+        console.warn("No API key found. Settings:", { hasApiKey: !!settings?.apiKey, hasBaseUrl: !!settings?.baseUrl });
+        const result = { ok: false, error: "No API key configured. Please set your API key in extension settings." };
         sendResponse?.(result);
         return result;
     }
@@ -158,8 +167,8 @@ export const recognizeByInstructions = async (
     const requestBody: any = {
         model: settings?.model || DEFAULT_MODEL,
         input,
-        reasoning: { "effort": options.effort || "medium" },
-        text: { verbosity: options.verbosity || "medium" },
+        reasoning: { effort: options.effort || "low" },
+        text: { verbosity: options.verbosity || "low" },
         max_output_tokens: 400000,
         instructions: finalInstructions
     };
@@ -169,26 +178,106 @@ export const recognizeByInstructions = async (
         requestBody.response_format = { type: "json_object" };
     }
 
-    const r: Response | any = await fetch(`${settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-    })?.catch?.(e => {
-        console.warn(e);
-        return { ok: false, error: String(e) };
-    });
+    const apiUrl = `${settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`;
+    console.log("[AI] Request to:", apiUrl, "Model:", settings?.model || DEFAULT_MODEL);
 
-    const res = await r?.json?.()?.catch?.((e: any) => {
-        console.warn(e);
-        return { ok: false, error: String(e) };
-    }) || {};
+    let r: Response | null = null;
+    let fetchError: string | null = null;
+
+    try {
+        r = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+    } catch (e) {
+        fetchError = e instanceof Error ? e.message : String(e);
+        console.error("[AI] Fetch failed:", fetchError);
+    }
+
+    if (fetchError || !r) {
+        const result: RecognizeResult = { ok: false, error: `Network error: ${fetchError || "No response"}` };
+        sendResponse?.(result);
+        return result;
+    }
+
+    // Parse response body
+    let res: any = null;
+    try {
+        res = await r.json();
+    } catch (e) {
+        console.error("[AI] Failed to parse JSON response:", e);
+        const result: RecognizeResult = { ok: false, error: "Failed to parse API response" };
+        sendResponse?.(result);
+        return result;
+    }
+
+    console.log("[AI] Response status:", r.status, "ok:", r.ok);
+    console.log("[AI] Response body:", JSON.stringify(res).slice(0, 1000));
+
+    // Check for API error
+    if (!r.ok) {
+        const apiError = res?.error?.message || res?.error || res?.message || `HTTP ${r.status}`;
+        console.error("[AI] API error:", apiError);
+        const result: RecognizeResult = { ok: false, error: `API error: ${apiError}`, raw: res };
+        sendResponse?.(result);
+        return result;
+    }
+
+    // Extract text from various response structures
+    const extractTextFromResponse = (response: any): string | undefined => {
+        if (!response) return undefined;
+
+        // Try output_text array first (some models return this)
+        if (Array.isArray(response.output_text) && response.output_text.length) {
+            return response.output_text.filter((t: any) => typeof t === "string").join("\n\n");
+        }
+
+        // Try output array
+        const outputs = response.output || [];
+        const texts: string[] = [];
+
+        for (const msg of outputs) {
+            const content = msg?.content || [];
+            if (!Array.isArray(content)) continue;
+
+            for (const part of content) {
+                // Handle direct text string
+                if (typeof part?.text === "string") {
+                    texts.push(part.text);
+                }
+                // Handle nested text.value (some response formats)
+                else if (typeof part?.text?.value === "string") {
+                    texts.push(part.text.value);
+                }
+                // Handle output_text type
+                else if (part?.type === "output_text" && typeof part?.text === "string") {
+                    texts.push(part.text);
+                }
+            }
+        }
+
+        return texts.length ? texts.join("\n\n").trim() : undefined;
+    };
+
+    const extractedText = extractTextFromResponse(res);
+
+    if (!extractedText) {
+        console.warn("[AI] No text extracted. Response structure:", Object.keys(res || {}));
+        if (res?.output) {
+            console.warn("[AI] Output structure:", JSON.stringify(res.output).slice(0, 500));
+        }
+    } else {
+        console.log("[AI] Extracted text length:", extractedText.length);
+    }
 
     const output: RecognizeResult = {
-        ok: r?.ok,
-        data: res?.output?.at?.(-1)?.content?.[0]?.text?.trim?.(),
+        ok: !!extractedText,
+        data: extractedText,
+        error: !extractedText ? "No text found in AI response" : undefined,
         raw: res
     };
 
@@ -196,19 +285,20 @@ export const recognizeByInstructions = async (
     return output;
 };
 
-//
+// For image recognition: use low effort (minimal reasoning) and low verbosity (concise output)
 export const recognizeImageData = async (
     input: any,
     sendResponse?: (result: RecognizeResult) => void,
     options?: ExtendedRecognizeOptions
 ): Promise<RecognizeResult> => {
     return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, {
-        effort: "medium",
+        effort: "low",
+        verbosity: "low",
         ...options
     });
 };
 
-//
+// For text conversion: use low effort and low verbosity for concise output
 export const convertTextualData = async (
     input: any,
     sendResponse?: (result: RecognizeResult) => void,
@@ -216,6 +306,7 @@ export const convertTextualData = async (
 ): Promise<RecognizeResult> => {
     return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse, {
         effort: "low",
+        verbosity: "low",
         ...options
     });
 };

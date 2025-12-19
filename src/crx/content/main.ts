@@ -1,19 +1,16 @@
 import { showToast } from "./overlay";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
+import "./copy"; // handles COPY_HACK messages
+import "./snip"; // handles START_SNIP messages
 
-//
-const COPY_HACK = async (data) => {
-    if (data) {
-        try {
-            await navigator?.clipboard?.writeText?.(data)?.catch?.(err => {
-                console.warn('Failed to copy text: ', err);
-            });
-            console.log('Text copied to clipboard');
-        } catch (err) {
-            console.warn('Failed to copy text: ', err);
-        }
-    }
-}
+// coordinate and element tracking (similar to CrossHelp state.ts)
+const coordinate: [number, number] = [0, 0];
+const lastElementRef: [HTMLElement | null] = [null];
+
+const saveCoordinate = (e: PointerEvent | MouseEvent) => {
+    coordinate[0] = e?.clientX ?? coordinate[0];
+    coordinate[1] = e?.clientY ?? coordinate[1];
+};
 
 const opMap = new Map<string, (target: HTMLElement) => unknown>([
     ["copy-as-latex", copyAsTeX],
@@ -22,50 +19,55 @@ const opMap = new Map<string, (target: HTMLElement) => unknown>([
     ["copy-as-html", copyAsHTML],
 ]);
 
+// legacy aliases for compatibility
 let lastX = 0;
 let lastY = 0;
 let lastElement: HTMLElement | null = null;
 
-document.addEventListener(
-    "pointerdown",
-    (e) => {
-        lastX = e.clientX;
-        lastY = e.clientY;
-        lastElement = e.target as HTMLElement | null;
-    },
-    { passive: true, capture: true }
-);
+// event listeners for coordinate tracking
+const updateLastPosition = (e: PointerEvent | MouseEvent) => {
+    lastX = e.clientX;
+    lastY = e.clientY;
+    lastElement = e.target as HTMLElement | null;
+    saveCoordinate(e);
+    lastElementRef[0] = lastElement;
+};
+
+document.addEventListener("pointerdown", updateLastPosition, { passive: true, capture: true });
+document.addEventListener("pointerup", updateLastPosition, { passive: true, capture: true });
+document.addEventListener("click", saveCoordinate as EventListener, { passive: true, capture: true });
 document.addEventListener(
     "contextmenu",
     (e) => {
-        lastX = e.clientX;
-        lastY = e.clientY;
-        lastElement = e.target as HTMLElement | null;
+        updateLastPosition(e);
+        lastElementRef[0] = (e?.target as HTMLElement) || lastElementRef[0];
     },
     { passive: true, capture: true }
 );
 
-//
+// message handler for selection queries
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "highlight-selection") {
         const selection = window.getSelection?.()?.toString?.() ?? "";
         sendResponse({ selection });
         return true;
     }
+    return false;
 });
 
-//
-chrome.runtime.onMessage.addListener((res, sender, sendResponse) => {
-    (async () => {
-        if (res?.type == "COPY_HACK") {
-            await COPY_HACK(res?.data);
-            sendResponse({ ok: res?.ok ?? true, data: res?.data });
-            showToast(res?.ok ? "Copying is done" : (res?.error || "Failed to copy"));
-        }
-
-        if (typeof res?.type === "string" && opMap.has(res.type)) {
+// message handler for copy-as-* operations (context menu)
+chrome.runtime.onMessage.addListener((res, _sender, sendResponse) => {
+    // only handle copy-as-* operations here (COPY_HACK is handled in copy.ts)
+    if (typeof res?.type === "string" && opMap.has(res.type)) {
+        (async () => {
             const op = opMap.get(res.type);
-            const target = lastElement || (document.elementFromPoint(lastX, lastY) as HTMLElement | null) || (document.body as HTMLElement);
+            const target =
+                lastElementRef[0] ||
+                lastElement ||
+                (document.elementFromPoint(coordinate[0], coordinate[1]) as HTMLElement | null) ||
+                (document.elementFromPoint(lastX, lastY) as HTMLElement | null) ||
+                document.body;
+
             try {
                 if (op && target) {
                     await op(target);
@@ -74,11 +76,12 @@ chrome.runtime.onMessage.addListener((res, sender, sendResponse) => {
                     return;
                 }
             } catch (e) {
-                console.warn(e);
+                console.warn("Copy operation failed:", e);
             }
-            showToast("Failed");
+            showToast("Failed to copy");
             sendResponse({ ok: false });
-        }
-    })();
-    return true;
+        })();
+        return true;
+    }
+    return false;
 });

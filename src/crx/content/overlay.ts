@@ -1,101 +1,192 @@
-//import "./styles.scss";
+// Import styles (CRXJS injects via injectCss: true)
+import overlayStyles from "./overlay.scss?inline";
 
-//
-export const selDom = () => {
-    const overlay = document.createElement("div");
-    overlay.className = "sel-dom-overlay";
-    overlay.draggable = false;
-    overlay.tabIndex = -1;
-    overlay.popover = "manual";
+// Inject styles programmatically as fallback
+const injectStyles = () => {
+    if (document.getElementById("__sel-dom-styles__")) return;
+    const style = document.createElement("style");
+    style.id = "__sel-dom-styles__";
+    style.textContent = overlayStyles;
+    (document.head || document.documentElement).appendChild(style);
+};
 
-    //
-    const box = document.createElement("div");
-    box.className = "sel-dom-box";
-    box.tabIndex = -1;
+// create overlay elements lazily to avoid issues with document_start timing
+let _overlay: HTMLDivElement | null = null;
+let _box: HTMLDivElement | null = null;
+let _hint: HTMLDivElement | null = null;
+let _sizeBadge: HTMLDivElement | null = null;
+let _toast: HTMLDivElement | null = null;
+let _initialized = false;
 
-    //
-    const hint = document.createElement("div");
-    hint.className = "sel-dom-hint";
-    hint.textContent = "Select area. Esc — cancel";
-    hint.tabIndex = -1;
+const ensureInitialized = () => {
+    if (_initialized && _overlay?.isConnected) return;
 
-    //
-    const sizeBadge = document.createElement("div");
-    sizeBadge.className = "sel-dom-size-badge";
-    sizeBadge.textContent = "";
-    sizeBadge.tabIndex = -1;
+    // wait for document to be ready
+    if (!document?.documentElement) return;
 
-    //
-    const toast = document.createElement("div");
-    toast.className = "sel-dom-toast";
-    toast.tabIndex = -1;
+    // inject styles first
+    injectStyles();
 
-    //
-    box.appendChild(sizeBadge);
-    overlay.appendChild(box);
-    overlay.appendChild(hint);
+    _overlay = document.createElement("div");
+    _overlay.className = "sel-dom-overlay";
+    _overlay.draggable = false;
+    _overlay.tabIndex = -1;
+    _overlay.popover = "manual";
 
-    //
-    document.documentElement.appendChild(toast);
+    _box = document.createElement("div");
+    _box.className = "sel-dom-box";
+    _box.tabIndex = -1;
 
-    //
-    toast.addEventListener("transitionend", () => {
-        if (!toast.classList.contains("is-visible")) {
-            //toast.classList.remove("is-visible");
-            toast.textContent = "";
+    _hint = document.createElement("div");
+    _hint.className = "sel-dom-hint";
+    _hint.textContent = "Select area. Esc — cancel";
+    _hint.tabIndex = -1;
+
+    _sizeBadge = document.createElement("div");
+    _sizeBadge.className = "sel-dom-size-badge";
+    _sizeBadge.textContent = "";
+    _sizeBadge.tabIndex = -1;
+
+    _toast = document.createElement("div");
+    _toast.className = "sel-dom-toast";
+    _toast.tabIndex = -1;
+
+    _box.appendChild(_sizeBadge);
+    _overlay.appendChild(_box);
+    _overlay.appendChild(_hint);
+
+    // append to DOM
+    document.documentElement.appendChild(_toast);
+    document.documentElement.appendChild(_overlay);
+
+    // toast transition cleanup
+    _toast.addEventListener("transitionend", () => {
+        if (!_toast?.classList.contains("is-visible")) {
+            if (_toast) _toast.textContent = "";
         }
     });
 
-    //
-    const showToast = (text: string) => {
-        if (!toast.classList.contains("is-visible")) toast.classList.add("is-visible");
-        if (toast.textContent == text) return; toast.textContent = text;
+    _initialized = true;
+};
 
-        //
-        setTimeout(() => {
-            if (toast.textContent != text) return;
-            //toast.textContent = "";
-            toast.classList.remove("is-visible");
-        }, 1800);
+// getters for lazy initialization
+export const getOverlay = (): HTMLDivElement => {
+    ensureInitialized();
+    return _overlay!;
+};
+
+export const getBox = (): HTMLDivElement => {
+    ensureInitialized();
+    return _box!;
+};
+
+export const getHint = (): HTMLDivElement => {
+    ensureInitialized();
+    return _hint!;
+};
+
+export const getSizeBadge = (): HTMLDivElement => {
+    ensureInitialized();
+    return _sizeBadge!;
+};
+
+export const getToast = (): HTMLDivElement => {
+    ensureInitialized();
+    return _toast!;
+};
+
+// legacy exports (proxies to lazy getters)
+export const overlay = new Proxy({} as HTMLDivElement, {
+    get: (_, prop) => (getOverlay() as any)[prop],
+    set: (_, prop, value) => { (getOverlay() as any)[prop] = value; return true; }
+});
+
+export const box = new Proxy({} as HTMLDivElement, {
+    get: (_, prop) => (getBox() as any)[prop],
+    set: (_, prop, value) => { (getBox() as any)[prop] = value; return true; }
+});
+
+export const hint = new Proxy({} as HTMLDivElement, {
+    get: (_, prop) => (getHint() as any)[prop],
+    set: (_, prop, value) => { (getHint() as any)[prop] = value; return true; }
+});
+
+export const sizeBadge = new Proxy({} as HTMLDivElement, {
+    get: (_, prop) => (getSizeBadge() as any)[prop],
+    set: (_, prop, value) => { (getSizeBadge() as any)[prop] = value; return true; }
+});
+
+export const showToast = (text: string) => {
+    ensureInitialized();
+    const toast = _toast;
+    if (!toast) return;
+
+    if (!toast.classList.contains("is-visible")) {
+        toast.classList.add("is-visible");
     }
 
-    //
-    const showSelection = () => {
-        overlay?.showPopover?.();
-        overlay.style.setProperty("display", "block", "important");
+    if (toast.textContent === text) return;
+    toast.textContent = text;
 
-        // reset box
-        box.style.left = 0 + "px";
-        box.style.top = 0 + "px";
-        box.style.width = 0 + "px";
-        box.style.height = 0 + "px";
+    setTimeout(() => {
+        if (toast.textContent !== text) return;
+        toast.classList.remove("is-visible");
+    }, 1800);
+};
 
-        // reset size badge
+export const showSelection = () => {
+    ensureInitialized();
+    const overlay = _overlay;
+    const box = _box;
+    const sizeBadge = _sizeBadge;
+    if (!overlay || !box || !sizeBadge) return;
+
+    try {
+        overlay.showPopover?.();
+    } catch (e) {
+        console.warn("showPopover failed:", e);
+    }
+
+    overlay.style.setProperty("display", "block", "important");
+
+    // reset box position and size
+    box.style.left = "0px";
+    box.style.top = "0px";
+    box.style.width = "0px";
+    box.style.height = "0px";
+
+    sizeBadge.textContent = "";
+};
+
+export const hideSelection = () => {
+    const overlay = _overlay;
+    const box = _box;
+    const sizeBadge = _sizeBadge;
+    if (!overlay) return;
+
+    overlay.style.removeProperty("display");
+
+    try {
+        overlay.hidePopover?.();
+    } catch (e) {
+        console.warn("hidePopover failed:", e);
+    }
+
+    if (box) {
+        box.style.left = "0px";
+        box.style.top = "0px";
+        box.style.width = "0px";
+        box.style.height = "0px";
+    }
+
+    if (sizeBadge) {
         sizeBadge.textContent = "";
     }
+};
 
-    //
-    const hideSelection = () => {
-        overlay.style.removeProperty("display");
-        overlay?.hidePopover?.();
-
-        // reset box
-        box.style.left = 0 + "px";
-        box.style.top = 0 + "px";
-        box.style.width = 0 + "px";
-        box.style.height = 0 + "px";
-
-        // reset size badge
-        sizeBadge.textContent = "";
-    }
-
-    //
-    return { overlay, box, hint, sizeBadge, showSelection, hideSelection, showToast, toast };
+// auto-initialize when DOM is ready
+if (document?.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureInitialized, { once: true });
+} else {
+    ensureInitialized();
 }
-
-//
-export default selDom;
-
-//
-export const { overlay, box, hint, sizeBadge, showSelection, hideSelection, showToast } = selDom();
-document?.documentElement?.append?.(overlay);

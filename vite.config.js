@@ -36,13 +36,15 @@ const baseConfig = await importConfig(
 
 const manifest = await readFile(resolve(__dirname, "./src/crx/manifest.json"), { encoding: "utf8" }).then(JSON.parse);
 
+const crxRoot = resolve(__dirname, "./src/crx");
+
 const crxInputs = {
-    popup: resolve(__dirname, "./src/crx/popup/index.html"),
-    newtab: resolve(__dirname, "./src/crx/newtab/index.html"),
-    settings: resolve(__dirname, "./src/crx/settings/index.html"),
-    "markdown-viewer": resolve(__dirname, "./src/crx/markdown/viewer.html"),
-    content: resolve(__dirname, "./src/crx/content/main.ts"),
-    background: resolve(__dirname, "./src/crx/sw.ts")
+    popup: resolve(crxRoot, "./popup/index.html"),
+    newtab: resolve(crxRoot, "./newtab/index.html"),
+    settings: resolve(crxRoot, "./settings/index.html"),
+    "markdown-viewer": resolve(crxRoot, "./markdown/viewer.html"),
+    content: resolve(crxRoot, "./content/main.ts"),
+    background: resolve(crxRoot, "./sw.ts")
 };
 
 const createCrxConfig = () => {
@@ -51,7 +53,19 @@ const createCrxConfig = () => {
         browser: "chrome",
         contentScripts: { injectCss: true },
     });
-    const basePlugins = (baseConfig?.plugins || []).filter((plugin) => plugin?.name !== "vite:singlefile");
+    // CRX build is not a PWA build. Disable PWA-related plugins (PWA + static-copy).
+    const isPwaPlugin = (plugin) => {
+        const name = plugin?.name;
+        return typeof name === "string" && (name === "vite-plugin-pwa" || name.startsWith("vite-plugin-pwa:"));
+    };
+    const isStaticCopyPlugin = (plugin) => {
+        const name = plugin?.name;
+        return typeof name === "string" && name.startsWith("vite-plugin-static-copy:");
+    };
+    const basePlugins = (baseConfig?.plugins || [])
+        .flat?.(Infinity)
+        ?.filter?.((plugin) => plugin?.name !== "vite:singlefile" && !isPwaPlugin(plugin) && !isStaticCopyPlugin(plugin))
+        ?? [];
     const baseRollup = baseConfig?.build?.rollupOptions ?? {};
     const baseOutput = Array.isArray(baseRollup.output) ? baseRollup.output[0] : (baseRollup.output ?? {});
 
@@ -61,33 +75,25 @@ const createCrxConfig = () => {
         chunkFileNames: "modules/[name].js",
         assetFileNames: "assets/[name][extname]",
         inlineDynamicImports: false,
-        manualChunks: (id) => {
-            if (id.includes('node_modules')) {
-                const modules = id.split('node_modules/');
-                const pkg = modules[modules.length - 1].split('/');
-                const name = pkg[0].startsWith('@') ? pkg[1] : pkg[0];
-                return `vendor/${name}`;
-            }
-            if (id.includes('/modules/projects/')) {
-                const match = id.match(/\/modules\/projects\/([^/]+)/);
-                if (match && id?.endsWith?.("src/index.ts")) {
-                    return `${[...projectMap?.entries?.()]?.find?.(([k,v])=>match?.[0]?.includes?.("/" + v))?.[0]/*?.replace?.("fest/", "")*/ || "unk"}`;
-                }
-            }
-        }
     });
 
-    return objectAssign({}, baseConfig, {
+    // Avoid deep-merging arrays here: the local `objectAssign` merges arrays by index
+    // and can accidentally keep old plugin arrays (ex: vite-plugin-pwa:*).
+    return {
+        ...baseConfig,
+        root: crxRoot,
         base: "./",
         plugins: [...basePlugins, crxPlugin],
-        build: objectAssign({}, baseConfig?.build, {
+        build: {
+            ...(baseConfig?.build ?? {}),
             lib: undefined,
-            rollupOptions: objectAssign({}, baseRollup, {
+            rollupOptions: {
+                ...baseRollup,
                 input: crxInputs,
                 output: crxOutput
-            })
-        })
-    });
+            }
+        }
+    };
 };
 
 export default async ({ mode } = {}) => {

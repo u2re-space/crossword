@@ -4,6 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "build:crx": "vite build --config vite.config.js --mode crx",
         "preview": "vite preview",
         "start": "vite",
         "dev": "vite dev",

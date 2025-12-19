@@ -1,6 +1,5 @@
-import frontend from "../../frontend/basic";
-
 const mount = document.getElementById("app") as HTMLElement | null;
+const raw = document.getElementById("raw-md") as HTMLPreElement | null;
 
 const LAST_SRC_KEY = "rs-md-viewer-last-src";
 const LAST_MD_KEY = "rs-basic-markdown";
@@ -55,13 +54,68 @@ const loadTextFromSrc = async (src: string): Promise<string> => {
   }
 };
 
+const loadTextFromSessionKey = async (key: string) => {
+  try {
+    const obj = await chrome.storage?.session?.get?.(key);
+    const text = obj?.[key];
+    if (typeof text === "string") {
+      chrome.storage?.session?.remove?.(key)?.catch?.(() => {});
+      return text;
+    }
+  } catch {
+    // ignore
+  }
+  return "";
+};
+
+const requestMarkdownFromServiceWorker = async (src: string) => {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: "md:load", src });
+    const key = res?.key;
+    const normalized = res?.src;
+    if (typeof normalized === "string" && normalized && normalized !== src && isProbablyUrl(normalized)) {
+      saveLastSrc(normalized);
+    }
+    if (typeof key === "string" && key) {
+      return await loadTextFromSessionKey(key);
+    }
+  } catch {
+    // ignore
+  }
+  return "";
+};
+
 void (async () => {
   if (!mount) return;
+  // Show something immediately (sync) while we load the real markdown payload.
+  // This is an internal "clipboard emulation" UX: raw-first, app-after.
+  if (raw) raw.textContent = loadLastMarkdown() || "";
+
   const params = new URLSearchParams(location.search);
+  const mdk = (params.get("mdk") || "").trim();
   const src = (params.get("src") || "").trim() || loadLastSrc();
   if (src && isProbablyUrl(src)) saveLastSrc(src);
-  const text = src ? await loadTextFromSrc(src) : "";
+  const text =
+    mdk
+      ? await loadTextFromSessionKey(mdk)
+      : (src ? (await requestMarkdownFromServiceWorker(src)) : "") || (src ? await loadTextFromSrc(src) : "");
+
+  // Display raw markdown ASAP (before loading the heavier app bundle).
+  if (raw) raw.textContent = text || "";
+
+  // Persist last markdown for "instant" raw fallback next time.
+  try {
+    if (text) localStorage.setItem(LAST_MD_KEY, text);
+  } catch {
+    // ignore
+  }
+
+  // Lazy-load the actual app and then "paste" (pass) the same markdown into it.
+  const { default: frontend } = await import("../../frontend/basic");
   frontend(mount, { initialView: "markdown", initialMarkdown: text || undefined });
+
+  // Once the app mounts, hide the raw layer.
+  if (raw) raw.style.display = "none";
 })();
 
 

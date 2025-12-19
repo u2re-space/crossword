@@ -46,6 +46,7 @@
   background: var(--basic-surface-container-highest);
   color: var(--basic-on-surface);
   outline: none;
+  pointer-events: auto;
   transition:
     background-color var(--basic-motion-fast),
     border-color var(--basic-motion-fast),
