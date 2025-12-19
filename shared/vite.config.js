@@ -155,11 +155,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 quietDeps: true,
                 charset: false,
                 precision: 8,
-                quietDeps: true,
-                charset: false,
-                precision: 8,
-                quietDeps: true,
-                charset: false,
             }
         }
     }

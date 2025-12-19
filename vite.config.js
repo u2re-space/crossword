@@ -77,8 +77,7 @@ const createCrxConfig = () => {
         inlineDynamicImports: false,
     });
 
-    // Avoid deep-merging arrays here: the local `objectAssign` merges arrays by index
-    // and can accidentally keep old plugin arrays (ex: vite-plugin-pwa:*).
+    // CRX build configuration - avoid conflicts with base config
     return {
         ...baseConfig,
         root: crxRoot,
@@ -87,10 +86,16 @@ const createCrxConfig = () => {
         build: {
             ...(baseConfig?.build ?? {}),
             lib: undefined,
+            // Disable modulePreload for CRX - causes broken imports with __vitePreload
+            modulePreload: false,
             rollupOptions: {
                 ...baseRollup,
                 input: crxInputs,
-                output: crxOutput
+                output: {
+                    ...crxOutput,
+                    // Don't use manualChunks from base config - let CRX plugin handle chunking
+                    manualChunks: undefined,
+                }
             }
         }
     };
