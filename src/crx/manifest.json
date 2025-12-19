@@ -8,7 +8,6 @@
         "default_title": "CrossWord"
     },
     "chrome_url_overrides": {
-        "newtab": "newtab/index.html"
     },
     "options_ui": {
         "page": "settings/index.html",
