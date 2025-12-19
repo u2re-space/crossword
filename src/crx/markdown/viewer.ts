@@ -1,3 +1,5 @@
+import frontend from "../../frontend/basic";
+
 const mount = document.getElementById("app") as HTMLElement | null;
 const raw = document.getElementById("raw-md") as HTMLPreElement | null;
 
@@ -110,8 +112,7 @@ void (async () => {
     // ignore
   }
 
-  // Lazy-load the actual app and then "paste" (pass) the same markdown into it.
-  const { default: frontend } = await import("../../frontend/basic");
+  // Mount the app with the markdown content
   frontend(mount, { initialView: "markdown", initialMarkdown: text || undefined });
 
   // Once the app mounts, hide the raw layer.
