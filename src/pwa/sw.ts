@@ -26,22 +26,115 @@ const routes = [
     makeTimeline
 ].map((makeRoute) => makeRoute());
 
-// for PWA compatibility
+// Broadcast channel for cross-context communication
+const shareTargetChannel = new BroadcastChannel('rs-share-target');
+const toastChannel = new BroadcastChannel('rs-toast');
+const clipboardChannel = new BroadcastChannel('rs-clipboard');
+
+// Share target handler - works independently of mode/settings
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
-    const settings = await loadSettings();
-    if (!settings || !settings?.ai || !settings.ai?.apiKey) return new Response(null, { status: 302, headers: { Location: '/' } });
+    const settings = await loadSettings().catch(() => null);
 
-    //
-    let results: Promise<any> = new Promise((resolve, reject) => {
-        if (settings?.ai?.shareTargetMode == "analyze") {
-            commitAnalyze?.(e)?.then?.(rs => { console.log('analyze results', rs); resolve(rs); })?.catch?.(reject);
-        } else {
-            commitRecognize?.(e)?.then?.(rs => { console.log('recognize results', rs); resolve(rs); })?.catch?.(reject);
+    try {
+        const fd = await e.request.formData().catch(() => null);
+        if (!fd) {
+            return new Response(null, { status: 302, headers: { Location: '/' } });
         }
-    });
 
-    // needs to make redirect to index.html and handle to copy data to clipboard
-    return new Response(null, { status: 302, headers: { Location: '/' } });
+        const shareData = {
+            title: fd.get('title') || '',
+            text: fd.get('text') || '',
+            url: fd.get('url') || '',
+            files: fd.getAll('files') || [],
+            timestamp: Date.now()
+        };
+
+        // Store share data for client retrieval
+        try {
+            await (self as any).caches?.open?.('share-target-data')?.then?.((cache: Cache) =>
+                cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
+                    headers: { 'Content-Type': 'application/json' }
+                }))
+            );
+        } catch (e) { console.warn('[ShareTarget] Cache store failed:', e); }
+
+        // Broadcast share data to clients
+        try {
+            shareTargetChannel.postMessage({ type: 'share-received', data: shareData });
+        } catch (e) { console.warn('[ShareTarget] Broadcast failed:', e); }
+
+        // If AI settings available, process in background
+        if (settings?.ai?.apiKey) {
+            const processPromise = (async () => {
+                try {
+                    const mode = settings?.ai?.shareTargetMode || 'recognize';
+                    let results: any[];
+
+                    if (mode === 'analyze') {
+                        results = await commitAnalyze?.(e)?.catch?.(() => []) || [];
+                        console.log('[ShareTarget] Analyze results:', results);
+                    } else {
+                        results = await commitRecognize?.(e)?.catch?.(() => []) || [];
+                        console.log('[ShareTarget] Recognize results:', results);
+                    }
+
+                    // Broadcast results for clipboard copy
+                    if (results?.length) {
+                        clipboardChannel.postMessage({
+                            type: 'copy',
+                            data: results?.[0]?.data || results,
+                            options: { showFeedback: true }
+                        });
+
+                        toastChannel.postMessage({
+                            type: 'show-toast',
+                            options: {
+                                message: 'Content recognized and copied!',
+                                kind: 'success',
+                                duration: 3000
+                            }
+                        });
+                    }
+
+                    return results;
+                } catch (err) {
+                    console.warn('[ShareTarget] Processing failed:', err);
+                    toastChannel.postMessage({
+                        type: 'show-toast',
+                        options: {
+                            message: 'Recognition failed',
+                            kind: 'error',
+                            duration: 3000
+                        }
+                    });
+                    return [];
+                }
+            })();
+
+            // Don't await - process in background
+            e.waitUntil?.(processPromise);
+        } else {
+            // No AI settings - just store for manual handling
+            toastChannel.postMessage({
+                type: 'show-toast',
+                options: {
+                    message: 'Content received. Configure AI settings to enable recognition.',
+                    kind: 'info',
+                    duration: 4000
+                }
+            });
+        }
+
+        // Redirect to index with action parameter
+        const action = settings?.ai?.shareTargetMode || 'recognize';
+        return new Response(null, {
+            status: 302,
+            headers: { Location: `/?action=${action}&shared=1` }
+        });
+    } catch (err) {
+        console.warn('[ShareTarget] Handler error:', err);
+        return new Response(null, { status: 302, headers: { Location: '/' } });
+    }
 }, "POST")
 
 //

@@ -1,7 +1,9 @@
-import { showToast } from "./overlay";
+import { showToast } from "@rs-frontend/shared/overlay";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
-import "./copy"; // handles COPY_HACK messages
-import "./snip"; // handles START_SNIP messages
+
+//
+import "@rs-frontend/shared/copy"; // handles COPY_HACK messages
+import "@rs-frontend/shared/snip"; // handles START_SNIP messages
 
 // coordinate and element tracking (similar to CrossHelp state.ts)
 const coordinate: [number, number] = [0, 0];

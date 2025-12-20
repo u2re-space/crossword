@@ -3,6 +3,39 @@ import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { recognizeImageData } from "./service/RecognizeData";
 
+// BroadcastChannel for cross-context communication (share target-like behavior)
+const TOAST_CHANNEL = "rs-toast";
+const CLIPBOARD_CHANNEL = "rs-clipboard";
+const AI_RECOGNITION_CHANNEL = "rs-ai-recognition";
+
+// Broadcast helper for extension contexts
+const broadcast = (channel: string, message: unknown): void => {
+    try {
+        const bc = new BroadcastChannel(channel);
+        bc.postMessage(message);
+        bc.close();
+    } catch (e) {
+        console.warn(`[CRX-SW] Broadcast to ${channel} failed:`, e);
+    }
+};
+
+// Show toast across all contexts
+const showExtensionToast = (message: string, kind: "info" | "success" | "warning" | "error" = "info"): void => {
+    broadcast(TOAST_CHANNEL, {
+        type: "show-toast",
+        options: { message, kind, duration: 3000 }
+    });
+};
+
+// Request clipboard copy across contexts
+const requestClipboardCopy = (data: unknown, showFeedback = true): void => {
+    broadcast(CLIPBOARD_CHANNEL, {
+        type: "copy",
+        data,
+        options: { showFeedback }
+    });
+};
+
 // offscreen document management for clipboard operations
 let offscreenCreating: Promise<void> | null = null;
 
@@ -238,10 +271,71 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message?.type === "gpt:recognize") {
+        const requestId = message?.requestId || `rec_${Date.now()}`;
+
+        // Broadcast recognition start
+        broadcast(AI_RECOGNITION_CHANNEL, {
+            type: "recognize",
+            requestId,
+            status: "processing"
+        });
+
         recognizeImageData(message?.input, (result) => {
             // keep CrossHelp-compatible shape: res.data.output[...]
-            sendResponse({ ok: result?.ok, data: result?.raw, error: result?.error });
-        })?.catch?.((e) => sendResponse({ ok: false, error: String(e) }));
+            const response = { ok: result?.ok, data: result?.raw, error: result?.error };
+
+            // Broadcast result for cross-context handling
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                ...response
+            });
+
+            // Auto-copy to clipboard if successful and requested
+            if (result?.ok && result?.raw && message?.autoCopy !== false) {
+                const textResult = typeof result.raw === "string"
+                    ? result.raw
+                    : result.raw?.latex || result.raw?.text || JSON.stringify(result.raw);
+                requestClipboardCopy(textResult, true);
+            }
+
+            sendResponse(response);
+        })?.catch?.((e) => {
+            const errorResponse = { ok: false, error: String(e) };
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                ...errorResponse
+            });
+            showExtensionToast(`Recognition failed: ${e}`, "error");
+            sendResponse(errorResponse);
+        });
+        return true;
+    }
+
+    // Handle share-target-like data from external sources (e.g., context menu shares)
+    if (message?.type === "share-target") {
+        const { title, text, url, files } = message.data || {};
+
+        // Store for client retrieval
+        chrome.storage?.local?.set?.({
+            "rs-share-target-data": {
+                title,
+                text,
+                url,
+                files: files?.map?.((f: File) => f.name) || [],
+                timestamp: Date.now()
+            }
+        }).catch(console.warn.bind(console));
+
+        // Broadcast to clients
+        broadcast("rs-share-target", {
+            type: "share-received",
+            data: { title, text, url, timestamp: Date.now() }
+        });
+
+        showExtensionToast("Content received", "info");
+        sendResponse({ ok: true });
         return true;
     }
 });

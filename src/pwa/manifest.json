@@ -1,7 +1,7 @@
 {
     "name": "cross.word",
     "short_name": "CrossWord",
-    "description": "",
+    "description": "AI-powered text recognition, markdown viewer, and productivity tools",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#000000",
@@ -30,8 +30,26 @@
             "text": "text",
             "url": "url",
             "files": [
-                { "name": "files", "accept": ["image/*", "text/*", "application/pdf"] }
+                { "name": "files", "accept": ["image/*", "text/*", "application/pdf", "application/json"] }
             ]
         }
+    },
+    "shortcuts": [
+        {
+            "name": "Recognize (AI)",
+            "short_name": "Recognize",
+            "url": "/?action=recognize",
+            "description": "AI-powered text and image recognition"
+        },
+        {
+            "name": "Analyze (AI)",
+            "short_name": "Analyze",
+            "url": "/?action=analyze",
+            "description": "AI-powered content analysis"
+        }
+    ],
+    "handle_links": "preferred",
+    "launch_handler": {
+        "client_mode": "focus-existing"
     }
 }

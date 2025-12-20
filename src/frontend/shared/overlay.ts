@@ -1,5 +1,12 @@
+/**
+ * Overlay System for Content Scripts and Selection
+ * Integrates with core Toast and Clipboard for cross-context communication
+ */
+
 // Import styles (CRXJS injects via injectCss: true)
 import overlayStyles from "./overlay.scss?inline";
+import { showToast as coreShowToast, initToastReceiver } from "@rs-core/utils/Toast";
+import { initClipboardReceiver } from "@rs-core/utils/Clipboard";
 
 // Inject styles programmatically as fallback
 const injectStyles = () => {
@@ -8,6 +15,19 @@ const injectStyles = () => {
     style.id = "__sel-dom-styles__";
     style.textContent = overlayStyles;
     (document.head || document.documentElement).appendChild(style);
+};
+
+// Initialize broadcast receivers for cross-context communication
+let _receiversInitialized = false;
+const initReceivers = () => {
+    if (_receiversInitialized) return;
+    _receiversInitialized = true;
+
+    // Listen for toast messages from service worker
+    initToastReceiver();
+
+    // Listen for clipboard requests from service worker
+    initClipboardReceiver();
 };
 
 // create overlay elements lazily to avoid issues with document_start timing
@@ -26,6 +46,9 @@ const ensureInitialized = () => {
 
     // inject styles first
     injectStyles();
+
+    // initialize broadcast receivers for cross-context communication
+    initReceivers();
 
     _overlay = document.createElement("div");
     _overlay.className = "sel-dom-overlay";
@@ -116,7 +139,19 @@ export const sizeBadge = new Proxy({} as HTMLDivElement, {
     set: (_, prop, value) => { (getSizeBadge() as any)[prop] = value; return true; }
 });
 
+/**
+ * Show toast in overlay context
+ * Uses core toast system when available, falls back to overlay toast element
+ */
 export const showToast = (text: string) => {
+    // Try core toast system first (provides better cross-context support)
+    try {
+        coreShowToast({ message: text, kind: "info", duration: 1800 });
+        return;
+    } catch (e) {
+        // Fallback to overlay toast element
+    }
+
     ensureInitialized();
     const toast = _toast;
     if (!toast) return;
