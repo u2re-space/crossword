@@ -1,4 +1,4 @@
-import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "./overlay";
+import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/shared/overlay";
 
 // crop area for screen capture
 export interface cropArea {
@@ -12,19 +12,22 @@ let __snipInjected = false;
 let __snipActive = false;
 
 // use chrome API to capture tab visible area
+// Note: Toast for successful copy is handled by clipboard-handler.ts
+// We only show toasts here for errors/failures
 const captureTab = (rect?: cropArea) => {
     return chrome.runtime.sendMessage({ type: "CAPTURE", rect })
         ?.then?.(res => {
             console.log("[Snip] Capture result:", res);
-            if (res?.ok && res?.data) {
-                showToast("Copied to clipboard!");
-            } else if (res?.error) {
-                // Show shortened error for toast, log full error
-                const shortError = res.error.length > 50 ? res.error.slice(0, 50) + "..." : res.error;
-                showToast(shortError);
-                console.error("[Snip] Recognition error:", res.error);
-            } else {
-                showToast("No data recognized");
+            // Toast for success is already shown by clipboard handler
+            // Only show toast for errors or no data
+            if (!res?.ok) {
+                if (res?.error) {
+                    const shortError = res.error.length > 50 ? res.error.slice(0, 50) + "..." : res.error;
+                    showToast(shortError);
+                    console.error("[Snip] Recognition error:", res.error);
+                } else {
+                    showToast("No data recognized");
+                }
             }
             return res || { ok: false, error: "no response" };
         })

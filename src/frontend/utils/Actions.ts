@@ -11,6 +11,7 @@ import { getDirectoryHandle, mountAsRoot, navigate } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
 import { JSOX } from "jsox";
 import { stringRef } from "fest-src/fest/object/index";
+import { writeText, readText } from "@rs-frontend/shared/Clipboard";
 
 
 
@@ -47,10 +48,9 @@ async function startListening() {
         const decoder = new TextDecoder();
         const text = decoder.decode(value.buffer);
 
-        try {
-            await navigator.clipboard.writeText(text);
-        } catch (e) {
-            console.error('Ошибка записи в буфер обмена:', e);
+        const result = await writeText(text);
+        if (!result.ok) {
+            console.error('Clipboard write failed:', result.error);
         }
     });
     await characteristic?.startNotifications?.();
@@ -62,10 +62,10 @@ export const whenPasteInto = async () => {
     if (!characteristic) {
         await connect();
     }
-    const text = await navigator.clipboard.readText()?.catch?.(console.warn.bind(console));
-    if (text) {
+    const result = await readText();
+    if (result.ok && result.data) {
         const encoder = new TextEncoder();
-        const data = encoder.encode(text);
+        const data = encoder.encode(String(result.data));
         await characteristic?.writeValue?.(data);
     }
 }
@@ -154,25 +154,11 @@ export const labelsPerAction = new Map<string, (entityDesc: EntityDescriptor) =>
     ["open-view", (entityDesc: EntityDescriptor | any) => `Open ${entityDesc?.label || "view"}`]
 ]);
 
-//
+// Unified clipboard copy with fallbacks
 const copyTextToClipboard = async (text: string) => {
     if (!text?.length) throw new Error("empty");
-    if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
-    }
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.inset = "0";
-    textarea.style.opacity = "0";
-    textarea.setAttribute("readonly", "true");
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    const success = document.execCommand("copy");
-    textarea.remove();
-    if (!success) throw new Error("execCommand failed");
+    const result = await writeText(text);
+    if (!result.ok) throw new Error(result.error || "clipboard write failed");
     return true;
 };
 

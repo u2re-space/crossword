@@ -56,7 +56,7 @@ export const writeText = async (text: string): Promise<ClipboardResult> => {
     // Try with permissions query
     try {
         if (typeof navigator !== "undefined" && navigator.permissions) {
-            const result = await navigator.permissions.query({ name: "clipboard-write" } as PermissionDescriptor);
+            const result = await navigator.permissions.query({ name: "clipboard-write" } as unknown as PermissionDescriptor);
             if (result.state === "granted" || result.state === "prompt") {
                 await navigator.clipboard.writeText(trimmed);
                 return { ok: true, data: trimmed, method: "clipboard-api" };
@@ -331,6 +331,117 @@ export const isClipboardWriteAvailable = (): boolean => {
     return typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
 };
 
+/**
+ * Check if running in Chrome extension context
+ */
+export const isChromeExtension = (): boolean => {
+    try {
+        return typeof chrome !== "undefined" && !!chrome?.runtime?.id;
+    } catch {
+        return false;
+    }
+};
+
+export interface CRXCopyOptions {
+    tabId?: number;
+    /** Optional fallback function for offscreen document copy */
+    offscreenFallback?: (data: unknown) => Promise<boolean>;
+}
+
+/**
+ * Request copy via Chrome extension message (for CRX service worker → content script)
+ * Falls back to offscreen document or BroadcastChannel if content script fails
+ */
+export const requestCopyViaCRX = async (
+    data: unknown,
+    tabIdOrOptions?: number | CRXCopyOptions
+): Promise<ClipboardResult> => {
+    const options: CRXCopyOptions = typeof tabIdOrOptions === "number"
+        ? { tabId: tabIdOrOptions }
+        : (tabIdOrOptions || {});
+
+    const { tabId, offscreenFallback } = options;
+    const text = toText(data).trim();
+    if (!text) return { ok: false, error: "Empty content" };
+
+    // If in extension context with tabs API
+    if (isChromeExtension() && typeof chrome?.tabs?.sendMessage === "function") {
+        try {
+            // Send to specific tab or active tab
+            if (typeof tabId === "number" && tabId >= 0) {
+                const response = await chrome.tabs.sendMessage(tabId, {
+                    type: "COPY_HACK",
+                    data: text
+                });
+                if (response?.ok) {
+                    return {
+                        ok: true,
+                        data: response?.data,
+                        method: response?.method ?? "broadcast"
+                    };
+                }
+            } else {
+                // Query active tab
+                const tabs = await chrome.tabs.query({ currentWindow: true, active: true });
+                for (const tab of tabs || []) {
+                    if (tab?.id != null && tab.id >= 0) {
+                        try {
+                            const response = await chrome.tabs.sendMessage(tab.id, {
+                                type: "COPY_HACK",
+                                data: text
+                            });
+                            if (response?.ok) {
+                                return {
+                                    ok: true,
+                                    data: response?.data,
+                                    method: response?.method ?? "broadcast"
+                                };
+                            }
+                        } catch {
+                            // Tab may not have content script, continue to next
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("[Clipboard] CRX content script message failed:", err);
+        }
+
+        // Fallback to offscreen document if provided
+        if (offscreenFallback) {
+            try {
+                const ok = await offscreenFallback(text);
+                if (ok) {
+                    return { ok: true, data: text, method: "offscreen" };
+                }
+            } catch (err) {
+                console.warn("[Clipboard] Offscreen fallback failed:", err);
+            }
+        }
+    }
+
+    // Final fallback to BroadcastChannel
+    requestCopy(data, { showFeedback: true });
+    return { ok: false, error: "Broadcast sent, result pending", method: "broadcast" };
+};
+
+/**
+ * COPY_HACK - Legacy API for Chrome extension clipboard operations
+ * Now delegates to unified Clipboard module
+ */
+export const COPY_HACK = async (data: unknown): Promise<boolean> => {
+    const result = await writeText(toText(data));
+    return result.ok;
+};
+
+/**
+ * Copy with result - returns full ClipboardResult for more control
+ */
+export const copyWithResult = async (data: unknown): Promise<ClipboardResult> => {
+    return writeText(toText(data));
+};
+
+
 // Default export for convenience
 export default {
     copy,
@@ -340,9 +451,11 @@ export default {
     readText,
     toText,
     request: requestCopy,
+    requestViaCRX: requestCopyViaCRX,
     listen: listenForClipboardRequests,
     init: initClipboardReceiver,
     isAvailable: isClipboardAvailable,
-    isWriteAvailable: isClipboardWriteAvailable
+    isWriteAvailable: isClipboardWriteAvailable,
+    isChromeExtension
 };
 

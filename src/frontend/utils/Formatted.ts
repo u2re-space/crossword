@@ -1,5 +1,5 @@
 import { parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
-
+import { writeText } from "@rs-frontend/shared/Clipboard";
 
 //
 export const beginDragAsText = (ev: DragEvent) => {
@@ -20,7 +20,7 @@ export const copyPhoneClick = (ev: Event) => {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
         const phone = isPhoneElement?.textContent?.trim?.() ?? '';
-        if (phone) { navigator.clipboard.writeText(phone); }
+        if (phone) writeText(phone);
     }
 }
 
@@ -33,7 +33,7 @@ export const copyEmailClick = (ev: Event) => {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
         const email = isEmailElement?.textContent?.trim?.() ?? '';
-        if (email) { navigator.clipboard.writeText(email); }
+        if (email) writeText(email);
     }
 }
 

@@ -1,6 +1,54 @@
 import { H } from "fest/lure";
 import "./choice.scss";
 
+// PWA clipboard and service worker communication
+import { initPWAClipboard } from "./shared/pwa-copy";
+import { showToast } from "./shared/Toast";
+
+let _receiversCleanup: (() => void) | null = null;
+
+const initReceivers = () => {
+    if (_receiversCleanup) return;
+    _receiversCleanup = initPWAClipboard();
+};
+
+// Handle share target data from service worker
+const handleShareTarget = () => {
+    const params = new URLSearchParams(window.location.search);
+    const shared = params.get("shared");
+
+    if (shared === "1") {
+        // Clean up URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete("shared");
+        url.searchParams.delete("action");
+        window.history.replaceState({}, "", url.pathname + url.hash);
+
+        // Retrieve share data from cache
+        caches.open("share-target-data")
+            .then(cache => cache.match("/share-target-data"))
+            .then(response => response?.json())
+            .then(data => {
+                if (data) {
+                    console.log("[ShareTarget] Received data:", data);
+                    showToast({ message: "Content received!", kind: "success", duration: 2000 });
+                }
+            })
+            .catch(e => console.warn("[ShareTarget] Failed to retrieve data:", e));
+    }
+
+    // Listen for real-time share target broadcasts
+    if (typeof BroadcastChannel !== "undefined") {
+        const shareChannel = new BroadcastChannel("rs-share-target");
+        shareChannel.addEventListener("message", (event) => {
+            if (event.data?.type === "share-received" && event.data?.data) {
+                console.log("[ShareTarget] Broadcast received:", event.data.data);
+                showToast({ message: "Content shared!", kind: "success", duration: 2000 });
+            }
+        });
+    }
+};
+
 export type FrontendChoice = "basic" | "faint";
 
 const CHOICE_KEY = "rs-frontend-choice";
@@ -125,6 +173,12 @@ export const ChoiceScreen = (opts: {
 };
 
 export default async function frontend(mountElement: HTMLElement) {
+  // Initialize broadcast receivers for service worker communication
+  initReceivers();
+
+  // Handle share target data if coming from PWA share
+  handleShareTarget();
+
   const defaultChoice: FrontendChoice = "basic";
 
   const hash = (location.hash || "").replace(/^#/, "").trim().toLowerCase();

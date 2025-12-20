@@ -139,9 +139,24 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             dir: resolve(__dirname, './dist'),
             exports: "auto",
             minifyInternalExports: true,
-            entryFileNames: "[name].js",
+            // Use library name for main entry, [name] for dynamic imports
+            entryFileNames: (chunkInfo) => {
+                // Main entry uses library name
+                if (chunkInfo.isEntry && chunkInfo.name === 'index') {
+                    return `${NAME}.js`;
+                }
+                return "[name].js";
+            },
             chunkFileNames: "modules/[name].js",
-            assetFileNames: "assets/[name][extname]",
+            // Use library name for main CSS, original name for other assets
+            assetFileNames: (assetInfo) => {
+                const ext = assetInfo.name?.split('.').pop() || '';
+                // Main CSS bundle should use library name
+                if (ext === 'css') {
+                    return `assets/${NAME}[extname]`;
+                }
+                return "assets/[name][extname]";
+            },
             manualChunks,
         }
     };
@@ -232,6 +247,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         target: 'esnext',
         outDir: resolve(__dirname, './dist'),
         cssCodeSplit: false,
+        // Ensure CSS file is named after the library
+        cssFileName: `assets/${NAME}`,
         chunkSizeWarningLimit: 2048,
         assetsInlineLimit: 1024 * 16,
         minify: isBuild ? "terser" : false,
@@ -254,6 +271,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             entry: resolve(__dirname, './src/index.ts'),
             name: NAME,
             fileName: NAME,
+            // Explicitly set CSS file name
+            cssFileName: NAME,
         },
     }
 

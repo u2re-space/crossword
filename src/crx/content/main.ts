@@ -1,9 +1,24 @@
-import { showToast } from "@rs-frontend/shared/overlay";
+import { showToast, initOverlay } from "@rs-frontend/shared/overlay";
+import { initToastReceiver } from "@rs-frontend/shared/Toast";
+import { initClipboardReceiver } from "@rs-frontend/shared/Clipboard";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
 
-//
-import "@rs-frontend/shared/copy"; // handles COPY_HACK messages
-import "@rs-frontend/shared/snip"; // handles START_SNIP messages
+// Initialize overlay and broadcast receivers for service worker communication
+initOverlay();
+const cleanupToast = initToastReceiver();
+const cleanupClipboard = initClipboardReceiver();
+
+// Cleanup on unload (for extension reloads)
+if (typeof window !== "undefined") {
+    window.addEventListener("unload", () => {
+        cleanupToast?.();
+        cleanupClipboard?.();
+    }, { once: true });
+}
+
+// Import message handlers (auto-initialize on load)
+import "./copy"; // handles COPY_HACK messages
+import "./snip"; // handles START_SNIP messages
 
 // coordinate and element tracking (similar to CrossHelp state.ts)
 const coordinate: [number, number] = [0, 0];

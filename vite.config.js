@@ -43,6 +43,7 @@ const crxInputs = {
     newtab: resolve(crxRoot, "./newtab/index.html"),
     settings: resolve(crxRoot, "./settings/index.html"),
     "markdown-viewer": resolve(crxRoot, "./markdown/viewer.html"),
+    offscreen: resolve(crxRoot, "./offscreen/copy.html"),
     content: resolve(crxRoot, "./content/main.ts"),
     background: resolve(crxRoot, "./sw.ts")
 };

@@ -1,6 +1,7 @@
 import { makeObjectAssignable, makeReactive, stringRef, safe } from "fest/object";
 import { makeUIState } from "fest/lure/extension/core/UIState";
 import { JSOX } from "jsox";
+import { readText } from "@rs-frontend/shared/Clipboard";
 
 export type GridCell = [number, number];
 
@@ -604,16 +605,14 @@ export const parseSpeedDialItemFromURL = (urlText: string, suggestedCell?: GridC
 //
 export const createSpeedDialItemFromClipboard = async (suggestedCell?: GridCell): Promise<SpeedDialItem | null> => {
     try {
-        let clipboardText = "";
-
-        try {
-            clipboardText = await navigator.clipboard.readText();
-        } catch (e) {
-            console.warn("Failed to read clipboard text:", e);
+        const clipboardResult = await readText();
+        if (!clipboardResult.ok || !clipboardResult.data) {
+            console.warn("Failed to read clipboard text:", clipboardResult.error);
             return null;
         }
 
-        if (!clipboardText || !clipboardText.trim()) return null;
+        const clipboardText = String(clipboardResult.data);
+        if (!clipboardText.trim()) return null;
 
         const trimmed = clipboardText.trim();
 

@@ -6,6 +6,7 @@ import { loadSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { createSettingsView } from "./Settings";
 import { defineBasicMarkdownView, type BasicMarkdownView } from "./MarkdownView";
+import { writeText } from "@rs-frontend/shared/Clipboard";
 
 export type BasicView = "markdown" | "settings" | "history";
 
@@ -353,7 +354,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         const copyBtn = item.querySelector('[data-action="copy"]') as HTMLButtonElement | null;
         copyBtn?.addEventListener("click", () => {
           const text = h.after || "";
-          navigator.clipboard?.writeText?.(text).catch(() => void 0);
+          writeText(text).catch(() => void 0);
         });
 
         return item;

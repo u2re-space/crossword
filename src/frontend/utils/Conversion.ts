@@ -7,6 +7,7 @@ import { marked, type MarkedExtension } from 'marked';
 import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFromTextSelection } from './DocTools';
 import { MathMLToLaTeX } from 'mathml-to-latex';
 import { deAlphaChannel } from '@rs-core/utils/ImageProcess';
+import { writeText, writeHTML } from '@rs-frontend/shared/Clipboard';
 
 //
 const turndownService = new TurndownService();
@@ -53,17 +54,19 @@ export const convertToMarkdown = (input: string): string => { // convert html DO
 };
 
 // copy html DOM as markdown
-export const copyAsMarkdown = async (target: HTMLElement) => { // copy html DOM as markdown
+export const copyAsMarkdown = async (target: HTMLElement) => {
     const container = getContainerFromTextSelection(target);
     const markdown = convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
-    if (markdown?.trim()) { navigator.clipboard.writeText(markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown); }
+    const text = markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown;
+    if (text) await writeText(text);
 }
 
 // copy markdown text as html
-export const copyAsHTML = async (target: HTMLElement) => { // copy markdown text as html
+export const copyAsHTML = async (target: HTMLElement) => {
     const container = getContainerFromTextSelection(target);
     const html = await convertToHtml(container?.innerText || "") || await convertToHtml(container?.innerHTML || container?.outerHTML || "");
-    if (html?.trim()) { navigator.clipboard.writeText(html?.trim?.()?.normalize?.()?.trim?.() || html?.trim?.() || html); }
+    const text = html?.trim?.()?.normalize?.()?.trim?.() || html?.trim?.() || html;
+    if (text) await writeHTML(text, container?.innerText || text);
 }
 
 //
@@ -129,7 +132,7 @@ export const copyAsTeX = async (target: HTMLElement) => {
 
     //
     const resultText = $wrap$(LaTeX?.trim?.()?.normalize?.()?.trim?.() || LaTeX?.trim?.());
-    if (resultText) { navigator.clipboard.writeText(resultText)?.catch?.((e) => { console.warn(e); }); }
+    if (resultText) await writeText(resultText);
     return resultText?.trim?.();
 }
 
@@ -197,6 +200,7 @@ export const copyAsMathML = async (target: HTMLElement) => { // copy mathml DOM 
 
     //
     mathML ||= original?.trim?.();
-    if (mathML?.trim()) { navigator.clipboard.writeText(mathML?.trim?.()?.normalize?.()?.trim?.() || mathML?.trim?.() || mathML)?.catch?.((e) => { console.warn(e); }); }
-    return mathML?.trim?.();
+    const text = mathML?.trim?.()?.normalize?.()?.trim?.() || mathML?.trim?.() || mathML;
+    if (text) await writeText(text);
+    return text;
 }

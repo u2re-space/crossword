@@ -1,6 +1,7 @@
 import { ableToShowImage, encodeWithJSquash, removeAnyPrefix } from "@rs-core/utils/ImageProcess";
 import { recognizeImageData } from "./RecognizeData";
 import type { RecognizeResult } from "./RecognizeData";
+import { requestCopyViaCRX, toText } from "@rs-frontend/shared/Clipboard";
 
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
@@ -26,27 +27,51 @@ const compressIfNeeded = async (dataUrl: string): Promise<string> => {
     return dataUrl;
 };
 
-// send to any available content script to trigger copy text
-export const COPY_HACK = (ext: typeof chrome, data: { ok?: boolean; data?: string; error?: string }, tabId?: number) => {
-    const message = { type: "COPY_HACK", ...data };
+/**
+ * Send to content script to trigger clipboard copy
+ * Uses unified Clipboard module with fallback to offscreen document
+ */
+export const COPY_HACK = async (
+    ext: typeof chrome,
+    data: { ok?: boolean; data?: string; error?: string },
+    tabId?: number
+) => {
+    const text = toText(data?.data).trim();
+    if (!text) return { ok: false, error: "Empty content" };
 
-    // try specific tab first
-    if (tabId != null && tabId >= 0) {
-        return chrome.tabs.sendMessage(tabId, message)?.catch?.(console.warn.bind(console));
-    }
+    // Use unified clipboard API with CRX support and offscreen fallback
+    return requestCopyViaCRX(text, {
+        tabId,
+        offscreenFallback: async (content) => {
+            try {
+                // Create offscreen document if needed
+                const offscreenUrl = "offscreen/copy.html";
+                const existingContexts = await ext.runtime.getContexts?.({
+                    contextTypes: [ext.runtime.ContextType.OFFSCREEN_DOCUMENT as any],
+                    documentUrls: [ext.runtime.getURL(offscreenUrl)]
+                })?.catch?.(() => []);
 
-    // fallback: find an active tab
-    return ext.tabs.query({
-        currentWindow: true,
-        lastFocusedWindow: true,
-        active: true,
-    })?.then?.((tabs) => {
-        for (const tab of tabs) {
-            if (tab?.id != null && tab?.id >= 0) {
-                return chrome.tabs.sendMessage(tab.id, message)?.catch?.(console.warn.bind(console));
+                if (!existingContexts?.length) {
+                    await ext.offscreen.createDocument({
+                        url: offscreenUrl,
+                        reasons: [ext.offscreen.Reason.CLIPBOARD],
+                        justification: "Clipboard API access for copying recognized text"
+                    });
+                }
+
+                // Send message to offscreen document
+                const response = await ext.runtime.sendMessage({
+                    target: "offscreen",
+                    type: "COPY_HACK",
+                    data: content
+                });
+                return response?.ok ?? false;
+            } catch (err) {
+                console.warn("[COPY_HACK] Offscreen fallback failed:", err);
+                return false;
             }
         }
-    })?.catch?.(console.warn.bind(console));
+    });
 };
 
 // extract text from recognition result

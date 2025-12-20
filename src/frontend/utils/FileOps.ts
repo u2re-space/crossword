@@ -2,6 +2,7 @@ import { getDirectoryHandle, handleIncomingEntries } from "fest/lure";
 import { handleDataTransferFiles, postCommitAnalyze, postCommitRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
 import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
 import { sanitizeFileName, writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { writeText, readText } from "@rs-frontend/shared/Clipboard";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {
@@ -115,25 +116,32 @@ export const writeWithTryRecognize = async (dir: string, file: File) => {
 //
 export const pasteIntoClipboardWithRecognize = async () => {
     try {
-        // clipboard first
-        if ((navigator.clipboard as any)?.read) {
+        // clipboard first (read raw items)
+        if (typeof navigator !== "undefined" && (navigator.clipboard as any)?.read) {
             const items = await (navigator.clipboard as any).read();
             for (const item of items) {
                 for (const type of item.types) {
                     const blob = await item.getType(type);
                     if (blob) {
                         const data = await analyzeRecognizeUnified(blob)?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
-                        if (data) { return navigator.clipboard.writeText(data)?.then?.(() => true)?.catch?.(console.warn.bind(console)); }
+                        if (data) {
+                            const result = await writeText(data);
+                            return result.ok;
+                        }
                     }
                 }
             }
         }
 
         // text fallback
-        const text = await navigator.clipboard.readText()?.then?.((text) => text?.trim?.())?.catch?.(console.warn.bind(console));
-        if (text && text.trim()) {
+        const readResult = await readText();
+        const text = readResult.ok ? String(readResult.data || "").trim() : "";
+        if (text) {
             const data = await analyzeRecognizeUnified(text)?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
-            if (data) { return navigator.clipboard.writeText(data)?.then?.(() => true)?.catch?.(console.warn.bind(console)); }
+            if (data) {
+                const result = await writeText(data);
+                return result.ok;
+            }
         }
     } catch (e) { console.warn(e); return false; }
 }
@@ -141,8 +149,8 @@ export const pasteIntoClipboardWithRecognize = async () => {
 //
 export const pasteAndAnalyze = async () => {
     try {
-        // clipboard first
-        if ((navigator.clipboard as any)?.read) {
+        // clipboard first (read raw items)
+        if (typeof navigator !== "undefined" && (navigator.clipboard as any)?.read) {
             const items = await (navigator.clipboard as any).read();
             for (const item of items) {
                 for (const type of item.types) {
@@ -156,9 +164,10 @@ export const pasteAndAnalyze = async () => {
         }
 
         // text fallback
-        const text = await navigator.clipboard.readText()?.then?.((text) => text?.trim?.())?.catch?.(console.warn.bind(console));
-        if (text && text.trim()) {
-            const data = await postCommitAnalyze({text: text})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
+        const readResult = await readText();
+        const text = readResult.ok ? String(readResult.data || "").trim() : "";
+        if (text) {
+            const data = await postCommitAnalyze({text})?.then?.((res) => res?.data)?.catch?.(console.warn.bind(console));
             if (data) { return true; }
         }
     } catch (e) { console.warn(e); return false; }
@@ -172,22 +181,21 @@ export const pasteIntoDir = async (dir: string) => {
         // We need to get data from clipboard first
         let success = false;
         try {
-            // @ts-ignore
-            const clipboardItems = await navigator.clipboard.read();
-            if (clipboardItems && clipboardItems.length > 0) {
-                 await handleIncomingEntries(clipboardItems, dir);
-                 success = true;
+            // @ts-ignore - clipboard.read() for raw items
+            if (typeof navigator !== "undefined" && (navigator.clipboard as any)?.read) {
+                const clipboardItems = await (navigator.clipboard as any).read();
+                if (clipboardItems && clipboardItems.length > 0) {
+                    await handleIncomingEntries(clipboardItems, dir);
+                    success = true;
+                }
             }
         } catch {}
 
         if (!success) {
-             const text = await navigator.clipboard.readText();
+             const readResult = await readText();
+             const text = readResult.ok ? String(readResult.data || "") : "";
              if (text) {
                  // Create a simple object that handleIncomingEntries understands for text
-                 // or just use handleIncomingEntries with text if I adapted it?
-                 // handleIncomingEntries handles text/uri-list or text/plain via getData interface
-                 // Let's construct a mock DataTransfer-like object or just use internal logic
-                 // Actually, handleIncomingEntries handles 'getData' check.
                  await handleIncomingEntries({
                      getData: (type: string) => type === "text/plain" ? text : ""
                  }, dir);

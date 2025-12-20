@@ -8,6 +8,7 @@ import { iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { GeoState, isNearby } from "@rs-core/service/GeoService";
 import { TimeState, isNow, registerEventForNotification } from "@rs-core/service/TimeService";
 import { findEntities } from "@rs-core/service/EntityRegistry";
+import { writeText } from "@rs-frontend/shared/Clipboard";
 
 //
 import { marked } from "marked";
@@ -360,7 +361,7 @@ export const MakeCardElement = <
         const target = ev.currentTarget as HTMLElement;
         const code = target.querySelector('.code-value')?.textContent?.trim();
         if (code) {
-            navigator.clipboard.writeText(code);
+            writeText(code);
             target.setAttribute('data-copied', 'true');
             setTimeout(() => target.removeAttribute('data-copied'), 1500);
         }

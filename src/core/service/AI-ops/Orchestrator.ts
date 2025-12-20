@@ -88,8 +88,8 @@ export class AIOrchestrator {
 
     constructor(config: OrchestratorConfig = {}) {
         this.config = {
-            defaultEffort: "medium",
-            defaultVerbosity: "medium",
+            defaultEffort: "low",
+            defaultVerbosity: "low",
             cacheEnabled: true,
             maxRetries: 2,
             ...config

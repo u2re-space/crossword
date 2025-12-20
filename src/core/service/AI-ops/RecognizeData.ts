@@ -72,7 +72,10 @@ In recognition result, do not include image itself.
 
 In recognized from image data (what you seen in image), do:
 - If textual content, format as Markdown string (multiline).
-- If math (expression, equation, formula), format as $KaTeX$
+- If math (expression, equation, formula):
+  - For inline math, use SINGLE dollar signs: $x^2 + y^2 = z^2$
+  - For block/display math, use DOUBLE dollar signs: $$\\int_0^1 f(x) dx$$
+  - Do NOT add extra dollar signs - use exactly one $ for inline, exactly two $$ for block
 - If table (or looks alike table), format as | table |
 - If image reference, format as [$image$]($image$)
 - If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
@@ -119,7 +122,10 @@ Here may be HTML, Regular Text, LaTeX, etc input formats.
 Needs to convert or reformat presented data to target format (Markdown string).
 
 - If textual content, format as Markdown string (multiline).
-- If math (expression, equation, formula), format as $KaTeX$
+- If math (expression, equation, formula):
+  - For inline math, use SINGLE dollar signs: $x^2 + y^2 = z^2$
+  - For block/display math, use DOUBLE dollar signs: $$\\int_0^1 f(x) dx$$
+  - Do NOT add extra dollar signs - use exactly one $ for inline, exactly two $$ for block
 - If table (or looks alike table), format as | table |
 - If image, format as [$image$]($image$)
 - If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
@@ -235,8 +241,8 @@ export const recognizeByInstructions = async (
         body: JSON.stringify({
             model: config?.model || settings?.model || DEFAULT_MODEL,
             input,
-            reasoning: { "effort": "medium" },
-            text: { verbosity: "medium" },
+            reasoning: { "effort": "low" },
+            text: { verbosity: "low" },
             max_output_tokens: 400000,
             instructions
         })

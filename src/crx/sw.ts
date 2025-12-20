@@ -36,49 +36,8 @@ const requestClipboardCopy = (data: unknown, showFeedback = true): void => {
     });
 };
 
-// offscreen document management for clipboard operations
-let offscreenCreating: Promise<void> | null = null;
-
-async function createOffscreenDocument(): Promise<void> {
-    const offscreenUrl = "offscreen/copy.html";
-    const existingContexts = await chrome.runtime.getContexts?.({
-        contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT as any],
-        documentUrls: [chrome.runtime.getURL(offscreenUrl)]
-    })?.catch?.(() => []);
-
-    if (existingContexts?.length) return;
-
-    if (offscreenCreating) {
-        await offscreenCreating;
-        return;
-    }
-
-    offscreenCreating = chrome.offscreen.createDocument({
-        url: offscreenUrl,
-        reasons: [chrome.offscreen.Reason.CLIPBOARD],
-        justification: "Clipboard API access for copying recognized text"
-    }).finally(() => {
-        offscreenCreating = null;
-    });
-
-    await offscreenCreating;
-}
-
-// fallback copy using offscreen document (when content script fails)
-async function copyViaOffscreen(data: unknown): Promise<boolean> {
-    try {
-        await createOffscreenDocument();
-        const response = await chrome.runtime.sendMessage({
-            target: "offscreen",
-            type: "COPY_HACK",
-            data
-        });
-        return response?.ok ?? false;
-    } catch (err) {
-        console.warn("Offscreen copy failed:", err);
-        return false;
-    }
-}
+// Note: Offscreen document management is handled in crx/service/api.ts
+// via the COPY_HACK function with offscreenFallback option
 
 //
 enableCapture(chrome);
