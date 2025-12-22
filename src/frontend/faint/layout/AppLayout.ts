@@ -2,7 +2,7 @@ import { makeReactive, propRef, subscribe } from "fest/object";
 import { H, C } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
 import { isPrimitive } from "fest-src/fest/core/index";
-import { SpeedDial } from "../views/SpeedDial";
+import { makeWallpaper, SpeedDial } from "../views/SpeedDial";
 
 //
 let skipCreateNewView = false;
@@ -96,6 +96,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
     }} prop:currentTab=${currentView} prop:userContent=${true} prop:tabs=${existsViews} class="app-layout">
         ${sidebar}
         ${SpeedDial((view: string, props: any) => { currentView.value = view; })}
+        ${makeWallpaper()}
         <div class="toolbar" style="pointer-events: none; will-change: contents; background-color: transparent;" slot="bar">
             ${C(propRef(rPair, 0))}
         </div>

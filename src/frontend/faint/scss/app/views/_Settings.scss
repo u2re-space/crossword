@@ -30,8 +30,8 @@
         }
 
         & {
-            background-color: oklch(from var(--surface-color) l c h / 0.9);
-            backdrop-filter: blur(0.5rem);
+            background-color: oklch(from --c2-surface(0.15, var(--current, currentColor)) l c h / 0.9);
+            backdrop-filter: blur(1rem);
         }
 
         &, & :where(button, input, textarea, select) {
