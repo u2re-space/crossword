@@ -1,5 +1,5 @@
 import { makeReactive, numberRef, propRef, stringRef, subscribe } from "fest/object";
-import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerRef } from "fest/lure";
+import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerAnchorRef } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
 import { toastSuccess, toastError } from "@rs-frontend/faint/items/Toast";
@@ -268,7 +268,7 @@ const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridC
 };
 
 //
-const coordinateRef = typeof document != "undefined" ? pointerRef() : [numberRef(0), numberRef(0)];
+const coordinateRef = typeof document != "undefined" ? pointerAnchorRef() : [numberRef(0), numberRef(0)];
 
 //
 const handleWallpaperDropOrPaste = (event: DragEvent | ClipboardEvent) => {
