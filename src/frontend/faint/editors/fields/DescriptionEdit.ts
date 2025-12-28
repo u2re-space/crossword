@@ -1,4 +1,4 @@
-import { isReactive, makeReactive, propRef } from "fest/object";
+import { isReactive, observe, propRef } from "fest/object";
 import { H, M } from "fest/lure";
 import { JSOX } from "jsox";
 
@@ -24,8 +24,8 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
     if (!key && !parts) return { block: null, saveEvent: () => { } };
 
     //
-    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = makeReactive(!Array.isArray(parts) ? [parts] : parts); }
-    parts ??= makeReactive([]) as string[];
+    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
+    parts ??= observe([]) as string[];
 
     // AI, remain as function, in future may be needed...
     const loadIfNotExists = () => {

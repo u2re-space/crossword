@@ -1,8 +1,8 @@
-import { makeReactive } from "fest/object";
+import { observe } from "fest/object";
 import { checkInTimeRange, getComparableTimeValue, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 
 //
-export const TimeState: any = makeReactive<{ currentTime: Date, timestamp: number }>({
+export const TimeState: any = observe<{ currentTime: Date, timestamp: number }>({
     currentTime: new Date(),
     timestamp: Date.now()
 });

@@ -1,5 +1,5 @@
 import { H, M, openDirectory } from "fest/lure";
-import { $trigger, isReactive, makeReactive, numberRef, observe, subscribe } from "fest/object";
+import { $trigger, isReactive, observe, numberRef, iterated, affected } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, getComparableTimeValue, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement, MakeLazyCardElement, type LazyCardOptions } from "./Cards";
@@ -103,7 +103,7 @@ const MakeItemsLoaderForTabPage = <
     chapterRef: C,
     filtered: (item: E, desc: C) => boolean
 ) => {
-    const dataRef: E[] = makeReactive([]) as E[];
+    const dataRef: E[] = observe([]) as E[];
 
     let loadLocked = false;
     let loaderDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -142,7 +142,7 @@ const MakeItemsLoaderForTabPage = <
 
             let processedObj = obj as E;
             if (typeof obj === 'object') {
-                processedObj = (isReactive(obj) ? obj : makeReactive(obj)) as E;
+                processedObj = (isReactive(obj) ? obj : observe(obj)) as E;
                 (processedObj as any).__name = name;
                 (processedObj as any).__path = `${sourceRef.DIR}${name}`;
             }
@@ -223,7 +223,7 @@ const MakeItemsLoaderForTabPage = <
             await loader().catch(console.warn.bind(console));
 
             // Subscribe to changes
-            subscribe(dHandle?.getMap?.() ?? [], debouncedLoader);
+            affected(dHandle?.getMap?.() ?? [], debouncedLoader);
         } catch (e) {
             console.warn('Error in items loader:', e);
         } finally {
@@ -262,7 +262,7 @@ export const CollectItemsForTabPage = <
     const maxTimestampRef = numberRef(0);
 
     //
-    subscribe([loader.dataRef, Symbol.iterator], () => {
+    affected([loader.dataRef, Symbol.iterator], () => {
         minTimestampRef.value = Math.min(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
         maxTimestampRef.value = Math.max(...loader.dataRef.map((item) => Math.max(0, getComparableTimeValue(item?.properties?.begin_time ?? 0))));
     })
@@ -291,12 +291,12 @@ export const CollectItemsForTabPage = <
     };
 
     //
-    const daysRef = makeReactive([]) as any[];
-    const kindsRef = makeReactive([]) as any[];
-    const subgroups = makeReactive([]) as any[];
+    const daysRef = observe([]) as any[];
+    const kindsRef = observe([]) as any[];
+    const subgroups = observe([]) as any[];
 
     //
-    observe(loader.dataRef, (newItem, _index, oldItem) => {
+    iterated(loader.dataRef, (newItem, _index, oldItem) => {
         const item = newItem ?? oldItem;
         const forAddOrDelete = newItem != null;
 
@@ -326,7 +326,7 @@ export const CollectItemsForTabPage = <
                 let foundSubgroup = subgroups.find((d) => d?.day == dayOf?.begin_time)
                 if (!foundSubgroup) {
                     PUSH_ONCE(subgroups, foundSubgroup ||= {
-                        items: makeReactive([]),
+                        items: observe([]),
                         day: dayOf?.begin_time,
                         kind: item?.kind
                     });
@@ -341,7 +341,7 @@ export const CollectItemsForTabPage = <
                 let foundSubgroup = subgroups.find((d) => d?.kind == item?.kind)
                 if (!foundSubgroup) {
                     PUSH_ONCE(subgroups, foundSubgroup ||= {
-                        items: makeReactive([]),
+                        items: observe([]),
                         kind: item?.kind
                     });
                 }
@@ -370,7 +370,7 @@ export const CollectItemsForTabPage = <
 
         // set order with small forming delay
         const we = new WeakRef(els);
-        const usb = subscribe(minTimestampRef, (minVal) => {
+        const usb = affected(minTimestampRef, (minVal) => {
             const els = we?.deref?.();
             if (els && subgroup?.day) { els.style.order = (computeTimelineOrderInGeneral(subgroup?.day as any, minVal) || 0); };
             if (!els) { usb?.(); }
@@ -396,7 +396,7 @@ export const CollectItemsForTabPage = <
     };
 
     // Update load state when subgroups change
-    subscribe([subgroups, Symbol.iterator], updateLoadState);
+    affected([subgroups, Symbol.iterator], updateLoadState);
 
     // Wrap firstTimeLoad to update state after load completes
     const originalFirstTimeLoad = firstTimeLoad;

@@ -1,6 +1,6 @@
 import { $comment$, $toolbar$, AppLayout, onClose } from "./AppLayout";
 import { loadAsAdopted } from "fest/dom";
-import { makeReactive, $trigger } from "fest/object";
+import { observe, $trigger } from "fest/object";
 import { initialize as initDOM } from "fest/veela";
 
 //
@@ -187,7 +187,7 @@ export async function frontend(mountElement) {
     }
 
     //
-    const existsViews: Map<string, any> = makeReactive(new Map<string, any>()) as Map<string, any>;
+    const existsViews: Map<string, any> = observe(new Map<string, any>()) as Map<string, any>;
     const makeView = (registryKey, props?: any)=>{
         if (!registryKey) return null; registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
         if (!registryKey) return null;

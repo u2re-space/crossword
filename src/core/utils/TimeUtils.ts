@@ -1,4 +1,4 @@
-import { makeReactive } from "fest/object";
+import { observe } from "fest/object";
 import type { ChapterDescriptor, DayDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
 
@@ -156,7 +156,7 @@ export const createDayDescriptor = (input: Date | null | undefined, partial: Rec
 };
 
 export const SplitTimelinesByDays = async (timelineMap: any, daysDesc: any[] | null = null) => {
-    daysDesc ??= makeReactive([] as any[]) as any[];
+    daysDesc ??= observe([] as any[]) as any[];
 
     //
     if (!timelineMap) return daysDesc;

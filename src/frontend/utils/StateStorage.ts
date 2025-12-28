@@ -1,4 +1,4 @@
-import { makeObjectAssignable, makeReactive, stringRef, safe } from "fest/object";
+import { makeObjectAssignable, observe, stringRef, safe } from "fest/object";
 import { makeUIState } from "fest/lure/extension/core/UIState";
 import { JSOX } from "jsox";
 import { readText } from "@rs-frontend/shared/Clipboard";
@@ -17,7 +17,7 @@ export interface SpeedDialItemMeta {
 
 export interface SpeedDialPersistedItem {
     id: string;
-    cell: ReturnType<typeof makeReactive<GridCell>>;
+    cell: ReturnType<typeof observe<GridCell>>;
     icon: string;
     label: string;
     action: string;
@@ -28,7 +28,7 @@ type SpeedDialRecord = Omit<SpeedDialPersistedItem, "meta">;
 
 export interface SpeedDialItem {
     id: string;
-    cell: ReturnType<typeof makeReactive>;
+    cell: ReturnType<typeof observe>;
     icon: ReturnType<typeof stringRef>;
     label: ReturnType<typeof stringRef>;
     action: string;
@@ -64,7 +64,7 @@ const generateItemId = () => {
 const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     {
         id: "shortcut-docs",
-        cell: makeReactive([0, 1]),
+        cell: observe([0, 1]),
         icon: "book-open-text",
         label: "Docs",
         action: "open-link",
@@ -72,7 +72,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-roadmap",
-        cell: makeReactive([1, 1]),
+        cell: observe([1, 1]),
         icon: "signpost",
         label: "Roadmap",
         action: "open-link",
@@ -80,7 +80,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-fest-live",
-        cell: makeReactive([2, 1]),
+        cell: observe([2, 1]),
         icon: "github-logo",
         label: "Fest Live",
         action: "open-link",
@@ -88,7 +88,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-l2ne-dev",
-        cell: makeReactive([3, 1]),
+        cell: observe([3, 1]),
         icon: "user",
         label: "L2NE Dev",
         action: "open-link",
@@ -96,7 +96,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-u2re-space",
-        cell: makeReactive([0, 2]),
+        cell: observe([0, 2]),
         icon: "planet",
         label: "U2RE Space",
         action: "open-link",
@@ -104,7 +104,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-telegram",
-        cell: makeReactive([1, 2]),
+        cell: observe([1, 2]),
         icon: "telegram-logo",
         label: "Telegram",
         action: "open-link",
@@ -115,7 +115,7 @@ const EXTERNAL_SHORTCUTS: SpeedDialPersistedItem[] = [
 const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     {
         id: "shortcut-explorer",
-        cell: makeReactive([2, 0]),
+        cell: observe([2, 0]),
         icon: "books",
         label: "Explorer",
         action: "open-view",
@@ -123,7 +123,7 @@ const DEFAULT_SPEED_DIAL_DATA: SpeedDialPersistedItem[] = [
     },
     {
         id: "shortcut-settings",
-        cell: makeReactive([3, 0]),
+        cell: observe([3, 0]),
         icon: "gear-six",
         label: "Settings",
         action: "open-view",
@@ -149,15 +149,15 @@ const splitDefaultEntries = (entries: SpeedDialPersistedItem[]) => {
 const { records: DEFAULT_SPEED_DIAL_RECORDS, metaEntries: DEFAULT_META_ENTRIES } = splitDefaultEntries(DEFAULT_SPEED_DIAL_DATA);
 const legacyMetaBuffer: Array<[string, SpeedDialItemMeta]> = [];
 
-const ensureCell = (cell?: ReturnType<typeof makeReactive<GridCell>>): ReturnType<typeof makeReactive<GridCell>> => {
+const ensureCell = (cell?: ReturnType<typeof observe<GridCell>>): ReturnType<typeof observe<GridCell>> => {
     if (cell && Array.isArray(cell) && cell.length >= 2) {
-        return makeReactive([Number(cell[0]) || 0, Number(cell[1]) || 0]);
+        return observe([Number(cell[0]) || 0, Number(cell[1]) || 0]);
     }
-    return makeReactive([0, 0]);
+    return observe([0, 0]);
 };
 
 const createMetaState = (meta: SpeedDialItemMeta = {}) => {
-    return makeObjectAssignable(makeReactive({
+    return makeObjectAssignable(observe({
         action: meta.action || "open-view",
         view: meta.view || "",
         href: meta.href || "",
@@ -224,7 +224,7 @@ const unwrapRef = (value: any, fallback?: string) => {
 const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
     return {
         id: item.id,
-        cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
+        cell: observe([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
         icon: unwrapRef(item.icon, "sparkle"),
         label: unwrapRef(item.label, "Shortcut"),
         action: item.action
@@ -234,9 +234,9 @@ const serializeItemState = (item: SpeedDialItem): SpeedDialRecord => {
 
 
 const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
-    return makeReactive({
+    return observe({
         id: config.id || generateItemId(),
-        cell: makeReactive(ensureCell(config.cell)),
+        cell: observe(ensureCell(config.cell)),
         icon: stringRef(config.icon || "sparkle"),
         label: stringRef(config.label || "Shortcut"),
         action: config.action || "open-view"
@@ -244,7 +244,7 @@ const createStatefulItem = (config: SpeedDialRecord): SpeedDialItem => {
 };
 
 
-const createInitialState = () => makeReactive(DEFAULT_SPEED_DIAL_RECORDS.map(createStatefulItem));
+const createInitialState = () => observe(DEFAULT_SPEED_DIAL_RECORDS.map(createStatefulItem));
 const unpackState = (raw?: SpeedDialPersistedItem[]) => {
     const source = Array.isArray(raw) && raw.length ? raw : DEFAULT_SPEED_DIAL_DATA;
     const records = source.map((entry) => {
@@ -256,7 +256,7 @@ const unpackState = (raw?: SpeedDialPersistedItem[]) => {
         }
         return record as SpeedDialRecord;
     });
-    return makeReactive(records.map(createStatefulItem));
+    return observe(records.map(createStatefulItem));
 };
 const packState = (collection: SpeedDialItem[]) => collection.map(serializeItemState);
 
@@ -348,7 +348,7 @@ const ensureExternalShortcuts = () => {
                 item.icon.value = shortcut.icon;
             }
 
-            speedDialItems.push(makeReactive(item) as any);
+            speedDialItems.push(observe(item) as any);
             ensureSpeedDialMeta(item.id, shortcut.meta);
             changed = true;
         } else {
@@ -381,7 +381,7 @@ export const findSpeedDialItem = (id?: string | null) => {
     return speedDialItems?.find?.((item) => item?.id === id) || null;
 };
 
-export const createEmptySpeedDialItem = (cell: ReturnType<typeof makeReactive> = makeReactive([0, 0])): SpeedDialItem => {
+export const createEmptySpeedDialItem = (cell: ReturnType<typeof observe> = observe([0, 0])): SpeedDialItem => {
     const item = createStatefulItem({
         id: generateItemId(),
         cell,
@@ -394,7 +394,7 @@ export const createEmptySpeedDialItem = (cell: ReturnType<typeof makeReactive> =
 };
 
 export const addSpeedDialItem = (item: SpeedDialItem) => {
-    speedDialItems?.push?.(makeReactive(item) as any);
+    speedDialItems?.push?.(observe(item) as any);
     const metaChanged = syncMetaActionFromItem(item);
     persistSpeedDialItems();
     if (metaChanged) {
@@ -406,9 +406,9 @@ export const addSpeedDialItem = (item: SpeedDialItem) => {
 export const upsertSpeedDialItem = (item: SpeedDialItem) => {
     const existingIndex = speedDialItems?.findIndex?.((entry) => entry?.id === item?.id) ?? -1;
     if (existingIndex === -1) {
-        speedDialItems?.push?.(makeReactive(item) as any);
+        speedDialItems?.push?.(observe(item) as any);
     } else if (speedDialItems[existingIndex] !== item) {
-        speedDialItems.splice(existingIndex, 1, makeReactive(item) as any);
+        speedDialItems.splice(existingIndex, 1, observe(item) as any);
     }
     const metaChanged = syncMetaActionFromItem(item);
     persistSpeedDialItems();
@@ -437,7 +437,7 @@ export const snapshotSpeedDialItem = (item: SpeedDialItem) => {
     return {
         state: {
             id: item.id,
-            cell: makeReactive([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
+            cell: observe([item.cell?.[0] ?? 0, item.cell?.[1] ?? 0]),
             icon: unwrapRef(item.icon, ""),
             label: unwrapRef(item.label, "")
         },
@@ -449,11 +449,11 @@ export const snapshotSpeedDialItem = (item: SpeedDialItem) => {
 };
 
 const WALLPAPER_KEY = "cw::workspace::wallpaper";
-export const wallpaperState = makeUIState(WALLPAPER_KEY, () => makeReactive({
+export const wallpaperState = makeUIState(WALLPAPER_KEY, () => observe({
     src: "./assets/imgs/test.webp",
     opacity: 1,
     blur: 0
-}), (raw) => makeReactive(raw || {
+}), (raw) => observe(raw || {
     src: "./assets/imgs/test.webp",
     opacity: 1,
     blur: 0
@@ -470,11 +470,11 @@ export interface GridLayoutSettings {
 }
 
 const GRID_LAYOUT_KEY = "cw::workspace::grid-layout";
-export const gridLayoutState = makeUIState(GRID_LAYOUT_KEY, () => makeReactive({
+export const gridLayoutState = makeUIState(GRID_LAYOUT_KEY, () => observe({
     columns: 4,
     rows: 8,
     shape: "square" as GridShape
-}), (raw) => makeReactive(raw || {
+}), (raw) => observe(raw || {
     columns: 4,
     rows: 8,
     shape: "square" as GridShape

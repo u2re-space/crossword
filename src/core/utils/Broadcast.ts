@@ -27,7 +27,7 @@ export const getChannel = (name: string): BroadcastChannel | null => {
 /**
  * Subscribe to a channel with a message handler
  */
-export const subscribe = <T = unknown>(
+export const affected = <T = unknown>(
     channelName: string,
     handler: BroadcastMessageHandler<T>
 ): (() => void) => {

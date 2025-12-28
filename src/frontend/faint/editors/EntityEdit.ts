@@ -2,7 +2,7 @@ import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterfac
 import type { EntityDescriptor } from "../../../core/utils/Types";
 import { removeFile, writeFile } from "fest/lure";
 import { H, Q, M } from "fest/lure";
-import { makeReactive, stringRef, propRef } from "fest/object";
+import { observe, stringRef, propRef } from "fest/object";
 
 // helpful imports (all from `@rs-core/template/*`, such as `EntityUtils`, `EntityId`, etc.)
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
@@ -236,7 +236,7 @@ export const makeEntityEdit = async (
     const modalFormRef = Q(($form) => $form);
 
     // Validation state
-    const validationErrors = makeReactive<Record<string, string>>({});
+    const validationErrors = observe<Record<string, string>>({});
 
     // Group fields by section
     const generalFieldEls = fieldElements?.slice?.(0, GENERAL_FIELDS?.length || 0);

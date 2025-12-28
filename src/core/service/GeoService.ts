@@ -1,7 +1,7 @@
-import { makeReactive } from "fest/object";
+import { observe } from "fest/object";
 
 //
-export const GeoState: any = makeReactive<{ latitude: number | null, longitude: number | null, accuracy: number | null, error: string | null, isAvailable: boolean }>({
+export const GeoState: any = observe<{ latitude: number | null, longitude: number | null, accuracy: number | null, error: string | null, isAvailable: boolean }>({
     latitude: null as number | null,
     longitude: null as number | null,
     accuracy: null as number | null,

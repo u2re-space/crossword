@@ -4,7 +4,7 @@
  * Provides unified interface for AI recognition operations
  */
 
-import { CHANNEL_NAMES, postMessage, subscribe } from "../utils/Broadcast";
+import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast";
 
 export type RecognitionMode = "recognize" | "analyze";
 
@@ -151,11 +151,11 @@ export const recognize = (
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
         const cleanup = () => {
-            if (unsubscribe) unsubscribe();
+            if (unsubscribe) unaffected();
             if (timeoutId) clearTimeout(timeoutId);
         };
 
-        unsubscribe = listenForRecognitionResults((result) => {
+        unaffected = listenForRecognitionResults((result) => {
             if (result.requestId === requestId) {
                 cleanup();
                 resolve(result);

@@ -1,4 +1,4 @@
-import { makeReactive, propRef, subscribe } from "fest/object";
+import { observe, propRef, affected } from "fest/object";
 import { H, C } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
 import { isPrimitive } from "fest-src/fest/core/index";
@@ -37,7 +37,7 @@ const $defaultView = (location?.hash?.replace?.(/^#/, "") || "home");
 export const $comment$ = document.createComment("");
 export const $toolbar$ = document.createComment("");
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
-    const rPair = makeReactive([document.createComment(""), document.createComment("")])
+    const rPair = observe([document.createComment(""), document.createComment("")])
     const setView = async (key: string, forceCreateNewView?: boolean) => {
         key = key?.replace?.(/^#/, "") ?? key;
         const $homeView = "home";
@@ -73,7 +73,7 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
 
         //
         setView(currentView?.value?.replace?.(/^#/, "") || "home", true);
-        requestAnimationFrame(() => subscribe([currentView, "value"], (value: any) => {
+        requestAnimationFrame(() => affected([currentView, "value"], (value: any) => {
             setView(value?.replace?.(/^#/, "") || "home", false);
         }));
     });

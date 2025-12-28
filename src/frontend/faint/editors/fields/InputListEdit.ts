@@ -1,5 +1,5 @@
 // similar to DescriptorEdit, but use input[type="@N"]
-import { computed, isReactive, makeReactive, propRef } from "fest/object";
+import { computed, isReactive, observe, propRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
 import { JSOX } from "jsox";
 
@@ -77,8 +77,8 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     if (!key && !parts) return { block: null, saveEvent: () => { } };
 
     //
-    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = makeReactive(!Array.isArray(parts) ? [parts] : parts); }
-    parts ??= makeReactive([]); const ars = parts;//wrapSetAsArray(parts);
+    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
+    parts ??= observe([]); const ars = parts;//wrapSetAsArray(parts);
     description ??= { label: "Part", type: "text" };
 
     // AI, remain as function, in future may be needed...

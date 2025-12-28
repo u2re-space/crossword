@@ -1,4 +1,4 @@
-import { makeReactive, observe, safe } from "fest/object";
+import { observe, iterated, safe } from "fest/object";
 import { Promised } from "fest/core";
 import { JSOX } from "jsox";
 
@@ -36,7 +36,7 @@ const idbPut = async (key: string, value: any): Promise<void> => {
 }
 
 //
-export const realtimeStates = makeReactive({
+export const realtimeStates = observe({
     time: new Date(),
     timestamp: Date.now(),
     coords: {},
@@ -48,9 +48,9 @@ export const realtimeStates = makeReactive({
 
 //
 const editableArray = (category: any, items: any[]) => {
-    const wrapped = makeReactive(items);
+    const wrapped = observe(items);
     let timeout: any;
-    observe(wrapped, (item, index) => {
+    iterated(wrapped, (item, index) => {
         clearTimeout(timeout);
         timeout = setTimeout(() => {
             idbPut(category?.id, JSOX.stringify(safe(wrapped) as any))?.catch?.(console.warn.bind(console));
@@ -74,11 +74,11 @@ const observeCategory = (category: any) => {
 
 //
 const $wrapCategory = (category: any): any => {
-    return makeReactive(observeCategory(category));
+    return observe(observeCategory(category));
 }
 
 //
-export const tasksCategories = makeReactive([
+export const tasksCategories = observe([
     $wrapCategory({
         label: "Tasks",
         id: "task"
@@ -87,7 +87,7 @@ export const tasksCategories = makeReactive([
 
 // `items` is cached file maps... is directly associated with IndexedDB for service workers
 // also, may be used as arrays with simpler data for sending to AI
-export const dataCategories = makeReactive([
+export const dataCategories = observe([
     $wrapCategory({
         label: "Items",
         id: "item"

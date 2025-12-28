@@ -1,6 +1,6 @@
 import { H } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../../utils/HookEvent";
-import { makeReactive, ref } from "fest/object";
+import { observe, ref } from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
@@ -33,7 +33,7 @@ export const ViewPage = <
     };
 
     // Tab content factory
-    const tabsRef = makeReactive(new Map()) as Map<string, HTMLElement | null | string | any>;
+    const tabsRef = observe(new Map()) as Map<string, HTMLElement | null | string | any>;
 
     const createTabLoader = (chap: C, key: string) => {
         return () => {

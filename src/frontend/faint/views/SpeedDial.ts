@@ -1,4 +1,4 @@
-import { makeReactive, numberRef, propRef, stringRef, subscribe } from "fest/object";
+import { observe, numberRef, propRef, stringRef, affected } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerAnchorRef } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
@@ -28,12 +28,12 @@ import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 import { convertOrientPxToCX, cvt_cs_to_os, type GridItemType } from "fest/core";
 
 let viewMaker: any = null;
-const layout = makeReactive([gridLayoutState.columns ?? 4, gridLayoutState.rows ?? 8]);
+const layout = observe([gridLayoutState.columns ?? 4, gridLayoutState.rows ?? 8]);
 const items = speedDialItems;
 const meta = speedDialMeta;
 
 // Subscribe to grid layout changes
-subscribe(gridLayoutState, () => {
+affected(gridLayoutState, () => {
     layout[0] = gridLayoutState.columns ?? 4;
     layout[1] = gridLayoutState.rows ?? 8;
 });
@@ -211,7 +211,7 @@ const createMenuEntryForAction = (actionId: string, item: SpeedDialItem, fallbac
 export function makeWallpaper() {
     const oRef = orientRef();
     const srcRef = stringRef("./assets/imgs/test.webp");
-    subscribe([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.webp");
+    affected([wallpaperState, "src"], (s) => provide("/user" + (s?.src || (typeof s == "string" ? s : null)))?.then?.(blob => (srcRef.value = URL.createObjectURL(blob)))?.catch?.(console.warn.bind(console)) || "./assets/imgs/test.webp");
     const CE = H`<canvas slot="backdrop" style="position: absolute; pointer-events: none; min-inline-size: 0px; min-block-size: 0px; inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; transform: none; scale: 1; inset: 0; pointer-events: none;" data-orient=${oRef} is="ui-canvas" data-src=${srcRef}></canvas>`;
     return CE;
 }

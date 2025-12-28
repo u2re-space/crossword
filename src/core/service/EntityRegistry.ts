@@ -1,8 +1,8 @@
-import { makeReactive } from "fest/object";
+import { observe } from "fest/object";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 
 //
-export const EntityRegistry = makeReactive(new Map<string, EntityInterface<any, any>>());
+export const EntityRegistry = observe(new Map<string, EntityInterface<any, any>>());
 
 //
 export const registerEntity = (entity: EntityInterface<any, any>) => {

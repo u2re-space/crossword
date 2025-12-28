@@ -136,9 +136,9 @@ box.attr.id = "app2"; // example of reactive wrapper operations
 `M(observable, mapper)` maps a reactive array/set into DOM. Returns a reactive fragment-like node.
 
 ```ts
-import { makeReactive } from "fest/object";
+import { observe } from "fest/object";
 
-const rxItems = makeReactive(["A", "B", "C"]);
+const rxItems = observe(["A", "B", "C"]);
 const list = H`<ul>${M(rxItems, (x) => H`<li>${x}</li>`)}</ul>`;
 
 // later
@@ -188,8 +188,8 @@ const items = ["A", "B", "C"];
 const listStatic = H`<ul>${items.map(x => H`<li>${x}</li>`)}</ul>`;
 
 // Reactive list: use M(...)
-import { makeReactive } from "fest/object";
-const rxItems = makeReactive(["A", "B", "C"]);
+import { observe } from "fest/object";
+const rxItems = observe(["A", "B", "C"]);
 const listReactive = H`<ul>${M(rxItems, (x) => H`<li>${x}</li>`)}</ul>`;
 ```
 

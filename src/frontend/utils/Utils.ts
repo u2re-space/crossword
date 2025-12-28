@@ -148,7 +148,7 @@ export const mergeByExists = <T extends { name: string }>(dataRef: T[], refs: T[
         }
     }
 
-    // Remove deleted items (iterate backwards to maintain indices)
+    // Remove deleted items (iterated backwards to maintain indices)
     for (let i = dataRef.length - 1; i >= 0; i--) {
         const item = dataRef[i];
         if (item?.name && !refsMap.has(item.name)) {

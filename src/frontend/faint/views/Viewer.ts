@@ -1,6 +1,6 @@
 import { H } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../../utils/HookEvent";
-import { makeReactive} from "fest/object";
+import { observe} from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-core/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
@@ -34,7 +34,7 @@ export const ViewPage = <
     };
 
     //
-    const tabsRef = makeReactive(new Map()) as Map<string, HTMLElement | null | string | any>;
+    const tabsRef = observe(new Map()) as Map<string, HTMLElement | null | string | any>;
     const reloadTabs = () => {
         // TODO: add reactive chapters support...
         (typeof chapters === "function" ? chapters() : chapters).map((chap: C) => {
