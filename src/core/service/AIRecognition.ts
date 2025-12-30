@@ -4,7 +4,7 @@
  * Provides unified interface for AI recognition operations
  */
 
-import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast";
+import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast.ts";
 
 export type RecognitionMode = "recognize" | "analyze";
 

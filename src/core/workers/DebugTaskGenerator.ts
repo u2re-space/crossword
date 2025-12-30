@@ -1,4 +1,4 @@
-import { writeTimelineTask } from "./FileSystem";
+import { writeTimelineTask } from "./FileSystem.ts";
 import { fixEntityId } from "@rs-core/template/EntityId";
 
 // Debug configuration

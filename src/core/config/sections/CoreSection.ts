@@ -1,9 +1,9 @@
 import type { SectionConfig } from "@rs-core/config/SettingsTypes";
 
-import { AISection } from "./AISection";
-import { MCPSection } from "./MCPSection";
-import { TimelineSection } from "./TimelineSection";
-import { WebDavSection } from "./WebDavSection";
+import { AISection } from "./AISection.ts";
+import { MCPSection } from "./MCPSection.ts";
+import { TimelineSection } from "./TimelineSection.ts";
+import { WebDavSection } from "./WebDavSection.ts";
 
 export const CoreSection: SectionConfig = {
     key: "core",

@@ -11,7 +11,7 @@
  */
 
 
-import { getIndexForRow, getPhonesFromRow, normalizeOne, normalizePhones } from "./PhoneUtils";
+import { getIndexForRow, getPhonesFromRow, normalizeOne, normalizePhones } from "./PhoneUtils.ts";
 
 export function findDuplicatePhones(rows: any[], userOptions: any = {}) {
     const options = {

@@ -10,7 +10,7 @@ import {
     buildInstructionPrompt,
     DEFAULT_INSTRUCTION_TEMPLATES,
     type CustomInstruction
-} from "./InstructionUtils";
+} from "./InstructionUtils.ts";
 
 export type { CustomInstruction };
 export { buildInstructionPrompt, DEFAULT_INSTRUCTION_TEMPLATES };

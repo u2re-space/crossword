@@ -19,9 +19,9 @@ import { encode } from "@toon-format/toon";
 import { JSOX } from "jsox";
 
 //
-import { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
-import { realtimeStates } from "../Cache";
+import { GPTResponses } from "../model/GPT-Responses.ts";
+import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem.ts";
+import { realtimeStates } from "../Cache.ts";
 
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";

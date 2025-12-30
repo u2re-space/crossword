@@ -15,12 +15,12 @@ export { default as Clipboard } from "@rs-frontend/shared/Clipboard";
 export * from "@rs-frontend/shared/overlay";
 
 // BroadcastChannel utilities
-export * from "./Broadcast";
+export * from "./Broadcast.ts";
 
 // Existing utilities
-export * from "./AIResponseParser";
-export * from "./ImageProcess";
-export * from "./PhoneDub";
-export * from "./PhoneUtils";
-export * from "./TimeUtils";
-export * from "./Types";
+export * from "./AIResponseParser.ts";
+export * from "./ImageProcess.ts";
+export * from "./PhoneDub.ts";
+export * from "./PhoneUtils.ts";
+export * from "./TimeUtils.ts";
+export * from "./Types.ts";
