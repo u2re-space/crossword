@@ -5,14 +5,15 @@
  */
 
 //
-import type { GPTResponses } from "../model/GPT-Responses.ts";
-
-import { loadEntitiesSchemaMarkdown } from "../../template/EntitiesSchema.ts";
-import { fixEntityId } from "../../template/EntityId.ts";
-import { JSOX } from "jsox";
+import type { GPTResponses } from "../model/GPT-Responses";
 
 //
-export const resolveEntity = async (gptResponses: GPTResponses | null = null) => {
+import { loadEntitiesSchemaMarkdown } from "@rs-core/template/EntitiesSchema";
+import { fixEntityId } from "@rs-core/template/EntityId";
+import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+
+//
+export const resolveEntity = async (gptResponses: GPTResponses | null = null, entity: any = null) => {
     const askResolveStep = () => {
         return [
             "# Request: resolve best to match entities by their types and IDs (merge if possible).", "",
@@ -27,8 +28,10 @@ export const resolveEntity = async (gptResponses: GPTResponses | null = null) =>
     const schema = await loadEntitiesSchemaMarkdown();
     if (schema) await gptResponses?.giveForRequest?.(schema);
     await gptResponses?.askToDoAction?.(askResolveStep()?.join?.("\n"));
-    const parsed = JSOX.parse(await gptResponses?.sendRequest?.("low", "low") || "{}") as unknown as { entities: any[], keywords: string[], short_description: string };
-    parsed?.entities?.forEach?.((entity: any) => fixEntityId(entity));
-    console.log("Step 3 response - resolve entity response: ", parsed);
-    return parsed;
+    const parsed = parseAIResponseSafe<{ entities: any[] }>(await gptResponses?.sendRequest?.("low", "low") || "{}");
+    if (!parsed?.ok) {
+        return { ok: false, entities: [], error: parsed?.error || "Failed to parse AI response" };
+    }
+    const entities = (parsed?.data as { entities: any[] })?.entities?.map?.((entity: any) => fixEntityId(entity)) || [];
+    return { ok: true, entities: entities, error: undefined };
 }

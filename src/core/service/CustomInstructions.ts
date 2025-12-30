@@ -10,7 +10,7 @@ import {
     buildInstructionPrompt,
     DEFAULT_INSTRUCTION_TEMPLATES,
     type CustomInstruction
-} from "./InstructionUtils.ts";
+} from "./InstructionUtils";
 
 export type { CustomInstruction };
 export { buildInstructionPrompt, DEFAULT_INSTRUCTION_TEMPLATES };
@@ -178,7 +178,7 @@ export const reorderInstructions = async (orderedIds: string[]): Promise<void> =
             const instr = instructions.find(i => i.id === id);
             return instr ? { ...instr, order: index } : null;
         })
-        .filter((i): i is CustomInstruction => i !== null);
+        .filter((i): i is any => i !== null && i !== undefined) as CustomInstruction[];
 
     const updated: AppSettings = {
         ...settings,

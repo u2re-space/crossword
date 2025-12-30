@@ -4,11 +4,11 @@
  * supporting semantic search, fuzzy matching, and AI-assisted filtering.
  */
 
-import { encode } from "@toon-format/toon";
-import { JSOX } from "jsox";
-import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses.ts";
-import { type DataFilter, DATA_SELECTION_PROMPT } from "../model/GPT-Config.ts";
-import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
+import { decode, encode } from "@toon-format/toon";
+import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
+import { type DataFilter } from "../model/GPT-Config";
+import { getRuntimeSettings } from "../../config/RuntimeSettings";
+import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
 
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
@@ -253,7 +253,7 @@ export const selectData = async <T = any>(
         if (options.distinct) {
             const seen = new Set();
             filtered = filtered.filter(item => {
-                const key = JSOX.stringify(item);
+                const key = encode(item, { indent: 2 });
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -351,8 +351,8 @@ export const aiSemanticSearch = async <T = any>(
 
         await gpt.giveForRequest(`
 Data set to search (${data.length} items):
-\`\`\`json
-${JSOX.stringify(data.slice(0, 100), null, 2)}
+\`\`\`toon
+${encode(data.slice(0, 100), { indent: 2 })}
 \`\`\`
 ${data.length > 100 ? `\n... and ${data.length - 100} more items` : ""}
         `);
@@ -390,9 +390,17 @@ Return:
             return result;
         }
 
-        const parsed = JSOX.parse(raw);
-        const indices = parsed?.matched_indices || [];
-        const scores = parsed?.scores || [];
+        const parsed = parseAIResponseSafe<any>(raw);
+        if (!parsed?.ok) {
+            result.error = parsed?.error || "Failed to parse AI response";
+            return result;
+        }
+        const indices = parsed?.data?.matched_indices || [];
+        const scores = parsed?.data?.scores || [];
+        if (!indices?.length || !scores?.length) {
+            result.error = "No matched indices or scores";
+            return result;
+        }
 
         const items = indices
             .map((idx: number, i: number) => ({
@@ -407,7 +415,7 @@ Return:
         result.items = items;
         result.total = items.length;
         result.stats.matchedBySearch = items.length;
-        result.suggestions = parsed?.suggestions;
+        result.suggestions = parsed?.data?.suggestions || [];
 
     } catch (e) {
         console.error("Error in aiSemanticSearch:", e);
@@ -529,8 +537,8 @@ export const findDuplicates = async <T = any>(
 
         await gpt.giveForRequest(`
 Data set to check for duplicates:
-\`\`\`json
-${JSOX.stringify(data, null, 2)}
+\`\`\`toon
+${encode(data, { indent: 2 })}
 \`\`\`
         `);
 
@@ -564,14 +572,17 @@ Return:
             return { groups: [], duplicateCount: 0 };
         }
 
-        const parsed = JSOX.parse(raw);
-        const groups = (parsed?.duplicate_groups || []).map((g: any) =>
+        const parsed = parseAIResponseSafe<any>(raw);
+        if (!parsed?.ok) {
+            return { groups: [], duplicateCount: 0 };
+        }
+
+        const groups = (parsed?.data?.duplicate_groups || []).map((g: any) =>
             g.indices.map((i: number) => data[i]).filter(Boolean)
         ).filter((g: T[]) => g.length > 1);
-
         const duplicateCount = groups.reduce((sum: number, g: T[]) => sum + g.length - 1, 0);
 
-        return { groups, duplicateCount };
+        return { groups: parsed?.data?.duplicate_groups || [], duplicateCount };
 
     } catch (e) {
         console.error("Error in findDuplicates:", e);
@@ -596,8 +607,8 @@ export const suggestFilters = async <T = any>(
 
         await gpt.giveForRequest(`
 Sample data structure:
-\`\`\`json
-${JSOX.stringify(sample, null, 2)}
+\`\`\`toon
+${encode(sample, { indent: 2 })}
 \`\`\`
 
 Total items: ${data.length}
@@ -626,8 +637,11 @@ Return:
 
         if (!raw) return [];
 
-        const parsed = JSOX.parse(raw);
-        return (parsed?.suggested_filters || []).map((f: any) => ({
+        const parsed = parseAIResponseSafe<any>(raw);
+        if (!parsed?.ok) {
+            return [];
+        }
+        return (parsed?.data?.suggested_filters || []).map((f: any) => ({
             field: f.field,
             operator: f.operator,
             value: f.value,
@@ -653,7 +667,7 @@ export const collectFromMultipleSources = async <T = any>(
         for (const source of sources) {
             sourceBreakdown[source.name] = 0;
             for (const item of source.data) {
-                const key = JSOX.stringify(item);
+                const key = encode(item, { indent: 2 });
                 if (!seen.has(key)) {
                     seen.add(key);
                     result.push(item);
@@ -669,7 +683,7 @@ export const collectFromMultipleSources = async <T = any>(
             const seen = new Set<string>();
             sourceBreakdown[source.name] = source.data.length;
             for (const item of source.data) {
-                const key = JSOX.stringify(item);
+                const key = encode(item, { indent: 2 });
                 if (!seen.has(key)) {
                     seen.add(key);
                     itemCounts.set(key, (itemCounts.get(key) || 0) + 1);
@@ -680,7 +694,7 @@ export const collectFromMultipleSources = async <T = any>(
         const targetCount = sources.length;
         for (const [key, count] of itemCounts) {
             if (count === targetCount) {
-                result.push(JSOX.parse(key));
+                result.push(decode(key) as T);
             }
         }
     } else if (mergeStrategy === "unique") {
@@ -688,7 +702,7 @@ export const collectFromMultipleSources = async <T = any>(
         for (const source of sources) {
             sourceBreakdown[source.name] = 0;
             for (const item of source.data) {
-                const key = JSOX.stringify(item);
+                const key = encode(item, { indent: 2 });
                 if (!itemSources.has(key)) {
                     itemSources.set(key, []);
                 }
@@ -698,7 +712,7 @@ export const collectFromMultipleSources = async <T = any>(
 
         for (const [key, sources] of itemSources) {
             if (sources.length === 1) {
-                result.push(JSOX.parse(key));
+                result.push(decode(key) as T);
                 sourceBreakdown[sources[0]]++;
             }
         }

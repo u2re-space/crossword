@@ -22,7 +22,7 @@
         "deno:start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-ffi --unstable server.ts",
         "deno:dev": "deno run --allow-net --allow-env --allow-read --allow-write --allow-ffi --unstable --watch server.ts",
         "build": "npm install --include=dev",
-        "start": "node ./server.ts --port 8443 --address 0.0.0.0 --debug --options --esm",
+        "start": "tsx ./server.ts --port 8443 --address 0.0.0.0 --debug --options --esm",
         "dev": "npm run start",
         "test": "npm run test:dev",
         "test:dev": "vite dev --config vite.config.ts",

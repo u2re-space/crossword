@@ -1,32 +1,307 @@
 /*
- * Enhanced data recognition module for AI-ops.
+ * Unified AI Service for CrossWord
+ * Consolidated AI/GPT/service API/Config/Architecture/Code for PWA, CRX, ShareTarget, and Core
  * Supports multiple input formats, batch recognition, and intelligent data extraction.
  */
 
-import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
+import { getRuntimeSettings } from "../../config/RuntimeSettings";
+import { loadSettings } from "../../config/Settings";
 import {
     getUsableData,
     GPTResponses,
     createGPTInstance,
     type AIResponse
-} from "../model/GPT-Responses.ts";
+} from "../model/GPT-Responses";
 import {
     detectDataKindFromContent,
     type DataKind,
     type DataContext
-} from "../model/GPT-Config.ts";
-import { extractJSONFromAIResponse } from "../../utils/AIResponseParser.ts";
-import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../InstructionUtils.ts";
-import type { ResponseLanguage } from "../../config/SettingsTypes.ts";
+} from "../model/GPT-Config";
+import { extractJSONFromAIResponse } from "../../utils/AIResponseParser";
+import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../InstructionUtils";
+import type { ResponseLanguage } from "../../config/SettingsTypes";
 
-// Dynamic import for browser-only instruction loading (avoids backend issues with @rs-core alias)
-const tryGetActiveInstructionText = async (): Promise<string> => {
+// ============================================================================
+// PLATFORM ADAPTERS
+// ============================================================================
+// Unified platform-specific functionality
+
+export interface ClipboardResult {
+    ok: boolean;
+    data?: string;
+    error?: string;
+    method?: string;
+}
+
+export interface ImageProcessingOptions {
+    maxWidth?: number;
+    maxHeight?: number;
+    quality?: number;
+    format?: 'png' | 'jpeg';
+}
+
+export interface PlatformAdapter {
+    copyToClipboard(data: string): Promise<ClipboardResult>;
+    readFromClipboard(): Promise<ClipboardResult>;
+    processImage?(dataUrl: string, options?: ImageProcessingOptions): Promise<string>;
+    captureScreenshot?(rect?: { x: number; y: number; width: number; height: number }): Promise<string>;
+    showNotification?(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void;
+}
+
+// Platform-specific implementations
+const createPwaAdapter = (): PlatformAdapter => ({
+    async copyToClipboard(data: string): Promise<ClipboardResult> {
+        try {
+            // Import PWA clipboard functionality
+            const { writeText } = await import("../../../frontend/shared/Clipboard");
+            return await writeText(data) as ClipboardResult;
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    },
+
+    async readFromClipboard(): Promise<ClipboardResult> {
+        try {
+            // PWA clipboard reading
+            if (navigator.clipboard?.readText) {
+                const text = await navigator.clipboard.readText();
+                return { ok: true, data: text };
+            }
+            return { ok: false, error: "Clipboard access not available" };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    },
+
+    async processImage(dataUrl: string, options?: ImageProcessingOptions): Promise<string> {
+        // Basic image processing for PWA (can be enhanced)
+        return dataUrl;
+    },
+
+    showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
+        // Use PWA toast system
+        try {
+            import("../../../frontend/shared/Toast").then(({ showToast }) => {
+                showToast({
+                    message,
+                    kind: options?.type || 'info',
+                    duration: options?.duration || 3000
+                });
+            });
+        } catch (e) {
+            console.log(message); // Fallback
+        }
+    }
+});
+
+const createCrxAdapter = (): PlatformAdapter => ({
+    async copyToClipboard(data: string): Promise<ClipboardResult> {
+        try {
+            // Import CRX clipboard functionality
+            const { requestCopyViaCRX } = await import("../../../frontend/shared/Clipboard");
+            const result = await requestCopyViaCRX(data);
+            return { ok: result.ok, data: result.data as string | undefined };
+        } catch (e) {
+            return { ok: false, error: String(e) as string | undefined };
+        }
+    },
+
+    async readFromClipboard(): Promise<ClipboardResult> {
+        try {
+            // CRX clipboard reading (may be limited)
+            if (navigator.clipboard?.readText) {
+                const text = await navigator.clipboard.readText();
+                return { ok: true, data: text };
+            }
+            return { ok: false, error: "Clipboard access not available" };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    },
+
+    async processImage(dataUrl: string, options?: ImageProcessingOptions): Promise<string> {
+        try {
+            // CRX has advanced image processing
+            const { encodeWithJSquash, removeAnyPrefix } = await import("../../utils/ImageProcess");
+
+            // Compress if needed
+            const SIZE_THRESHOLD = 1024 * 1024 * 2; // 2MB
+            if (dataUrl.length <= SIZE_THRESHOLD) return dataUrl;
+
+            // Convert to compressed JPEG
+            // @ts-ignore
+            const binary = Uint8Array.fromBase64(removeAnyPrefix(dataUrl), { alphabet: "base64" });
+            const blob = new Blob([binary], { type: "image/png" });
+            const bitmap = await createImageBitmap(blob);
+            const arrayBuffer = await encodeWithJSquash(bitmap);
+            bitmap?.close?.();
+
+            if (arrayBuffer) { // @ts-ignore
+                const base64 = new Uint8Array(arrayBuffer).toBase64({ alphabet: "base64" });
+                return `data:image/jpeg;base64,${base64}`;
+            }
+
+            return dataUrl;
+        } catch (e) {
+            console.warn("Image processing failed:", e);
+            return dataUrl;
+        }
+    },
+
+    async captureScreenshot(rect?: { x: number; y: number; width: number; height: number }): Promise<string> {
+        try {
+            // CRX screenshot capture
+            if (typeof chrome !== 'undefined' && chrome.tabs?.captureVisibleTab) {
+                const captureOptions: any = { format: "png", scale: 1 };
+                if (rect) {
+                    captureOptions.rect = rect;
+                }
+
+                return new Promise((resolve, reject) => {
+                    chrome.tabs.captureVisibleTab(captureOptions, (dataUrl) => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                        } else {
+                            resolve(dataUrl);
+                        }
+                    });
+                });
+            }
+            throw new Error("Screenshot capture not available");
+        } catch (e) {
+            throw new Error(`Screenshot capture failed: ${e}`);
+        }
+    },
+
+    showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
+        // Use CRX notification system or fallback to console
+        console.log(`[${options?.type || 'info'}] ${message}`);
+    }
+});
+
+const createCoreAdapter = (): PlatformAdapter => ({
+    async copyToClipboard(data: string): Promise<ClipboardResult> {
+        try {
+            // Core has limited clipboard access, try modern API
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(data);
+                return { ok: true, data, method: "clipboard-api" };
+            }
+
+            // Fallback to legacy method
+            const textArea = document.createElement("textarea");
+            textArea.value = data;
+            textArea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;";
+            document.body.appendChild(textArea);
+            textArea.select();
+
+            const success = document.execCommand("copy");
+            textArea.remove();
+
+            return success
+                ? { ok: true, data, method: "legacy" }
+                : { ok: false, error: "Copy failed" };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    },
+
+    async readFromClipboard(): Promise<ClipboardResult> {
+        try {
+            if (navigator.clipboard?.readText) {
+                const text = await navigator.clipboard.readText();
+                return { ok: true, data: text };
+            }
+            return { ok: false, error: "Clipboard access not available" };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    },
+
+    showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
+        // Core uses console logging
+        console.log(`[${options?.type || 'info'}] ${message}`);
+    }
+});
+
+// Get the appropriate platform adapter
+export const getPlatformAdapter = (): PlatformAdapter => {
+    const platform = detectPlatform();
+
+    switch (platform) {
+        case 'crx':
+            return createCrxAdapter();
+        case 'pwa':
+            return createPwaAdapter();
+        case 'core':
+        default:
+            return createCoreAdapter();
+    }
+};
+
+// Platform detection for unified behavior
+export const detectPlatform = (): 'pwa' | 'crx' | 'core' | 'unknown' => {
     try {
-        // Only works in browser context where settings can be loaded
-        const { getActiveInstructionText } = await import("../CustomInstructions.ts");
+        // Check for Chrome extension context
+        if (typeof chrome !== 'undefined' && chrome?.runtime?.id) {
+            return 'crx';
+        }
+
+        // Check for service worker context
+        if (typeof self !== 'undefined' && 'ServiceWorkerGlobalScope' in self) {
+            return 'pwa';
+        }
+
+        // Check for PWA context (standalone mode)
+        if (typeof navigator !== 'undefined' && 'standalone' in navigator) {
+            return 'pwa';
+        }
+
+        return 'core';
+    } catch {
+        return 'unknown';
+    }
+};
+
+// Unified settings loader that works across platforms
+export const loadAISettings = async () => {
+    const platform = detectPlatform();
+    console.log("[AI] Detected platform:", platform);
+
+    try {
+        if (platform === 'crx') {
+            console.log("[AI] Loading CRX settings...");
+            // CRX uses direct settings loading
+            const settings = await loadSettings();
+            console.log("[AI] CRX settings loaded:", !!settings, settings?.ai ? "AI config present" : "No AI config");
+            return settings;
+        } else {
+            console.log("[AI] Loading PWA/Core runtime settings...");
+            // PWA/Core use runtime settings
+            const settings = await getRuntimeSettings();
+            console.log("[AI] Runtime settings loaded:", !!settings, settings?.ai ? "AI config present" : "No AI config");
+            return settings;
+        }
+    } catch (e) {
+        console.error(`[AI-Service] Failed to load settings for platform ${platform}:`, e);
+        return null;
+    }
+};
+
+// Unified custom instruction loading that works across platforms
+export const getActiveCustomInstruction = async (): Promise<string> => {
+    try {
+        // Try direct import first (works in most contexts)
+        const { getActiveInstructionText } = await import("../CustomInstructions");
         return await getActiveInstructionText();
     } catch {
-        return "";
+        // Fallback for contexts where direct import fails
+        try {
+            const { getActiveInstructionText } = await import("../CustomInstructions");
+            return await getActiveInstructionText();
+        } catch {
+            return "";
+        }
     }
 };
 
@@ -39,10 +314,10 @@ const LANGUAGE_INSTRUCTIONS: Record<ResponseLanguage, string> = {
 
 const TRANSLATE_INSTRUCTION = "\n\nAdditionally, translate the recognized content to the response language if it differs from the source.";
 
-// Get language instruction based on settings
-const getLanguageInstruction = async (): Promise<string> => {
+// Get language instruction based on settings (unified across platforms)
+export const getLanguageInstruction = async (): Promise<string> => {
     try {
-        const settings = getRuntimeSettings();
+        const settings = await loadAISettings();
         const lang = settings?.ai?.responseLanguage || "auto";
         const translate = settings?.ai?.translateResults || false;
 
@@ -56,10 +331,10 @@ const getLanguageInstruction = async (): Promise<string> => {
     }
 };
 
-// Get SVG graphics addon based on settings
-const getSvgGraphicsAddon = async (): Promise<string> => {
+// Get SVG graphics addon based on settings (unified across platforms)
+export const getSvgGraphicsAddon = async (): Promise<string> => {
     try {
-        const settings = getRuntimeSettings();
+        const settings = await loadAISettings();
         return settings?.ai?.generateSvgGraphics ? SVG_GRAPHICS_ADDON : "";
     } catch {
         return "";
@@ -310,14 +585,28 @@ Always respond in the specified language and provide complete, valid CSS.
 //
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
-const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
-    const settings = await getRuntimeSettings();
+// Unified GPT instance creation that works across platforms
+export const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
+    console.log("[AI] getGPTInstance called with config:", !!config);
+    const settings = await loadAISettings();
+    console.log("[AI] Settings loaded:", !!settings, settings?.ai ? "AI settings present" : "No AI settings");
+
     const apiKey = config?.apiKey || settings?.ai?.apiKey;
-    if (!apiKey) return null;
+    console.log("[AI] API key available:", !!apiKey);
+
+    if (!apiKey) {
+        console.error("[AI] No API key found - returning null");
+        return null;
+    }
+
+    const baseUrl = config?.baseUrl || settings?.ai?.baseUrl || DEFAULT_API_URL;
+    const model = config?.model || settings?.ai?.model || DEFAULT_MODEL;
+    console.log("[AI] Creating GPT instance with URL:", baseUrl, "model:", model);
+
     return createGPTInstance(
         apiKey,
-        config?.baseUrl || settings?.ai?.baseUrl,
-        config?.model || settings?.ai?.model
+        baseUrl,
+        model
     );
 }
 
@@ -359,7 +648,7 @@ export const recognizeByInstructions = async (
         finalInstructions = buildInstructionPrompt(instructions, options.customInstruction);
     } else if (options?.useActiveInstruction !== false) {
         console.log("[RecognizeData] Fetching active instruction from settings...");
-        const activeInstruction = await tryGetActiveInstructionText();
+        const activeInstruction = await getActiveCustomInstruction();
         console.log("[RecognizeData] Active instruction:", activeInstruction ? `"${activeInstruction.substring(0, 50)}..."` : "(none)");
         if (activeInstruction) {
             finalInstructions = buildInstructionPrompt(instructions, activeInstruction);
@@ -369,33 +658,31 @@ export const recognizeByInstructions = async (
         console.log("[RecognizeData] Custom instructions disabled via options");
     }
 
-    const r: any = await fetch(`${config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
-        method: 'POST',
-        priority: 'auto',
-        keepalive: true,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            model: config?.model || settings?.model || DEFAULT_MODEL,
-            input,
-            reasoning: { "effort": "low" },
-            text: { verbosity: "low" },
-            max_output_tokens: 400000,
-            instructions: finalInstructions
-        })
-    })?.catch?.(e => {
-        console.warn(e);
-        return { ok: false, error: String(e) };
-    });
+    // Use GPTResponses class instead of direct API call for consistency
+    const gpt = createGPTInstance(token, config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL, config?.model || settings?.model || DEFAULT_MODEL);
 
-    const res = await r?.json?.()?.catch?.((e: any) => {
-        console.warn(e);
-        return { ok: false, error: String(e) };
-    }) || {};
+    // Clear any previous pending items and set up the instruction
+    gpt.clearPending();
+    await gpt.askToDoAction(finalInstructions);
 
-    const output = { ok: r?.ok, data: res?.output?.at?.(-1)?.content?.[0]?.text?.trim?.() };
+    // Check if input is already formatted as a message array (from analyzeRecognizeUnified)
+    if (Array.isArray(input) && input[0]?.type === "message") {
+        // Input is already formatted, add it directly to pending
+        gpt.pending.push(...input);
+    } else {
+        // Input is raw data source, attach it properly
+        await gpt.attachToRequest(input);
+    }
+
+    // Send the request
+    const response = await gpt.sendRequest("low", "low");
+
+    const output = {
+        ok: !!response,
+        data: response?.trim?.() || undefined,
+        error: response ? undefined : "No response from AI"
+    };
+
     sendResponse?.(output);
     return output;
 };
@@ -704,13 +991,12 @@ Expected output structure:
 
         // Use robust JSON extraction to handle markdown-wrapped responses
         const parseResult = extractJSONFromAIResponse<any>(raw);
-        if (!parseResult.ok) {
+        if (!parseResult.ok || !parseResult.data) {
             console.warn("JSON extraction failed in extractByRules:", parseResult.error);
             return results;
         }
 
         return parseResult.data?.extractions || [];
-
     } catch (e) {
         console.error("Error in extractByRules:", e);
         return results;
@@ -880,8 +1166,15 @@ export const solveAndAnswer = async (
     input: any,
     options?: RecognizeByInstructionsOptions
 ): Promise<RecognitionResult> => {
+    console.log("[AI] solveAndAnswer called with input:", input?.substring?.(0, 100) || input);
+
     const gpt = await getGPTInstance();
-    if (!gpt) return { ok: false, recognized_data: [], keywords_and_tags: [], verbose_data: "", suggested_type: null, confidence: 0, source_kind: "unknown", processing_time_ms: 0, errors: ["AI service not available"], warnings: [] };
+    console.log("[AI] GPT instance created:", !!gpt);
+
+    if (!gpt) {
+        console.error("[AI] Failed to create GPT instance - check API key and settings");
+        return { ok: false, recognized_data: [], keywords_and_tags: [], verbose_data: "", suggested_type: null, confidence: 0, source_kind: "unknown", processing_time_ms: 0, errors: ["AI service not available"], warnings: [] };
+    }
 
     const startTime = Date.now();
 
@@ -896,7 +1189,7 @@ export const solveAndAnswer = async (
         if (options?.customInstruction) {
             customInstruction = options.customInstruction;
         } else if (options?.useActiveInstruction) {
-            customInstruction = await tryGetActiveInstructionText();
+            customInstruction = await getActiveCustomInstruction();
         }
 
         if (customInstruction) {
@@ -909,24 +1202,29 @@ export const solveAndAnswer = async (
         // Give input data
         await gpt.giveForRequest(input);
 
-        // Get response
-        const response = await gpt.getResponse();
+        // Send request and get response
+        console.log("[AI] Sending request with effort='high', verbosity='medium'");
+        const rawResponse = await gpt.sendRequest("high", "medium");
         const processingTime = Date.now() - startTime;
 
-        if (response?.ok) {
+        console.log("[AI] Raw response received:", !!rawResponse, rawResponse?.substring?.(0, 200) || "null/empty");
+
+        if (rawResponse) {
+            console.log("[AI] solveAndAnswer success");
             return {
                 ok: true,
-                recognized_data: [response.data],
+                recognized_data: [rawResponse],
                 keywords_and_tags: ["solution", "answer"],
-                verbose_data: response.data,
+                verbose_data: rawResponse,
                 suggested_type: "solution",
                 confidence: 0.9,
-                source_kind: "text",
+                source_kind: "text" as unknown as DataKind,
                 processing_time_ms: processingTime,
                 errors: [],
                 warnings: []
             };
         } else {
+            console.error("[AI] solveAndAnswer failed - no response from sendRequest");
             return {
                 ok: false,
                 recognized_data: [],
@@ -936,7 +1234,7 @@ export const solveAndAnswer = async (
                 confidence: 0,
                 source_kind: "unknown",
                 processing_time_ms: processingTime,
-                errors: [response?.error || "Failed to solve/answer"],
+                errors: ["Failed to get response"],
                 warnings: []
             };
         }
@@ -977,7 +1275,7 @@ export const writeCode = async (
         if (options?.customInstruction) {
             customInstruction = options.customInstruction;
         } else if (options?.useActiveInstruction) {
-            customInstruction = await tryGetActiveInstructionText();
+            customInstruction = await getActiveCustomInstruction();
         }
 
         if (customInstruction) {
@@ -990,19 +1288,19 @@ export const writeCode = async (
         // Give input data
         await gpt.giveForRequest(input);
 
-        // Get response
-        const response = await gpt.getResponse();
+        // Send request and get response
+        const rawResponse = await gpt.sendRequest("high", "medium");
         const processingTime = Date.now() - startTime;
 
-        if (response?.ok) {
+        if (rawResponse) {
             return {
                 ok: true,
-                recognized_data: [response.data],
+                recognized_data: [rawResponse],
                 keywords_and_tags: ["code", "programming"],
-                verbose_data: response.data,
+                verbose_data: rawResponse,
                 suggested_type: "code",
                 confidence: 0.9,
-                source_kind: "text",
+                source_kind: "text" as unknown as DataKind,
                 processing_time_ms: processingTime,
                 errors: [],
                 warnings: []
@@ -1017,7 +1315,7 @@ export const writeCode = async (
                 confidence: 0,
                 source_kind: "unknown",
                 processing_time_ms: processingTime,
-                errors: [response?.error || "Failed to generate code"],
+                errors: ["Failed to generate code"],
                 warnings: []
             };
         }
@@ -1058,7 +1356,7 @@ export const extractCSS = async (
         if (options?.customInstruction) {
             customInstruction = options.customInstruction;
         } else if (options?.useActiveInstruction) {
-            customInstruction = await tryGetActiveInstructionText();
+            customInstruction = await getActiveCustomInstruction();
         }
 
         if (customInstruction) {
@@ -1071,19 +1369,19 @@ export const extractCSS = async (
         // Give input data
         await gpt.giveForRequest(input);
 
-        // Get response
-        const response = await gpt.getResponse();
+        // Send request and get response
+        const rawResponse = await gpt.sendRequest("high", "medium");
         const processingTime = Date.now() - startTime;
 
-        if (response?.ok) {
+        if (rawResponse) {
             return {
                 ok: true,
-                recognized_data: [response.data],
+                recognized_data: [rawResponse],
                 keywords_and_tags: ["css", "styles", "stylesheet"],
-                verbose_data: response.data,
+                verbose_data: rawResponse,
                 suggested_type: "css",
                 confidence: 0.9,
-                source_kind: "text",
+                source_kind: "text" as unknown as DataKind,
                 processing_time_ms: processingTime,
                 errors: [],
                 warnings: []
@@ -1098,7 +1396,7 @@ export const extractCSS = async (
                 confidence: 0,
                 source_kind: "unknown",
                 processing_time_ms: processingTime,
-                errors: [response?.error || "Failed to extract CSS"],
+                errors: ["Failed to extract CSS"],
                 warnings: []
             };
         }
@@ -1121,3 +1419,44 @@ export const extractCSS = async (
 // Convenience aliases
 export const solveEquation = solveAndAnswer;
 export const answerQuestion = solveAndAnswer;
+
+// ============================================================================
+// UNIFIED AI SERVICE INTERFACE
+// ============================================================================
+// This interface provides consistent access to all AI functions across platforms
+// (PWA, CRX, Core, ShareTarget). All platforms should use these exports.
+
+export const UnifiedAIService = {
+    // Platform detection and adaptation
+    detectPlatform,
+    getPlatformAdapter,
+
+    // Settings and configuration
+    loadAISettings,
+    getLanguageInstruction,
+    getSvgGraphicsAddon,
+    getActiveCustomInstruction,
+
+    // Core AI functions
+    recognizeByInstructions,
+    recognizeImageData,
+    convertTextualData,
+    analyzeRecognizeUnified,
+
+    // Specialized AI functions (unified across platforms)
+    solveAndAnswer,
+    solveEquation,
+    answerQuestion,
+    writeCode,
+    extractCSS,
+
+    // Utility functions
+    batchRecognize,
+    extractEntities,
+    smartRecognize
+
+    // Types are available as module exports: RecognitionResult, BatchRecognitionResult, etc.
+};
+
+// Default export for convenience
+export default UnifiedAIService;

@@ -16,12 +16,11 @@
 
 //
 import { encode } from "@toon-format/toon";
-import { JSOX } from "jsox";
 
 //
-import { GPTResponses } from "../model/GPT-Responses.ts";
-import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem.ts";
-import { realtimeStates } from "../Cache.ts";
+import { GPTResponses } from "../model/GPT-Responses";
+import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
+import { realtimeStates } from "../Cache";
 
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
@@ -30,6 +29,7 @@ import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
 import { loadSettings } from "@rs-core/config/Settings";
+import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
 
 //
 export const TIMELINE_DIR = "/timeline/";
@@ -99,14 +99,12 @@ export const createTimelineGenerator = async (sourcePath: string | null = null, 
     ]?.join?.("\n"));
 
     // load all of those into context
-    const readyStatus = JSOX.parse(await gptResponses?.sendRequest?.("high", "high") || "{ ready: false, reason: \"No attached data\", keywords: [] }") as any;
-    if (!readyStatus?.ready) {
-        console.error("timeline", readyStatus);
+    const readyStatus = parseAIResponseSafe<{ ready: boolean; reason: string; verbose_data: string }>(await gptResponses?.sendRequest?.("high", "high") || "{ ready: false, reason: \"No attached data\", verbose_data: \"\" }");
+    if (!readyStatus?.ok) {
+        console.error("timeline", readyStatus?.error || "Failed to parse AI response");
         return { timeline: [], keywords: [] };
     }
-
-    //
-    return gptResponses;
+    return readyStatus?.data;
 }
 
 
@@ -145,7 +143,7 @@ export const requestNewTimeline = async (gptResponses: GPTResponses, existsTimel
     //
     const existsResponseId = gptResponses?.getResponseId?.();
     const raw = await gptResponses?.sendRequest?.()?.catch?.(console.warn.bind(console));
-    const timelines = raw ? JSOX.parse(raw) as any : "{ ready: false, reason: \"No attached data\", keywords: [] }";
+    const timelines = raw ? parseAIResponseSafe<any>(raw) as any : "{ ready: false, reason: \"No attached data\", keywords: [] }";
     gptResponses?.beginFromResponseId?.(existsResponseId as string | null);
 
     //

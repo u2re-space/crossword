@@ -9,12 +9,23 @@ import { makeCommitAnalyze } from './routers/commit-analyze';
 import { commitRecognize, makeCommitRecognize } from './routers/commit-recognize';
 import { makeTimeline } from './routers/make-timeline';
 import { commitAnalyze } from './routers/commit-analyze';
-import { loadSettings } from '@rs-core/config/Settings';
+import { UnifiedAIService } from '@rs-core/service/AI-ops/RecognizeData';
 import { setRuntimeSettingsProvider } from '@rs-core/config/RuntimeSettings';
+import { loadSettings } from '@rs-core/config/Settings';
 
-// CRITICAL: Set runtime settings provider to use loadSettings
-// Without this, AI recognition gets DEFAULT_SETTINGS (no API key)
-setRuntimeSettingsProvider(loadSettings);
+// CRITICAL: Set runtime settings provider for service worker context
+// Service worker needs direct access to settings storage
+setRuntimeSettingsProvider(async () => {
+    console.log("[SW] Loading settings for service worker context");
+    try {
+        const settings = await loadSettings();
+        console.log("[SW] Settings loaded:", !!settings, settings?.ai ? "AI config present" : "No AI config");
+        return settings;
+    } catch (e) {
+        console.error("[SW] Failed to load settings:", e);
+        return null;
+    }
+});
 
 //
 // @ts-ignore
@@ -177,13 +188,8 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                 try {
                     const mode = settings?.ai?.shareTargetMode || 'recognize';
 
-                    // Get custom instruction for processing (use already loaded settings)
-                    let customInstruction = "";
-                    if (settings?.ai?.customInstructions && settings?.ai?.activeInstructionId) {
-                        const ai = settings.ai;
-                        const active = ai.customInstructions?.find(i => i.id === ai.activeInstructionId);
-                        customInstruction = active?.instruction || "";
-                    }
+                    // Get custom instruction for processing using unified service
+                    const customInstruction = await UnifiedAIService.getActiveCustomInstruction();
                     console.log(`[ShareTarget] Mode: ${mode}, custom instruction:`, customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
 
                     // Create synthetic form data for the commit routes
@@ -206,11 +212,12 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                     let results: any[];
 
                     if (mode === 'analyze') {
+                        console.log('[ShareTarget] Starting commitAnalyze...');
                         results = await commitAnalyze?.(syntheticEvent)?.catch?.((err) => {
                             console.error('[ShareTarget] commitAnalyze error:', err);
                             return [];
                         }) || [];
-                        console.log('[ShareTarget] Analyze results:', results);
+                        console.log('[ShareTarget] Analyze results:', results, 'length:', results?.length);
 
                         // For analyze mode, just show completion
                         if (results?.length) {
@@ -219,11 +226,12 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                             sendToast('Analysis completed but no data extracted', 'warning');
                         }
                     } else {
+                        console.log('[ShareTarget] Starting commitRecognize...');
                         results = await commitRecognize?.(syntheticEvent)?.catch?.((err) => {
                             console.error('[ShareTarget] commitRecognize error:', err);
                             return [];
                         }) || [];
-                        console.log('[ShareTarget] Recognize results:', results);
+                        console.log('[ShareTarget] Recognize results:', results, 'length:', results?.length);
 
                         // For recognize mode, copy to clipboard (this will be handled by the commit route via broadcast)
                         // The commit route already handles clipboard copying for recognize mode

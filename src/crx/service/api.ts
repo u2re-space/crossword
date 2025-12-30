@@ -3,6 +3,7 @@ import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByI
 import type { RecognizeResult } from "./RecognizeData";
 import { requestCopyViaCRX, toText } from "@rs-frontend/shared/Clipboard";
 import { getCustomInstructions } from "@rs-core/service/CustomInstructions";
+import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
@@ -148,24 +149,66 @@ export const enableCapture = (ext: typeof chrome) => {
                         finalUrl = dataUrl;
                     }
 
-                    // prepare input for AI recognition
-                    const input = [{
+                    // Use GPT instance directly for image recognition
+                    const gpt = await getGPTInstance();
+                    if (!gpt) {
+                        throw new Error("AI service not available");
+                    }
+
+                    const IMAGE_INSTRUCTION = `
+Recognize data from image, also preferred to orient by fonts in image.
+
+In recognition result, do not include image itself.
+
+In recognized from image data (what you seen in image), do:
+- If textual content, format as Markdown string (multiline).
+- If math (expression, equation, formula):
+  - For inline math, use SINGLE dollar signs: $x^2 + y^2 = z^2$
+  - For block/display math, use DOUBLE dollar signs: $$\\int_0^1 f(x) dx$$
+  - Do NOT add extra dollar signs - use exactly one $ for inline, exactly two $$ for block
+- If table (or looks alike table), format as | table |
+- If image reference, format as [$image$]($image$)
+- If code, format as \`\`\`$code$\`\`\` (multiline) or \`$code$\` (single-line)
+- If JSON, format as JSON string.
+- If phone number, format as correct phone number (in normalized format).
+  - If phone numbers (for example starts with +7, format as 8), replace to correct regional code.
+  - Trim spaces from phone numbers, emails, URLs, dates, times, codes, etc.
+  - Remove brackets, parentheses, spaces or other symbols from phone numbers.
+- If email, format as correct email (in normalized format).
+- If URL, format as correct URL (in normalized format), decode unicode to readable.
+- If date, format as correct date (ISO format preferred).
+- If time, format as correct time (24h format preferred).
+- If barcode/QR code, extract the encoded data.
+- If other structured data, format as appropriate markup.
+- If mixed content, separate sections with headers.
+
+IMPORTANT: Extract ALL visible text, numbers, symbols, equations, and data from the image.
+If the image contains multiple items, list them all clearly.
+If uncertain about any part, indicate it in the output but still extract what you can see.
+
+Output ONLY the recognized content - no explanations, comments, or meta-information about the recognition process.
+`;
+
+                    console.log("[CRX] Setting up GPT for image recognition");
+                    // Create a simple message structure for image recognition
+                    gpt.pending.push({
                         type: "message",
                         role: "user",
-                        content: [{
-                            type: "input_image",
-                            image_url: finalUrl
-                        }]
-                    }];
+                        content: [
+                            { type: "input_text", text: IMAGE_INSTRUCTION },
+                            { type: "input_image", image_url: finalUrl, detail: "auto" }
+                        ]
+                    });
+                    console.log("[CRX] Calling GPT sendRequest for recognition");
+                    const rawResponse = await gpt.sendRequest("low", "low");
+                    console.log("[CRX] GPT recognition response:", rawResponse);
 
-                    // call AI recognition
-                    const result = await recognizeImageData(input);
-                    const recognizedText = extractRecognizedText(result);
+                    const recognizedText = rawResponse || "";
 
                     const res = {
-                        ok: result?.ok ?? !!recognizedText,
+                        ok: !!recognizedText,
                         data: recognizedText,
-                        error: result?.error || (!recognizedText ? "No data recognized" : undefined)
+                        error: !recognizedText ? "No data recognized" : undefined
                     };
 
                     // copy to clipboard if successful
@@ -222,14 +265,43 @@ export const enableCapture = (ext: typeof chrome) => {
                         }]
                     }];
 
-                    // call unified AI solver/answerer
-                    const result = await solveAndAnswer(input);
-                    const solutionText = extractRecognizedText(result);
+                    // Use GPT instance directly for better response handling
+                    const gpt = await getGPTInstance();
+                    if (!gpt) {
+                        throw new Error("AI service not available");
+                    }
+
+                    const SOLVE_AND_ANSWER_INSTRUCTION = `You are an expert mathematician and problem solver. Analyze the provided content (which may be text, images, equations, or diagrams) and provide a clear, step-by-step solution or answer.
+
+If the content contains:
+- Mathematical equations: Solve them showing all work
+- Word problems: Break down the problem and solve step by step
+- Multiple choice questions: Show reasoning and select the best answer
+- Diagrams or visual problems: Describe what you see and solve accordingly
+- Programming problems: Provide the solution with explanation
+
+Always show your work clearly and provide the final answer prominently. If multiple approaches are possible, show the most efficient one.`;
+
+                    console.log("[CRX] Setting up GPT for solve/answer");
+                    // Create a simple message structure for solve/answer
+                    gpt.pending.push({
+                        type: "message",
+                        role: "user",
+                        content: [
+                            { type: "input_text", text: SOLVE_AND_ANSWER_INSTRUCTION },
+                            { type: "input_image", image_url: finalUrl, detail: "auto" }
+                        ]
+                    });
+                    console.log("[CRX] Calling GPT sendRequest for solve/answer");
+                    const rawResponse = await gpt.sendRequest("high", "medium");
+                    console.log("[CRX] GPT sendRequest result:", rawResponse);
+                    const solutionText = rawResponse || "";
+                    console.log("[CRX] Final solution text:", solutionText);
 
                     const res = {
-                        ok: result?.ok ?? !!solutionText,
+                        ok: !!solutionText,
                         data: solutionText,
-                        error: result?.error || (!solutionText ? "Could not solve/answer" : undefined)
+                        error: !solutionText ? "Could not solve/answer" : undefined
                     };
 
                     // copy solution to clipboard if successful
@@ -277,13 +349,42 @@ export const enableCapture = (ext: typeof chrome) => {
                         content: [{ type: "input_image", image_url: finalUrl }]
                     }];
 
-                    const result = await writeCode(input);
-                    const codeText = extractRecognizedText(result);
+                    // Use GPT instance directly for code generation
+                    const gpt = await getGPTInstance();
+                    if (!gpt) {
+                        throw new Error("AI service not available");
+                    }
+
+                    const WRITE_CODE_INSTRUCTION = `You are an expert software developer. Analyze the provided content (which may be text descriptions, images, diagrams, or partial code) and generate high-quality, working code.
+
+Based on the content:
+- If it's a description: Write complete, functional code that implements the described functionality
+- If it's partial code: Complete the code or fix any issues
+- If it's a diagram/flowchart: Implement the logic shown in the diagram
+- If it's a UI mockup: Generate the corresponding HTML/CSS/JavaScript
+
+Provide clean, well-commented, production-ready code. Include all necessary imports, error handling, and follow best practices for the detected programming language. If multiple languages are possible, choose the most appropriate one.`;
+
+                    console.log("[CRX] Setting up GPT for code generation");
+                    // Create a simple message structure for code generation
+                    gpt.pending.push({
+                        type: "message",
+                        role: "user",
+                        content: [
+                            { type: "input_text", text: WRITE_CODE_INSTRUCTION },
+                            { type: "input_image", image_url: finalUrl, detail: "auto" }
+                        ]
+                    });
+                    console.log("[CRX] Calling GPT sendRequest for code generation");
+                    const rawResponse = await gpt.sendRequest("high", "medium");
+                    console.log("[CRX] GPT sendRequest result:", rawResponse);
+                    const codeText = rawResponse || "";
+                    console.log("[CRX] Final code text:", codeText);
 
                     const res = {
-                        ok: result?.ok ?? !!codeText,
+                        ok: !!codeText,
                         data: codeText,
-                        error: result?.error || (!codeText ? "Could not generate code" : undefined)
+                        error: !codeText ? "Could not generate code" : undefined
                     };
 
                     if (res.ok && res.data) {
@@ -330,13 +431,50 @@ export const enableCapture = (ext: typeof chrome) => {
                         content: [{ type: "input_image", image_url: finalUrl }]
                     }];
 
-                    const result = await extractCSS(input);
-                    const cssText = extractRecognizedText(result);
+                    // Use GPT instance directly for CSS extraction
+                    const gpt = await getGPTInstance();
+                    if (!gpt) {
+                        throw new Error("AI service not available");
+                    }
+
+                    const EXTRACT_CSS_INSTRUCTION = `You are an expert CSS developer. Analyze the provided content (which may be images, screenshots, mockups, or descriptions of UI elements) and extract/generate the corresponding CSS styles.
+
+Based on the content:
+- If it's a screenshot/mockup: Extract the visual styles, layout, colors, typography, and spacing
+- If it's a description: Generate CSS that implements the described styling
+- If it's existing code: Extract and improve the CSS styles
+- If it's a design system: Generate comprehensive CSS variables and classes
+
+Provide clean, modern CSS using:
+- CSS custom properties for colors, spacing, typography
+- Flexbox/Grid for layouts
+- Modern CSS features (clamp(), CSS nesting if appropriate)
+- Responsive design principles
+- Semantic class names
+- Well-organized, maintainable code structure
+
+Include all relevant CSS properties including layout, colors, typography, spacing, borders, shadows, and animations.`;
+
+                    console.log("[CRX] Setting up GPT for CSS extraction");
+                    // Create a simple message structure for CSS extraction
+                    gpt.pending.push({
+                        type: "message",
+                        role: "user",
+                        content: [
+                            { type: "input_text", text: EXTRACT_CSS_INSTRUCTION },
+                            { type: "input_image", image_url: finalUrl, detail: "auto" }
+                        ]
+                    });
+                    console.log("[CRX] Calling GPT sendRequest for CSS extraction");
+                    const rawResponse = await gpt.sendRequest("high", "medium");
+                    console.log("[CRX] GPT sendRequest result:", rawResponse);
+                    const cssText = rawResponse || "";
+                    console.log("[CRX] Final CSS text:", cssText);
 
                     const res = {
-                        ok: result?.ok ?? !!cssText,
+                        ok: !!cssText,
                         data: cssText,
-                        error: result?.error || (!cssText ? "Could not extract CSS" : undefined)
+                        error: !cssText ? "Could not extract CSS" : undefined
                     };
 
                     if (res.ok && res.data) {

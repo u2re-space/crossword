@@ -4,7 +4,7 @@
  * Provides unified interface for AI recognition operations
  */
 
-import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast.ts";
+import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast";
 
 export type RecognitionMode = "recognize" | "analyze";
 
@@ -58,7 +58,7 @@ export const unregisterHandler = (mode: RecognitionMode): void => {
  */
 export const processRecognition = async (request: RecognitionRequest): Promise<RecognitionResult> => {
     const handler = handlers.get(request.type);
-    
+
     if (!handler) {
         return {
             requestId: request.requestId,
@@ -97,7 +97,7 @@ export const requestRecognition = (
     requestId?: string
 ): string => {
     const id = requestId || `rec_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    
+
     postMessage(CHANNEL_NAMES.AI_RECOGNITION, {
         type: mode,
         data,
@@ -111,10 +111,10 @@ export const requestRecognition = (
  * Listen for recognition requests and process them
  */
 export const listenForRecognitionRequests = (): (() => void) => {
-    return subscribe<RecognitionRequest>(CHANNEL_NAMES.AI_RECOGNITION, async (request) => {
+    return affected<RecognitionRequest>(CHANNEL_NAMES.AI_RECOGNITION, async (request) => {
         if (request.type === "recognize" || request.type === "analyze") {
             const result = await processRecognition(request);
-            
+
             // Broadcast result back
             postMessage(CHANNEL_NAMES.AI_RECOGNITION, {
                 type: "result",
@@ -130,7 +130,7 @@ export const listenForRecognitionRequests = (): (() => void) => {
 export const listenForRecognitionResults = (
     callback: (result: RecognitionResult) => void
 ): (() => void) => {
-    return subscribe<RecognitionResult & { type?: string }>(CHANNEL_NAMES.AI_RECOGNITION, (data) => {
+    return affected<RecognitionResult & { type?: string }>(CHANNEL_NAMES.AI_RECOGNITION, (data) => {
         if (data.type === "result" || data.ok !== undefined) {
             callback(data);
         }
@@ -151,11 +151,11 @@ export const recognize = (
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
         const cleanup = () => {
-            if (unsubscribe) unaffected();
+            if (unsubscribe) unsubscribe();
             if (timeoutId) clearTimeout(timeoutId);
         };
 
-        unaffected = listenForRecognitionResults((result) => {
+        unsubscribe = listenForRecognitionResults((result) => {
             if (result.requestId === requestId) {
                 cleanup();
                 resolve(result);

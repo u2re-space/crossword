@@ -15,12 +15,12 @@ import {
     type DataContext,
     type DataFilter,
     type ModificationInstruction
-} from "./GPT-Config.ts";
+} from "./GPT-Config";
 import { JSOX } from "jsox";
 import {
     extractJSONFromAIResponse,
     STRICT_JSON_INSTRUCTIONS
-} from "../../utils/AIResponseParser.ts";
+} from "../../utils/AIResponseParser";
 
 const hasFile = () => typeof (globalThis as any).File !== "undefined";
 const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";
@@ -82,11 +82,9 @@ export const getUsableData = async (data: DataInput) => {
         // Handle other file types as text
         const text = await data?.dataSource?.text?.()?.catch?.(() => null);
         if (text) {
-            const detectedKind = detectDataKindFromContent(text);
             return {
                 "type": "input_text",
-                "text": text,
-                "_detectedKind": detectedKind
+                "text": text
             }
         }
     } else if (typeof data?.dataSource == "string") {
@@ -109,8 +107,7 @@ export const getUsableData = async (data: DataInput) => {
         // anyways returns Promise<string>
         return {
             "type": "input_text",
-            "text": data?.dataSource,
-            "_detectedKind": effectiveKind
+            "text": data?.dataSource
         }
     }
 
@@ -125,8 +122,7 @@ export const getUsableData = async (data: DataInput) => {
     //
     return {
         "type": typesForKind?.[data?.dataKind || "input_text"] || "text",
-        "text": result,
-        "_detectedKind": data?.dataKind || "structured"
+        "text": result
     }
 }
 
@@ -142,6 +138,7 @@ export class GPTResponses {
     protected messages: any[] = [];
     protected tools: Map<string, any> = new Map();
     protected context: DataContext | null = null;
+    protected responseMap: Map<string, any> = new Map();
 
     //
     constructor(apiKey: string, apiUrl: string, apiSecret: string, model: string) {
@@ -296,6 +293,10 @@ export class GPTResponses {
             requestBody.temperature = options.temperature;
         }
 
+        console.log("[GPT] Making request to:", `${this?.apiUrl}/responses`);
+        console.log("[GPT] API key present:", !!this?.apiKey);
+        console.log("[GPT] Request body:", JSON.stringify(requestBody, null, 2));
+
         const response = await fetch(`${this?.apiUrl}/responses`, {
             method: "POST",
             priority: 'auto',
@@ -306,18 +307,27 @@ export class GPTResponses {
             },
             body: JSON.stringify(requestBody),
         })?.catch?.((e) => {
-            console.warn(e);
+            console.error("[GPT] Fetch failed:", e);
             return null;
         });
-        if (!response) return null;
+
+        if (!response) {
+            console.error("[GPT] No response received from fetch");
+            return null;
+        }
+
+        console.log("[GPT] Response status:", response.status);
 
         //
         if (response.status !== 200) {
+            console.error("[GPT] API returned status:", response.status);
             const error = await response?.json?.()?.catch?.((e) => {
-                console.warn(e);
+                console.error("[GPT] Failed to parse error response:", e);
                 return null;
             });
-            console.warn(error);
+            console.error("[GPT] API error details:", error);
+            console.error("[GPT] Error message:", error?.error?.message || error?.message || "Unknown error");
+            console.error("[GPT] Error type:", error?.error?.type || error?.type || "Unknown type");
             return null;
         }
 
@@ -328,7 +338,7 @@ export class GPTResponses {
         if (!resp) return null;
 
         //
-        this.responseId = resp?.id || this?.responseId;
+        this.responseMap.set((this.responseId = (resp?.id || resp?.response_id || this.responseId)), resp);
         this?.messages?.push?.(...(this?.pending || []));
         this?.pending?.splice?.(0, this?.pending?.length);
         this.messages.push(...(resp?.output || []));
@@ -648,6 +658,9 @@ Expected output: { "processed": [...], "failed": [...] }
     getMessages() { return this?.messages; }
     getPending() { return this?.pending; }
     getContext() { return this?.context; }
+
+    //
+    getResponse(responseId: string) { return this?.responseMap?.get?.(responseId); }
 }
 
 // === HELPER FUNCTIONS ===

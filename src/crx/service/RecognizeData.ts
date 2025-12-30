@@ -1,54 +1,133 @@
 /*
  * Chrome Extension Service for AI-powered data recognition.
- * Enhanced version with support for GPT-5.2 Responses API features.
- * Supports user-defined custom instructions.
+ * Now uses unified core AI service with CRX-specific platform adaptations.
+ * Supports screenshot capture, advanced image processing, and clipboard operations.
  */
 
+import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
+import type { RecognitionResult } from "@rs-core/service/AI-ops/RecognizeData";
 import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 import type { DataContext } from "@rs-core/service/model/GPT-Config";
-import { getActiveInstructionText, buildInstructionPrompt } from "@rs-core/service/CustomInstructions";
-import { SVG_GRAPHICS_ADDON } from "@rs-core/service/InstructionUtils";
-import type { ResponseLanguage } from "@rs-core/config/SettingsTypes";
 
-//
-const DEFAULT_MODEL = 'gpt-5.2';
-const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
-const ENDPOINT = '/responses';
+// Import unified service functions for internal use
+const {
+    recognizeByInstructions: coreRecognizeByInstructions,
+    solveAndAnswer: coreSolveAndAnswer,
+    writeCode: coreWriteCode,
+    extractCSS: coreExtractCSS
+} = UnifiedAIService;
 
-// Language instruction builders
-const LANGUAGE_INSTRUCTIONS: Record<ResponseLanguage, string> = {
-    auto: "", // No explicit language instruction
-    en: "\n\nIMPORTANT: Respond in English. All explanations, answers, and comments must be in English.",
-    ru: "\n\nВАЖНО: Отвечай на русском языке. Все объяснения, ответы и комментарии должны быть на русском языке."
-};
+// CRX-enhanced versions with additional features
 
-const TRANSLATE_INSTRUCTION = "\n\nAdditionally, translate the recognized content to the response language if it differs from the source.";
-
-// Get language instruction based on settings
-const getLanguageInstruction = async (): Promise<string> => {
+// Enhanced recognizeByInstructions with CRX-specific features
+export const recognizeByInstructions = async (
+    input: any,
+    instructions: string,
+    sendResponse?: (result: RecognizeResult) => void,
+    options: ExtendedRecognizeOptions = {}
+): Promise<RecognizeResult> => {
     try {
-        const settings = await loadSettings();
-        const lang = settings?.ai?.responseLanguage || "auto";
-        const translate = settings?.ai?.translateResults || false;
+        // Use unified service with CRX-specific options
+        const result = await coreRecognizeByInstructions(input, instructions, undefined, undefined, {
+            customInstruction: options.customInstruction,
+            useActiveInstruction: options.useActiveInstruction
+        }) as RecognitionResult;
 
-        let instruction = LANGUAGE_INSTRUCTIONS[lang] || "";
-        if (translate && lang !== "auto") {
-            instruction += TRANSLATE_INSTRUCTION;
-        }
-        return instruction;
-    } catch {
-        return "";
+        // Convert unified result format to CRX format
+        const crxResult: RecognizeResult = {
+            ok: result.ok,
+            data: result.verbose_data || result.recognized_data?.[0] || "",
+            error: result.errors?.[0] || undefined
+        };
+
+        sendResponse?.(crxResult);
+        return crxResult;
+    } catch (e) {
+        const errorResult: RecognizeResult = {
+            ok: false,
+            error: String(e)
+        };
+        sendResponse?.(errorResult);
+        return errorResult;
     }
 };
 
-// Get SVG graphics addon based on settings
-const getSvgGraphicsAddon = async (): Promise<string> => {
+// CRX-enhanced solveAndAnswer using unified service
+export const solveAndAnswer = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void
+): Promise<RecognizeResult> => {
     try {
-        const settings = await loadSettings();
-        return settings?.ai?.generateSvgGraphics ? SVG_GRAPHICS_ADDON : "";
-    } catch {
-        return "";
+        const result = await coreSolveAndAnswer(input, { useActiveInstruction: true });
+
+        const crxResult: RecognizeResult = {
+            ok: result.ok,
+            data: result.verbose_data || result.recognized_data?.[0] || "",
+            error: result.errors?.[0] || undefined
+        };
+
+        sendResponse?.(crxResult);
+        return crxResult;
+    } catch (e) {
+        const errorResult: RecognizeResult = {
+            ok: false,
+            error: String(e)
+        };
+        sendResponse?.(errorResult);
+        return errorResult;
+    }
+};
+
+// CRX-enhanced writeCode using unified service
+export const writeCode = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void
+): Promise<RecognizeResult> => {
+    try {
+        const result = await coreWriteCode(input, { useActiveInstruction: true });
+
+        const crxResult: RecognizeResult = {
+            ok: result.ok,
+            data: result.verbose_data || result.recognized_data?.[0] || "",
+            error: result.errors?.[0] || undefined
+        };
+
+        sendResponse?.(crxResult);
+        return crxResult;
+    } catch (e) {
+        const errorResult: RecognizeResult = {
+            ok: false,
+            error: String(e)
+        };
+        sendResponse?.(errorResult);
+        return errorResult;
+    }
+};
+
+// CRX-enhanced extractCSS using unified service
+export const extractCSS = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void
+): Promise<RecognizeResult> => {
+    try {
+        const result = await coreExtractCSS(input, { useActiveInstruction: true });
+
+        const crxResult: RecognizeResult = {
+            ok: result.ok,
+            data: result.verbose_data || result.recognized_data?.[0] || "",
+            error: result.errors?.[0] || undefined
+        };
+
+        sendResponse?.(crxResult);
+        return crxResult;
+    } catch (e) {
+        const errorResult: RecognizeResult = {
+            ok: false,
+            error: String(e)
+        };
+        sendResponse?.(errorResult);
+        return errorResult;
     }
 };
 
@@ -304,196 +383,6 @@ export type ExtendedRecognizeOptions = {
 }
 
 //
-export const recognizeByInstructions = async (
-    input: any,
-    instructions: string,
-    sendResponse?: (result: RecognizeResult) => void,
-    options: ExtendedRecognizeOptions = {}
-): Promise<RecognizeResult> => {
-    let settings;
-    try {
-        settings = (await loadSettings())?.ai;
-    } catch (e) {
-        console.error("Failed to load settings:", e);
-        const result = { ok: false, error: "Failed to load settings" };
-        sendResponse?.(result);
-        return result;
-    }
-
-    const token = settings?.apiKey;
-    if (!token) {
-        console.warn("No API key found. Settings:", { hasApiKey: !!settings?.apiKey, hasBaseUrl: !!settings?.baseUrl });
-        const result = { ok: false, error: "No API key configured. Please set your API key in extension settings." };
-        sendResponse?.(result);
-        return result;
-    }
-    if (!input) {
-        const result = { ok: false, error: "No input provided" };
-        sendResponse?.(result);
-        return result;
-    }
-
-    // Build context-aware instructions
-    let finalInstructions = instructions;
-    if (options.context?.entityType) {
-        finalInstructions += `\n\nContext: Expected entity type is "${options.context.entityType}"`;
-    }
-    if (options.context?.searchTerms?.length) {
-        finalInstructions += `\n\nFocus on: ${options.context.searchTerms.join(", ")}`;
-    }
-
-    // Apply custom instructions (explicit or active from settings)
-    let customInstructionText = options.customInstruction || "";
-    console.log("[AI] Custom instruction from options:", !!options.customInstruction);
-    console.log("[AI] useActiveInstruction:", options.useActiveInstruction);
-
-    if (!customInstructionText && options.useActiveInstruction !== false) {
-        try {
-            console.log("[AI] Fetching active custom instruction from settings...");
-            customInstructionText = await getActiveInstructionText();
-            console.log("[AI] Got custom instruction text:", customInstructionText ? `"${customInstructionText.substring(0, 50)}..."` : "(none)");
-        } catch (e) {
-            console.warn("[AI] Failed to load active custom instruction:", e);
-        }
-    }
-    if (customInstructionText) {
-        finalInstructions = buildInstructionPrompt(finalInstructions, customInstructionText);
-        console.log("[AI] Applied custom instruction to prompt");
-    } else {
-        console.log("[AI] No custom instruction to apply");
-    }
-
-    // Apply language instruction from settings
-    try {
-        const langInstruction = await getLanguageInstruction();
-        if (langInstruction) {
-            finalInstructions += langInstruction;
-            console.log("[AI] Applied language instruction");
-        }
-    } catch (e) {
-        console.warn("[AI] Failed to get language instruction:", e);
-    }
-
-    const requestBody: any = {
-        model: settings?.model || DEFAULT_MODEL,
-        input,
-        reasoning: { effort: options.effort || "low" },
-        text: { verbosity: options.verbosity || "low" },
-        max_output_tokens: 400000,
-        instructions: finalInstructions
-    };
-
-    // Add JSON response format hint if requested
-    if (options.returnJson) {
-        requestBody.response_format = { type: "json_object" };
-    }
-
-    const apiUrl = `${settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`;
-    console.log("[AI] Request to:", apiUrl, "Model:", settings?.model || DEFAULT_MODEL);
-
-    let r: Response | null = null;
-    let fetchError: string | null = null;
-
-    try {
-        r = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(requestBody)
-        });
-    } catch (e) {
-        fetchError = e instanceof Error ? e.message : String(e);
-        console.error("[AI] Fetch failed:", fetchError);
-    }
-
-    if (fetchError || !r) {
-        const result: RecognizeResult = { ok: false, error: `Network error: ${fetchError || "No response"}` };
-        sendResponse?.(result);
-        return result;
-    }
-
-    // Parse response body
-    let res: any = null;
-    try {
-        res = await r.json();
-    } catch (e) {
-        console.error("[AI] Failed to parse JSON response:", e);
-        const result: RecognizeResult = { ok: false, error: "Failed to parse API response" };
-        sendResponse?.(result);
-        return result;
-    }
-
-    console.log("[AI] Response status:", r.status, "ok:", r.ok);
-    console.log("[AI] Response body:", JSON.stringify(res).slice(0, 1000));
-
-    // Check for API error
-    if (!r.ok) {
-        const apiError = res?.error?.message || res?.error || res?.message || `HTTP ${r.status}`;
-        console.error("[AI] API error:", apiError);
-        const result: RecognizeResult = { ok: false, error: `API error: ${apiError}`, raw: res };
-        sendResponse?.(result);
-        return result;
-    }
-
-    // Extract text from various response structures
-    const extractTextFromResponse = (response: any): string | undefined => {
-        if (!response) return undefined;
-
-        // Try output_text array first (some models return this)
-        if (Array.isArray(response.output_text) && response.output_text.length) {
-            return response.output_text.filter((t: any) => typeof t === "string").join("\n\n");
-        }
-
-        // Try output array
-        const outputs = response.output || [];
-        const texts: string[] = [];
-
-        for (const msg of outputs) {
-            const content = msg?.content || [];
-            if (!Array.isArray(content)) continue;
-
-            for (const part of content) {
-                // Handle direct text string
-                if (typeof part?.text === "string") {
-                    texts.push(part.text);
-                }
-                // Handle nested text.value (some response formats)
-                else if (typeof part?.text?.value === "string") {
-                    texts.push(part.text.value);
-                }
-                // Handle output_text type
-                else if (part?.type === "output_text" && typeof part?.text === "string") {
-                    texts.push(part.text);
-                }
-            }
-        }
-
-        return texts.length ? texts.join("\n\n").trim() : undefined;
-    };
-
-    const extractedText = extractTextFromResponse(res);
-
-    if (!extractedText) {
-        console.warn("[AI] No text extracted. Response structure:", Object.keys(res || {}));
-        if (res?.output) {
-            console.warn("[AI] Output structure:", JSON.stringify(res.output).slice(0, 500));
-        }
-    } else {
-        console.log("[AI] Extracted text length:", extractedText.length);
-    }
-
-    const output: RecognizeResult = {
-        ok: !!extractedText,
-        data: extractedText,
-        error: !extractedText ? "No text found in AI response" : undefined,
-        raw: res
-    };
-
-    sendResponse?.(output);
-    return output;
-};
 
 // For image recognition: use low effort (minimal reasoning) and low verbosity (concise output)
 export const recognizeImageData = async (
@@ -521,103 +410,6 @@ export const convertTextualData = async (
     });
 };
 
-// Unified solve & answer: handles equations, questions, quizzes, homework
-export const solveAndAnswer = async (
-    input: any,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    // Get SVG graphics addon if enabled in settings
-    const svgAddon = await getSvgGraphicsAddon();
-    const instruction = SOLVE_AND_ANSWER_INSTRUCTION + svgAddon;
-
-    return recognizeByInstructions(input, instruction, sendResponse, {
-        effort: "high",
-        verbosity: "medium",
-        useActiveInstruction: false, // Don't apply custom instructions for solving
-        ...options
-    });
-};
-
-// Unified function for solving/answering from various sources
-export const solveAndAnswerUnified = async (
-    rawData: File | Blob | string,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    const content = await getUsableData({ dataSource: rawData });
-    const input = [{
-        type: "message",
-        role: "user",
-        content: [content]
-    }];
-
-    return solveAndAnswer(input, sendResponse, options);
-};
-
-// Legacy aliases for backward compatibility
-export const solveEquation = solveAndAnswer;
-export const solveEquationUnified = solveAndAnswerUnified;
-export const answerQuestion = solveAndAnswer;
-export const answerQuestionUnified = solveAndAnswerUnified;
-
-// For writing code based on recognized request
-export const writeCode = async (
-    input: any,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    return recognizeByInstructions(input, WRITE_CODE_INSTRUCTION, sendResponse, {
-        effort: "high",
-        verbosity: "medium",
-        useActiveInstruction: false,
-        ...options
-    });
-};
-
-// Unified function for writing code from various sources
-export const writeCodeUnified = async (
-    rawData: File | Blob | string,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    const content = await getUsableData({ dataSource: rawData });
-    const input = [{
-        type: "message",
-        role: "user",
-        content: [content]
-    }];
-    return writeCode(input, sendResponse, options);
-};
-
-// For extracting CSS styles from visual content
-export const extractCSS = async (
-    input: any,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    return recognizeByInstructions(input, EXTRACT_CSS_INSTRUCTION, sendResponse, {
-        effort: "high",
-        verbosity: "medium",
-        useActiveInstruction: false,
-        ...options
-    });
-};
-
-// Unified function for extracting CSS from various sources
-export const extractCSSUnified = async (
-    rawData: File | Blob | string,
-    sendResponse?: (result: RecognizeResult) => void,
-    options?: ExtendedRecognizeOptions
-): Promise<RecognizeResult> => {
-    const content = await getUsableData({ dataSource: rawData });
-    const input = [{
-        type: "message",
-        role: "user",
-        content: [content]
-    }];
-    return extractCSS(input, sendResponse, options);
-};
 
 //
 export const extractEntities = async (

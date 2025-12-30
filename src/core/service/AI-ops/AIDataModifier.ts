@@ -5,11 +5,11 @@
  */
 
 import { encode } from "@toon-format/toon";
-import { JSOX } from "jsox";
-import { GPTResponses, createGPTInstance, type AIResponse } from "../model/GPT-Responses.ts";
-import { type DataFilter, type ModificationInstruction, buildModificationPrompt } from "../model/GPT-Config.ts";
-import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
-import { fixEntityId } from "../../template/EntityId.ts";
+import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
+import { type ModificationInstruction, buildModificationPrompt } from "../model/GPT-Config";
+import { getRuntimeSettings } from "../../config/RuntimeSettings";
+import { fixEntityId } from "../../template/EntityId";
+import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
 
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
@@ -141,8 +141,8 @@ export const modifyEntityByPrompt = async (
         // Provide entity schema context
         await gpt.giveForRequest(`
 Entity to modify:
-\`\`\`json
-${JSOX.stringify(entity, null, 2)}
+\`\`\`toon
+${encode(entity, { indent: 2 })}
 \`\`\`
 
 Modification rules:
@@ -178,8 +178,15 @@ Apply the requested modifications and return:
             return result;
         }
 
-        const parsed = JSOX.parse(raw);
-        let modified = parsed?.modified_entity || parsed;
+        //
+        const parsed = parseAIResponseSafe<any>(raw);
+        if (!parsed?.ok) {
+            result.errors.push(parsed?.error || "Failed to parse AI response");
+            return result;
+        }
+
+        //
+        let modified = parsed?.data?.modified_entity || parsed?.data;
 
         // Ensure ID is preserved if required
         if (options.preserveId && entity?.id && modified?.id !== entity.id) {
@@ -200,7 +207,8 @@ Apply the requested modifications and return:
         result.changes = diffObjects(entity, modified);
         result.modified = modified;
         result.ok = true;
-        result.warnings.push(...(parsed?.warnings || []));
+        result.warnings.push(...(parsed?.data?.warnings || []));
+        result.errors.push(...(parsed?.data?.errors || []));
 
     } catch (e) {
         console.error("Error in modifyEntityByPrompt:", e);
@@ -240,10 +248,11 @@ export const modifyEntityByInstructions = async (
 
         await gpt.giveForRequest(`
 Entity to modify:
-\`\`\`json
-${JSOX.stringify(entity, null, 2)}
+\`\`\`toon
+${encode(entity, { indent: 2 })}
 \`\`\`
 
+Modification instructions:
 ${buildModificationPrompt(instructions)}
         `);
 
@@ -261,18 +270,27 @@ Output format:
 \`\`\`
         `);
 
-        const raw = await gpt.sendRequest("high", "low", null, {
+        //
+        const raw = await gpt.sendRequest("medium", "low", null, {
             responseFormat: "json",
             temperature: 0.1
         });
 
+        //
         if (!raw) {
             result.errors.push("No response from AI");
             return result;
         }
 
-        const parsed = JSOX.parse(raw);
-        let modified = parsed?.modified_entity || parsed;
+        //
+        const parsed = parseAIResponseSafe<any>(raw);
+        if (!parsed?.ok) {
+            result.errors.push(parsed?.error || "Failed to parse AI response");
+            return result;
+        }
+
+        //
+        let modified = parsed?.data?.modified_entity || parsed;
 
         // Apply preservation rules
         if (options.preserveId && entity?.id) {
@@ -288,9 +306,9 @@ Output format:
         result.ok = true;
 
         // Track skipped instructions as warnings
-        if (parsed?.skipped_instructions?.length) {
+        if (parsed?.data?.skipped_instructions?.length) {
             result.warnings.push(
-                ...parsed.skipped_instructions.map((s: any) =>
+                ...parsed?.data?.skipped_instructions.map((s: any) =>
                     `Skipped: ${s.instruction} - ${s.reason}`
                 )
             );
@@ -392,7 +410,10 @@ export const undoModification = (
     entity: any,
     changes: ChangeRecord[]
 ): any => {
-    const reverted = JSOX.parse(JSOX.stringify(entity));
+    const reverted = parseAIResponseSafe<any>(JSON.stringify(entity))?.data;
+    if (!reverted?.ok) {
+        return { ok: false, original: entity, modified: null, changes: [], errors: [reverted?.error || "Failed to parse AI response"], warnings: [] };
+    }
 
     for (const change of changes.slice().reverse()) {
         const path = change.field.split(".");
@@ -443,13 +464,13 @@ export const validateModification = async (
 
         await gpt.giveForRequest(`
 Original entity:
-\`\`\`json
-${JSOX.stringify(original, null, 2)}
+\`\`\`toon
+${encode(original, { indent: 2 })}
 \`\`\`
 
 Modified entity:
-\`\`\`json
-${JSOX.stringify(modified, null, 2)}
+\`\`\`toon
+${encode(modified, { indent: 2 })}
 \`\`\`
 
 ${entityType ? `Expected entity type: ${entityType}` : ""}
@@ -481,8 +502,11 @@ Return:
             return { valid: false, errors: ["No validation response"], suggestions: [] };
         }
 
-        return JSOX.parse(raw);
-
+        const parsed = parseAIResponseSafe<{ valid: boolean; errors: string[] | string; suggestions: string[]; }>(raw)?.data;
+        if (!parsed?.valid) {
+            return { valid: false, errors: Array.isArray(parsed?.errors) ? parsed?.errors : [parsed?.errors || "Unknown error"], suggestions: [] };
+        }
+        return { valid: true, errors: [], suggestions: [] };
     } catch (e) {
         console.error("Error in validateModification:", e);
         return { valid: false, errors: [String(e)], suggestions: [] };

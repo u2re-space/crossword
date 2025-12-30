@@ -2,6 +2,7 @@ import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./service/RecognizeData";
+import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
 
 // Safe wrapper for loading custom instructions
@@ -355,35 +356,79 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             status: "processing"
         });
 
-        solveAndAnswer(message?.input, (result) => {
-            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+        // Use GPT instance directly like CRX api.ts does
+        (async () => {
+            try {
+                console.log("[CRX-SW] Processing solve/answer request");
+                const gpt = await getGPTInstance();
+                if (!gpt) {
+                    const errorResponse = { ok: false, error: "AI service not available" };
+                    broadcast(AI_RECOGNITION_CHANNEL, {
+                        type: "result",
+                        requestId,
+                        mode: "solve-answer",
+                        ...errorResponse
+                    });
+                    sendResponse(errorResponse);
+                    return;
+                }
 
-            // Broadcast result
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "solve-answer",
-                ...response
-            });
+                const SOLVE_AND_ANSWER_INSTRUCTION = `You are an expert mathematician and problem solver. Analyze the provided content and provide a clear, step-by-step solution or answer.
 
-            // Auto-copy solution to clipboard if successful
-            if (result?.ok && result?.data && message?.autoCopy !== false) {
-                requestClipboardCopy(result.data, true);
+If the content contains:
+- Mathematical equations: Solve them showing all work
+- Word problems: Break down the problem and solve step by step
+- Multiple choice questions: Show reasoning and select the best answer
+
+Always show your work clearly and provide the final answer prominently.`;
+
+                console.log("[CRX-SW] Setting up GPT for solve/answer");
+                // Create a simple message structure for solve/answer
+                gpt.pending.push({
+                    type: "message",
+                    role: "user",
+                    content: [
+                        { type: "input_text", text: SOLVE_AND_ANSWER_INSTRUCTION },
+                        { type: "input_text", text: message?.input || "" }
+                    ]
+                });
+                console.log("[CRX-SW] Calling GPT sendRequest");
+                const rawResponse = await gpt.sendRequest("high", "medium");
+                console.log("[CRX-SW] GPT response:", rawResponse);
+
+                const response = {
+                    ok: !!rawResponse,
+                    data: rawResponse || "",
+                    error: rawResponse ? undefined : "Failed to get response"
+                };
+
+                // Broadcast result
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "solve-answer",
+                    ...response
+                });
+
+                // Auto-copy solution to clipboard if successful
+                if (response.ok && response.data && message?.autoCopy !== false) {
+                    requestClipboardCopy(response.data, true);
+                }
+
+                sendResponse(response);
+            } catch (e) {
+                console.error("[CRX-SW] Solve/answer error:", e);
+                const errorResponse = { ok: false, error: String(e) };
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "solve-answer",
+                    ...errorResponse
+                });
+                showExtensionToast(`Solve/Answer failed: ${e}`, "error");
+                sendResponse(errorResponse);
             }
-
-            sendResponse(response);
-        })?.catch?.((e) => {
-            const errorResponse = { ok: false, error: String(e) };
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "solve-answer",
-                ...errorResponse
-            });
-            showExtensionToast(`Solving/answering failed: ${e}`, "error");
-            sendResponse(errorResponse);
-        });
-        return true;
+        })();
     }
 
     // Handle code writing requests
@@ -396,32 +441,72 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             status: "processing"
         });
 
-        writeCode(message?.input, (result) => {
-            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+        // Use GPT instance directly for code generation
+        (async () => {
+            try {
+                console.log("[CRX-SW] Processing code generation request");
+                const gpt = await getGPTInstance();
+                if (!gpt) {
+                    const errorResponse = { ok: false, error: "AI service not available" };
+                    broadcast(AI_RECOGNITION_CHANNEL, {
+                        type: "result",
+                        requestId,
+                        mode: "code",
+                        ...errorResponse
+                    });
+                    sendResponse(errorResponse);
+                    return;
+                }
 
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "code",
-                ...response
-            });
+                const WRITE_CODE_INSTRUCTION = `You are an expert software developer. Analyze the provided content and generate high-quality, working code.
 
-            if (result?.ok && result?.data && message?.autoCopy !== false) {
-                requestClipboardCopy(result.data, true);
+Provide clean, well-commented, production-ready code. Include all necessary imports, error handling, and follow best practices for the detected programming language. If multiple languages are possible, choose the most appropriate one.`;
+
+                console.log("[CRX-SW] Setting up GPT for code generation");
+                // Create a simple message structure for code generation
+                gpt.pending.push({
+                    type: "message",
+                    role: "user",
+                    content: [
+                        { type: "input_text", text: WRITE_CODE_INSTRUCTION },
+                        { type: "input_text", text: message?.input || "" }
+                    ]
+                });
+                console.log("[CRX-SW] Calling GPT sendRequest for code");
+                const rawResponse = await gpt.sendRequest("high", "medium");
+                console.log("[CRX-SW] GPT code response:", rawResponse);
+
+                const response = {
+                    ok: !!rawResponse,
+                    data: rawResponse || "",
+                    error: rawResponse ? undefined : "Failed to generate code"
+                };
+
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "code",
+                    ...response
+                });
+
+                if (response.ok && response.data && message?.autoCopy !== false) {
+                    requestClipboardCopy(response.data, true);
+                }
+
+                sendResponse(response);
+            } catch (e) {
+                console.error("[CRX-SW] Code generation error:", e);
+                const errorResponse = { ok: false, error: String(e) };
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "code",
+                    ...errorResponse
+                });
+                showExtensionToast(`Code generation failed: ${e}`, "error");
+                sendResponse(errorResponse);
             }
-
-            sendResponse(response);
-        })?.catch?.((e) => {
-            const errorResponse = { ok: false, error: String(e) };
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "code",
-                ...errorResponse
-            });
-            showExtensionToast(`Code generation failed: ${e}`, "error");
-            sendResponse(errorResponse);
-        });
+        })();
         return true;
     }
 
@@ -435,32 +520,80 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             status: "processing"
         });
 
-        extractCSS(message?.input, (result) => {
-            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+        // Use GPT instance directly for CSS extraction
+        (async () => {
+            try {
+                console.log("[CRX-SW] Processing CSS extraction request");
+                const gpt = await getGPTInstance();
+                if (!gpt) {
+                    const errorResponse = { ok: false, error: "AI service not available" };
+                    broadcast(AI_RECOGNITION_CHANNEL, {
+                        type: "result",
+                        requestId,
+                        mode: "css",
+                        ...errorResponse
+                    });
+                    sendResponse(errorResponse);
+                    return;
+                }
 
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "css",
-                ...response
-            });
+                const EXTRACT_CSS_INSTRUCTION = `You are an expert CSS developer. Analyze the provided content and extract/generate the corresponding CSS styles.
 
-            if (result?.ok && result?.data && message?.autoCopy !== false) {
-                requestClipboardCopy(result.data, true);
+Provide clean, modern CSS using:
+- CSS custom properties for colors, spacing, typography
+- Flexbox/Grid for layouts
+- Modern CSS features (clamp(), CSS nesting if appropriate)
+- Responsive design principles
+- Semantic class names
+- Well-organized, maintainable code structure
+
+Include all relevant CSS properties including layout, colors, typography, spacing, borders, shadows, and animations.`;
+
+                console.log("[CRX-SW] Setting up GPT for CSS extraction");
+                // Create a simple message structure for CSS extraction
+                gpt.pending.push({
+                    type: "message",
+                    role: "user",
+                    content: [
+                        { type: "input_text", text: EXTRACT_CSS_INSTRUCTION },
+                        { type: "input_text", text: message?.input || "" }
+                    ]
+                });
+                console.log("[CRX-SW] Calling GPT sendRequest for CSS");
+                const rawResponse = await gpt.sendRequest("high", "medium");
+                console.log("[CRX-SW] GPT CSS response:", rawResponse);
+
+                const response = {
+                    ok: !!rawResponse,
+                    data: rawResponse || "",
+                    error: rawResponse ? undefined : "Failed to extract CSS"
+                };
+
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "css",
+                    ...response
+                });
+
+                if (response.ok && response.data && message?.autoCopy !== false) {
+                    requestClipboardCopy(response.data, true);
+                }
+
+                sendResponse(response);
+            } catch (e) {
+                console.error("[CRX-SW] CSS extraction error:", e);
+                const errorResponse = { ok: false, error: String(e) };
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "css",
+                    ...errorResponse
+                });
+                showExtensionToast(`CSS extraction failed: ${e}`, "error");
+                sendResponse(errorResponse);
             }
-
-            sendResponse(response);
-        })?.catch?.((e) => {
-            const errorResponse = { ok: false, error: String(e) };
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                mode: "css",
-                ...errorResponse
-            });
-            showExtensionToast(`CSS extraction failed: ${e}`, "error");
-            sendResponse(errorResponse);
-        });
+        })();
         return true;
     }
 

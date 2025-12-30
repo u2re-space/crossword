@@ -1,12 +1,11 @@
 
-import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
-
-//
-import { analyzeRecognizeUnified, type RecognizeByInstructionsOptions } from "@rs-core/service/AI-ops/RecognizeData";
-import { loadSettings } from "@rs-core/config/Settings";
+import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
 import { getOrDefaultComputedOfDataSourceCache } from "../lib/DataSourceCache";
 import type { CustomInstruction } from "@rs-core/config/SettingsTypes";
+
+// Re-export unified functions for backward compatibility
+const { analyzeRecognizeUnified, loadAISettings } = UnifiedAIService;
 
 //
 export const controlChannel = new BroadcastChannel('rs-sw');
@@ -23,52 +22,8 @@ export const tryToTimeout = (cb: (...args: any[]) => void, timeout = 100, ..._ar
 export const DOC_DIR = "/docs/preferences/";
 export const PLAIN_DIR = "/docs/plain/";
 
-//
-export const getActiveCustomInstruction = async (): Promise<string> => {
-    try {
-        console.log("[getActiveCustomInstruction] Loading settings...");
-        const settings = await loadSettings();
-
-        if (!settings) {
-            console.warn("[getActiveCustomInstruction] loadSettings() returned null/undefined");
-            return "";
-        }
-
-        const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
-        const activeId = settings?.ai?.activeInstructionId;
-
-        console.log("[getActiveCustomInstruction] Settings loaded:", {
-            hasAI: !!settings?.ai,
-            hasApiKey: !!settings?.ai?.apiKey,
-            activeId,
-            instructionCount: instructions.length,
-            instructionIds: instructions.map(i => i.id),
-            instructionLabels: instructions.map(i => i.label)
-        });
-
-        if (!activeId) {
-            console.log("[getActiveCustomInstruction] No active instruction ID set in settings");
-            return "";
-        }
-
-        const active = instructions.find(i => i.id === activeId);
-        if (active) {
-            console.log("[getActiveCustomInstruction] Found active instruction:", {
-                id: active.id,
-                label: active.label,
-                enabled: active.enabled,
-                instructionLength: active.instruction?.length || 0
-            });
-            return active.instruction || "";
-        }
-
-        console.warn("[getActiveCustomInstruction] Active ID not found in instructions:", activeId);
-        return "";
-    } catch (e) {
-        console.error("[getActiveCustomInstruction] Error loading settings:", e);
-        return "";
-    }
-};
+// Use unified service for custom instruction loading
+export const getActiveCustomInstruction = UnifiedAIService.getActiveCustomInstruction;
 
 //
 export const initiateAnalyzeAndRecognizeData = async (
@@ -87,13 +42,17 @@ export const initiateAnalyzeAndRecognizeData = async (
 
     console.log("[initiateAnalyzeAndRecognizeData] options:", options ? "with customInstruction" : "undefined");
 
-    return analyzeRecognizeUnified(dataSource, (response) => {
-        console.log(response);
+    const result = await analyzeRecognizeUnified(dataSource, (response) => {
+        console.log("[initiateAnalyzeAndRecognizeData] callback response:", response);
     }, undefined, options);
+
+    console.log("[initiateAnalyzeAndRecognizeData] final result:", result);
+
+    return result;
 }
 
 export const callBackendIfAvailable = async <T = any>(path: string, payload: Record<string, any>): Promise<T | null> => {
-    const settings = await loadSettings();
+    const settings = await loadAISettings();
     const core = settings?.core || {};
     if (core?.mode !== "endpoint") return null;
     if (!core?.endpointUrl || !core?.userId || !core?.userKey) return null;
@@ -123,7 +82,7 @@ export const callBackendIfAvailable = async <T = any>(path: string, payload: Rec
 
 //
 export const initiateConversionProcedure = async (dataSource: string | Blob | File | any, customInstruction?: string) => {
-    const settings = await loadSettings();
+    const settings = await loadAISettings();
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return { entities: [] };
 
     // Get custom instruction if not provided

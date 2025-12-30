@@ -196,22 +196,28 @@ export const extractJSONFromAIResponse = <T = unknown>(response: string | null |
 export const parseAIResponseSafe = <T = unknown>(
     response: string | null | undefined,
     fallbackKey: string = "data"
-): { data: T | { [key: string]: string }; source: ParseResult["source"]; wasRecovered: boolean } => {
-    const result = extractJSONFromAIResponse<T>(response);
+): { ok: boolean; data: T | { [key: string]: string }; raw?: any; source: ParseResult["source"]; wasRecovered: boolean; error?: string } => {
+    const result = extractJSONFromAIResponse<T>(response) as { ok: boolean; data?: T; error?: string; source: ParseResult["source"]; raw?: any };
 
     if (result.ok && result.data !== undefined) {
         return {
+            raw: result.raw || response,
+            ok: true,
             data: result.data,
             source: result.source,
-            wasRecovered: result.source === "recovered"
+            wasRecovered: result.source === "recovered",
+            error: result.error || undefined
         };
     }
 
     // Return fallback wrapper
     return {
+        raw: result.raw || response,
+        ok: false,
         data: { [fallbackKey]: result.raw || String(response) } as { [key: string]: string },
         source: "fallback",
-        wasRecovered: false
+        wasRecovered: false,
+        error: result.error || undefined
     };
 };
 

@@ -4,15 +4,14 @@
  * Provides a unified interface for all AI-powered data operations.
  */
 
-import { JSOX } from "jsox";
 import { encode } from "@toon-format/toon";
 
 // Service imports
-import { getRuntimeSettings } from "../../config/RuntimeSettings.ts";
-import { createGPTInstance, GPTResponses, type AIResponse } from "../model/GPT-Responses.ts";
-import { type DataContext, type DataFilter, type ModificationInstruction } from "../model/GPT-Config.ts";
-import { fixEntityId } from "../../template/EntityId.ts";
-import { detectEntityTypeByJSON } from "../../template/EntityUtils.ts";
+import { getRuntimeSettings } from "@rs-core/config/RuntimeSettings";
+import { createGPTInstance, GPTResponses, type AIResponse } from "../model/GPT-Responses";
+import { type DataContext, type DataFilter, type ModificationInstruction } from "../model/GPT-Config";
+import { fixEntityId } from "@rs-core/template/EntityId";
+import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 
 // AI-ops imports
 import {
@@ -23,7 +22,7 @@ import {
     type RecognitionResult,
     type BatchRecognitionResult,
     type RecognizeByInstructionsOptions
-} from "./RecognizeData.ts";
+} from "./RecognizeData";
 
 import {
     modifyEntityByPrompt,
@@ -32,7 +31,7 @@ import {
     smartMergeEntities,
     type ModificationResult,
     type BatchModificationResult
-} from "./AIDataModifier.ts";
+} from "./AIDataModifier";
 
 import {
     selectData,
@@ -45,9 +44,9 @@ import {
     type SelectionOptions,
     type SelectionResult,
     type SimilarityResult
-} from "./AIDataSelector.ts";
+} from "./AIDataSelector";
 
-import { resolveEntity } from "./EntityItemResolve.ts";
+import { resolveEntity } from "./EntityItemResolve";
 
 //
 export type OrchestratorConfig = {
@@ -123,7 +122,7 @@ export class AIOrchestrator {
 
     //
     private getCacheKey(operation: string, params: any): string {
-        return `${operation}:${JSOX.stringify(params)}`;
+        return `${operation}:${encode(params, { indent: 2 })}`;
     }
 
     //
@@ -320,13 +319,11 @@ export class AIOrchestrator {
     // === ENTITY OPERATIONS ===
 
     //
-    async resolveEntityDetails(
-        entity: any
-    ): Promise<{ entities: any[]; keywords: string[]; short_description: string }> {
+    async resolveEntityDetails(entity: any): Promise<{ ok: boolean; entities: any[]; error?: string | null }> {
         if (!this.gptInstance) {
             await this.initialize();
         }
-        return resolveEntity(this.gptInstance);
+        return resolveEntity(this.gptInstance, entity) as Promise<{ ok: boolean; entities: any[]; error?: string | null }>;
     }
 
     //
@@ -344,7 +341,7 @@ export class AIOrchestrator {
         entities: any[],
         options?: { detectTypes?: boolean; fixIds?: boolean; resolve?: boolean }
     ): Promise<any[]> {
-        const processed = [];
+        const processed: any[] = [];
 
         for (const entity of entities) {
             let result = { ...entity };
