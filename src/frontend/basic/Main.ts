@@ -1,7 +1,7 @@
 import "./Main.scss";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions } from "@rs-core/service/AI-ops/RecognizeData";
+import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-core/service/AI-ops/RecognizeData";
 import { loadSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { createSettingsView } from "./Settings";
@@ -28,6 +28,13 @@ const HISTORY_KEY = "rs-basic-history";
 const LAST_SRC_KEY = "rs-basic-last-src";
 const DEFAULT_MD = "# CrossWord (Basic)\n\nOpen a markdown file or paste content here.\n";
 const MARKDOWN_EXTENSION_PATTERN = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
+
+// BroadcastChannel names (matching service worker)
+const CHANNELS = {
+  SHARE_TARGET: 'rs-share-target',
+  TOAST: 'rs-toast',
+  CLIPBOARD: 'rs-clipboard'
+} as const;
 
 const safeJsonParse = <T>(raw: string | null, fallback: T): T => {
   if (!raw) return fallback;
@@ -156,6 +163,9 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
   const ext = isLikelyExtension();
   defineBasicMarkdownView();
 
+  // Initialize broadcast listeners for share target and clipboard operations
+  let initBroadcastListeners: () => void;
+
   const state = {
     view: (options.initialView || "markdown") as BasicView,
     markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
@@ -174,6 +184,53 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     }
   };
 
+  // Initialize broadcast listeners for share target and clipboard operations
+  initBroadcastListeners = () => {
+    if (typeof BroadcastChannel === "undefined") return;
+
+    // Listen for share target operations
+    const shareChannel = new BroadcastChannel(CHANNELS.SHARE_TARGET);
+    shareChannel.addEventListener("message", (event) => {
+      const { type, data } = event.data || {};
+      if (type === "share-received" && data) {
+        // Record share target reception in history
+        state.history.push({
+          ts: Date.now(),
+          prompt: "Share Target",
+          before: data.title || data.text || data.url || "Shared content",
+          after: data.title || data.text || data.url || "Shared content",
+          ok: true
+        });
+        persistHistory();
+        // Re-render if currently viewing history
+        if (state.view === "history") {
+          render();
+        }
+      }
+    });
+
+    // Listen for clipboard copy operations from service worker
+    const clipboardChannel = new BroadcastChannel(CHANNELS.CLIPBOARD);
+    clipboardChannel.addEventListener("message", (event) => {
+      const { type, data } = event.data || {};
+      if (type === "copy" && data) {
+        // Record clipboard copy operation in history
+        state.history.push({
+          ts: Date.now(),
+          prompt: "Clipboard Copy",
+          before: "",
+          after: typeof data === "string" ? data : JSON.stringify(data),
+          ok: true
+        });
+        persistHistory();
+        // Re-render if currently viewing history
+        if (state.view === "history") {
+          render();
+        }
+      }
+    });
+  };
+
   const persistHistory = () => {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(-50)));
@@ -190,6 +247,9 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     </div>
     <div class="right">
       ${ext ? H`<button class="btn" data-action="snip" type="button">Snip</button>` : ""}
+      <button class="btn" data-action="solve" type="button" title="Solve equations & answer questions">Solve</button>
+      <button class="btn" data-action="code" type="button" title="Generate code">Code</button>
+      <button class="btn" data-action="css" type="button" title="Extract CSS">CSS</button>
       <button class="btn" data-action="open-md" type="button">Open</button>
       <button class="btn" data-action="export-md" type="button">Export</button>
       <button class="btn" data-action="toggle-edit" type="button">Edit</button>
@@ -375,10 +435,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     setTimeout(() => URL.revokeObjectURL(url), 250);
   };
 
-  const runPrompt = async (promptText: string) => {
+  const runPrompt = async (promptText: string, customAIFunction?: Function) => {
     if (!promptText.trim()) return;
     state.busy = true;
-    state.message = "Generating markdown…";
+    state.message = customAIFunction ? "Processing…" : "Generating markdown…";
     renderStatus();
 
     const before = state.markdown || "";
@@ -398,7 +458,9 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     ];
 
     try {
-      const res = await recognizeByInstructions(input, instructions);
+      const res = customAIFunction
+        ? await customAIFunction(input, { useActiveInstruction: true })
+        : await recognizeByInstructions(input, instructions);
       const after = res?.ok && res?.data ? String(res.data) : "";
 
       state.history.push({
@@ -466,7 +528,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     renderStatus();
   };
 
-  toolbar.addEventListener("click", (e) => {
+  toolbar.addEventListener("click", async (e) => {
     const target = e.target as HTMLElement | null;
     const btn = target?.closest?.("button[data-action]") as HTMLButtonElement | null;
     const action = btn?.dataset?.action;
@@ -501,6 +563,18 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       } catch {
         // ignore
       }
+    }
+
+    if (action === "solve") {
+      await runPrompt("Solve equations and answer questions from the content above", solveAndAnswer);
+    }
+
+    if (action === "code") {
+      await runPrompt("Generate code based on the description or requirements above", writeCode);
+    }
+
+    if (action === "css") {
+      await runPrompt("Extract or generate CSS from the content or image above", extractCSS);
     }
 
     if (action === "voice") {

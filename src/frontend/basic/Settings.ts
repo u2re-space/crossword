@@ -35,6 +35,22 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
           <option value="analyze">Analyze and store</option>
         </select>
       </label>
+      <label class="field">
+        <span>Response language</span>
+        <select data-field="ai.responseLanguage">
+          <option value="auto">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="ru">Russian</option>
+        </select>
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" data-field="ai.translateResults" />
+        <span>Translate results</span>
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" data-field="ai.generateSvgGraphics" />
+        <span>Generate SVG graphics</span>
+      </label>
     </section>
 
     <section class="card" data-section="instructions">
@@ -75,6 +91,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
   const apiKey = field('[data-field="ai.apiKey"]') as HTMLInputElement | null;
   const showKey = field('[data-field="ui.showKey"]') as HTMLInputElement | null;
   const mode = field('[data-field="ai.shareTargetMode"]') as HTMLSelectElement | null;
+  const responseLanguage = field('[data-field="ai.responseLanguage"]') as HTMLSelectElement | null;
+  const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
+  const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
   const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
   const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
   const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
@@ -90,6 +109,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       if (apiUrl) apiUrl.value = (s?.ai?.baseUrl || "").trim();
       if (apiKey) apiKey.value = (s?.ai?.apiKey || "").trim();
       if (mode) mode.value = (s?.ai?.shareTargetMode || "recognize") as any;
+      if (responseLanguage) responseLanguage.value = (s?.ai?.responseLanguage || "auto") as any;
+      if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
+      if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
       if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
       if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
       opts.onTheme?.((theme?.value as any) || "auto");
@@ -116,6 +138,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
           baseUrl: apiUrl?.value?.trim?.() || "",
           apiKey: apiKey?.value?.trim?.() || "",
           shareTargetMode: (mode?.value as any) || "recognize",
+          responseLanguage: (responseLanguage?.value as any) || "auto",
+          translateResults: Boolean(translateResults?.checked),
+          generateSvgGraphics: Boolean(generateSvgGraphics?.checked),
         },
         core: {
           ntpEnabled: Boolean(ntpEnabled?.checked),

@@ -21,12 +21,16 @@ export const commitRecognize = (e: any) => {
             text: fd.get('text'),
             url: fd.get('url'),
             files: fd.getAll('files'), // File[]
-            targetDir: fd.get('targetDir')
+            targetDir: fd.get('targetDir'),
+            customInstruction: fd.get('customInstruction') as string
         };
 
-        // Load custom instruction once for all processing
-        const customInstruction = await getActiveCustomInstruction();
-        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+        // Use custom instruction from form data, or load from settings if not provided
+        let customInstruction = inputs.customInstruction?.trim?.() || "";
+        if (!customInstruction) {
+            customInstruction = await getActiveCustomInstruction();
+        }
+        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
 
         // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/recognize", {

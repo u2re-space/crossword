@@ -16,7 +16,8 @@ import {
     type DataContext
 } from "../model/GPT-Config.ts";
 import { extractJSONFromAIResponse } from "../../utils/AIResponseParser.ts";
-import { buildInstructionPrompt } from "../InstructionUtils.ts";
+import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../InstructionUtils.ts";
+import type { ResponseLanguage } from "../../config/SettingsTypes.ts";
 
 // Dynamic import for browser-only instruction loading (avoids backend issues with @rs-core alias)
 const tryGetActiveInstructionText = async (): Promise<string> => {
@@ -24,6 +25,42 @@ const tryGetActiveInstructionText = async (): Promise<string> => {
         // Only works in browser context where settings can be loaded
         const { getActiveInstructionText } = await import("../CustomInstructions.ts");
         return await getActiveInstructionText();
+    } catch {
+        return "";
+    }
+};
+
+// Language instruction builders
+const LANGUAGE_INSTRUCTIONS: Record<ResponseLanguage, string> = {
+    auto: "", // No explicit language instruction
+    en: "\n\nIMPORTANT: Respond in English. All explanations, answers, and comments must be in English.",
+    ru: "\n\nВАЖНО: Отвечай на русском языке. Все объяснения, ответы и комментарии должны быть на русском языке."
+};
+
+const TRANSLATE_INSTRUCTION = "\n\nAdditionally, translate the recognized content to the response language if it differs from the source.";
+
+// Get language instruction based on settings
+const getLanguageInstruction = async (): Promise<string> => {
+    try {
+        const settings = getRuntimeSettings();
+        const lang = settings?.ai?.responseLanguage || "auto";
+        const translate = settings?.ai?.translateResults || false;
+
+        let instruction = LANGUAGE_INSTRUCTIONS[lang] || "";
+        if (translate && lang !== "auto") {
+            instruction += TRANSLATE_INSTRUCTION;
+        }
+        return instruction;
+    } catch {
+        return "";
+    }
+};
+
+// Get SVG graphics addon based on settings
+const getSvgGraphicsAddon = async (): Promise<string> => {
+    try {
+        const settings = getRuntimeSettings();
+        return settings?.ai?.generateSvgGraphics ? SVG_GRAPHICS_ADDON : "";
     } catch {
         return "";
     }
@@ -205,6 +242,69 @@ Expected output structure:
     "short_description": "markdown summary",
     "extraction_confidence": 0.0-1.0
 }
+`;
+
+//
+export const SOLVE_AND_ANSWER_INSTRUCTION = `
+Solve equations, answer questions, and explain mathematical or logical problems from the provided content.
+
+For equations and math problems:
+- Show step-by-step solutions
+- Provide final answers clearly marked
+- Explain reasoning for each step
+
+For general questions:
+- Provide accurate, well-reasoned answers
+- Include relevant context and explanations
+- If multiple interpretations possible, address them
+
+For quizzes and tests:
+- Show the correct answer with explanation
+- Explain why other options are incorrect
+
+Always respond in the specified language and format results clearly.
+`;
+
+export const EQUATION_SOLVE_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
+export const ANSWER_QUESTION_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
+
+export const WRITE_CODE_INSTRUCTION = `
+Write clean, efficient, and well-documented code based on the provided description, requirements, or image.
+
+Code requirements:
+- Use appropriate programming language for the task
+- Follow language-specific best practices and conventions
+- Include proper error handling
+- Add meaningful comments and documentation
+- Make code readable and maintainable
+- Use appropriate data structures and algorithms
+
+If generating from an image or visual description:
+- Analyze the visual elements and requirements
+- Implement the described functionality
+- Ensure code compiles and runs correctly
+
+Always respond in the specified language and provide complete, working code.
+`;
+
+export const EXTRACT_CSS_INSTRUCTION = `
+Extract and generate clean, modern CSS from the provided content, image, or description.
+
+CSS requirements:
+- Use modern CSS features and best practices
+- Generate semantic, maintainable stylesheets
+- Include responsive design considerations
+- Use appropriate selectors and specificity
+- Follow CSS naming conventions (BEM, etc.)
+- Include comments for complex styles
+
+If extracting from an image:
+- Analyze visual design elements
+- Generate corresponding CSS rules
+- Preserve layout, colors, typography, and spacing
+- Use modern CSS features (Flexbox, Grid, etc.)
+
+Always respond in the specified language and provide complete, valid CSS.
 `;
 
 //
@@ -774,3 +874,250 @@ export const recognizeFromClipboard = async (): Promise<RecognitionResult | null
         return null;
     }
 }
+
+//
+export const solveAndAnswer = async (
+    input: any,
+    options?: RecognizeByInstructionsOptions
+): Promise<RecognitionResult> => {
+    const gpt = await getGPTInstance();
+    if (!gpt) return { ok: false, recognized_data: [], keywords_and_tags: [], verbose_data: "", suggested_type: null, confidence: 0, source_kind: "unknown", processing_time_ms: 0, errors: ["AI service not available"], warnings: [] };
+
+    const startTime = Date.now();
+
+    try {
+        // Build instruction with language and SVG support
+        const languageInstruction = await getLanguageInstruction();
+        const svgAddon = await getSvgGraphicsAddon();
+        const instruction = SOLVE_AND_ANSWER_INSTRUCTION + languageInstruction + svgAddon;
+
+        // Apply custom instruction if provided
+        let customInstruction = "";
+        if (options?.customInstruction) {
+            customInstruction = options.customInstruction;
+        } else if (options?.useActiveInstruction) {
+            customInstruction = await tryGetActiveInstructionText();
+        }
+
+        if (customInstruction) {
+            await gpt.askToDoAction(customInstruction);
+        }
+
+        // Set up the solve/answer instruction
+        await gpt.askToDoAction(instruction);
+
+        // Give input data
+        await gpt.giveForRequest(input);
+
+        // Get response
+        const response = await gpt.getResponse();
+        const processingTime = Date.now() - startTime;
+
+        if (response?.ok) {
+            return {
+                ok: true,
+                recognized_data: [response.data],
+                keywords_and_tags: ["solution", "answer"],
+                verbose_data: response.data,
+                suggested_type: "solution",
+                confidence: 0.9,
+                source_kind: "text",
+                processing_time_ms: processingTime,
+                errors: [],
+                warnings: []
+            };
+        } else {
+            return {
+                ok: false,
+                recognized_data: [],
+                keywords_and_tags: [],
+                verbose_data: "",
+                suggested_type: null,
+                confidence: 0,
+                source_kind: "unknown",
+                processing_time_ms: processingTime,
+                errors: [response?.error || "Failed to solve/answer"],
+                warnings: []
+            };
+        }
+    } catch (e) {
+        return {
+            ok: false,
+            recognized_data: [],
+            keywords_and_tags: [],
+            verbose_data: "",
+            suggested_type: null,
+            confidence: 0,
+            source_kind: "unknown",
+            processing_time_ms: Date.now() - startTime,
+            errors: [String(e)],
+            warnings: []
+        };
+    }
+};
+
+//
+export const writeCode = async (
+    input: any,
+    options?: RecognizeByInstructionsOptions
+): Promise<RecognitionResult> => {
+    const gpt = await getGPTInstance();
+    if (!gpt) return { ok: false, recognized_data: [], keywords_and_tags: [], verbose_data: "", suggested_type: null, confidence: 0, source_kind: "unknown", processing_time_ms: 0, errors: ["AI service not available"], warnings: [] };
+
+    const startTime = Date.now();
+
+    try {
+        // Build instruction with language and SVG support
+        const languageInstruction = await getLanguageInstruction();
+        const svgAddon = await getSvgGraphicsAddon();
+        const instruction = WRITE_CODE_INSTRUCTION + languageInstruction + svgAddon;
+
+        // Apply custom instruction if provided
+        let customInstruction = "";
+        if (options?.customInstruction) {
+            customInstruction = options.customInstruction;
+        } else if (options?.useActiveInstruction) {
+            customInstruction = await tryGetActiveInstructionText();
+        }
+
+        if (customInstruction) {
+            await gpt.askToDoAction(customInstruction);
+        }
+
+        // Set up the code writing instruction
+        await gpt.askToDoAction(instruction);
+
+        // Give input data
+        await gpt.giveForRequest(input);
+
+        // Get response
+        const response = await gpt.getResponse();
+        const processingTime = Date.now() - startTime;
+
+        if (response?.ok) {
+            return {
+                ok: true,
+                recognized_data: [response.data],
+                keywords_and_tags: ["code", "programming"],
+                verbose_data: response.data,
+                suggested_type: "code",
+                confidence: 0.9,
+                source_kind: "text",
+                processing_time_ms: processingTime,
+                errors: [],
+                warnings: []
+            };
+        } else {
+            return {
+                ok: false,
+                recognized_data: [],
+                keywords_and_tags: [],
+                verbose_data: "",
+                suggested_type: null,
+                confidence: 0,
+                source_kind: "unknown",
+                processing_time_ms: processingTime,
+                errors: [response?.error || "Failed to generate code"],
+                warnings: []
+            };
+        }
+    } catch (e) {
+        return {
+            ok: false,
+            recognized_data: [],
+            keywords_and_tags: [],
+            verbose_data: "",
+            suggested_type: null,
+            confidence: 0,
+            source_kind: "unknown",
+            processing_time_ms: Date.now() - startTime,
+            errors: [String(e)],
+            warnings: []
+        };
+    }
+};
+
+//
+export const extractCSS = async (
+    input: any,
+    options?: RecognizeByInstructionsOptions
+): Promise<RecognitionResult> => {
+    const gpt = await getGPTInstance();
+    if (!gpt) return { ok: false, recognized_data: [], keywords_and_tags: [], verbose_data: "", suggested_type: null, confidence: 0, source_kind: "unknown", processing_time_ms: 0, errors: ["AI service not available"], warnings: [] };
+
+    const startTime = Date.now();
+
+    try {
+        // Build instruction with language and SVG support
+        const languageInstruction = await getLanguageInstruction();
+        const svgAddon = await getSvgGraphicsAddon();
+        const instruction = EXTRACT_CSS_INSTRUCTION + languageInstruction + svgAddon;
+
+        // Apply custom instruction if provided
+        let customInstruction = "";
+        if (options?.customInstruction) {
+            customInstruction = options.customInstruction;
+        } else if (options?.useActiveInstruction) {
+            customInstruction = await tryGetActiveInstructionText();
+        }
+
+        if (customInstruction) {
+            await gpt.askToDoAction(customInstruction);
+        }
+
+        // Set up the CSS extraction instruction
+        await gpt.askToDoAction(instruction);
+
+        // Give input data
+        await gpt.giveForRequest(input);
+
+        // Get response
+        const response = await gpt.getResponse();
+        const processingTime = Date.now() - startTime;
+
+        if (response?.ok) {
+            return {
+                ok: true,
+                recognized_data: [response.data],
+                keywords_and_tags: ["css", "styles", "stylesheet"],
+                verbose_data: response.data,
+                suggested_type: "css",
+                confidence: 0.9,
+                source_kind: "text",
+                processing_time_ms: processingTime,
+                errors: [],
+                warnings: []
+            };
+        } else {
+            return {
+                ok: false,
+                recognized_data: [],
+                keywords_and_tags: [],
+                verbose_data: "",
+                suggested_type: null,
+                confidence: 0,
+                source_kind: "unknown",
+                processing_time_ms: processingTime,
+                errors: [response?.error || "Failed to extract CSS"],
+                warnings: []
+            };
+        }
+    } catch (e) {
+        return {
+            ok: false,
+            recognized_data: [],
+            keywords_and_tags: [],
+            verbose_data: "",
+            suggested_type: null,
+            confidence: 0,
+            source_kind: "unknown",
+            processing_time_ms: Date.now() - startTime,
+            errors: [String(e)],
+            warnings: []
+        };
+    }
+};
+
+// Convenience aliases
+export const solveEquation = solveAndAnswer;
+export const answerQuestion = solveAndAnswer;

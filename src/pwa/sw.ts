@@ -176,12 +176,42 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
             const processPromise = (async () => {
                 try {
                     const mode = settings?.ai?.shareTargetMode || 'recognize';
+
+                    // Get custom instruction for processing
+                    const customInstruction = await (async (): Promise<string> => {
+                        try {
+                            const settings = await loadSettings();
+                            const instructions = settings?.ai?.customInstructions || [];
+                            const activeId = settings?.ai?.activeInstructionId;
+                            if (!activeId) return "";
+                            const active = instructions.find(i => i.id === activeId);
+                            return active?.instruction || "";
+                        } catch (e) {
+                            console.warn("[ShareTarget] Failed to load custom instruction:", e);
+                            return "";
+                        }
+                    })();
+
+                    console.log(`[ShareTarget] Mode: ${mode}, custom instruction:`, customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+
+                    // Create synthetic form data for the commit routes
+                    const formData = new FormData();
+                    formData.append('title', shareData.title || '');
+                    formData.append('text', shareData.text || '');
+                    formData.append('url', shareData.url || '');
+                    formData.append('customInstruction', customInstruction);
+                    if (shareData.files) {
+                        shareData.files.forEach((file: File, index: number) => {
+                            formData.append('files', file);
+                        });
+                    }
+
+                    // Create synthetic event with the form data
+                    const syntheticEvent = { request: { formData: () => Promise.resolve(formData) } };
+
+                    console.log(`[ShareTarget] Processing with commit route...`);
+
                     let results: any[];
-
-                    // Create a synthetic event with the cloned request for AI processing
-                    const syntheticEvent = { ...e, request: clonedRequest };
-
-                    console.log(`[ShareTarget] Mode: ${mode}, processing...`);
 
                     if (mode === 'analyze') {
                         results = await commitAnalyze?.(syntheticEvent)?.catch?.((err) => {
@@ -189,26 +219,27 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                             return [];
                         }) || [];
                         console.log('[ShareTarget] Analyze results:', results);
+
+                        // For analyze mode, just show completion
+                        if (results?.length) {
+                            sendToast('Content analyzed and stored', 'success');
+                        } else {
+                            sendToast('Analysis completed but no data extracted', 'warning');
+                        }
                     } else {
                         results = await commitRecognize?.(syntheticEvent)?.catch?.((err) => {
                             console.error('[ShareTarget] commitRecognize error:', err);
                             return [];
                         }) || [];
                         console.log('[ShareTarget] Recognize results:', results);
-                    }
 
-                    // Broadcast results for clipboard copy
-                    if (results?.length) {
-                        const rawData = results?.[0]?.data || results;
-                        // Extract actual content from AI JSON response
-                        const extractedContent = extractRecognizedContent(rawData);
-                        console.log('[ShareTarget] Sending to clipboard:', typeof extractedContent, (extractedContent as any)?.length || 'N/A');
-                        // Use silentOnError=true because clipboard may fail without user gesture/focus
-                        sendCopyRequest(extractedContent, true, true);
-                        sendToast('Content recognized - tap to copy', 'success');
-                    } else {
-                        console.warn('[ShareTarget] No results from AI processing');
-                        sendToast('Recognition completed but no data extracted', 'warning');
+                        // For recognize mode, copy to clipboard (this will be handled by the commit route via broadcast)
+                        // The commit route already handles clipboard copying for recognize mode
+                        if (results?.length) {
+                            sendToast('Content recognized - tap to copy', 'success');
+                        } else {
+                            sendToast('Recognition completed but no data extracted', 'warning');
+                        }
                     }
 
                     return results;

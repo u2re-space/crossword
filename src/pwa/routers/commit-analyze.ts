@@ -14,12 +14,16 @@ export const commitAnalyze = (e: any) => {
             title: fd.get('title'),
             text: fd.get('text'),
             url: fd.get('url'),
-            files: fd.getAll('files') // File[]
+            files: fd.getAll('files'), // File[]
+            customInstruction: fd.get('customInstruction') as string
         };
 
-        // Load custom instruction for AI processing
-        const customInstruction = await getActiveCustomInstruction();
-        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+        // Use custom instruction from form data, or load from settings if not provided
+        let customInstruction = inputs.customInstruction?.trim?.() || "";
+        if (!customInstruction) {
+            customInstruction = await getActiveCustomInstruction();
+        }
+        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
 
         // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/analyze", {
