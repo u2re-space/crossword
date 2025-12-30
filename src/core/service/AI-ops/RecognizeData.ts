@@ -16,7 +16,18 @@ import {
     type DataContext
 } from "../model/GPT-Config.ts";
 import { extractJSONFromAIResponse } from "../../utils/AIResponseParser.ts";
-import { getActiveInstructionText, buildInstructionPrompt } from "../CustomInstructions.ts";
+import { buildInstructionPrompt } from "../InstructionUtils.ts";
+
+// Dynamic import for browser-only instruction loading (avoids backend issues with @rs-core alias)
+const tryGetActiveInstructionText = async (): Promise<string> => {
+    try {
+        // Only works in browser context where settings can be loaded
+        const { getActiveInstructionText } = await import("../CustomInstructions.ts");
+        return await getActiveInstructionText();
+    } catch {
+        return "";
+    }
+};
 
 //
 export type RecognitionMode = "auto" | "image" | "text" | "structured" | "mixed";
@@ -243,7 +254,7 @@ export const recognizeByInstructions = async (
     if (options?.customInstruction) {
         finalInstructions = buildInstructionPrompt(instructions, options.customInstruction);
     } else if (options?.useActiveInstruction !== false) {
-        const activeInstruction = await getActiveInstructionText();
+        const activeInstruction = await tryGetActiveInstructionText();
         if (activeInstruction) {
             finalInstructions = buildInstructionPrompt(instructions, activeInstruction);
         }
