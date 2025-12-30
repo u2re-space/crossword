@@ -1,7 +1,8 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeImageData, solveAndAnswer, writeCode, extractCSS } from "./service/RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./service/RecognizeData";
+import { loadCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
 
 // BroadcastChannel for cross-context communication (share target-like behavior)
 const TOAST_CHANNEL = "rs-toast";
@@ -207,16 +208,73 @@ const CTX_CONTEXTS = [
     "action",
 ] as const satisfies [`${chrome.contextMenus.ContextType}`, ...`${chrome.contextMenus.ContextType}`[]];
 
+// Built-in context menu items
 const CTX_ITEMS: Array<{ id: string; title: string }> = [
     { id: "copy-as-latex", title: "Copy as LaTeX" },
     { id: "copy-as-mathml", title: "Copy as MathML" },
     { id: "copy-as-markdown", title: "Copy as Markdown" },
     { id: "copy-as-html", title: "Copy as HTML" },
-    { id: "START_SNIP", title: "Snip and Recognize (AI, Markdown)" },
+    { id: "START_SNIP", title: "Snip and Recognize (AI)" },
     { id: "SOLVE_AND_ANSWER", title: "Solve / Answer (AI)" },
     { id: "WRITE_CODE", title: "Write Code (AI)" },
     { id: "EXTRACT_CSS", title: "Extract CSS Styles (AI)" },
 ];
+
+// Custom instruction prefix for context menu IDs
+const CUSTOM_INSTRUCTION_PREFIX = "CUSTOM_INSTRUCTION:";
+
+// Track custom instruction context menus
+let customInstructionMenuIds: string[] = [];
+
+// Update context menus with custom instructions
+const updateCustomInstructionMenus = async () => {
+    // Remove existing custom instruction menus
+    for (const menuId of customInstructionMenuIds) {
+        try {
+            await chrome.contextMenus.remove(menuId);
+        } catch { /* ignore */ }
+    }
+    customInstructionMenuIds = [];
+
+    // Load custom instructions
+    const instructions = await loadCustomInstructions().catch(() => []);
+    const enabled = instructions.filter(i => i.enabled);
+
+    if (enabled.length === 0) return;
+
+    // Create separator before custom instructions
+    const separatorId = "CUSTOM_SEP";
+    try {
+        chrome.contextMenus.create({
+            id: separatorId,
+            type: "separator",
+            contexts: CTX_CONTEXTS,
+        });
+        customInstructionMenuIds.push(separatorId);
+    } catch { /* ignore */ }
+
+    // Create menu items for each custom instruction
+    for (const instruction of enabled) {
+        const menuId = `${CUSTOM_INSTRUCTION_PREFIX}${instruction.id}`;
+        try {
+            chrome.contextMenus.create({
+                id: menuId,
+                title: `🎯 ${instruction.label}`,
+                contexts: CTX_CONTEXTS,
+            });
+            customInstructionMenuIds.push(menuId);
+        } catch (e) {
+            console.warn("[CRX-SW] Failed to create custom instruction menu:", e);
+        }
+    }
+};
+
+// Listen for settings changes to update menus
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes["rs-settings"]) {
+        updateCustomInstructionMenus().catch(console.warn);
+    }
+});
 
 // Handle messages from Extension UI or Content Scripts
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -396,6 +454,131 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return true;
     }
 
+    // Handle custom instruction requests (user-defined)
+    if (message?.type === "gpt:custom") {
+        const instructionId = message?.instructionId;
+        const customInstruction = message?.instruction;
+        const requestId = message?.requestId || `custom_${Date.now()}`;
+
+        // Get instruction text from ID or use provided text
+        (async () => {
+            let instructionText = customInstruction;
+            let instructionLabel = "Custom";
+
+            if (!instructionText && instructionId) {
+                const instructions = await loadCustomInstructions().catch(() => []);
+                const found = instructions.find(i => i.id === instructionId);
+                if (found) {
+                    instructionText = found.instruction;
+                    instructionLabel = found.label;
+                }
+            }
+
+            if (!instructionText) {
+                const errorResponse = { ok: false, error: "No instruction found" };
+                sendResponse(errorResponse);
+                return;
+            }
+
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "custom",
+                requestId,
+                label: instructionLabel,
+                status: "processing"
+            });
+
+            recognizeByInstructions(message?.input, instructionText, (result) => {
+                const response = { ok: result?.ok, data: result?.data, error: result?.error };
+
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "custom",
+                    label: instructionLabel,
+                    ...response
+                });
+
+                if (result?.ok && result?.data && message?.autoCopy !== false) {
+                    requestClipboardCopy(result.data, true);
+                }
+
+                sendResponse(response);
+            })?.catch?.((e: any) => {
+                const errorResponse = { ok: false, error: String(e) };
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "custom",
+                    ...errorResponse
+                });
+                showExtensionToast(`${instructionLabel} failed: ${e}`, "error");
+                sendResponse(errorResponse);
+            });
+        })();
+        return true;
+    }
+
+    // Handle translation requests
+    if (message?.type === "gpt:translate") {
+        const inputText = message?.input;
+        const targetLanguage = message?.targetLanguage || "English";
+        const requestId = message?.requestId || `translate_${Date.now()}`;
+
+        if (!inputText?.trim()) {
+            sendResponse({ ok: false, error: "No text to translate" });
+            return true;
+        }
+
+        const translationInstruction = `Translate the following text to ${targetLanguage}.
+Preserve formatting (Markdown, KaTeX math expressions, code blocks, etc.).
+Only translate the natural language text, keep technical notation unchanged.
+Return ONLY the translated text without explanations.`;
+
+        (async () => {
+            try {
+                const settings = (await import("@rs-core/config/Settings")).loadSettings();
+                const aiSettings = (await settings)?.ai;
+                const token = aiSettings?.apiKey;
+
+                if (!token) {
+                    sendResponse({ ok: false, error: "No API key configured" });
+                    return;
+                }
+
+                const baseUrl = aiSettings?.baseUrl || "https://api.proxyapi.ru/openai/v1";
+                const model = aiSettings?.model || "gpt-5.2";
+
+                const response = await fetch(`${baseUrl}/responses`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        model,
+                        input: inputText,
+                        instructions: translationInstruction,
+                        reasoning: { effort: "low" },
+                        text: { verbosity: "low" }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Translation API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const translatedText = data?.output?.at?.(-1)?.content?.[0]?.text || inputText;
+
+                sendResponse({ ok: true, data: translatedText });
+            } catch (e) {
+                console.error("Translation failed:", e);
+                sendResponse({ ok: false, error: String(e), data: inputText });
+            }
+        })();
+        return true;
+    }
+
     // Handle share-target-like data from external sources (e.g., context menu shares)
     if (message?.type === "share-target") {
         const { title, text, url, files } = message.data || {};
@@ -454,7 +637,8 @@ chrome.runtime.onInstalled.addListener(() => {
         console.warn(e);
     }
 
-    // Add settings shortcut if needed, though it's usually in the popup
+    // Load and create custom instruction menus
+    updateCustomInstructionMenus().catch(console.warn);
 });
 
 // helper to send message to tab with fallback to active tab
@@ -473,28 +657,36 @@ const sendToTabOrActive = async (tabId: number | undefined, message: unknown) =>
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     const tabId = tab?.id;
+    const menuId = String(info.menuItemId);
 
-    if (info.menuItemId === "START_SNIP") {
+    if (menuId === "START_SNIP") {
         sendToTabOrActive(tabId, { type: "START_SNIP" });
         return;
     }
 
-    if (info.menuItemId === "SOLVE_AND_ANSWER") {
+    if (menuId === "SOLVE_AND_ANSWER") {
         sendToTabOrActive(tabId, { type: "SOLVE_AND_ANSWER" });
         return;
     }
 
-    if (info.menuItemId === "WRITE_CODE") {
+    if (menuId === "WRITE_CODE") {
         sendToTabOrActive(tabId, { type: "WRITE_CODE" });
         return;
     }
 
-    if (info.menuItemId === "EXTRACT_CSS") {
+    if (menuId === "EXTRACT_CSS") {
         sendToTabOrActive(tabId, { type: "EXTRACT_CSS" });
         return;
     }
 
-    if (info.menuItemId === MD_VIEW_MENU_ID) {
+    // Handle custom instruction menu items
+    if (menuId.startsWith(CUSTOM_INSTRUCTION_PREFIX)) {
+        const instructionId = menuId.slice(CUSTOM_INSTRUCTION_PREFIX.length);
+        sendToTabOrActive(tabId, { type: "CUSTOM_INSTRUCTION", instructionId });
+        return;
+    }
+
+    if (menuId === MD_VIEW_MENU_ID) {
         const candidate = (info as any).linkUrl || (info as any).pageUrl;
         const url = typeof candidate === "string" ? candidate : null;
         if (url && isMarkdownUrl(url)) {
@@ -505,7 +697,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         return;
     }
 
-    sendToTabOrActive(tabId, { type: String(info.menuItemId) });
+    sendToTabOrActive(tabId, { type: menuId });
 });
 
 chrome.webNavigation?.onCommitted?.addListener?.((details) => {

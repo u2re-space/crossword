@@ -1,7 +1,8 @@
 import { ableToShowImage, encodeWithJSquash, removeAnyPrefix } from "@rs-core/utils/ImageProcess";
-import { recognizeImageData, solveAndAnswer, writeCode, extractCSS } from "./RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./RecognizeData";
 import type { RecognizeResult } from "./RecognizeData";
 import { requestCopyViaCRX, toText } from "@rs-frontend/shared/Clipboard";
+import { getCustomInstructions } from "@rs-core/service/CustomInstructions";
 
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
@@ -345,6 +346,70 @@ export const enableCapture = (ext: typeof chrome) => {
                     sendResponse(res);
                 } catch (e) {
                     console.error("CSS extraction failed:", e);
+                    sendResponse({ ok: false, error: String(e) });
+                }
+            })();
+            return true;
+        }
+
+        // Handle custom instruction capture
+        if (msg?.type === "CAPTURE_CUSTOM") {
+            (async () => {
+                try {
+                    const rect = msg.rect;
+                    const instructionId = msg.instructionId;
+
+                    // Load custom instruction
+                    const instructions = await getCustomInstructions().catch(() => []);
+                    const instruction = instructions.find(i => i.id === instructionId);
+
+                    if (!instruction) {
+                        sendResponse({ ok: false, error: "Custom instruction not found" });
+                        return;
+                    }
+
+                    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = { format: "png", scale: 1 };
+                    if (rect?.width > 0 && rect?.height > 0) {
+                        captureOptions.rect = rect;
+                    }
+
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        });
+                    });
+
+                    let finalUrl = await compressIfNeeded(dataUrl);
+                    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+                        finalUrl = dataUrl;
+                    }
+
+                    const input = [{
+                        type: "message",
+                        role: "user",
+                        content: [{ type: "input_image", image_url: finalUrl }]
+                    }];
+
+                    const result = await recognizeByInstructions(input, instruction.instruction);
+                    const resultText = extractRecognizedText(result);
+
+                    const res = {
+                        ok: result?.ok ?? !!resultText,
+                        data: resultText,
+                        error: result?.error || (!resultText ? `${instruction.label} failed` : undefined)
+                    };
+
+                    if (res.ok && res.data) {
+                        await COPY_HACK(ext, res, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+                    }
+
+                    sendResponse(res);
+                } catch (e) {
+                    console.error("Custom instruction failed:", e);
                     sendResponse({ ok: false, error: String(e) });
                 }
             })();

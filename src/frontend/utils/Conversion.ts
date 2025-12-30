@@ -8,6 +8,59 @@ import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFro
 import { MathMLToLaTeX } from 'mathml-to-latex';
 import { deAlphaChannel } from '@rs-core/utils/ImageProcess';
 import { writeText, writeHTML } from '@rs-frontend/shared/Clipboard';
+import { loadSettings } from '@rs-core/config/Settings';
+import type { ResponseLanguage } from '@rs-core/config/SettingsTypes';
+
+// Options for copy operations
+export type CopyOptions = {
+    translate?: boolean;
+    targetLanguage?: ResponseLanguage;
+};
+
+// Translation helper using AI
+const translateContent = async (content: string, targetLang: ResponseLanguage): Promise<string> => {
+    if (!content?.trim() || targetLang === "auto") return content;
+    
+    const langNames: Record<ResponseLanguage, string> = {
+        auto: "",
+        en: "English",
+        ru: "Russian"
+    };
+    
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: "gpt:translate",
+            input: content,
+            targetLanguage: langNames[targetLang] || "English"
+        });
+        return response?.data || content;
+    } catch (e) {
+        console.warn("Translation failed:", e);
+        return content;
+    }
+};
+
+// Check if translation is enabled in settings
+const shouldTranslate = async (): Promise<{ translate: boolean; lang: ResponseLanguage }> => {
+    try {
+        const settings = await loadSettings();
+        return {
+            translate: settings?.ai?.translateResults || false,
+            lang: settings?.ai?.responseLanguage || "auto"
+        };
+    } catch {
+        return { translate: false, lang: "auto" };
+    }
+};
+
+// Apply translation if enabled
+const applyTranslation = async (content: string): Promise<string> => {
+    const { translate, lang } = await shouldTranslate();
+    if (translate && lang !== "auto") {
+        return translateContent(content, lang);
+    }
+    return content;
+};
 
 //
 const turndownService = new TurndownService();
@@ -53,20 +106,35 @@ export const convertToMarkdown = (input: string): string => { // convert html DO
     return (input?.normalize?.()?.trim?.() || input?.trim?.() || input);
 };
 
-// copy html DOM as markdown
-export const copyAsMarkdown = async (target: HTMLElement) => {
+// copy html DOM as markdown (with optional translation)
+export const copyAsMarkdown = async (target: HTMLElement, options?: CopyOptions) => {
     const container = getContainerFromTextSelection(target);
-    const markdown = convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
-    const text = markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown;
+    let markdown = convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
+    let text = markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown;
+    
+    // Apply translation if enabled
+    if (options?.translate !== false) {
+        text = await applyTranslation(text);
+    }
+    
     if (text) await writeText(text);
+    return text;
 }
 
-// copy markdown text as html
-export const copyAsHTML = async (target: HTMLElement) => {
+// copy markdown text as html (with optional translation)
+export const copyAsHTML = async (target: HTMLElement, options?: CopyOptions) => {
     const container = getContainerFromTextSelection(target);
-    const html = await convertToHtml(container?.innerText || "") || await convertToHtml(container?.innerHTML || container?.outerHTML || "");
+    let sourceText = container?.innerText || "";
+    
+    // Apply translation if enabled
+    if (options?.translate !== false) {
+        sourceText = await applyTranslation(sourceText);
+    }
+    
+    const html = await convertToHtml(sourceText) || await convertToHtml(container?.innerHTML || container?.outerHTML || "");
     const text = html?.trim?.()?.normalize?.()?.trim?.() || html?.trim?.() || html;
-    if (text) await writeHTML(text, container?.innerText || text);
+    if (text) await writeHTML(text, sourceText || text);
+    return text;
 }
 
 //
@@ -77,9 +145,9 @@ const $wrap$ = (katex: string) => {
     return "$" + katex + "$";
 }
 
-// copy mathml DOM as tex
+// copy mathml DOM as tex (with optional translation for surrounding text)
 // TODO! support AI recognition and conversion (from images)
-export const copyAsTeX = async (target: HTMLElement) => {
+export const copyAsTeX = async (target: HTMLElement, _options?: CopyOptions) => {
     const math = bySelector(target, "math");
     const mjax = bySelector(target, "[data-mathml]");
     const orig = bySelector(target, "[data-original]");
@@ -151,9 +219,9 @@ function stripMathDelimiters(input) {
     return (m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[6] ?? "").trim();
 }
 
-// copy mathml DOM as mathml
+// copy mathml DOM as mathml (with optional translation for surrounding text)
 // TODO! support AI recognition and conversion (from images)
-export const copyAsMathML = async (target: HTMLElement) => { // copy mathml DOM as mathml
+export const copyAsMathML = async (target: HTMLElement, _options?: CopyOptions) => {
     const math = bySelector(target, "math");
     const mjax = bySelector(target, "[data-mathml]");
     const orig = bySelector(target, "[data-original]");

@@ -8,11 +8,38 @@ import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 import type { DataContext } from "@rs-core/service/model/GPT-Config";
 import { getActiveInstructionText, buildInstructionPrompt } from "@rs-core/service/CustomInstructions";
+import type { ResponseLanguage } from "@rs-core/config/SettingsTypes";
 
 //
 const DEFAULT_MODEL = 'gpt-5.2';
 const DEFAULT_API_URL = 'https://api.proxyapi.ru/openai/v1';
 const ENDPOINT = '/responses';
+
+// Language instruction builders
+const LANGUAGE_INSTRUCTIONS: Record<ResponseLanguage, string> = {
+    auto: "", // No explicit language instruction
+    en: "\n\nIMPORTANT: Respond in English. All explanations, answers, and comments must be in English.",
+    ru: "\n\nВАЖНО: Отвечай на русском языке. Все объяснения, ответы и комментарии должны быть на русском языке."
+};
+
+const TRANSLATE_INSTRUCTION = "\n\nAdditionally, translate the recognized content to the response language if it differs from the source.";
+
+// Get language instruction based on settings
+const getLanguageInstruction = async (): Promise<string> => {
+    try {
+        const settings = await loadSettings();
+        const lang = settings?.ai?.responseLanguage || "auto";
+        const translate = settings?.ai?.translateResults || false;
+        
+        let instruction = LANGUAGE_INSTRUCTIONS[lang] || "";
+        if (translate && lang !== "auto") {
+            instruction += TRANSLATE_INSTRUCTION;
+        }
+        return instruction;
+    } catch {
+        return "";
+    }
+};
 
 //
 export const IMAGE_INSTRUCTION = `
@@ -316,6 +343,17 @@ export const recognizeByInstructions = async (
     if (customInstructionText) {
         finalInstructions = buildInstructionPrompt(finalInstructions, customInstructionText);
         console.log("[AI] Applied custom instruction");
+    }
+
+    // Apply language instruction from settings
+    try {
+        const langInstruction = await getLanguageInstruction();
+        if (langInstruction) {
+            finalInstructions += langInstruction;
+            console.log("[AI] Applied language instruction");
+        }
+    } catch (e) {
+        console.warn("[AI] Failed to get language instruction:", e);
     }
 
     const requestBody: any = {

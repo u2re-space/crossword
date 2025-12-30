@@ -4,8 +4,15 @@ import "./index.scss";
 const SETTINGS_KEY = "rs-settings";
 
 // Settings shape (partial, for popup use)
+type ResponseLanguage = "en" | "ru" | "auto";
 type PopupSettings = {
-    ai?: { apiKey?: string; baseUrl?: string; model?: string };
+    ai?: {
+        apiKey?: string;
+        baseUrl?: string;
+        model?: string;
+        responseLanguage?: ResponseLanguage;
+        translateResults?: boolean;
+    };
     [key: string]: unknown;
 };
 
@@ -21,7 +28,7 @@ const loadPopupSettings = async (): Promise<PopupSettings> => {
 };
 
 // Save settings to chrome.storage.local with proper nested structure
-const savePopupSettings = async (updates: { ai?: { apiKey?: string; baseUrl?: string } }) => {
+const savePopupSettings = async (updates: { ai?: Partial<PopupSettings["ai"]> }) => {
     try {
         const current = await loadPopupSettings();
         const merged: PopupSettings = {
@@ -45,11 +52,15 @@ const implementSettings = () => {
     const apiUrl = document.getElementById('api-url') as HTMLInputElement;
     const saveSettingsBtn = document.getElementById('save-settings') as HTMLButtonElement;
     const showApiKey = document.getElementById('show-api-key') as HTMLInputElement;
+    const responseLanguage = document.getElementById('response-language') as HTMLSelectElement;
+    const translateResults = document.getElementById('translate-results') as HTMLInputElement;
 
     // Load settings on popup open
     loadPopupSettings().then((settings) => {
         if (apiUrl) apiUrl.value = (settings?.ai?.baseUrl || "").trim();
         if (apiKey) apiKey.value = (settings?.ai?.apiKey || "").trim();
+        if (responseLanguage) responseLanguage.value = settings?.ai?.responseLanguage || "auto";
+        if (translateResults) translateResults.checked = settings?.ai?.translateResults || false;
     }).catch(console.warn);
 
     // Save settings on button click
@@ -57,7 +68,9 @@ const implementSettings = () => {
         const success = await savePopupSettings({
             ai: {
                 apiKey: apiKey?.value?.trim() || "",
-                baseUrl: apiUrl?.value?.trim() || ""
+                baseUrl: apiUrl?.value?.trim() || "",
+                responseLanguage: (responseLanguage?.value as ResponseLanguage) || "auto",
+                translateResults: translateResults?.checked || false
             }
         });
 
@@ -89,21 +102,29 @@ const implementSettings = () => {
     });
 };
 
+// Helper to send snip message and close popup
+const sendSnipMessage = (messageType: string) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId != null) {
+            chrome.tabs.sendMessage(tabId, { type: messageType })?.catch?.(console.warn);
+        }
+        // Close popup after triggering snip
+        window?.close?.();
+    });
+};
+
 //
 const implementActions = () => {
-    const snipAndRecognize = document.getElementById('snip-and-recognize') as HTMLButtonElement;
+    const snipRecognize = document.getElementById('snip-recognize') as HTMLButtonElement;
+    const snipSolve = document.getElementById('snip-solve') as HTMLButtonElement;
+    const snipCode = document.getElementById('snip-code') as HTMLButtonElement;
+    const snipCss = document.getElementById('snip-css') as HTMLButtonElement;
 
-    snipAndRecognize?.addEventListener('click', () => {
-        chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs) => {
-            const tabId = tabs[0]?.id;
-            if (tabId != null) {
-                chrome.tabs.sendMessage(tabId, { type: "START_SNIP" })?.catch?.(console.warn);
-            }
-
-            // Close popup after triggering snip
-            window?.close?.();
-        });
-    });
+    snipRecognize?.addEventListener('click', () => sendSnipMessage("START_SNIP"));
+    snipSolve?.addEventListener('click', () => sendSnipMessage("SOLVE_AND_ANSWER"));
+    snipCode?.addEventListener('click', () => sendSnipMessage("WRITE_CODE"));
+    snipCss?.addEventListener('click', () => sendSnipMessage("EXTRACT_CSS"));
 };
 
 //

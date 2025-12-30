@@ -87,6 +87,11 @@ chrome.runtime.onMessage.addListener((res, _sender, sendResponse) => {
 
             try {
                 if (op && target) {
+                    // Show processing toast for operations that may translate
+                    const mayTranslate = res.type === "copy-as-markdown" || res.type === "copy-as-html";
+                    if (mayTranslate) {
+                        showToast("Processing...");
+                    }
                     await op(target);
                     showToast("Copied");
                     sendResponse({ ok: true });

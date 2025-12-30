@@ -9,15 +9,33 @@
     <div id="app">
         <h1>Content Helper Menu</h1>
         <section>
-            <h2>Actions</h2>
+            <h2>Snip Actions</h2>
+            <div class="action-grid">
+                <button type="button" id="snip-recognize" title="Recognize text/content from screen">📝 Recognize</button>
+                <button type="button" id="snip-solve" title="Solve equations or answer questions">🧮 Solve/Answer</button>
+                <button type="button" id="snip-code" title="Generate code from description">💻 Write Code</button>
+                <button type="button" id="snip-css" title="Extract CSS styles from UI">🎨 Extract CSS</button>
+            </div>
+        </section>
+        <section>
+            <h2>Language & Translation</h2>
             <ul>
-                <li style="display: flex; justify-content: space-around;">
-                    <button style="grid-column: 1 / -1;" type="button" id="snip-and-recognize">Snip and Recognize</button>
+                <li>
+                    <label for="response-language">Response Language</label>
+                    <select id="response-language">
+                        <option value="auto">Auto-detect</option>
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                </li>
+                <li>
+                    <label for="translate-results">Translate Results</label>
+                    <input type="checkbox" id="translate-results" style="grid-column: input;" />
                 </li>
             </ul>
         </section>
         <section>
-            <h2>Settings</h2>
+            <h2>API Settings</h2>
             <ul>
                 <li>
                     <label for="api-url">API URL</label>

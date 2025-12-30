@@ -68,6 +68,8 @@ export type CustomInstruction = {
     order?: number;
 };
 
+export type ResponseLanguage = "en" | "ru" | "auto";
+
 export type AppSettings = {
     core?: {
         mode?: CoreMode;
@@ -93,6 +95,9 @@ export type AppSettings = {
         shareTargetMode?: "analyze" | "recognize";
         customInstructions?: CustomInstruction[];
         activeInstructionId?: string;
+        // Language and translation settings
+        responseLanguage?: ResponseLanguage;
+        translateResults?: boolean;
     };
     webdav?: {
         url?: string;
@@ -141,7 +146,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
         mcp: [],
         shareTargetMode: "recognize",
         customInstructions: [],
-        activeInstructionId: ""
+        activeInstructionId: "",
+        responseLanguage: "auto",
+        translateResults: false
     },
     webdav: {
         url: "http://localhost:6065",

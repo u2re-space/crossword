@@ -8,11 +8,13 @@ export interface cropArea {
     height: number;
 }
 
-export type SnipMode = "recognize" | "solve" | "code" | "css";
+export type SnipMode = "recognize" | "solve" | "code" | "css" | "custom";
 
 let __snipInjected = false;
 let __snipActive = false;
 let __currentMode: SnipMode = "recognize";
+let __customInstructionId: string | null = null;
+let __customInstructionLabel: string | null = null;
 
 // Map mode to message type
 const getModeMessageType = (mode: SnipMode): string => {
@@ -20,26 +22,35 @@ const getModeMessageType = (mode: SnipMode): string => {
         case "solve": return "CAPTURE_SOLVE";
         case "code": return "CAPTURE_CODE";
         case "css": return "CAPTURE_CSS";
+        case "custom": return "CAPTURE_CUSTOM";
         default: return "CAPTURE";
     }
 };
 
 // Get user-friendly mode name for messages
 const getModeName = (mode: SnipMode): string => {
+    if (mode === "custom" && __customInstructionLabel) {
+        return __customInstructionLabel;
+    }
     switch (mode) {
         case "solve": return "Solving/Answering";
         case "code": return "Code generation";
         case "css": return "CSS extraction";
+        case "custom": return "Custom instruction";
         default: return "Recognition";
     }
 };
 
 // Get error message for mode
 const getModeErrorMessage = (mode: SnipMode): string => {
+    if (mode === "custom" && __customInstructionLabel) {
+        return `${__customInstructionLabel} failed`;
+    }
     switch (mode) {
         case "solve": return "Could not solve/answer";
         case "code": return "Could not generate code";
         case "css": return "Could not extract CSS";
+        case "custom": return "Custom instruction failed";
         default: return "No data recognized";
     }
 };
@@ -49,7 +60,14 @@ const getModeErrorMessage = (mode: SnipMode): string => {
 // We only show toasts here for errors/failures
 const captureTab = (rect?: cropArea, mode: SnipMode = "recognize") => {
     const messageType = getModeMessageType(mode);
-    return chrome.runtime.sendMessage({ type: messageType, rect })
+    const payload: any = { type: messageType, rect };
+
+    // Include custom instruction ID for custom mode
+    if (mode === "custom" && __customInstructionId) {
+        payload.instructionId = __customInstructionId;
+    }
+
+    return chrome.runtime.sendMessage(payload)
         ?.then?.(res => {
             console.log(`[Snip] ${mode} result:`, res);
             // Toast for success is already shown by clipboard handler
@@ -90,13 +108,19 @@ const initSnip = () => {
         if (msg?.type === "EXTRACT_CSS") {
             startSnip("css");
         }
+        // Handle custom instruction from context menu
+        if (msg?.type === "CUSTOM_INSTRUCTION" && msg?.instructionId) {
+            startSnip("custom", msg.instructionId, msg.label);
+        }
     });
 };
 
-export function startSnip(mode: SnipMode = "recognize") {
+export function startSnip(mode: SnipMode = "recognize", instructionId?: string, instructionLabel?: string) {
     if (__snipActive) return;
 
     __currentMode = mode;
+    __customInstructionId = instructionId || null;
+    __customInstructionLabel = instructionLabel || null;
 
     // get DOM elements
     const overlay = getOverlay();
@@ -165,7 +189,8 @@ export function startSnip(mode: SnipMode = "recognize") {
             recognize: "Recognizing with AI...",
             solve: "Solving / Answering...",
             code: "Generating code...",
-            css: "Extracting CSS styles..."
+            css: "Extracting CSS styles...",
+            custom: __customInstructionLabel ? `${__customInstructionLabel}...` : "Processing..."
         };
         showToast(actionTexts[__currentMode] || "Processing...");
 
@@ -238,7 +263,8 @@ export function startSnip(mode: SnipMode = "recognize") {
         recognize: "Select area. Esc — cancel",
         solve: "Select problem/question. Esc — cancel",
         code: "Select code request. Esc — cancel",
-        css: "Select UI to extract CSS. Esc — cancel"
+        css: "Select UI to extract CSS. Esc — cancel",
+        custom: __customInstructionLabel ? `Select for "${__customInstructionLabel}". Esc — cancel` : "Select area. Esc — cancel"
     };
     if (hint) hint.textContent = hintTexts[__currentMode] || "Select area. Esc — cancel";
     if (sizeBadge) sizeBadge.textContent = "";
