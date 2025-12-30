@@ -3,6 +3,7 @@ import "./Settings.scss";
 import { H } from "fest/lure";
 import { loadSettings, saveSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
+import { createCustomInstructionsEditor } from "./CustomInstructionsEditor";
 
 export type SettingsViewOptions = {
   isExtension: boolean;
@@ -34,6 +35,11 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
           <option value="analyze">Analyze and store</option>
         </select>
       </label>
+    </section>
+
+    <section class="card" data-section="instructions">
+      <h3>Recognition Instructions</h3>
+      <div data-custom-instructions></div>
     </section>
 
     <section class="card">
@@ -127,6 +133,14 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     if (extSection) extSection.hidden = false;
     const extNote = H`<div class="ext-note">Extension mode: settings are stored in <code>chrome.storage.local</code>.</div>` as HTMLElement;
     root.append(extNote);
+  }
+
+  const instructionsContainer = root.querySelector("[data-custom-instructions]") as HTMLElement | null;
+  if (instructionsContainer) {
+    const instructionsEditor = createCustomInstructionsEditor({
+      onUpdate: () => setNote("Instructions updated.")
+    });
+    instructionsContainer.append(instructionsEditor);
   }
 
   return root;

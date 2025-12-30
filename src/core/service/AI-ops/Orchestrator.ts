@@ -21,7 +21,8 @@ import {
     extractEntities,
     smartRecognize,
     type RecognitionResult,
-    type BatchRecognitionResult
+    type BatchRecognitionResult,
+    type RecognizeByInstructionsOptions
 } from "./RecognizeData.ts";
 
 import {
@@ -187,9 +188,11 @@ export class AIOrchestrator {
 
     //
     async extractEntitiesFromData(
-        data: File | Blob | string
+        data: File | Blob | string,
+        instructionOptions?: RecognizeByInstructionsOptions
     ): Promise<AIResponse<any[]>> {
-        return extractEntities(data, this.config);
+        const configWithOptions = instructionOptions ? { ...this.config, ...instructionOptions } : this.config;
+        return extractEntities(data, configWithOptions as any);
     }
 
     //
@@ -200,9 +203,13 @@ export class AIOrchestrator {
             language?: string;
             domain?: string;
             extractEntities?: boolean;
-        }
+        },
+        instructionOptions?: RecognizeByInstructionsOptions
     ): Promise<RecognitionResult & { entities?: any[] }> {
-        return smartRecognize(data, hints, this.config);
+        // Note: smartRecognize uses recognizeWithContext internally which handles custom instructions
+        // Pass instructionOptions through the config for now
+        const configWithOptions = instructionOptions ? { ...this.config, ...instructionOptions } : this.config;
+        return smartRecognize(data, hints, configWithOptions as any);
     }
 
     // === MODIFICATION OPERATIONS ===

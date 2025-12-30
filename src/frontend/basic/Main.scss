@@ -195,9 +195,9 @@
   max-inline-size: stretch;
   contain: strict;
   block-size: stretch;
-  overflow: hidden;
-  scrollbar-width: none;
-  scrollbar-color: transparent;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--basic-outline-variant) transparent;
 }
 
 .markdown-view {

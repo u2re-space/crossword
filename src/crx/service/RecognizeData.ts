@@ -1,11 +1,13 @@
 /*
  * Chrome Extension Service for AI-powered data recognition.
  * Enhanced version with support for GPT-5.2 Responses API features.
+ * Supports user-defined custom instructions.
  */
 
 import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
-import { detectDataKindFromContent, type DataKind, type DataContext } from "@rs-core/service/model/GPT-Config";
+import type { DataContext } from "@rs-core/service/model/GPT-Config";
+import { getActiveInstructionText, buildInstructionPrompt } from "@rs-core/service/CustomInstructions";
 
 //
 const DEFAULT_MODEL = 'gpt-5.2';
@@ -110,6 +112,140 @@ Return in JSON format:
 \`\`\`
 `;
 
+//
+export const SOLVE_AND_ANSWER_INSTRUCTION = `
+Solve the problem or answer the question presented in the content.
+
+Auto-detect the type of content:
+- Mathematical equation/expression → Solve step-by-step
+- Quiz/test question → Provide correct answer
+- Homework problem → Solve and explain
+- General question → Answer with explanation
+
+Format output as:
+
+**Problem/Question:**
+<recognized content - use $KaTeX$ for math>
+
+**Solution/Answer:**
+<step-by-step solution or direct answer>
+
+**Explanation:**
+<clear explanation of the reasoning>
+
+---
+
+For MATH problems:
+- Use single $ for inline math: $x = 5$
+- Use double $$ for display equations: $$\\int_0^1 f(x) dx$$
+- Show all intermediate steps
+- Simplify the final answer
+- For systems: solve all variables
+- For inequalities: use interval notation
+
+For MULTIPLE CHOICE:
+- Identify correct option (A, B, C, D)
+- Explain why it's correct
+- Note why others are wrong
+
+For TRUE/FALSE:
+- State True or False clearly
+- Provide justification
+
+For SHORT ANSWER/ESSAY:
+- Provide concise, complete answer
+- Include key facts and reasoning
+
+For CODING problems:
+- Write the solution code
+- Explain the logic
+
+If multiple problems/questions present, solve each separately.
+If unsolvable or unclear, explain why.
+`;
+
+// Keep legacy aliases for backward compatibility
+export const EQUATION_SOLVE_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
+export const ANSWER_QUESTION_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
+
+//
+export const WRITE_CODE_INSTRUCTION = `
+Generate code based on the request/description presented in the content.
+
+Instructions:
+1. First, recognize and understand the coding request
+2. Identify the programming language (if specified, otherwise choose most appropriate)
+3. Write clean, functional code that solves the problem
+
+Format output as:
+**Request:**
+<recognized description of what code should do>
+
+**Language:**
+<programming language used>
+
+**Code:**
+\`\`\`<language>
+<generated code here>
+\`\`\`
+
+**Explanation:**
+<brief explanation of how the code works>
+
+Code quality guidelines:
+- Write clean, readable, well-structured code
+- Use meaningful variable and function names
+- Add brief inline comments for complex logic
+- Follow language conventions and best practices
+- Handle edge cases where appropriate
+- Keep code concise but complete
+
+If the request is unclear, make reasonable assumptions and note them.
+If additional context would help, mention what information would be useful.
+`;
+
+//
+export const EXTRACT_CSS_INSTRUCTION = `
+Analyze the visual content (image, screenshot, UI element) and generate matching CSS styles.
+
+Instructions:
+1. Analyze the visual design elements in the content
+2. Identify key styling properties (colors, spacing, typography, layout, effects)
+3. Generate CSS that would recreate or closely match the visual appearance
+
+Format output as:
+**Visual Analysis:**
+<brief description of what you see>
+
+**CSS:**
+\`\`\`css
+/* Generated styles */
+<CSS code here>
+\`\`\`
+
+**Usage Notes:**
+<how to apply these styles, any HTML structure needed>
+
+Extract and generate:
+- **Colors:** Background, text, border, accent colors (use modern formats: oklch, hex, rgb)
+- **Typography:** Font family suggestions, sizes, weights, line-height, letter-spacing
+- **Spacing:** Padding, margin, gaps (use rem/em units)
+- **Layout:** Flexbox, Grid, positioning as appropriate
+- **Effects:** Box-shadow, border-radius, gradients, blur, opacity
+- **Borders:** Width, style, color, radius
+- **Sizing:** Width, height, aspect-ratio
+
+Modern CSS preferences:
+- Use CSS custom properties (--variable-name) for reusable values
+- Prefer logical properties (inline-size, block-size, margin-inline, etc.)
+- Use modern color functions (oklch, color-mix)
+- Include responsive considerations where relevant
+- Use container queries syntax if layout-dependent
+
+If the content contains multiple elements, provide CSS for each distinct component.
+Include a suggested HTML structure if it helps understand the CSS context.
+`;
+
 export type RecognizeResult = {
     ok: boolean;
     data?: string;
@@ -123,6 +259,10 @@ export type ExtendedRecognizeOptions = {
     context?: DataContext;
     extractEntities?: boolean;
     returnJson?: boolean;
+    /** Explicit custom instruction text to prepend */
+    customInstruction?: string;
+    /** If true, automatically fetch and use the active custom instruction from settings */
+    useActiveInstruction?: boolean;
 }
 
 //
@@ -162,6 +302,20 @@ export const recognizeByInstructions = async (
     }
     if (options.context?.searchTerms?.length) {
         finalInstructions += `\n\nFocus on: ${options.context.searchTerms.join(", ")}`;
+    }
+
+    // Apply custom instructions (explicit or active from settings)
+    let customInstructionText = options.customInstruction || "";
+    if (!customInstructionText && options.useActiveInstruction !== false) {
+        try {
+            customInstructionText = await getActiveInstructionText();
+        } catch (e) {
+            console.warn("[AI] Failed to load active custom instruction:", e);
+        }
+    }
+    if (customInstructionText) {
+        finalInstructions = buildInstructionPrompt(finalInstructions, customInstructionText);
+        console.log("[AI] Applied custom instruction");
     }
 
     const requestBody: any = {
@@ -309,6 +463,100 @@ export const convertTextualData = async (
         verbosity: "low",
         ...options
     });
+};
+
+// Unified solve & answer: handles equations, questions, quizzes, homework
+export const solveAndAnswer = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    return recognizeByInstructions(input, SOLVE_AND_ANSWER_INSTRUCTION, sendResponse, {
+        effort: "high",
+        verbosity: "medium",
+        useActiveInstruction: false, // Don't apply custom instructions for solving
+        ...options
+    });
+};
+
+// Unified function for solving/answering from various sources
+export const solveAndAnswerUnified = async (
+    rawData: File | Blob | string,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    const content = await getUsableData({ dataSource: rawData });
+    const input = [{
+        type: "message",
+        role: "user",
+        content: [content]
+    }];
+
+    return solveAndAnswer(input, sendResponse, options);
+};
+
+// Legacy aliases for backward compatibility
+export const solveEquation = solveAndAnswer;
+export const solveEquationUnified = solveAndAnswerUnified;
+export const answerQuestion = solveAndAnswer;
+export const answerQuestionUnified = solveAndAnswerUnified;
+
+// For writing code based on recognized request
+export const writeCode = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    return recognizeByInstructions(input, WRITE_CODE_INSTRUCTION, sendResponse, {
+        effort: "high",
+        verbosity: "medium",
+        useActiveInstruction: false,
+        ...options
+    });
+};
+
+// Unified function for writing code from various sources
+export const writeCodeUnified = async (
+    rawData: File | Blob | string,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    const content = await getUsableData({ dataSource: rawData });
+    const input = [{
+        type: "message",
+        role: "user",
+        content: [content]
+    }];
+    return writeCode(input, sendResponse, options);
+};
+
+// For extracting CSS styles from visual content
+export const extractCSS = async (
+    input: any,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    return recognizeByInstructions(input, EXTRACT_CSS_INSTRUCTION, sendResponse, {
+        effort: "high",
+        verbosity: "medium",
+        useActiveInstruction: false,
+        ...options
+    });
+};
+
+// Unified function for extracting CSS from various sources
+export const extractCSSUnified = async (
+    rawData: File | Blob | string,
+    sendResponse?: (result: RecognizeResult) => void,
+    options?: ExtendedRecognizeOptions
+): Promise<RecognizeResult> => {
+    const content = await getUsableData({ dataSource: rawData });
+    const input = [{
+        type: "message",
+        role: "user",
+        content: [content]
+    }];
+    return extractCSS(input, sendResponse, options);
 };
 
 //

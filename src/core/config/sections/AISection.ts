@@ -32,6 +32,14 @@ export const AISection: SectionConfig = {
             fields: [
                 { path: "ai.customModel", label: "Model identifier", type: "text", placeholder: "provider/model" }
             ]
+        },
+        {
+            key: "custom-instructions",
+            label: "Custom Instructions",
+            description: "Define custom instructions for 'Recognize & Copy' operations.",
+            collapsible: true,
+            startOpen: false,
+            fields: []
         }
     ]
 };

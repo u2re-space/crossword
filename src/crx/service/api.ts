@@ -1,5 +1,5 @@
 import { ableToShowImage, encodeWithJSquash, removeAnyPrefix } from "@rs-core/utils/ImageProcess";
-import { recognizeImageData } from "./RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS } from "./RecognizeData";
 import type { RecognizeResult } from "./RecognizeData";
 import { requestCopyViaCRX, toText } from "@rs-frontend/shared/Clipboard";
 
@@ -179,6 +179,176 @@ export const enableCapture = (ext: typeof chrome) => {
                 }
             })();
             return true; // async response
+        }
+
+        // Handle unified solve/answer from captured image (equations, questions, quizzes)
+        if (msg?.type === "CAPTURE_SOLVE" || msg?.type === "CAPTURE_ANSWER") {
+            (async () => {
+                try {
+                    const rect = msg.rect;
+
+                    // capture visible tab with optional crop rect
+                    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = { format: "png", scale: 1 };
+                    if (rect?.width > 0 && rect?.height > 0) {
+                        captureOptions.rect = rect;
+                    }
+
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        });
+                    });
+
+                    // compress only if > 2MB
+                    let finalUrl = await compressIfNeeded(dataUrl);
+
+                    // validate image, fallback to original if invalid
+                    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+                        finalUrl = dataUrl;
+                    }
+
+                    // prepare input for solve/answer
+                    const input = [{
+                        type: "message",
+                        role: "user",
+                        content: [{
+                            type: "input_image",
+                            image_url: finalUrl
+                        }]
+                    }];
+
+                    // call unified AI solver/answerer
+                    const result = await solveAndAnswer(input);
+                    const solutionText = extractRecognizedText(result);
+
+                    const res = {
+                        ok: result?.ok ?? !!solutionText,
+                        data: solutionText,
+                        error: result?.error || (!solutionText ? "Could not solve/answer" : undefined)
+                    };
+
+                    // copy solution to clipboard if successful
+                    if (res.ok && res.data) {
+                        await COPY_HACK(ext, res, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+                    }
+
+                    sendResponse(res);
+                } catch (e) {
+                    console.error("Solve/answer failed:", e);
+                    sendResponse({ ok: false, error: String(e) });
+                }
+            })();
+            return true; // async response
+        }
+
+        // Handle code writing from captured image
+        if (msg?.type === "CAPTURE_CODE") {
+            (async () => {
+                try {
+                    const rect = msg.rect;
+                    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = { format: "png", scale: 1 };
+                    if (rect?.width > 0 && rect?.height > 0) {
+                        captureOptions.rect = rect;
+                    }
+
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        });
+                    });
+
+                    let finalUrl = await compressIfNeeded(dataUrl);
+                    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+                        finalUrl = dataUrl;
+                    }
+
+                    const input = [{
+                        type: "message",
+                        role: "user",
+                        content: [{ type: "input_image", image_url: finalUrl }]
+                    }];
+
+                    const result = await writeCode(input);
+                    const codeText = extractRecognizedText(result);
+
+                    const res = {
+                        ok: result?.ok ?? !!codeText,
+                        data: codeText,
+                        error: result?.error || (!codeText ? "Could not generate code" : undefined)
+                    };
+
+                    if (res.ok && res.data) {
+                        await COPY_HACK(ext, res, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+                    }
+
+                    sendResponse(res);
+                } catch (e) {
+                    console.error("Code generation failed:", e);
+                    sendResponse({ ok: false, error: String(e) });
+                }
+            })();
+            return true;
+        }
+
+        // Handle CSS extraction from captured image
+        if (msg?.type === "CAPTURE_CSS") {
+            (async () => {
+                try {
+                    const rect = msg.rect;
+                    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = { format: "png", scale: 1 };
+                    if (rect?.width > 0 && rect?.height > 0) {
+                        captureOptions.rect = rect;
+                    }
+
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        });
+                    });
+
+                    let finalUrl = await compressIfNeeded(dataUrl);
+                    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+                        finalUrl = dataUrl;
+                    }
+
+                    const input = [{
+                        type: "message",
+                        role: "user",
+                        content: [{ type: "input_image", image_url: finalUrl }]
+                    }];
+
+                    const result = await extractCSS(input);
+                    const cssText = extractRecognizedText(result);
+
+                    const res = {
+                        ok: result?.ok ?? !!cssText,
+                        data: cssText,
+                        error: result?.error || (!cssText ? "Could not extract CSS" : undefined)
+                    };
+
+                    if (res.ok && res.data) {
+                        await COPY_HACK(ext, res, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+                    }
+
+                    sendResponse(res);
+                } catch (e) {
+                    console.error("CSS extraction failed:", e);
+                    sendResponse({ ok: false, error: String(e) });
+                }
+            })();
+            return true;
         }
 
         if (msg?.type === "DOWNLOAD" && msg.dataUrl) {

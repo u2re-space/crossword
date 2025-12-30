@@ -3,9 +3,10 @@ import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
 
 //
-import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { analyzeRecognizeUnified, type RecognizeByInstructionsOptions } from "@rs-core/service/AI-ops/RecognizeData";
 import { loadSettings } from "@rs-core/config/Settings";
 import { getOrDefaultComputedOfDataSourceCache } from "../lib/DataSourceCache";
+import type { CustomInstruction } from "@rs-core/config/SettingsTypes";
 
 //
 export const controlChannel = new BroadcastChannel('rs-sw');
@@ -23,10 +24,29 @@ export const DOC_DIR = "/docs/preferences/";
 export const PLAIN_DIR = "/docs/plain/";
 
 //
-export const initiateAnalyzeAndRecognizeData = async (dataSource: string | Blob | File | any) => {
+const getActiveCustomInstruction = async (): Promise<string> => {
+    const settings = await loadSettings();
+    const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
+    const activeId = settings?.ai?.activeInstructionId;
+    if (!activeId) return "";
+    const active = instructions.find(i => i.id === activeId);
+    return active?.instruction || "";
+};
+
+//
+export const initiateAnalyzeAndRecognizeData = async (
+    dataSource: string | Blob | File | any,
+    customInstruction?: string
+) => {
+    // Get custom instruction: use provided or fall back to active from settings
+    const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
+    const options: RecognizeByInstructionsOptions | undefined = effectiveInstruction
+        ? { customInstruction: effectiveInstruction }
+        : undefined;
+
     return analyzeRecognizeUnified(dataSource, (response) => {
         console.log(response);
-    });
+    }, undefined, options);
 }
 
 export const callBackendIfAvailable = async <T = any>(path: string, payload: Record<string, any>): Promise<T | null> => {
@@ -34,12 +54,20 @@ export const callBackendIfAvailable = async <T = any>(path: string, payload: Rec
     const core = settings?.core || {};
     if (core?.mode !== "endpoint") return null;
     if (!core?.endpointUrl || !core?.userId || !core?.userKey) return null;
+
+    // Include active custom instruction in backend calls
+    const customInstruction = await getActiveCustomInstruction();
     const url = new URL(path, core.endpointUrl).toString();
     try {
         const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: core.userId, userKey: core.userKey, ...payload })
+            body: JSON.stringify({
+                userId: core.userId,
+                userKey: core.userKey,
+                ...payload,
+                ...(customInstruction ? { customInstruction } : {})
+            })
         });
         if (!res.ok) return null;
         const json = await res.json();

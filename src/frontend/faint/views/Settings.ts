@@ -2,6 +2,7 @@ import { H } from "fest/lure";
 
 //
 import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
+import { createCustomInstructionsPanel } from "@rs-frontend/faint/items/CustomInstructionsPanel";
 
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-core/config/SettingsTypes";
@@ -329,8 +330,12 @@ export const Settings = async () => {
         section.groups.forEach((group) => {
             const { root, body } = createGroup(section.key, group);
 
+            // Special handling for Custom Instructions section
+            if (group.key === 'custom-instructions') {
+                body.append(createCustomInstructionsPanel());
+            }
             // Special handling for MCP section
-            if (group.key === 'mcp-management') {
+            else if (group.key === 'mcp-management') {
                 // Add MCP management buttons
                 const addButton = H`<button type="button" class="btn btn-primary add-mcp" on:click=${addMCPConfig}>
                     <ui-icon icon="plus"></ui-icon>

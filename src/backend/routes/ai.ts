@@ -2,10 +2,20 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import { createOrchestrator } from "../../core/service/AI-ops/Orchestrator.ts";
+import { buildInstructionPrompt } from "../../core/service/CustomInstructions.ts";
+import type { CustomInstruction } from "../../core/config/SettingsTypes.ts";
+
+const getActiveCustomInstruction = (settings: any): string => {
+    const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
+    const activeId = settings?.ai?.activeInstructionId;
+    if (!activeId) return "";
+    const active = instructions.find(i => i.id === activeId);
+    return active?.instruction || "";
+};
 
 export const registerAiRoutes = async (app: FastifyInstance) => {
-    app.post("/core/ai/recognize", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; title?: string; text?: string; url?: string } }>) => {
-        const { userId, userKey, title, text, url, ...rest } = (request.body as any) || {};
+    app.post("/core/ai/recognize", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; title?: string; text?: string; url?: string; customInstruction?: string } }>) => {
+        const { userId, userKey, title, text, url, customInstruction, ...rest } = (request.body as any) || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         const input = (text || url || "").toString();
@@ -23,7 +33,12 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
 
         // Keep request shape flexible: allow hints/context passthrough from clients.
         const hints = rest?.hints || rest?.hint || undefined;
-        const result = await orchestrator.smartRecognize(input, hints);
+
+        // Support custom instructions: use provided or fall back to active from settings
+        const effectiveInstruction = customInstruction || getActiveCustomInstruction(settings);
+        const recognizeOptions = effectiveInstruction ? { customInstruction: effectiveInstruction } : undefined;
+
+        const result = await orchestrator.smartRecognize(input, hints, recognizeOptions);
 
         // Preserve legacy "results" array shape, but mark as done and include the real AI output.
         const subId = Date.now();
@@ -38,13 +53,13 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
             directory,
             dataType: "json",
             title: title || undefined,
-            detection: { hints: ["backend-ai"], aiProcessed: true }
+            detection: { hints: ["backend-ai"], aiProcessed: true, customInstruction: Boolean(effectiveInstruction) }
         };
         return { ok: Boolean(result.ok), results: [payload] };
     });
 
-    app.post("/core/ai/analyze", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; text?: string; url?: string } }>) => {
-        const { userId, userKey, text, url, ...rest } = (request.body as any) || {};
+    app.post("/core/ai/analyze", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; text?: string; url?: string; customInstruction?: string } }>) => {
+        const { userId, userKey, text, url, customInstruction, ...rest } = (request.body as any) || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         const input = (text || url || "").toString();
@@ -60,17 +75,22 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
             model: ai.customModel || ai.model
         });
 
+        // Support custom instructions
+        const effectiveInstruction = customInstruction || getActiveCustomInstruction(settings);
+        const recognizeOptions = effectiveInstruction ? { customInstruction: effectiveInstruction } : undefined;
+
         const mode = rest?.mode || "extract";
         const result =
             mode === "recognize"
-                ? await orchestrator.recognize(input, { context: rest?.context || {} })
-                : await orchestrator.extractEntitiesFromData(input);
+                ? await orchestrator.recognize(input, { context: rest?.context || {}, ...recognizeOptions })
+                : await orchestrator.extractEntitiesFromData(input, recognizeOptions);
 
         const payload = {
             status: (result as any)?.ok ? "done" : "failed",
             data: result,
             name: `analysis-${Date.now()}.json`,
-            dataType: "json"
+            dataType: "json",
+            customInstruction: Boolean(effectiveInstruction)
         };
         return { ok: Boolean((result as any)?.ok), results: [payload] };
     });

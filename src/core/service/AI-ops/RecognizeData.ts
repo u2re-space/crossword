@@ -16,6 +16,7 @@ import {
     type DataContext
 } from "../model/GPT-Config.ts";
 import { extractJSONFromAIResponse } from "../../utils/AIResponseParser.ts";
+import { getActiveInstructionText, buildInstructionPrompt } from "../CustomInstructions.ts";
 
 //
 export type RecognitionMode = "auto" | "image" | "text" | "structured" | "mixed";
@@ -210,11 +211,18 @@ const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> =
 }
 
 //
+export type RecognizeByInstructionsOptions = {
+    customInstruction?: string;
+    useActiveInstruction?: boolean;
+};
+
+//
 export const recognizeByInstructions = async (
     input: any,
     instructions: string,
     sendResponse?: (result: any) => void,
-    config?: AIConfig
+    config?: AIConfig,
+    options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
     const settings = (await getRuntimeSettings())?.ai;
 
@@ -228,6 +236,17 @@ export const recognizeByInstructions = async (
         const result = { ok: false, error: "No input provided" };
         sendResponse?.(result);
         return result;
+    }
+
+    // Apply custom instructions if provided or if useActiveInstruction is set
+    let finalInstructions = instructions;
+    if (options?.customInstruction) {
+        finalInstructions = buildInstructionPrompt(instructions, options.customInstruction);
+    } else if (options?.useActiveInstruction !== false) {
+        const activeInstruction = await getActiveInstructionText();
+        if (activeInstruction) {
+            finalInstructions = buildInstructionPrompt(instructions, activeInstruction);
+        }
     }
 
     const r: any = await fetch(`${config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {
@@ -244,7 +263,7 @@ export const recognizeByInstructions = async (
             reasoning: { "effort": "low" },
             text: { verbosity: "low" },
             max_output_tokens: 400000,
-            instructions
+            instructions: finalInstructions
         })
     })?.catch?.(e => {
         console.warn(e);
@@ -265,25 +284,28 @@ export const recognizeByInstructions = async (
 export const recognizeImageData = async (
     input: any,
     sendResponse?: (result: any) => void,
-    config?: AIConfig
+    config?: AIConfig,
+    options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, config);
+    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, config, options);
 };
 
 //
 export const convertTextualData = async (
     input: any,
     sendResponse?: (result: any) => void,
-    config?: AIConfig
+    config?: AIConfig,
+    options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse, config);
+    return recognizeByInstructions(input, DATA_CONVERSION_INSTRUCTION, sendResponse, config, options);
 };
 
 //
 export const analyzeRecognizeUnified = async (
     rawData: File | Blob | string,
     sendResponse?: (result: any) => void,
-    config?: AIConfig
+    config?: AIConfig,
+    options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
     const content = await getUsableData({ dataSource: rawData });
     const input = [{
@@ -292,8 +314,8 @@ export const analyzeRecognizeUnified = async (
         content: [content]
     }];
     return content?.type == "input_image"
-        ? recognizeImageData(input, sendResponse, config)
-        : convertTextualData(input, sendResponse, config);
+        ? recognizeImageData(input, sendResponse, config, options)
+        : convertTextualData(input, sendResponse, config, options);
 };
 
 // === NEW ENHANCED FUNCTIONS ===

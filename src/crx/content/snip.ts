@@ -8,32 +8,66 @@ export interface cropArea {
     height: number;
 }
 
+export type SnipMode = "recognize" | "solve" | "code" | "css";
+
 let __snipInjected = false;
 let __snipActive = false;
+let __currentMode: SnipMode = "recognize";
+
+// Map mode to message type
+const getModeMessageType = (mode: SnipMode): string => {
+    switch (mode) {
+        case "solve": return "CAPTURE_SOLVE";
+        case "code": return "CAPTURE_CODE";
+        case "css": return "CAPTURE_CSS";
+        default: return "CAPTURE";
+    }
+};
+
+// Get user-friendly mode name for messages
+const getModeName = (mode: SnipMode): string => {
+    switch (mode) {
+        case "solve": return "Solving/Answering";
+        case "code": return "Code generation";
+        case "css": return "CSS extraction";
+        default: return "Recognition";
+    }
+};
+
+// Get error message for mode
+const getModeErrorMessage = (mode: SnipMode): string => {
+    switch (mode) {
+        case "solve": return "Could not solve/answer";
+        case "code": return "Could not generate code";
+        case "css": return "Could not extract CSS";
+        default: return "No data recognized";
+    }
+};
 
 // use chrome API to capture tab visible area
 // Note: Toast for successful copy is handled by clipboard-handler.ts
 // We only show toasts here for errors/failures
-const captureTab = (rect?: cropArea) => {
-    return chrome.runtime.sendMessage({ type: "CAPTURE", rect })
+const captureTab = (rect?: cropArea, mode: SnipMode = "recognize") => {
+    const messageType = getModeMessageType(mode);
+    return chrome.runtime.sendMessage({ type: messageType, rect })
         ?.then?.(res => {
-            console.log("[Snip] Capture result:", res);
+            console.log(`[Snip] ${mode} result:`, res);
             // Toast for success is already shown by clipboard handler
             // Only show toast for errors or no data
             if (!res?.ok) {
                 if (res?.error) {
                     const shortError = res.error.length > 50 ? res.error.slice(0, 50) + "..." : res.error;
                     showToast(shortError);
-                    console.error("[Snip] Recognition error:", res.error);
+                    console.error(`[Snip] ${mode} error:`, res.error);
                 } else {
-                    showToast("No data recognized");
+                    showToast(getModeErrorMessage(mode));
                 }
             }
             return res || { ok: false, error: "no response" };
         })
         ?.catch?.(err => {
-            console.error("[Snip] Capture failed:", err);
-            showToast("Capture failed");
+            console.error(`[Snip] ${mode} failed:`, err);
+            showToast(`${getModeName(mode)} failed`);
             return { ok: false, error: String(err) };
         });
 };
@@ -45,13 +79,24 @@ const initSnip = () => {
 
     chrome.runtime.onMessage.addListener((msg) => {
         if (msg?.type === "START_SNIP") {
-            startSnip();
+            startSnip("recognize");
+        }
+        if (msg?.type === "SOLVE_AND_ANSWER" || msg?.type === "SOLVE_EQUATION" || msg?.type === "ANSWER_QUESTION") {
+            startSnip("solve");
+        }
+        if (msg?.type === "WRITE_CODE") {
+            startSnip("code");
+        }
+        if (msg?.type === "EXTRACT_CSS") {
+            startSnip("css");
         }
     });
 };
 
-export function startSnip() {
+export function startSnip(mode: SnipMode = "recognize") {
     if (__snipActive) return;
+
+    __currentMode = mode;
 
     // get DOM elements
     const overlay = getOverlay();
@@ -116,17 +161,23 @@ export function startSnip() {
             return;
         }
 
-        showToast("Recognizing with AI...");
+        const actionTexts: Record<SnipMode, string> = {
+            recognize: "Recognizing with AI...",
+            solve: "Solving / Answering...",
+            code: "Generating code...",
+            css: "Extracting CSS styles..."
+        };
+        showToast(actionTexts[__currentMode] || "Processing...");
 
         try {
-            const result = await captureTab({ x, y, width: w, height: h });
+            const result = await captureTab({ x, y, width: w, height: h }, __currentMode);
             // captureTab already shows success/error toast
             if (!result?.ok) {
                 console.warn("Capture result:", typeof result == "string" ? result : JSON.stringify(result));
             }
         } catch (err) {
             console.warn(err);
-            showToast("Recognition failed");
+            showToast(`${getModeName(__currentMode)} failed`);
         }
     };
 
@@ -183,7 +234,13 @@ export function startSnip() {
     __snipActive = true;
     showSelection();
 
-    if (hint) hint.textContent = "Select area. Esc — cancel";
+    const hintTexts: Record<SnipMode, string> = {
+        recognize: "Select area. Esc — cancel",
+        solve: "Select problem/question. Esc — cancel",
+        code: "Select code request. Esc — cancel",
+        css: "Select UI to extract CSS. Esc — cancel"
+    };
+    if (hint) hint.textContent = hintTexts[__currentMode] || "Select area. Esc — cancel";
     if (sizeBadge) sizeBadge.textContent = "";
 }
 

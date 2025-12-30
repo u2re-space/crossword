@@ -94,7 +94,9 @@ export const loadSettings = async (): Promise<AppSettings> => {
                 },
                 ai: {
                     ...DEFAULT_SETTINGS.ai, ...(stored as any)?.ai,
-                    mcp: (stored as any)?.ai?.mcp || []
+                    mcp: (stored as any)?.ai?.mcp || [],
+                    customInstructions: (stored as any)?.ai?.customInstructions || [],
+                    activeInstructionId: (stored as any)?.ai?.activeInstructionId || ""
                 },
                 webdav: { ...DEFAULT_SETTINGS.webdav, ...(stored as any)?.webdav },
                 timeline: { ...DEFAULT_SETTINGS.timeline, ...(stored as any)?.timeline },
@@ -122,7 +124,9 @@ export const saveSettings = async (settings: AppSettings) => {
             ...(DEFAULT_SETTINGS.ai || {}),
             ...(current.ai || {}),
             ...(settings.ai || {}),
-            mcp: settings.ai?.mcp || []
+            mcp: settings.ai?.mcp ?? current.ai?.mcp ?? [],
+            customInstructions: settings.ai?.customInstructions ?? current.ai?.customInstructions ?? [],
+            activeInstructionId: settings.ai?.activeInstructionId ?? current.ai?.activeInstructionId ?? ""
         },
         webdav: {
             ...(DEFAULT_SETTINGS.webdav || {}),

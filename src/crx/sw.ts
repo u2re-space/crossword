@@ -1,7 +1,7 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeImageData } from "./service/RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS } from "./service/RecognizeData";
 
 // BroadcastChannel for cross-context communication (share target-like behavior)
 const TOAST_CHANNEL = "rs-toast";
@@ -213,6 +213,9 @@ const CTX_ITEMS: Array<{ id: string; title: string }> = [
     { id: "copy-as-markdown", title: "Copy as Markdown" },
     { id: "copy-as-html", title: "Copy as HTML" },
     { id: "START_SNIP", title: "Snip and Recognize (AI, Markdown)" },
+    { id: "SOLVE_AND_ANSWER", title: "Solve / Answer (AI)" },
+    { id: "WRITE_CODE", title: "Write Code (AI)" },
+    { id: "EXTRACT_CSS", title: "Extract CSS Styles (AI)" },
 ];
 
 // Handle messages from Extension UI or Content Scripts
@@ -267,6 +270,127 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 ...errorResponse
             });
             showExtensionToast(`Recognition failed: ${e}`, "error");
+            sendResponse(errorResponse);
+        });
+        return true;
+    }
+
+    // Handle equation solving requests
+    // Handle unified solve/answer requests (equations, questions, quizzes, homework)
+    if (message?.type === "gpt:solve" || message?.type === "gpt:answer" || message?.type === "gpt:solve-answer") {
+        const requestId = message?.requestId || `solve_${Date.now()}`;
+
+        // Broadcast processing start
+        broadcast(AI_RECOGNITION_CHANNEL, {
+            type: "solve-answer",
+            requestId,
+            status: "processing"
+        });
+
+        solveAndAnswer(message?.input, (result) => {
+            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+
+            // Broadcast result
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "solve-answer",
+                ...response
+            });
+
+            // Auto-copy solution to clipboard if successful
+            if (result?.ok && result?.data && message?.autoCopy !== false) {
+                requestClipboardCopy(result.data, true);
+            }
+
+            sendResponse(response);
+        })?.catch?.((e) => {
+            const errorResponse = { ok: false, error: String(e) };
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "solve-answer",
+                ...errorResponse
+            });
+            showExtensionToast(`Solving/answering failed: ${e}`, "error");
+            sendResponse(errorResponse);
+        });
+        return true;
+    }
+
+    // Handle code writing requests
+    if (message?.type === "gpt:code") {
+        const requestId = message?.requestId || `code_${Date.now()}`;
+
+        broadcast(AI_RECOGNITION_CHANNEL, {
+            type: "code",
+            requestId,
+            status: "processing"
+        });
+
+        writeCode(message?.input, (result) => {
+            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "code",
+                ...response
+            });
+
+            if (result?.ok && result?.data && message?.autoCopy !== false) {
+                requestClipboardCopy(result.data, true);
+            }
+
+            sendResponse(response);
+        })?.catch?.((e) => {
+            const errorResponse = { ok: false, error: String(e) };
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "code",
+                ...errorResponse
+            });
+            showExtensionToast(`Code generation failed: ${e}`, "error");
+            sendResponse(errorResponse);
+        });
+        return true;
+    }
+
+    // Handle CSS extraction requests
+    if (message?.type === "gpt:css") {
+        const requestId = message?.requestId || `css_${Date.now()}`;
+
+        broadcast(AI_RECOGNITION_CHANNEL, {
+            type: "css",
+            requestId,
+            status: "processing"
+        });
+
+        extractCSS(message?.input, (result) => {
+            const response = { ok: result?.ok, data: result?.data, error: result?.error };
+
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "css",
+                ...response
+            });
+
+            if (result?.ok && result?.data && message?.autoCopy !== false) {
+                requestClipboardCopy(result.data, true);
+            }
+
+            sendResponse(response);
+        })?.catch?.((e) => {
+            const errorResponse = { ok: false, error: String(e) };
+            broadcast(AI_RECOGNITION_CHANNEL, {
+                type: "result",
+                requestId,
+                mode: "css",
+                ...errorResponse
+            });
+            showExtensionToast(`CSS extraction failed: ${e}`, "error");
             sendResponse(errorResponse);
         });
         return true;
@@ -352,6 +476,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
     if (info.menuItemId === "START_SNIP") {
         sendToTabOrActive(tabId, { type: "START_SNIP" });
+        return;
+    }
+
+    if (info.menuItemId === "SOLVE_AND_ANSWER") {
+        sendToTabOrActive(tabId, { type: "SOLVE_AND_ANSWER" });
+        return;
+    }
+
+    if (info.menuItemId === "WRITE_CODE") {
+        sendToTabOrActive(tabId, { type: "WRITE_CODE" });
+        return;
+    }
+
+    if (info.menuItemId === "EXTRACT_CSS") {
+        sendToTabOrActive(tabId, { type: "EXTRACT_CSS" });
         return;
     }
 

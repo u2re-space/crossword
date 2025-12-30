@@ -60,6 +60,14 @@ export type GridShape =
     | "clover" | "flower"                                        // Clip-path decorative
     | "egg" | "tear" | "wavy";                                           // Asymmetric / procedural
 
+export type CustomInstruction = {
+    id: string;
+    label: string;
+    instruction: string;
+    enabled?: boolean;
+    order?: number;
+};
+
 export type AppSettings = {
     core?: {
         mode?: CoreMode;
@@ -83,6 +91,8 @@ export type AppSettings = {
         customModel?: string;
         mcp?: MCPConfig[];
         shareTargetMode?: "analyze" | "recognize";
+        customInstructions?: CustomInstruction[];
+        activeInstructionId?: string;
     };
     webdav?: {
         url?: string;
@@ -129,7 +139,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
         model: "gpt-5.2",
         customModel: "",
         mcp: [],
-        shareTargetMode: "recognize"
+        shareTargetMode: "recognize",
+        customInstructions: [],
+        activeInstructionId: ""
     },
     webdav: {
         url: "http://localhost:6065",
