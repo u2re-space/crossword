@@ -19,66 +19,147 @@ export const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").rep
 export const DB_NAME = 'req-store';
 export const STORE = 'settings';
 
+// Check if we're in a content script context (restricted storage access)
+const isContentScriptContext = (): boolean => {
+    try {
+        // Content scripts have chrome.runtime but may have restricted storage access
+        // Service workers and extension pages have chrome.runtime.getURL
+        if (typeof chrome === "undefined") return false;
+
+        // Check if we're in a web page context (content script)
+        if (typeof window !== "undefined" && window.location?.protocol?.startsWith("http")) {
+            return true;
+        }
+
+        return false;
+    } catch {
+        return true; // Assume content script if we can't determine
+    }
+};
+
+// Check if we're in a service worker or extension page (safe for storage)
+const isExtensionContext = (): boolean => {
+    try {
+        if (typeof chrome === "undefined") return false;
+
+        // Service worker context
+        if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWorkerGlobalScope) {
+            return true;
+        }
+
+        // Extension page context (popup, options, etc.)
+        if (typeof window !== "undefined" && window.location?.protocol === "chrome-extension:") {
+            return true;
+        }
+
+        return false;
+    } catch {
+        return false;
+    }
+};
+
 //
 const hasChromeStorage = () => typeof chrome !== "undefined" && chrome?.storage?.local;
 
 //
 async function idbOpen(): Promise<IDBDatabase> {
-    console.log("idbOpen");
+    // Check if indexedDB is available and accessible
+    if (typeof indexedDB === "undefined") {
+        throw new Error("IndexedDB not available");
+    }
+
+    // In content scripts on some pages, indexedDB access throws DOMException
+    if (isContentScriptContext()) {
+        throw new Error("IndexedDB not accessible in content script context");
+    }
+
     return new Promise<IDBDatabase>((res, rej) => {
-        const req = indexedDB.open(DB_NAME, 1);
-        req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'key' });
-        req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+        try {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'key' });
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+        } catch (e) {
+            rej(e);
+        }
     });
 }
 
 //
 export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> => {
-    if (hasChromeStorage()) {
-        return new Promise((res) => {
-            chrome.storage.local.get([key], (result) => {
-                if (chrome.runtime.lastError) {
-                    console.warn(chrome.runtime.lastError);
+    try {
+        if (hasChromeStorage()) {
+            return new Promise((res) => {
+                try {
+                    chrome.storage.local.get([key], (result) => {
+                        if (chrome.runtime.lastError) {
+                            console.warn(chrome.runtime.lastError);
+                            res(null);
+                        } else {
+                            res(result[key]);
+                        }
+                    });
+                } catch (e) {
+                    console.warn("chrome.storage access failed:", e);
                     res(null);
-                } else {
-                    res(result[key]);
                 }
             });
-        });
-    }
+        }
 
-    const db = await idbOpen();
-    return new Promise((res, rej) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(key);
-        req.onsuccess = () => { res(req.result?.value); db.close(); }
-        req.onerror = () => { rej(req.error); db.close(); };
-    });
+        // Check if indexedDB is available
+        if (typeof indexedDB === "undefined") {
+            return null;
+        }
+
+        const db = await idbOpen();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(STORE, 'readonly');
+            const req = tx.objectStore(STORE).get(key);
+            req.onsuccess = () => { res(req.result?.value); db.close(); }
+            req.onerror = () => { rej(req.error); db.close(); };
+        });
+    } catch (e) {
+        console.warn("Settings storage access failed:", e);
+        return null;
+    }
 }
 
 //
 export const idbPutSettings = async (value: any, key: string = SETTINGS_KEY): Promise<void> => {
-    if (hasChromeStorage()) {
-        return new Promise((res, rej) => {
-            chrome.storage.local.set({ [key]: value }, () => {
-                if (chrome.runtime.lastError) {
-                    rej(chrome.runtime.lastError);
-                } else {
-                    res();
+    try {
+        if (hasChromeStorage()) {
+            return new Promise((res, rej) => {
+                try {
+                    chrome.storage.local.set({ [key]: value }, () => {
+                        if (chrome.runtime.lastError) {
+                            rej(chrome.runtime.lastError);
+                        } else {
+                            res();
+                        }
+                    });
+                } catch (e) {
+                    console.warn("chrome.storage write failed:", e);
+                    rej(e);
                 }
             });
-        });
-    }
+        }
 
-    const db = await idbOpen();
-    return new Promise((res, rej) => {
-        console.log("idbPutSettings", key, value);
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put({ key, value });
-        tx.oncomplete = () => { res(void 0); db.close(); };
-        tx.onerror = () => { rej(tx.error); db.close(); };
-    });
+        // Check if indexedDB is available
+        if (typeof indexedDB === "undefined") {
+            console.warn("IndexedDB not available");
+            return;
+        }
+
+        const db = await idbOpen();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).put({ key, value });
+            tx.oncomplete = () => { res(void 0); db.close(); };
+            tx.onerror = () => { rej(tx.error); db.close(); };
+        });
+    } catch (e) {
+        console.warn("Settings storage write failed:", e);
+    }
 }
 
 //
@@ -348,23 +429,31 @@ export const WebDavSync = (address: string, options: any = {}) => {
 
 //
 export const currentWebDav: { sync: any } = { sync: null };
-(async () => {
-    const settings = await loadSettings();
-    if (settings?.core?.mode === "endpoint" && settings?.core?.preferBackendSync) {
-        return;
-    }
-    if (!settings?.webdav?.url) return;
-    const client = WebDavSync(settings.webdav.url, {
-        //authType: AuthType.Digest,
-        withCredentials: true,
-        username: settings.webdav.username,
-        password: settings.webdav.password,
-        token: settings.webdav.token
-    });
-    currentWebDav.sync = client ?? currentWebDav.sync;
-    await currentWebDav?.sync?.upload?.(true);
-    await currentWebDav?.sync?.download?.(true);
-})();
+
+// Only initialize WebDAV in extension contexts (not content scripts)
+if (!isContentScriptContext()) {
+    (async () => {
+        try {
+            const settings = await loadSettings();
+            if (settings?.core?.mode === "endpoint" && settings?.core?.preferBackendSync) {
+                return;
+            }
+            if (!settings?.webdav?.url) return;
+            const client = WebDavSync(settings.webdav.url, {
+                //authType: AuthType.Digest,
+                withCredentials: true,
+                username: settings.webdav.username,
+                password: settings.webdav.password,
+                token: settings.webdav.token
+            });
+            currentWebDav.sync = client ?? currentWebDav.sync;
+            await currentWebDav?.sync?.upload?.(true);
+            await currentWebDav?.sync?.download?.(true);
+        } catch (e) {
+            // Silently fail - storage may not be available in all contexts
+        }
+    })();
+}
 
 //
 export const updateWebDavSettings = async (settings: any) => {
@@ -385,25 +474,33 @@ export const updateWebDavSettings = async (settings: any) => {
     await currentWebDav?.sync?.download?.(true);
 }
 
-//
-(async () => {
-    if (typeof window !== "undefined") {
-        addEventListener("pagehide", (_ev) => {
-            currentWebDav?.sync?.upload?.();
-        });
-        addEventListener("beforeunload", (_event) => {
-            currentWebDav?.sync?.upload?.();
-        })
+// WebDAV sync on page lifecycle events (only in extension context, not content scripts)
+if (!isContentScriptContext()) {
+    try {
+        if (typeof window !== "undefined" && typeof addEventListener === "function") {
+            addEventListener("pagehide", () => {
+                currentWebDav?.sync?.upload?.()?.catch?.(() => {});
+            });
+            addEventListener("beforeunload", () => {
+                currentWebDav?.sync?.upload?.()?.catch?.(() => {});
+            });
+        }
+    } catch {
+        // Ignore - may not be in appropriate context
     }
-})();
 
-//
-(async () => {
-    while (true) {
-        await currentWebDav?.sync?.upload?.();
-        await new Promise((resolve) => { setTimeout(resolve, 3000); });
-    }
-})();
+    // Periodic WebDAV sync (only when sync is configured)
+    (async () => {
+        try {
+            while (true) {
+                await currentWebDav?.sync?.upload?.()?.catch?.(() => {});
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+        } catch {
+            // Silently fail
+        }
+    })();
+}
 
 //
 export default WebDavSync;

@@ -8,6 +8,7 @@ import { loadSettings } from "@rs-core/config/Settings";
 import { getUsableData } from "@rs-core/service/model/GPT-Responses";
 import type { DataContext } from "@rs-core/service/model/GPT-Config";
 import { getActiveInstructionText, buildInstructionPrompt } from "@rs-core/service/CustomInstructions";
+import { SVG_GRAPHICS_ADDON } from "@rs-core/service/InstructionUtils";
 import type { ResponseLanguage } from "@rs-core/config/SettingsTypes";
 
 //
@@ -30,12 +31,22 @@ const getLanguageInstruction = async (): Promise<string> => {
         const settings = await loadSettings();
         const lang = settings?.ai?.responseLanguage || "auto";
         const translate = settings?.ai?.translateResults || false;
-        
+
         let instruction = LANGUAGE_INSTRUCTIONS[lang] || "";
         if (translate && lang !== "auto") {
             instruction += TRANSLATE_INSTRUCTION;
         }
         return instruction;
+    } catch {
+        return "";
+    }
+};
+
+// Get SVG graphics addon based on settings
+const getSvgGraphicsAddon = async (): Promise<string> => {
+    try {
+        const settings = await loadSettings();
+        return settings?.ai?.generateSvgGraphics ? SVG_GRAPHICS_ADDON : "";
     } catch {
         return "";
     }
@@ -509,7 +520,11 @@ export const solveAndAnswer = async (
     sendResponse?: (result: RecognizeResult) => void,
     options?: ExtendedRecognizeOptions
 ): Promise<RecognizeResult> => {
-    return recognizeByInstructions(input, SOLVE_AND_ANSWER_INSTRUCTION, sendResponse, {
+    // Get SVG graphics addon if enabled in settings
+    const svgAddon = await getSvgGraphicsAddon();
+    const instruction = SOLVE_AND_ANSWER_INSTRUCTION + svgAddon;
+
+    return recognizeByInstructions(input, instruction, sendResponse, {
         effort: "high",
         verbosity: "medium",
         useActiveInstruction: false, // Don't apply custom instructions for solving

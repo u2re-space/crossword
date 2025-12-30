@@ -12,6 +12,7 @@ type PopupSettings = {
         model?: string;
         responseLanguage?: ResponseLanguage;
         translateResults?: boolean;
+        generateSvgGraphics?: boolean;
     };
     [key: string]: unknown;
 };
@@ -54,6 +55,7 @@ const implementSettings = () => {
     const showApiKey = document.getElementById('show-api-key') as HTMLInputElement;
     const responseLanguage = document.getElementById('response-language') as HTMLSelectElement;
     const translateResults = document.getElementById('translate-results') as HTMLInputElement;
+    const generateSvg = document.getElementById('generate-svg') as HTMLInputElement;
 
     // Load settings on popup open
     loadPopupSettings().then((settings) => {
@@ -61,6 +63,7 @@ const implementSettings = () => {
         if (apiKey) apiKey.value = (settings?.ai?.apiKey || "").trim();
         if (responseLanguage) responseLanguage.value = settings?.ai?.responseLanguage || "auto";
         if (translateResults) translateResults.checked = settings?.ai?.translateResults || false;
+        if (generateSvg) generateSvg.checked = settings?.ai?.generateSvgGraphics || false;
     }).catch(console.warn);
 
     // Save settings on button click
@@ -70,7 +73,8 @@ const implementSettings = () => {
                 apiKey: apiKey?.value?.trim() || "",
                 baseUrl: apiUrl?.value?.trim() || "",
                 responseLanguage: (responseLanguage?.value as ResponseLanguage) || "auto",
-                translateResults: translateResults?.checked || false
+                translateResults: translateResults?.checked || false,
+                generateSvgGraphics: generateSvg?.checked || false
             }
         });
 

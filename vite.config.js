@@ -89,6 +89,10 @@ const createCrxConfig = () => {
             lib: undefined,
             // Disable modulePreload for CRX - causes broken imports with __vitePreload
             modulePreload: false,
+            // DEBUG: Disable minification and enable source maps for debugging
+            minify: false,
+            sourcemap: true,
+            terserOptions: undefined,
             rollupOptions: {
                 ...baseRollup,
                 input: crxInputs,
@@ -96,6 +100,9 @@ const createCrxConfig = () => {
                     ...crxOutput,
                     // Don't use manualChunks from base config - let CRX plugin handle chunking
                     manualChunks: undefined,
+                    // Keep readable names
+                    compact: false,
+                    minifyInternalExports: false,
                 }
             }
         }

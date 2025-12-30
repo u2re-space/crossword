@@ -2,7 +2,17 @@ import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./service/RecognizeData";
-import { loadCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
+import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
+
+// Safe wrapper for loading custom instructions
+const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
+    try {
+        return await getCustomInstructions();
+    } catch (e) {
+        console.warn("Failed to load custom instructions:", e);
+        return [];
+    }
+};
 
 // BroadcastChannel for cross-context communication (share target-like behavior)
 const TOAST_CHANNEL = "rs-toast";

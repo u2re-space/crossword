@@ -8,9 +8,9 @@ initOverlay();
 const cleanupToast = initToastReceiver();
 const cleanupClipboard = initClipboardReceiver();
 
-// Cleanup on unload (for extension reloads)
+// Cleanup on pagehide (unload is deprecated and blocked by permissions policy)
 if (typeof window !== "undefined") {
-    window.addEventListener("unload", () => {
+    window.addEventListener("pagehide", () => {
         cleanupToast?.();
         cleanupClipboard?.();
     }, { once: true });

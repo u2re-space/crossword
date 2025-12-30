@@ -1,5 +1,5 @@
 import type { AppSettings } from "./SettingsTypes.ts";
-import { DEFAULT_SETTINGS } from "./SettingsTypes.ts";
+import { DEFAULT_SETTINGS } from "./SettingsTypes";
 
 export type RuntimeSettingsProvider = () => Promise<AppSettings> | AppSettings;
 
@@ -21,5 +21,3 @@ export const getRuntimeSettings = async (): Promise<AppSettings> => {
         return DEFAULT_SETTINGS;
     }
 };
-
-

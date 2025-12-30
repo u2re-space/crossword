@@ -28,17 +28,31 @@ export const weak_dummy = (unsafe) => {
 
 //
 export const tryXML = (unsafe: string): string => {
-    const doc = new DOMParser().parseFromString(unsafe?.trim?.(), "text/xml");
-    if (doc?.querySelector("parsererror") || !doc) {
+    try {
+        if (typeof DOMParser === "undefined") {
+            return (dummy(unsafe) || unsafe)?.trim?.();
+        }
+        const doc = new DOMParser().parseFromString(unsafe?.trim?.(), "text/xml");
+        if (doc?.querySelector("parsererror") || !doc) {
+            return (dummy(unsafe) || unsafe)?.trim?.();
+        };
+        return (weak_dummy(doc?.documentElement?.textContent) || dummy(unsafe) || unsafe)?.trim?.();
+    } catch {
         return (dummy(unsafe) || unsafe)?.trim?.();
-    };
-    return (weak_dummy(doc?.documentElement?.textContent) || dummy(unsafe) || unsafe)?.trim?.();
+    }
 }
 
 //
 export const serialize = (xml: any): string => {
-    const s = new XMLSerializer();
-    return (typeof xml == "string" ? xml : xml?.outerHTML || s.serializeToString(xml))?.trim?.();
+    try {
+        if (typeof XMLSerializer === "undefined") {
+            return (typeof xml == "string" ? xml : xml?.outerHTML || "")?.trim?.();
+        }
+        const s = new XMLSerializer();
+        return (typeof xml == "string" ? xml : xml?.outerHTML || s.serializeToString(xml))?.trim?.();
+    } catch {
+        return (typeof xml == "string" ? xml : xml?.outerHTML || "")?.trim?.();
+    }
 }
 
 //
@@ -82,11 +96,17 @@ export const getContainerFromTextSelection = (target: HTMLElement = document.bod
     return target;
 }
 
-//
-document.addEventListener("pointerup", saveCoordinate, { passive: true });
-document.addEventListener("pointerdown", saveCoordinate, { passive: true });
-document.addEventListener("click", saveCoordinate, { passive: true });
-document.addEventListener("contextmenu", (e) => {
-    saveCoordinate(e);
-    lastElement[0] = (e?.target as HTMLElement || lastElement[0]);
-}, { passive: true });
+// Only add event listeners in document context (not service workers)
+if (typeof document !== "undefined") {
+    try {
+        document.addEventListener("pointerup", saveCoordinate, { passive: true });
+        document.addEventListener("pointerdown", saveCoordinate, { passive: true });
+        document.addEventListener("click", saveCoordinate, { passive: true });
+        document.addEventListener("contextmenu", (e) => {
+            saveCoordinate(e);
+            lastElement[0] = (e?.target as HTMLElement || lastElement[0]);
+        }, { passive: true });
+    } catch {
+        // Ignore - may not be in DOM context
+    }
+}

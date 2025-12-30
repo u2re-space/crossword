@@ -98,6 +98,8 @@ export type AppSettings = {
         // Language and translation settings
         responseLanguage?: ResponseLanguage;
         translateResults?: boolean;
+        // Graphics generation settings
+        generateSvgGraphics?: boolean;
     };
     webdav?: {
         url?: string;
@@ -148,7 +150,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
         customInstructions: [],
         activeInstructionId: "",
         responseLanguage: "auto",
-        translateResults: false
+        translateResults: false,
+        generateSvgGraphics: false
     },
     webdav: {
         url: "http://localhost:6065",
