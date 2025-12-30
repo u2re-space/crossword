@@ -28,24 +28,24 @@
 
 .basic-app[data-theme="light"] {
   color-scheme: light;
-  /* Material 3 baseline (static, no dynamic color) */
-  --basic-primary: #6750a4;
+  /* Teal/Cyan palette - neutral, calm tones */
+  --basic-primary: #0891b2;
   --basic-on-primary: #ffffff;
-  --basic-secondary: #625b71;
+  --basic-secondary: #4b6b73;
   --basic-on-secondary: #ffffff;
-  --basic-tertiary: #7d5260;
+  --basic-tertiary: #2e7d6a;
   --basic-on-tertiary: #ffffff;
-  --basic-error: #b3261e;
+  --basic-error: #ba1a1a;
   --basic-on-error: #ffffff;
 
-  --basic-background: #fffbfe;
-  --basic-on-background: #1c1b1f;
-  --basic-surface: #fffbfe;
-  --basic-on-surface: #1c1b1f;
-  --basic-surface-variant: #e7e0ec;
-  --basic-on-surface-variant: #49454f;
-  --basic-outline: #79747e;
-  --basic-outline-variant: #cac4d0;
+  --basic-background: #f5fafb;
+  --basic-on-background: #171d1e;
+  --basic-surface: #f5fafb;
+  --basic-on-surface: #171d1e;
+  --basic-surface-variant: #dbe4e6;
+  --basic-on-surface-variant: #3f484a;
+  --basic-outline: #6f797b;
+  --basic-outline-variant: #bfc8ca;
 
   /* Surface containers (soft tint of primary) */
   --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 96%, var(--basic-primary) 4%);
@@ -59,24 +59,24 @@
 
 .basic-app[data-theme="dark"] {
   color-scheme: dark;
-  /* Material 3 baseline (static, no dynamic color) */
-  --basic-primary: #d0bcff;
-  --basic-on-primary: #381e72;
-  --basic-secondary: #ccc2dc;
-  --basic-on-secondary: #332d41;
-  --basic-tertiary: #efb8c8;
-  --basic-on-tertiary: #492532;
-  --basic-error: #f2b8b5;
-  --basic-on-error: #601410;
+  /* Teal/Cyan palette - neutral, calm tones */
+  --basic-primary: #5eead4;
+  --basic-on-primary: #00363d;
+  --basic-secondary: #a3c9d0;
+  --basic-on-secondary: #243439;
+  --basic-tertiary: #7ed4bc;
+  --basic-on-tertiary: #003830;
+  --basic-error: #ffb4ab;
+  --basic-on-error: #690005;
 
-  --basic-background: #1c1b1f;
-  --basic-on-background: #e6e1e5;
-  --basic-surface: #1c1b1f;
-  --basic-on-surface: #e6e1e5;
-  --basic-surface-variant: #49454f;
-  --basic-on-surface-variant: #cac4d0;
-  --basic-outline: #938f99;
-  --basic-outline-variant: #49454f;
+  --basic-background: #0f1718;
+  --basic-on-background: #dfe3e4;
+  --basic-surface: #0f1718;
+  --basic-on-surface: #dfe3e4;
+  --basic-surface-variant: #3f484a;
+  --basic-on-surface-variant: #bfc8ca;
+  --basic-outline: #899294;
+  --basic-outline-variant: #3f484a;
 
   /* Surface containers (soft tint of primary) */
   --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 92%, var(--basic-primary) 8%);

@@ -20,41 +20,24 @@ export const DB_NAME = 'req-store';
 export const STORE = 'settings';
 
 // Check if we're in a content script context (restricted storage access)
+// Content scripts are extension scripts injected into third-party pages
+// They have chrome.runtime but run on http/https pages (not chrome-extension://)
 const isContentScriptContext = (): boolean => {
     try {
-        // Content scripts have chrome.runtime but may have restricted storage access
-        // Service workers and extension pages have chrome.runtime.getURL
-        if (typeof chrome === "undefined") return false;
+        // Must have chrome.runtime to be a content script (extensions only)
+        // Regular PWA/web apps don't have chrome.runtime
+        if (typeof chrome === "undefined" || !chrome?.runtime) return false;
 
-        // Check if we're in a web page context (content script)
+        // Content scripts run on http/https pages but have chrome.runtime
+        // Extension pages run on chrome-extension:// protocol
         if (typeof window !== "undefined" && window.location?.protocol?.startsWith("http")) {
+            // This is a content script - extension code running on a web page
             return true;
         }
 
         return false;
     } catch {
-        return true; // Assume content script if we can't determine
-    }
-};
-
-// Check if we're in a service worker or extension page (safe for storage)
-const isExtensionContext = (): boolean => {
-    try {
-        if (typeof chrome === "undefined") return false;
-
-        // Service worker context
-        if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWorkerGlobalScope) {
-            return true;
-        }
-
-        // Extension page context (popup, options, etc.)
-        if (typeof window !== "undefined" && window.location?.protocol === "chrome-extension:") {
-            return true;
-        }
-
-        return false;
-    } catch {
-        return false;
+        return false; // If we can't determine, assume NOT a content script (allow access)
     }
 };
 
@@ -89,18 +72,20 @@ async function idbOpen(): Promise<IDBDatabase> {
 export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> => {
     try {
         if (hasChromeStorage()) {
+            console.log("[Settings] Using chrome.storage.local for get");
             return new Promise((res) => {
                 try {
                     chrome.storage.local.get([key], (result) => {
                         if (chrome.runtime.lastError) {
-                            console.warn(chrome.runtime.lastError);
+                            console.warn("[Settings] chrome.storage.local.get error:", chrome.runtime.lastError);
                             res(null);
                         } else {
+                            console.log("[Settings] chrome.storage.local.get success, has data:", !!result[key]);
                             res(result[key]);
                         }
                     });
                 } catch (e) {
-                    console.warn("chrome.storage access failed:", e);
+                    console.warn("[Settings] chrome.storage access failed:", e);
                     res(null);
                 }
             });
@@ -108,18 +93,28 @@ export const idbGetSettings = async (key: string = SETTINGS_KEY): Promise<any> =
 
         // Check if indexedDB is available
         if (typeof indexedDB === "undefined") {
+            console.warn("[Settings] IndexedDB not available");
             return null;
         }
 
+        console.log("[Settings] Using IndexedDB for get");
         const db = await idbOpen();
         return new Promise((res, rej) => {
             const tx = db.transaction(STORE, 'readonly');
             const req = tx.objectStore(STORE).get(key);
-            req.onsuccess = () => { res(req.result?.value); db.close(); }
-            req.onerror = () => { rej(req.error); db.close(); };
+            req.onsuccess = () => {
+                console.log("[Settings] IndexedDB get success, has data:", !!req.result?.value);
+                res(req.result?.value);
+                db.close();
+            }
+            req.onerror = () => {
+                console.warn("[Settings] IndexedDB get error:", req.error);
+                rej(req.error);
+                db.close();
+            };
         });
     } catch (e) {
-        console.warn("Settings storage access failed:", e);
+        console.warn("[Settings] Settings storage access failed:", e);
         return null;
     }
 }
@@ -167,8 +162,11 @@ export const loadSettings = async (): Promise<AppSettings> => {
     try {
         const raw = await idbGetSettings();
         const stored = typeof raw === "string" ? JSOX.parse(raw) as any : raw;
+
+        console.log("[Settings] loadSettings - raw type:", typeof raw, "stored type:", typeof stored);
+
         if (stored && typeof stored === "object") {
-            return {
+            const result = {
                 core: {
                     ...DEFAULT_SETTINGS.core,
                     ...(stored as any)?.core
@@ -185,9 +183,19 @@ export const loadSettings = async (): Promise<AppSettings> => {
                 speech: { ...DEFAULT_SETTINGS.speech, ...(stored as any)?.speech },
                 grid: { ...DEFAULT_SETTINGS.grid, ...(stored as any)?.grid }
             };
+
+            console.log("[Settings] loadSettings result:", {
+                hasApiKey: !!result.ai?.apiKey,
+                instructionCount: result.ai?.customInstructions?.length || 0,
+                activeInstructionId: result.ai?.activeInstructionId || "(none)"
+            });
+
+            return result;
         }
+
+        console.log("[Settings] loadSettings - no stored data, returning defaults");
     } catch (e) {
-        console.warn(e);
+        console.warn("[Settings] loadSettings error:", e);
     }
     return JSOX.parse(JSOX.stringify(DEFAULT_SETTINGS as any) as string) as unknown as AppSettings;
 };
@@ -195,6 +203,34 @@ export const loadSettings = async (): Promise<AppSettings> => {
 //
 export const saveSettings = async (settings: AppSettings) => {
     const current = await loadSettings();
+
+    // For arrays and special fields, prefer explicit values from settings,
+    // then fall back to current, then to defaults.
+    // Use explicit undefined check (not nullish coalescing) to preserve empty arrays/strings
+    const getMcp = () => {
+        if (settings.ai?.mcp !== undefined) return settings.ai.mcp;
+        if (current.ai?.mcp !== undefined) return current.ai.mcp;
+        return [];
+    };
+
+    const getCustomInstructions = () => {
+        if (settings.ai?.customInstructions !== undefined) return settings.ai.customInstructions;
+        if (current.ai?.customInstructions !== undefined) return current.ai.customInstructions;
+        return [];
+    };
+
+    const getActiveInstructionId = () => {
+        // Check if activeInstructionId is explicitly set (including empty string)
+        if (Object.prototype.hasOwnProperty.call(settings.ai || {}, 'activeInstructionId')) {
+            return settings.ai?.activeInstructionId ?? "";
+        }
+        // Fall back to current value
+        if (current.ai?.activeInstructionId !== undefined) {
+            return current.ai.activeInstructionId;
+        }
+        return "";
+    };
+
     const merged: AppSettings = {
         core: {
             ...(DEFAULT_SETTINGS.core || {}),
@@ -205,9 +241,9 @@ export const saveSettings = async (settings: AppSettings) => {
             ...(DEFAULT_SETTINGS.ai || {}),
             ...(current.ai || {}),
             ...(settings.ai || {}),
-            mcp: settings.ai?.mcp ?? current.ai?.mcp ?? [],
-            customInstructions: settings.ai?.customInstructions ?? current.ai?.customInstructions ?? [],
-            activeInstructionId: settings.ai?.activeInstructionId ?? current.ai?.activeInstructionId ?? ""
+            mcp: getMcp(),
+            customInstructions: getCustomInstructions(),
+            activeInstructionId: getActiveInstructionId()
         },
         webdav: {
             ...(DEFAULT_SETTINGS.webdav || {}),

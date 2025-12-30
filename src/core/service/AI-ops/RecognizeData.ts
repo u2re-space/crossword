@@ -251,13 +251,22 @@ export const recognizeByInstructions = async (
 
     // Apply custom instructions if provided or if useActiveInstruction is set
     let finalInstructions = instructions;
+    console.log("[RecognizeData] Custom instruction from options:", !!options?.customInstruction);
+    console.log("[RecognizeData] useActiveInstruction:", options?.useActiveInstruction);
+
     if (options?.customInstruction) {
+        console.log("[RecognizeData] Using provided custom instruction");
         finalInstructions = buildInstructionPrompt(instructions, options.customInstruction);
     } else if (options?.useActiveInstruction !== false) {
+        console.log("[RecognizeData] Fetching active instruction from settings...");
         const activeInstruction = await tryGetActiveInstructionText();
+        console.log("[RecognizeData] Active instruction:", activeInstruction ? `"${activeInstruction.substring(0, 50)}..."` : "(none)");
         if (activeInstruction) {
             finalInstructions = buildInstructionPrompt(instructions, activeInstruction);
+            console.log("[RecognizeData] Applied active custom instruction");
         }
+    } else {
+        console.log("[RecognizeData] Custom instructions disabled via options");
     }
 
     const r: any = await fetch(`${config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL}${ENDPOINT}`, {

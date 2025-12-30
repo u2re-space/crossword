@@ -24,13 +24,50 @@ export const DOC_DIR = "/docs/preferences/";
 export const PLAIN_DIR = "/docs/plain/";
 
 //
-const getActiveCustomInstruction = async (): Promise<string> => {
-    const settings = await loadSettings();
-    const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
-    const activeId = settings?.ai?.activeInstructionId;
-    if (!activeId) return "";
-    const active = instructions.find(i => i.id === activeId);
-    return active?.instruction || "";
+export const getActiveCustomInstruction = async (): Promise<string> => {
+    try {
+        console.log("[getActiveCustomInstruction] Loading settings...");
+        const settings = await loadSettings();
+
+        if (!settings) {
+            console.warn("[getActiveCustomInstruction] loadSettings() returned null/undefined");
+            return "";
+        }
+
+        const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
+        const activeId = settings?.ai?.activeInstructionId;
+
+        console.log("[getActiveCustomInstruction] Settings loaded:", {
+            hasAI: !!settings?.ai,
+            hasApiKey: !!settings?.ai?.apiKey,
+            activeId,
+            instructionCount: instructions.length,
+            instructionIds: instructions.map(i => i.id),
+            instructionLabels: instructions.map(i => i.label)
+        });
+
+        if (!activeId) {
+            console.log("[getActiveCustomInstruction] No active instruction ID set in settings");
+            return "";
+        }
+
+        const active = instructions.find(i => i.id === activeId);
+        if (active) {
+            console.log("[getActiveCustomInstruction] Found active instruction:", {
+                id: active.id,
+                label: active.label,
+                enabled: active.enabled,
+                instructionLength: active.instruction?.length || 0
+            });
+            return active.instruction || "";
+        }
+
+        console.warn("[getActiveCustomInstruction] Active ID not found in instructions:", activeId);
+        return "";
+    } catch (e) {
+        console.error("[getActiveCustomInstruction] Error loading settings:", e);
+        return "";
+    }
 };
 
 //
@@ -40,9 +77,15 @@ export const initiateAnalyzeAndRecognizeData = async (
 ) => {
     // Get custom instruction: use provided or fall back to active from settings
     const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
+
+    console.log("[initiateAnalyzeAndRecognizeData] customInstruction provided:", !!customInstruction);
+    console.log("[initiateAnalyzeAndRecognizeData] effectiveInstruction:", effectiveInstruction ? `"${effectiveInstruction.substring(0, 50)}..."` : "(none)");
+
     const options: RecognizeByInstructionsOptions | undefined = effectiveInstruction
         ? { customInstruction: effectiveInstruction }
         : undefined;
+
+    console.log("[initiateAnalyzeAndRecognizeData] options:", options ? "with customInstruction" : "undefined");
 
     return analyzeRecognizeUnified(dataSource, (response) => {
         console.log(response);
@@ -79,12 +122,21 @@ export const callBackendIfAvailable = async <T = any>(path: string, payload: Rec
 };
 
 //
-export const initiateConversionProcedure = async (dataSource: string | Blob | File | any) => {
+export const initiateConversionProcedure = async (dataSource: string | Blob | File | any, customInstruction?: string) => {
     const settings = await loadSettings();
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return { entities: [] };
 
+    // Get custom instruction if not provided
+    const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
+
     //
     const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.2");
+
+    // Apply custom instruction if available
+    if (effectiveInstruction) {
+        console.log("[initiateConversionProcedure] Applying custom instruction");
+        gptResponses?.askToDoAction?.(effectiveInstruction)?.catch?.(console.warn.bind(console));
+    }
 
     // phase 1 - prepare data
     // upload dataset to GPT for recognize, and get response for analyze... and load into context

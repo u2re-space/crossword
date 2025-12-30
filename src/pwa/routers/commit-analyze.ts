@@ -1,5 +1,5 @@
 import { registerRoute } from "workbox-routing";
-import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout, callBackendIfAvailable } from "./shared";
+import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout, callBackendIfAvailable, getActiveCustomInstruction } from "./shared";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
@@ -17,11 +17,16 @@ export const commitAnalyze = (e: any) => {
             files: fd.getAll('files') // File[]
         };
 
-        // Endpoint mode shortcut
+        // Load custom instruction for AI processing
+        const customInstruction = await getActiveCustomInstruction();
+        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+
+        // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/analyze", {
             title: inputs.title,
             text: inputs.text,
-            url: inputs.url
+            url: inputs.url,
+            customInstruction: customInstruction || undefined
         });
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
@@ -92,7 +97,8 @@ export const commitAnalyze = (e: any) => {
 
             //
             try {
-                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source);
+                // Pass custom instruction to conversion procedure
+                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source, customInstruction || undefined);
                 resultsRaw?.entities?.forEach((entity) => {
                     results.push(queueEntityForWriting(entity, entity?.type, "json"));
                 });

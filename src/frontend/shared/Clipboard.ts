@@ -11,6 +11,8 @@ export interface ClipboardWriteOptions {
     mimeType?: string;
     fallbackToLegacy?: boolean;
     showFeedback?: boolean;
+    /** If true, don't show error toast on failure (for background operations) */
+    silentOnError?: boolean;
 }
 
 export interface ClipboardResult {
@@ -227,7 +229,7 @@ export const copy = async (
     data: unknown,
     options: ClipboardWriteOptions = {}
 ): Promise<ClipboardResult> => {
-    const { type, showFeedback = false } = options;
+    const { type, showFeedback = false, silentOnError = false } = options;
 
     let result: ClipboardResult;
 
@@ -248,7 +250,8 @@ export const copy = async (
     }
 
     // Optionally show feedback via toast broadcast
-    if (showFeedback) {
+    // Skip error toast if silentOnError is true (e.g., background clipboard operations)
+    if (showFeedback && (result.ok || !silentOnError)) {
         broadcastClipboardFeedback(result);
     }
 
@@ -297,9 +300,11 @@ export const listenForClipboardRequests = (): (() => void) => {
     const channel = new BroadcastChannel(CLIPBOARD_CHANNEL);
     const handler = async (event: MessageEvent) => {
         if (event.data?.type === "copy") {
+            const opts = event.data.options || {};
             await copy(event.data.data, {
-                ...event.data.options,
-                showFeedback: true
+                ...opts,
+                showFeedback: opts.showFeedback !== false,
+                silentOnError: opts.silentOnError === true
             });
         }
     };

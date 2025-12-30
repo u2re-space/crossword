@@ -59,9 +59,10 @@ const sendToast = (message: string, kind: 'info' | 'success' | 'warning' | 'erro
 /**
  * Request clipboard copy operation in frontend
  * Frontend must have initClipboardReceiver() active to receive
+ * @param silentOnError - if true, don't show error toast on failure (for background operations)
  */
-const sendCopyRequest = (data: unknown, showFeedback = true): void => {
-    broadcast(CHANNELS.CLIPBOARD, { type: 'copy', data, options: { showFeedback } });
+const sendCopyRequest = (data: unknown, showFeedback = true, silentOnError = false): void => {
+    broadcast(CHANNELS.CLIPBOARD, { type: 'copy', data, options: { showFeedback, silentOnError } });
 };
 
 /**
@@ -202,8 +203,9 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                         // Extract actual content from AI JSON response
                         const extractedContent = extractRecognizedContent(rawData);
                         console.log('[ShareTarget] Sending to clipboard:', typeof extractedContent, (extractedContent as any)?.length || 'N/A');
-                        sendCopyRequest(extractedContent, true);
-                        sendToast('Content recognized and copied!', 'success');
+                        // Use silentOnError=true because clipboard may fail without user gesture/focus
+                        sendCopyRequest(extractedContent, true, true);
+                        sendToast('Content recognized - tap to copy', 'success');
                     } else {
                         console.warn('[ShareTarget] No results from AI processing');
                         sendToast('Recognition completed but no data extracted', 'warning');

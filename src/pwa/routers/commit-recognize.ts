@@ -7,7 +7,8 @@ import {
     getExtensionForType,
     tryToTimeout,
     type DetectedDataType,
-    callBackendIfAvailable
+    callBackendIfAvailable,
+    getActiveCustomInstruction
 } from "./shared";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 
@@ -23,12 +24,17 @@ export const commitRecognize = (e: any) => {
             targetDir: fd.get('targetDir')
         };
 
-        // Endpoint mode shortcut
+        // Load custom instruction once for all processing
+        const customInstruction = await getActiveCustomInstruction();
+        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+
+        // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/recognize", {
             title: inputs.title,
             text: inputs.text,
             url: inputs.url,
-            targetDir: inputs.targetDir
+            targetDir: inputs.targetDir,
+            customInstruction: customInstruction || undefined
         });
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
@@ -117,7 +123,11 @@ export const commitRecognize = (e: any) => {
 
             // Needs AI processing (low confidence or complex type)
             try {
-                const $recognizedData = await initiateAnalyzeAndRecognizeData(isImage ? source : (text?.trim?.() || source));
+                // Pass custom instruction to AI recognition
+                const $recognizedData = await initiateAnalyzeAndRecognizeData(
+                    isImage ? source : (text?.trim?.() || source),
+                    customInstruction || undefined
+                );
 
                 // Determine final data type from AI response or detection
                 const finalType: DetectedDataType = $recognizedData?.ok

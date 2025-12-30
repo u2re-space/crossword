@@ -344,16 +344,23 @@ export const recognizeByInstructions = async (
 
     // Apply custom instructions (explicit or active from settings)
     let customInstructionText = options.customInstruction || "";
+    console.log("[AI] Custom instruction from options:", !!options.customInstruction);
+    console.log("[AI] useActiveInstruction:", options.useActiveInstruction);
+
     if (!customInstructionText && options.useActiveInstruction !== false) {
         try {
+            console.log("[AI] Fetching active custom instruction from settings...");
             customInstructionText = await getActiveInstructionText();
+            console.log("[AI] Got custom instruction text:", customInstructionText ? `"${customInstructionText.substring(0, 50)}..."` : "(none)");
         } catch (e) {
             console.warn("[AI] Failed to load active custom instruction:", e);
         }
     }
     if (customInstructionText) {
         finalInstructions = buildInstructionPrompt(finalInstructions, customInstructionText);
-        console.log("[AI] Applied custom instruction");
+        console.log("[AI] Applied custom instruction to prompt");
+    } else {
+        console.log("[AI] No custom instruction to apply");
     }
 
     // Apply language instruction from settings

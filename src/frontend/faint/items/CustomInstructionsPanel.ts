@@ -5,6 +5,7 @@ import type { CustomInstruction, AppSettings } from "@rs-core/config/SettingsTyp
 import {
     getCustomInstructions,
     addInstruction,
+    addInstructions,
     updateInstruction,
     deleteInstruction,
     setActiveInstruction,
@@ -112,7 +113,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
             item.addEventListener("click", (e) => {
                 const target = e.target as HTMLElement;
                 const action = target.closest("[data-action]")?.getAttribute("data-action");
-                
+
                 if (action === "activate") {
                     void setActiveInstruction(instr.id).then(() => {
                         state.activeId = instr.id;
@@ -122,12 +123,12 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         opts.onUpdate?.();
                     });
                 }
-                
+
                 if (action === "edit") {
                     state.editingId = instr.id;
                     renderList();
                 }
-                
+
                 if (action === "delete") {
                     if (confirm(`Delete "${instr.label}"?`)) {
                         void deleteInstruction(instr.id).then(() => {
@@ -140,11 +141,11 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         });
                     }
                 }
-                
+
                 if (action === "save-edit") {
                     const labelEl = item.querySelector("[data-edit-field='label']") as HTMLInputElement;
                     const instrEl = item.querySelector("[data-edit-field='instruction']") as HTMLTextAreaElement;
-                    
+
                     void updateInstruction(instr.id, {
                         label: labelEl.value.trim() || instr.label,
                         instruction: instrEl.value.trim()
@@ -158,7 +159,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         opts.onUpdate?.();
                     });
                 }
-                
+
                 if (action === "cancel-edit") {
                     state.editingId = null;
                     renderList();
@@ -172,7 +173,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
     const updateSelect = () => {
         selectEl.replaceChildren();
         selectEl.append(H`<option value="">None (use default)</option>` as HTMLOptionElement);
-        
+
         for (const instr of state.instructions) {
             const opt = H`<option value="${instr.id}">${instr.label}</option>` as HTMLOptionElement;
             if (instr.id === state.activeId) opt.selected = true;
@@ -213,7 +214,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
         if (action === "save-new") {
             const label = labelInput.value.trim();
             const instruction = instructionInput.value.trim();
-            
+
             if (!instruction) {
                 instructionInput.focus();
                 toastError("Instruction text is required");
@@ -234,15 +235,18 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
         if (action === "add-templates") {
             const existingLabels = new Set(state.instructions.map(i => i.label));
             const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label));
-            
+
             if (!templatesToAdd.length) {
                 toastError("All templates already added");
                 return;
             }
 
-            Promise.all(
-                templatesToAdd.map(t => addInstruction(t.label, t.instruction))
-            ).then((newInstrs) => {
+            // Use bulk add to avoid race conditions
+            addInstructions(templatesToAdd.map(t => ({
+                label: t.label,
+                instruction: t.instruction,
+                enabled: t.enabled
+            }))).then((newInstrs) => {
                 state.instructions.push(...newInstrs);
                 renderList();
                 updateSelect();

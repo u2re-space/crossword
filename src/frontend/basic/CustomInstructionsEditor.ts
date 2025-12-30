@@ -5,6 +5,7 @@ import type { CustomInstruction, AppSettings } from "@rs-core/config/SettingsTyp
 import {
     getCustomInstructions,
     addInstruction,
+    addInstructions,
     updateInstruction,
     deleteInstruction,
     setActiveInstruction,
@@ -235,9 +236,12 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
                 return;
             }
 
-            Promise.all(
-                templatesToAdd.map(t => addInstruction(t.label, t.instruction))
-            ).then((newInstrs) => {
+            // Use bulk add to avoid race conditions
+            addInstructions(templatesToAdd.map(t => ({
+                label: t.label,
+                instruction: t.instruction,
+                enabled: t.enabled
+            }))).then((newInstrs) => {
                 state.instructions.push(...newInstrs);
                 renderList();
                 updateSelect();

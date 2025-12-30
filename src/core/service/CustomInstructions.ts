@@ -23,16 +23,39 @@ export const getCustomInstructions = async (): Promise<CustomInstruction[]> => {
 };
 
 export const getActiveInstruction = async (): Promise<CustomInstruction | null> => {
-    const settings = await loadSettings();
-    const instructions = settings?.ai?.customInstructions || [];
-    const activeId = settings?.ai?.activeInstructionId;
-    if (!activeId) return null;
-    return instructions.find(i => i.id === activeId) || null;
+    try {
+        const settings = await loadSettings();
+        const instructions = settings?.ai?.customInstructions || [];
+        const activeId = settings?.ai?.activeInstructionId;
+
+        console.log("[CustomInstructions] getActiveInstruction - activeId:", activeId);
+        console.log("[CustomInstructions] getActiveInstruction - instructions count:", instructions.length);
+
+        if (!activeId) {
+            console.log("[CustomInstructions] No activeInstructionId set");
+            return null;
+        }
+
+        const active = instructions.find(i => i.id === activeId);
+        if (active) {
+            console.log("[CustomInstructions] Found active instruction:", active.label);
+        } else {
+            console.warn("[CustomInstructions] activeInstructionId not found in instructions:", activeId);
+            console.log("[CustomInstructions] Available IDs:", instructions.map(i => i.id));
+        }
+
+        return active || null;
+    } catch (e) {
+        console.error("[CustomInstructions] Error in getActiveInstruction:", e);
+        return null;
+    }
 };
 
 export const getActiveInstructionText = async (): Promise<string> => {
     const instruction = await getActiveInstruction();
-    return instruction?.instruction || "";
+    const text = instruction?.instruction || "";
+    console.log("[CustomInstructions] getActiveInstructionText:", text ? `"${text.substring(0, 50)}..."` : "(empty)");
+    return text;
 };
 
 export const setActiveInstruction = async (id: string | null): Promise<void> => {
@@ -71,6 +94,37 @@ export const addInstruction = async (label: string, instruction: string): Promis
     return newInstruction;
 };
 
+/**
+ * Add multiple instructions at once (avoids race conditions from parallel saves)
+ */
+export const addInstructions = async (
+    items: { label: string; instruction: string; enabled?: boolean }[]
+): Promise<CustomInstruction[]> => {
+    if (!items.length) return [];
+
+    const settings = await loadSettings();
+    const instructions = settings?.ai?.customInstructions || [];
+
+    const newInstructions: CustomInstruction[] = items.map((item, index) => ({
+        id: generateId(),
+        label: item.label.trim() || "Untitled",
+        instruction: item.instruction.trim(),
+        enabled: item.enabled ?? true,
+        order: instructions.length + index
+    }));
+
+    const updated: AppSettings = {
+        ...settings,
+        ai: {
+            ...settings.ai,
+            customInstructions: [...instructions, ...newInstructions]
+        }
+    };
+
+    await saveSettings(updated);
+    return newInstructions;
+};
+
 export const updateInstruction = async (id: string, updates: Partial<Omit<CustomInstruction, "id">>): Promise<boolean> => {
     const settings = await loadSettings();
     const instructions = settings?.ai?.customInstructions || [];
@@ -99,12 +153,15 @@ export const deleteInstruction = async (id: string): Promise<boolean> => {
 
     if (filtered.length === instructions.length) return false;
 
+    // If deleting the active instruction, clear activeInstructionId
+    const newActiveId = settings.ai?.activeInstructionId === id ? "" : (settings.ai?.activeInstructionId || "");
+
     const updated: AppSettings = {
         ...settings,
         ai: {
             ...settings.ai,
             customInstructions: filtered,
-            activeInstructionId: settings.ai?.activeInstructionId === id ? "" : settings.ai?.activeInstructionId
+            activeInstructionId: newActiveId
         }
     };
 
