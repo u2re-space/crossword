@@ -177,21 +177,13 @@ registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
                 try {
                     const mode = settings?.ai?.shareTargetMode || 'recognize';
 
-                    // Get custom instruction for processing
-                    const customInstruction = await (async (): Promise<string> => {
-                        try {
-                            const settings = await loadSettings();
-                            const instructions = settings?.ai?.customInstructions || [];
-                            const activeId = settings?.ai?.activeInstructionId;
-                            if (!activeId) return "";
-                            const active = instructions.find(i => i.id === activeId);
-                            return active?.instruction || "";
-                        } catch (e) {
-                            console.warn("[ShareTarget] Failed to load custom instruction:", e);
-                            return "";
-                        }
-                    })();
-
+                    // Get custom instruction for processing (use already loaded settings)
+                    let customInstruction = "";
+                    if (settings?.ai?.customInstructions && settings?.ai?.activeInstructionId) {
+                        const ai = settings.ai;
+                        const active = ai.customInstructions?.find(i => i.id === ai.activeInstructionId);
+                        customInstruction = active?.instruction || "";
+                    }
                     console.log(`[ShareTarget] Mode: ${mode}, custom instruction:`, customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
 
                     // Create synthetic form data for the commit routes
