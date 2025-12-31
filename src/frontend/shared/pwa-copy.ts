@@ -90,8 +90,29 @@ export const initPWAClipboard = (): (() => void) => {
     // Listen for toast messages from service worker
     _cleanupFns.push(initToastReceiver());
 
-    // Listen for share target clipboard operations
+    // Listen for various clipboard and share target operations
     if (typeof BroadcastChannel !== "undefined") {
+        // Listen for direct clipboard requests from service worker
+        const clipboardChannel = new BroadcastChannel("rs-clipboard");
+
+        const clipboardHandler = async (event: MessageEvent) => {
+            const { type, data, options } = event.data || {};
+            console.log('[PWA-Copy] Clipboard channel message:', type, data);
+
+            // Handle direct clipboard copy requests
+            if (type === "copy" && data !== undefined) {
+                const { copy } = await import("./Clipboard");
+                await copy(data, { showFeedback: true, ...options });
+            }
+        };
+
+        clipboardChannel.addEventListener("message", clipboardHandler);
+        _cleanupFns.push(() => {
+            clipboardChannel.removeEventListener("message", clipboardHandler);
+            clipboardChannel.close();
+        });
+
+        // Listen for share target clipboard operations
         const shareChannel = new BroadcastChannel("rs-share-target");
 
         const shareHandler = async (event: MessageEvent) => {
@@ -100,12 +121,26 @@ export const initPWAClipboard = (): (() => void) => {
 
             // Handle share-target copy request
             if (type === "copy-shared" && data) {
-                requestCopy(data, { showFeedback: true });
+                const { copy } = await import("./Clipboard");
+                await copy(data, { showFeedback: true });
             }
 
             // Handle share-received notification
             if (type === "share-received" && data) {
                 console.log('[PWA-Copy] Share received from SW:', data);
+            }
+
+            // Handle AI result from service worker
+            if (type === "ai-result" && data) {
+                console.log('[PWA-Copy] AI result from SW:', data);
+                if (data.success && data.data) {
+                    const text = typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
+                    const { copy } = await import("./Clipboard");
+                    await copy(text, { showFeedback: true });
+                } else {
+                    const { showToast } = await import("./Toast");
+                    showToast({ message: data.error || "Processing failed", kind: "error" });
+                }
             }
         };
 
@@ -115,7 +150,7 @@ export const initPWAClipboard = (): (() => void) => {
             shareChannel.close();
         });
 
-        // Listen for commit-to-clipboard messages from service worker
+        // Listen for legacy commit-to-clipboard messages from service worker
         const swChannel = new BroadcastChannel("rs-sw");
 
         const swHandler = async (event: MessageEvent) => {
@@ -129,7 +164,8 @@ export const initPWAClipboard = (): (() => void) => {
                         console.log('[PWA-Copy] Copying result data:', result.data);
                         // Use the extractRecognizedContent function to get the right data
                         const extractedContent = extractRecognizedContent(result.data);
-                        requestCopy(extractedContent, { showFeedback: true });
+                        const { copy } = await import("./Clipboard");
+                        await copy(extractedContent, { showFeedback: true });
                         break; // Only copy the first successful result
                     }
                 }

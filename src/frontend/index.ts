@@ -97,30 +97,107 @@ const initReceivers = () => {
     _receiversCleanup = initPWAClipboard();
 };
 
-// Simple share target processing (like CRX extension)
-const processShareTargetData = async (shareData: any) => {
+// ============================================================================
+// SHARE TARGET PROCESSING
+// ============================================================================
+
+interface ShareDataInput {
+    title?: string;
+    text?: string;
+    url?: string;
+    sharedUrl?: string;
+    files?: File[] | any[];
+    fileCount?: number;
+    imageCount?: number;
+    timestamp?: number;
+    aiProcessed?: boolean;
+    results?: any[];
+}
+
+/**
+ * Extract processable content from share data
+ * Handles various formats from SW, server, or direct input
+ */
+const extractShareContent = (shareData: ShareDataInput): { content: string | null; type: 'text' | 'url' | 'file' | null } => {
+    // Check for text content first
+    const text = shareData.text?.trim();
+    if (text) {
+        return { content: text, type: 'text' };
+    }
+
+    // Check for URL (handle both 'url' and 'sharedUrl' from server)
+    const url = (shareData.url || shareData.sharedUrl)?.trim();
+    if (url) {
+        return { content: url, type: 'url' };
+    }
+
+    // Check for title as fallback
+    const title = shareData.title?.trim();
+    if (title) {
+        return { content: title, type: 'text' };
+    }
+
+    // Check for actual file objects
+    if (Array.isArray(shareData.files) && shareData.files.length > 0) {
+        const firstFile = shareData.files[0];
+        if (firstFile instanceof File || firstFile instanceof Blob) {
+            return { content: null, type: 'file' };
+        }
+    }
+
+    return { content: null, type: null };
+};
+
+/**
+ * Process share target data with AI
+ * This is called when SW didn't process (or failed), or for server-side fallback
+ */
+const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = false): Promise<boolean> => {
     console.log("[ShareTarget] Processing shared data:", shareData);
+
+    // If AI already processed in SW, just show result info
+    if (shareData.aiProcessed && shareData.results?.length) {
+        console.log("[ShareTarget] AI already processed in SW, showing result");
+        showToast({ message: "Content processed by service worker", kind: "success" });
+        return true;
+    }
+
+    const { content, type } = extractShareContent(shareData);
+
+    if (!content && type !== 'file') {
+        if (skipIfEmpty) {
+            console.log("[ShareTarget] No content to process (skipping)");
+            return false;
+        }
+
+        // Check if there's file metadata but no actual files
+        if (shareData.fileCount && shareData.fileCount > 0) {
+            // Files were processed in SW, this is just metadata notification
+            console.log("[ShareTarget] Files processed in service worker");
+            showToast({ message: "Files received and being processed", kind: "info" });
+            return true;
+        }
+
+        console.warn("[ShareTarget] No content to process");
+        showToast({ message: "No content received to process", kind: "warning" });
+        return false;
+    }
 
     try {
         showToast({ message: "Processing shared content...", kind: "info" });
 
-        // Import AI functions dynamically to avoid loading them on every page
+        // Import AI functions dynamically
         const { recognizeByInstructions } = await import("@rs-core/service/AI-ops/RecognizeData");
         const { getUsableData } = await import("@rs-core/service/model/GPT-Responses");
 
-        // Prepare input data (similar to CRX content script processing)
-        let inputData;
-        if (shareData.files?.length > 0) {
-            // Handle files (images, documents)
-            inputData = shareData.files[0]; // Process first file
-        } else if (shareData.url) {
-            // Handle URLs
-            inputData = shareData.url;
-        } else if (shareData.text) {
-            // Handle text
-            inputData = shareData.text;
+        let inputData: string | File;
+
+        if (type === 'file' && shareData.files?.[0]) {
+            inputData = shareData.files[0] as File;
+        } else if (content) {
+            inputData = content;
         } else {
-            throw new Error("No content to process");
+            throw new Error("No processable content");
         }
 
         // Convert to usable format
@@ -132,58 +209,222 @@ const processShareTargetData = async (shareData: any) => {
             content: [usableData]
         }];
 
-        // Process with AI (using default image/text recognition instructions)
+        // Process with AI
         const result = await recognizeByInstructions(input, "", undefined, undefined, { useActiveInstruction: true });
 
         if (result?.ok && result?.data) {
-            // Copy result to clipboard (like CRX extension does)
-            if (navigator.clipboard) {
-                await navigator.clipboard.writeText(String(result.data));
-                showToast({ message: "Content processed and copied to clipboard!", kind: "success" });
-            } else {
-                showToast({ message: "Content processed successfully!", kind: "success" });
-            }
+            // Copy result to clipboard using requestAnimationFrame for proper focus triggering
+            const resultText = typeof result.data === 'string'
+                ? result.data
+                : JSON.stringify(result.data, null, 2);
+
+            // Use requestAnimationFrame to ensure proper focus and timing for clipboard API
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => {
+                    // Ensure document has focus for clipboard API
+                    if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
+                        window.focus();
+                    }
+
+                    // Use clipboard API with proper timing
+                    navigator.clipboard?.writeText(resultText).then(() => {
+                        showToast({ message: "Content processed and copied!", kind: "success" });
+                        resolve();
+                    }).catch((clipboardError) => {
+                        console.warn("[ShareTarget] Clipboard write failed, trying fallback:", clipboardError);
+                        // Fallback to legacy clipboard method
+                        try {
+                            const textarea = document.createElement('textarea');
+                            textarea.value = resultText;
+                            textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            const success = document.execCommand('copy');
+                            textarea.remove();
+                            if (success) {
+                                showToast({ message: "Content processed and copied!", kind: "success" });
+                            } else {
+                                showToast({ message: "Content processed but copy failed", kind: "warning" });
+                            }
+                        } catch (legacyError) {
+                            console.error("[ShareTarget] All clipboard methods failed:", legacyError);
+                            showToast({ message: "Content processed but copy failed", kind: "warning" });
+                        }
+                        resolve();
+                    });
+                });
+            });
+
+            return true;
         } else {
-            showToast({ message: `Processing failed: ${result?.error || "Unknown error"}`, kind: "error" });
+            const errorMsg = result?.error || "Processing returned no data";
+            showToast({ message: `Processing issue: ${errorMsg}`, kind: "warning" });
+            return false;
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("[ShareTarget] Processing error:", error);
-        showToast({ message: `Failed to process content: ${error}`, kind: "error" });
+
+        // Try fallback to server-side AI processing
+        const fallbackResult = await tryServerSideProcessing(shareData);
+        if (fallbackResult) return true;
+
+        showToast({ message: `Failed: ${error?.message || error}`, kind: "error" });
+        return false;
     }
 };
 
-// Handle share target data from service worker
+/**
+ * Fallback to server-side AI processing when client-side fails
+ */
+const tryServerSideProcessing = async (shareData: ShareDataInput): Promise<boolean> => {
+    try {
+        const { content, type } = extractShareContent(shareData);
+        if (!content) return false;
+
+        console.log("[ShareTarget] Attempting server-side AI fallback");
+
+        // Get API settings
+        const { getRuntimeSettings } = await import("@rs-core/config/RuntimeSettings");
+        const settings = await getRuntimeSettings().catch(() => null);
+        const apiKey = settings?.ai?.apiKey;
+
+        if (!apiKey) {
+            console.log("[ShareTarget] No API key for server fallback");
+            return false;
+        }
+
+        // Call server-side AI endpoint
+        const response = await fetch('/api/share/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: type === 'text' ? content : undefined,
+                url: type === 'url' ? content : undefined,
+                title: shareData.title,
+                apiKey,
+                baseUrl: settings?.ai?.baseUrl,
+                model: settings?.ai?.customModel || settings?.ai?.model
+            })
+        });
+
+        if (!response.ok) {
+            console.warn("[ShareTarget] Server fallback failed:", response.status);
+            return false;
+        }
+
+        const result = await response.json();
+        if (result?.ok && result?.data) {
+            // Use the unified clipboard system with requestAnimationFrame
+            const { copy } = await import("./shared/Clipboard");
+            await copy(String(result.data), { showFeedback: true });
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        console.warn("[ShareTarget] Server fallback error:", error);
+        return false;
+    }
+};
+
+/**
+ * Handle share target data from various sources
+ */
 const handleShareTarget = () => {
     const params = new URLSearchParams(window.location.search);
     const shared = params.get("shared");
 
-    if (shared === "1") {
-        // Clean up URL
-        const url = new URL(window.location.href);
-        url.searchParams.delete("shared");
-        url.searchParams.delete("action");
-        window.history.replaceState({}, "", url.pathname + url.hash);
+    // Handle URL params from server-side share handler
+    if (shared === "1" || shared === "true") {
+        // Extract share data from URL params (server-side handler)
+        const shareFromParams: ShareDataInput = {
+            title: params.get("title") || undefined,
+            text: params.get("text") || undefined,
+            url: params.get("url") || undefined,
+            sharedUrl: params.get("sharedUrl") || undefined,
+            timestamp: Date.now()
+        };
 
-        // Retrieve share data from cache and process it
-        caches.open("share-target-data")
-            .then(cache => cache.match("/share-target-data"))
-            .then(response => response?.json())
-            .then(async (data) => {
-                if (data) {
-                    console.log("[ShareTarget] Retrieved cached data:", data);
-                    await processShareTargetData(data);
-                }
-            })
-            .catch(e => console.warn("[ShareTarget] Failed to retrieve data:", e));
+        // Clean up URL
+        const cleanUrl = new URL(window.location.href);
+        ['shared', 'action', 'title', 'text', 'url', 'sharedUrl'].forEach(p => cleanUrl.searchParams.delete(p));
+        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.hash);
+
+        // Check if we have content from params
+        const { content } = extractShareContent(shareFromParams);
+        if (content) {
+            console.log("[ShareTarget] Processing from URL params");
+            processShareTargetData(shareFromParams, true);
+            return; // Don't also check cache
+        }
+
+        // No content in params, try cache
+        if ('caches' in window) {
+            caches.open("share-target-data")
+                .then(cache => cache.match("/share-target-data"))
+                .then(response => response?.json?.())
+                .then(async (data: ShareDataInput | undefined) => {
+                    if (data) {
+                        console.log("[ShareTarget] Retrieved cached data:", data);
+                        await processShareTargetData(data, true);
+                    } else {
+                        console.log("[ShareTarget] No cached share data found");
+                    }
+                })
+                .catch(e => console.warn("[ShareTarget] Cache retrieval failed:", e));
+        }
+    } else if (shared === "test") {
+        // Test mode - just show confirmation
+        showToast({ message: "Share target route working", kind: "info" });
+
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("shared");
+        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.hash);
     }
 
-    // Listen for real-time share target broadcasts (like CRX extension)
+    // Check for pending share data from sessionStorage (server-side handler fallback)
+    try {
+        const pendingData = sessionStorage.getItem("rs-pending-share");
+        if (pendingData) {
+            sessionStorage.removeItem("rs-pending-share");
+            const shareData = JSON.parse(pendingData) as ShareDataInput;
+            console.log("[ShareTarget] Found pending share in sessionStorage:", shareData);
+            processShareTargetData(shareData, true);
+        }
+    } catch (e) {
+        // Ignore sessionStorage errors
+    }
+
+    // Listen for real-time share target broadcasts from service worker
     if (typeof BroadcastChannel !== "undefined") {
         const shareChannel = new BroadcastChannel("rs-share-target");
         shareChannel.addEventListener("message", async (event) => {
-            if (event.data?.type === "share-received" && event.data?.data) {
-                console.log("[ShareTarget] Broadcast received:", event.data.data);
-                await processShareTargetData(event.data.data);
+            const msgType = event.data?.type;
+            const msgData = event.data?.data;
+
+            if (msgType === "share-received" && msgData) {
+                console.log("[ShareTarget] Broadcast received:", msgData);
+
+                // Check if this is just a notification (files processed in SW)
+                // vs actual data we need to process
+                if (msgData.fileCount > 0 && !msgData.files?.length) {
+                    // This is a notification - files were handled in SW
+                    showToast({ message: `Processing ${msgData.fileCount} file(s)...`, kind: "info" });
+                } else if (msgData.text || msgData.url || msgData.title) {
+                    // We have text content to potentially process
+                    await processShareTargetData(msgData, true);
+                }
+            } else if (msgType === "ai-result" && msgData) {
+                // AI processing result from SW
+                console.log("[ShareTarget] AI result from SW:", msgData);
+                if (msgData.success && msgData.data) {
+                    // Copy to clipboard using unified system with requestAnimationFrame
+                    const text = typeof msgData.data === 'string' ? msgData.data : JSON.stringify(msgData.data);
+                    const { copy } = await import("./shared/Clipboard");
+                    await copy(text, { showFeedback: true });
+                } else {
+                    showToast({ message: msgData.error || "Processing failed", kind: "error" });
+                }
             }
         });
     }

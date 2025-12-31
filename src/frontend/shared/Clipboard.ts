@@ -45,48 +45,61 @@ export const writeText = async (text: string): Promise<ClipboardResult> => {
     const trimmed = toText(text).trim();
     if (!trimmed) return { ok: false, error: "Empty content" };
 
-    // Try direct clipboard API first
-    try {
-        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(trimmed);
-            return { ok: true, data: trimmed, method: "clipboard-api" };
-        }
-    } catch (err) {
-        console.warn("[Clipboard] Direct write failed:", err);
-    }
-
-    // Try with permissions query
-    try {
-        if (typeof navigator !== "undefined" && navigator.permissions) {
-            const result = await navigator.permissions.query({ name: "clipboard-write" } as unknown as PermissionDescriptor);
-            if (result.state === "granted" || result.state === "prompt") {
-                await navigator.clipboard.writeText(trimmed);
-                return { ok: true, data: trimmed, method: "clipboard-api" };
+    return new Promise<ClipboardResult>((resolve) => {
+        requestAnimationFrame(() => {
+            // Ensure document has focus for clipboard API
+            if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
+                window.focus();
             }
-        }
-    } catch (err) {
-        console.warn("[Clipboard] Permission check failed:", err);
-    }
 
-    // Fallback: legacy execCommand (deprecated but works in some contexts)
-    try {
-        if (typeof document !== "undefined") {
-            const textarea = document.createElement("textarea");
-            textarea.value = trimmed;
-            textarea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;";
-            document.body.appendChild(textarea);
-            textarea.select();
-            const success = document.execCommand("copy");
-            textarea.remove();
-            if (success) {
-                return { ok: true, data: trimmed, method: "legacy" };
-            }
-        }
-    } catch (err) {
-        console.warn("[Clipboard] Legacy execCommand failed:", err);
-    }
+            // Try direct clipboard API first
+            const tryClipboardAPI = async () => {
+                try {
+                    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(trimmed);
+                        return resolve({ ok: true, data: trimmed, method: "clipboard-api" });
+                    }
+                } catch (err) {
+                    console.warn("[Clipboard] Direct write failed:", err);
+                }
 
-    return { ok: false, error: "All clipboard methods failed" };
+                // Try with permissions query
+                try {
+                    if (typeof navigator !== "undefined" && navigator.permissions) {
+                        const result = await navigator.permissions.query({ name: "clipboard-write" } as unknown as PermissionDescriptor);
+                        if (result.state === "granted" || result.state === "prompt") {
+                            await navigator.clipboard.writeText(trimmed);
+                            return resolve({ ok: true, data: trimmed, method: "clipboard-api" });
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[Clipboard] Permission check failed:", err);
+                }
+
+                // Fallback: legacy execCommand (deprecated but works in some contexts)
+                try {
+                    if (typeof document !== "undefined") {
+                        const textarea = document.createElement("textarea");
+                        textarea.value = trimmed;
+                        textarea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        const success = document.execCommand("copy");
+                        textarea.remove();
+                        if (success) {
+                            return resolve({ ok: true, data: trimmed, method: "legacy" });
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[Clipboard] Legacy execCommand failed:", err);
+                }
+
+                resolve({ ok: false, error: "All clipboard methods failed" });
+            };
+
+            tryClipboardAPI();
+        });
+    });
 };
 
 /**
@@ -98,64 +111,88 @@ export const writeHTML = async (html: string, plainText?: string): Promise<Clipb
 
     if (!htmlContent) return { ok: false, error: "Empty content" };
 
-    try {
-        if (typeof navigator !== "undefined" && navigator.clipboard?.write) {
-            const htmlBlob = new Blob([htmlContent], { type: "text/html" });
-            const textBlob = new Blob([textContent], { type: "text/plain" });
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    "text/html": htmlBlob,
-                    "text/plain": textBlob
-                })
-            ]);
-            return { ok: true, data: htmlContent, method: "clipboard-api" };
-        }
-    } catch (err) {
-        console.warn("[Clipboard] HTML write failed:", err);
-    }
+    return new Promise<ClipboardResult>((resolve) => {
+        requestAnimationFrame(() => {
+            // Ensure document has focus for clipboard API
+            if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
+                window.focus();
+            }
 
-    // Fallback to text-only
-    return writeText(textContent);
+            const tryHTMLClipboard = async () => {
+                try {
+                    if (typeof navigator !== "undefined" && navigator.clipboard?.write) {
+                        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+                        const textBlob = new Blob([textContent], { type: "text/plain" });
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                "text/html": htmlBlob,
+                                "text/plain": textBlob
+                            })
+                        ]);
+                        return resolve({ ok: true, data: htmlContent, method: "clipboard-api" });
+                    }
+                } catch (err) {
+                    console.warn("[Clipboard] HTML write failed:", err);
+                }
+
+                // Fallback to text-only
+                const textResult = await writeText(textContent);
+                resolve(textResult);
+            };
+
+            tryHTMLClipboard();
+        });
+    });
 };
 
 /**
  * Write image to clipboard
  */
 export const writeImage = async (blob: Blob | string): Promise<ClipboardResult> => {
-    try {
-        let imageBlob: Blob;
-
-        if (typeof blob === "string") {
-            // Convert data URL or URL to blob
-            if (blob.startsWith("data:")) {
-                const response = await fetch(blob);
-                imageBlob = await response.blob();
-            } else {
-                const response = await fetch(blob);
-                imageBlob = await response.blob();
+    return new Promise<ClipboardResult>((resolve) => {
+        requestAnimationFrame(async () => {
+            // Ensure document has focus for clipboard API
+            if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
+                window.focus();
             }
-        } else {
-            imageBlob = blob;
-        }
 
-        if (typeof navigator !== "undefined" && navigator.clipboard?.write) {
-            // Ensure PNG format for clipboard compatibility
-            const pngBlob = imageBlob.type === "image/png"
-                ? imageBlob
-                : await convertToPng(imageBlob);
+            try {
+                let imageBlob: Blob;
 
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    [pngBlob.type]: pngBlob
-                })
-            ]);
-            return { ok: true, method: "clipboard-api" };
-        }
-    } catch (err) {
-        console.warn("[Clipboard] Image write failed:", err);
-    }
+                if (typeof blob === "string") {
+                    // Convert data URL or URL to blob
+                    if (blob.startsWith("data:")) {
+                        const response = await fetch(blob);
+                        imageBlob = await response.blob();
+                    } else {
+                        const response = await fetch(blob);
+                        imageBlob = await response.blob();
+                    }
+                } else {
+                    imageBlob = blob;
+                }
 
-    return { ok: false, error: "Image clipboard not supported" };
+                if (typeof navigator !== "undefined" && navigator.clipboard?.write) {
+                    // Ensure PNG format for clipboard compatibility
+                    const pngBlob = imageBlob.type === "image/png"
+                        ? imageBlob
+                        : await convertToPng(imageBlob);
+
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            [pngBlob.type]: pngBlob
+                        })
+                    ]);
+                    resolve({ ok: true, method: "clipboard-api" });
+                    return;
+                }
+            } catch (err) {
+                console.warn("[Clipboard] Image write failed:", err);
+            }
+
+            resolve({ ok: false, error: "Image clipboard not supported" });
+        });
+    });
 };
 
 /**
@@ -210,16 +247,25 @@ const convertToPng = async (blob: Blob): Promise<Blob> => {
  * Read text from clipboard
  */
 export const readText = async (): Promise<ClipboardResult> => {
-    try {
-        if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
-            const text = await navigator.clipboard.readText();
-            return { ok: true, data: text, method: "clipboard-api" };
-        }
-    } catch (err) {
-        console.warn("[Clipboard] Read failed:", err);
-    }
+    return new Promise<ClipboardResult>((resolve) => {
+        requestAnimationFrame(() => {
+            const tryReadClipboard = async () => {
+                try {
+                    if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+                        const text = await navigator.clipboard.readText();
+                        resolve({ ok: true, data: text, method: "clipboard-api" });
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("[Clipboard] Read failed:", err);
+                }
 
-    return { ok: false, error: "Clipboard read not available" };
+                resolve({ ok: false, error: "Clipboard read not available" });
+            };
+
+            tryReadClipboard();
+        });
+    });
 };
 
 /**
@@ -231,31 +277,35 @@ export const copy = async (
 ): Promise<ClipboardResult> => {
     const { type, showFeedback = false, silentOnError = false } = options;
 
-    let result: ClipboardResult;
+    return new Promise<ClipboardResult>((resolve) => {
+        requestAnimationFrame(async () => {
+            let result: ClipboardResult;
 
-    // Determine type and copy
-    if (data instanceof Blob) {
-        if (data.type.startsWith("image/")) {
-            result = await writeImage(data);
-        } else {
-            const text = await data.text();
-            result = await writeText(text);
-        }
-    } else if (type === "html" || (typeof data === "string" && data.trim().startsWith("<"))) {
-        result = await writeHTML(String(data));
-    } else if (type === "image") {
-        result = await writeImage(data as Blob | string);
-    } else {
-        result = await writeText(toText(data));
-    }
+            // Determine type and copy
+            if (data instanceof Blob) {
+                if (data.type.startsWith("image/")) {
+                    result = await writeImage(data);
+                } else {
+                    const text = await data.text();
+                    result = await writeText(text);
+                }
+            } else if (type === "html" || (typeof data === "string" && data.trim().startsWith("<"))) {
+                result = await writeHTML(String(data));
+            } else if (type === "image") {
+                result = await writeImage(data as Blob | string);
+            } else {
+                result = await writeText(toText(data));
+            }
 
-    // Optionally show feedback via toast broadcast
-    // Skip error toast if silentOnError is true (e.g., background clipboard operations)
-    if (showFeedback && (result.ok || !silentOnError)) {
-        broadcastClipboardFeedback(result);
-    }
+            // Optionally show feedback via toast broadcast
+            // Skip error toast if silentOnError is true (e.g., background clipboard operations)
+            if (showFeedback && (result.ok || !silentOnError)) {
+                broadcastClipboardFeedback(result);
+            }
 
-    return result;
+            resolve(result);
+        });
+    });
 };
 
 /**

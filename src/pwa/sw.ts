@@ -59,6 +59,13 @@ const notifyShareReceived = (data: unknown): void => {
 };
 
 /**
+ * Notify frontend about AI processing result
+ */
+const notifyAIResult = (result: { success: boolean; data?: unknown; error?: string }): void => {
+    broadcast(CHANNELS.SHARE_TARGET, { type: 'ai-result', data: result });
+};
+
+/**
  * Try to parse JSON and extract recognized content
  * AI returns JSON like {"recognized_data": [...], "verbose_data": "..."}
  * We want to extract just the actual content for clipboard
@@ -204,13 +211,16 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
         // Step 3: Cache for client retrieval
         await cacheShareData(shareData);
 
-        // Step 4: Broadcast to clients
+        // Step 4: Broadcast to clients (include text content for frontend fallback)
         notifyShareReceived?.({
             title: shareData.title,
             text: shareData.text,
             url: shareData.url,
             timestamp: shareData.timestamp,
-            fileCount: shareData.files.length
+            fileCount: shareData.files.length,
+            imageCount: shareData.imageFiles.length,
+            // Mark whether AI will process this
+            aiEnabled: (await getAIProcessingConfig().catch(() => ({ enabled: false }))).enabled
         });
 
         // Step 5: AI Processing (if configured)
@@ -226,15 +236,30 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
                     customInstruction: aiConfig.customInstruction
                 });
                 aiProcessed = handleAIResult(aiConfig.mode, result);
+
+                // Broadcast AI result to frontend for clipboard copy
+                if (result.success && result.results?.length) {
+                    // Extract the actual data from results
+                    const firstResult = result.results[0];
+                    const extractedData = firstResult?.data?.data || firstResult?.data || firstResult;
+                    notifyAIResult({
+                        success: true,
+                        data: extractedData
+                    });
+                } else {
+                    notifyAIResult({ success: false, error: 'No results returned' });
+                }
             } catch (aiError: any) {
                 const errorMsg = aiError?.message || 'Unknown error';
                 sendToast(`${aiConfig.mode === 'analyze' ? 'Analysis' : 'Recognition'} failed: ${errorMsg}`, 'error');
+                notifyAIResult({ success: false, error: errorMsg });
             }
         }
 
         // Step 6: Show fallback notification if AI didn't process
         if (!aiProcessed) {
-            const message = aiConfig.enabled
+            const hasApiKey = aiConfig.apiKey !== null;
+            const message = hasApiKey
                 ? 'Content received'
                 : 'Content received (configure AI for auto-processing)';
             sendToast(message, 'info');
