@@ -3,9 +3,19 @@ import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routi
 import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
-import { getRuntimeSettings } from '@rs-core/config/RuntimeSettings';
 import { commitRecognize } from './routers/commit-recognize';
 import { commitAnalyze } from './routers/commit-analyze';
+import {
+    parseFormDataFromRequest,
+    buildShareData,
+    cacheShareData,
+    getAIProcessingConfig,
+    buildAIFormData,
+    createSyntheticEvent,
+    logShareDataSummary,
+    hasProcessableContent,
+    type ShareData
+} from './lib/ShareTargetUtils';
 
 //
 // @ts-ignore
@@ -113,237 +123,131 @@ export const extractRecognizedContent = (data: unknown): unknown => {
     return data;
 };
 
-// Share target handler with optional AI processing
-// Note: Share targets only work when PWA is installed and service worker is active
-registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
+// ============================================================================
+// SHARE TARGET PROCESSING
+// ============================================================================
+
+/**
+ * Process share data with AI (recognize or analyze mode)
+ */
+const processShareWithAI = async (
+    shareData: ShareData,
+    config: { mode: 'recognize' | 'analyze'; customInstruction: string }
+): Promise<{ success: boolean; results?: any[] }> => {
+    const aiFormData = buildAIFormData(shareData, config.customInstruction);
+    const syntheticEvent = createSyntheticEvent(aiFormData);
+
+    console.log('[ShareTarget] Processing with', config.mode === 'analyze' ? 'commitAnalyze' : 'commitRecognize');
+
+    try {
+        const processor = config.mode === 'analyze' ? commitAnalyze : commitRecognize;
+        const results = await processor(syntheticEvent);
+
+        console.log('[ShareTarget] Processing results:', results);
+
+        const success = Array.isArray(results) && results.length > 0;
+        return { success, results: results as any[] };
+    } catch (error: any) {
+        console.error('[ShareTarget] Processing error:', error);
+        throw error;
+    }
+};
+
+/**
+ * Handle AI processing result and show appropriate toast
+ */
+const handleAIResult = (
+    mode: 'recognize' | 'analyze',
+    result: { success: boolean; results?: any[] }
+): boolean => {
+    if (result.success) {
+        const message = mode === 'analyze'
+            ? 'Content analyzed and processed'
+            : 'Content recognized and copied';
+        sendToast(message, 'success');
+        return true;
+    }
+
+    sendToast(mode === 'analyze' ? 'Analysis completed' : 'Recognition completed', 'info');
+    return false;
+};
+
+/**
+ * Match share target URLs (handles both hyphen and underscore variants)
+ */
+const isShareTargetUrl = (pathname: string): boolean =>
+    pathname === '/share-target' || pathname === '/share_target';
+
+/**
+ * Share target handler with optional AI processing
+ * Note: Share targets only work when PWA is installed and service worker is active
+ */
+registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.method === 'POST', async (e: any) => {
     const request = e?.request ?? e?.event?.request ?? e;
 
     console.log('[ShareTarget] Handler called for:', request?.url);
-    console.log('[ShareTarget] Service worker controlling clients:', !!(self as any).clients);
+    console.log('[ShareTarget] Content-Type:', request?.headers?.get?.('content-type') ?? 'none');
 
     try {
-        let fd = await request?.formData?.().catch?.((error: any) => {
-            console.error('[ShareTarget] Failed to parse FormData:', error);
-            return null;
+        // Step 1: Parse request data
+        const { formData, error } = await parseFormDataFromRequest(request);
+
+        if (!formData) {
+            console.warn('[ShareTarget] No valid data received:', error);
+            return new Response(null, { status: 302, headers: { Location: '/' } });
+        }
+
+        // Step 2: Build share data from form
+        const shareData = await buildShareData(formData);
+        logShareDataSummary(shareData);
+
+        // Step 3: Cache for client retrieval
+        await cacheShareData(shareData);
+
+        // Step 4: Broadcast to clients
+        notifyShareReceived?.({
+            title: shareData.title,
+            text: shareData.text,
+            url: shareData.url,
+            timestamp: shareData.timestamp,
+            fileCount: shareData.files.length
         });
 
-        // Fallback: try to parse as JSON if FormData fails
-        if (!fd) {
-            try {
-                const text = await request?.text?.().catch?.((error: any) => {
-                    console.error('[ShareTarget] Failed to parse text:', error);
-                    return null;
-                });
-                if (text?.trim?.()) {
-                    const jsonData = tryParseJSON(text) as Record<string, unknown>;
-                    console.log('[ShareTarget] Received JSON data:', jsonData);
-                    // Create a mock FormData from JSON
-                    fd = new FormData() as FormData;
-                    if (jsonData?.title) fd?.append?.('title', jsonData?.title as unknown as string);
-                    if (jsonData?.text) fd?.append?.('text', jsonData?.text as unknown as string);
-                    if (jsonData?.url) fd?.append?.('url', jsonData?.url as unknown as string);
-                    // Note: JSON can't contain actual File objects
-                }
-            } catch (e: any) {
-                console.warn('[ShareTarget] Could not parse request as FormData or JSON:', e);
-                return new Response(null, { status: 302, headers: { Location: '/' } });
-            }
-        }
-
-        console.log('[ShareTarget] FormData received, content-type:', request?.headers?.get?.('content-type') ?? '');
-
-        // Debug: Log all form data keys and values
-        console.log('[ShareTarget] FormData keys:', Array.from(fd?.keys?.() || []));
-        const allEntries = Array.from(fd?.entries?.() || []) as [string, FormDataEntryValue][];
-        for (const [key, value] of allEntries) {
-            if (value instanceof File) {
-                console.log(`[ShareTarget] ${key}: File(${value?.name}, ${value?.size} bytes, ${value?.type})`);
-            } else {
-                console.log(`[ShareTarget] ${key}: ${value}`);
-            }
-        }
-
-        // Collect all files from any field name (some browsers might use different names)
-        const allFiles: File[] = [];
-        const namedFiles = fd?.getAll?.('files') as File[] || [];
-        for (const [, value] of allEntries) {
-            if (value instanceof File && !(namedFiles || []).includes(value)) {
-                allFiles.push(value);
-            }
-        }
-
-        // Combine named files with any additional files
-        const combinedFiles = [...(namedFiles || []), ...(allFiles || [])];
-
-        // Extract text from text files if no text field provided
-        let extractedText = fd?.get?.('text') || '';
-        if (!extractedText && allFiles?.length > 0) {
-            // Try to extract text from text files
-            for (const file of allFiles || []) {
-                if (file?.type?.startsWith?.('text/') || file?.type === 'application/json') {
-                    try {
-                        const textContent = await file?.text?.().catch?.((error: any) => {
-                            console.error('[ShareTarget] Failed to read text file:', file?.name, error);
-                            return '';
-                        });
-                        if (textContent?.trim?.()) {
-                            extractedText = textContent?.trim?.() || '';
-                            break; // Use first text file found
-                        }
-                    } catch (e: any) {
-                        console.warn('[ShareTarget] Failed to read text file:', file?.name, e);
-                    }
-                }
-            }
-        }
-
-        const shareData = {
-            title: fd?.get?.('title') || '',
-            text: extractedText,
-            url: fd?.get?.('url') || '',
-            files: combinedFiles || [],
-            timestamp: Date.now()
-        };
-
-        console.log('[ShareTarget] Processed data:', {
-            title: shareData?.title,
-            text: shareData?.text?.substring?.(0, 50) + (shareData?.text?.length > 50 ? '...' : ''),
-            url: shareData?.url,
-            filesCount: shareData?.files?.length || 0,
-            filesDetails: shareData?.files?.map?.((f: File) => ({ name: f?.name, size: f?.size, type: f?.type })) || []
-        });
-
-        // Store share data for client retrieval (simple key-value storage)
-        try {
-            const cache = await (self as any).caches?.open?.('share-target-data')?.catch?.((error: any) => {
-                console.error('[ShareTarget] Failed to open cache:', error);
-                return null;
-            });
-            if (cache) {
-                await cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
-                    headers: { 'Content-Type': 'application/json' }
-                }));
-            }
-        } catch (e: any) {
-            console.warn('[ShareTarget] Cache store failed:', e);
-        }
-
-        // Broadcast share data to clients (like CRX extension)
-        notifyShareReceived?.(shareData) ?? console.log('[ShareTarget] Broadcast function not available');
-
-        // Check if we should process with AI (using runtime settings)
+        // Step 5: AI Processing (if configured)
         let aiProcessed = false;
-        let hasApiKey = false;
-        try {
-            const settings = await getRuntimeSettings()?.catch?.((error: any) => {
-                console.error('[ShareTarget] Failed to get runtime settings:', error);
-                return null;
-            });
-            hasApiKey = !!settings?.ai?.apiKey;
-            const mode = settings?.ai?.shareTargetMode || 'recognize';
+        const aiConfig = await getAIProcessingConfig();
 
-            // Check if we have content to process
-            const hasTextContent = shareData?.text?.trim?.();
-            const hasUrlContent = shareData?.url?.trim?.();
-            const hasFileContent = shareData?.files?.some?.((f: File) => f?.size > 0);
+        if (aiConfig.enabled && hasProcessableContent(shareData)) {
+            console.log('[ShareTarget] AI processing enabled, mode:', aiConfig.mode);
 
-            if (hasApiKey && (hasTextContent || hasUrlContent || hasFileContent)) {
-                console.log('[ShareTarget] AI processing enabled, mode:', mode);
-                console.log('[ShareTarget] Content to process:', {
-                    hasText: !!hasTextContent,
-                    hasUrl: !!hasUrlContent,
-                    hasFile: !!hasFileContent,
-                    fileCount: shareData?.files?.length || 0,
-                    files: shareData?.files?.map?.((f: File) => ({
-                        name: f?.name,
-                        type: f?.type,
-                        size: f?.size
-                    }))
+            try {
+                const result = await processShareWithAI(shareData, {
+                    mode: aiConfig.mode,
+                    customInstruction: aiConfig.customInstruction
                 });
-
-                // Get custom instruction
-                const instructions = settings?.ai?.customInstructions?.map?.((i: any) => i.instruction?.trim?.()) || [];
-                const activeId = settings?.ai?.activeInstructionId;
-                const activeInstruction = activeId ? instructions?.find?.((i: string) => i === activeId) : null;
-                const customInstruction = activeInstruction || "";
-                console.log('[ShareTarget] Custom instruction:', customInstruction ? 'present' : 'none');
-
-                // Prepare form data for commit routes
-                const formData = new FormData();
-                formData?.append?.('title', shareData?.title || '');
-                formData?.append?.('text', shareData?.text || '');
-                formData?.append?.('url', shareData?.url || '');
-                formData?.append?.('customInstruction', customInstruction as string);
-
-                // Only include files that aren't text files we already extracted from
-                if (shareData?.files) {
-                    shareData?.files?.forEach?.((file: File) => {
-                        // Skip text files if we already extracted their content
-                        const isTextFile = file?.type?.startsWith?.('text/') || file?.type === 'application/json';
-                        const shouldInclude = !isTextFile || !shareData?.text?.trim?.();
-                        if (shouldInclude) {
-                            console.log('[ShareTarget] Including file for AI processing:', {
-                                name: file?.name,
-                                type: file?.type,
-                                size: file?.size
-                            });
-                            formData?.append?.('files', file);
-                        } else {
-                            console.log('[ShareTarget] Skipping text file (content already extracted):', file?.name);
-                        }
-                    });
-                }
-
-                // Create synthetic event for commit routes
-                const syntheticEvent = { request: { formData: () => Promise.resolve(formData) } };
-
-                // Process with appropriate commit route
-                if (mode === 'analyze') {
-                    console.log('[ShareTarget] Processing with commitAnalyze...');
-                    const results = await commitAnalyze?.(syntheticEvent)?.catch?.((err: any) => {
-                        console.error('[ShareTarget] commitAnalyze error:', err);
-                        console.error('[ShareTarget] Error details:', err?.message || err);
-                        return [];
-                    });
-                    console.log('[ShareTarget] commitAnalyze results:', results);
-                    if (results?.length) {
-                        sendToast('Content analyzed and processed', 'success');
-                        aiProcessed = true;
-                    } else {
-                        sendToast('Analysis completed but no results', 'warning');
-                    }
-                } else {
-                    console.log('[ShareTarget] Processing with commitRecognize...');
-                    const results = await commitRecognize?.(syntheticEvent)?.catch?.((err: any) => {
-                        console.error('[ShareTarget] commitRecognize error:', err);
-                        console.error('[ShareTarget] Error details:', err?.message || err);
-                        return [];
-                    });
-                    console.log('[ShareTarget] commitRecognize results:', results);
-                    if (results?.length) {
-                        sendToast('Content recognized and copied', 'success');
-                        aiProcessed = true;
-                    } else {
-                        sendToast('Recognition completed but no results', 'warning');
-                    }
-                }
+                aiProcessed = handleAIResult(aiConfig.mode, result);
+            } catch (aiError: any) {
+                const errorMsg = aiError?.message || 'Unknown error';
+                sendToast(`${aiConfig.mode === 'analyze' ? 'Analysis' : 'Recognition'} failed: ${errorMsg}`, 'error');
             }
-        } catch (aiError: any) {
-            console.warn('[ShareTarget] AI processing failed:', aiError);
         }
 
-        // Show appropriate notification
+        // Step 6: Show fallback notification if AI didn't process
         if (!aiProcessed) {
-            sendToast('Content received' + (hasApiKey ? ' (configure AI for auto-processing)' : ''), 'info');
+            const message = aiConfig.enabled
+                ? 'Content received'
+                : 'Content received (configure AI for auto-processing)';
+            sendToast(message, 'info');
         }
 
-        // Redirect to app with shared flag
+        // Step 7: Redirect to app
         return new Response(null, {
             status: 302,
             headers: { Location: '/?shared=1' }
         });
     } catch (err: any) {
-        console.warn('[ShareTarget] Handler error:', err);
+        console.error('[ShareTarget] Handler error:', err);
+        sendToast('Share handling failed', 'error');
         return new Response(null, { status: 302, headers: { Location: '/' } });
     }
 }, "POST")
@@ -445,11 +349,24 @@ self.addEventListener?.('activate', (e: any) => {
     );
 });
 
+// Share target GET handler (for testing/debugging)
+registerRoute(
+    ({ url, request }) => isShareTargetUrl(url?.pathname) && request?.method === 'GET',
+    async () => {
+        console.log('[ShareTarget] GET request received - redirecting to app');
+        return new Response(null, {
+            status: 302,
+            headers: { Location: '/?shared=test' }
+        });
+    },
+    'GET'
+);
+
 // Fallback: Manual fetch event handler for share target (in case workbox routing fails)
 self.addEventListener?.('fetch', (event: any) => {
     const request = event?.request ?? event?.event?.request ?? event;
     const requestUrl = new URL(request?.url || '');
-    if (requestUrl.pathname === '/share-target' && request?.method === 'POST') {
+    if (isShareTargetUrl(requestUrl.pathname) && request?.method === 'POST') {
         console.log('[ShareTarget] Manual fetch handler triggered');
         event?.respondWith?.(handleShareTargetRequest(request));
     }

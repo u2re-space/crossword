@@ -1,4 +1,8 @@
-import frontend from "./frontend/index";
+import frontend, { waitForServiceWorker } from "./frontend/index";
+
+// ============================================================================
+// CSS INJECTION
+// ============================================================================
 
 const ensureAppCss = () => {
     // App is built as a JS module; make sure extracted CSS is loaded in production.
@@ -52,8 +56,59 @@ const ensureAppCss = () => {
     document.head.append(link);
 };
 
-//
-export default async function bootstrap(mountElement) {
+// ============================================================================
+// PENDING SHARE DATA HANDLING
+// ============================================================================
+
+/**
+ * Check for pending share data from server-side share target handler
+ * This handles cases where the service worker wasn't active during share
+ */
+const checkPendingShareData = async () => {
+    try {
+        const pendingData = sessionStorage.getItem("rs-pending-share");
+        if (!pendingData) return null;
+
+        // Clear immediately to prevent duplicate processing
+        sessionStorage.removeItem("rs-pending-share");
+
+        const shareData = JSON.parse(pendingData);
+        console.log("[ShareTarget] Found pending share data:", shareData);
+
+        // Store in cache for the normal share target flow to pick up
+        if ('caches' in window) {
+            const cache = await caches.open('share-target-data');
+            await cache.put('/share-target-data', new Response(JSON.stringify({
+                ...shareData,
+                files: [],
+                timestamp: shareData.timestamp || Date.now()
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+
+        return shareData;
+    } catch (error) {
+        console.warn("[ShareTarget] Failed to process pending share data:", error);
+        return null;
+    }
+};
+
+// ============================================================================
+// BOOTSTRAP
+// ============================================================================
+
+export default async function bootstrap(mountElement: HTMLElement) {
+    // Ensure CSS is loaded
     ensureAppCss();
-    frontend?.(mountElement);
+
+    // Check for pending share data from server-side handler
+    // This handles shares that arrived before SW was controlling
+    checkPendingShareData();
+
+    // Start frontend (service worker init happens inside frontend)
+    await frontend?.(mountElement);
 }
+
+// Re-export service worker utilities for external access
+export { waitForServiceWorker };

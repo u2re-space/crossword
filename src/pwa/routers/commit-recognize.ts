@@ -13,38 +13,54 @@ import {
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 import { loadSettings } from "@rs-core/config/Settings";
 import { getRuntimeSettings } from "@rs-core/config/RuntimeSettings";
+import { fileToDataUrl, isProcessableImage, isImageDataUrl } from "../lib/ImageUtils";
 
 //
 export const commitRecognize = (e: any): Promise<any[] | void> => {
     return Promise.try(async () => {
         const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
+        if (!fd) {
+            console.warn("[commit-recognize] Failed to parse FormData");
+            return [];
+        }
+
         const inputs = {
-            title: fd.get('title'),
-            text: fd.get('text'),
-            url: fd.get('url'),
-            files: fd.getAll('files'), // File[]
-            targetDir: fd.get('targetDir'),
-            customInstruction: fd.get('customInstruction') as string
+            title: String(fd.get('title') || '').trim(),
+            text: String(fd.get('text') || '').trim(),
+            url: String(fd.get('url') || '').trim(),
+            files: fd.getAll('files') as File[],
+            targetDir: String(fd.get('targetDir') || DOC_DIR).trim(),
+            customInstruction: String(fd.get('customInstruction') || '').trim()
         };
 
-        //
+        console.log("[commit-recognize] Inputs received:", {
+            title: inputs.title || '(none)',
+            text: inputs.text?.substring(0, 50) || '(none)',
+            url: inputs.url || '(none)',
+            filesCount: inputs.files?.length || 0,
+            files: inputs.files?.map(f => ({ name: f?.name, type: f?.type, size: f?.size }))
+        });
+
+        // Load settings
         let settings;
         try {
             settings = await getRuntimeSettings();
         } catch {
             settings = await loadSettings();
         }
-        let customInstruction: string = inputs.customInstruction?.trim?.() || (await getActiveCustomInstruction(settings)) || "";
-        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction?.substring?.(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
 
-        // Endpoint mode shortcut - pass custom instruction to backend
+        const customInstruction: string = inputs.customInstruction || (await getActiveCustomInstruction(settings)) || "";
+        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
+
+        // Endpoint mode shortcut
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/recognize", {
             title: inputs.title,
             text: inputs.text,
             url: inputs.url,
             targetDir: inputs.targetDir,
-            customInstruction: customInstruction as string
+            customInstruction
         });
+
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
             tryToTimeout(() => {
@@ -53,98 +69,138 @@ export const commitRecognize = (e: any): Promise<any[] | void> => {
             return backendResponse.results;
         }
 
-        //
-        const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [(inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null];
-        const results: any[] = [];
+        // Build list of sources to process
+        const sources: Array<{ source: File | string; isImage: boolean; fileName?: string }> = [];
 
-        //
-        for (const file of files) {
-            const source = file || ((inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null);
-            if (!source) continue;
-
-            // Extract text content based on source type
-            let text: string = "";
-            let isImage = false;
-
-            if (source instanceof File || source instanceof Blob) {
-                // Check if it's an image first
-                if (source.type?.startsWith?.("image/")) {
-                    isImage = true;
-                } else {
-                    text = await source.text?.()?.catch?.(() => "") || "";
-                }
-            } else if (typeof source === "string") {
-                if (source == (inputs?.text?.trim?.() || null)) {
-                    text = source;
-                } else if (URL.canParse(source?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
-                    // It's a URL - try to fetch content
-                    text = await fetch(source)
-                        ?.then?.((res) => res.text())
-                        ?.catch?.(() => "") || "";
-                } else {
-                    text = source;
+        // Add files first (higher priority for images)
+        if (inputs.files?.length > 0) {
+            for (const file of inputs.files) {
+                if (file instanceof File && file.size > 0) {
+                    sources.push({
+                        source: file,
+                        isImage: isProcessableImage(file),
+                        fileName: file.name
+                    });
                 }
             }
+        }
 
-            // Detect input type with comprehensive analysis
-            const detection = detectInputType(text?.trim?.() || null, source);
-            console.log("[commit-recognize] Detection result:", {
-                type: detection.type,
-                confidence: detection.confidence,
-                needsAI: detection.needsAI,
-                hints: detection.hints
-            });
-
-            const subId = Date.now();
-            const directory = inputs?.targetDir || DOC_DIR;
-
-            // Process based on detected type and AI requirement
-            if (!detection.needsAI && detection.confidence >= 0.7) {
-                // High confidence detection - process without AI
-                const ext = getExtensionForType(detection.type);
-                const name = `pasted-${subId}${ext}`;
-                const path = `${directory}${name}`;
-
-                // Format data based on type
-                let processedData = text;
-                if (detection.type === "json") {
-                    try {
-                        // Pretty-print JSON for readability
-                        processedData = JSON.stringify(JSON.parse(text?.trim?.() || "[]"), null, 2);
-                    } catch { /* keep original */ }
-                }
-
-                results.push({
-                    status: 'queued',
-                    data: processedData,
-                    path,
-                    name,
-                    subId,
-                    directory,
-                    dataType: detection.type,
-                    detection: {
-                        confidence: detection.confidence,
-                        hints: detection.hints
-                    }
+        // Add text/url as fallback if no files
+        if (sources.length === 0) {
+            const textOrUrl = inputs.text || inputs.url;
+            if (textOrUrl) {
+                sources.push({
+                    source: textOrUrl,
+                    isImage: false
                 });
-                continue;
             }
+        }
 
-            // Needs AI processing (low confidence or complex type)
+        if (sources.length === 0) {
+            console.log("[commit-recognize] No sources to process");
+            return [];
+        }
+
+        const results: any[] = [];
+        const directory = inputs.targetDir;
+
+        for (const { source, isImage, fileName } of sources) {
+            const subId = Date.now();
+
             try {
-                // Pass custom instruction to AI recognition
+                let dataToProcess: string | File | Blob;
+                let text = '';
+
+                if (source instanceof File || source instanceof Blob) {
+                    if (isImage) {
+                        // For images, convert to data URL for GPT vision API
+                        console.log("[commit-recognize] Processing image:", fileName);
+                        dataToProcess = await fileToDataUrl(source);
+                        console.log("[commit-recognize] Image converted to data URL, length:", (dataToProcess as string).length);
+                    } else {
+                        // For non-image files, extract text content
+                        text = await source.text?.()?.catch?.(() => "") || "";
+                        dataToProcess = text;
+                    }
+                } else if (typeof source === 'string') {
+                    // Check if it's a data URL (image)
+                    if (isImageDataUrl(source)) {
+                        dataToProcess = source;
+                    } else if (URL.canParse(source, globalThis?.location?.origin || undefined)) {
+                        // It's a URL - fetch content
+                        text = await fetch(source).then(res => res.text()).catch(() => "");
+                        dataToProcess = text || source;
+                    } else {
+                        text = source;
+                        dataToProcess = source;
+                    }
+                } else {
+                    continue;
+                }
+
+                // Detect input type for non-image content
+                const detection = isImage
+                    ? { type: 'image' as DetectedDataType, confidence: 0.99, needsAI: true, hints: ['image file'] }
+                    : detectInputType(text || null, source instanceof File ? source : null);
+
+                console.log("[commit-recognize] Detection result:", {
+                    type: detection.type,
+                    confidence: detection.confidence,
+                    needsAI: detection.needsAI,
+                    isImage
+                });
+
+                // High confidence non-AI processing for structured data
+                if (!detection.needsAI && detection.confidence >= 0.7 && !isImage) {
+                    const ext = getExtensionForType(detection.type);
+                    const name = `pasted-${subId}${ext}`;
+                    const path = `${directory}${name}`;
+
+                    let processedData = text;
+                    if (detection.type === "json") {
+                        try {
+                            processedData = JSON.stringify(JSON.parse(text), null, 2);
+                        } catch { /* keep original */ }
+                    }
+
+                    results.push({
+                        status: 'queued',
+                        data: processedData,
+                        path,
+                        name,
+                        subId,
+                        directory,
+                        dataType: detection.type,
+                        detection: {
+                            confidence: detection.confidence,
+                            hints: detection.hints
+                        }
+                    });
+                    continue;
+                }
+
+                // AI processing required (images, low confidence, complex types)
+                console.log("[commit-recognize] Sending to AI for processing...");
                 const $recognizedData = await initiateAnalyzeAndRecognizeData(
-                    isImage ? source : (text?.trim?.() || source),
-                    customInstruction as string
+                    dataToProcess,
+                    customInstruction
                 );
 
-                // Determine final data type from AI response or detection
+                console.log("[commit-recognize] AI response:", {
+                    ok: $recognizedData?.ok,
+                    hasData: !!$recognizedData?.data,
+                    dataPreview: $recognizedData?.data?.substring?.(0, 100)
+                });
+
+                // Determine output format
                 const finalType: DetectedDataType = $recognizedData?.ok
-                    ? (detection.type !== "unknown" ? detection.type : "markdown")
+                    ? (isImage ? 'markdown' : (detection.type !== 'unknown' ? detection.type : 'markdown'))
                     : detection.type;
 
-                const ext  = getExtensionForType(finalType);
-                const name = `pasted-${subId}${ext}`;
+                const ext = getExtensionForType(finalType);
+                const name = fileName
+                    ? `${fileName.replace(/\.[^.]+$/, '')}-${subId}${ext}`
+                    : `pasted-${subId}${ext}`;
                 const path = `${directory}${name}`;
 
                 results.push({
@@ -160,31 +216,35 @@ export const commitRecognize = (e: any): Promise<any[] | void> => {
                         originalType: detection.type,
                         confidence: detection.confidence,
                         hints: detection.hints,
-                        aiProcessed: true
+                        aiProcessed: true,
+                        isImage
                     }
                 });
             } catch (err) {
+                console.error("[commit-recognize] Processing error:", err);
                 results.push({
                     status: 'error',
                     error: String(err),
                     subId,
-                    dataType: detection.type,
-                    detection
+                    fileName
                 });
             }
         }
 
-        //
+        // Persist and broadcast results
         await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
 
-        // needs to delay to make sure the results are pushed to the IDB queue
         tryToTimeout(() => {
-            try { controlChannel.postMessage({ type: 'commit-to-clipboard', results: results as any[] }) } catch (e) { console.warn(e); }
+            try {
+                controlChannel.postMessage({ type: 'commit-to-clipboard', results });
+            } catch (e) { console.warn(e); }
         }, 100);
 
-        //
         return results;
-    })?.catch?.(console.warn.bind(console));
+    })?.catch?.((error) => {
+        console.error("[commit-recognize] Fatal error:", error);
+        return [];
+    });
 }
 
 //

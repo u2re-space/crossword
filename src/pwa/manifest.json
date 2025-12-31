@@ -30,7 +30,19 @@
             "text": "text",
             "url": "url",
             "files": [
-                { "name": "files", "accept": ["image/*", "text/*", "application/pdf", "application/json"] }
+                {
+                    "name": "mapped_files",
+                    "accept": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp",
+                        "image/*",
+                        "image/svg+xml",
+                        "text/*",
+                        "application/pdf",
+                        "application/json"
+                    ]
+                }
             ]
         }
     },

@@ -5,6 +5,91 @@ import "./choice.scss";
 import { initPWAClipboard } from "./shared/pwa-copy";
 import { showToast } from "./shared/Toast";
 
+// ============================================================================
+// SERVICE WORKER INITIALIZATION
+// ============================================================================
+
+let _swRegistration: ServiceWorkerRegistration | null = null;
+let _swInitPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+
+/**
+ * Initialize PWA service worker early in the page lifecycle
+ * This ensures share target and other PWA features work correctly
+ */
+const initServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+    // Return cached promise if already initializing
+    if (_swInitPromise) return _swInitPromise;
+
+    _swInitPromise = (async () => {
+        // Skip in extension context
+        if (typeof window === 'undefined') return null;
+        if (window.location.protocol === 'chrome-extension:') return null;
+        if (!('serviceWorker' in navigator)) {
+            console.warn('[PWA] Service workers not supported');
+            return null;
+        }
+
+        try {
+            // Determine SW path based on context
+            const swPath = './apps/cw/sw.js';
+            const swUrl = new URL(swPath, window.location.origin).href;
+
+            console.log('[PWA] Registering service worker:', swUrl);
+
+            const registration = await navigator.serviceWorker.register(swUrl, {
+                scope: '/',
+                type: 'module',
+                updateViaCache: 'none'
+            });
+
+            _swRegistration = registration;
+
+            // Handle updates
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('[PWA] New service worker available');
+                            showToast({ message: 'App update available', kind: 'info' });
+                        }
+                    });
+                }
+            });
+
+            // Check for updates periodically (every 30 minutes)
+            setInterval(() => {
+                registration.update().catch(console.warn);
+            }, 30 * 60 * 1000);
+
+            console.log('[PWA] Service worker registered successfully');
+            return registration;
+        } catch (error) {
+            console.error('[PWA] Service worker registration failed:', error);
+            return null;
+        }
+    })();
+
+    return _swInitPromise;
+};
+
+/**
+ * Get current service worker registration
+ */
+export const getServiceWorkerRegistration = () => _swRegistration;
+
+/**
+ * Wait for service worker to be ready
+ */
+export const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+    if (_swRegistration) return _swRegistration;
+    return _swInitPromise || initServiceWorker();
+};
+
+// ============================================================================
+// BROADCAST RECEIVERS
+// ============================================================================
+
 let _receiversCleanup: (() => void) | null = null;
 
 const initReceivers = () => {
@@ -228,6 +313,10 @@ export const ChoiceScreen = (opts: {
 };
 
 export default async function frontend(mountElement: HTMLElement) {
+  // Initialize service worker EARLY (don't await - runs in parallel)
+  // This ensures PWA features like share target are available immediately
+  initServiceWorker();
+
   // Initialize broadcast receivers for service worker communication
   initReceivers();
 

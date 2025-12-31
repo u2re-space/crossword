@@ -1,33 +1,47 @@
 import { registerRoute } from "workbox-routing";
 import { controlChannel, detectInputType, initiateConversionProcedure, tryToTimeout, callBackendIfAvailable, getActiveCustomInstruction } from "./shared";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
-import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
-import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
+import { queueEntityForWriting, pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
 import { tryParseJSON } from "@rs-core/utils/AIResponseParser";
+import { fileToDataUrl, isProcessableImage, isImageDataUrl } from "../lib/ImageUtils";
 
 //
 export const commitAnalyze = (e: any): Promise<any[] | void> => {
     return Promise.try(async () => {
         const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
+        if (!fd) {
+            console.warn("[commit-analyze] Failed to parse FormData");
+            return [];
+        }
+
         const inputs = {
-            title: fd.get('title'),
-            text: fd.get('text'),
-            url: fd.get('url'),
-            files: fd.getAll('files'), // File[]
-            customInstruction: fd.get('customInstruction') as string
+            title: String(fd.get('title') || '').trim(),
+            text: String(fd.get('text') || '').trim(),
+            url: String(fd.get('url') || '').trim(),
+            files: fd.getAll('files') as File[],
+            customInstruction: String(fd.get('customInstruction') || '').trim()
         };
 
+        console.log("[commit-analyze] Inputs received:", {
+            title: inputs.title || '(none)',
+            text: inputs.text?.substring(0, 50) || '(none)',
+            url: inputs.url || '(none)',
+            filesCount: inputs.files?.length || 0,
+            files: inputs.files?.map(f => ({ name: f?.name, type: f?.type, size: f?.size }))
+        });
+
         // Use custom instruction from form data, or load from settings if not provided
-        let customInstruction: string = inputs.customInstruction?.trim?.() || (await getActiveCustomInstruction()) || "";
-        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction?.substring?.(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
+        const customInstruction: string = inputs.customInstruction || (await getActiveCustomInstruction()) || "";
+        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
 
         // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/analyze", {
             title: inputs.title,
             text: inputs.text,
             url: inputs.url,
-            customInstruction: customInstruction as string
+            customInstruction
         });
+
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
             tryToTimeout(() => {
@@ -36,88 +50,138 @@ export const commitAnalyze = (e: any): Promise<any[] | void> => {
             return backendResponse.results;
         }
 
-        //
-        const files: any[] = (Array.isArray(inputs.files) && inputs.files.length) ? inputs.files : [inputs?.text || inputs?.url || null];
+        // Build list of sources to process
+        const sources: Array<{ source: File | string; isImage: boolean; fileName?: string }> = [];
+
+        // Add files first
+        if (inputs.files?.length > 0) {
+            for (const file of inputs.files) {
+                if (file instanceof File && file.size > 0) {
+                    sources.push({
+                        source: file,
+                        isImage: isProcessableImage(file),
+                        fileName: file.name
+                    });
+                }
+            }
+        }
+
+        // Add text/url as fallback if no files
+        if (sources.length === 0) {
+            const textOrUrl = inputs.text || inputs.url;
+            if (textOrUrl) {
+                sources.push({
+                    source: textOrUrl,
+                    isImage: false
+                });
+            }
+        }
+
+        if (sources.length === 0) {
+            console.log("[commit-analyze] No sources to process");
+            return [];
+        }
+
         const results: any[] = [];
 
-        //
-        for (const file of files) {
-            const source = file || ((inputs?.text?.trim?.() || inputs?.url?.trim?.())?.trim?.() || null);
-            if (!source) continue;
+        for (const { source, isImage, fileName } of sources) {
+            try {
+                let dataToProcess: string | File | Blob;
+                let text = '';
 
-            // Extract text content based on source type
-            let text: string = "";
-            let isImage = false;
-
-            //
-            if (source instanceof File || source instanceof Blob) {
-                // Check if it's an image first
-                if (source.type?.startsWith?.("image/")) {
-                    isImage = true;
+                if (source instanceof File || source instanceof Blob) {
+                    if (isImage) {
+                        // For images, convert to data URL for GPT vision API
+                        console.log("[commit-analyze] Processing image:", fileName);
+                        dataToProcess = await fileToDataUrl(source);
+                    } else {
+                        // For non-image files, extract text content
+                        text = await source.text?.()?.catch?.(() => "") || "";
+                        dataToProcess = text;
+                    }
+                } else if (typeof source === 'string') {
+                    // Check if it's a data URL (image)
+                    if (isImageDataUrl(source)) {
+                        dataToProcess = source;
+                    } else if (URL.canParse(source, globalThis?.location?.origin || undefined)) {
+                        // It's a URL - fetch content
+                        text = await fetch(source).then(res => res.text()).catch(() => "");
+                        dataToProcess = text || source;
+                    } else {
+                        text = source;
+                        dataToProcess = source;
+                    }
                 } else {
-                    text = await source.text?.()?.catch?.(() => "") || "";
-                }
-            } else if (typeof source === "string") {
-                if (source == (inputs?.text?.trim?.() || null)) {
-                    text = source;
-                } else if (URL.canParse(source?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
-                    // It's a URL - try to fetch content
-                    text = await fetch(source)
-                        ?.then?.((res) => res.text())
-                        ?.catch?.(() => "") || "";
-                } else {
-                    text = source;
-                }
-            }
-
-            // Detect input type with comprehensive analysis
-            const detection = detectInputType(text?.trim?.() || null, source);
-            console.log("[commit-recognize] Detection result:", {
-                type: detection.type,
-                confidence: detection.confidence,
-                needsAI: detection.needsAI,
-                hints: detection.hints
-            });
-
-            //
-            if (text?.trim?.() && detection.type === "json" && detection.confidence >= 0.7) {
-                let json: any = text?.trim?.() && typeof text == "string" ? tryParseJSON<any>(text?.trim?.() || "[]") as any : [];
-                json = (json as any)?.entities || (json as any)?.data || (json as any)?.result || json;
-
-                // detect entity types by JSON
-                let types = json ? detectEntityTypeByJSON(json) : [];
-                if (types != null && types?.length && types?.filter?.((type) => (type && type != "unknown"))?.length) {
-                    json?.map?.((entity, i) => {
-                        const type = types[i];
-                        if (type && type != "unknown") results.push(queueEntityForWriting(entity, type, "json"));
-                    });
                     continue;
                 }
-            }
 
-            //
-            try {
-                // Pass custom instruction to conversion procedure
-                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source, customInstruction as string);
-                resultsRaw?.entities?.forEach((entity) => {
-                    results.push(queueEntityForWriting(entity, (entity as any)?.type as string, "json"));
+                // Detect input type for non-image content
+                const detection = isImage
+                    ? { type: 'image' as const, confidence: 0.99, needsAI: true, hints: ['image file'] }
+                    : detectInputType(text || null, source instanceof File ? source : null);
+
+                console.log("[commit-analyze] Detection result:", {
+                    type: detection.type,
+                    confidence: detection.confidence,
+                    needsAI: detection.needsAI,
+                    isImage
                 });
+
+                // Try to process JSON directly without AI
+                if (text?.trim() && detection.type === "json" && detection.confidence >= 0.7) {
+                    let json: any = tryParseJSON<any>(text.trim());
+                    json = json?.entities || json?.data || json?.result || json;
+
+                    if (Array.isArray(json)) {
+                        const types = detectEntityTypeByJSON(json);
+                        const validTypes = types?.filter((type: string) => type && type !== "unknown");
+
+                        if (validTypes?.length > 0) {
+                            json.forEach((entity: any, i: number) => {
+                                const type = types[i];
+                                if (type && type !== "unknown") {
+                                    results.push(queueEntityForWriting(entity, type, "json"));
+                                }
+                            });
+                            continue;
+                        }
+                    }
+                }
+
+                // Pass to conversion procedure (handles images via AI)
+                console.log("[commit-analyze] Sending to AI for entity extraction...");
+                const resultsRaw = await initiateConversionProcedure(
+                    isImage ? (dataToProcess as string) : (text?.trim() || dataToProcess),
+                    customInstruction
+                );
+
+                if (resultsRaw?.entities?.length > 0) {
+                    resultsRaw.entities.forEach((entity: any) => {
+                        results.push(queueEntityForWriting(entity, entity?.type || 'unknown', "json"));
+                    });
+                } else {
+                    console.log("[commit-analyze] No entities extracted from source:", fileName || '(text)');
+                }
             } catch (err) {
+                console.error("[commit-analyze] Processing error:", err);
                 results.push({ status: 'error', error: String(err) });
             }
         }
 
-        //
+        // Persist and broadcast results
         await pushToIDBQueue(results)?.catch?.(console.warn.bind(console));
 
-        // needs to delay to make sure the results are pushed to the IDB queue
         tryToTimeout(() => {
-            try { controlChannel.postMessage({ type: 'commit-result', results: results as any[] }) } catch (e) { console.warn(e); }
+            try {
+                controlChannel.postMessage({ type: 'commit-result', results });
+            } catch (e) { console.warn(e); }
         }, 100);
 
-        //
         return results;
-    })?.catch?.(console.warn.bind(console));
+    })?.catch?.((error) => {
+        console.error("[commit-analyze] Fatal error:", error);
+        return [];
+    });
 }
 
 //

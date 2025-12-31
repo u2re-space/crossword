@@ -13,6 +13,29 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { searchForWorkspaceRoot } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
+/**
+ * Plugin to handle SPA fallback routes (share-target, etc.)
+ * Rewrites specific routes to index.html so service worker can intercept
+ */
+const spaFallbackPlugin = () => ({
+    name: 'spa-fallback-routes',
+    configureServer(server) {
+        // Must be added before Vite's default middleware
+        server.middlewares.use((req, res, next) => {
+            const url = req.url || '';
+            const pathname = url.split('?')[0];
+
+            // Handle share-target routes (redirect to index.html for SW to intercept)
+            if (pathname === '/share-target' || pathname === '/share_target') {
+                console.log(`[SPA Fallback] Rewriting ${pathname} to /index.html`);
+                req.url = '/index.html';
+            }
+
+            next();
+        });
+    }
+});
+
 //
 function normalizeAliasPattern(pattern) {
     return pattern.replace(/\/\*+$/, '');
@@ -64,6 +87,8 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'production';
     const plugins = [
+        // SPA fallback for PWA routes (share-target, etc.)
+        spaFallbackPlugin(),
         /*jspmPlugin({
             downloadDeps: true,
             inputMap: true

@@ -38,6 +38,31 @@ export const initiateAnalyzeAndRecognizeData = async (
     dataSource: string | Blob | File | any,
     customInstruction?: string
 ) => {
+    // Determine source type for logging
+    let sourceType = 'unknown';
+    let sourceInfo = '';
+
+    if (dataSource instanceof File) {
+        sourceType = 'File';
+        sourceInfo = `${dataSource.name} (${dataSource.type}, ${dataSource.size}b)`;
+    } else if (dataSource instanceof Blob) {
+        sourceType = 'Blob';
+        sourceInfo = `${dataSource.type}, ${dataSource.size}b`;
+    } else if (typeof dataSource === 'string') {
+        if (dataSource.startsWith('data:image/')) {
+            sourceType = 'ImageDataURL';
+            sourceInfo = `${dataSource.substring(0, 50)}... (${dataSource.length} chars)`;
+        } else if (dataSource.startsWith('http://') || dataSource.startsWith('https://')) {
+            sourceType = 'URL';
+            sourceInfo = dataSource.substring(0, 100);
+        } else {
+            sourceType = 'Text';
+            sourceInfo = `${dataSource.substring(0, 50)}... (${dataSource.length} chars)`;
+        }
+    }
+
+    console.log("[initiateAnalyzeAndRecognizeData] Source:", sourceType, sourceInfo);
+
     // Get custom instruction: use provided or fall back to active from settings
     const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
 
@@ -54,7 +79,12 @@ export const initiateAnalyzeAndRecognizeData = async (
         console.log("[initiateAnalyzeAndRecognizeData] callback response:", response);
     }, undefined, options);
 
-    console.log("[initiateAnalyzeAndRecognizeData] final result:", result);
+    console.log("[initiateAnalyzeAndRecognizeData] final result:", {
+        ok: result?.ok,
+        hasData: !!result?.data,
+        dataLength: result?.data?.length,
+        error: result?.error
+    });
 
     return result;
 }
