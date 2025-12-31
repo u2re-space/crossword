@@ -47,6 +47,7 @@ import {
 } from "./AIDataSelector";
 
 import { resolveEntity } from "./EntityItemResolve";
+import { loadSettings } from "@rs-core/config/Settings";
 
 //
 export type OrchestratorConfig = {
@@ -99,7 +100,7 @@ export class AIOrchestrator {
     //
     async initialize(): Promise<boolean> {
         try {
-            const settings = this.config.apiKey ? null : await getRuntimeSettings();
+            const settings = this.config.apiKey ? null : await loadSettings();
             const apiKey = this.config.apiKey || settings?.ai?.apiKey;
 
             if (!apiKey) {

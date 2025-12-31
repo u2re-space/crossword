@@ -11,9 +11,11 @@ import {
     getActiveCustomInstruction
 } from "./shared";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
+import { loadSettings } from "@rs-core/config/Settings";
+import { getRuntimeSettings } from "@rs-core/config/RuntimeSettings";
 
 //
-export const commitRecognize = (e: any) => {
+export const commitRecognize = (e: any): Promise<any[] | void> => {
     return Promise.try(async () => {
         const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
         const inputs = {
@@ -25,12 +27,15 @@ export const commitRecognize = (e: any) => {
             customInstruction: fd.get('customInstruction') as string
         };
 
-        // Use custom instruction from form data, or load from settings if not provided
-        let customInstruction = inputs.customInstruction?.trim?.() || "";
-        if (!customInstruction) {
-            customInstruction = await getActiveCustomInstruction();
+        //
+        let settings;
+        try {
+            settings = await getRuntimeSettings();
+        } catch {
+            settings = await loadSettings();
         }
-        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
+        let customInstruction: string = inputs.customInstruction?.trim?.() || (await getActiveCustomInstruction(settings)) || "";
+        console.log("[commit-recognize] Custom instruction:", customInstruction ? `"${customInstruction?.substring?.(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
 
         // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/recognize", {
@@ -38,7 +43,7 @@ export const commitRecognize = (e: any) => {
             text: inputs.text,
             url: inputs.url,
             targetDir: inputs.targetDir,
-            customInstruction: customInstruction || undefined
+            customInstruction: customInstruction as string
         });
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
@@ -130,7 +135,7 @@ export const commitRecognize = (e: any) => {
                 // Pass custom instruction to AI recognition
                 const $recognizedData = await initiateAnalyzeAndRecognizeData(
                     isImage ? source : (text?.trim?.() || source),
-                    customInstruction || undefined
+                    customInstruction as string
                 );
 
                 // Determine final data type from AI response or detection

@@ -3,29 +3,9 @@ import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routi
 import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
-
-//
-import { makeCommitAnalyze } from './routers/commit-analyze';
-import { commitRecognize, makeCommitRecognize } from './routers/commit-recognize';
-import { makeTimeline } from './routers/make-timeline';
+import { getRuntimeSettings } from '@rs-core/config/RuntimeSettings';
+import { commitRecognize } from './routers/commit-recognize';
 import { commitAnalyze } from './routers/commit-analyze';
-import { UnifiedAIService } from '@rs-core/service/AI-ops/RecognizeData';
-import { setRuntimeSettingsProvider } from '@rs-core/config/RuntimeSettings';
-import { loadSettings } from '@rs-core/config/Settings';
-
-// CRITICAL: Set runtime settings provider for service worker context
-// Service worker needs direct access to settings storage
-setRuntimeSettingsProvider(async () => {
-    console.log("[SW] Loading settings for service worker context");
-    try {
-        const settings = await loadSettings();
-        console.log("[SW] Settings loaded:", !!settings, settings?.ai ? "AI config present" : "No AI config");
-        return settings;
-    } catch (e) {
-        console.error("[SW] Failed to load settings:", e);
-        return null;
-    }
-});
 
 //
 // @ts-ignore
@@ -34,13 +14,6 @@ if (manifest) {
     cleanupOutdatedCaches();
     precacheAndRoute(manifest);
 }
-
-//
-const routes = [
-    makeCommitAnalyze,
-    makeCommitRecognize,
-    makeTimeline
-].map((makeRoute) => makeRoute());
 
 // Broadcast channel names (matching frontend/shared modules)
 const CHANNELS = {
@@ -67,14 +40,6 @@ const sendToast = (message: string, kind: 'info' | 'success' | 'warning' | 'erro
     broadcast(CHANNELS.TOAST, { type: 'show-toast', options: { message, kind, duration } });
 };
 
-/**
- * Request clipboard copy operation in frontend
- * Frontend must have initClipboardReceiver() active to receive
- * @param silentOnError - if true, don't show error toast on failure (for background operations)
- */
-const sendCopyRequest = (data: unknown, showFeedback = true, silentOnError = false): void => {
-    broadcast(CHANNELS.CLIPBOARD, { type: 'copy', data, options: { showFeedback, silentOnError } });
-};
 
 /**
  * Notify frontend about received share target data
@@ -97,7 +62,7 @@ const tryParseJSON = (data: unknown): unknown => {
     }
 };
 
-const extractRecognizedContent = (data: unknown): unknown => {
+export const extractRecognizedContent = (data: unknown): unknown => {
     // If it's already a string that's not JSON, return as-is
     if (typeof data === 'string') {
         const parsed = tryParseJSON(data);
@@ -148,123 +113,236 @@ const extractRecognizedContent = (data: unknown): unknown => {
     return data;
 };
 
-// Share target handler - works independently of mode/settings
+// Share target handler with optional AI processing
+// Note: Share targets only work when PWA is installed and service worker is active
 registerRoute(({ url }) => url?.pathname == "/share-target", async (e: any) => {
-    const settings = await loadSettings().catch(() => null);
+    const request = e?.request ?? e?.event?.request ?? e;
+
+    console.log('[ShareTarget] Handler called for:', request?.url);
+    console.log('[ShareTarget] Service worker controlling clients:', !!(self as any).clients);
 
     try {
-        // Clone request before reading - body can only be consumed once
-        const clonedRequest = e.request.clone();
-        const fd = await e.request.formData().catch(() => null);
+        let fd = await request?.formData?.().catch?.((error: any) => {
+            console.error('[ShareTarget] Failed to parse FormData:', error);
+            return null;
+        });
+
+        // Fallback: try to parse as JSON if FormData fails
         if (!fd) {
-            return new Response(null, { status: 302, headers: { Location: '/' } });
+            try {
+                const text = await request?.text?.().catch?.((error: any) => {
+                    console.error('[ShareTarget] Failed to parse text:', error);
+                    return null;
+                });
+                if (text?.trim?.()) {
+                    const jsonData = tryParseJSON(text) as Record<string, unknown>;
+                    console.log('[ShareTarget] Received JSON data:', jsonData);
+                    // Create a mock FormData from JSON
+                    fd = new FormData() as FormData;
+                    if (jsonData?.title) fd?.append?.('title', jsonData?.title as unknown as string);
+                    if (jsonData?.text) fd?.append?.('text', jsonData?.text as unknown as string);
+                    if (jsonData?.url) fd?.append?.('url', jsonData?.url as unknown as string);
+                    // Note: JSON can't contain actual File objects
+                }
+            } catch (e: any) {
+                console.warn('[ShareTarget] Could not parse request as FormData or JSON:', e);
+                return new Response(null, { status: 302, headers: { Location: '/' } });
+            }
+        }
+
+        console.log('[ShareTarget] FormData received, content-type:', request?.headers?.get?.('content-type') ?? '');
+
+        // Debug: Log all form data keys and values
+        console.log('[ShareTarget] FormData keys:', Array.from(fd?.keys?.() || []));
+        const allEntries = Array.from(fd?.entries?.() || []) as [string, FormDataEntryValue][];
+        for (const [key, value] of allEntries) {
+            if (value instanceof File) {
+                console.log(`[ShareTarget] ${key}: File(${value?.name}, ${value?.size} bytes, ${value?.type})`);
+            } else {
+                console.log(`[ShareTarget] ${key}: ${value}`);
+            }
+        }
+
+        // Collect all files from any field name (some browsers might use different names)
+        const allFiles: File[] = [];
+        const namedFiles = fd?.getAll?.('files') as File[] || [];
+        for (const [, value] of allEntries) {
+            if (value instanceof File && !(namedFiles || []).includes(value)) {
+                allFiles.push(value);
+            }
+        }
+
+        // Combine named files with any additional files
+        const combinedFiles = [...(namedFiles || []), ...(allFiles || [])];
+
+        // Extract text from text files if no text field provided
+        let extractedText = fd?.get?.('text') || '';
+        if (!extractedText && allFiles?.length > 0) {
+            // Try to extract text from text files
+            for (const file of allFiles || []) {
+                if (file?.type?.startsWith?.('text/') || file?.type === 'application/json') {
+                    try {
+                        const textContent = await file?.text?.().catch?.((error: any) => {
+                            console.error('[ShareTarget] Failed to read text file:', file?.name, error);
+                            return '';
+                        });
+                        if (textContent?.trim?.()) {
+                            extractedText = textContent?.trim?.() || '';
+                            break; // Use first text file found
+                        }
+                    } catch (e: any) {
+                        console.warn('[ShareTarget] Failed to read text file:', file?.name, e);
+                    }
+                }
+            }
         }
 
         const shareData = {
-            title: fd.get('title') || '',
-            text: fd.get('text') || '',
-            url: fd.get('url') || '',
-            files: fd.getAll('files') || [],
+            title: fd?.get?.('title') || '',
+            text: extractedText,
+            url: fd?.get?.('url') || '',
+            files: combinedFiles || [],
             timestamp: Date.now()
         };
 
-        // Store share data for client retrieval
+        console.log('[ShareTarget] Processed data:', {
+            title: shareData?.title,
+            text: shareData?.text?.substring?.(0, 50) + (shareData?.text?.length > 50 ? '...' : ''),
+            url: shareData?.url,
+            filesCount: shareData?.files?.length || 0,
+            filesDetails: shareData?.files?.map?.((f: File) => ({ name: f?.name, size: f?.size, type: f?.type })) || []
+        });
+
+        // Store share data for client retrieval (simple key-value storage)
         try {
-            const cache = await (self as any).caches?.open?.('share-target-data');
-            await cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
-                headers: { 'Content-Type': 'application/json' }
-            }));
-        } catch (e) { console.warn('[ShareTarget] Cache store failed:', e); }
-
-        // Broadcast share data to clients
-        notifyShareReceived(shareData);
-
-        // If AI settings available, process in background
-        if (settings?.ai?.apiKey) {
-            console.log('[ShareTarget] API key found, starting AI processing...');
-            sendToast('Processing with AI...', 'info', 2000);
-
-            const processPromise = (async () => {
-                try {
-                    const mode = settings?.ai?.shareTargetMode || 'recognize';
-
-                    // Get custom instruction for processing using unified service
-                    const customInstruction = await UnifiedAIService.getActiveCustomInstruction();
-                    console.log(`[ShareTarget] Mode: ${mode}, custom instruction:`, customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)");
-
-                    // Create synthetic form data for the commit routes
-                    const formData = new FormData();
-                    formData.append('title', shareData.title || '');
-                    formData.append('text', shareData.text || '');
-                    formData.append('url', shareData.url || '');
-                    formData.append('customInstruction', customInstruction);
-                    if (shareData.files) {
-                        shareData.files.forEach((file: File, index: number) => {
-                            formData.append('files', file);
-                        });
-                    }
-
-                    // Create synthetic event with the form data
-                    const syntheticEvent = { request: { formData: () => Promise.resolve(formData) } };
-
-                    console.log(`[ShareTarget] Processing with commit route...`);
-
-                    let results: any[];
-
-                    if (mode === 'analyze') {
-                        console.log('[ShareTarget] Starting commitAnalyze...');
-                        results = await commitAnalyze?.(syntheticEvent)?.catch?.((err) => {
-                            console.error('[ShareTarget] commitAnalyze error:', err);
-                            return [];
-                        }) || [];
-                        console.log('[ShareTarget] Analyze results:', results, 'length:', results?.length);
-
-                        // For analyze mode, just show completion
-                        if (results?.length) {
-                            sendToast('Content analyzed and stored', 'success');
-                        } else {
-                            sendToast('Analysis completed but no data extracted', 'warning');
-                        }
-                    } else {
-                        console.log('[ShareTarget] Starting commitRecognize...');
-                        results = await commitRecognize?.(syntheticEvent)?.catch?.((err) => {
-                            console.error('[ShareTarget] commitRecognize error:', err);
-                            return [];
-                        }) || [];
-                        console.log('[ShareTarget] Recognize results:', results, 'length:', results?.length);
-
-                        // For recognize mode, copy to clipboard (this will be handled by the commit route via broadcast)
-                        // The commit route already handles clipboard copying for recognize mode
-                        if (results?.length) {
-                            sendToast('Content recognized - tap to copy', 'success');
-                        } else {
-                            sendToast('Recognition completed but no data extracted', 'warning');
-                        }
-                    }
-
-                    return results;
-                } catch (err) {
-                    console.error('[ShareTarget] Processing failed:', err);
-                    sendToast(`Recognition failed: ${err}`, 'error');
-                    return [];
-                }
-            })();
-
-            // Don't await - process in background
-            e.waitUntil?.(processPromise);
-        } else {
-            // No AI settings - just store for manual handling
-            console.log('[ShareTarget] No API key configured');
-            sendToast('Content received. Configure AI settings to enable recognition.', 'info', 4000);
+            const cache = await (self as any).caches?.open?.('share-target-data')?.catch?.((error: any) => {
+                console.error('[ShareTarget] Failed to open cache:', error);
+                return null;
+            });
+            if (cache) {
+                await cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+        } catch (e: any) {
+            console.warn('[ShareTarget] Cache store failed:', e);
         }
 
-        // Redirect to index with action parameter
-        const action = settings?.ai?.shareTargetMode || 'recognize';
+        // Broadcast share data to clients (like CRX extension)
+        notifyShareReceived?.(shareData) ?? console.log('[ShareTarget] Broadcast function not available');
+
+        // Check if we should process with AI (using runtime settings)
+        let aiProcessed = false;
+        let hasApiKey = false;
+        try {
+            const settings = await getRuntimeSettings()?.catch?.((error: any) => {
+                console.error('[ShareTarget] Failed to get runtime settings:', error);
+                return null;
+            });
+            hasApiKey = !!settings?.ai?.apiKey;
+            const mode = settings?.ai?.shareTargetMode || 'recognize';
+
+            // Check if we have content to process
+            const hasTextContent = shareData?.text?.trim?.();
+            const hasUrlContent = shareData?.url?.trim?.();
+            const hasFileContent = shareData?.files?.some?.((f: File) => f?.size > 0);
+
+            if (hasApiKey && (hasTextContent || hasUrlContent || hasFileContent)) {
+                console.log('[ShareTarget] AI processing enabled, mode:', mode);
+                console.log('[ShareTarget] Content to process:', {
+                    hasText: !!hasTextContent,
+                    hasUrl: !!hasUrlContent,
+                    hasFile: !!hasFileContent,
+                    fileCount: shareData?.files?.length || 0,
+                    files: shareData?.files?.map?.((f: File) => ({
+                        name: f?.name,
+                        type: f?.type,
+                        size: f?.size
+                    }))
+                });
+
+                // Get custom instruction
+                const instructions = settings?.ai?.customInstructions?.map?.((i: any) => i.instruction?.trim?.()) || [];
+                const activeId = settings?.ai?.activeInstructionId;
+                const activeInstruction = activeId ? instructions?.find?.((i: string) => i === activeId) : null;
+                const customInstruction = activeInstruction || "";
+                console.log('[ShareTarget] Custom instruction:', customInstruction ? 'present' : 'none');
+
+                // Prepare form data for commit routes
+                const formData = new FormData();
+                formData?.append?.('title', shareData?.title || '');
+                formData?.append?.('text', shareData?.text || '');
+                formData?.append?.('url', shareData?.url || '');
+                formData?.append?.('customInstruction', customInstruction as string);
+
+                // Only include files that aren't text files we already extracted from
+                if (shareData?.files) {
+                    shareData?.files?.forEach?.((file: File) => {
+                        // Skip text files if we already extracted their content
+                        const isTextFile = file?.type?.startsWith?.('text/') || file?.type === 'application/json';
+                        const shouldInclude = !isTextFile || !shareData?.text?.trim?.();
+                        if (shouldInclude) {
+                            console.log('[ShareTarget] Including file for AI processing:', {
+                                name: file?.name,
+                                type: file?.type,
+                                size: file?.size
+                            });
+                            formData?.append?.('files', file);
+                        } else {
+                            console.log('[ShareTarget] Skipping text file (content already extracted):', file?.name);
+                        }
+                    });
+                }
+
+                // Create synthetic event for commit routes
+                const syntheticEvent = { request: { formData: () => Promise.resolve(formData) } };
+
+                // Process with appropriate commit route
+                if (mode === 'analyze') {
+                    console.log('[ShareTarget] Processing with commitAnalyze...');
+                    const results = await commitAnalyze?.(syntheticEvent)?.catch?.((err: any) => {
+                        console.error('[ShareTarget] commitAnalyze error:', err);
+                        console.error('[ShareTarget] Error details:', err?.message || err);
+                        return [];
+                    });
+                    console.log('[ShareTarget] commitAnalyze results:', results);
+                    if (results?.length) {
+                        sendToast('Content analyzed and processed', 'success');
+                        aiProcessed = true;
+                    } else {
+                        sendToast('Analysis completed but no results', 'warning');
+                    }
+                } else {
+                    console.log('[ShareTarget] Processing with commitRecognize...');
+                    const results = await commitRecognize?.(syntheticEvent)?.catch?.((err: any) => {
+                        console.error('[ShareTarget] commitRecognize error:', err);
+                        console.error('[ShareTarget] Error details:', err?.message || err);
+                        return [];
+                    });
+                    console.log('[ShareTarget] commitRecognize results:', results);
+                    if (results?.length) {
+                        sendToast('Content recognized and copied', 'success');
+                        aiProcessed = true;
+                    } else {
+                        sendToast('Recognition completed but no results', 'warning');
+                    }
+                }
+            }
+        } catch (aiError: any) {
+            console.warn('[ShareTarget] AI processing failed:', aiError);
+        }
+
+        // Show appropriate notification
+        if (!aiProcessed) {
+            sendToast('Content received' + (hasApiKey ? ' (configure AI for auto-processing)' : ''), 'info');
+        }
+
+        // Redirect to app with shared flag
         return new Response(null, {
             status: 302,
-            headers: { Location: `/?action=${action}&shared=1` }
+            headers: { Location: '/?shared=1' }
         });
-    } catch (err) {
+    } catch (err: any) {
         console.warn('[ShareTarget] Handler error:', err);
         return new Response(null, { status: 302, headers: { Location: '/' } });
     }
@@ -288,7 +366,7 @@ setDefaultHandler(new CacheFirst({
 
 // Assets (JS/CSS)
 registerRoute(
-    ({ request }) => request.destination === 'script' || request.destination === 'style',
+    ({ request }) => request?.destination === 'script' || request?.destination === 'style',
     new StaleWhileRevalidate({
         cacheName: 'assets-cache',
         fetchOptions: {
@@ -307,7 +385,7 @@ registerRoute(
 
 // Images
 registerRoute(
-    ({ request }) => request.destination === 'image',
+    ({ request }) => request?.destination === 'image',
     new CacheFirst({
         cacheName: 'image-cache',
         fetchOptions: {
@@ -337,10 +415,10 @@ setCatchHandler(({ event }: any): Promise<Response> => {
 })
 
 // Notifications
-self.addEventListener('notificationclick', (event: any) => {
-    event.notification.close();
-    event.waitUntil(
-        (self as any).clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList: any) => {
+self.addEventListener?.('notificationclick', (event: any) => {
+    event?.notification?.close?.();
+    event?.waitUntil?.(
+        (self as any).clients?.matchAll?.({ type: 'window', includeUncontrolled: true })?.then?.((clientList: any) => {
             // If a window is already open, focus it
             for (const client of clientList) {
                 if (client.url && 'focus' in client) {
@@ -348,24 +426,105 @@ self.addEventListener('notificationclick', (event: any) => {
                 }
             }
             // Otherwise open a new window
-            if ((self as any).clients.openWindow) {
-                return (self as any).clients.openWindow('/');
+            if ((self as any).clients?.openWindow) {
+                return (self as any).clients?.openWindow?.('/');
             }
         })
     );
 });
 
 // @ts-ignore // lifecycle - enable navigation preload for faster loads
-self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
-self.addEventListener('activate', (e) => {
-    e.waitUntil(
+self.addEventListener?.('install', (e: any) => { e?.waitUntil?.(self?.skipWaiting?.()); });
+self.addEventListener?.('activate', (e: any) => {
+    e?.waitUntil?.(
         Promise.all([
-            (self as any).clients.claim(),
+            (self as any).clients?.claim?.(),
             // Enable Navigation Preload if supported
-            (self as any).registration?.navigationPreload?.enable?.()
-        ])
+            (self as any).registration?.navigationPreload?.enable?.() ?? Promise.resolve()
+        ]) ?? Promise.resolve()
     );
 });
+
+// Fallback: Manual fetch event handler for share target (in case workbox routing fails)
+self.addEventListener?.('fetch', (event: any) => {
+    const request = event?.request ?? event?.event?.request ?? event;
+    const requestUrl = new URL(request?.url || '');
+    if (requestUrl.pathname === '/share-target' && request?.method === 'POST') {
+        console.log('[ShareTarget] Manual fetch handler triggered');
+        event?.respondWith?.(handleShareTargetRequest(request));
+    }
+});
+
+// Share target request handler function
+async function handleShareTargetRequest(event: any): Promise<Response> {
+    const request = event?.request ?? event?.event?.request ?? event;
+    const headers = request?.headers ?? event?.event?.request?.headers ?? event?.headers ?? {};
+    const contentType = headers?.get?.('content-type') ?? '';
+
+    console.log('[ShareTarget] Manual handler called for:', request.url);
+    console.log('[ShareTarget] Service worker controlling clients:', !!(self as any).clients);
+
+    try {
+        // Clone request before reading - body can only be consumed once
+        const fd = await request?.formData?.().catch?.((error: any) => {
+            console.error('[ShareTarget] Failed to parse FormData:', error);
+            return null;
+        });
+
+        if (!fd) {
+            console.warn('[ShareTarget] No FormData received');
+            return new Response(null, { status: 302, headers: { Location: '/' } });
+        }
+
+        console.log('[ShareTarget] FormData received, content-type:', contentType);
+        console.log('[ShareTarget] FormData keys:', Array.from(fd?.keys?.() || []));
+
+        // Extract share data
+        const shareData = {
+            title: fd?.get?.('title') || '',
+            text: fd?.get?.('text') || '',
+            url: fd?.get?.('url') || '',
+            files: fd?.getAll?.('files') || [],
+            timestamp: Date.now()
+        };
+
+        console.log('[ShareTarget] Processed data:', {
+            title: shareData?.title,
+            text: shareData?.text?.substring(0, 50),
+            url: shareData?.url,
+            filesCount: shareData?.files?.length || 0
+        });
+
+        // Store in cache
+        try {
+            const cache = await (self as any).caches?.open?.('share-target-data')?.catch?.((error: any) => {
+                console.error('[ShareTarget] Failed to open cache:', error);
+                return null;
+            });
+            if (cache) {
+                await cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+        } catch (e) {
+            console.warn('[ShareTarget] Cache store failed:', e);
+        }
+
+        // Broadcast
+        (self as any).notifyShareReceived?.(shareData) ?? console.log('[ShareTarget] Broadcast function not available');
+
+        // Show notification
+        (self as any).sendToast?.('Content received', 'info') || console.log('[ShareTarget] Toast function not available');
+
+        return new Response(null, {
+            status: 302,
+            headers: { Location: '/?shared=1' }
+        });
+    } catch (err) {
+        console.warn('[ShareTarget] Manual handler error:', err);
+        return new Response(null, { status: 302, headers: { Location: '/' } });
+    }
+}
 
 // Use preload response for navigation when available
 registerRoute(

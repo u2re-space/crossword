@@ -12,7 +12,7 @@ export const generateTimeline = (e: any) => {
 
         //
         const speechPrompt = fd?.get?.('text')?.toString?.()?.trim?.() || null;
-        const gptResponses = await createTimelineGenerator(source, speechPrompt) as GPTResponses | null;
+        const gptResponses = await createTimelineGenerator(source, speechPrompt) as unknown as GPTResponses | null;
         const timelineResults = await requestNewTimeline(gptResponses as GPTResponses) as any[] || [];
 
         //

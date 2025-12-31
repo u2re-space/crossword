@@ -4,6 +4,7 @@ import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
 import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./service/RecognizeData";
 import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
+import { loadSettings } from "@rs-core/config/Settings";
 
 // Safe wrapper for loading custom instructions
 const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
@@ -293,8 +294,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const source = message.source || null;
         const speechPrompt = message.speechPrompt || null;
         createTimelineGenerator(source, speechPrompt).then(async (gptResponses) => {
-            sendResponse(await (requestNewTimeline(gptResponses as GPTResponses) as unknown as any[] || []));
-        }).catch((error) => {
+            sendResponse(await (requestNewTimeline(gptResponses as unknown as GPTResponses) as unknown as Promise<any[]> || []));
+        }).catch((error: Error) => {
             console.error("Timeline generation failed:", error);
             sendResponse({ error: error.message });
         });
@@ -384,7 +385,7 @@ Always show your work clearly and provide the final answer prominently.`;
 
                 console.log("[CRX-SW] Setting up GPT for solve/answer");
                 // Create a simple message structure for solve/answer
-                gpt.pending.push({
+                gpt?.getPending?.()?.push?.({
                     type: "message",
                     role: "user",
                     content: [
@@ -464,7 +465,7 @@ Provide clean, well-commented, production-ready code. Include all necessary impo
 
                 console.log("[CRX-SW] Setting up GPT for code generation");
                 // Create a simple message structure for code generation
-                gpt.pending.push({
+                gpt?.getPending?.()?.push?.({
                     type: "message",
                     role: "user",
                     content: [
@@ -551,7 +552,7 @@ Include all relevant CSS properties including layout, colors, typography, spacin
 
                 console.log("[CRX-SW] Setting up GPT for CSS extraction");
                 // Create a simple message structure for CSS extraction
-                gpt.pending.push({
+                gpt?.getPending?.()?.push?.({
                     type: "message",
                     role: "user",
                     content: [
@@ -679,7 +680,7 @@ Return ONLY the translated text without explanations.`;
 
         (async () => {
             try {
-                const settings = (await import("@rs-core/config/Settings")).loadSettings();
+                const settings = await loadSettings();
                 const aiSettings = (await settings)?.ai;
                 const token = aiSettings?.apiKey;
 

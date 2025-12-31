@@ -9,6 +9,7 @@ import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
 import { type DataFilter } from "../model/GPT-Config";
 import { getRuntimeSettings } from "../../config/RuntimeSettings";
 import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+import { loadSettings } from "@rs-core/config/Settings";
 
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
@@ -78,7 +79,7 @@ export type GroupedResult<T = any> = {
 
 //
 const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
-    const settings = await getRuntimeSettings();
+    const settings = await loadSettings();
     const apiKey = config?.apiKey || settings?.ai?.apiKey;
     if (!apiKey) {
         console.warn("No API key configured");

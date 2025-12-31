@@ -3,12 +3,11 @@ import { controlChannel, detectInputType, initiateConversionProcedure, tryToTime
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { queueEntityForWriting } from "@rs-core/service/AI-ops/ServiceHelper";
 import { pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
-import { JSOX } from "jsox";
+import { tryParseJSON } from "@rs-core/utils/AIResponseParser";
 
 //
-export const commitAnalyze = (e: any) => {
+export const commitAnalyze = (e: any): Promise<any[] | void> => {
     return Promise.try(async () => {
-        //const url = new URL(e.request.url);
         const fd = await e.request.formData()?.catch?.(console.warn.bind(console));
         const inputs = {
             title: fd.get('title'),
@@ -19,18 +18,15 @@ export const commitAnalyze = (e: any) => {
         };
 
         // Use custom instruction from form data, or load from settings if not provided
-        let customInstruction = inputs.customInstruction?.trim?.() || "";
-        if (!customInstruction) {
-            customInstruction = await getActiveCustomInstruction();
-        }
-        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction.substring(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
+        let customInstruction: string = inputs.customInstruction?.trim?.() || (await getActiveCustomInstruction()) || "";
+        console.log("[commit-analyze] Custom instruction:", customInstruction ? `"${customInstruction?.substring?.(0, 50)}..."` : "(none)", inputs.customInstruction ? "(from form)" : "(from settings)");
 
         // Endpoint mode shortcut - pass custom instruction to backend
         const backendResponse = await callBackendIfAvailable<{ ok?: boolean; results?: any[] }>("/core/ai/analyze", {
             title: inputs.title,
             text: inputs.text,
             url: inputs.url,
-            customInstruction: customInstruction || undefined
+            customInstruction: customInstruction as string
         });
         if (backendResponse?.ok && Array.isArray(backendResponse.results)) {
             await pushToIDBQueue(backendResponse.results)?.catch?.(console.warn.bind(console));
@@ -85,8 +81,8 @@ export const commitAnalyze = (e: any) => {
 
             //
             if (text?.trim?.() && detection.type === "json" && detection.confidence >= 0.7) {
-                let json: any = text?.trim?.() && typeof text == "string" ? JSOX.parse(text?.trim?.() || "[]") as any : [];
-                json = json?.entities || json;
+                let json: any = text?.trim?.() && typeof text == "string" ? tryParseJSON<any>(text?.trim?.() || "[]") as any : [];
+                json = (json as any)?.entities || (json as any)?.data || (json as any)?.result || json;
 
                 // detect entity types by JSON
                 let types = json ? detectEntityTypeByJSON(json) : [];
@@ -102,9 +98,9 @@ export const commitAnalyze = (e: any) => {
             //
             try {
                 // Pass custom instruction to conversion procedure
-                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source, customInstruction || undefined);
+                const resultsRaw = await initiateConversionProcedure(text?.trim?.() || source, customInstruction as string);
                 resultsRaw?.entities?.forEach((entity) => {
-                    results.push(queueEntityForWriting(entity, entity?.type, "json"));
+                    results.push(queueEntityForWriting(entity, (entity as any)?.type as string, "json"));
                 });
             } catch (err) {
                 results.push({ status: 'error', error: String(err) });

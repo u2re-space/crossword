@@ -588,7 +588,7 @@ export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 // Unified GPT instance creation that works across platforms
 export const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
     console.log("[AI] getGPTInstance called with config:", !!config);
-    const settings = await loadAISettings();
+    const settings = await loadSettings();
     console.log("[AI] Settings loaded:", !!settings, settings?.ai ? "AI settings present" : "No AI settings");
 
     const apiKey = config?.apiKey || settings?.ai?.apiKey;
@@ -624,7 +624,7 @@ export const recognizeByInstructions = async (
     config?: AIConfig,
     options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    const settings = (await getRuntimeSettings())?.ai;
+    const settings = (await loadSettings())?.ai;
 
     const token = config?.apiKey || settings?.apiKey;
     if (!token) {
@@ -666,21 +666,27 @@ export const recognizeByInstructions = async (
     await gpt.askToDoAction(finalInstructions);
 
     // Check if input is already formatted as a message array (from analyzeRecognizeUnified)
-    if (Array.isArray(input) && input[0]?.type === "message") {
+    if (Array.isArray(input) && (input?.[0]?.type === "message" || input?.[0]?.['role'])) {
         // Input is already formatted, add it directly to pending
-        gpt.pending.push(...input);
+        await gpt?.getPending?.()?.push?.(...input);
     } else {
         // Input is raw data source, attach it properly
-        await gpt.attachToRequest(input);
+        await gpt?.attachToRequest?.(input);
     }
 
     // Send the request
-    const response = await gpt.sendRequest("low", "low");
+    let response;
+    let error;
+    try {
+        response = await gpt?.sendRequest?.("low", "low");
+    } catch (e) {
+        error = String(e);
+    }
 
     const output = {
-        ok: !!response,
+        ok: !!response && !error,
         data: response?.trim?.() || undefined,
-        error: response ? undefined : "No response from AI"
+        error: error || (response ? undefined : "No response from AI")
     };
 
     sendResponse?.(output);
@@ -720,7 +726,7 @@ export const analyzeRecognizeUnified = async (
         role: "user",
         content: [content]
     }];
-    return content?.type == "input_image"
+    return (content?.[0]?.type === "input_image" || content?.type === "input_image")
         ? recognizeImageData(input, sendResponse, config, options)
         : convertTextualData(input, sendResponse, config, options);
 };
@@ -778,7 +784,11 @@ export const recognizeWithContext = async (
         else if (mode === "structured") dataKind = "json";
 
         // Attach data
-        await gpt.attachToRequest(data, dataKind);
+        if (Array.isArray(data) && (data?.[0]?.type === "message" || data?.[0]?.['role'])) {
+            await gpt?.getPending?.()?.push?.(...data);
+        } else {
+            await gpt?.attachToRequest?.(data, dataKind);
+        }
 
         // Choose instruction based on kind
         const instruction = dataKind === "input_image"
@@ -901,7 +911,14 @@ export const extractEntities = async (
                 ? "input_image"
                 : "input_text";
 
-        await gpt.attachToRequest(data, dataKind);
+        //
+        if (Array.isArray(data) && (data?.[0]?.type === "message" || data?.[0]?.['role'])) {
+            await gpt?.getPending?.()?.push?.(...data);
+        } else {
+            await gpt?.attachToRequest?.(data, dataKind);
+        }
+
+        //
         await gpt.askToDoAction(ENTITY_EXTRACTION_INSTRUCTION);
 
         const raw = await gpt.sendRequest("high", "medium", null, {

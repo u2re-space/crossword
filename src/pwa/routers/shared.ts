@@ -1,8 +1,10 @@
 
 import { resolveEntity } from "@rs-core/service/AI-ops/EntityItemResolve";
-import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
+import { UnifiedAIService, type RecognizeByInstructionsOptions } from "@rs-core/service/AI-ops/RecognizeData";
 import { getOrDefaultComputedOfDataSourceCache } from "../lib/DataSourceCache";
-import type { CustomInstruction } from "@rs-core/config/SettingsTypes";
+import { GPTResponses } from "@rs-core/service/model/GPT-Responses";
+import type { AppSettings, CustomInstruction } from "@rs-core/config/SettingsTypes";
+import { loadSettings } from "@rs-core/config/Settings";
 
 // Re-export unified functions for backward compatibility
 const { analyzeRecognizeUnified, loadAISettings } = UnifiedAIService;
@@ -17,13 +19,19 @@ export const tryToTimeout = (cb: (...args: any[]) => void, timeout = 100, ..._ar
     }
 }
 
-
 //
 export const DOC_DIR = "/docs/preferences/";
 export const PLAIN_DIR = "/docs/plain/";
 
 // Use unified service for custom instruction loading
-export const getActiveCustomInstruction = UnifiedAIService.getActiveCustomInstruction;
+export const getActiveCustomInstruction = async (settings?: AppSettings | null): Promise<string | null | undefined> => {
+    if (!settings) settings = await loadSettings();
+    const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
+    const activeId = settings?.ai?.activeInstructionId;
+    if (!activeId) return null;
+    const active = instructions.find(i => i.id === activeId);
+    return active?.instruction as string | null | undefined;
+};
 
 //
 export const initiateAnalyzeAndRecognizeData = async (
@@ -34,10 +42,10 @@ export const initiateAnalyzeAndRecognizeData = async (
     const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
 
     console.log("[initiateAnalyzeAndRecognizeData] customInstruction provided:", !!customInstruction);
-    console.log("[initiateAnalyzeAndRecognizeData] effectiveInstruction:", effectiveInstruction ? `"${effectiveInstruction.substring(0, 50)}..."` : "(none)");
+    console.log("[initiateAnalyzeAndRecognizeData] effectiveInstruction:", effectiveInstruction ? `"${(effectiveInstruction as string)?.substring?.(0, 50)}..."` : "(none)");
 
     const options: RecognizeByInstructionsOptions | undefined = effectiveInstruction
-        ? { customInstruction: effectiveInstruction }
+        ? { customInstruction: effectiveInstruction as string }
         : undefined;
 
     console.log("[initiateAnalyzeAndRecognizeData] options:", options ? "with customInstruction" : "undefined");
@@ -94,7 +102,7 @@ export const initiateConversionProcedure = async (dataSource: string | Blob | Fi
     // Apply custom instruction if available
     if (effectiveInstruction) {
         console.log("[initiateConversionProcedure] Applying custom instruction");
-        gptResponses?.askToDoAction?.(effectiveInstruction)?.catch?.(console.warn.bind(console));
+        gptResponses?.askToDoAction?.(effectiveInstruction as string)?.catch?.(console.warn.bind(console));
     }
 
     // phase 1 - prepare data

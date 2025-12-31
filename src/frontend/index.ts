@@ -12,6 +12,61 @@ const initReceivers = () => {
     _receiversCleanup = initPWAClipboard();
 };
 
+// Simple share target processing (like CRX extension)
+const processShareTargetData = async (shareData: any) => {
+    console.log("[ShareTarget] Processing shared data:", shareData);
+
+    try {
+        showToast({ message: "Processing shared content...", kind: "info" });
+
+        // Import AI functions dynamically to avoid loading them on every page
+        const { recognizeByInstructions } = await import("@rs-core/service/AI-ops/RecognizeData");
+        const { getUsableData } = await import("@rs-core/service/model/GPT-Responses");
+
+        // Prepare input data (similar to CRX content script processing)
+        let inputData;
+        if (shareData.files?.length > 0) {
+            // Handle files (images, documents)
+            inputData = shareData.files[0]; // Process first file
+        } else if (shareData.url) {
+            // Handle URLs
+            inputData = shareData.url;
+        } else if (shareData.text) {
+            // Handle text
+            inputData = shareData.text;
+        } else {
+            throw new Error("No content to process");
+        }
+
+        // Convert to usable format
+        const usableData = await getUsableData({ dataSource: inputData });
+
+        const input = [{
+            type: "message",
+            role: "user",
+            content: [usableData]
+        }];
+
+        // Process with AI (using default image/text recognition instructions)
+        const result = await recognizeByInstructions(input, "", undefined, undefined, { useActiveInstruction: true });
+
+        if (result?.ok && result?.data) {
+            // Copy result to clipboard (like CRX extension does)
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(String(result.data));
+                showToast({ message: "Content processed and copied to clipboard!", kind: "success" });
+            } else {
+                showToast({ message: "Content processed successfully!", kind: "success" });
+            }
+        } else {
+            showToast({ message: `Processing failed: ${result?.error || "Unknown error"}`, kind: "error" });
+        }
+    } catch (error) {
+        console.error("[ShareTarget] Processing error:", error);
+        showToast({ message: `Failed to process content: ${error}`, kind: "error" });
+    }
+};
+
 // Handle share target data from service worker
 const handleShareTarget = () => {
     const params = new URLSearchParams(window.location.search);
@@ -24,26 +79,26 @@ const handleShareTarget = () => {
         url.searchParams.delete("action");
         window.history.replaceState({}, "", url.pathname + url.hash);
 
-        // Retrieve share data from cache
+        // Retrieve share data from cache and process it
         caches.open("share-target-data")
             .then(cache => cache.match("/share-target-data"))
             .then(response => response?.json())
-            .then(data => {
+            .then(async (data) => {
                 if (data) {
-                    console.log("[ShareTarget] Received data:", data);
-                    showToast({ message: "Content received!", kind: "success", duration: 2000 });
+                    console.log("[ShareTarget] Retrieved cached data:", data);
+                    await processShareTargetData(data);
                 }
             })
             .catch(e => console.warn("[ShareTarget] Failed to retrieve data:", e));
     }
 
-    // Listen for real-time share target broadcasts
+    // Listen for real-time share target broadcasts (like CRX extension)
     if (typeof BroadcastChannel !== "undefined") {
         const shareChannel = new BroadcastChannel("rs-share-target");
-        shareChannel.addEventListener("message", (event) => {
+        shareChannel.addEventListener("message", async (event) => {
             if (event.data?.type === "share-received" && event.data?.data) {
                 console.log("[ShareTarget] Broadcast received:", event.data.data);
-                showToast({ message: "Content shared!", kind: "success", duration: 2000 });
+                await processShareTargetData(event.data.data);
             }
         });
     }

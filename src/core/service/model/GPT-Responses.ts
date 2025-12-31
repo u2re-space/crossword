@@ -297,38 +297,34 @@ export class GPTResponses {
         console.log("[GPT] API key present:", !!this?.apiKey);
         console.log("[GPT] Request body:", JSON.stringify(requestBody, null, 2));
 
-        const response = await fetch(`${this?.apiUrl}/responses`, {
-            method: "POST",
-            priority: 'auto',
-            keepalive: true,
-            headers: {
-                "Content-Type": "application/json",
-                ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})
-            },
-            body: JSON.stringify(requestBody),
-        })?.catch?.((e) => {
+        let response;
+        try {
+            response = await fetch(`${this?.apiUrl}/responses`, {
+                method: "POST",
+                priority: 'auto',
+                keepalive: true,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})
+                },
+                body: JSON.stringify(requestBody),
+            });
+        } catch (e) {
             console.error("[GPT] Fetch failed:", e);
-            return null;
-        });
-
-        if (!response) {
-            console.error("[GPT] No response received from fetch");
-            return null;
+            throw new Error(`Network error: ${String(e)}`);
         }
 
         console.log("[GPT] Response status:", response.status);
 
         //
         if (response.status !== 200) {
-            console.error("[GPT] API returned status:", response.status);
             const error = await response?.json?.()?.catch?.((e) => {
                 console.error("[GPT] Failed to parse error response:", e);
                 return null;
             });
-            console.error("[GPT] API error details:", error);
-            console.error("[GPT] Error message:", error?.error?.message || error?.message || "Unknown error");
-            console.error("[GPT] Error type:", error?.error?.type || error?.type || "Unknown type");
-            return null;
+            const errorMessage = error?.error?.message || error?.message || `HTTP ${response.status}`;
+            console.error("[GPT] API error:", errorMessage);
+            throw new Error(`API error (${response.status}): ${errorMessage}`);
         }
 
         //
@@ -406,9 +402,6 @@ export class GPTResponses {
                 temperature: 0.2
             });
 
-            if (!raw) {
-                return { ok: false, error: "No response from AI" };
-            }
 
             // Use robust JSON extraction to handle markdown-wrapped responses
             const parseResult = extractJSONFromAIResponse<any>(raw);
@@ -461,9 +454,6 @@ Return matching items with relevance scores.
                 temperature: 0.1
             });
 
-            if (!raw) {
-                return { ok: false, error: "No response from AI" };
-            }
 
             // Use robust JSON extraction to handle markdown-wrapped responses
             const parseResult = extractJSONFromAIResponse<any>(raw);
@@ -514,9 +504,6 @@ Return the merged entity with conflict resolution details.
                 temperature: 0.2
             });
 
-            if (!raw) {
-                return { ok: false, error: "No response from AI" };
-            }
 
             // Use robust JSON extraction to handle markdown-wrapped responses
             const parseResult = extractJSONFromAIResponse<any>(raw);
@@ -577,9 +564,6 @@ Expected output structure:
                 temperature: 0.3
             });
 
-            if (!raw) {
-                return { ok: false, error: "No response from AI" };
-            }
 
             // Use robust JSON extraction to handle markdown-wrapped responses
             const parseResult = extractJSONFromAIResponse<any>(raw);
@@ -687,7 +671,13 @@ export const quickRecognize = async (
 ): Promise<AIResponse<any>> => {
     const gpt = createGPTInstance(apiKey, apiUrl);
     await gpt.attachToRequest(data);
-    const raw = await gpt.sendRequest("medium", "medium");
+
+    let raw;
+    try {
+        raw = await gpt.sendRequest("medium", "medium");
+    } catch (e) {
+        return { ok: false, error: String(e) };
+    }
 
     if (!raw) {
         return { ok: false, error: "No response" };

@@ -10,6 +10,7 @@ import { type ModificationInstruction, buildModificationPrompt } from "../model/
 import { getRuntimeSettings } from "../../config/RuntimeSettings";
 import { fixEntityId } from "../../template/EntityId";
 import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+import { loadSettings } from "@rs-core/config/Settings";
 
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
 
@@ -47,7 +48,7 @@ export type BatchModificationResult = {
 
 //
 const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
-    const settings = await getRuntimeSettings();
+    const settings = await loadSettings();
     const apiKey = config?.apiKey || settings?.ai?.apiKey;
     if (!apiKey) {
         console.warn("No API key configured");
@@ -168,10 +169,16 @@ Apply the requested modifications and return:
 \`\`\`
         `);
 
-        const raw = await gpt.sendRequest("high", "medium", null, {
-            responseFormat: "json",
-            temperature: 0.2
-        });
+        let raw;
+        try {
+            raw = await gpt.sendRequest("high", "medium", null, {
+                responseFormat: "json",
+                temperature: 0.2
+            });
+        } catch (e) {
+            result.errors.push(String(e));
+            return result;
+        }
 
         if (!raw) {
             result.errors.push("No response from AI");
@@ -271,10 +278,16 @@ Output format:
         `);
 
         //
-        const raw = await gpt.sendRequest("medium", "low", null, {
-            responseFormat: "json",
-            temperature: 0.1
-        });
+        let raw;
+        try {
+            raw = await gpt.sendRequest("medium", "low", null, {
+                responseFormat: "json",
+                temperature: 0.1
+            });
+        } catch (e) {
+            result.errors.push(String(e));
+            return result;
+        }
 
         //
         if (!raw) {

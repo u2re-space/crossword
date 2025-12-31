@@ -81,7 +81,7 @@ const attemptJSONRecovery = (text: string): string => {
 /**
  * Try to parse JSON using multiple strategies.
  */
-const tryParseJSON = <T = unknown>(text: string): { ok: boolean; data?: T; error?: string } => {
+export const tryParseJSON = <T = unknown>(text: string): { ok: boolean; data?: T; error?: string } => {
     if (!text) return { ok: false, error: "Empty input" };
 
     // Strategy 1: Direct JSOX parse (more lenient than JSON.parse)
