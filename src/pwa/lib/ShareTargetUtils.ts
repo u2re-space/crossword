@@ -4,7 +4,9 @@
  */
 
 import { getRuntimeSettings } from '@rs-core/config/RuntimeSettings';
+import { loadSettings } from '@rs-core/config/Settings';
 import type { AppSettings, CustomInstruction } from '@rs-core/config/SettingsTypes';
+import { DEFAULT_SETTINGS } from '@rs-core/config/SettingsTypes';
 
 // ============================================================================
 // TYPES
@@ -301,7 +303,7 @@ export const cacheShareData = async (shareData: ShareData): Promise<boolean> => 
  */
 export const getAIProcessingConfig = async (): Promise<AIProcessingConfig> => {
     try {
-        const settings = await getRuntimeSettings().catch(() => null) as AppSettings | null;
+        const settings = ((await getRuntimeSettings().catch(() => null)) as AppSettings | null) || (await loadSettings().catch(() => DEFAULT_SETTINGS)) || DEFAULT_SETTINGS;
 
         if (!settings?.ai?.apiKey) {
             return {
@@ -428,4 +430,4 @@ export const logShareDataSummary = (shareData: ShareData): void => {
  * Check if share data has processable content
  */
 export const hasProcessableContent = (shareData: ShareData): boolean =>
-    !!(shareData.text || shareData.url || shareData.files.length > 0);
+    !!(shareData.text || shareData.url || shareData.files.length > 0 || shareData.imageFiles.length > 0 || shareData.textFiles.length > 0 || shareData.otherFiles.length > 0 || shareData.title);

@@ -3,19 +3,21 @@ import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routi
 import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
-import { commitRecognize } from './routers/commit-recognize';
-import { commitAnalyze } from './routers/commit-analyze';
 import {
     parseFormDataFromRequest,
     buildShareData,
     cacheShareData,
     getAIProcessingConfig,
-    buildAIFormData,
-    createSyntheticEvent,
     logShareDataSummary,
     hasProcessableContent,
     type ShareData
 } from './lib/ShareTargetUtils';
+
+// Import direct GPT functions
+import { recognizeByInstructions } from '@rs-core/service/AI-ops/RecognizeData';
+import { getUsableData } from '@rs-core/service/model/GPT-Responses';
+import { pushToIDBQueue } from '@rs-core/service/AI-ops/ServiceHelper';
+import { fileToDataUrl } from './lib/ImageUtils';
 
 //
 // @ts-ignore
@@ -31,6 +33,36 @@ const CHANNELS = {
     TOAST: 'rs-toast',
     CLIPBOARD: 'rs-clipboard'
 } as const;
+
+// Clipboard queue storage for persistent delivery using IDB
+interface ClipboardOperation {
+    id: string;
+    data: unknown;
+    options?: any;
+    timestamp: number;
+    type: 'ai-result' | 'direct-copy';
+}
+
+// IDB utilities for clipboard operations
+const CLIPBOARD_DB_NAME = 'rs-clipboard-queue';
+const CLIPBOARD_STORE_NAME = 'operations';
+
+const openClipboardDB = async (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(CLIPBOARD_DB_NAME, 1);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains(CLIPBOARD_STORE_NAME)) {
+                const store = db.createObjectStore(CLIPBOARD_STORE_NAME, { keyPath: 'id' });
+                store.createIndex('timestamp', 'timestamp', { unique: false });
+            }
+        };
+    });
+};
 
 // Broadcast helpers for cross-context communication
 // These send messages to the frontend via BroadcastChannel
@@ -63,6 +95,143 @@ const notifyShareReceived = (data: unknown): void => {
  */
 const notifyAIResult = (result: { success: boolean; data?: unknown; error?: string }): void => {
     broadcast(CHANNELS.SHARE_TARGET, { type: 'ai-result', data: result });
+};
+
+/**
+ * Store clipboard operation for persistent delivery using IDB
+ */
+const storeClipboardOperation = async (operation: ClipboardOperation): Promise<void> => {
+    try {
+        const db = await openClipboardDB();
+        const transaction = db.transaction([CLIPBOARD_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(CLIPBOARD_STORE_NAME);
+
+        // Add new operation
+        await new Promise<void>((resolve, reject) => {
+            const request = store.put(operation);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+
+        // Keep only last 10 operations to prevent bloat
+        const countRequest = store.count();
+        const count = await new Promise<number>((resolve, reject) => {
+            countRequest.onsuccess = () => resolve(countRequest.result);
+            countRequest.onerror = () => reject(countRequest.error);
+        });
+
+        if (count > 10) {
+            // Get oldest operations and delete them
+            const index = store.index('timestamp');
+            const cursorRequest = index.openCursor(null, 'next'); // Ascending order (oldest first)
+
+            await new Promise<void>((resolve, reject) => {
+                let deletedCount = 0;
+                cursorRequest.onsuccess = (event) => {
+                    const cursor = (event.target as IDBRequest).result;
+                    if (cursor && deletedCount < (count - 10)) {
+                        cursor.delete();
+                        deletedCount++;
+                        cursor.continue();
+                    } else {
+                        resolve();
+                    }
+                };
+                cursorRequest.onerror = () => reject(cursorRequest.error);
+            });
+        }
+
+        db.close();
+        console.log('[SW] Stored clipboard operation:', operation.id);
+    } catch (error) {
+        console.warn('[SW] Failed to store clipboard operation:', error);
+    }
+};
+
+/**
+ * Get stored clipboard operations from IDB
+ */
+const getStoredClipboardOperations = async (): Promise<ClipboardOperation[]> => {
+    try {
+        const db = await openClipboardDB();
+        const transaction = db.transaction([CLIPBOARD_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(CLIPBOARD_STORE_NAME);
+
+        const operations = await new Promise<ClipboardOperation[]>((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const results = request.result || [];
+                // Sort by timestamp (newest first)
+                results.sort((a, b) => b.timestamp - a.timestamp);
+                resolve(results);
+            };
+            request.onerror = () => reject(request.error);
+        });
+
+        db.close();
+        return operations;
+    } catch (error) {
+        console.warn('[SW] Failed to get stored clipboard operations:', error);
+        return [];
+    }
+};
+
+/**
+ * Clear stored clipboard operations from IDB
+ */
+const clearStoredClipboardOperations = async (): Promise<void> => {
+    try {
+        const db = await openClipboardDB();
+        const transaction = db.transaction([CLIPBOARD_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(CLIPBOARD_STORE_NAME);
+
+        await new Promise<void>((resolve, reject) => {
+            const request = store.clear();
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+
+        db.close();
+        console.log('[SW] Cleared clipboard operations');
+    } catch (error) {
+        console.warn('[SW] Failed to clear clipboard operations:', error);
+    }
+};
+
+/**
+ * Remove specific clipboard operation from IDB
+ */
+const removeClipboardOperation = async (operationId: string): Promise<void> => {
+    try {
+        const db = await openClipboardDB();
+        const transaction = db.transaction([CLIPBOARD_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(CLIPBOARD_STORE_NAME);
+
+        await new Promise<void>((resolve, reject) => {
+            const request = store.delete(operationId);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+
+        db.close();
+        console.log('[SW] Removed clipboard operation:', operationId);
+    } catch (error) {
+        console.warn('[SW] Failed to remove clipboard operation:', error);
+    }
+};
+
+/**
+ * Send pending clipboard operations to frontend
+ */
+const sendPendingClipboardOperations = async (): Promise<void> => {
+    const operations = await getStoredClipboardOperations();
+    if (operations.length > 0) {
+        console.log('[SW] Sending', operations.length, 'pending clipboard operations to frontend');
+        broadcast(CHANNELS.CLIPBOARD, { type: 'pending-operations', operations });
+
+        // Clear the queue after sending
+        await clearStoredClipboardOperations();
+    }
 };
 
 /**
@@ -135,27 +304,178 @@ export const extractRecognizedContent = (data: unknown): unknown => {
 // ============================================================================
 
 /**
- * Process share data with AI (recognize or analyze mode)
+ * Process share data with AI directly (bypass FormData wrapping)
  */
 const processShareWithAI = async (
     shareData: ShareData,
     config: { mode: 'recognize' | 'analyze'; customInstruction: string }
 ): Promise<{ success: boolean; results?: any[] }> => {
-    const aiFormData = buildAIFormData(shareData, config.customInstruction);
-    const syntheticEvent = createSyntheticEvent(aiFormData);
-
-    console.log('[ShareTarget] Processing with', config.mode === 'analyze' ? 'commitAnalyze' : 'commitRecognize');
+    console.log('[ShareTarget] Processing with direct GPT calls, mode:', config.mode);
 
     try {
-        const processor = config.mode === 'analyze' ? commitAnalyze : commitRecognize;
-        const results = await processor(syntheticEvent);
+        // Extract processable content from share data
+        let inputData: string | File;
 
-        console.log('[ShareTarget] Processing results:', results);
+        // Priority: files > text > url
+        if (shareData.imageFiles?.length > 0) {
+            // Use first image file
+            const imageFile = shareData.imageFiles[0];
+            console.log('[ShareTarget] Processing image file:', imageFile.name);
+            inputData = imageFile;
+        } else if (shareData.files?.length > 0) {
+            // Use first non-image file
+            const file = shareData.files[0];
+            console.log('[ShareTarget] Processing file:', file.name);
+            inputData = file;
+        } else if (shareData.text?.trim()) {
+            console.log('[ShareTarget] Processing text content');
+            inputData = shareData.text;
+        } else if (shareData.url) {
+            console.log('[ShareTarget] Processing URL:', shareData.url);
+            inputData = shareData.url;
+        } else {
+            throw new Error('No processable content found in share data');
+        }
 
-        const success = Array.isArray(results) && results.length > 0;
-        return { success, results: results as any[] };
+        if (config.mode === 'analyze') {
+            let dataToProcess: string | File | Blob;
+            let text = '';
+
+            if (inputData instanceof File || inputData instanceof Blob) {
+                if (inputData.type.startsWith('image/')) {
+                    console.log('[ShareTarget] Converting image to data URL for analysis');
+                    dataToProcess = await fileToDataUrl(inputData);
+                } else {
+                    text = await inputData.text();
+                    dataToProcess = text;
+                }
+            } else {
+                text = inputData;
+                dataToProcess = inputData;
+            }
+
+            // For analysis, we use a different approach - direct entity extraction
+            const usableData = await getUsableData({ dataSource: dataToProcess });
+            const input = [{
+                type: "message",
+                role: "user",
+                content: [usableData]
+            }];
+
+            // Use recognizeByInstructions with entity extraction instruction
+            const entityExtractionInstruction = `Extract structured data/entities from the provided content. Return the data in a structured JSON format with clear entity types and properties. Focus on identifying people, places, organizations, dates, amounts, and other meaningful entities.`;
+
+            const result = await recognizeByInstructions(input, entityExtractionInstruction, undefined, undefined, {
+                customInstruction: config.customInstruction,
+                useActiveInstruction: false
+            });
+
+            if (result.ok && result.data) {
+                // Try to parse as JSON and create entity-like results
+                let entities = [];
+                try {
+                    const parsed = JSON.parse(result.data);
+                    entities = Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    // If not JSON, create a simple entity
+                    entities = [{
+                        type: 'unknown',
+                        data: result.data,
+                        source: 'share-target-analysis'
+                    }];
+                }
+
+                const results = entities.map(entity => ({
+                    status: 'queued',
+                    data: result.data,
+                    entity: entity,
+                    subId: Date.now(),
+                    dataType: 'json',
+                    detection: {
+                        type: 'unknown',
+                        confidence: 0.5
+                    }
+                }));
+
+                await pushToIDBQueue(results);
+
+                // Broadcast the result data directly for immediate clipboard copy
+                notifyAIResult({
+                    success: true,
+                    data: result.data
+                });
+
+                // Store for persistent delivery if frontend wasn't ready
+                await storeClipboardOperation({
+                    id: `analysis-${Date.now()}`,
+                    data: result.data,
+                    type: 'ai-result',
+                    timestamp: Date.now()
+                });
+
+                return { success: true, results };
+            } else {
+                notifyAIResult({ success: false, error: result.error || 'Analysis failed' });
+                return { success: false, results: [] };
+            }
+
+        } else {
+            // For recognize mode, use direct recognition
+            const usableData = await getUsableData({ dataSource: inputData });
+            const input = [{
+                type: "message",
+                role: "user",
+                content: [usableData]
+            }];
+
+            const result = await recognizeByInstructions(input, "", undefined, undefined, {
+                customInstruction: config.customInstruction,
+                useActiveInstruction: true
+            });
+
+            if (result.ok && result.data) {
+                // Create recognition-style result for consistency
+                const results = [{
+                    status: 'queued',
+                    data: result.data,
+                    path: `/docs/preferences/pasted-${Date.now()}.md`,
+                    name: `shared-${Date.now()}.md`,
+                    subId: Date.now(),
+                    directory: '/docs/preferences/',
+                    dataType: 'markdown',
+                    detection: {
+                        type: 'markdown',
+                        confidence: 0.8,
+                        hints: ['share-target-recognition']
+                    }
+                }];
+
+                await pushToIDBQueue(results);
+
+                // Also broadcast the result data directly for immediate clipboard copy
+                // For direct GPT calls, the result.data is already the final content
+                notifyAIResult({
+                    success: true,
+                    data: result.data
+                });
+
+                // Store for persistent delivery if frontend wasn't ready
+                await storeClipboardOperation({
+                    id: `recognition-${Date.now()}`,
+                    data: result.data,
+                    type: 'ai-result',
+                    timestamp: Date.now()
+                });
+
+                return { success: true, results };
+            } else {
+                notifyAIResult({ success: false, error: result.error || 'Recognition failed' });
+                return { success: false, results: [] };
+            }
+        }
+
     } catch (error: any) {
-        console.error('[ShareTarget] Processing error:', error);
+        console.error('[ShareTarget] Direct AI processing error:', error);
         throw error;
     }
 };
@@ -198,6 +518,8 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
     try {
         // Step 1: Parse request data
         const { formData, error } = await parseFormDataFromRequest(request);
+        console.log('[ShareTarget] FormData:', formData);
+        console.log('[ShareTarget] Error:', error);
 
         if (!formData) {
             console.warn('[ShareTarget] No valid data received:', error);
@@ -206,10 +528,15 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
 
         // Step 2: Build share data from form
         const shareData = await buildShareData(formData);
+        console.log('[ShareTarget] Share data:', shareData);
         logShareDataSummary(shareData);
 
         // Step 3: Cache for client retrieval
         await cacheShareData(shareData);
+        console.log('[ShareTarget] Cache share data:', shareData);
+
+        const aiConfig = await getAIProcessingConfig();
+        console.log('[ShareTarget] AI processing config:', aiConfig);
 
         // Step 4: Broadcast to clients (include text content for frontend fallback)
         notifyShareReceived?.({
@@ -220,44 +547,62 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
             fileCount: shareData.files.length,
             imageCount: shareData.imageFiles.length,
             // Mark whether AI will process this
-            aiEnabled: (await getAIProcessingConfig().catch(() => ({ enabled: false }))).enabled
+            aiEnabled: aiConfig.enabled
         });
 
-        // Step 5: AI Processing (if configured)
-        let aiProcessed = false;
-        const aiConfig = await getAIProcessingConfig();
+        // Step 5: AI Processing (async, non-blocking)
+        console.log('[ShareTarget] AI processing config:', aiConfig);
+        console.log('[ShareTarget] Share data:', shareData);
+        console.log('[ShareTarget] Has processable content:', hasProcessableContent(shareData));
 
         if (aiConfig.enabled && hasProcessableContent(shareData)) {
-            console.log('[ShareTarget] AI processing enabled, mode:', aiConfig.mode);
+            console.log('[ShareTarget] Starting async AI processing, mode:', aiConfig.mode);
 
-            try {
-                const result = await processShareWithAI(shareData, {
-                    mode: aiConfig.mode,
-                    customInstruction: aiConfig.customInstruction
-                });
-                aiProcessed = handleAIResult(aiConfig.mode, result);
+            // Start AI processing asynchronously without blocking the response
+            processShareWithAI(shareData, {
+                mode: aiConfig.mode,
+                customInstruction: aiConfig.customInstruction
+            }).then((result) => {
+                console.log('[ShareTarget] Async AI processing completed:', result);
 
-                // Broadcast AI result to frontend for clipboard copy
                 if (result.success && result.results?.length) {
                     // Extract the actual data from results
                     const firstResult = result.results[0];
                     const extractedData = firstResult?.data?.data || firstResult?.data || firstResult;
+                    console.log('[ShareTarget] Async AI processing extracted data:', extractedData);
+
+                    // Broadcast success to frontend
                     notifyAIResult({
                         success: true,
                         data: extractedData
                     });
-                } else {
-                    notifyAIResult({ success: false, error: 'No results returned' });
-                }
-            } catch (aiError: any) {
-                const errorMsg = aiError?.message || 'Unknown error';
-                sendToast(`${aiConfig.mode === 'analyze' ? 'Analysis' : 'Recognition'} failed: ${errorMsg}`, 'error');
-                notifyAIResult({ success: false, error: errorMsg });
-            }
-        }
 
-        // Step 6: Show fallback notification if AI didn't process
-        if (!aiProcessed) {
+                    // Show success toast
+                    const message = aiConfig.mode === 'analyze'
+                        ? 'Content analyzed and processed'
+                        : 'Content recognized and copied';
+                    sendToast(message, 'success');
+                } else {
+                    // Broadcast failure to frontend
+                    const errorMsg = result.error || 'No results returned';
+                    notifyAIResult({ success: false, error: errorMsg });
+                    console.log('[ShareTarget] Async AI processing failed:', errorMsg);
+                }
+            }).catch((aiError: any) => {
+                const errorMsg = aiError?.message || 'Unknown error';
+                console.error('[ShareTarget] Async AI processing error:', aiError);
+
+                // Broadcast error to frontend
+                notifyAIResult({ success: false, error: errorMsg });
+
+                // Show error toast
+                sendToast(`${aiConfig.mode === 'analyze' ? 'Analysis' : 'Recognition'} failed: ${errorMsg}`, 'error');
+            });
+
+            // Show initial processing toast immediately
+            sendToast('Processing shared content...', 'info');
+        } else {
+            // No AI processing configured or no processable content
             const hasApiKey = aiConfig.apiKey !== null;
             const message = hasApiKey
                 ? 'Content received'
@@ -467,6 +812,53 @@ async function handleShareTargetRequest(event: any): Promise<Response> {
         return new Response(null, { status: 302, headers: { Location: '/' } });
     }
 }
+
+// Handle requests for pending clipboard operations
+registerRoute(
+    ({ url }) => url?.pathname === '/clipboard/pending',
+    async () => {
+        console.log('[SW] Received request for pending clipboard operations');
+        const operations = await getStoredClipboardOperations();
+        return new Response(JSON.stringify({ operations }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'GET'
+);
+
+// Clear clipboard operations queue
+registerRoute(
+    ({ url }) => url?.pathname === '/clipboard/clear',
+    async () => {
+        console.log('[SW] Clearing clipboard operations queue');
+        await clearStoredClipboardOperations();
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'POST'
+);
+
+// Remove specific clipboard operation
+registerRoute(
+    ({ url }) => url?.pathname.startsWith('/clipboard/remove/'),
+    async ({ url }) => {
+        const operationId = url?.pathname.split('/clipboard/remove/')[1];
+        if (!operationId) {
+            return new Response(JSON.stringify({ error: 'Missing operation ID' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        console.log('[SW] Removing clipboard operation:', operationId);
+        await removeClipboardOperation(operationId);
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'DELETE'
+);
 
 // Use preload response for navigation when available
 registerRoute(

@@ -33,61 +33,6 @@ export const getActiveCustomInstruction = async (settings?: AppSettings | null):
     return active?.instruction as string | null | undefined;
 };
 
-//
-export const initiateAnalyzeAndRecognizeData = async (
-    dataSource: string | Blob | File | any,
-    customInstruction?: string
-) => {
-    // Determine source type for logging
-    let sourceType = 'unknown';
-    let sourceInfo = '';
-
-    if (dataSource instanceof File) {
-        sourceType = 'File';
-        sourceInfo = `${dataSource.name} (${dataSource.type}, ${dataSource.size}b)`;
-    } else if (dataSource instanceof Blob) {
-        sourceType = 'Blob';
-        sourceInfo = `${dataSource.type}, ${dataSource.size}b`;
-    } else if (typeof dataSource === 'string') {
-        if (dataSource.startsWith('data:image/')) {
-            sourceType = 'ImageDataURL';
-            sourceInfo = `${dataSource.substring(0, 50)}... (${dataSource.length} chars)`;
-        } else if (dataSource.startsWith('http://') || dataSource.startsWith('https://')) {
-            sourceType = 'URL';
-            sourceInfo = dataSource.substring(0, 100);
-        } else {
-            sourceType = 'Text';
-            sourceInfo = `${dataSource.substring(0, 50)}... (${dataSource.length} chars)`;
-        }
-    }
-
-    console.log("[initiateAnalyzeAndRecognizeData] Source:", sourceType, sourceInfo);
-
-    // Get custom instruction: use provided or fall back to active from settings
-    const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
-
-    console.log("[initiateAnalyzeAndRecognizeData] customInstruction provided:", !!customInstruction);
-    console.log("[initiateAnalyzeAndRecognizeData] effectiveInstruction:", effectiveInstruction ? `"${(effectiveInstruction as string)?.substring?.(0, 50)}..."` : "(none)");
-
-    const options: RecognizeByInstructionsOptions | undefined = effectiveInstruction
-        ? { customInstruction: effectiveInstruction as string }
-        : undefined;
-
-    console.log("[initiateAnalyzeAndRecognizeData] options:", options ? "with customInstruction" : "undefined");
-
-    const result = await analyzeRecognizeUnified(dataSource, (response) => {
-        console.log("[initiateAnalyzeAndRecognizeData] callback response:", response);
-    }, undefined, options);
-
-    console.log("[initiateAnalyzeAndRecognizeData] final result:", {
-        ok: result?.ok,
-        hasData: !!result?.data,
-        dataLength: result?.data?.length,
-        error: result?.error
-    });
-
-    return result;
-}
 
 export const callBackendIfAvailable = async <T = any>(path: string, payload: Record<string, any>): Promise<T | null> => {
     const settings = await loadAISettings();
@@ -119,45 +64,6 @@ export const callBackendIfAvailable = async <T = any>(path: string, payload: Rec
 };
 
 //
-export const initiateConversionProcedure = async (dataSource: string | Blob | File | any, customInstruction?: string) => {
-    const settings = await loadAISettings();
-    if (!settings || !settings?.ai || !settings.ai?.apiKey) return { entities: [] };
-
-    // Get custom instruction if not provided
-    const effectiveInstruction = customInstruction || await getActiveCustomInstruction();
-
-    //
-    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.2");
-
-    // Apply custom instruction if available
-    if (effectiveInstruction) {
-        console.log("[initiateConversionProcedure] Applying custom instruction");
-        gptResponses?.askToDoAction?.(effectiveInstruction as string)?.catch?.(console.warn.bind(console));
-    }
-
-    // phase 1 - prepare data
-    // upload dataset to GPT for recognize, and get response for analyze... and load into context
-    gptResponses?.beginFromResponseId?.(await getOrDefaultComputedOfDataSourceCache(dataSource, async (dataSource: string | Blob | File | any) => {
-        await gptResponses?.attachToRequest?.(dataSource)?.catch?.(console.warn.bind(console));
-        await gptResponses?.sendRequest?.("high", "high")?.catch?.(console.warn.bind(console));
-        return gptResponses?.getResponseId?.() || "";
-    }));
-
-    //
-    // Support multiple MCP configurations
-    if (settings?.ai?.mcp && Array.isArray(settings.ai.mcp)) {
-        for (const mcpConfig of settings.ai.mcp) {
-            if (mcpConfig.serverLabel && mcpConfig.origin && mcpConfig.clientKey && mcpConfig.secretKey) {
-                await gptResponses?.useMCP?.(mcpConfig.serverLabel, mcpConfig.origin, mcpConfig.clientKey, mcpConfig.secretKey)?.catch?.(console.warn.bind(console));
-            }
-        }
-    }
-
-    // phase 2 - convert data to target format, make final description
-    const resultsRaw = (await resolveEntity?.(gptResponses)?.catch?.(console.warn.bind(console))) || [];
-    const results = Array.isArray(resultsRaw) ? resultsRaw : [resultsRaw];
-    return { entities: results?.flatMap?.((result) => (result?.entities || [])) };
-}
 
 /**
  * Detected input data type with confidence scoring.

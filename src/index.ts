@@ -205,11 +205,18 @@ const extractShareContent = (shareData: ShareDataInput): { content: string | nul
 };
 
 /**
- * Process share target data with AI
+ * Process share target data with AI - broadcasts results to PWA clipboard handlers
  * This is called when SW didn't process (or failed), or for server-side fallback
  */
 const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = false): Promise<boolean> => {
-    console.log("[ShareTarget] Processing shared data:", shareData);
+    console.log("[ShareTarget] Processing shared data:", {
+        hasText: !!shareData.text,
+        hasUrl: !!shareData.url,
+        fileCount: shareData.files?.length || shareData.fileCount || 0,
+        imageCount: shareData.imageCount || 0,
+        source: shareData.source || 'unknown',
+        aiProcessed: shareData.aiProcessed
+    });
 
     // If AI already processed in SW, just show result info
     if (shareData.aiProcessed && shareData.results?.length) {
@@ -219,6 +226,8 @@ const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = f
     }
 
     const { content, type } = extractShareContent(shareData);
+
+    console.log("[ShareTarget] Extracted content:", { content: content?.substring(0, 50), type });
 
     if (!content && type !== 'file') {
         if (skipIfEmpty) {
@@ -240,6 +249,7 @@ const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = f
     }
 
     try {
+        console.log("[ShareTarget] Starting AI processing for type:", type);
         showToast({ message: "Processing shared content...", kind: "info" });
 
         // Import AI functions dynamically
@@ -250,13 +260,16 @@ const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = f
 
         if (type === 'file' && shareData.files?.[0]) {
             inputData = shareData.files[0] as File;
+            console.log("[ShareTarget] Processing file:", { name: inputData.name, type: inputData.type, size: inputData.size });
         } else if (content) {
             inputData = content;
+            console.log("[ShareTarget] Processing text content, length:", content.length);
         } else {
-            throw new Error("No processable content");
+            throw new Error("No processable content found");
         }
 
         // Convert to usable format
+        console.log("[ShareTarget] Converting to usable data format");
         const usableData = await getUsableData({ dataSource: inputData });
 
         const input = [{
@@ -265,72 +278,67 @@ const processShareTargetData = async (shareData: ShareDataInput, skipIfEmpty = f
             content: [usableData]
         }];
 
+        console.log("[ShareTarget] Calling AI recognition");
         // Process with AI
         const result = await recognizeByInstructions(input, "", undefined, undefined, { useActiveInstruction: true });
 
+        console.log("[ShareTarget] AI recognition completed:", { ok: result?.ok, hasData: !!result?.data, dataLength: result?.data?.length });
+
         if (result?.ok && result?.data) {
-            // Copy result to clipboard using requestAnimationFrame for proper focus triggering
-            const resultText = typeof result.data === 'string'
-                ? result.data
-                : JSON.stringify(result.data, null, 2);
-
-            // Use requestAnimationFrame to ensure proper focus and timing for clipboard API
-            await new Promise<void>((resolve) => {
-                requestAnimationFrame(() => {
-                    // Ensure document has focus for clipboard API
-                    if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
-                        window.focus();
-                    }
-
-                    // Use clipboard API with proper timing
-                    navigator.clipboard?.writeText(resultText).then(() => {
-                        showToast({ message: "Content processed and copied!", kind: "success" });
-                        resolve();
-                    }).catch((clipboardError) => {
-                        console.warn("[ShareTarget] Clipboard write failed, trying fallback:", clipboardError);
-                        // Fallback to legacy clipboard method
-                        try {
-                            const textarea = document.createElement('textarea');
-                            textarea.value = resultText;
-                            textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
-                            document.body.appendChild(textarea);
-                            textarea.select();
-                            const success = document.execCommand('copy');
-                            textarea.remove();
-                            if (success) {
-                                showToast({ message: "Content processed and copied!", kind: "success" });
-                            } else {
-                                showToast({ message: "Content processed but copy failed", kind: "warning" });
-                            }
-                        } catch (legacyError) {
-                            console.error("[ShareTarget] All clipboard methods failed:", legacyError);
-                            showToast({ message: "Content processed but copy failed", kind: "warning" });
-                        }
-                        resolve();
-                    });
-                });
+            // Broadcast result to PWA clipboard handlers
+            console.log("[ShareTarget] Broadcasting successful AI result to clipboard handlers");
+            const shareChannel = new BroadcastChannel("rs-share-target");
+            shareChannel.postMessage({
+                type: 'ai-result',
+                data: { success: true, data: result.data }
             });
+            shareChannel.close();
 
             return true;
         } else {
-            const errorMsg = result?.error || "Processing returned no data";
-            showToast({ message: `Processing issue: ${errorMsg}`, kind: "warning" });
+            const errorMsg = result?.error || "AI processing returned no data";
+            console.warn("[ShareTarget] AI processing failed:", errorMsg);
+
+            // Broadcast error to clipboard handlers
+            const shareChannel = new BroadcastChannel("rs-share-target");
+            shareChannel.postMessage({
+                type: 'ai-result',
+                data: { success: false, error: errorMsg }
+            });
+            shareChannel.close();
+
+            showToast({ message: `Processing failed: ${errorMsg}`, kind: "warning" });
             return false;
         }
     } catch (error: any) {
         console.error("[ShareTarget] Processing error:", error);
 
         // Try fallback to server-side AI processing
+        console.log("[ShareTarget] Attempting server-side fallback");
         const fallbackResult = await tryServerSideProcessing(shareData);
-        if (fallbackResult) return true;
+        if (fallbackResult) {
+            console.log("[ShareTarget] Server-side fallback succeeded");
+            return true;
+        }
 
-        showToast({ message: `Failed: ${error?.message || error}`, kind: "error" });
+        console.warn("[ShareTarget] All processing methods failed");
+
+        // Broadcast error to clipboard handlers
+        const shareChannel = new BroadcastChannel("rs-share-target");
+        shareChannel.postMessage({
+            type: 'ai-result',
+            data: { success: false, error: error?.message || String(error) }
+        });
+        shareChannel.close();
+
+        showToast({ message: `Processing failed: ${error?.message || 'Unknown error'}`, kind: "error" });
         return false;
     }
 };
 
 /**
  * Fallback to server-side AI processing when client-side fails
+ * Broadcasts results to PWA clipboard handlers instead of copying directly
  */
 const tryServerSideProcessing = async (shareData: ShareDataInput): Promise<boolean> => {
     try {
@@ -370,9 +378,14 @@ const tryServerSideProcessing = async (shareData: ShareDataInput): Promise<boole
 
         const result = await response.json();
         if (result?.ok && result?.data) {
-            // Use the unified clipboard system with requestAnimationFrame
-            const { copy } = await import("./frontend/shared/Clipboard");
-            await copy(String(result.data), { showFeedback: true });
+            // Broadcast result to PWA clipboard handlers
+            console.log("[ShareTarget] Broadcasting server-side result to clipboard handlers");
+            const shareChannel = new BroadcastChannel("rs-share-target");
+            shareChannel.postMessage({
+                type: 'ai-result',
+                data: { success: true, data: String(result.data) }
+            });
+            shareChannel.close();
             return true;
         }
 
@@ -392,14 +405,24 @@ const handleShareTarget = () => {
 
     // Handle URL params from server-side share handler
     if (shared === "1" || shared === "true") {
+        console.log("[ShareTarget] Detected shared=1 URL param, processing server-side share");
+
         // Extract share data from URL params (server-side handler)
         const shareFromParams: ShareDataInput = {
             title: params.get("title") || undefined,
             text: params.get("text") || undefined,
             url: params.get("url") || undefined,
             sharedUrl: params.get("sharedUrl") || undefined,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            source: 'url-params'
         };
+
+        console.log("[ShareTarget] Share data from URL params:", {
+            title: shareFromParams.title,
+            text: shareFromParams.text,
+            url: shareFromParams.url,
+            sharedUrl: shareFromParams.sharedUrl
+        });
 
         // Clean up URL
         const cleanUrl = new URL(window.location.href);
@@ -407,11 +430,15 @@ const handleShareTarget = () => {
         window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.hash);
 
         // Check if we have content from params
-        const { content } = extractShareContent(shareFromParams);
-        if (content) {
+        const { content, type } = extractShareContent(shareFromParams);
+        console.log("[ShareTarget] Extracted from URL params:", { content: content?.substring(0, 50), type });
+
+        if (content || type === 'file') {
             console.log("[ShareTarget] Processing from URL params");
             processShareTargetData(shareFromParams, true);
             return; // Don't also check cache
+        } else {
+            console.log("[ShareTarget] No processable content in URL params, checking cache");
         }
 
         // No content in params, try cache
@@ -452,14 +479,23 @@ const handleShareTarget = () => {
     }
 
     // Listen for real-time share target broadcasts from service worker
+    // Note: AI results are handled by PWA clipboard receivers, this handles share notifications
     if (typeof BroadcastChannel !== "undefined") {
         const shareChannel = new BroadcastChannel("rs-share-target");
         shareChannel.addEventListener("message", async (event) => {
             const msgType = event.data?.type;
             const msgData = event.data?.data;
 
+            console.log("[ShareTarget] Broadcast received:", { type: msgType, hasData: !!msgData });
+
             if (msgType === "share-received" && msgData) {
-                console.log("[ShareTarget] Broadcast received:", msgData);
+                console.log("[ShareTarget] Share notification received:", {
+                    hasText: !!msgData.text,
+                    hasUrl: !!msgData.url,
+                    fileCount: msgData.fileCount || 0,
+                    aiEnabled: msgData.aiEnabled,
+                    source: msgData.source
+                });
 
                 // Check if this is just a notification (files processed in SW)
                 // vs actual data we need to process
@@ -468,21 +504,17 @@ const handleShareTarget = () => {
                     showToast({ message: `Processing ${msgData.fileCount} file(s)...`, kind: "info" });
                 } else if (msgData.text || msgData.url || msgData.title) {
                     // We have text content to potentially process
+                    console.log("[ShareTarget] Processing broadcasted share data");
                     await processShareTargetData(msgData, true);
                 }
-            } else if (msgType === "ai-result" && msgData) {
-                // AI processing result from SW
-                console.log("[ShareTarget] AI result from SW:", msgData);
-                if (msgData.success && msgData.data) {
-                    // Copy to clipboard using unified system with requestAnimationFrame
-                    const text = typeof msgData.data === 'string' ? msgData.data : JSON.stringify(msgData.data);
-                    const { copy } = await import("./frontend/shared/Clipboard");
-                    await copy(text, { showFeedback: true });
-                } else {
-                    showToast({ message: msgData.error || "Processing failed", kind: "error" });
-                }
+            } else if (msgType === "ai-result") {
+                console.log("[ShareTarget] AI result broadcast received (handled by PWA clipboard)");
             }
         });
+
+        console.log("[ShareTarget] Broadcast channel listener set up");
+    } else {
+        console.warn("[ShareTarget] BroadcastChannel not available");
     }
 };
 
@@ -549,20 +581,41 @@ const setupLaunchQueueConsumer = async () => {
                         fileCount: files.length,
                         timestamp: Date.now(),
                         // Determine if there are images for AI processing
-                        imageCount: files.filter(f => f.type.startsWith('image/')).length
+                        imageCount: files.filter(f => f.type.startsWith('image/')).length,
+                        // Mark as launch queue origin for debugging
+                        source: 'launch-queue'
                     };
 
-                    console.log('[LaunchQueue] Created share data:', shareData);
+                    console.log('[LaunchQueue] Created share data:', {
+                        fileCount: shareData.fileCount,
+                        imageCount: shareData.imageCount,
+                        fileTypes: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+                        source: shareData.source
+                    });
+
+                    // Show immediate feedback that files were received
+                    showToast({
+                        message: `Processing ${files.length} launched file(s)...`,
+                        kind: 'info'
+                    });
 
                     // Process through the existing share target flow
                     try {
-                        await processShareTargetData(shareData, false);
+                        const success = await processShareTargetData(shareData, false);
+                        if (!success) {
+                            console.warn('[LaunchQueue] Share target processing returned false');
+                            showToast({
+                                message: `Received ${files.length} file(s) but processing failed`,
+                                kind: 'warning'
+                            });
+                        } else {
+                            console.log('[LaunchQueue] Share target processing completed successfully');
+                        }
                     } catch (error) {
-                        console.warn('[LaunchQueue] Failed to process files:', error);
-                        // Fallback: show notification
+                        console.error('[LaunchQueue] Failed to process files:', error);
                         showToast({
-                            message: `${files.length} file(s) received but processing failed`,
-                            kind: 'warning'
+                            message: `Failed to process ${files.length} launched file(s)`,
+                            kind: 'error'
                         });
                     }
                 }
@@ -620,6 +673,67 @@ const checkPendingShareData = async () => {
 };
 
 export type FrontendChoice = "basic" | "faint";
+
+/**
+ * Test function for share target functionality
+ * Can be called from browser console for testing
+ */
+export const testShareTarget = async (data: {
+    text?: string;
+    url?: string;
+    files?: File[];
+    title?: string;
+}) => {
+    console.log('[Test] Testing share target with data:', data);
+
+    const shareData: ShareDataInput = {
+        ...data,
+        fileCount: data.files?.length || 0,
+        imageCount: data.files?.filter(f => f.type.startsWith('image/')).length || 0,
+        timestamp: Date.now(),
+        source: 'test'
+    };
+
+    try {
+        const success = await processShareTargetData(shareData, false);
+        console.log('[Test] Share target processing result:', success);
+        return success;
+    } catch (error) {
+        console.error('[Test] Share target processing failed:', error);
+        return false;
+    }
+};
+
+/**
+ * Test function for launch queue functionality
+ * Can be called from browser console for testing
+ */
+export const testLaunchQueue = async (files: File[]) => {
+    console.log('[Test] Testing launch queue with files:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+
+    if (typeof window !== 'undefined' && 'launchQueue' in window) {
+        // Simulate launch queue event
+        const mockLaunchParams = {
+            files: files.map(file => ({
+                getFile: async () => file
+            }))
+        };
+
+        // Call the consumer directly
+        const consumer = (window as any).launchQueue._consumer;
+        if (consumer) {
+            await consumer(mockLaunchParams);
+            console.log('[Test] Launch queue simulation completed');
+            return true;
+        } else {
+            console.warn('[Test] No launch queue consumer found');
+            return false;
+        }
+    } else {
+        console.warn('[Test] Launch Queue API not available');
+        return false;
+    }
+};
 
 const CHOICE_KEY = "rs-frontend-choice";
 const REMEMBER_KEY = "rs-frontend-choice-remember";
@@ -841,3 +955,5 @@ export default async function bootstrap(mountElement: HTMLElement) {
     mountElement.append(container);
 }
 
+// Export test functions for manual testing and debugging
+//export { testShareTarget, testLaunchQueue };

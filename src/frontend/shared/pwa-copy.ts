@@ -73,6 +73,39 @@ const extractRecognizedContent = (data: unknown): unknown => {
 };
 
 /**
+ * Check for pending clipboard operations from service worker
+ */
+const checkPendingClipboardOperations = async (): Promise<void> => {
+    try {
+        console.log('[PWA-Copy] Checking for pending clipboard operations...');
+        const response = await fetch('/clipboard/pending');
+        const data = await response.json();
+
+        if (data.operations && Array.isArray(data.operations) && data.operations.length > 0) {
+            console.log('[PWA-Copy] Found', data.operations.length, 'pending clipboard operations');
+
+            for (const operation of data.operations) {
+                if (operation.type === 'ai-result' && operation.data) {
+                    console.log('[PWA-Copy] Processing pending AI result:', operation.id);
+                    const text = typeof operation.data === 'string' ? operation.data : JSON.stringify(operation.data);
+                    const { copy } = await import("./Clipboard");
+                    await copy(text, { showFeedback: true });
+
+                    // Remove the processed operation from the queue
+                    try {
+                        await fetch(`/clipboard/remove/${operation.id}`, { method: 'DELETE' });
+                    } catch (error) {
+                        console.warn('[PWA-Copy] Failed to remove processed operation:', error);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('[PWA-Copy] Failed to check pending operations:', error);
+    }
+};
+
+/**
  * Initialize PWA clipboard listeners
  * Call this early in the PWA lifecycle to receive clipboard requests from service worker
  */
@@ -83,6 +116,9 @@ export const initPWAClipboard = (): (() => void) => {
     _pwaClipboardInitialized = true;
 
     console.log('[PWA-Copy] Initializing clipboard and toast receivers...');
+
+    // Check for any pending clipboard operations that completed while page was closed
+    checkPendingClipboardOperations().catch(console.warn);
 
     // Listen for clipboard requests from service worker
     _cleanupFns.push(initClipboardReceiver());
@@ -96,13 +132,33 @@ export const initPWAClipboard = (): (() => void) => {
         const clipboardChannel = new BroadcastChannel("rs-clipboard");
 
         const clipboardHandler = async (event: MessageEvent) => {
-            const { type, data, options } = event.data || {};
+            const { type, data, options, operations } = event.data || {};
             console.log('[PWA-Copy] Clipboard channel message:', type, data);
 
             // Handle direct clipboard copy requests
             if (type === "copy" && data !== undefined) {
                 const { copy } = await import("./Clipboard");
                 await copy(data, { showFeedback: true, ...options });
+            }
+
+            // Handle pending operations sent directly from service worker
+            if (type === "pending-operations" && operations && Array.isArray(operations)) {
+                console.log('[PWA-Copy] Received', operations.length, 'pending operations via broadcast');
+                for (const operation of operations) {
+                    if (operation.type === 'ai-result' && operation.data) {
+                        console.log('[PWA-Copy] Processing broadcasted AI result:', operation.id);
+                        const text = typeof operation.data === 'string' ? operation.data : JSON.stringify(operation.data);
+                        const { copy } = await import("./Clipboard");
+                        await copy(text, { showFeedback: true });
+
+                        // Remove the processed operation from the queue
+                        try {
+                            await fetch(`/clipboard/remove/${operation.id}`, { method: 'DELETE' });
+                        } catch (error) {
+                            console.warn('[PWA-Copy] Failed to remove processed operation:', error);
+                        }
+                    }
+                }
             }
         };
 

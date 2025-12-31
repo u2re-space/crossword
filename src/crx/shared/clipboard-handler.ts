@@ -48,19 +48,125 @@ const showFeedback = async (message: string): Promise<void> => {
 };
 
 /**
- * Handle clipboard copy request
+ * Enhanced clipboard write with RAF timing and multiple retries
+ */
+const writeTextWithRAF = async (text: string, maxRetries = 3): Promise<{ ok: boolean; method?: string; error?: string }> => {
+    const trimmed = text.trim();
+    if (!trimmed) return { ok: false, error: "Empty content" };
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // Use RAF for proper timing
+            const result = await new Promise<{ ok: boolean; method?: string; error?: string }>((resolve) => {
+                requestAnimationFrame(() => {
+                    // Ensure document has focus for clipboard API (if in content script)
+                    if (detectContext() === "content" && typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
+                        try {
+                            window.focus();
+                        } catch {
+                            // Ignore focus errors
+                        }
+                    }
+
+                    // Try direct clipboard API first
+                    const tryClipboardAPI = async () => {
+                        try {
+                            if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                                await navigator.clipboard.writeText(trimmed);
+                                return resolve({ ok: true, method: "clipboard-api" });
+                            }
+                        } catch (err) {
+                            console.warn(`[Clipboard] Direct write failed (attempt ${attempt + 1}):`, err);
+                        }
+
+                        // Try with permissions query (Chrome extension specific)
+                        try {
+                            if (typeof navigator !== "undefined" && navigator.permissions) {
+                                const result = await navigator.permissions.query({ name: "clipboard-write" } as unknown as PermissionDescriptor);
+                                if (result.state === "granted" || result.state === "prompt") {
+                                    await navigator.clipboard.writeText(trimmed);
+                                    return resolve({ ok: true, method: "clipboard-api-permission" });
+                                }
+                            }
+                        } catch (err) {
+                            console.warn(`[Clipboard] Permission check failed (attempt ${attempt + 1}):`, err);
+                        }
+
+                        // Fallback: legacy execCommand (works in content scripts)
+                        try {
+                            if (detectContext() === "content" && typeof document !== "undefined") {
+                                const textarea = document.createElement("textarea");
+                                textarea.value = trimmed;
+                                textarea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;z-index:-1;";
+                                document.body.appendChild(textarea);
+                                textarea.select();
+
+                                // Focus the textarea for better compatibility
+                                textarea.focus();
+
+                                const success = document.execCommand("copy");
+                                textarea.remove();
+
+                                if (success) {
+                                    return resolve({ ok: true, method: "legacy-execCommand" });
+                                }
+                            }
+                        } catch (err) {
+                            console.warn(`[Clipboard] Legacy execCommand failed (attempt ${attempt + 1}):`, err);
+                        }
+
+                        // Additional fallback: try again after a short delay
+                        if (attempt < maxRetries - 1) {
+                            setTimeout(() => tryClipboardAPI(), 100);
+                            return;
+                        }
+
+                        resolve({ ok: false, error: "All clipboard methods failed" });
+                    };
+
+                    tryClipboardAPI();
+                });
+            });
+
+            if (result.ok) {
+                return result;
+            }
+
+            // If this attempt failed and we have retries left, wait before next attempt
+            if (attempt < maxRetries - 1) {
+                await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+            }
+
+        } catch (error) {
+            console.warn(`[Clipboard] Attempt ${attempt + 1} completely failed:`, error);
+            if (attempt < maxRetries - 1) {
+                await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+            }
+        }
+    }
+
+    return { ok: false, error: `Failed after ${maxRetries} attempts` };
+};
+
+/**
+ * Handle clipboard copy request with enhanced stability
  */
 export const handleCopyRequest = async (
     data: unknown,
-    options: { showFeedback?: boolean; errorMessage?: string } = {}
+    options: { showFeedback?: boolean; errorMessage?: string; maxRetries?: number } = {}
 ): Promise<CopyResponse> => {
     const text = toText(data).trim();
+    const { maxRetries = 3 } = options;
 
     if (!text) {
         return { ok: false, error: "Empty content" };
     }
 
-    const result = await writeText(text);
+    console.log(`[Clipboard] Attempting to copy ${text.length} characters (${detectContext()})`);
+
+    const result = await writeTextWithRAF(text, maxRetries);
+
+    console.log(`[Clipboard] Copy result:`, result);
 
     // Show feedback if requested and in appropriate context
     if (options.showFeedback && detectContext() === "content") {

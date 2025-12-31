@@ -30,7 +30,7 @@ const compressIfNeeded = async (dataUrl: string): Promise<string> => {
 };
 
 /**
- * Send to content script to trigger clipboard copy
+ * Enhanced COPY_HACK with RAF timing and improved error handling
  * Uses unified Clipboard module with fallback to offscreen document
  */
 export const COPY_HACK = async (
@@ -41,12 +41,34 @@ export const COPY_HACK = async (
     const text = toText(data?.data).trim();
     if (!text) return { ok: false, error: "Empty content" };
 
-    // Use unified clipboard API with CRX support and offscreen fallback
-    return requestCopyViaCRX(text, {
-        tabId,
-        offscreenFallback: async (content) => {
+    console.log(`[COPY_HACK] Starting clipboard operation for ${text.length} characters`);
+
+    // Use RAF for better timing before attempting clipboard operations
+    return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+        requestAnimationFrame(async () => {
+            let result = { ok: false, error: "No method succeeded" };
+
+            // Method 1: Try content script first (most reliable)
+            if (tabId && tabId > 0) {
+                try {
+                    console.log(`[COPY_HACK] Attempting content script copy on tab ${tabId}`);
+                    const response = await ext.tabs.sendMessage(tabId, {
+                        type: "COPY_HACK",
+                        data: text
+                    });
+
+                    if (response?.ok) {
+                        console.log(`[COPY_HACK] Content script copy succeeded`);
+                        return resolve({ ok: true });
+                    }
+                } catch (err) {
+                    console.warn(`[COPY_HACK] Content script failed:`, err);
+                }
+            }
+
+            // Method 2: Try offscreen document fallback
             try {
-                // Create offscreen document if needed
+                console.log(`[COPY_HACK] Attempting offscreen document copy`);
                 const offscreenUrl = "offscreen/copy.html";
                 const existingContexts = await ext.runtime.getContexts?.({
                     contextTypes: [ext.runtime.ContextType.OFFSCREEN_DOCUMENT as any],
@@ -54,25 +76,60 @@ export const COPY_HACK = async (
                 })?.catch?.(() => []);
 
                 if (!existingContexts?.length) {
+                    console.log(`[COPY_HACK] Creating offscreen document`);
                     await ext.offscreen.createDocument({
                         url: offscreenUrl,
                         reasons: [ext.offscreen.Reason.CLIPBOARD],
                         justification: "Clipboard API access for copying recognized text"
                     });
+
+                    // Wait a bit for the document to initialize
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
-                // Send message to offscreen document
                 const response = await ext.runtime.sendMessage({
                     target: "offscreen",
                     type: "COPY_HACK",
-                    data: content
+                    data: text
                 });
-                return response?.ok ?? false;
+
+                if (response?.ok) {
+                    console.log(`[COPY_HACK] Offscreen copy succeeded`);
+                    return resolve({ ok: true });
+                }
             } catch (err) {
-                console.warn("[COPY_HACK] Offscreen fallback failed:", err);
-                return false;
+                console.warn(`[COPY_HACK] Offscreen fallback failed:`, err);
             }
-        }
+
+            // Method 3: Try all tabs as last resort
+            try {
+                console.log(`[COPY_HACK] Attempting copy on any available tab`);
+                const tabs = await ext.tabs.query({}).catch(() => []);
+
+                for (const tab of tabs || []) {
+                    if (tab?.id && tab.id !== tabId) {
+                        try {
+                            const response = await ext.tabs.sendMessage(tab.id, {
+                                type: "COPY_HACK",
+                                data: text
+                            });
+
+                            if (response?.ok) {
+                                console.log(`[COPY_HACK] Copy succeeded on fallback tab ${tab.id}`);
+                                return resolve({ ok: true });
+                            }
+                        } catch {
+                            // Continue to next tab
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[COPY_HACK] Tab fallback failed:`, err);
+            }
+
+            console.warn(`[COPY_HACK] All clipboard methods failed for ${text.length} characters`);
+            resolve(result);
+        });
     });
 };
 

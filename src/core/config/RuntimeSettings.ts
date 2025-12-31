@@ -1,9 +1,10 @@
+import { loadSettings } from "./Settings";
 import type { AppSettings } from "./SettingsTypes.ts";
 import { DEFAULT_SETTINGS } from "./SettingsTypes.ts";
 
 export type RuntimeSettingsProvider = () => Promise<AppSettings> | AppSettings;
 
-let provider: RuntimeSettingsProvider = () => DEFAULT_SETTINGS;
+let provider: RuntimeSettingsProvider = loadSettings;//async () => DEFAULT_SETTINGS;
 
 /**
  * Allows non-browser runtimes (Node/Deno backend) to supply settings without IndexedDB/chrome storage.
