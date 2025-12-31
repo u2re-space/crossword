@@ -21,6 +21,25 @@
             "purpose": "monochrome"
         }
     ],
+    "file_handlers": [
+        {
+            "action": "/",
+            "accept": {
+                "text/*": [".txt"],
+                "application/pdf": [".pdf"],
+                "application/json": [".json"],
+                "application/xml": [".xml"],
+                "application/javascript": [".js"],
+                "application/typescript": [".ts"],
+                "image/webp": [".webp"],
+                "image/svg+xml": [".svg"],
+                "image/jpeg": [".jpg", ".jpeg"],
+                "image/png": [".png"],
+                "text/markdown": [".md"],
+                "text/html": [".html"]
+            }
+        }
+    ],
     "share_target": {
         "action": "/share-target",
         "method": "POST",
