@@ -16,6 +16,21 @@ export type CopyResponse = {
 export type CRXClipboardContext = "content" | "offscreen" | "unknown";
 
 /**
+ * Get the best available timing function for scheduling callbacks
+ * Prefers requestAnimationFrame when available, falls back to setTimeout
+ */
+export const getTimingFunction = (): ((callback: () => void) => void) => {
+    if (typeof requestAnimationFrame !== 'undefined') {
+        return requestAnimationFrame;
+    }
+    if (typeof setTimeout !== 'undefined') {
+        return (cb) => setTimeout(cb, 0);
+    }
+    // Last resort: execute immediately
+    return (cb) => cb();
+};
+
+/**
  * Detect current CRX context
  */
 export const detectContext = (): CRXClipboardContext => {
@@ -56,9 +71,10 @@ const writeTextWithRAF = async (text: string, maxRetries = 3): Promise<{ ok: boo
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-            // Use RAF for proper timing
+            // Use RAF for proper timing, fallback to setTimeout for service workers
             const result = await new Promise<{ ok: boolean; method?: string; error?: string }>((resolve) => {
-                requestAnimationFrame(() => {
+                const timerFn = getTimingFunction();
+                timerFn(() => {
                     // Ensure document has focus for clipboard API (if in content script)
                     if (detectContext() === "content" && typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
                         try {
@@ -205,18 +221,28 @@ export const initClipboardHandler = (
     const context = detectContext();
     const { targetFilter, showFeedback: feedback = context === "content" } = options;
 
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        console.log(`[Clipboard] Received message:`, message, `from:`, sender);
+
         // Filter by target if specified
         if (targetFilter && message?.target !== targetFilter) {
+            console.log(`[Clipboard] Message filtered out by target:`, message?.target, `expected:`, targetFilter);
             return false;
         }
 
         // Handle COPY_HACK messages
         if (message?.type === "COPY_HACK") {
+            console.log(`[Clipboard] Processing COPY_HACK message with data:`, message?.data?.substring?.(0, 50) + '...');
             handleCopyRequest(message?.data, {
                 showFeedback: feedback,
                 errorMessage: message?.error
-            }).then(sendResponse);
+            }).then(response => {
+                console.log(`[Clipboard] COPY_HACK response:`, response);
+                sendResponse(response);
+            }).catch(error => {
+                console.error(`[Clipboard] COPY_HACK error:`, error);
+                sendResponse({ ok: false, error: String(error) });
+            });
             return true; // async response
         }
 

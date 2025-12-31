@@ -8,6 +8,21 @@ import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
 
+/**
+ * Get the best available timing function for scheduling callbacks
+ * Prefers requestAnimationFrame when available, falls back to setTimeout
+ */
+const getTimingFunction = (): ((callback: () => void) => void) => {
+    if (typeof requestAnimationFrame !== 'undefined') {
+        return requestAnimationFrame;
+    }
+    if (typeof setTimeout !== 'undefined') {
+        return (cb) => setTimeout(cb, 0);
+    }
+    // Last resort: execute immediately
+    return (cb) => cb();
+};
+
 // compress image to JPEG if too large
 const compressIfNeeded = async (dataUrl: string): Promise<string> => {
     if (dataUrl.length <= SIZE_THRESHOLD) return dataUrl;
@@ -37,33 +52,61 @@ export const COPY_HACK = async (
     ext: typeof chrome,
     data: { ok?: boolean; data?: string; error?: string },
     tabId?: number
-) => {
-    const text = toText(data?.data).trim();
-    if (!text) return { ok: false, error: "Empty content" };
+): Promise<{ ok: boolean; error?: string }> => {
+    try {
+        const text = toText(data?.data).trim();
+        if (!text) return { ok: false, error: "Empty content" };
 
-    console.log(`[COPY_HACK] Starting clipboard operation for ${text.length} characters`);
+        console.log(`[COPY_HACK] Starting clipboard operation for ${text.length} characters`);
 
-    // Use RAF for better timing before attempting clipboard operations
-    return new Promise<{ ok: boolean; error?: string }>((resolve) => {
-        requestAnimationFrame(async () => {
+        // Use RAF for better timing, fallback to setTimeout for service workers
+        return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+            const timerFn = getTimingFunction();
+            timerFn(async () => {
             let result = { ok: false, error: "No method succeeded" };
 
             // Method 1: Try content script first (most reliable)
             if (tabId && tabId > 0) {
                 try {
                     console.log(`[COPY_HACK] Attempting content script copy on tab ${tabId}`);
-                    const response = await ext.tabs.sendMessage(tabId, {
-                        type: "COPY_HACK",
-                        data: text
-                    });
 
-                    if (response?.ok) {
-                        console.log(`[COPY_HACK] Content script copy succeeded`);
-                        return resolve({ ok: true });
+                    // First check if the tab exists and is ready
+                    const tab = await ext.tabs.get(tabId).catch(() => null);
+                    if (!tab) {
+                        console.warn(`[COPY_HACK] Tab ${tabId} not found or not accessible`);
+                    } else {
+                        console.log(`[COPY_HACK] Tab ${tabId} found: ${tab.url}`);
+
+                        // Inject content script if not already present (for dynamic injection)
+                        try {
+                            await ext.scripting.executeScript({
+                                target: { tabId },
+                                files: ["content/main.ts"]
+                            });
+                            console.log(`[COPY_HACK] Content script injected into tab ${tabId}`);
+                        } catch (injectErr) {
+                            console.log(`[COPY_HACK] Content script already present or injection failed:`, injectErr);
+                        }
+
+                        const response = await ext.tabs.sendMessage(tabId, {
+                            type: "COPY_HACK",
+                            data: text
+                        });
+
+                        console.log(`[COPY_HACK] Content script response:`, response);
+
+                        if (response?.ok) {
+                            console.log(`[COPY_HACK] Content script copy succeeded`);
+                            return resolve({ ok: true });
+                        } else {
+                            console.warn(`[COPY_HACK] Content script returned not ok:`, response);
+                        }
                     }
                 } catch (err) {
                     console.warn(`[COPY_HACK] Content script failed:`, err);
                 }
+            } else {
+                console.log(`[COPY_HACK] No valid tabId provided:`, tabId);
             }
 
             // Method 2: Try offscreen document fallback
@@ -75,27 +118,40 @@ export const COPY_HACK = async (
                     documentUrls: [ext.runtime.getURL(offscreenUrl)]
                 })?.catch?.(() => []);
 
+                console.log(`[COPY_HACK] Found ${existingContexts?.length || 0} existing offscreen contexts`);
+
                 if (!existingContexts?.length) {
                     console.log(`[COPY_HACK] Creating offscreen document`);
-                    await ext.offscreen.createDocument({
-                        url: offscreenUrl,
-                        reasons: [ext.offscreen.Reason.CLIPBOARD],
-                        justification: "Clipboard API access for copying recognized text"
-                    });
+                    try {
+                        await ext.offscreen.createDocument({
+                            url: offscreenUrl,
+                            reasons: [ext.offscreen.Reason.CLIPBOARD],
+                            justification: "Clipboard API access for copying recognized text"
+                        });
 
-                    // Wait a bit for the document to initialize
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                        // Wait longer for the document to fully initialize
+                        console.log(`[COPY_HACK] Waiting for offscreen document to initialize...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } catch (createErr) {
+                        console.warn(`[COPY_HACK] Failed to create offscreen document:`, createErr);
+                        throw createErr;
+                    }
                 }
 
+                console.log(`[COPY_HACK] Sending message to offscreen document`);
                 const response = await ext.runtime.sendMessage({
                     target: "offscreen",
                     type: "COPY_HACK",
                     data: text
                 });
 
+                console.log(`[COPY_HACK] Offscreen response:`, response);
+
                 if (response?.ok) {
                     console.log(`[COPY_HACK] Offscreen copy succeeded`);
                     return resolve({ ok: true });
+                } else {
+                    console.warn(`[COPY_HACK] Offscreen returned not ok:`, response);
                 }
             } catch (err) {
                 console.warn(`[COPY_HACK] Offscreen fallback failed:`, err);
@@ -109,6 +165,12 @@ export const COPY_HACK = async (
                 for (const tab of tabs || []) {
                     if (tab?.id && tab.id !== tabId) {
                         try {
+                            // Inject content script if needed
+                            await ext.scripting.executeScript({
+                                target: { tabId: tab.id },
+                                files: ["content/main.ts"]
+                            }).catch(() => {});
+
                             const response = await ext.tabs.sendMessage(tab.id, {
                                 type: "COPY_HACK",
                                 data: text
@@ -127,10 +189,27 @@ export const COPY_HACK = async (
                 console.warn(`[COPY_HACK] Tab fallback failed:`, err);
             }
 
+            // Method 4: Background script direct clipboard access (last resort)
+            try {
+                console.log(`[COPY_HACK] Attempting background script direct clipboard access`);
+                // In service worker context, we can try navigator.clipboard directly
+                if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    console.log(`[COPY_HACK] Background script clipboard copy succeeded`);
+                    return resolve({ ok: true });
+                }
+            } catch (err) {
+                console.warn(`[COPY_HACK] Background script clipboard failed:`, err);
+            }
+
             console.warn(`[COPY_HACK] All clipboard methods failed for ${text.length} characters`);
             resolve(result);
         });
     });
+    } catch (error) {
+        console.error(`[COPY_HACK] Unexpected error:`, error);
+        return { ok: false, error: String(error) };
+    }
 };
 
 // extract text from recognition result
