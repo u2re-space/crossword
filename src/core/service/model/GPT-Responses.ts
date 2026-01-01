@@ -29,6 +29,41 @@ const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for file processing
 export const MAX_BASE64_SIZE = 10 * 1024 * 1024; // 10MB for base64 encoding
 
+// Default request timeout configurations based on effort level (in milliseconds)
+export const DEFAULT_REQUEST_TIMEOUTS = {
+    low: 60 * 1000,      // 1 minute
+    medium: 5 * 60 * 1000, // 5 minutes
+    high: 15 * 60 * 1000   // 15 minutes
+} as const;
+
+export const DEFAULT_MAX_RETRIES = 2;
+export const RETRY_DELAY = 2000; // 2 seconds
+
+/**
+ * Get timeout configuration from settings or use defaults
+ */
+function getTimeoutConfig(effort: "low" | "medium" | "high"): { timeout: number; maxRetries: number } {
+    try {
+        // Try to get settings from runtime or load them
+        const settings = ((globalThis as any).runtimeSettings as any)?.ai ||
+                        require("../../config/RuntimeSettings").getRuntimeSettings?.()?.ai ||
+                        require("../../config/Settings").loadSettings?.()?.ai;
+
+        const timeoutSettings = settings?.requestTimeout;
+        const maxRetries = settings?.maxRetries ?? DEFAULT_MAX_RETRIES;
+
+        const timeout = (timeoutSettings?.[effort] ?? DEFAULT_REQUEST_TIMEOUTS[effort]) * 1000; // Convert to ms
+
+        return { timeout, maxRetries };
+    } catch {
+        // Fallback to defaults if settings can't be loaded
+        return {
+            timeout: DEFAULT_REQUEST_TIMEOUTS[effort],
+            maxRetries: DEFAULT_MAX_RETRIES
+        };
+    }
+}
+
 // Optimized base64 encoding with memory safety
 const toBase64 = (bytes: Uint8Array): string => {
     // Node.js environment
@@ -346,44 +381,95 @@ export class GPTResponses {
             requestBody.temperature = options.temperature;
         }
 
+        // Execute request with retry logic and timeout
+        const { timeout: timeoutMs, maxRetries } = getTimeoutConfig(effort);
         console.log("[GPT] Making request to:", `${this?.apiUrl}/responses`);
         console.log("[GPT] API key present:", !!this?.apiKey);
-        console.log("[GPT] Request body:", JSON.stringify(requestBody, null, 2));
+        console.log("[GPT] Request timeout:", `${timeoutMs}ms (${effort} effort)`);
+        console.log("[GPT] Max retries:", maxRetries);
+        console.log("[GPT] Request body size:", JSON.stringify(requestBody).length, "characters");
 
-        let response;
-        try {
-            response = await fetch(`${this?.apiUrl}/responses`, {
-                method: "POST",
-                priority: 'auto',
-                keepalive: true,
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})
-                },
-                body: JSON.stringify(requestBody),
-            });
-        } catch (e) {
-            console.error("[GPT] Fetch failed:", e);
-            throw new Error(`Network error: ${String(e)}`);
+        let lastError: Error | null = null;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                console.log(`[GPT] Retry attempt ${attempt}/${maxRetries} after ${RETRY_DELAY}ms delay`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    console.warn(`[GPT] Request timeout after ${timeoutMs}ms (attempt ${attempt + 1})`);
+                    controller.abort();
+                }, timeoutMs);
+
+                const response = await fetch(`${this?.apiUrl}/responses`, {
+                    method: "POST",
+                    priority: 'auto',
+                    // Remove keepalive for better timeout control
+                    signal: controller.signal,
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(this?.apiKey ? { "Authorization": `Bearer ${this?.apiKey}` } : {})
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                clearTimeout(timeoutId);
+
+                // Handle the response
+                console.log("[GPT] Response status:", response.status, `(attempt ${attempt + 1})`);
+
+                if (response.status !== 200) {
+                    const error = await response?.json?.()?.catch?.((e) => {
+                        console.error("[GPT] Failed to parse error response:", e);
+                        return null;
+                    });
+                    const errorMessage = error?.error?.message || error?.message || `HTTP ${response.status}`;
+                    lastError = new Error(`API error (${response.status}): ${errorMessage}`);
+                    console.error("[GPT] API error:", errorMessage);
+
+                    // Don't retry on client errors (4xx)
+                    if (response.status >= 400 && response.status < 500) {
+                        throw lastError;
+                    }
+
+                    // Continue to retry on server errors (5xx) or network issues
+                    continue;
+                }
+
+                // Success - process the response
+                return await this.processSuccessfulResponse(response);
+
+            } catch (e) {
+                lastError = e instanceof Error ? e : new Error(String(e));
+                console.error(`[GPT] Request failed (attempt ${attempt + 1}):`, lastError.message);
+
+                // Don't retry on abort (timeout) or client errors
+                if (lastError.name === 'AbortError' || (lastError.message.includes('HTTP 4'))) {
+                    break;
+                }
+
+                // Continue to next retry attempt
+            }
         }
 
-        console.log("[GPT] Response status:", response.status);
+        // All retries failed
+        const errorMessage = lastError ? lastError.message : 'Unknown error after all retries';
+        console.error("[GPT] All retry attempts failed:", errorMessage);
+        throw new Error(`Request failed after ${maxRetries + 1} attempts: ${errorMessage}`);
+    }
 
-        //
-        if (response.status !== 200) {
-            const error = await response?.json?.()?.catch?.((e) => {
-                console.error("[GPT] Failed to parse error response:", e);
-                return null;
-            });
-            const errorMessage = error?.error?.message || error?.message || `HTTP ${response.status}`;
-            console.error("[GPT] API error:", errorMessage);
-            throw new Error(`API error (${response.status}): ${errorMessage}`);
-        }
+    /**
+     * Process a successful response from the API
+     */
+    private async processSuccessfulResponse(response: Response): Promise<string | null> {
 
-        //
-        const resp = response.status === 200
-            ? await response?.json?.()?.catch?.((e) => { console.warn(e); return null; })
-            : null;
+        const resp = await response?.json?.()?.catch?.((e) => {
+            console.warn("[GPT] Failed to parse successful response:", e);
+            return null;
+        });
         if (!resp) return null;
 
         //
@@ -412,7 +498,7 @@ export class GPTResponses {
                 }
                 if (texts.length) return texts.join("\n\n");
             } catch (e) {
-                console.warn(e);
+                console.warn("[GPT] Error extracting text:", e);
             }
             return null;
         };
@@ -720,20 +806,28 @@ export const createGPTInstance = (
 export const quickRecognize = async (
     apiKey: string,
     data: string | Blob | File,
-    apiUrl?: string
+    apiUrl?: string,
+    options: RequestOptions & { timeoutOverride?: number } = {}
 ): Promise<AIResponse<any>> => {
     const gpt = createGPTInstance(apiKey, apiUrl);
     await gpt.attachToRequest(data);
 
     let raw;
     try {
-        raw = await gpt.sendRequest("medium", "medium");
+        // Use timeout override if provided, otherwise use default medium effort timeout
+        const timeoutOptions = options.timeoutOverride
+            ? { ...options, maxTokens: options.maxTokens }
+            : options;
+
+        raw = await gpt.sendRequest("medium", "medium", null, timeoutOptions);
     } catch (e) {
-        return { ok: false, error: String(e) };
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.error("[quickRecognize] Request failed:", errorMessage);
+        return { ok: false, error: errorMessage };
     }
 
     if (!raw) {
-        return { ok: false, error: "No response" };
+        return { ok: false, error: "No response from AI service" };
     }
 
     // Use robust JSON extraction to handle markdown-wrapped responses
@@ -743,6 +837,7 @@ export const quickRecognize = async (
     }
 
     // Fallback to raw text if JSON extraction fails
+    console.warn("[quickRecognize] JSON extraction failed, using raw text");
     return { ok: true, data: raw };
 }
 

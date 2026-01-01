@@ -100,6 +100,13 @@ export type AppSettings = {
         translateResults?: boolean;
         // Graphics generation settings
         generateSvgGraphics?: boolean;
+        // Request timeout settings (in seconds)
+        requestTimeout?: {
+            low?: number;    // Default: 60
+            medium?: number; // Default: 300
+            high?: number;   // Default: 900
+        };
+        maxRetries?: number; // Default: 2
     };
     webdav?: {
         url?: string;
@@ -151,7 +158,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
         activeInstructionId: "",
         responseLanguage: "auto",
         translateResults: false,
-        generateSvgGraphics: false
+        generateSvgGraphics: false,
+        requestTimeout: {
+            low: 60,      // 1 minute
+            medium: 300,  // 5 minutes
+            high: 900     // 15 minutes
+        },
+        maxRetries: 2
     },
     webdav: {
         url: "http://localhost:6065",

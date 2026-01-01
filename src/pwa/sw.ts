@@ -578,11 +578,19 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
         if (aiConfig.enabled && hasProcessableContent(shareData)) {
             console.log('[ShareTarget] Starting async AI processing, mode:', aiConfig.mode);
 
+            // Set up timeout for long-running AI requests in service worker
+            const aiTimeout = setTimeout(() => {
+                console.warn('[ShareTarget] AI processing timeout - service worker may terminate connection');
+                // Don't cancel the request, just log the warning
+                // The request will continue in the background if possible
+            }, 4 * 60 * 1000); // 4 minutes warning
+
             // Start AI processing asynchronously without blocking the response
             processShareWithAI(shareData, {
                 mode: aiConfig.mode,
                 customInstruction: aiConfig.customInstruction
             }).then((result) => {
+                clearTimeout(aiTimeout);
                 console.log('[ShareTarget] Async AI processing completed:', result);
 
                 if (result.success && result.results?.length) {
