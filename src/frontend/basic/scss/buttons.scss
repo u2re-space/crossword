@@ -1,0 +1,164 @@
+/* Button Components - Material Design 3 */
+
+.btn {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
+  background: var(--basic-surface-container-high);
+  color: var(--basic-on-surface);
+  border-radius: var(--basic-radius-lg);
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  block-size: 40px;
+  cursor: pointer;
+  transition:
+    background-color var(--basic-motion-fast),
+    border-color var(--basic-motion-fast),
+    box-shadow var(--basic-motion-fast),
+    transform var(--basic-motion-fast);
+  box-shadow: var(--basic-elev-0);
+  user-select: none;
+  touch-action: manipulation;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  text-transform: none;
+
+  &:hover {
+    background: var(--basic-surface-container-highest);
+    border-color: var(--basic-outline);
+    box-shadow: var(--basic-elev-1);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--basic-elev-0);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--basic-focus-ring);
+  }
+
+  &.primary {
+    background: var(--basic-primary);
+    color: var(--basic-on-primary);
+    border-color: var(--basic-primary);
+
+    &:hover {
+      background: color-mix(in oklab, var(--basic-primary) 90%, black);
+      border-color: color-mix(in oklab, var(--basic-primary) 90%, black);
+    }
+  }
+
+  &.small {
+    padding: var(--space-xs) var(--space-md);
+    font-size: var(--text-xs);
+    block-size: 32px;
+    border-radius: var(--basic-radius-md);
+  }
+
+  &.icon-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: var(--text-lg);
+  }
+
+  &.active {
+    background: var(--basic-primary);
+    color: var(--basic-on-primary);
+    border-color: var(--basic-primary);
+    box-shadow: var(--basic-elev-1);
+  }
+}
+
+.btn.small {
+  padding: 0 10px;
+  font-size: 12px;
+  block-size: 28px;
+}
+
+.btn[data-action="open-md"],
+.btn[data-action="export-md"] {
+  font-size: 12px;
+  padding: 0 8px;
+  block-size: 28px;
+}
+
+.btn[data-action="view-markdown"],
+.btn[data-action="view-settings"],
+.btn[data-action="view-history"],
+.btn[data-action="view-workcenter"] {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 12px;
+  block-size: 32px;
+  border-radius: 16px;
+  text-transform: capitalize;
+
+  &[data-current] {
+    background: var(--basic-surface-container-highest);
+    color: var(--basic-primary);
+    border-color: var(--basic-primary);
+  }
+}
+
+.btn[data-action="toggle-edit"] {
+  font-size: 12px;
+  padding: 0 8px;
+  block-size: 28px;
+  border-radius: 14px;
+}
+
+.btn[data-action="snip"] {
+  font-size: 12px;
+  padding: 0 8px;
+  block-size: 28px;
+  border-radius: 14px;
+}
+
+.btn[data-action="solve"],
+.btn[data-action="code"],
+.btn[data-action="css"],
+.btn[data-action="voice"] {
+  font-size: 12px;
+  padding: 0 8px;
+  block-size: 28px;
+  border-radius: 14px;
+}
+
+/* Legacy button styles for backward compatibility */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+
+  &:hover {
+    background: var(--basic-surface-container-high);
+    border-color: color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
+    box-shadow: var(--basic-elev-0);
+  }
+}
+
+/* Motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+    transform: none !important;
+
+    &:hover {
+      transform: none !important;
+    }
+
+    &:active {
+      transform: none !important;
+    }
+  }
+}

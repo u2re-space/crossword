@@ -8,7 +8,17 @@ import { createSettingsView } from "./Settings";
 import { defineBasicMarkdownView, type BasicMarkdownView } from "./MarkdownView";
 import { writeText } from "@rs-frontend/shared/Clipboard";
 
-export type BasicView = "markdown" | "settings" | "history";
+// Import new modular components
+import { WorkCenterManager } from "./modules/WorkCenter";
+import { createFileHandler } from "./modules/FileHandling";
+import { getSpeechPrompt } from "./modules/VoiceInput";
+import { createTemplateManager } from "./modules/TemplateManager";
+import { createHistoryManager } from "./modules/HistoryManager";
+import { createMarkdownViewer } from "./modules/MarkdownViewer";
+import { createMarkdownEditor } from "./modules/MarkdownEditor";
+import { createQuillEditor } from "./modules/QuillEditor";
+
+export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter";
 
 export type BasicAppOptions = {
   initialView?: BasicView;
@@ -86,45 +96,6 @@ const applyTheme = (root: HTMLElement, theme: AppSettings["appearance"] extends 
   }
 };
 
-const getSpeechPrompt = async (): Promise<string | null> => {
-  const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  if (!Recognition) {
-    const p = window.prompt("Prompt (for Markdown generation):", "");
-    return p?.trim?.() ? p.trim() : null;
-  }
-
-  return await new Promise((resolve) => {
-    const rec = new Recognition();
-    rec.lang = navigator.language || "en-US";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-
-    let done = false;
-    const finish = (value: string | null) => {
-      if (done) return;
-      done = true;
-      try {
-        rec.stop();
-      } catch {
-        // ignore
-      }
-      resolve(value);
-    };
-
-    rec.onresult = (e: any) => {
-      const text = String(e?.results?.[0]?.[0]?.transcript || "").trim();
-      finish(text || null);
-    };
-    rec.onerror = () => finish(null);
-    rec.onend = () => finish(null);
-
-    try {
-      rec.start();
-    } catch {
-      finish(null);
-    }
-  });
-};
 
 const readMdFromUrlIfPossible = async (candidate: string): Promise<string | null> => {
   const s = candidate.trim();
@@ -166,15 +137,57 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
   // Initialize broadcast listeners for share target and clipboard operations
   let initBroadcastListeners: () => void;
 
+  // Initialize managers
+  const workCenterManager = new WorkCenterManager({
+    state: {} as any, // Will be set below
+    history: [],
+    getSpeechPrompt,
+    showMessage: (message: string) => {
+      state.message = message;
+      renderStatus();
+      setTimeout(() => {
+        state.message = "";
+        renderStatus();
+      }, 3000);
+    },
+    render: () => render()
+  });
+
+  const fileHandler = createFileHandler({
+    onFilesAdded: (files: File[]) => {
+      if (state.view === 'workcenter') {
+        workCenterManager.getState().files.push(...files);
+        // Trigger re-render of work center
+        render();
+      }
+    },
+    onError: (error: string) => {
+      state.message = error;
+      renderStatus();
+    }
+  });
+
+  const templateManager = createTemplateManager();
+  const historyManager = createHistoryManager();
+
   const state = {
     view: (options.initialView || "markdown") as BasicView,
     markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
     editing: false,
     busy: false,
     message: "",
-    history: safeJsonParse<HistoryEntry[]>(localStorage.getItem(HISTORY_KEY), []),
+    history: historyManager.getAllEntries(),
     lastSavedTheme: "auto" as AppSettings["appearance"] extends { theme?: infer T } ? (T extends string ? T : "auto") : "auto",
+    // Add managers to state for access
+    workCenterManager,
+    fileHandler,
+    templateManager,
+    historyManager
   };
+
+  // Update work center manager with proper state reference
+  workCenterManager['deps'].state = state;
+  workCenterManager['deps'].history = state.history;
 
   const persistMarkdown = () => {
     try {
@@ -239,189 +252,140 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     }
   };
 
-  const toolbar = H`<div class="toolbar">
-    <div class="left">
-      <button class="btn" data-action="view-markdown" type="button">Markdown</button>
-      <button class="btn" data-action="view-settings" type="button">Settings</button>
-      <button class="btn" data-action="view-history" type="button">History</button>
-    </div>
-    <div class="right">
-      ${ext ? H`<button class="btn" data-action="snip" type="button">Snip</button>` : ""}
-      <button class="btn" data-action="solve" type="button" title="Solve equations & answer questions">Solve</button>
-      <button class="btn" data-action="code" type="button" title="Generate code">Code</button>
-      <button class="btn" data-action="css" type="button" title="Extract CSS">CSS</button>
-      <button class="btn" data-action="open-md" type="button">Open</button>
-      <button class="btn" data-action="export-md" type="button">Export</button>
-      <button class="btn" data-action="toggle-edit" type="button">Edit</button>
-      <button class="btn" data-action="voice" type="button">Voice</button>
-    </div>
-  </div>` as HTMLElement;
+  const renderToolbar = () => {
+    const isMarkdownView = state.view === "markdown-viewer" || state.view === "markdown-editor";
+    const isEditorView = state.view === "markdown-editor";
+    const isWorkCenterView = state.view === "workcenter";
+
+    return H`<div class="toolbar">
+      <div class="left">
+        <button class="btn ${state.view === 'markdown-viewer' ? 'active' : ''}" data-action="view-markdown-viewer" type="button" title="Markdown Viewer">📖 Viewer</button>
+        <button class="btn ${state.view === 'markdown-editor' ? 'active' : ''}" data-action="view-markdown-editor" type="button" title="Markdown Editor">✏️ Editor</button>
+        <button class="btn ${state.view === 'rich-editor' ? 'active' : ''}" data-action="view-rich-editor" type="button" title="Rich Text Editor">🖊️ Rich Editor</button>
+        <button class="btn ${state.view === 'workcenter' ? 'active' : ''}" data-action="view-workcenter" type="button" title="AI Work Center">⚡ Work Center</button>
+        <button class="btn ${state.view === 'settings' ? 'active' : ''}" data-action="view-settings" type="button" title="Settings">⚙️ Settings</button>
+        <button class="btn ${state.view === 'history' ? 'active' : ''}" data-action="view-history" type="button" title="History">📚 History</button>
+      </div>
+      <div class="right">
+        ${isEditorView ? H`<button class="btn" data-action="open-md" type="button" title="Open Markdown File">📂 Open</button>
+        <button class="btn" data-action="export-md" type="button" title="Export as Markdown">💾 Export</button>` : ''}
+        ${isMarkdownView ? H`<button class="btn" data-action="voice" type="button" title="Voice Input">🎤 Voice</button>` : ''}
+        ${isWorkCenterView ? H`<button class="btn" data-action="solve" type="button" title="Solve equations & answer questions">🧮 Solve</button>
+        <button class="btn" data-action="code" type="button" title="Generate code">💻 Code</button>
+        <button class="btn" data-action="css" type="button" title="Extract CSS">🎨 CSS</button>` : ''}
+        ${ext ? H`<button class="btn" data-action="snip" type="button" title="Screen Capture">📸 Snip</button>` : ""}
+      </div>
+    </div>` as HTMLElement;
+  };
+
+  let toolbar = renderToolbar();
 
   const statusLine = H`<div class="status" aria-live="polite"></div>` as HTMLElement;
   const content = H`<div class="content"></div>` as HTMLElement;
   root.append(toolbar, statusLine, content);
 
+  // Setup file input for markdown view
   const fileInput = H`<input class="file-input" type="file" accept=".md,text/markdown,text/plain" />` as HTMLInputElement;
   fileInput.style.display = "none";
   root.append(fileInput);
+
+  // Setup file handling for work center
+  state.fileHandler.setupCompleteFileHandling(
+    root,
+    H`<button style="display:none">File Select</button>` as HTMLElement,
+    undefined, // No specific drop zone - handle globally
+    "*" // Accept all files for work center
+  );
 
   const renderStatus = () => {
     statusLine.textContent = state.message || (state.busy ? "Working…" : "");
     root.toggleAttribute("data-busy", state.busy);
   };
 
-  const renderMarkdownView = async () => {
-    const editor = H`<textarea class="markdown-editor" spellcheck="false"></textarea>` as HTMLTextAreaElement;
-    editor.value = state.markdown || "";
-    const previewHost = H`<div class="markdown-preview" />` as HTMLElement;
-    const mdView = document.createElement("basic-md-view") as unknown as BasicMarkdownView;
-    previewHost.append(mdView as unknown as Node);
-    const wrapper = H`<div class="markdown-view"></div>` as HTMLElement;
-    wrapper.append(editor, previewHost);
-
-    const updatePreview = async () => {
-      state.markdown = editor.value || "";
-      persistMarkdown();
-      await mdView.setMarkdown(state.markdown);
-    };
-
-    const isMobile = typeof window !== "undefined" && window.matchMedia?.("(max-inline-size: 720px)")?.matches;
-    const mode = isMobile ? (state.editing ? "edit" : "view") : state.editing ? "split" : "view";
-    wrapper.dataset.mode = mode;
-
-    const applyMarkdown = async (text: string, src?: string) => {
-      const md = text || "";
-      state.markdown = md;
-      editor.value = md;
-      persistMarkdown();
-      saveLastSrc(src?.trim?.() || "");
-      await mdView.setMarkdown(md);
-    };
-
-    const tryConsumeFile = async (file: File | null | undefined) => {
-      if (!file) return false;
-      const name = String(file.name || "");
-      if (!MARKDOWN_EXTENSION_PATTERN.test(name) && !String(file.type || "").includes("markdown") && !String(file.type || "").includes("text")) {
-        return false;
+  const renderMarkdownViewer = () => {
+    const viewer = createMarkdownViewer({
+      content: state.markdown || DEFAULT_MD,
+      title: "Markdown Viewer",
+      onCopy: (content) => {
+        state.message = "Content copied to clipboard";
+        renderStatus();
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 2000);
+      },
+      onDownload: (content) => {
+        state.message = "Content downloaded as markdown file";
+        renderStatus();
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 2000);
       }
-      const text = await file.text();
-      await applyMarkdown(text);
-      return true;
-    };
-
-    const handlePaste = async (e: ClipboardEvent) => {
-      if (state.view !== "markdown") return;
-      const dt = e.clipboardData;
-      if (!dt) return;
-
-      const files = Array.from(dt.files || []);
-      if (files.length) {
-        e.preventDefault();
-        if (await tryConsumeFile(files[0])) return;
-      }
-
-      const raw = dt.getData("text/plain") || "";
-      if (!raw.trim()) return;
-      e.preventDefault();
-
-      const fromUrl = await readMdFromUrlIfPossible(raw);
-      if (fromUrl != null) {
-        await applyMarkdown(fromUrl, raw);
-        return;
-      }
-      await applyMarkdown(raw);
-    };
-
-    const handleDrop = async (e: DragEvent) => {
-      if (state.view !== "markdown") return;
-      const dt = e.dataTransfer;
-      if (!dt) return;
-      e.preventDefault();
-
-      const files = Array.from(dt.files || []);
-      if (files.length) {
-        if (await tryConsumeFile(files[0])) return;
-      }
-
-      const raw = (await extractTextFromDataTransfer(dt)) || "";
-      if (!raw.trim()) return;
-
-      const fromUrl = await readMdFromUrlIfPossible(raw);
-      if (fromUrl != null) {
-        await applyMarkdown(fromUrl, raw);
-        return;
-      }
-      await applyMarkdown(raw);
-    };
-
-    const allowDrop = (e: DragEvent) => {
-      if (state.view !== "markdown") return;
-      e.preventDefault();
-    };
-
-    editor.addEventListener("input", () => {
-      void updatePreview();
     });
 
-    // Paste/drop should work even in "view-only" mode, so we attach to the wrapper.
-    wrapper.addEventListener("paste", (e) => void handlePaste(e as ClipboardEvent));
-    wrapper.addEventListener("dragover", allowDrop);
-    wrapper.addEventListener("drop", (e) => void handleDrop(e));
+    return viewer.render();
+  };
 
-    await updatePreview();
-    return wrapper;
+  const renderMarkdownEditor = async () => {
+    const editor = createMarkdownEditor({
+      initialContent: state.markdown || "",
+      onContentChange: (content) => {
+        state.markdown = content;
+        persistMarkdown();
+      },
+      onSave: (content) => {
+        state.markdown = content;
+        persistMarkdown();
+        state.message = "Content saved";
+        renderStatus();
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 2000);
+      },
+      placeholder: "Start writing your markdown here...",
+      autoSave: true,
+      autoSaveDelay: 2000
+    });
+
+    return editor.render();
+  };
+
+  const renderRichEditor = async () => {
+    const editor = createQuillEditor({
+      initialContent: state.markdown || "",
+      onContentChange: (content) => {
+        state.markdown = content;
+        persistMarkdown();
+      },
+      onSave: (content) => {
+        state.markdown = content;
+        persistMarkdown();
+        state.message = "Content saved";
+        renderStatus();
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 2000);
+      },
+      placeholder: "Start writing your rich text here...",
+      autoSave: true,
+      autoSaveDelay: 2000
+    });
+
+    return editor.render();
   };
 
   const renderHistoryView = () => {
-    const list = H`<div class="history-list" />` as HTMLElement;
-
-    if (!state.history.length) {
-      list.append(H`<div class="empty">No history yet.</div>` as HTMLElement);
-      return list;
-    }
-
-    const items = state.history
-      .slice()
-      .reverse()
-      .slice(0, 25)
-      .map((h) => {
-        const time = new Date(h.ts).toLocaleString();
-        const title = h.ok ? "OK" : "Failed";
-        const item = H`<div class="history-item">
-          <div class="meta">
-            <span class="tag ${h.ok ? "ok" : "fail"}">${title}</span>
-            <span class="time">${time}</span>
-          </div>
-          <div class="prompt"></div>
-          <div class="actions">
-            <button class="btn small" type="button" data-action="apply">Apply</button>
-            <button class="btn small" type="button" data-action="copy">Copy</button>
-          </div>
-        </div>` as HTMLElement;
-
-        const prompt = item.querySelector(".prompt") as HTMLElement | null;
-        if (prompt) prompt.textContent = h.prompt || "";
-
-        const applyBtn = item.querySelector('[data-action="apply"]') as HTMLButtonElement | null;
-        applyBtn?.addEventListener("click", () => {
-          state.markdown = h.after || "";
-          persistMarkdown();
-          saveLastSrc("");
-          state.view = "markdown";
-          void render();
-        });
-
-        const copyBtn = item.querySelector('[data-action="copy"]') as HTMLButtonElement | null;
-        copyBtn?.addEventListener("click", () => {
-          const text = h.after || "";
-          writeText(text).catch(() => void 0);
-        });
-
-        return item;
-      });
-
-    items.forEach((el) => list.append(el));
-    return list;
+    return state.historyManager.createHistoryView((entry) => {
+      // Handle entry selection - restore prompt to work center
+      if (state.view === 'workcenter') {
+        state.workCenterManager.getState().currentPrompt = entry.prompt;
+        // Trigger re-render
+        render();
+      }
+    });
   };
 
   const exportMarkdown = () => {
@@ -506,6 +470,14 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
   };
 
   const render = async () => {
+    // Update toolbar for current view
+    const newToolbar = renderToolbar();
+    toolbar.replaceWith(newToolbar);
+    // Update reference
+    toolbar = newToolbar;
+    // Re-attach event listeners
+    attachToolbarListeners();
+
     content.replaceChildren();
 
     if (state.view === "settings") {
@@ -524,69 +496,102 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       return;
     }
 
-    content.append(await renderMarkdownView());
+    if (state.view === "markdown-viewer") {
+      content.append(renderMarkdownViewer());
+      renderStatus();
+      return;
+    }
+
+    if (state.view === "markdown-editor") {
+      content.append(await renderMarkdownEditor());
+      renderStatus();
+      return;
+    }
+
+    if (state.view === "rich-editor") {
+      content.append(await renderRichEditor());
+      renderStatus();
+      return;
+    }
+
+    if (state.view === "workcenter") {
+      content.append(state.workCenterManager.renderWorkCenterView());
+      renderStatus();
+      return;
+    }
+
+    // Default fallback to markdown viewer
+    content.append(renderMarkdownViewer());
     renderStatus();
   };
 
-  toolbar.addEventListener("click", async (e) => {
-    const target = e.target as HTMLElement | null;
-    const btn = target?.closest?.("button[data-action]") as HTMLButtonElement | null;
-    const action = btn?.dataset?.action;
-    if (!action) return;
+  const attachToolbarListeners = () => {
+    toolbar.addEventListener("click", async (e) => {
+      const target = e.target as HTMLElement | null;
+      const btn = target?.closest?.("button[data-action]") as HTMLButtonElement | null;
+      const action = btn?.dataset?.action;
+      if (!action) return;
 
-    if (action === "view-markdown") state.view = "markdown";
-    if (action === "view-settings") state.view = "settings";
-    if (action === "view-history") state.view = "history";
+      if (action === "view-markdown-viewer") state.view = "markdown-viewer";
+      if (action === "view-markdown-editor") state.view = "markdown-editor";
+      if (action === "view-rich-editor") state.view = "rich-editor";
+      if (action === "view-workcenter") state.view = "workcenter";
+      if (action === "view-settings") state.view = "settings";
+      if (action === "view-history") state.view = "history";
 
-    if (action === "open-md") fileInput.click();
-    if (action === "export-md") exportMarkdown();
+      if (action === "open-md") fileInput.click();
+      if (action === "export-md") exportMarkdown();
 
-    if (action === "toggle-edit") {
-      if (state.view !== "markdown") return;
-      state.editing = !state.editing;
-    }
-
-    if (action === "snip") {
-      if (!ext) return;
-      try {
-        chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs: any[]) => {
-          const tabId = tabs?.[0]?.id;
-          if (tabId != null) {
-            chrome.tabs.sendMessage(tabId, { type: "START_SNIP" })?.catch?.(() => void 0);
-          }
-          try {
-            window.close?.();
-          } catch {
-            // ignore
-          }
-        });
-      } catch {
-        // ignore
+      if (action === "toggle-edit") {
+        if (state.view !== "markdown") return;
+        state.editing = !state.editing;
       }
-    }
 
-    if (action === "solve") {
-      await runPrompt("Solve equations and answer questions from the content above", solveAndAnswer);
-    }
+      if (action === "snip") {
+        if (!ext) return;
+        try {
+          chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs: any[]) => {
+            const tabId = tabs?.[0]?.id;
+            if (tabId != null) {
+              chrome.tabs.sendMessage(tabId, { type: "START_SNIP" })?.catch?.(() => void 0);
+            }
+            try {
+              window.close?.();
+            } catch {
+              // ignore
+            }
+          });
+        } catch {
+          // ignore
+        }
+      }
 
-    if (action === "code") {
-      await runPrompt("Generate code based on the description or requirements above", writeCode);
-    }
+      if (action === "solve") {
+        await runPrompt("Solve equations and answer questions from the content above", solveAndAnswer);
+      }
 
-    if (action === "css") {
-      await runPrompt("Extract or generate CSS from the content or image above", extractCSS);
-    }
+      if (action === "code") {
+        await runPrompt("Generate code based on the description or requirements above", writeCode);
+      }
 
-    if (action === "voice") {
-      void (async () => {
-        const p = await getSpeechPrompt();
-        if (!p) return;
-        await runPrompt(p);
-      })();
-    }
+      if (action === "css") {
+        await runPrompt("Extract or generate CSS from the content or image above", extractCSS);
+      }
 
-    void render();
-  });
+      if (action === "voice") {
+        void (async () => {
+          const p = await getSpeechPrompt();
+          if (!p) return;
+          await runPrompt(p);
+        })();
+      }
+
+      void render();
+    });
+  };
+
+  // Attach initial toolbar listeners
+  attachToolbarListeners();
 
   fileInput.addEventListener("change", () => {
     const f = fileInput.files?.[0];
