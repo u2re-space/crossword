@@ -1,51 +1,63 @@
 /* Utility Classes - Material Design 3 */
 
-/* Text utilities */
-.text-xs { font-size: var(--text-xs); }
-.text-sm { font-size: var(--text-sm); }
-.text-base { font-size: var(--text-base); }
-.text-lg { font-size: var(--text-lg); }
-.text-xl { font-size: var(--text-xl); }
+/* Typography utilities */
+.text {
+  &-xs { font-size: var(--text-xs); }
+  &-sm { font-size: var(--text-sm); }
+  &-base { font-size: var(--text-base); }
+  &-lg { font-size: var(--text-lg); }
+  &-xl { font-size: var(--text-xl); }
 
-.font-weight-normal { font-weight: var(--font-weight-normal); }
-.font-weight-medium { font-weight: var(--font-weight-medium); }
-.font-weight-semibold { font-weight: var(--font-weight-semibold); }
-.font-weight-bold { font-weight: var(--font-weight-bold); }
+  &-primary { color: var(--basic-on-surface); }
+  &-secondary { color: var(--basic-on-surface-variant); }
+  &-muted { color: var(--basic-on-surface-variant); opacity: 0.7; }
+  &-disabled { color: var(--basic-on-surface-variant); opacity: 0.5; }
+}
 
-.text-primary { color: var(--basic-on-surface); }
-.text-secondary { color: var(--basic-on-surface-variant); }
-.text-muted { color: var(--basic-on-surface-variant); opacity: 0.7; }
-.text-disabled { color: var(--basic-on-surface-variant); opacity: 0.5; }
+.font-weight {
+  &-normal { font-weight: var(--font-weight-normal); }
+  &-medium { font-weight: var(--font-weight-medium); }
+  &-semibold { font-weight: var(--font-weight-semibold); }
+  &-bold { font-weight: var(--font-weight-bold); }
+}
 
-.leading-tight { line-height: var(--leading-tight); }
-.leading-normal { line-height: var(--leading-normal); }
-.leading-relaxed { line-height: var(--leading-relaxed); }
+.leading {
+  &-tight { line-height: var(--leading-tight); }
+  &-normal { line-height: var(--leading-normal); }
+  &-relaxed { line-height: var(--leading-relaxed); }
+}
 
 /* Color utilities */
-.color-primary { color: var(--basic-primary); }
-.color-secondary { color: var(--basic-secondary); }
-.color-tertiary { color: var(--basic-tertiary); }
-.color-error { color: var(--basic-error); }
-.color-success { color: var(--basic-success); }
+.color {
+  &-primary { color: var(--basic-primary); }
+  &-secondary { color: var(--basic-secondary); }
+  &-tertiary { color: var(--basic-tertiary); }
+  &-error { color: var(--basic-error); }
+  &-success { color: var(--basic-success); }
+}
 
 /* Background utilities */
-.bg-primary { background: var(--basic-primary); color: var(--basic-on-primary); }
-.bg-secondary { background: var(--basic-secondary); color: var(--basic-on-secondary); }
-.bg-surface { background: var(--basic-surface); }
-.bg-surface-container { background: var(--basic-surface-container); }
-.bg-surface-container-high { background: var(--basic-surface-container-high); }
-.bg-surface-container-low { background: var(--basic-surface-container-low); }
+.bg {
+  &-primary { background: var(--basic-primary); color: var(--basic-on-primary); }
+  &-secondary { background: var(--basic-secondary); color: var(--basic-on-secondary); }
+  &-surface { background: var(--basic-surface); }
+  &-surface-container { background: var(--basic-surface-container); }
+  &-surface-container-high { background: var(--basic-surface-container-high); }
+  &-surface-container-low { background: var(--basic-surface-container-low); }
+}
 
 /* Border utilities */
-.border { border: 1px solid var(--basic-outline); }
-.border-top { border-top: 1px solid var(--basic-outline); }
-.border-bottom { border-bottom: 1px solid var(--basic-outline); }
-.border-left { border-left: 1px solid var(--basic-outline); }
-.border-right { border-right: 1px solid var(--basic-outline); }
+.border {
+  & { border: 1px solid var(--basic-outline); }
+  &-top { border-top: 1px solid var(--basic-outline); }
+  &-bottom { border-bottom: 1px solid var(--basic-outline); }
+  &-left { border-left: 1px solid var(--basic-outline); }
+  &-right { border-right: 1px solid var(--basic-outline); }
 
-.border-primary { border-color: var(--basic-primary); }
-.border-error { border-color: var(--basic-error); }
-.border-success { border-color: var(--basic-success); }
+  &-primary { border-color: var(--basic-primary); }
+  &-error { border-color: var(--basic-error); }
+  &-success { border-color: var(--basic-success); }
+}
 
 /* Shadow utilities */
 .shadow-sm { box-shadow: var(--basic-elev-1); }

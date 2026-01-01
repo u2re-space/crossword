@@ -5,7 +5,6 @@ import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "
 import { loadSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { createSettingsView } from "./Settings";
-import { defineBasicMarkdownView, type BasicMarkdownView } from "./MarkdownView";
 import { writeText } from "@rs-frontend/shared/Clipboard";
 
 // Import new modular components
@@ -132,7 +131,6 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
   mountElement.replaceChildren(root);
 
   const ext = isLikelyExtension();
-  defineBasicMarkdownView();
 
   // Initialize broadcast listeners for share target and clipboard operations
   let initBroadcastListeners: () => void;

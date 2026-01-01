@@ -1,6 +1,7 @@
 /* Button Components - Material Design 3 */
 
 .btn {
+  // Base button styles
   appearance: none;
   border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
   background: var(--basic-surface-container-high);
@@ -28,6 +29,7 @@
   gap: var(--space-xs);
   text-transform: none;
 
+  // Interactive states
   &:hover {
     background: var(--basic-surface-container-highest);
     border-color: var(--basic-outline);
@@ -45,6 +47,7 @@
     box-shadow: var(--basic-focus-ring);
   }
 
+  // Button variants
   &.primary {
     background: var(--basic-primary);
     color: var(--basic-on-primary);
@@ -77,61 +80,132 @@
     border-color: var(--basic-primary);
     box-shadow: var(--basic-elev-1);
   }
-}
 
-.btn.small {
-  padding: 0 10px;
-  font-size: 12px;
-  block-size: 28px;
-}
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    padding: var(--space-xs) var(--space-md);
+    font-size: var(--text-xs);
+    block-size: 36px;
+  }
 
-.btn[data-action="open-md"],
-.btn[data-action="export-md"] {
-  font-size: 12px;
-  padding: 0 8px;
-  block-size: 28px;
-}
-
-.btn[data-action="view-markdown"],
-.btn[data-action="view-settings"],
-.btn[data-action="view-history"],
-.btn[data-action="view-workcenter"] {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 0 12px;
-  block-size: 32px;
-  border-radius: 16px;
-  text-transform: capitalize;
-
-  &[data-current] {
-    background: var(--basic-surface-container-highest);
-    color: var(--basic-primary);
-    border-color: var(--basic-primary);
+  @media (max-width: 480px) {
+    padding: var(--space-xs);
+    font-size: var(--text-xs);
+    block-size: 32px;
+    min-width: 32px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
-.btn[data-action="toggle-edit"] {
-  font-size: 12px;
-  padding: 0 8px;
-  block-size: 28px;
-  border-radius: 14px;
-}
+// Action-specific button styles
+.btn {
+  // File operations
+  &[data-action="open-md"],
+  &[data-action="export-md"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+  }
 
-.btn[data-action="snip"] {
-  font-size: 12px;
-  padding: 0 8px;
-  block-size: 28px;
-  border-radius: 14px;
-}
+  // View navigation buttons
+  &[data-action="view-markdown-viewer"],
+  &[data-action="view-markdown-editor"],
+  &[data-action="view-rich-editor"],
+  &[data-action="view-settings"],
+  &[data-action="view-history"],
+  &[data-action="view-workcenter"] {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 12px;
+    block-size: 32px;
+    border-radius: 16px;
+    text-transform: capitalize;
 
-.btn[data-action="solve"],
-.btn[data-action="code"],
-.btn[data-action="css"],
-.btn[data-action="voice"] {
-  font-size: 12px;
-  padding: 0 8px;
-  block-size: 28px;
-  border-radius: 14px;
+    &[data-current],
+    &.active {
+      background: var(--basic-surface-container-highest);
+      color: var(--basic-primary);
+      border-color: var(--basic-primary);
+    }
+  }
+
+  // Edit toggle
+  &[data-action="toggle-edit"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // Screen capture
+  &[data-action="snip"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // AI operations
+  &[data-action="solve"],
+  &[data-action="code"],
+  &[data-action="css"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // Voice input
+  &[data-action="voice"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // Template management
+  &[data-action="edit-templates"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // Work center actions
+  &[data-action="recognize"],
+  &[data-action="analyze"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // File selection
+  &[data-action="select-files"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // Prompt actions
+  &[data-action="clear-prompt"],
+  &[data-action="edit-templates"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
+
+  // History actions
+  &[data-action="view-full-history"] {
+    font-size: 12px;
+    padding: 0 8px;
+    block-size: 28px;
+    border-radius: 14px;
+  }
 }
 
 /* Legacy button styles for backward compatibility */

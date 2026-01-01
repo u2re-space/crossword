@@ -10,16 +10,30 @@
   box-shadow: var(--basic-elev-1);
   block-size: 3.5rem;
   contain: strict;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   scrollbar-color: transparent;
+  -webkit-overflow-scrolling: touch;
+
+  // Hide scrollbars
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  // Ensure toolbar doesn't shrink below minimum usable size
+  min-width: fit-content;
 }
 
-.toolbar .left,
-.toolbar .right {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+// Toolbar sections
+.toolbar {
+  .left,
+  .right {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-shrink: 0;
+  }
 }
 
 .content {
@@ -665,8 +679,17 @@
 
   .toolbar .left,
   .toolbar .right {
-    flex-wrap: wrap;
-    gap: var(--space-sm);
+    flex-wrap: nowrap; /* Prevent wrapping on tablets */
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .toolbar .left .btn,
+  .toolbar .right .btn {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    padding: var(--space-xs) var(--space-sm);
+    min-width: auto;
   }
 
   .content {
@@ -691,11 +714,52 @@
 }
 
 @media (max-width: 480px) {
+  .toolbar {
+    padding: var(--space-xs);
+    min-block-size: 2.5rem;
+  }
+
   .toolbar .left,
   .toolbar .right {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
+    flex-wrap: nowrap; /* Keep horizontal scrolling instead of stacking */
+    gap: var(--space-xs);
+    align-items: center;
+  }
+
+  .toolbar .left .btn,
+  .toolbar .right .btn {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    padding: var(--space-xs);
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+
+  /* Hide button text on very small screens, keep icons */
+  .toolbar .left .btn:not([title*="Rich"])::after,
+  .toolbar .right .btn:not([title*="Voice"])::after {
+    content: attr(title);
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--basic-surface-container-high);
+    color: var(--basic-on-surface);
+    padding: var(--space-xs);
+    border-radius: var(--basic-radius-sm);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--basic-motion-fast);
+    z-index: 1000;
+  }
+
+  .toolbar .left .btn:hover::after,
+  .toolbar .right .btn:hover::after,
+  .toolbar .left .btn:focus::after,
+  .toolbar .right .btn:focus::after {
+    opacity: 1;
   }
 
   .content {

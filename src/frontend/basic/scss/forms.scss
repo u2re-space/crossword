@@ -102,10 +102,12 @@
     appearance: none;
     position: relative;
 
+    // Checked state
     &:checked {
       background: var(--basic-primary);
       border-color: var(--basic-primary);
 
+      // Checkmark
       &::after {
         content: '✓';
         position: absolute;

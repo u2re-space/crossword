@@ -1,5 +1,10 @@
 import { H } from "fest/lure";
-import { BasicMarkdownView } from "../MarkdownView";
+import { marked, type MarkedExtension } from "marked";
+import markedKatex from "marked-katex-extension";
+import DOMPurify from "isomorphic-dompurify";
+
+// Configure marked with KaTeX extension
+marked?.use?.(markedKatex({ throwOnError: false, nonStandard: true, output: "mathml", strict: false }) as unknown as MarkedExtension);
 
 export interface MarkdownViewerOptions {
   content?: string;
@@ -12,7 +17,7 @@ export interface MarkdownViewerOptions {
 
 export class MarkdownViewer {
   private options: MarkdownViewerOptions;
-  private view: BasicMarkdownView | null = null;
+  private view: any = null;
   private content: string = "";
 
   constructor(options: MarkdownViewerOptions = {}) {
@@ -106,12 +111,53 @@ export class MarkdownViewer {
   private initializeViewer(container: HTMLElement): void {
     const contentContainer = container.querySelector('.viewer-content') as HTMLElement;
 
-    // Create markdown view
-    this.view = document.createElement("basic-md-view") as unknown as BasicMarkdownView;
-    contentContainer.append(this.view as unknown as Node);
+    if (!contentContainer) {
+      console.error('[MarkdownViewer] Content container not found');
+      return;
+    }
 
-    // Set initial content
+    // Create a properly themed markdown viewer with CSS classes
+    const viewElement = document.createElement('div');
+    viewElement.className = 'markdown-body markdown-viewer-content';
+
+    // Apply basic inline styles for layout, let CSS handle theming
+    viewElement.style.cssText = `
+      padding: 2rem;
+      min-height: 300px;
+      border-radius: var(--basic-radius-lg, 12px);
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      color-scheme: inherit;
+    `;
+
+    contentContainer.innerHTML = '';
+    contentContainer.append(viewElement);
+
+    // Create a simple markdown renderer function
+    this.view = {
+      setMarkdown: (text: string = "") => {
+        try {
+          const html = marked.parse((text || "").trim());
+          const sanitized = DOMPurify?.sanitize?.((html || "").trim()) || "";
+          viewElement.innerHTML = sanitized;
+
+          console.log('[MarkdownViewer] Markdown rendered successfully:', {
+            inputLength: text.length,
+            outputLength: sanitized.length,
+            hasContent: !!sanitized
+          });
+        } catch (error) {
+          console.error('[MarkdownViewer] Error rendering markdown:', error);
+          viewElement.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${error.message}</div>`;
+        }
+      }
+    } as any;
+
+    console.log('[MarkdownViewer] Created simple div-based viewer');
+
+    // Set initial content immediately
     if (this.content) {
+      console.log('[MarkdownViewer] Setting initial content:', this.content.substring(0, 100) + '...');
       this.view.setMarkdown(this.content);
     }
 
