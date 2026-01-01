@@ -42,7 +42,7 @@ export const PROMPT_COMPUTE_EFFORT = (data: DataInput): "low" | "medium" | "high
     // Blob/File handling
     if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
         const size = data.dataSource.size;
-        if (size > 1024 * 1024) return "high"; // >1MB
+        if (size > 1024 * 1024) return "high"; // >1MB (keep existing logic for effort calculation)
         if (data?.dataKind === "image") return "medium";
         return "medium";
     }

@@ -18,6 +18,7 @@ import { recognizeByInstructions } from '@rs-core/service/AI-ops/RecognizeData';
 import { getUsableData } from '@rs-core/service/model/GPT-Responses';
 import { pushToIDBQueue } from '@rs-core/service/AI-ops/ServiceHelper';
 import { fileToDataUrl } from './lib/ImageUtils';
+import { MAX_BASE64_SIZE, convertImageToJPEG } from '@rs-core/utils/ImageProcess';
 
 //
 // @ts-ignore
@@ -319,8 +320,27 @@ const processShareWithAI = async (
         // Priority: files > text > url
         if (shareData.imageFiles?.length > 0) {
             // Use first image file
-            const imageFile = shareData.imageFiles[0];
-            console.log('[ShareTarget] Processing image file:', imageFile.name);
+            let imageFile = shareData.imageFiles[0];
+            console.log('[ShareTarget] Processing image file:', imageFile.name, 'size:', imageFile.size);
+
+            // Compress large images to avoid memory issues and timeouts
+            // Only compress PNG images in service workers (Canvas API not available)
+            const isPNG = imageFile.type?.toLowerCase() === 'image/png';
+            const shouldCompress = imageFile.size > MAX_BASE64_SIZE && (isPNG || typeof window !== 'undefined');
+
+            if (shouldCompress) {
+                console.log('[ShareTarget] Image too large, compressing to JPEG:', imageFile.size, '>', MAX_BASE64_SIZE);
+                try {
+                    imageFile = await convertImageToJPEG(imageFile) as File;
+                    console.log('[ShareTarget] Compressed image size:', imageFile.size);
+                } catch (compressionError) {
+                    console.warn('[ShareTarget] Image compression failed:', compressionError);
+                    // Continue with original file if compression fails
+                }
+            } else if (!isPNG && imageFile.size > MAX_BASE64_SIZE) {
+                console.warn('[ShareTarget] Large non-PNG image cannot be compressed in service worker, proceeding with original file');
+            }
+
             inputData = imageFile;
         } else if (shareData.files?.length > 0) {
             // Use first non-image file

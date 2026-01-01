@@ -121,29 +121,42 @@ const createCrxAdapter = (): PlatformAdapter => ({
 
     async processImage(dataUrl: string, options?: ImageProcessingOptions): Promise<string> {
         try {
+            // Check if we're in a service worker (no Canvas API)
+            const isServiceWorker = typeof window === 'undefined' || !window.document;
+
+            if (isServiceWorker) {
+                console.warn("[RecognizeData] Image processing not available in service worker context");
+                return dataUrl;
+            }
+
             // CRX has advanced image processing
             const { encodeWithJSquash, removeAnyPrefix } = await import("../../utils/ImageProcess");
 
-            // Compress if needed
-            const SIZE_THRESHOLD = 1024 * 1024 * 2; // 2MB
+            // Compress if needed - use standardized size limit
+            const { MAX_BASE64_SIZE } = await import("../model/GPT-Responses");
+            const SIZE_THRESHOLD = 2 * 1024 * 1024; // 2MB for data URL compression
             if (dataUrl.length <= SIZE_THRESHOLD) return dataUrl;
 
             // Convert to compressed JPEG
-            // @ts-ignore
-            const binary = Uint8Array.fromBase64(removeAnyPrefix(dataUrl), { alphabet: "base64" });
-            const blob = new Blob([binary], { type: "image/png" });
-            const bitmap = await createImageBitmap(blob);
-            const arrayBuffer = await encodeWithJSquash(bitmap);
-            bitmap?.close?.();
+            try {
+                // @ts-ignore
+                const binary = Uint8Array.fromBase64(removeAnyPrefix(dataUrl), { alphabet: "base64" });
+                const blob = new Blob([binary], { type: "image/png" });
+                const bitmap = await createImageBitmap(blob);
+                const arrayBuffer = await encodeWithJSquash(bitmap);
+                bitmap?.close?.();
 
-            if (arrayBuffer) { // @ts-ignore
-                const base64 = new Uint8Array(arrayBuffer).toBase64({ alphabet: "base64" });
-                return `data:image/jpeg;base64,${base64}`;
+                if (arrayBuffer) { // @ts-ignore
+                    const base64 = new Uint8Array(arrayBuffer).toBase64({ alphabet: "base64" });
+                    return `data:image/jpeg;base64,${base64}`;
+                }
+            } catch (processingError) {
+                console.warn("[RecognizeData] Image compression failed:", processingError);
             }
 
             return dataUrl;
         } catch (e) {
-            console.warn("Image processing failed:", e);
+            console.warn("[RecognizeData] Image processing failed:", e);
             return dataUrl;
         }
     },

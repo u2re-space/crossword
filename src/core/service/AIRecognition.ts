@@ -177,13 +177,29 @@ export const initRecognitionService = (): (() => void) => {
 };
 
 /**
- * Convert image to base64 data URL
+ * Convert image to base64 data URL with size validation and error handling
  */
 export const imageToDataUrl = async (image: Blob | File): Promise<string> => {
+    // Import size limit for consistency
+    const { MAX_FILE_SIZE } = await import("../model/GPT-Responses");
+
+    if (image.size > MAX_FILE_SIZE) {
+        throw new Error(`Image too large: ${(image.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed: ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(1)}MB`);
+    }
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Failed to read image"));
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                resolve(reader.result);
+            } else {
+                reject(new Error("Failed to convert image to data URL"));
+            }
+        };
+        reader.onerror = () => {
+            const error = reader.error;
+            reject(new Error(`Failed to read image: ${error?.message || 'Unknown error'}`));
+        };
         reader.readAsDataURL(image);
     });
 };

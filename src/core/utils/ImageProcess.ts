@@ -1,6 +1,6 @@
 // for optimize images before sending to GPT
-import { decode } from '@jsquash/png';
-import { encode } from '@jsquash/jpeg';
+import { decode as decodePNG } from '@jsquash/png';
+import { encode as encodeJPEG } from '@jsquash/jpeg';
 
 //
 export type CropArea = { x: number, y: number, width: number, height: number }
@@ -8,11 +8,65 @@ export type CropArea = { x: number, y: number, width: number, height: number }
 // for optimize images before sending to GPT
 export const jpegConfig = { quality: 90, progressive: false, color_space: 2, optimize_coding: true, auto_subsample: true, baseline: true };
 
-//
+/**
+ * Convert image to JPEG with service worker compatibility
+ * Only supports PNG compression in service workers due to Canvas API limitations
+ */
 export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob> => {
-    const decoded = await decode(await image.arrayBuffer());
-    const encoded = await encode(decoded, jpegConfig);
-    return new Blob([encoded], { type: 'image/jpeg' });
+    const mimeType = image.type?.toLowerCase() || '';
+
+    // Check if we're in a service worker (no DOM APIs available)
+    const isServiceWorker = typeof window === 'undefined' || !window.document;
+
+    // For PNG files, we can use the optimized @jsquash/png decoder (works in service workers)
+    if (mimeType === 'image/png') {
+        try {
+            const decoded = await decodePNG(await image.arrayBuffer());
+            const encoded = await encodeJPEG(decoded, jpegConfig);
+            return new Blob([encoded], { type: 'image/jpeg' });
+        } catch (pngError) {
+            console.warn('[ImageProcess] PNG decoding failed:', pngError);
+            // In service worker, we can't fall back to Canvas API
+            if (isServiceWorker) {
+                throw new Error(`PNG conversion failed and Canvas API unavailable in service worker: ${pngError}`);
+            }
+        }
+    }
+
+    // For non-PNG images in service workers, we can't use Canvas API
+    if (isServiceWorker) {
+        console.warn('[ImageProcess] Non-PNG image compression not supported in service worker, skipping compression');
+        // Return original image unchanged - size validation will happen elsewhere
+        return image instanceof Blob ? image : new Blob([image], { type: mimeType });
+    }
+
+    // In main thread, use Canvas API for all other formats (JPEG, WebP, GIF, etc.)
+    try {
+        const bitmap = await createImageBitmap(image);
+
+        // Create canvas with image dimensions
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+            throw new Error('Failed to get canvas context');
+        }
+
+        // Draw image to canvas
+        ctx.drawImage(bitmap, 0, 0);
+
+        // Convert to JPEG blob
+        const jpegBlob = await canvas.convertToBlob({
+            type: 'image/jpeg',
+            quality: 0.9 // 90% quality
+        });
+
+        bitmap.close();
+        return jpegBlob;
+    } catch (canvasError) {
+        console.error('[ImageProcess] Canvas-based conversion failed:', canvasError);
+        throw new Error(`Image conversion failed: ${canvasError}`);
+    }
 }
 
 //
@@ -79,17 +133,17 @@ export const encodeWithJSquash = async (frameData?: VideoFrame | ImageBitmap | I
 
     //
     if (frameData instanceof ImageData) {
-        return encode(frameData, jpegConfig);
+        return encodeJPEG(frameData, jpegConfig);
     } else
         if (frameData instanceof ImageBitmap) {
             const cnv = new OffscreenCanvas(rect.width, rect.height);
             const ctx = cnv.getContext("2d");
             ctx?.drawImage?.(frameData, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
             const idata = ctx?.getImageData?.(0, 0, rect.width, rect.height, imageDataOptions);
-            if (idata) return encode(idata, jpegConfig);
+            if (idata) return encodeJPEG(idata, jpegConfig);
         } else { // @ts-ignore
             const idata = new ImageData(rect.codedWidth, rect.codedHeight, imageDataOptions);
             try { frameData?.copyTo?.(idata.data, { format: "RGBA", rect }); } catch (e) { console.warn(e); }
-            return encode(idata, jpegConfig);
+            return encodeJPEG(idata, jpegConfig);
         }
 }

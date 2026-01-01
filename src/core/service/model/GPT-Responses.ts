@@ -25,12 +25,33 @@ import {
 const hasFile = () => typeof (globalThis as any).File !== "undefined";
 const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";
 
+// Standardized file size limits across the service layer
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for file processing
+export const MAX_BASE64_SIZE = 10 * 1024 * 1024; // 10MB for base64 encoding
+
+// Optimized base64 encoding with memory safety
 const toBase64 = (bytes: Uint8Array): string => {
-    // Node
+    // Node.js environment
     if (typeof (globalThis as any).Buffer !== "undefined") {
         return (globalThis as any).Buffer.from(bytes).toString("base64");
     }
-    // Browser
+
+    // Browser environment - use chunked processing for large files
+    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks to avoid memory issues
+    if (bytes.length > CHUNK_SIZE) {
+        let result = "";
+        for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+            const chunk = bytes.slice(i, i + CHUNK_SIZE);
+            let binary = "";
+            for (let j = 0; j < chunk.length; j++) {
+                binary += String.fromCharCode(chunk[j]);
+            }
+            result += (typeof btoa === "function" ? btoa(binary) : "");
+        }
+        return result;
+    }
+
+    // Small files - direct processing
     let binary = "";
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     // @ts-ignore
@@ -68,24 +89,56 @@ export const getUsableData = async (data: DataInput) => {
         (FileCtor && data?.dataSource instanceof FileCtor);
 
     if (isFileOrBlob) {
-        if (typesForKind?.[data?.dataKind || "input_text"] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
-            const BASE64URL = `data:${data?.dataSource?.type};base64,`; // @ts-ignore
-            const bytes = new Uint8Array(await data?.dataSource?.arrayBuffer());
-            const URL = BASE64URL + toBase64(bytes);
+        const fileSize = data?.dataSource?.size || 0;
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
+        // Check file size limit
+        if (fileSize > MAX_FILE_SIZE) {
+            console.warn(`[GPT-Responses] File too large: ${fileSize} bytes > ${MAX_FILE_SIZE} bytes`);
             return {
-                "type": "input_image",
-                "detail": "auto",
-                "image_url": URL
+                "type": "input_text",
+                "text": `[File too large: ${(fileSize / 1024 / 1024).toFixed(1)}MB. Maximum allowed: ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(1)}MB]`
+            };
+        }
+
+        if (typesForKind?.[data?.dataKind || "input_text"] === "input_image" || (data?.dataSource?.type?.startsWith?.("image/"))) {
+            try {
+                const BASE64URL = `data:${data?.dataSource?.type};base64,`;
+                const arrayBuffer = await data?.dataSource?.arrayBuffer();
+                if (!arrayBuffer) {
+                    throw new Error("Failed to read file as ArrayBuffer");
+                }
+                const bytes = new Uint8Array(arrayBuffer);
+                const URL = BASE64URL + toBase64(bytes);
+                return {
+                    "type": "input_image",
+                    "detail": "auto",
+                    "image_url": URL
+                };
+            } catch (error) {
+                console.error("[GPT-Responses] Failed to process image file:", error);
+                return {
+                    "type": "input_text",
+                    "text": `[Failed to process image file: ${error}]`
+                };
             }
         }
 
         // Handle other file types as text
-        const text = await data?.dataSource?.text?.()?.catch?.(() => null);
-        if (text) {
+        try {
+            const text = await data?.dataSource?.text?.();
+            if (text) {
+                return {
+                    "type": "input_text",
+                    "text": text
+                };
+            }
+        } catch (error) {
+            console.error("[GPT-Responses] Failed to read text file:", error);
             return {
                 "type": "input_text",
-                "text": text
-            }
+                "text": `[Failed to read text file: ${error}]`
+            };
         }
     } else if (typeof data?.dataSource == "string") {
         // Auto-detect data kind if not specified
