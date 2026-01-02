@@ -15,6 +15,7 @@ export interface MarkdownViewerOptions {
   onCopy?: (content: string) => void;
   onDownload?: (content: string) => void;
   onPrint?: (content: string) => void;
+  onOpen?: () => void;
 }
 
 export class MarkdownViewer {
@@ -42,6 +43,10 @@ export class MarkdownViewer {
       ${this.options.showTitle ? H`<div class="viewer-header">
         <h3>${this.options.title}</h3>
         ${this.options.showActions ? H`<div class="viewer-actions">
+          <button class="btn btn-icon" data-action="open" title="Open markdown file" aria-label="Open markdown file">
+            <ui-icon icon="folder-open" size="20" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Open</span>
+          </button>
           <button class="btn btn-icon" data-action="copy" title="Copy content" aria-label="Copy content">
             <ui-icon icon="copy" size="20" icon-style="duotone"></ui-icon>
             <span class="btn-text">Copy</span>
@@ -266,7 +271,9 @@ export class MarkdownViewer {
       const target = e.target as HTMLElement;
       const action = target.getAttribute('data-action');
 
-      if (action === 'copy') {
+      if (action === 'open') {
+        this.options.onOpen?.();
+      } else if (action === 'copy') {
         this.copyContent();
       } else if (action === 'download') {
         this.downloadContent();

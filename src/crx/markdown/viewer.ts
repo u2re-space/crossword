@@ -113,7 +113,7 @@ void (async () => {
   }
 
   // Mount the app with the markdown content
-  frontend(mount, { initialView: "markdown", initialMarkdown: text || undefined });
+  frontend(mount, { initialView: "markdown-viewer", initialMarkdown: text || undefined });
 
   // Once the app mounts, hide the raw layer.
   if (raw) raw.style.display = "none";

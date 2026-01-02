@@ -315,6 +315,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     const viewer = createMarkdownViewer({
       content: state.markdown || DEFAULT_MD,
       title: "Markdown Viewer",
+      onOpen: () => {
+        // Trigger file input for opening markdown files
+        fileInput.click();
+      },
       onCopy: (content) => {
         state.message = "Content copied to clipboard";
         renderStatus();
@@ -692,8 +696,20 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         state.markdown = text || "";
         persistMarkdown();
         saveLastSrc("");
-        state.view = "markdown";
+
+        // Don't change view if already in markdown-viewer mode
+        if (state.view !== "markdown-viewer") {
+          state.view = "markdown-viewer";
+        }
+
+        state.message = `Loaded ${f.name}`;
+        renderStatus();
         void render();
+
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 3000);
       })
       .catch(() => void 0)
       .finally(() => {

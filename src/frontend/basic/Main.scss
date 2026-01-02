@@ -605,6 +605,71 @@
     --space-xl: 1.25rem;
     --space-2xl: 1.6rem;
 
+    /* Padding variables */
+    --padding-xs: 0.25rem;
+    --padding-sm: 0.5rem;
+    --padding-md: 0.75rem;
+    --padding-lg: 1rem;
+    --padding-xl: 1.25rem;
+    --padding-2xl: 1.6rem;
+    --padding-3xl: 2rem;
+    --padding-4xl: 2.5rem;
+    --padding-5xl: 3rem;
+    --padding-6xl: 4rem;
+    --padding-7xl: 5rem;
+    --padding-8xl: 6rem;
+    --padding-9xl: 8rem;
+
+    /* Gap variables */
+    --gap-xs: 0.25rem;
+    --gap-sm: 0.5rem;
+    --gap-md: 0.75rem;
+    --gap-lg: 1rem;
+    --gap-xl: 1.25rem;
+    --gap-2xl: 1.6rem;
+
+    /* Border width variables */
+    --border-width-xs: 0.5px;
+    --border-width-sm: 1px;
+    --border-width-md: 1.5px;
+    --border-width-lg: 2px;
+    --border-width-xl: 3px;
+    --border-width-2xl: 4px;
+    --border-width-3xl: 6px;
+    --border-width-4xl: 8px;
+
+    /* Shadow variables */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.1);
+    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-inset-strong: inset 0 4px 8px rgba(0, 0, 0, 0.12);
+
+    /* Transition variables */
+    --transition-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
+    --transition-normal: 160ms cubic-bezier(0.2, 0, 0, 1);
+    --transition-slow: 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    /* Interactive state variables */
+    --hover-lift: 0.03;
+    --active-lift: 0.05;
+    --focus-lift: 0.02;
+
+    /* Avatar/Icon size variables */
+    --avatar-size: 32px;
+    --avatar-size-sm: 24px;
+    --avatar-size-md: 32px;
+    --avatar-size-lg: 48px;
+    --avatar-size-xl: 64px;
+    --icon-size-xs: 0.75rem;
+    --icon-size-sm: 0.875rem;
+    --icon-size-md: 1rem;
+    --icon-size-lg: 1.25rem;
+    --icon-size-xl: 1.5rem;
+
     /* Typography */
     --text-xs: 0.7rem;
     --text-sm: 0.8rem;

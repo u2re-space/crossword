@@ -77,6 +77,42 @@ const isMarkdownUrl = (candidate?: string | null): candidate is string => {
     }
 };
 
+// Detect if text content is markdown format (when not HTML)
+const isMarkdownContent = (text: string): boolean => {
+    if (!text || typeof text !== "string") return false;
+
+    // Skip if it looks like HTML
+    const trimmed = text.trim();
+    if (trimmed.startsWith("<") && trimmed.endsWith(">")) return false;
+    if (/<[a-zA-Z][^>]*>/.test(trimmed)) return false; // Contains HTML tags
+
+    // Markdown detection patterns with confidence scores
+    const patterns = [
+        { pattern: /^---[\s\S]+?---/, score: 0.9 }, // YAML frontmatter
+        { pattern: /^#{1,6}\s+.+$/m, score: 0.8 }, // Headings
+        { pattern: /^\s*[-*+]\s+\S+/m, score: 0.7 }, // Unordered lists
+        { pattern: /^\s*\d+\.\s+\S+/m, score: 0.7 }, // Ordered lists
+        { pattern: /`{1,3}[^`]*`{1,3}/, score: 0.6 }, // Code blocks/inline code
+        { pattern: /\[([^\]]+)\]\(([^)]+)\)/, score: 0.5 }, // Links
+        { pattern: /!\[([^\]]+)\]\(([^)]+)\)/, score: 0.5 }, // Images
+        { pattern: /\*\*[^*]+\*\*/, score: 0.4 }, // Bold text
+        { pattern: /\*[^*]+\*/, score: 0.3 }, // Italic text
+    ];
+
+    let totalScore = 0;
+    let patternCount = 0;
+
+    for (const { pattern, score } of patterns) {
+        if (pattern.test(text)) {
+            totalScore += score;
+            patternCount++;
+        }
+    }
+
+    // Require at least 2 patterns and minimum confidence
+    return patternCount >= 2 && totalScore >= 0.8;
+};
+
 const toViewerUrl = (source?: string | null, markdownKey?: string | null) => {
     if (!source) return VIEWER_URL;
     const params = new URLSearchParams();
@@ -145,6 +181,12 @@ const fetchMarkdownText = async (candidate: string) => {
     const src = normalizeMarkdownSourceUrl(candidate);
     const res = await fetch(src, { credentials: "include", cache: "no-store" });
     const text = await res.text().catch(() => "");
+
+    // Check if the content looks like markdown (when not HTML)
+    if (text && !text.trim().startsWith("<") && isMarkdownContent(text)) {
+        console.log(`[CRX] Detected markdown content from ${src}`);
+    }
+
     return { ok: res.ok, status: res.status, src, text };
 };
 
@@ -189,17 +231,88 @@ const putMarkdownToSession = async (text: string) => {
     }
 };
 
-const tryReadMarkdownFromTab = async (tabId: number) => {
+const tryReadMarkdownFromTab = async (tabId: number, url?: string) => {
     try {
         const results = await chrome.scripting.executeScript({
             target: { tabId },
-            func: () => {
-                const txt = document?.body?.innerText || document?.documentElement?.innerText || "";
-                return typeof txt === "string" ? txt : "";
+            func: (pageUrl: string) => {
+                // Check if this is a GitHub page that renders markdown
+                const isGitHub = pageUrl.includes("github.com");
+
+                if (isGitHub) {
+                    // Try to extract markdown from GitHub's rendered content
+                    const selectors = [
+                        // GitHub README and markdown files
+                        ".markdown-body",
+                        "[data-target='readme-toc.content']",
+                        ".Box-body .markdown-body",
+                        // GitHub issues/PRs
+                        ".js-comment-body .markdown-body",
+                        // GitHub wiki pages
+                        ".wiki-wrapper .markdown-body",
+                        // Fallback to any markdown body
+                        ".markdown-body"
+                    ];
+
+                    for (const selector of selectors) {
+                        const element = document.querySelector(selector);
+                        if (element) {
+                            // Try to get the raw markdown if available (GitHub sometimes provides it)
+                            const rawButton = document.querySelector("a[href*='raw']") as HTMLAnchorElement;
+                            if (rawButton && rawButton.href) {
+                                // Return a special marker to indicate we should fetch the raw version
+                                return `__RAW_URL__${rawButton.href}`;
+                            }
+
+                            // Extract text from the rendered markdown
+                            const text = element.textContent || "";
+                            if (text.trim()) {
+                                return text.trim();
+                            }
+                        }
+                    }
+                }
+
+                // For non-GitHub pages or fallback, try to detect if content is markdown
+                const bodyText = document?.body?.innerText || document?.documentElement?.innerText || "";
+                if (typeof bodyText === "string" && bodyText.trim()) {
+                    // Check if the content looks like markdown
+                    const trimmed = bodyText.trim();
+                    if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+                        // Looks like HTML, try to extract text content
+                        const tempDiv = document.createElement("div");
+                        tempDiv.innerHTML = trimmed;
+                        return tempDiv.textContent || tempDiv.innerText || trimmed;
+                    }
+                    return trimmed;
+                }
+
+                return "";
             },
+            args: [url || ""]
         });
+
         const value = results?.[0]?.result;
-        return typeof value === "string" ? value : "";
+        if (typeof value === "string") {
+            // Check if we got a raw URL marker
+            if (value.startsWith("__RAW_URL__")) {
+                const rawUrl = value.replace("__RAW_URL__", "");
+                try {
+                    // Fetch the raw markdown content
+                    const response = await fetch(rawUrl);
+                    if (response.ok) {
+                        return await response.text();
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch raw markdown:", e);
+                }
+                // Fall back to the extracted text if raw fetch fails
+                return "";
+            }
+
+            return value;
+        }
+        return "";
     } catch (e) {
         // Most common for file:// when user didn't enable "Allow access to file URLs".
         console.warn("Failed to read markdown from tab", tabId, e);
@@ -864,7 +977,7 @@ chrome.webNavigation?.onCompleted?.addListener?.((details) => {
         if (url.startsWith(VIEWER_ORIGIN)) return;
         if (!url.startsWith("file:")) return;
 
-        const text = await tryReadMarkdownFromTab(tabId);
+        const text = await tryReadMarkdownFromTab(tabId, url);
         const key = text ? await putMarkdownToSession(text) : null;
         openViewer(url, tabId, key);
     })().catch(console.warn.bind(console));
