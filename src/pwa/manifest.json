@@ -1,11 +1,13 @@
 {
-    "name": "cross.word",
+    "name": "CrossWord - AI Recognition & Productivity",
     "short_name": "CrossWord",
-    "description": "AI-powered text recognition, markdown viewer, and productivity tools",
+    "description": "AI-powered text recognition, markdown viewer, rich text editor, and productivity tools",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "background_color": "#ffffff",
+    "theme_color": "#007acc",
     "categories": ["productivity", "lifestyle", "finance", "navigation"],
     "icons": [
         {
@@ -82,5 +84,27 @@
     "handle_links": "preferred",
     "launch_handler": {
         "client_mode": "focus-existing"
-    }
+    },
+    "orientation": "any",
+    "edge_side": "left",
+    "edge_side_delegate": {
+        "url": "/",
+        "edge_side": "left"
+    },
+    "screenshots": [
+        {
+            "src": "./icons/screenshot-desktop.png",
+            "sizes": "1280x800",
+            "type": "image/png",
+            "platform": "wide",
+            "label": "Desktop interface showing AI recognition and markdown editing"
+        },
+        {
+            "src": "./icons/screenshot-mobile.png",
+            "sizes": "390x844",
+            "type": "image/png",
+            "platform": "narrow",
+            "label": "Mobile interface with text recognition"
+        }
+    ]
 }

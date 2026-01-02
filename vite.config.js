@@ -27,12 +27,12 @@ const objectAssign = (target, ...sources) => {
 //
 export const NAME = "crossword";
 export const __dirname = resolve(import.meta.dirname, "./");
-const baseConfig = await importConfig(
-    resolve(__dirname, "./shared/vite.config.js"),
-    NAME,
-    JSON.parse(await readFile(resolve(__dirname, "./tsconfig.json"), { encoding: "utf8" })),
-    __dirname
-);
+    const baseConfig = await importConfig(
+        resolve(__dirname, "./shared/vite.config.js"),
+        NAME,
+        JSON.parse(await readFile(resolve(__dirname, "./tsconfig.json"), { encoding: "utf8" })),
+        __dirname
+    );
 
 const manifest = await readFile(resolve(__dirname, "./src/crx/manifest.json"), { encoding: "utf8" }).then(JSON.parse);
 
@@ -69,6 +69,11 @@ const createCrxConfig = () => {
         ?? [];
     const baseRollup = baseConfig?.build?.rollupOptions ?? {};
     const baseOutput = Array.isArray(baseRollup.output) ? baseRollup.output[0] : (baseRollup.output ?? {});
+
+    // Single entry point - client handles all routing
+    const entryPoints = {
+        choice: resolve(__dirname, './src/choice.ts')
+    };
 
     //
     const crxOutput = objectAssign({}, baseOutput, {
@@ -113,5 +118,30 @@ export default async ({ mode } = {}) => {
     if (mode === "crx") {
         return createCrxConfig();
     }
-    return baseConfig;
+
+    // For regular build, modify base config to use multiple entry points
+    const config = {
+        ...baseConfig,
+        build: {
+            ...baseConfig.build,
+            rollupOptions: {
+                ...baseConfig.build?.rollupOptions,
+                input: {
+                    index: resolve(__dirname, './src/index.ts')
+                },
+                output: {
+                    ...baseConfig.build?.rollupOptions?.output,
+                    entryFileNames: 'index.js',
+                    chunkFileNames: "modules/[name].js",
+                    assetFileNames: (assetInfo) => {
+                        const ext = assetInfo.name?.split('.').pop() || '';
+                        if (ext === 'css') return `assets/[name][extname]`;
+                        return "assets/[name][extname]";
+                    },
+                }
+            }
+        }
+    };
+
+    return config;
 };

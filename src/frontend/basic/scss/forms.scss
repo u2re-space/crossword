@@ -22,7 +22,7 @@
 .form-select {
   width: 100%;
   padding: var(--space-md) var(--space-lg);
-  border: 1px solid var(--basic-outline);
+  border: 0.5px solid var(--basic-outline);
   border-radius: var(--basic-radius-lg);
   background: var(--basic-surface-container-high);
   color: var(--basic-on-surface);
@@ -95,7 +95,7 @@
     width: 20px;
     height: 20px;
     border-radius: var(--basic-radius-sm);
-    border: 2px solid var(--basic-outline);
+    border: 1px solid var(--basic-outline);
     background: var(--basic-surface);
     cursor: pointer;
     transition: all var(--basic-motion-fast);
@@ -145,7 +145,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid var(--basic-outline);
+    border: 1px solid var(--basic-outline);
     background: var(--basic-surface);
     cursor: pointer;
     transition: all var(--basic-motion-fast);

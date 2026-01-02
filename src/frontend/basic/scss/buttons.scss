@@ -3,7 +3,7 @@
 .btn {
   // Base button styles
   appearance: none;
-  border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
+  border: 0.5px solid color-mix(in oklab, var(--basic-outline) 20%, transparent);
   background: var(--basic-surface-container-high);
   color: var(--basic-on-surface);
   border-radius: var(--basic-radius-lg);

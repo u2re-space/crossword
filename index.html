@@ -1,163 +1,149 @@
 <!DOCTYPE html>
-<html lang="ru" color-mode="user" data-scheme="auto">
-    <head>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1.0, interactive-widget=overlays-content, user-scalable=no, maximum-scale=1"/>
-        <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-        <link rel="manifest" href="./src/pwa/manifest.json" />
-        <meta name="theme-color" content="#000000">
-        <title>CrossWord</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content">
+    <title>CrossWord</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="manifest" href="./pwa/manifest.json">
+    <meta name="theme-color" content="#007acc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="display-override" content="window-controls-overlay">
+    <meta name="side-panel" content="delegate">
 
-        <!-- critical styles -->
-        <style data-owner="runtime" data-type="system">
-            @layer ui-system {
+    <!-- Critical initial styles to prevent FOUC and ensure proper rendering -->
+    <style data-owner="critical-init">
+        /* Hide undefined custom elements and problematic elements during load */
+        :where(*):not(:defined) {
+            opacity: 0 !important;
+            visibility: collapse !important;
+            pointer-events: none !important;
+            display: none !important;
+        }
 
-                @media screen {
-                    :where(*):not(:defined) { opacity: 0; visibility: collapse; pointer-events: none; display: none; background-color: transparent; color: transparent; };
-                    :where(link, head, script, style, meta) {
-                        display: none !important;
-                        pointer-events: none !important;
-                        interactivity: inert !important;
-                        user-select: none !important;
-                        touch-action: none !important;
-                    }
+        /* Hide script, link, style elements to prevent visual glitches */
+        :where(link, script, style) {
+            display: none !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+        }
 
-                    /* */
-                    :where(*) {
-                        box-sizing: border-box;
-                    }
+        /* Ensure html and body have no padding/margin and correct sizing */
+        html, body {
+            padding: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            border: none !important;
+            outline: none !important;
+            overflow: hidden !important;
+        }
 
-                    /* */
-                    body {
-                        display: grid;
-                        grid-template-columns: minmax(0px, 1fr);
-                        grid-template-rows: minmax(0px, 1fr);
-                        position: fixed;
-                        overflow: hidden;
-                        flex-direction: column;
-                        pointer-events: none;
-                        container-type: size;
-                        contain: strict;
-                        padding: 0px;
-                        margin: 0px;
-                        place-content: center;
-                        place-items: center;
-                        align-content: start;
-                        align-items: start;
+        /* Full viewport body sizing */
+        html {
+            inline-size: 100% !important;
+            block-size: 100% !important;
+            max-inline-size: 100% !important;
+            max-block-size: 100% !important;
+            min-inline-size: 100% !important;
+            min-block-size: 100% !important;
+        }
 
-                        min-block-size: max(100cqb, 100dvb);
-                        inline-size: min(100cqi, 100dvi);
-                    }
+        body {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            grid-template-rows: 1fr !important;
+            place-content: stretch !important;
+            place-items: stretch !important;
+            position: relative !important;
+            inline-size: 100% !important;
+            block-size: 100% !important;
+            max-inline-size: 100% !important;
+            max-block-size: 100% !important;
+            min-inline-size: 100% !important;
+            min-block-size: 100% !important;
+            container-type: size !important;
+            contain: strict !important;
+        }
 
-                    /* */
-                    body > #app {
-                        max-inline-size: stretch;
-                        max-block-size: stretch;
+        /* App container styling */
+        #app {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            grid-template-rows: 1fr !important;
+            place-content: stretch !important;
+            place-items: stretch !important;
+            inline-size: 100% !important;
+            block-size: 100% !important;
+            max-inline-size: 100% !important;
+            max-block-size: 100% !important;
+            min-inline-size: 0 !important;
+            min-block-size: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            outline: none !important;
+            overflow: hidden !important;
+            position: relative !important;
+            container-type: size !important;
+            contain: strict !important;
+        }
 
-                        /* */
-                        inline-size: stretch;
-                        block-size: stretch;
+        /* Loading state */
+        #app:empty::before {
+            content: "Loading CrossWord..." !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            inline-size: 100% !important;
+            block-size: 100% !important;
+            font-family: system-ui, -apple-system, sans-serif !important;
+            font-size: 1.2rem !important;
+            color: #666 !important;
+            background: #1a1a1a !important; /* Dark background for consistency */
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: 9999 !important;
+        }
 
-                        /* */
-                        min-inline-size: 0px;
-                        min-block-size: 0px;
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #007acc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
 
-                        /* */
-                        grid-column: 1 / -1;
-                        grid-row: 1 / -1;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-                        /* */
-                        display: grid;
-                        grid-template-columns: minmax(0px, 1fr);
-                        grid-template-rows: minmax(0px, 1fr);
-
-                        /* */
-                        pointer-events: none;
-                        position: absolute;
-                        inset: 0px;
-
-                        /* */
-                        inset-inline-end: auto;
-                        inset-block-end: auto;
-                        overflow: hidden;
-
-                        /* */
-                        container-type: size;
-                        contain: strict;
-
-                        /* */
-                        margin: 0px;
-                        padding: 0px;
-                        border: none 0px transparent;
-                        outline: none 0px transparent;
-                    }
-
-                    /* fix virtual keyboard and overlays issues */
-                    #overlays {
-						transition: block-size 100ms step-end;
-                        inline-size: 100dvi;
-                        block-size: min(100dvb, var(--view-height, 100dvb));
-                        position: fixed;
-                    }
-
-                    /* */
-                    #filter {
-                        mix-blend-mode: multiply;
-                        inset: 0px;
-                        position: fixed;
-                        margin: 0px;
-                        padding: 0px;
-                        inline-size: 100%;
-                        block-size: 100%;
-                        max-inline-size: 100dvi;
-                        max-block-size: 100dvb;
-                        background-color: oklch(calc(var(--brightness, 1) * 0.4 + 0.6) calc(var(--night-mode, 0) * 0.05) 35);
-                        pointer-events: none;
-                        z-index: 9999999;
-                        content-visibility: visible;
-                        transform: translateZ(0px);
-                    }
-                }
-            }
-        </style>
-
-        <script>
-            document.adoptedStyleSheets = [];
-
-            //
-            WeakMap.prototype.getOrInsert ??= function (key, defaultValue) {
-                if (!this.has(key)) { this.set(key, defaultValue); }
-                return this.get(key);
-            };
-
-            WeakMap.prototype.getOrInsertComputed ??= function (key, callbackFunction) {
-                if (!this.has(key)) { this.set(key, callbackFunction(key)); }
-                return this.get(key);
-            };
-
-            Map.prototype.getOrInsert ??= function (key, defaultValue) {
-                if (!this.has(key)) { this.set(key, defaultValue); }
-                return this.get(key);
-            };
-
-            Map.prototype.getOrInsertComputed ??= function (key, callbackFunction) {
-                if (!this.has(key)) { this.set(key, callbackFunction(key)); }
-                return this.get(key);
-            };
-        </script>
-        <script>
-            // workaround for happy-fs
-            if (typeof process == "undefined" || !window?.process) {
-                window.process = {
-                    env: {
-                        NODE_ENV: "production"
-                    }
-                }
-            }
-</script>
-    </head>
-<body style="contain: strict; pointer-events: auto; overflow: hidden; align-content: start; align-items: start; position: fixed; inset-block-end: auto; inset-block-start: 0px; border: none 0px transparent; outline: none 0px transparent;">
-    <div id="app" class="c2-surface" style="pointer-events: auto; background-color: --c2-surface(0.15, var(--current, currentColor)); inline-size: stretch; block-size: stretch; max-block-size: stretch; max-inline-size: stretch; contain: strict; border: none 0px transparent; outline: none 0px transparent;"></div>
-    <script src="./main.mjs" async defer type="module"></script>
+        .loading-message {
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            color: #e8e8e8;
+        }
+    </style>
+    <link rel="modulepreload" href="./src/index.ts" fetchpriority="high">
+</head>
+<body>
+    <div id="app">
+        <div class="loading-spinner"></div>
+        <div class="loading-message">Initializing application...</div>
+    </div>
+    <script type="module">
+        const app = import("./src/index.ts");
+        app?.then?.((app) => {
+            app?.default?.(document.getElementById("app"));
+        })?.catch?.((error) => {
+            console.error(error);
+            document.body.append(choiceList);
+        });
+    </script>
 </body>
 </html>

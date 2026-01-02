@@ -1,5 +1,6 @@
 import { H } from "fest/lure";
-import { BasicMarkdownView } from "../MarkdownView";
+import { MarkdownViewer } from "../viewer/MarkdownViewer";
+import { UIPhosphorIcon } from "fest/icon";
 
 export interface MarkdownEditorOptions {
   initialContent?: string;
@@ -12,8 +13,9 @@ export interface MarkdownEditorOptions {
 
 export class MarkdownEditor {
   private options: MarkdownEditorOptions;
+  private container: HTMLElement | null = null;
   private editor: HTMLTextAreaElement | null = null;
-  private preview: BasicMarkdownView | null = null;
+  private preview: MarkdownViewer | null = null;
   private autoSaveTimeout: number | null = null;
 
   constructor(options: MarkdownEditorOptions = {}) {
@@ -30,7 +32,7 @@ export class MarkdownEditor {
    * Render the markdown editor with live preview
    */
   render(): HTMLElement {
-    const container = H`<div class="markdown-editor-container">
+    this.container = H`<div class="markdown-editor-container">
       <div class="editor-header">
         <h3>Markdown Editor</h3>
         <div class="editor-actions">
@@ -71,6 +73,12 @@ export class MarkdownEditor {
               <span class="word-count">0 words</span>
               <span class="line-count">0 lines</span>
             </div>
+            <div class="editor-actions">
+              <button class="btn small" data-action="print" title="Print content">
+                <ui-icon icon="printer" size="16" icon-style="duotone"></ui-icon>
+                Print
+              </button>
+            </div>
             <div class="editor-mode">
               <button class="btn small active" data-mode="edit">Edit</button>
               <button class="btn small" data-mode="preview">Preview</button>
@@ -89,9 +97,9 @@ export class MarkdownEditor {
     </div>` as HTMLElement;
 
     // Initialize components
-    this.initializeEditor(container);
+    this.initializeEditor(this.container);
 
-    return container;
+    return this.container;
   }
 
   /**
@@ -99,6 +107,63 @@ export class MarkdownEditor {
    */
   getContent(): string {
     return this.editor?.value || "";
+  }
+
+  /**
+   * Print current content
+   */
+  printContent(): void {
+    const content = this.getContent();
+    if (!content.trim()) {
+      console.warn('[MarkdownEditor] No content to print');
+      return;
+    }
+
+    try {
+      // Get the rendered HTML content from preview
+      const previewContent = this.container?.querySelector('.markdown-viewer-content') as HTMLElement;
+      if (!previewContent) {
+        console.error('[MarkdownEditor] Could not find preview content for printing');
+        return;
+      }
+
+      // Try to use the server-side print route first
+      const printUrl = new URL('/print', window.location.origin);
+      printUrl.searchParams.set('content', previewContent.innerHTML);
+      printUrl.searchParams.set('title', 'Markdown Editor Content');
+
+      // Open print URL in new window
+      const printWindow = window.open(printUrl.toString(), '_blank', 'width=800,height=600');
+      if (!printWindow) {
+        console.warn('[MarkdownEditor] Failed to open print window - popup blocked?');
+        // Fallback: trigger browser print dialog on current content
+        this.printCurrentContent();
+        return;
+      }
+
+      console.log('[MarkdownEditor] Print window opened successfully');
+    } catch (error) {
+      console.error('[MarkdownEditor] Error printing content:', error);
+      // Fallback to current content printing
+      this.printCurrentContent();
+    }
+  }
+
+  /**
+   * Print current content using browser's print dialog
+   */
+  private printCurrentContent(): void {
+    // Add print styles to current content
+    const previewContent = this.container?.querySelector('.markdown-viewer-content') as HTMLElement;
+    if (previewContent) {
+      previewContent.setAttribute('data-print', 'true');
+      // Trigger print dialog
+      window.print();
+      // Remove print attribute after printing
+      setTimeout(() => {
+        previewContent.removeAttribute('data-print');
+      }, 1000);
+    }
   }
 
   /**
@@ -140,9 +205,13 @@ export class MarkdownEditor {
     this.editor = container.querySelector('.markdown-textarea') as HTMLTextAreaElement;
     const previewContainer = container.querySelector('.preview-content') as HTMLElement;
 
-    // Create preview component
-    this.preview = document.createElement("basic-md-view") as unknown as BasicMarkdownView;
-    previewContainer.append(this.preview as unknown as Node);
+    // Create preview component using MarkdownViewer
+    this.preview = new MarkdownViewer({
+      showTitle: false,
+      showActions: false
+    });
+    const previewElement = this.preview.render();
+    previewContainer.append(previewElement);
 
     // Set up event listeners
     this.setupEventListeners(container);
@@ -276,6 +345,9 @@ export class MarkdownEditor {
       case 'save':
         this.save();
         return;
+      case 'print':
+        this.printContent();
+        return;
     }
 
     if (replacement) {
@@ -333,7 +405,7 @@ export class MarkdownEditor {
 
   private updatePreview(): void {
     if (this.preview && this.editor) {
-      this.preview.setMarkdown(this.editor.value);
+      this.preview.setContent(this.editor.value);
     }
   }
 

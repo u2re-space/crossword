@@ -6,6 +6,7 @@ import { loadSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { createSettingsView } from "./Settings";
 import { writeText } from "@rs-frontend/shared/Clipboard";
+import { UIPhosphorIcon } from "fest/icon";
 
 // Import new modular components
 import { WorkCenterManager } from "./modules/WorkCenter";
@@ -13,8 +14,8 @@ import { createFileHandler } from "./modules/FileHandling";
 import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
 import { createHistoryManager } from "./modules/HistoryManager";
-import { createMarkdownViewer } from "./modules/MarkdownViewer";
-import { createMarkdownEditor } from "./modules/MarkdownEditor";
+import { createMarkdownViewer } from "../markdown/viewer/MarkdownViewer";
+import { createMarkdownEditor } from "../markdown/editor/MarkdownEditor";
 import { createQuillEditor } from "./modules/QuillEditor";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter";
@@ -169,7 +170,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
   const historyManager = createHistoryManager();
 
   const state = {
-    view: (options.initialView || "markdown") as BasicView,
+    view: (options.initialView || "markdown-viewer") as BasicView,
     markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
     editing: false,
     busy: false,
@@ -265,8 +266,18 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         <button class="btn ${state.view === 'history' ? 'active' : ''}" data-action="view-history" type="button" title="History">📚 History</button>
       </div>
       <div class="right">
-        ${isEditorView ? H`<button class="btn" data-action="open-md" type="button" title="Open Markdown File">📂 Open</button>
-        <button class="btn" data-action="export-md" type="button" title="Export as Markdown">💾 Export</button>` : ''}
+        ${isEditorView ? H`<button class="btn btn-icon" data-action="open-md" type="button" title="Open Markdown File">
+          <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
+          <span class="btn-text">Open</span>
+        </button>
+        <button class="btn btn-icon" data-action="save-md" type="button" title="Save to File">
+          <ui-icon icon="floppy-disk" size="18" icon-style="duotone"></ui-icon>
+          <span class="btn-text">Save</span>
+        </button>
+        <button class="btn btn-icon" data-action="export-md" type="button" title="Export as Markdown">
+          <ui-icon icon="download" size="18" icon-style="duotone"></ui-icon>
+          <span class="btn-text">Export</span>
+        </button>` : ''}
         ${isMarkdownView ? H`<button class="btn" data-action="voice" type="button" title="Voice Input">🎤 Voice</button>` : ''}
         ${isWorkCenterView ? H`<button class="btn" data-action="solve" type="button" title="Solve equations & answer questions">🧮 Solve</button>
         <button class="btn" data-action="code" type="button" title="Generate code">💻 Code</button>
@@ -395,6 +406,46 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     a.rel = "noopener";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 250);
+  };
+
+  const saveToFile = async () => {
+    const md = state.markdown;
+    if (!md?.trim()) return;
+
+    try {
+      // Use File System Access API if available
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: 'document.md',
+          types: [{
+            description: 'Markdown Files',
+            accept: {
+              'text/markdown': ['.md']
+            }
+          }]
+        });
+
+        const writable = await handle.createWritable();
+        await writable.write(md);
+        await writable.close();
+
+        state.message = "File saved successfully!";
+        renderStatus();
+        setTimeout(() => {
+          state.message = "";
+          renderStatus();
+        }, 3000);
+      } else {
+        // Fallback: trigger download
+        exportMarkdown();
+      }
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      // Fallback to download if user cancels or API fails
+      if ((error as any).name !== 'AbortError') {
+        exportMarkdown();
+      }
+    }
   };
 
   const runPrompt = async (promptText: string, customAIFunction?: Function) => {
@@ -538,6 +589,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       if (action === "view-history") state.view = "history";
 
       if (action === "open-md") fileInput.click();
+      if (action === "save-md") saveToFile();
       if (action === "export-md") exportMarkdown();
 
       if (action === "toggle-edit") {

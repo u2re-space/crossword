@@ -1,6 +1,7 @@
 import { H } from "fest/lure";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
+import { UIPhosphorIcon } from "fest/icon";
 
 export interface QuillEditorOptions {
   initialContent?: string;
@@ -52,10 +53,22 @@ export class QuillEditor {
       <div class="editor-header">
         <h3>Rich Text Editor</h3>
         <div class="editor-actions">
-          <button class="btn" data-action="clear">Clear</button>
-          <button class="btn primary" data-action="save">Save</button>
-          <button class="btn" data-action="export-html">Export HTML</button>
-          <button class="btn" data-action="export-text">Export Text</button>
+          <button class="btn btn-icon" data-action="clear" title="Clear content" aria-label="Clear content">
+            <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Clear</span>
+          </button>
+          <button class="btn btn-icon primary" data-action="save" title="Save content" aria-label="Save content">
+            <ui-icon icon="floppy-disk" size="18" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Save</span>
+          </button>
+          <button class="btn btn-icon" data-action="export-html" title="Export as HTML" aria-label="Export as HTML">
+            <ui-icon icon="code" size="18" icon-style="duotone"></ui-icon>
+            <span class="btn-text">HTML</span>
+          </button>
+          <button class="btn btn-icon" data-action="export-text" title="Export as text" aria-label="Export as text">
+            <ui-icon icon="file-text" size="18" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Text</span>
+          </button>
         </div>
       </div>
 

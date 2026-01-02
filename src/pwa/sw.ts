@@ -301,6 +301,81 @@ export const extractRecognizedContent = (data: unknown): unknown => {
 };
 
 // ============================================================================
+// ASSET CACHE MANAGEMENT
+// ============================================================================
+
+// Track asset versions for cache busting
+const ASSET_VERSIONS = new Map<string, string>();
+
+/**
+ * Enhanced fetch handler with cache busting and version tracking
+ */
+async function handleAssetRequest(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    // Handle critical app assets with special caching logic
+    const isCriticalAsset = pathname.endsWith('.js') ||
+                           pathname.endsWith('.css') ||
+                           pathname.endsWith('.svg') ||
+                           pathname.endsWith('.png') ||
+                           pathname === '/sw.js';
+
+    if (isCriticalAsset) {
+        try {
+            // Try to fetch fresh version first
+            const response = await fetch(request, {
+                cache: 'no-cache',
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+
+            if (response.ok) {
+                // Check if asset has changed
+                const etag = response.headers.get('etag');
+                const lastModified = response.headers.get('last-modified');
+                const versionKey = `${etag || ''}-${lastModified || ''}`;
+
+                const storedVersion = ASSET_VERSIONS.get(pathname);
+                if (storedVersion && storedVersion !== versionKey) {
+                    console.log(`[SW] Asset updated: ${pathname}`);
+
+                    // Notify clients about asset update
+                    notifyClients('asset-updated', {
+                        url: pathname,
+                        oldVersion: storedVersion,
+                        newVersion: versionKey
+                    });
+                }
+
+                ASSET_VERSIONS.set(pathname, versionKey);
+
+                // Cache the fresh response
+                const cache = await caches.open('crossword-assets-v1');
+                cache.put(request, response.clone());
+
+                return response;
+            }
+        } catch (error) {
+            console.warn(`[SW] Failed to fetch fresh asset: ${pathname}`, error);
+        }
+
+        // Fallback to cache
+        const cache = await caches.open('crossword-assets-v1');
+        const cachedResponse = await cache.match(request);
+        if (cachedResponse) {
+            console.log(`[SW] Serving cached asset: ${pathname}`);
+            return cachedResponse;
+        }
+    }
+
+    // Default handling for other requests
+    return fetch(request);
+}
+
+// ============================================================================
 // SHARE TARGET PROCESSING
 // ============================================================================
 
@@ -736,16 +811,98 @@ self.addEventListener?.('notificationclick', (event: any) => {
 });
 
 // @ts-ignore // lifecycle - enable navigation preload for faster loads
-self.addEventListener?.('install', (e: any) => { e?.waitUntil?.(self?.skipWaiting?.()); });
+// ============================================================================
+// SERVICE WORKER UPDATE MANAGEMENT
+// ============================================================================
+
+// Handle service worker lifecycle events
+self.addEventListener?.('install', (e: any) => {
+    console.log('[SW] Installing new service worker...');
+    e?.waitUntil?.(self?.skipWaiting?.());
+});
+
 self.addEventListener?.('activate', (e: any) => {
+    console.log('[SW] Activating service worker...');
     e?.waitUntil?.(
         Promise.all([
             (self as any).clients?.claim?.(),
             // Enable Navigation Preload if supported
-            (self as any).registration?.navigationPreload?.enable?.() ?? Promise.resolve()
+            (self as any).registration?.navigationPreload?.enable?.() ?? Promise.resolve(),
+            // Notify clients about activation
+            notifyClients('sw-activated')
         ]) ?? Promise.resolve()
     );
 });
+
+// Handle messages from clients
+self.addEventListener?.('message', (e: any) => {
+    const { type, data } = e.data || {};
+
+    switch (type) {
+        case 'SKIP_WAITING':
+            console.log('[SW] Received skip waiting command');
+            (self as any).skipWaiting?.();
+            break;
+
+        case 'CHECK_FOR_UPDATES':
+            console.log('[SW] Checking for updates...');
+            e.waitUntil?.(checkForUpdates());
+            break;
+
+        case 'GET_CACHE_STATUS':
+            e.waitUntil?.(sendCacheStatus(e.source));
+            break;
+
+        default:
+            console.log('[SW] Unknown message type:', type);
+    }
+});
+
+// Notify all clients about events
+async function notifyClients(type: string, data?: any): Promise<void> {
+    const clients = await (self as any).clients?.matchAll?.() || [];
+    clients.forEach((client: any) => {
+        client.postMessage({ type, data });
+    });
+}
+
+// Check for service worker updates
+async function checkForUpdates(): Promise<void> {
+    try {
+        const registration = (self as any).registration;
+        if (registration) {
+            await registration.update();
+            console.log('[SW] Update check completed');
+        }
+    } catch (error) {
+        console.error('[SW] Update check failed:', error);
+    }
+}
+
+// Send cache status to a specific client
+async function sendCacheStatus(client: any): Promise<void> {
+    try {
+        const cacheNames = await caches.keys();
+        const cacheStatus: any = {};
+
+        for (const cacheName of cacheNames) {
+            const cache = await caches.open(cacheName);
+            const keys = await cache.keys();
+            cacheStatus[cacheName] = {
+                name: cacheName,
+                size: keys.length,
+                urls: keys.map(request => request.url)
+            };
+        }
+
+        client.postMessage({
+            type: 'cache-status',
+            data: cacheStatus
+        });
+    } catch (error) {
+        console.error('[SW] Failed to get cache status:', error);
+    }
+}
 
 // Share target GET handler (for testing/debugging)
 registerRoute(
@@ -886,6 +1043,21 @@ registerRoute(
         });
     },
     'DELETE'
+);
+
+// Enhanced asset caching for critical resources
+registerRoute(
+    ({ url }) => {
+        const pathname = url?.pathname;
+        return pathname && (
+            pathname.endsWith('.js') ||
+            pathname.endsWith('.css') ||
+            pathname.endsWith('.svg') ||
+            pathname.endsWith('.png') ||
+            pathname === '/sw.js'
+        );
+    },
+    handleAssetRequest
 );
 
 // Use preload response for navigation when available
