@@ -22,6 +22,32 @@ import {
 // UTILITY FUNCTIONS
 // ============================================================================
 
+/**
+ * Get normalized pathname accounting for base href and origin
+ */
+const getNormalizedPathname = () => {
+    const pathname = location.pathname || '';
+    const baseElement = document.querySelector('base');
+    const baseHref = baseElement?.getAttribute('href') || '/';
+
+    console.log('[Pathname] Raw pathname:', pathname);
+    console.log('[Pathname] Base href:', baseHref);
+    console.log('[Pathname] Origin:', location.origin);
+
+    // If base href is not root and pathname starts with base path, strip it
+    let normalizedPath = pathname;
+    if (baseHref !== '/' && pathname.startsWith(baseHref.replace(/\/$/, ''))) {
+        normalizedPath = pathname.slice(baseHref.replace(/\/$/, '').length);
+        console.log('[Pathname] Stripped base path:', normalizedPath);
+    }
+
+    // Remove leading slash and normalize
+    normalizedPath = normalizedPath.replace(/^\//, '').trim().toLowerCase();
+    console.log('[Pathname] Final normalized:', normalizedPath);
+
+    return normalizedPath;
+};
+
 const isExtension = () => {
     try {
         return window.location.protocol === "chrome-extension:" || Boolean((chrome as any)?.runtime?.id);
@@ -280,13 +306,13 @@ export default async function index(mountElement: HTMLElement) {
         const defaultChoice: FrontendChoice = "basic";
 
         // Single source of truth for routing - client handles all decisions
-        const pathname = (location.pathname || "").replace(/^\//, "").trim().toLowerCase();
+        const adjustedPathname = getNormalizedPathname();
         const urlParams = new URLSearchParams(window.location.search);
         const markdownContent = urlParams.get('markdown-content');
 
-        console.log('[Index] Processing route:', pathname);
+        console.log('[Index] Processing route:', adjustedPathname);
 
-        if (!pathname || pathname == "/") {
+        if (!adjustedPathname || adjustedPathname === "" || adjustedPathname === "/") {
             clearLoadingState(mountElement);
             const appLoader = await loadSubApp("");
             await appLoader.mount(mountElement);
@@ -295,7 +321,7 @@ export default async function index(mountElement: HTMLElement) {
         }
 
         // Direct route handling - no remembered choice for specific paths
-        if (pathname === "basic") {
+        if (adjustedPathname === "basic") {
             console.log('[Index] Direct route: loading basic app');
             clearLoadingState(mountElement);
             const appLoader = await loadSubApp("basic");
@@ -304,7 +330,7 @@ export default async function index(mountElement: HTMLElement) {
             return;
         }
 
-        if (pathname === "faint") {
+        if (adjustedPathname === "faint") {
             console.log('[Index] Direct route: loading faint app');
             clearLoadingState(mountElement);
             const appLoader = await loadSubApp("faint");
@@ -313,7 +339,7 @@ export default async function index(mountElement: HTMLElement) {
             return;
         }
 
-        if (pathname === "print") {
+        if (adjustedPathname === "print") {
             console.log('[Index] Direct route: loading print view');
             clearLoadingState(mountElement);
             // Print uses basic app with special print handling
