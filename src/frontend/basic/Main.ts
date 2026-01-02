@@ -333,7 +333,47 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
       }
     });
 
-    return viewer.render();
+    const viewerElement = viewer.render();
+
+    // Setup file handling for markdown viewer (drag & drop, paste)
+    const handleFiles = async (files: File[]) => {
+      const markdownFiles = files.filter(f => fileHandler.isMarkdownFile(f));
+      if (markdownFiles.length > 0) {
+        const fileContents = await fileHandler.readFilesAsText(markdownFiles);
+        if (fileContents.length > 0) {
+          // Use the first markdown file's content
+          const content = fileContents[0].content;
+          state.markdown = content;
+          state.message = `Loaded ${markdownFiles[0].name}`;
+          persistMarkdown();
+          renderStatus();
+          setTimeout(() => {
+            state.message = "";
+            renderStatus();
+          }, 3000);
+          // Re-render the current view
+          render();
+        }
+      }
+    };
+
+    // Set up drag and drop handling
+    fileHandler.setupDragAndDrop(viewerElement);
+    fileHandler.setupPasteHandling(viewerElement);
+
+    // Listen for file events from the global file handler
+    const originalOnFilesAdded = state.fileHandler.options.onFilesAdded;
+    state.fileHandler.options.onFilesAdded = (files: File[]) => {
+      // Only handle markdown files in viewer mode
+      if (state.view === 'markdown-viewer') {
+        handleFiles(files);
+      } else {
+        // Pass through to original handler for work center
+        originalOnFilesAdded?.(files);
+      }
+    };
+
+    return viewerElement;
   };
 
   const renderMarkdownEditor = async () => {
