@@ -6,7 +6,7 @@
 // === Markdown page container ===
 @layer markdown-page {
     :host {
-        &, * { box-sizing: border-box; }
+        /* Box-sizing inherited from normalize.scss */
         & {
             background-color: transparent;
             inline-size: 100%;

@@ -13,7 +13,6 @@
 }
 
 .basic-settings .card {
-  border: 1px solid var(--basic-border);
   border-radius: var(--basic-radius-lg);
   padding: 12px;
   background: var(--basic-surface-container-high);
@@ -44,21 +43,19 @@
 .basic-settings select {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 80%, transparent);
   background: var(--basic-surface-container-highest);
   color: var(--basic-on-surface);
   outline: none;
   pointer-events: auto;
+  accent-color: var(--basic-primary);
   transition:
     background-color var(--basic-motion-fast),
-    border-color var(--basic-motion-fast),
     box-shadow var(--basic-motion-fast);
 }
 
 .basic-settings input:focus-visible,
 .basic-settings select:focus-visible {
-  border-color: color-mix(in oklab, var(--basic-primary) 65%, var(--basic-outline-variant));
-  box-shadow: var(--basic-focus-ring);
+  // Removed border and box-shadow for cleaner appearance
 }
 
 .basic-settings .field.checkbox {
@@ -124,17 +121,15 @@
     .ci-select {
       padding: 8px 10px;
       border-radius: 10px;
-      border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
       background: var(--basic-surface-container-highest);
       color: var(--basic-on-surface);
       font-size: 12px;
       outline: none;
       cursor: pointer;
-      transition: border-color var(--basic-motion-fast);
+      transition: background-color var(--basic-motion-fast);
 
       &:focus-visible {
-        border-color: color-mix(in oklab, var(--basic-primary) 65%, var(--basic-outline-variant));
-        box-shadow: var(--basic-focus-ring);
+        // Removed border and box-shadow for cleaner appearance
       }
     }
   }
@@ -155,14 +150,12 @@
   }
 
   .ci-item {
-    border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 60%, transparent);
     border-radius: 10px;
     padding: 10px;
     background: var(--basic-surface-container);
-    transition: border-color var(--basic-motion-fast), background-color var(--basic-motion-fast);
+    transition: background-color var(--basic-motion-fast);
 
     &.active {
-      border-color: color-mix(in oklab, var(--basic-primary) 50%, var(--basic-outline-variant));
       background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
     }
 
@@ -227,16 +220,14 @@
   .ci-input {
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
     background: var(--basic-surface-container-highest);
     color: var(--basic-on-surface);
     font-size: 12px;
     outline: none;
-    transition: border-color var(--basic-motion-fast);
+    transition: background-color var(--basic-motion-fast);
 
     &:focus-visible {
-      border-color: color-mix(in oklab, var(--basic-primary) 65%, var(--basic-outline-variant));
-      box-shadow: var(--basic-focus-ring);
+      // Removed border and box-shadow for cleaner appearance
     }
 
     &::placeholder {
@@ -248,7 +239,6 @@
   .ci-textarea {
     padding: 10px;
     border-radius: 8px;
-    border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
     background: var(--basic-surface-container-highest);
     color: var(--basic-on-surface);
     font-size: 12px;
@@ -257,11 +247,10 @@
     min-block-size: 60px;
     outline: none;
     font-family: inherit;
-    transition: border-color var(--basic-motion-fast);
+    transition: background-color var(--basic-motion-fast);
 
     &:focus-visible {
-      border-color: color-mix(in oklab, var(--basic-primary) 65%, var(--basic-outline-variant));
-      box-shadow: var(--basic-focus-ring);
+      // Removed border and box-shadow for cleaner appearance
     }
 
     &::placeholder {
@@ -281,7 +270,6 @@
     display: grid;
     gap: 8px;
     padding: 12px;
-    border: 1px dashed color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
     border-radius: 10px;
     background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
   }

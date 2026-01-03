@@ -3,6 +3,10 @@
 @use "../lib/config" as config;
 @use "../lib/props";
 
+/* ==========================================================================
+   Unified Markdown Viewer Styles
+   ========================================================================== */
+
 @layer markdown-viewer {
   // ============================================================================
   // MARKDOWN VIEWER COMPONENT STYLES
@@ -16,7 +20,6 @@
     max-height: 100%;
     background: var(--basic-surface-container);
     border-radius: var(--basic-radius-xl);
-    border: 1px solid var(--basic-outline);
     overflow: hidden;
     box-shadow: var(--basic-elev-1);
     transition: all var(--basic-motion-normal);
@@ -50,7 +53,6 @@
       justify-content: space-between;
       padding: var(--space-lg) var(--space-xl);
       background: var(--basic-surface-container-high);
-      border-bottom: 1px solid var(--basic-outline-variant);
       gap: var(--space-lg);
       flex-shrink: 0;
 
@@ -108,7 +110,7 @@
           flex-wrap: nowrap;
         }
 
-        .btn {
+        .viewer-btn {
           display: inline-flex;
           align-items: center;
           gap: var(--space-xs);
@@ -544,7 +546,6 @@
   .basic-app[data-theme="dark"] .markdown-viewer-container {
     .viewer-header {
       background: var(--basic-surface-container-low);
-      border-color: var(--basic-outline);
 
       h3 {
         color: var(--basic-on-surface);
@@ -642,40 +643,40 @@
         }
 
         blockquote {
-          background: #f9f9f9;
-          border-left-color: #666;
-          color: black;
+          background: #f9f9f9; // Print-optimized light background
+          border-left-color: #666; // Print-optimized gray accent
+          color: black; // High contrast for print
         }
 
         pre {
-          background: #f5f5f5;
-          border: 1px solid #ccc;
-          color: black;
+          background: #f5f5f5; // Print-optimized light background
+          border: 1px solid #ccc; // Print-optimized light border
+          color: black; // High contrast for print
           page-break-inside: avoid;
         }
 
         code:not(pre code) {
-          background: #f0f0f0;
-          border: 1px solid #ddd;
-          color: black;
+          background: #f0f0f0; // Print-optimized very light background
+          border: 1px solid #ddd; // Print-optimized very light border
+          color: black; // High contrast for print
         }
 
         table {
-          border: 1px solid #666;
+          border: 1px solid #666; // Print-optimized dark table border
           page-break-inside: avoid;
 
           th, td {
-            border: 1px solid #666;
-            color: black;
+            border: 1px solid #666; // Print-optimized dark cell borders
+            color: black; // High contrast for print
           }
 
           th {
-            background: #f0f0f0;
+            background: #f0f0f0; // Print-optimized light header background
           }
         }
 
         hr {
-          border-color: #666;
+          border-color: #666; // Print-optimized gray separator
         }
 
         img {

@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import { MarkdownViewer } from "../viewer/MarkdownViewer";
+import { MarkdownViewer } from "./MarkdownViewer";
 import { UIPhosphorIcon } from "fest/icon";
 
 export interface MarkdownEditorOptions {

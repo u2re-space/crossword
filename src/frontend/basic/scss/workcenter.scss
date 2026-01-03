@@ -78,7 +78,6 @@
         padding: var(--space-lg);
         border-radius: var(--basic-radius-md);
         background: var(--basic-surface-container-high);
-        border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
 
         // Responsive padding
         @container (max-width: 1024px) {
@@ -169,7 +168,6 @@
             .format-select,
             .language-select {
                 padding: var(--space-xs) var(--space-sm);
-                border: 0.5px solid var(--basic-outline);
                 border-radius: 0;
                 /* Removed rounded corners */
                 background: var(--basic-surface);
@@ -638,7 +636,6 @@
                     .template-select {
                         flex: 1;
                         padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem);
-                        border: 0.5px solid var(--basic-outline);
                         border-radius: var(--basic-radius-sm, 4px);
                         background: var(--basic-surface);
                         color: var(--basic-on-surface);

@@ -1,0 +1,267 @@
+/* ==========================================================================
+   Unified Normalize Styles - Cross-browser consistency and modern defaults
+   ========================================================================== */
+
+@layer reset {
+  /* Remove default margin and padding */
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Remove list styles */
+  ul, ol {
+    list-style: none;
+  }
+
+  /* Remove default quote styles */
+  blockquote, q {
+    quotes: none;
+  }
+
+  blockquote::before,
+  blockquote::after,
+  q::before,
+  q::after {
+    content: '';
+    content: none;
+  }
+
+  /* Remove default table spacing */
+  table {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  /* Consistent text rendering */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid var(--basic-primary, #0066cc);
+    outline-offset: 2px;
+  }
+
+  /* Remove focus outline for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Consistent form elements */
+  button,
+  input,
+  optgroup,
+  select,
+  textarea {
+    font-family: inherit;
+    font-size: 100%;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  button,
+  select {
+    text-transform: none;
+  }
+
+  button,
+  [type="button"],
+  [type="reset"],
+  [type="submit"] {
+    -webkit-appearance: button;
+    cursor: pointer;
+  }
+
+  /* Remove inner border and padding in Firefox */
+  button::-moz-focus-inner,
+  [type="button"]::-moz-focus-inner,
+  [type="reset"]::-moz-focus-inner,
+  [type="submit"]::-moz-focus-inner {
+    border-style: none;
+    padding: 0;
+  }
+
+  /* Remove default fieldset styles */
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Consistent legend styles */
+  legend {
+    padding: 0;
+  }
+
+  /* Remove default progress styles */
+  progress {
+    vertical-align: baseline;
+  }
+
+  /* Consistent textarea styles */
+  textarea {
+    overflow: auto;
+    resize: vertical;
+  }
+
+  /* Remove default Chrome search input styles */
+  [type="search"] {
+    -webkit-appearance: textfield;
+    outline-offset: -2px;
+  }
+
+  [type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+
+  /* Consistent range input styles */
+  [type="range"] {
+    -webkit-appearance: none;
+  }
+
+  /* Remove default details marker */
+  details {
+    summary {
+      cursor: pointer;
+    }
+  }
+
+  /* Consistent dialog styles */
+  dialog {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Remove default mark styles */
+  mark {
+    background-color: transparent;
+    color: inherit;
+  }
+
+  /* Consistent summary styles */
+  summary {
+    cursor: pointer;
+  }
+
+  /* Remove default sub/sup styles */
+  sub,
+  sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+
+  sup {
+    top: -0.5em;
+  }
+
+  sub {
+    bottom: -0.25em;
+  }
+
+  /* Consistent anchor styles */
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Consistent image styles */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Consistent video and iframe styles */
+  video,
+  iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Consistent canvas styles */
+  canvas {
+    display: block;
+  }
+
+  /* Consistent SVG styles */
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Remove default emphasis styles */
+  em,
+  i {
+    font-style: normal;
+  }
+
+  /* Remove default strong styles */
+  strong,
+  b {
+    font-weight: normal;
+  }
+
+  /* Consistent code styles */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-family-mono, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
+    font-size: 1em;
+  }
+
+  input, textarea, select, button, option {
+    border: none 0px transparent;
+    outline: none 0px transparent;
+    accent-color: var(--basic-primary, currentColor);
+    font-variant-emoji: text;
+  }
+
+  span {
+    font-variant-emoji: text;
+  }
+
+  /* Consistent horizontal rule */
+  hr {
+    border: none;
+    border-top: 1px solid var(--basic-outline-variant, #e1e5e9);
+    margin: var(--space-lg, 1rem) 0;
+  }
+
+  /* Consistent scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--basic-outline-variant, #d1d5db);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--basic-outline, #9ca3af);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--basic-outline-variant, #d1d5db) transparent;
+  }
+}

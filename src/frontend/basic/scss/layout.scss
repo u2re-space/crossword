@@ -7,7 +7,6 @@
     justify-content: space-between;
     padding: var(--space-md) var(--space-xl);
     background: var(--basic-surface-container-high);
-    border-bottom: 1px solid color-mix(in oklab, var(--basic-outline) 20%, transparent);
     box-shadow: var(--basic-elev-1);
     block-size: 4rem;
     contain: strict;
@@ -65,12 +64,6 @@
 
     // Ensure toolbar doesn't shrink below minimum usable size
     min-width: fit-content;
-
-    // Hover effects
-    &:hover {
-      box-shadow: var(--basic-elev-2);
-      border-color: var(--basic-primary);
-    }
   }
 
   // Enhanced Toolbar sections
@@ -96,9 +89,8 @@
       }
 
       // Button styling within toolbar
-      .btn {
+      .toolbar-btn {
         padding: var(--space-xs) var(--space-md);
-        border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
         border-radius: var(--basic-radius-md);
         background: var(--basic-surface);
         color: var(--basic-on-surface);
@@ -141,7 +133,7 @@
         }
 
         // Icon buttons in toolbar
-        &.btn-icon {
+        &.toolbar-btn-icon {
           padding: var(--space-xs);
 
           @container (max-width: 768px) {
@@ -156,7 +148,7 @@
             color: var(--basic-primary);
           }
 
-          .btn-text {
+          .toolbar-btn-text {
             @container (max-width: 1024px) {
               display: none;
             }
@@ -247,13 +239,10 @@
     // Hover effects
     &:hover {
       box-shadow: var(--basic-elev-2);
-      border-color: var(--basic-primary);
     }
 
     // Focus state
     &:focus-within {
-      outline: 2px solid var(--basic-primary);
-      outline-offset: 2px;
       box-shadow: var(--basic-elev-2);
     }
 
@@ -562,7 +551,7 @@
         gap: var(--space-sm);
       }
 
-      .btn {
+      .action-btn {
         padding: var(--space-sm) var(--space-xl);
         border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
         border-radius: var(--basic-radius-lg);
@@ -734,11 +723,11 @@
 }
 
 .tag.ok {
-  background: color-mix(in oklab, #1b5e20 18%, transparent);
+  background: color-mix(in oklab, var(--basic-success) 18%, transparent);
 }
 
 .tag.fail {
-  background: color-mix(in oklab, #b3261e 18%, transparent);
+  background: color-mix(in oklab, var(--basic-error) 18%, transparent);
 }
 
 .history-item .actions {
@@ -767,7 +756,6 @@
   justify-content: space-between;
   padding: var(--space-md);
   background: var(--basic-surface-container);
-  border: 0.5px solid var(--basic-outline);
 
   h3 {
     margin: 0;
@@ -795,7 +783,6 @@
   display: flex;
   flex-direction: column;
   background: var(--basic-surface-container);
-  border: 0.5px solid var(--basic-outline);
   overflow: hidden;
 }
 
@@ -803,7 +790,6 @@
   display: flex;
   gap: var(--space-md);
   padding: var(--space-md);
-  border-bottom: 1px solid var(--basic-outline-variant);
   background: var(--basic-surface-container-high);
 }
 
@@ -836,7 +822,6 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-md);
-  border-top: 1px solid var(--basic-outline-variant);
   background: var(--basic-surface-container-low);
 }
 
@@ -856,7 +841,6 @@
   gap: var(--space-xs);
   border-radius: var(--basic-radius-lg);
   overflow: hidden;
-  border: 1px solid var(--basic-outline);
 
   .btn {
     border: none;
@@ -873,7 +857,6 @@
 .preview-panel {
   .preview-header {
     padding: var(--space-md);
-    border-bottom: 1px solid var(--basic-outline-variant);
     background: var(--basic-surface-container-high);
 
     h4 {
@@ -898,6 +881,11 @@
   flex-direction: column;
   height: 100%;
   max-height: 100%;
+  box-sizing: border-box;
+
+  & > * {
+    box-sizing: border-box;
+  }
 }
 
 .viewer-header {
@@ -908,8 +896,6 @@
   margin-bottom: var(--space-lg);
   border-radius: var(--basic-radius-lg);
   background: var(--basic-surface-container);
-  box-shadow: var(--basic-elev-1);
-    border: 0.5px solid var(--basic-outline);
 
   h3 {
     margin: 0;
@@ -929,7 +915,6 @@
   padding: var(--space-lg);
   background: var(--basic-surface-container);
   border-radius: var(--basic-radius-xl);
-    border: 0.5px solid var(--basic-outline);
   overflow: auto;
 }
 
@@ -1075,13 +1060,7 @@
   border-radius: var(--basic-radius-xl);
   padding: var(--space-xl);
   box-shadow: var(--basic-elev-1);
-    border: 0.5px solid var(--basic-outline);
   transition: all var(--basic-motion-normal);
-
-  &:hover {
-    box-shadow: var(--basic-elev-2);
-    transform: translateY(-1px);
-  }
 }
 
 .card-header {
@@ -1368,7 +1347,6 @@
   flex: 1;
   background: var(--basic-surface-container);
   border-radius: var(--basic-radius-xl);
-    border: 0.5px solid var(--basic-outline);
   overflow: hidden;
   display: flex;
   flex-direction: column;

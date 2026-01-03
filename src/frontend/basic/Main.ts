@@ -14,8 +14,8 @@ import { createFileHandler } from "./modules/FileHandling";
 import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
 import { createHistoryManager } from "./modules/HistoryManager";
-import { createMarkdownViewer } from "../markdown/viewer/MarkdownViewer";
-import { createMarkdownEditor } from "../markdown/editor/MarkdownEditor";
+import { createMarkdownViewer } from "./modules/MarkdownViewer";
+import { createMarkdownEditor } from "./modules/MarkdownEditor";
 import { createQuillEditor } from "./modules/QuillEditor";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter";

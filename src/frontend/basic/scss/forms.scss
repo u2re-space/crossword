@@ -31,6 +31,7 @@
   font-weight: var(--font-weight-medium);
   transition: all var(--basic-motion-normal);
   box-shadow: var(--basic-elev-0);
+  accent-color: var(--basic-primary);
 
   &:hover {
     background: var(--basic-surface-container-highest);
@@ -101,6 +102,7 @@
     transition: all var(--basic-motion-fast);
     appearance: none;
     position: relative;
+    accent-color: var(--basic-primary);
 
     // Checked state
     &:checked {
@@ -151,6 +153,7 @@
     transition: all var(--basic-motion-fast);
     appearance: none;
     position: relative;
+    accent-color: var(--basic-primary);
 
     &:checked {
       background: var(--basic-primary);

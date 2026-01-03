@@ -11,49 +11,55 @@
   .markdown-editor-container {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-lg);
     padding: var(--space-lg);
     max-block-size: 100%;
     background: var(--basic-surface-container);
-    border-radius: var(--basic-radius-md);
-    border: 1px solid color-mix(in oklab, var(--basic-outline) 25%, transparent);
+    overflow: hidden;
+    position: relative;
 
     // Responsive padding
     @container (max-width: 1024px) {
-      padding: var(--space-md);
-      gap: var(--space-sm);
+      padding: var(--space-lg);
+      gap: var(--space-lg);
     }
 
     @container (max-width: 768px) {
-      padding: var(--space-sm);
-      gap: var(--space-xs);
+      padding: var(--space-md);
+      gap: var(--space-md);
     }
 
     @container (max-width: 480px) {
-      padding: var(--space-xs);
+      padding: var(--space-sm);
+      gap: var(--space-sm);
     }
 
-    // Simple hover effect
+    // Hover effects
     &:hover {
-      border-color: color-mix(in oklab, var(--basic-outline) 40%, transparent);
+      box-shadow: var(--basic-elev-3);
     }
 
     // Focus state
     &:focus-within {
-      outline: 1px solid var(--basic-tertiary);
-      outline-offset: -1px;
+      box-shadow: var(--basic-elev-3);
     }
 
-    // Simple scrollbar
+    // Custom scrollbar
     scrollbar-width: thin;
     scrollbar-color: var(--basic-outline-variant) transparent;
 
     &::-webkit-scrollbar {
-      width: 4px;
+      width: 6px;
+      height: 6px;
     }
 
     &::-webkit-scrollbar-thumb {
       background: var(--basic-outline-variant);
+      border-radius: 3px;
+
+      &:hover {
+        background: var(--basic-outline);
+      }
     }
   }
 
@@ -65,21 +71,20 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-md);
+    padding: var(--space-lg);
     background: var(--basic-surface-container-high);
-    border-radius: var(--basic-radius-sm);
-    margin-bottom: var(--space-sm);
+    margin-bottom: 0;
 
     @container (max-width: 768px) {
       flex-direction: column;
       align-items: stretch;
-      gap: var(--space-sm);
-      padding: var(--space-sm);
+      gap: var(--space-md);
+      padding: var(--space-md);
     }
 
     @container (max-width: 480px) {
-      padding: var(--space-xs);
-      gap: var(--space-xs);
+      padding: var(--space-sm);
+      gap: var(--space-sm);
     }
 
     h3 {
@@ -131,45 +136,50 @@
         flex-wrap: nowrap;
       }
 
-      .btn {
+      .editor-btn {
         display: inline-flex;
         align-items: center;
         gap: var(--space-xs);
-        padding: var(--space-xs) var(--space-md);
-        border: 1px solid var(--basic-outline);
-        border-radius: var(--basic-radius-sm);
+        padding: var(--space-sm) var(--space-lg);
+        border: 0.5px solid var(--basic-outline);
         background: var(--basic-surface-container);
         color: var(--basic-on-surface);
         font-size: var(--text-sm);
         font-weight: var(--font-weight-medium);
         cursor: pointer;
+        position: relative;
         white-space: nowrap;
         min-height: 36px;
 
         @container (max-width: 640px) {
-          padding: var(--space-xs);
+          padding: var(--space-xs) var(--space-md);
           font-size: var(--text-xs);
-          min-height: 32px;
+          min-height: 40px;
+        }
+
+        @container (max-width: 480px) {
+          padding: var(--space-sm) var(--space-md);
+          min-height: 44px;
         }
 
         &:hover {
           background: var(--basic-surface-container-high);
-          border-color: var(--basic-tertiary);
+          border-color: var(--basic-primary);
         }
 
         &:focus-visible {
-          outline: 1px solid var(--basic-tertiary);
-          outline-offset: -1px;
+          outline: 1px solid var(--basic-primary);
+          outline-offset: 1px;
         }
 
         &.primary {
-          background: var(--basic-tertiary);
-          color: var(--basic-on-tertiary);
-          border-color: var(--basic-tertiary);
+          background: var(--basic-primary);
+          color: var(--basic-on-primary);
+          border-color: var(--basic-primary);
 
           &:hover {
-            background: color-mix(in oklab, var(--basic-tertiary) 85%, black);
-            border-color: color-mix(in oklab, var(--basic-tertiary) 85%, black);
+            background: color-mix(in oklab, var(--basic-primary) 90%, black);
+            border-color: color-mix(in oklab, var(--basic-primary) 90%, black);
           }
         }
 
@@ -256,25 +266,32 @@
     display: flex;
     flex-direction: column;
     background: var(--basic-surface);
-    border-radius: var(--basic-radius-sm);
-    border: 1px solid color-mix(in oklab, var(--basic-outline) 30%, transparent);
+    overflow: hidden;
+
+    @container (max-width: 768px) {
+      border-radius: var(--basic-radius-md);
+    }
   }
 
   // Editor toolbar
   .editor-toolbar {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
     background: var(--basic-surface-container-high);
-    border-bottom: 1px solid color-mix(in oklab, var(--basic-outline) 20%, transparent);
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 
     &::-webkit-scrollbar {
       display: none;
     }
-  }
+
+    @container (max-width: 768px) {
+      padding: var(--space-xs) var(--space-sm);
+      gap: var(--space-xs);
+    }
 
     .toolbar-group {
       display: flex;
@@ -298,27 +315,32 @@
   // Editor textarea
   .markdown-textarea {
     flex: 1;
-    padding: var(--space-md);
+    padding: var(--space-lg);
     border: none;
     outline: none;
     background: transparent;
     color: var(--basic-on-surface);
     font-family: var(--font-family-mono);
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     line-height: var(--leading-normal);
     resize: none;
-    min-height: 250px;
+    min-height: 300px;
 
-    // Simple scrollbar
+    // Custom scrollbar
     scrollbar-width: thin;
     scrollbar-color: var(--basic-outline-variant) transparent;
 
     &::-webkit-scrollbar {
-      width: 4px;
+      width: 6px;
     }
 
     &::-webkit-scrollbar-thumb {
       background: var(--basic-outline-variant);
+      border-radius: 3px;
+
+      &:hover {
+        background: var(--basic-outline);
+      }
     }
 
     // Placeholder styling
@@ -329,12 +351,17 @@
 
     // Focus state
     &:focus {
-      background: color-mix(in oklab, var(--basic-primary) 3%, var(--basic-surface));
+      background: color-mix(in oklab, var(--basic-primary) 2%, var(--basic-surface));
+    }
+
+    @container (max-width: 1024px) {
+      padding: var(--space-md);
+      font-size: var(--text-sm);
     }
 
     @container (max-width: 768px) {
       padding: var(--space-sm);
-      min-height: 200px;
+      min-height: 250px;
     }
   }
 
@@ -345,7 +372,6 @@
     justify-content: space-between;
     padding: var(--space-md) var(--space-lg);
     background: var(--basic-surface-container-high);
-    border-top: 1px solid var(--basic-outline-variant);
     gap: var(--space-md);
 
     @container (max-width: 1024px) {
@@ -407,9 +433,7 @@
       display: flex;
       gap: var(--space-xs);
       background: var(--basic-surface-container);
-      border-radius: var(--basic-radius-md);
       padding: 2px;
-      border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
 
       @container (max-width: 768px) {
         justify-content: center;
@@ -418,11 +442,9 @@
 
       .btn.small {
         padding: var(--space-xs) var(--space-sm);
-        border-radius: calc(var(--basic-radius-md) - 2px);
         background: transparent;
         border: none;
-        box-shadow: none;
-        min-height: 32px;
+        min-height: 28px;
 
         &:hover {
           background: var(--basic-surface-container-high);
@@ -450,10 +472,7 @@
     display: flex;
     flex-direction: column;
     background: var(--basic-surface);
-    border-radius: var(--basic-radius-lg);
-    border: 1px solid var(--basic-outline);
     overflow: hidden;
-    box-shadow: var(--basic-elev-1);
 
     @container (max-width: 768px) {
       border-radius: var(--basic-radius-md);
@@ -463,7 +482,6 @@
   .preview-header {
     padding: var(--space-md) var(--space-lg);
     background: var(--basic-surface-container-high);
-    border-bottom: 1px solid var(--basic-outline-variant);
 
     @container (max-width: 768px) {
       padding: var(--space-sm) var(--space-md);
@@ -521,7 +539,7 @@
         color: var(--basic-on-surface);
       }
 
-      .btn {
+      .editor-btn {
         background: var(--basic-surface-container-low);
         border-color: var(--basic-outline);
         color: var(--basic-on-surface);
@@ -547,12 +565,10 @@
     .editor-panel,
     .preview-panel {
       background: var(--basic-surface-container-low);
-      border-color: var(--basic-outline);
     }
 
     .editor-toolbar {
       background: var(--basic-surface-container);
-      border-color: var(--basic-outline);
     }
 
     .markdown-textarea {
@@ -570,7 +586,6 @@
 
     .editor-footer {
       background: var(--basic-surface-container);
-      border-color: var(--basic-outline);
 
       .editor-stats {
         color: var(--basic-on-surface-variant);
@@ -578,13 +593,11 @@
 
       .editor-mode {
         background: var(--basic-surface-container-low);
-        border-color: var(--basic-outline);
       }
     }
 
     .preview-header {
       background: var(--basic-surface-container);
-      border-color: var(--basic-outline);
 
       h4 {
         color: var(--basic-on-surface);

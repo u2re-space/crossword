@@ -1,16 +1,38 @@
-/* Main SCSS with CSS Layers - Material Design 3 */
+/* ==========================================================================
+   Unified Main SCSS - Reorganized and Optimized
+   ========================================================================== */
 
 @layer reset, base, components, layout, utilities;
 
-/* Import modular stylesheets */
+/* ==========================================================================
+   RESET & NORMALIZE - Cross-browser consistency
+   ========================================================================== */
+@import "./scss/normalize.scss" layer(reset);
+
+/* ==========================================================================
+   BASE STYLES - Foundation and typography
+   ========================================================================== */
+/* TODO: Re-enable veela framework import when path is resolved */
+
+/* ==========================================================================
+   COMPONENTS - Reusable UI components
+   ========================================================================== */
 @import "./scss/buttons.scss" layer(components);
 @import "./scss/forms.scss" layer(components);
+@import "./scss/workcenter.scss" layer(components);
+
+/* ==========================================================================
+   MARKDOWN COMPONENTS - Specialized markdown rendering
+   ========================================================================== */
+@import "./scss/markdown-render.scss" layer(components);
+@import "./scss/markdown-viewer.scss" layer(components);
+@import "./scss/markdown-editor.scss" layer(components);
+
+/* ==========================================================================
+   LAYOUT & UTILITIES - Layout systems and helpers
+   ========================================================================== */
 @import "./scss/layout.scss" layer(layout);
 @import "./scss/utilities.scss" layer(utilities);
-@import "./scss/workcenter.scss" layer(components);
-@import "../markdown/styles/markdown-render.scss" layer(components);
-@import "../markdown/styles/markdown-viewer.scss" layer(components);
-@import "../markdown/styles/markdown-editor.scss" layer(components);
 
 /* Solid Quill Editor Theming */
 @layer components {
@@ -20,7 +42,6 @@
 
   .quill-editor-container {
     background: var(--basic-surface-container);
-    border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
     padding: var(--space-lg);
     color: var(--basic-on-surface);
     position: relative;
@@ -45,7 +66,7 @@
 
     // Simple hover effect
     &:hover {
-      border-color: color-mix(in oklab, var(--basic-outline) 40%, transparent);
+      // Removed border color change to eliminate contrast
     }
 
     // Focus state
@@ -60,7 +81,6 @@
       justify-content: space-between;
       margin-bottom: var(--space-xl);
       padding-bottom: var(--space-lg);
-      border-bottom: 1px solid var(--basic-outline-variant);
 
       // Responsive layout
       @container (max-width: 768px) {
@@ -129,7 +149,6 @@
           align-items: center;
           gap: var(--space-xs);
           padding: var(--space-sm) var(--space-lg);
-          border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
           border-radius: var(--basic-radius-lg);
           background: var(--basic-surface-container-high);
           color: var(--basic-on-surface);
@@ -230,7 +249,6 @@
     }
 
     .quill-wrapper {
-      border: 1px solid var(--basic-outline);
       border-radius: var(--basic-radius-sm);
       overflow: hidden;
 
@@ -241,7 +259,6 @@
       /* Solid Quill editor theming */
       .ql-toolbar {
         border: none;
-        border-bottom: 0.5px solid color-mix(in oklab, var(--basic-outline) 10%, transparent);
         background: var(--basic-surface-container-high);
         padding: var(--space-sm) var(--space-md);
 
@@ -310,7 +327,6 @@
           /* Solid code blocks */
           pre {
             background: var(--basic-surface-container-high);
-            border: 1px solid color-mix(in oklab, var(--basic-outline) 30%, transparent);
             border-radius: var(--basic-radius-sm);
             color: var(--basic-on-surface);
             padding: var(--space-sm);
@@ -360,10 +376,8 @@
           table {
             border-collapse: collapse;
             margin: var(--space-md) 0;
-            border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
 
             th, td {
-              border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
               padding: var(--space-xs) var(--space-sm);
               text-align: left;
             }
@@ -383,7 +397,6 @@
       justify-content: space-between;
       margin-top: var(--space-xl);
       padding-top: var(--space-lg);
-      border-top: 1px solid var(--basic-outline-variant);
 
       // Responsive layout
       @container (max-width: 768px) {
@@ -440,7 +453,6 @@
           background: var(--basic-surface-container-high);
           padding: var(--space-xs) var(--space-sm);
           border-radius: var(--basic-radius-sm);
-          border: 0.5px solid color-mix(in oklab, var(--basic-outline) 15%, transparent);
           font-weight: var(--font-weight-semibold);
           color: var(--basic-secondary);
         }
@@ -451,7 +463,6 @@
   /* Enhanced Dark theme overrides for Quill */
   .basic-app[data-theme="dark"] .quill-editor-container {
     .editor-header {
-      border-color: var(--basic-outline);
 
       h3 {
         color: var(--basic-on-surface);
@@ -483,7 +494,6 @@
     .quill-wrapper {
       .ql-toolbar {
         background: var(--basic-surface-container-low);
-        border-color: var(--basic-outline);
 
         .ql-stroke {
           stroke: var(--basic-on-surface);
@@ -536,7 +546,6 @@
     }
 
     .editor-footer {
-      border-color: var(--basic-outline);
 
       .editor-stats {
         color: var(--basic-on-surface-variant);
@@ -547,7 +556,6 @@
 
         .format-indicator {
           background: var(--basic-surface-container-high);
-          border-color: var(--basic-outline);
         }
       }
     }
@@ -581,12 +589,12 @@
     -webkit-tap-highlight-color: transparent;
     margin: 0px;
 
-    /* Solid shape / motion / elevations */
-    --basic-radius-sm: 4px;
-    --basic-radius-md: 6px;
-    --basic-radius-lg: 8px;
-    --basic-radius-xl: 10px;
-    --basic-radius-2xl: 12px;
+    /* Lightweight shape / motion / elevations */
+    --basic-radius-sm: 2px;
+    --basic-radius-md: 4px;
+    --basic-radius-lg: 6px;
+    --basic-radius-xl: 8px;
+    --basic-radius-2xl: 10px;
     --basic-radius-full: min(50dvmin, 50cqmin);
     --basic-elev-0: none;
     --basic-elev-1: 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -694,24 +702,24 @@
 
 .basic-app[data-theme="light"] {
   color-scheme: light;
-  /* Teal/Cyan palette - neutral, calm tones */
-  --basic-primary: #0891b2;
+  /* Blue-neutral palette - soft blue-gray tones */
+  --basic-primary: #5a7fff;
   --basic-on-primary: #ffffff;
-  --basic-secondary: #4b6b73;
+  --basic-secondary: #6b7280;
   --basic-on-secondary: #ffffff;
-  --basic-tertiary: #2e7d6a;
+  --basic-tertiary: #64748b;
   --basic-on-tertiary: #ffffff;
-  --basic-error: #ba1a1a;
+  --basic-error: #ef4444;
   --basic-on-error: #ffffff;
 
-  --basic-background: #f5fafb;
-  --basic-on-background: #171d1e;
-  --basic-surface: #f5fafb;
-  --basic-on-surface: #171d1e;
-  --basic-surface-variant: #dbe4e6;
-  --basic-on-surface-variant: #3f484a;
-  --basic-outline: #6f797b;
-  --basic-outline-variant: #bfc8ca;
+  --basic-background: #fafbfc;
+  --basic-on-background: #1e293b;
+  --basic-surface: #fafbfc;
+  --basic-on-surface: #1e293b;
+  --basic-surface-variant: #f1f5f9;
+  --basic-on-surface-variant: #64748b;
+  --basic-outline: #cbd5e1;
+  --basic-outline-variant: #94a3b8;
 
   /* Surface containers (soft tint of primary) */
   --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 96%, var(--basic-primary) 4%);
@@ -725,24 +733,24 @@
 
 .basic-app[data-theme="dark"] {
   color-scheme: dark;
-  /* Teal/Cyan palette - neutral, calm tones */
-  --basic-primary: #5eead4;
-  --basic-on-primary: #00363d;
-  --basic-secondary: #a3c9d0;
-  --basic-on-secondary: #243439;
-  --basic-tertiary: #7ed4bc;
-  --basic-on-tertiary: #003830;
-  --basic-error: #ffb4ab;
-  --basic-on-error: #690005;
+  /* Blue-neutral palette - soft blue-gray tones */
+  --basic-primary: #7ca7ff;
+  --basic-on-primary: #0f172a;
+  --basic-secondary: #94a3b8;
+  --basic-on-secondary: #1e293b;
+  --basic-tertiary: #94a3b8;
+  --basic-on-tertiary: #0f172a;
+  --basic-error: #f87171;
+  --basic-on-error: #450a0a;
 
-  --basic-background: #0f1718;
-  --basic-on-background: #dfe3e4;
-  --basic-surface: #0f1718;
-  --basic-on-surface: #dfe3e4;
-  --basic-surface-variant: #3f484a;
-  --basic-on-surface-variant: #bfc8ca;
-  --basic-outline: #899294;
-  --basic-outline-variant: #3f484a;
+  --basic-background: #0f1419;
+  --basic-on-background: #f1f5f9;
+  --basic-surface: #0f1419;
+  --basic-on-surface: #f1f5f9;
+  --basic-surface-variant: #1e293b;
+  --basic-on-surface-variant: #cbd5e1;
+  --basic-outline: #475569;
+  --basic-outline-variant: #334155;
 
   /* Surface containers (soft tint of primary) */
   --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 92%, var(--basic-primary) 8%);
