@@ -1,20 +1,35 @@
 @layer choice-screen {
   :root {
-    /* Boot-menu inspired palette (GRUB / Win7-like). Static, no dynamic colors. */
-    --choice-bg: #05070c;
-    --choice-fg: #e9edf2;
-    --choice-card: rgba(0, 0, 0, 0.55);
-    --choice-border: rgba(255, 255, 255, 0.18);
-    --choice-muted: rgba(233, 237, 242, 0.72);
-    --choice-focus: rgba(152, 208, 255, 0.42);
-    --choice-primary: #9ad0ff;
-    --choice-primary-fg: #001018;
-    --choice-highlight-bg: #e9edf2;
-    --choice-highlight-fg: #0a0f14;
-    --choice-highlight-border: rgba(255, 255, 255, 0.55);
+    /* Material You-inspired palette. Rebalanced for better contrast and harmony. */
+    --choice-bg: #0a0d12;
+    --choice-fg: #e8ecf2;
+    --choice-card: #1a1f26;
+    --choice-card-hover: #202632;
+    --choice-card-active: #252c36;
+    --choice-muted: rgba(232, 236, 242, 0.68);
+    --choice-focus: rgba(140, 185, 255, 0.24);
+    --choice-primary: #8bb7ff;
+    --choice-primary-fg: #0a0d12;
+    --choice-highlight-bg: #e8ecf2;
+    --choice-highlight-fg: #0a0d12;
 
-    /* Typography */
-    --choice-font: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    /* Material You elevation system */
+    --choice-elev-0: none;
+    --choice-elev-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
+    --choice-elev-2: 0 3px 6px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.24);
+    --choice-elev-3: 0 6px 12px rgba(0, 0, 0, 0.36), 0 4px 8px rgba(0, 0, 0, 0.28);
+
+    /* Material You shape system */
+    --choice-radius-xs: 4px;
+    --choice-radius-sm: 8px;
+    --choice-radius-md: 12px;
+    --choice-radius-lg: 16px;
+    --choice-radius-xl: 24px;
+    --choice-radius-full: 9999px;
+
+    /* Typography - more modern, less monospace-heavy */
+    --choice-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --choice-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
   }
 
   :where(html, body) {
@@ -27,171 +42,233 @@
 
   :where(body) {
     margin: 0;
-    /* Win7-ish dark blue glow + subtle scanlines */
+    /* Material You-inspired subtle gradient background */
     background:
-      radial-gradient(1200px 700px at 50% 22%, rgba(88, 140, 255, 0.28) 0%, rgba(12, 32, 72, 0.32) 42%, rgba(0, 0, 0, 0.75) 75%, rgba(0, 0, 0, 0.92) 100%),
-      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0px, rgba(255, 255, 255, 0.035) 1px, transparent 2px, transparent 4px);
+      radial-gradient(ellipse 1200px 800px at 50% 20%, rgba(139, 183, 255, 0.08) 0%, rgba(10, 13, 18, 0.85) 45%, var(--choice-bg) 100%);
     background-color: var(--choice-bg);
+    /* Subtle pattern overlay */
+    background-image:
+      radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.01) 0%, transparent 50%);
   }
 
   .choice.container {
-    inline-size: min(720px, 100%);
+    inline-size: min(640px, 100%);
     margin-inline: auto;
     margin-block: 0;
-    margin-block-start: calc(0.5 * min(80cqb, 32rem));
-    padding: 16px;
+    margin-block-start: calc(0.5 * min(80cqb, 28rem));
+    padding: var(--choice-radius-xl);
     display: grid;
-    gap: 10px;
+    gap: var(--choice-radius-lg);
     align-content: start;
     justify-items: stretch;
     color: var(--choice-fg);
     background: var(--choice-card);
-    border: 1px solid var(--choice-border);
-    border-radius: 6px;
-    box-shadow:
-      0 24px 80px rgba(0, 0, 0, 0.72),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    border-radius: var(--choice-radius-xl);
+    box-shadow: var(--choice-elev-3);
     font-family: var(--choice-font);
-    max-block-size: min(80cqb, 32rem);
+    max-block-size: min(80cqb, 28rem);
     position: relative;
+    /* Subtle border using tonal elevation */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
   }
 
-  .choice.container::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    border-radius: inherit;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  }
 
   .choice-header {
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1.2;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
     margin: 0;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    text-align: center;
+    color: var(--choice-fg);
   }
 
   .choice-countdown {
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--choice-muted);
-    line-height: 1.35;
+    line-height: 1.4;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: var(--choice-radius-sm) var(--choice-radius-md);
+    border-radius: var(--choice-radius-md);
   }
 
   .choice-hint {
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--choice-muted);
-    line-height: 1.35;
+    line-height: 1.4;
+    text-align: center;
+    opacity: 0.8;
   }
 
   .choice-menu {
     display: grid;
-    gap: 6px;
-    padding-block: 6px;
-    border-block: 1px solid rgba(255, 255, 255, 0.10);
+    gap: var(--choice-radius-sm);
+    padding: var(--choice-radius-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--choice-radius-lg);
   }
 
   .choice-reasons {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--choice-muted);
+    text-align: center;
+    padding: var(--choice-radius-sm) var(--choice-radius-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--choice-radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .choice-remember {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    justify-content: center;
+    gap: var(--choice-radius-sm);
+    padding: var(--choice-radius-md) var(--choice-radius-lg);
+    border-radius: var(--choice-radius-lg);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     user-select: none;
+    transition: all 200ms ease;
+    cursor: pointer;
+  }
+
+  .choice-remember:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .choice-remember input[type="checkbox"] {
-    inline-size: 18px;
-    block-size: 18px;
+    inline-size: 20px;
+    block-size: 20px;
     accent-color: var(--choice-primary);
+    margin: 0;
   }
 
   .choice-remember span {
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--choice-fg);
-    opacity: 0.92;
+    opacity: 0.9;
   }
 
   .choice.container button {
     appearance: none;
     inline-size: 100%;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 10px 12px;
-    font-size: 13px;
+    border: none;
+    border-radius: var(--choice-radius-lg);
+    padding: var(--choice-radius-md) var(--choice-radius-lg);
+    font-size: 15px;
     font-family: var(--choice-font);
-    line-height: 1;
+    font-weight: 500;
+    line-height: 1.4;
     cursor: pointer;
     background: transparent;
     color: var(--choice-fg);
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-    text-align: start;
+    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+    text-align: center;
     position: relative;
-  }
-
-  .choice.container button::before {
-    content: ">";
-    position: absolute;
-    inset-inline-start: 10px;
-    inset-block-start: 50%;
-    transform: translateY(-50%);
-    color: color-mix(in oklab, var(--choice-muted) 70%, transparent);
-  }
-
-  .choice.container button {
-    padding-inline-start: 28px;
-  }
-
-  .choice.container button.big {
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .choice.container button.recommended {
-    font-weight: 800;
-  }
-
-  .choice.container button.faint {
-    opacity: 0.95;
+    box-shadow: var(--choice-elev-0);
+    /* Subtle surface tint */
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .choice.container button:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: var(--choice-elev-1);
+    transform: translateY(-1px);
   }
 
   .choice.container button:active {
-    background: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: var(--choice-elev-0);
+    transform: translateY(0);
   }
 
   .choice.container button:focus-visible {
     outline: none;
-    background: var(--choice-highlight-bg);
-    color: var(--choice-highlight-fg);
-    border-color: var(--choice-highlight-border);
-    box-shadow: 0 0 0 3px var(--choice-focus);
+    background: rgba(139, 183, 255, 0.12);
+    color: var(--choice-fg);
+    box-shadow: var(--choice-elev-1), 0 0 0 3px var(--choice-focus);
   }
 
-  .choice.container button:focus-visible::before {
-    color: var(--choice-highlight-fg);
+  .choice.container button.big {
+    font-size: 16px;
+    font-weight: 600;
+    padding: var(--choice-radius-lg) var(--choice-radius-xl);
+  }
+
+  .choice.container button.recommended {
+    background: var(--choice-primary);
+    color: var(--choice-primary-fg);
+    box-shadow: var(--choice-elev-1);
+  }
+
+  .choice.container button.recommended:hover {
+    background: color-mix(in oklab, var(--choice-primary) 90%, black);
+    box-shadow: var(--choice-elev-2);
+  }
+
+  .choice.container button.faint {
+    opacity: 0.7;
+    font-weight: 400;
+  }
+
+  .choice.container button.faint:hover {
+    opacity: 0.8;
   }
 
   @media (max-inline-size: 520px) {
     .choice.container {
       inline-size: 100%;
-      border-radius: 6px;
-      padding: 14px;
-      box-shadow: none;
+      border-radius: var(--choice-radius-lg);
+      padding: var(--choice-radius-lg);
+      margin-block-start: calc(0.5 * min(80cqb, 24rem));
+      max-block-size: min(80cqb, 24rem);
+      gap: var(--choice-radius-md);
+    }
+
+    .choice-header {
+      font-size: 18px;
+    }
+
+    .choice-countdown {
+      font-size: 13px;
+      padding: var(--choice-radius-xs) var(--choice-radius-sm);
+    }
+
+    .choice-hint {
+      font-size: 12px;
+    }
+
+    .choice-menu {
+      padding: var(--choice-radius-sm);
+      gap: var(--choice-radius-xs);
+    }
+
+    .choice-reasons {
+      font-size: 13px;
+      padding: var(--choice-radius-xs) var(--choice-radius-sm);
+    }
+
+    .choice.container button {
+      padding: var(--choice-radius-sm) var(--choice-radius-md);
+      font-size: 14px;
+    }
+
+    .choice.container button.big {
+      padding: var(--choice-radius-md) var(--choice-radius-lg);
     }
   }
 }

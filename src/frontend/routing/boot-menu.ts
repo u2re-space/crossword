@@ -49,7 +49,7 @@ export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
     const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
     const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Basic</b> version is the default.</div>` as HTMLElement;
 
-    const countdown = H`<div class="choice-countdown">Auto-start in <b>${opts.seconds}</b>s…</div>` as HTMLElement;
+    const countdown = H`<div class="choice-countdown">Auto-starting in <b>${opts.seconds}</b> seconds…</div>` as HTMLElement;
     const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
     const remember = H`<label class="choice-remember">
     <input type="checkbox" />
