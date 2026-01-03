@@ -1,6 +1,6 @@
-@use "../lib/config" as config;
-@use "../lib/mixins" as mixins;
-@use "../lib/tokens" as tokens;
+@use "./lib/config" as config;
+@use "./lib/mixins" as mixins;
+@use "./lib/tokens" as tokens;
 
 // === Main page styles ===
 @page {

@@ -18,36 +18,36 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       <h3>AI</h3>
       <label class="field">
         <span>Base URL</span>
-        <input type="url" inputmode="url" autocomplete="off" data-field="ai.baseUrl" placeholder="https://api.proxyapi.ru/openai/v1" />
+        <input class="form-input" type="url" inputmode="url" autocomplete="off" data-field="ai.baseUrl" placeholder="https://api.proxyapi.ru/openai/v1" />
       </label>
       <label class="field">
         <span>API Key</span>
-        <input type="password" autocomplete="off" data-field="ai.apiKey" placeholder="sk-..." />
+        <input class="form-input" type="password" autocomplete="off" data-field="ai.apiKey" placeholder="sk-..." />
       </label>
-      <label class="field checkbox">
+      <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ui.showKey" />
         <span>Show API key</span>
       </label>
       <label class="field">
         <span>Share target mode</span>
-        <select data-field="ai.shareTargetMode">
+        <select class="form-select" data-field="ai.shareTargetMode">
           <option value="recognize">Recognize and copy</option>
           <option value="analyze">Analyze and store</option>
         </select>
       </label>
       <label class="field">
         <span>Response language</span>
-        <select data-field="ai.responseLanguage">
+        <select class="form-select" data-field="ai.responseLanguage">
           <option value="auto">Auto-detect</option>
           <option value="en">English</option>
           <option value="ru">Russian</option>
         </select>
       </label>
-      <label class="field checkbox">
+      <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ai.translateResults" />
         <span>Translate results</span>
       </label>
-      <label class="field checkbox">
+      <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ai.generateSvgGraphics" />
         <span>Generate SVG graphics</span>
       </label>
@@ -62,7 +62,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       <h3>Appearance</h3>
       <label class="field">
         <span>Theme</span>
-        <select data-field="appearance.theme">
+        <select class="form-select" data-field="appearance.theme">
           <option value="light">Light</option>
           <option value="dark">Dark</option>
           <option value="auto">Auto</option>
@@ -72,7 +72,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
 
     <section class="card" data-section="extension" hidden>
       <h3>Extension</h3>
-      <label class="field checkbox">
+      <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="core.ntpEnabled" />
         <span>Enable New Tab Page (offline Basic)</span>
       </label>

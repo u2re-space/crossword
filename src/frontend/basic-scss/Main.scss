@@ -1,0 +1,762 @@
+/* ==========================================================================
+   Unified Main SCSS - Reorganized and Optimized
+   ========================================================================== */
+
+@layer reset, base, components, layout, utilities;
+
+/* ==========================================================================
+   RESET & NORMALIZE - Cross-browser consistency
+   ========================================================================== */
+@import "../basic-scss/normalize.scss" layer(reset);
+
+/* ==========================================================================
+   BASE STYLES - Foundation and typography
+   ========================================================================== */
+/* TODO: Re-enable veela framework import when path is resolved */
+@import "../basic-scss/lib/_typed-properties.scss" layer(base);
+
+/* ==========================================================================
+   COMPONENTS - Reusable UI components
+   ========================================================================== */
+@import "../basic-scss/buttons.scss" layer(components);
+@import "../basic-scss/forms.scss" layer(components);
+@import "../basic-scss/workcenter.scss" layer(components);
+
+/* ==========================================================================
+   MARKDOWN COMPONENTS - Specialized markdown rendering
+   ========================================================================== */
+@import "../basic-scss/markdown-render.scss" layer(components);
+@import "../basic-scss/markdown-viewer.scss" layer(components);
+@import "../basic-scss/markdown-editor.scss" layer(components);
+
+/* ==========================================================================
+   LAYOUT & UTILITIES - Layout systems and helpers
+   ========================================================================== */
+@import "../basic-scss/layout.scss" layer(layout);
+@import "../basic-scss/utilities.scss" layer(utilities);
+
+/* Solid Quill Editor Theming */
+@layer components {
+  ui-icon {
+    padding: 0.25rem;
+  }
+
+  .quill-editor-container {
+    background: var(--basic-surface-container);
+    padding: var(--space-lg);
+    color: var(--basic-on-surface);
+    position: relative;
+
+    // Content positioning
+    & > * {
+      position: relative;
+    }
+
+    // Responsive padding
+    @container (max-width: 1024px) {
+      padding: var(--space-md);
+    }
+
+    @container (max-width: 768px) {
+      padding: var(--space-sm);
+    }
+
+    @container (max-width: 480px) {
+      padding: var(--space-xs);
+    }
+
+    // Simple hover effect
+    &:hover {
+      // Removed border color change to eliminate contrast
+    }
+
+    // Focus state
+    &:focus-within {
+      outline: none;
+      box-shadow: var(--basic-focus-ring);
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-lg);
+
+      // Responsive layout
+      @container (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+      }
+
+      @container (max-width: 480px) {
+        gap: var(--space-sm);
+      }
+
+      h3 {
+        margin: 0;
+        font-size: var(--text-2xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--basic-on-surface);
+        letter-spacing: -0.025em;
+        line-height: var(--leading-tight);
+
+        @container (max-width: 1024px) {
+          font-size: var(--text-xl);
+        }
+
+        @container (max-width: 768px) {
+          text-align: center;
+          font-size: var(--text-lg);
+        }
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: var(--space-sm);
+        align-items: center;
+        flex-wrap: wrap;
+
+        // Responsive button layout
+        @container (max-width: 640px) {
+          gap: var(--space-xs);
+        }
+
+        @container (max-width: 480px) {
+          justify-content: center;
+          gap: var(--space-sm);
+        }
+
+        // Scrollable on very small screens
+        @container (max-width: 360px) {
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: var(--space-xs);
+
+          &::-webkit-scrollbar {
+            display: none;
+          }
+
+          flex-wrap: nowrap;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--space-xs);
+          padding: var(--space-sm) var(--space-lg);
+          border-radius: var(--basic-radius-lg);
+          background: var(--basic-surface-container-high);
+          color: var(--basic-on-surface);
+          font-size: var(--text-sm);
+          font-weight: var(--font-weight-medium);
+          cursor: pointer;
+          transition: all var(--basic-motion-fast);
+          position: relative;
+          white-space: nowrap;
+          min-height: 44px;
+          box-shadow: var(--basic-elev-0);
+
+          @container (max-width: 640px) {
+            padding: var(--space-xs) var(--space-md);
+            font-size: var(--text-xs);
+            min-height: 40px;
+          }
+
+          @container (max-width: 480px) {
+            padding: var(--space-sm) var(--space-md);
+            min-height: 44px;
+          }
+
+          &:hover {
+            background: var(--basic-surface-container-highest);
+            transform: translateY(-1px);
+            box-shadow: var(--basic-elev-1);
+          }
+
+          &:active {
+            transform: translateY(0);
+            box-shadow: none;
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: var(--basic-focus-ring);
+          }
+
+          &.primary {
+            background: var(--basic-secondary);
+            color: var(--basic-on-secondary);
+
+            &:hover {
+              background: color-mix(in oklab, var(--basic-secondary) 85%, black);
+            }
+          }
+
+          // Icon button variant
+          &.btn-icon {
+            padding: var(--space-sm);
+
+            @container (max-width: 640px) {
+              padding: var(--space-xs);
+            }
+
+            ui-phosphor-icon {
+              flex-shrink: 0;
+              transition: color var(--basic-motion-fast);
+            }
+
+            .btn-text {
+              @container (max-width: 640px) {
+                display: none;
+              }
+            }
+
+            &:hover ui-phosphor-icon {
+              color: var(--basic-secondary);
+            }
+
+            &.primary:hover ui-phosphor-icon {
+              color: var(--basic-on-secondary);
+            }
+          }
+
+          // Loading state
+          &.loading {
+            opacity: 0.7;
+            pointer-events: none;
+
+            &::after {
+              content: "";
+              width: 16px;
+              height: 16px;
+              border: 2px solid transparent;
+              border-top: 2px solid currentColor;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin-left: var(--space-xs);
+            }
+          }
+        }
+      }
+    }
+
+    .quill-wrapper {
+      border-radius: var(--basic-radius-sm);
+      overflow: hidden;
+
+      &:focus-within {
+        border-color: var(--basic-secondary);
+      }
+
+      /* Solid Quill editor theming */
+      .ql-toolbar {
+        border: none;
+        background: var(--basic-surface-container-high);
+        padding: var(--space-sm) var(--space-md);
+
+        .ql-stroke {
+          stroke: var(--basic-on-surface-variant);
+        }
+
+        .ql-fill {
+          fill: var(--basic-on-surface-variant);
+        }
+
+        .ql-picker-label:hover,
+        .ql-picker-item:hover {
+          color: var(--basic-secondary);
+        }
+
+        .ql-active {
+          color: var(--basic-secondary);
+          background: color-mix(in oklab, var(--basic-secondary) 15%, transparent);
+
+          .ql-stroke {
+            stroke: var(--basic-secondary);
+          }
+
+          .ql-fill {
+            fill: var(--basic-secondary);
+          }
+        }
+
+        // Responsive toolbar
+        @container (max-width: 768px) {
+          padding: var(--space-xs) var(--space-sm);
+        }
+      }
+
+      .ql-container {
+        border: none;
+        font-size: var(--text-base);
+        line-height: var(--leading-relaxed);
+        color: var(--basic-on-surface);
+        background: var(--basic-surface);
+        min-height: 300px;
+
+        .ql-editor {
+          color: var(--basic-on-surface);
+          padding: var(--space-md);
+          font-family: var(--font-family-system);
+          font-size: var(--text-base);
+
+          // Responsive padding
+          @container (max-width: 1024px) {
+            padding: var(--space-sm);
+          }
+
+          @container (max-width: 768px) {
+            padding: var(--space-xs);
+            font-size: var(--text-sm);
+          }
+
+          &::before {
+            color: var(--basic-on-surface-variant);
+            font-style: normal;
+            font-size: var(--text-base);
+          }
+
+          /* Solid code blocks */
+          pre {
+            background: var(--basic-surface-container-high);
+            border-radius: var(--basic-radius-sm);
+            color: var(--basic-on-surface);
+            padding: var(--space-sm);
+            margin: var(--space-md) 0;
+            overflow-x: auto;
+            font-family: var(--font-family-mono);
+            font-size: 0.875em;
+            line-height: var(--leading-normal);
+          }
+
+          /* Solid blockquotes */
+          blockquote {
+            border-left: 3px solid var(--basic-secondary);
+            background: var(--basic-surface-container-low);
+            color: var(--basic-on-surface);
+            padding: var(--space-sm) var(--space-md);
+            margin: var(--space-md) 0;
+            border-radius: 0 var(--basic-radius-sm) var(--basic-radius-sm) 0;
+            font-style: italic;
+          }
+
+          /* Solid lists */
+          ol, ul {
+            padding-left: var(--space-lg);
+            margin: var(--space-sm) 0;
+
+            li {
+              margin-bottom: var(--space-xs);
+            }
+          }
+
+          /* Solid headings */
+          h1, h2, h3 {
+            color: var(--basic-on-surface);
+            margin: var(--space-lg) 0 var(--space-sm) 0;
+            line-height: var(--leading-tight);
+            font-weight: var(--font-weight-semibold);
+          }
+
+          /* Links */
+          a {
+            color: var(--basic-secondary);
+            text-decoration: underline;
+          }
+
+          /* Solid tables */
+          table {
+            border-collapse: collapse;
+            margin: var(--space-md) 0;
+
+            th, td {
+              padding: var(--space-xs) var(--space-sm);
+              text-align: left;
+            }
+
+            th {
+              background: var(--basic-surface-container-high);
+              font-weight: var(--font-weight-semibold);
+            }
+          }
+        }
+      }
+    }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--space-xl);
+      padding-top: var(--space-lg);
+
+      // Responsive layout
+      @container (max-width: 768px) {
+        flex-direction: column;
+        gap: var(--space-md);
+        align-items: stretch;
+        margin-top: var(--space-lg);
+        padding-top: var(--space-md);
+      }
+
+      .editor-stats {
+        display: flex;
+        gap: var(--space-lg);
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+        font-weight: var(--font-weight-medium);
+
+        @container (max-width: 768px) {
+          justify-content: center;
+          gap: var(--space-xl);
+        }
+
+        @container (max-width: 480px) {
+          flex-direction: column;
+          gap: var(--space-xs);
+          text-align: center;
+        }
+
+        .word-count, .char-count {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+
+          &::before {
+            content: "📝";
+            opacity: 0.7;
+          }
+        }
+      }
+
+      .editor-info {
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+        font-weight: var(--font-weight-medium);
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+
+        @container (max-width: 768px) {
+          justify-content: center;
+        }
+
+        .format-indicator {
+          background: var(--basic-surface-container-high);
+          padding: var(--space-xs) var(--space-sm);
+          border-radius: var(--basic-radius-sm);
+          font-weight: var(--font-weight-semibold);
+          color: var(--basic-secondary);
+        }
+      }
+    }
+  }
+
+  /* Enhanced Dark theme overrides for Quill */
+  .basic-app[data-theme="dark"] .quill-editor-container {
+    .editor-header {
+
+      h3 {
+        color: var(--basic-on-surface);
+      }
+
+      .btn {
+        background: var(--basic-surface-container-low);
+        border-color: var(--basic-outline);
+        color: var(--basic-on-surface);
+
+        &:hover {
+          background: var(--basic-surface-container);
+          border-color: var(--basic-secondary);
+        }
+
+        &.primary {
+          background: var(--basic-secondary);
+          color: var(--basic-on-secondary);
+          border-color: var(--basic-secondary);
+
+          &:hover {
+            background: color-mix(in oklab, var(--basic-secondary) 85%, black);
+            border-color: color-mix(in oklab, var(--basic-secondary) 85%, black);
+          }
+        }
+      }
+    }
+
+    .quill-wrapper {
+      .ql-toolbar {
+        background: var(--basic-surface-container-low);
+
+        .ql-stroke {
+          stroke: var(--basic-on-surface);
+        }
+
+        .ql-fill {
+          fill: var(--basic-on-surface);
+        }
+
+        .ql-active {
+          color: var(--basic-secondary);
+          background: color-mix(in oklab, var(--basic-secondary) 15%, transparent);
+        }
+      }
+
+      .ql-container {
+        background: var(--basic-surface-container-low);
+
+        .ql-editor {
+          color: var(--basic-on-surface);
+
+          &::before {
+            color: var(--basic-on-surface-variant);
+          }
+
+          pre {
+            background: var(--basic-surface-container);
+            border-color: var(--basic-outline);
+            color: var(--basic-on-surface);
+          }
+
+          blockquote {
+            background: var(--basic-surface-container);
+            color: var(--basic-on-surface);
+          }
+
+          table {
+            border-color: var(--basic-outline);
+
+            th {
+              background: var(--basic-surface-container);
+            }
+
+            th, td {
+              border-color: var(--basic-outline);
+            }
+          }
+        }
+      }
+    }
+
+    .editor-footer {
+
+      .editor-stats {
+        color: var(--basic-on-surface-variant);
+      }
+
+      .editor-info {
+        color: var(--basic-on-surface-variant);
+
+        .format-indicator {
+          background: var(--basic-surface-container-high);
+        }
+      }
+    }
+  }
+
+  // ============================================================================
+  // ANIMATIONS
+  // ============================================================================
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+}
+
+/* Base layer - foundational styles */
+@layer base {
+  .basic-app {
+    block-size: 100%;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 0px;
+    color: var(--basic-on-surface);
+    background: var(--basic-background);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color-scheme: light dark;
+    contain: strict;
+    inline-size: stretch;
+    max-inline-size: stretch;
+    -webkit-tap-highlight-color: transparent;
+    margin: 0px;
+
+    /* Material You-ish shape / motion / elevations (no borders) */
+    --basic-radius-sm: 8px;
+    --basic-radius-md: 12px;
+    --basic-radius-lg: 16px;
+    --basic-radius-xl: 22px;
+    --basic-radius-2xl: 28px;
+    --basic-radius-full: 9999px;
+    --basic-elev-0: none;
+    --basic-elev-1: 0 1px 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.10);
+    --basic-elev-2: 0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08);
+    --basic-elev-3: 0 6px 16px rgba(0, 0, 0, 0.14), 0 18px 48px rgba(0, 0, 0, 0.10);
+    --basic-motion-fast: 140ms cubic-bezier(0.2, 0, 0, 1);
+    --basic-motion-normal: 200ms cubic-bezier(0.2, 0, 0, 1);
+    --basic-motion-slow: 260ms cubic-bezier(0.2, 0, 0, 1);
+    --basic-focus-ring: 0 0 0 3px color-mix(in oklab, var(--basic-primary) 35%, transparent);
+
+    /* Spacing system */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.25rem;
+    --space-2xl: 1.6rem;
+
+    /* Padding variables */
+    --padding-xs: 0.25rem;
+    --padding-sm: 0.5rem;
+    --padding-md: 0.75rem;
+    --padding-lg: 1rem;
+    --padding-xl: 1.25rem;
+    --padding-2xl: 1.6rem;
+    --padding-3xl: 2rem;
+    --padding-4xl: 2.5rem;
+    --padding-5xl: 3rem;
+    --padding-6xl: 4rem;
+    --padding-7xl: 5rem;
+    --padding-8xl: 6rem;
+    --padding-9xl: 8rem;
+
+    /* Gap variables */
+    --gap-xs: 0.25rem;
+    --gap-sm: 0.5rem;
+    --gap-md: 0.75rem;
+    --gap-lg: 1rem;
+    --gap-xl: 1.25rem;
+    --gap-2xl: 1.6rem;
+
+    /* Border width variables */
+    --border-width-xs: 0.5px;
+    --border-width-sm: 1px;
+    --border-width-md: 1.5px;
+    --border-width-lg: 2px;
+    --border-width-xl: 3px;
+    --border-width-2xl: 4px;
+    --border-width-3xl: 6px;
+    --border-width-4xl: 8px;
+
+    /* Shadow variables */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.1);
+    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-inset-strong: inset 0 4px 8px rgba(0, 0, 0, 0.12);
+
+    /* Transition variables */
+    --transition-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
+    --transition-normal: 160ms cubic-bezier(0.2, 0, 0, 1);
+    --transition-slow: 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    /* Interactive state variables */
+    --hover-lift: 0.03;
+    --active-lift: 0.05;
+    --focus-lift: 0.02;
+
+    /* Avatar/Icon size variables */
+    --avatar-size: 32px;
+    --avatar-size-sm: 24px;
+    --avatar-size-md: 32px;
+    --avatar-size-lg: 48px;
+    --avatar-size-xl: 64px;
+    --icon-size-xs: 0.75rem;
+    --icon-size-sm: 0.875rem;
+    --icon-size-md: 1rem;
+    --icon-size-lg: 1.25rem;
+    --icon-size-xl: 1.5rem;
+
+    /* Typography */
+    --text-xs: 0.7rem;
+    --text-sm: 0.8rem;
+    --text-base: 0.9rem;
+    --text-lg: 1rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.6rem;
+    --text-3xl: 2rem;
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    --font-family: 'Roboto', ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    --font-family-mono: 'Roboto Mono', 'SF Mono', Monaco, Inconsolata, 'Fira Code', monospace;
+
+    --leading-tight: 1.2;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.8;
+  }
+
+.basic-app[data-theme="light"] {
+  color-scheme: light;
+  /* Blue-neutral palette - soft blue-gray tones */
+  --basic-primary: #5a7fff;
+  --basic-on-primary: #ffffff;
+  --basic-secondary: #6b7280;
+  --basic-on-secondary: #ffffff;
+  --basic-tertiary: #64748b;
+  --basic-on-tertiary: #ffffff;
+  --basic-error: #ef4444;
+  --basic-on-error: #ffffff;
+
+  --basic-background: #fafbfc;
+  --basic-on-background: #1e293b;
+  --basic-surface: #fafbfc;
+  --basic-on-surface: #1e293b;
+  --basic-surface-variant: #f1f5f9;
+  --basic-on-surface-variant: #64748b;
+  --basic-outline: #cbd5e1;
+  --basic-outline-variant: #94a3b8;
+
+  /* Surface containers (soft tint of primary) */
+  --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 96%, var(--basic-primary) 4%);
+  --basic-surface-container: color-mix(in oklab, var(--basic-surface) 92%, var(--basic-primary) 8%);
+  --basic-surface-container-high: color-mix(in oklab, var(--basic-surface) 88%, var(--basic-primary) 12%);
+  --basic-surface-container-highest: color-mix(in oklab, var(--basic-surface) 84%, var(--basic-primary) 16%);
+
+  /* Convenience */
+  --basic-border: color-mix(in oklab, var(--basic-outline-variant) 75%, transparent);
+}
+
+.basic-app[data-theme="dark"] {
+  color-scheme: dark;
+  /* Blue-neutral palette - soft blue-gray tones */
+  --basic-primary: #7ca7ff;
+  --basic-on-primary: #0f172a;
+  --basic-secondary: #94a3b8;
+  --basic-on-secondary: #1e293b;
+  --basic-tertiary: #94a3b8;
+  --basic-on-tertiary: #0f172a;
+  --basic-error: #f87171;
+  --basic-on-error: #450a0a;
+
+  --basic-background: #0f1419;
+  --basic-on-background: #f1f5f9;
+  --basic-surface: #0f1419;
+  --basic-on-surface: #f1f5f9;
+  --basic-surface-variant: #1e293b;
+  --basic-on-surface-variant: #cbd5e1;
+  --basic-outline: #475569;
+  --basic-outline-variant: #334155;
+
+  /* Surface containers (soft tint of primary) */
+  --basic-surface-container-low: color-mix(in oklab, var(--basic-surface) 92%, var(--basic-primary) 8%);
+  --basic-surface-container: color-mix(in oklab, var(--basic-surface) 88%, var(--basic-primary) 12%);
+  --basic-surface-container-high: color-mix(in oklab, var(--basic-surface) 84%, var(--basic-primary) 16%);
+  --basic-surface-container-highest: color-mix(in oklab, var(--basic-surface) 80%, var(--basic-primary) 20%);
+
+  /* Convenience */
+  --basic-border: color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
+}
+}

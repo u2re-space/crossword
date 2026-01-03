@@ -134,3 +134,138 @@ $md-config: (
 
     @return light-dark(#{list.nth($value, 1)}, #{list.nth($value, 2)});
 }
+
+
+$md-config: (
+    "effects": (
+        "active-brightness": 0.95,
+        "hover-brightness": 0.96
+    ),
+    "shape": (
+        "border-radius": 14px,
+        "box-shadow": 0 1px 2px rgba(0,0,0,0.14),
+        "box-shadow-card": 0 2px 6px rgba(0, 0, 0, 0.16),
+    ),
+    "colors": (
+        /* Enhanced blue-neutral palette - more blue, closer to grayscale */
+        "primary": (#5a7fff, #7ca7ff),           // Soft blue-gray primary
+        "secondary": (#6b7280, #94a3b8),         // Neutral blue-gray
+        "accent": (#64748b, #94a3b8),            // Muted slate blue
+        "success": (#10b981, #34d399),           // Soft teal-green
+        "warning": (#f59e0b, #fbbf24),           // Warm amber
+        "error": (#ef4444, #f87171),             // Soft coral red
+        "info": (#60a5fa, #93c5fd),              // Gentle blue
+
+        /* Surface colors - blue-tinted neutral grays */
+        "bg": (#fafbfc, #0f1419),                // Very subtle blue tint
+        "bg-surface": (#f1f5f9, #1e293b),        // Soft blue-gray surface
+        "bg-surface-high": (#e2e8f0, #334155),   // Medium blue-gray
+        "bg-surface-low": (#f8fafc, #0f172a),    // Very light blue-gray
+        "bg-container": (#ffffff, #1e293b),      // Container with blue undertone
+        "bg-elevated": (#ffffff, #334155),       // Elevated with blue-gray
+
+        /* Border colors - subtle blue-gray tones */
+        "border": (#cbd5e1, #475569),            // Soft blue-gray borders
+        "border-variant": (#94a3b8, #64748b),    // Muted blue-gray borders
+        "border-subtle": (#e2e8f0, #334155),     // Very subtle blue-gray
+
+        /* Text colors - neutral with blue undertones */
+        "text-primary": (#1e293b, #f1f5f9),      // Deep blue-gray text
+        "text-secondary": (#64748b, #94a3b8),    // Medium blue-gray text
+        "text-muted": (#94a3b8, #64748b),        // Muted blue-gray text
+        "text-disabled": (#cbd5e1, #475569),     // Disabled blue-gray text
+
+        /* Interactive states - blue-tinted grays */
+        "hover": (#f1f5f9, #334155),             // Blue-gray hover
+        "active": (#e2e8f0, #1e293b),            // Deeper blue-gray active
+        "focus": (#dbeafe, #1e40af),             // Soft blue focus ring
+
+        /* Special elements - neutral blue tones */
+        "link": (#3b82f6, #60a5fa),              // Balanced blue links
+        "code-bg": (#f8fafc, #1e293b),           // Blue-gray code background
+        "code-text": (#1e293b, #f1f5f9),         // High contrast code text
+        "highlight": (#dbeafe, #1d4ed8),         // Soft blue highlight
+        "table-border": (#cbd5e1, #475569),      // Subtle table borders
+        "table-stripe": (#f8fafc, #1e293b),      // Alternating blue-gray stripes
+        "scrollbar": (#cbd5e1, #64748b),         // Blue-gray scrollbar
+        "scrollbar-hover": (#94a3b8, #94a3b8),   // Hover scrollbar
+        "outline": (#cbd5e1, #64748b),           // Focus outline
+        "outline-variant": (#94a3b8, #cbd5e1)    // Muted outline variant
+    ),
+    "font": (
+        "emoji": "\"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "body": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, var(--font-family-emoji-flag-capable)",
+        "mono": "\"ui-monospace\", \"SFMono-Regular\", \"SF Mono\", \"Menlo\", \"Consolas\", \"Liberation Mono\", \"monospace\"",
+        "size-base": 16px
+    ),
+    "layout": (
+        "line-height": 1.4,
+        "justify-important": start,
+        "justify-normal": start,
+        "widths": (
+            "card": 285px,
+            "card-medium": 460px,
+            "card-wide": 800px,
+            "content": 980px
+        )
+    ),
+    "page": (
+        "margin": 2rem
+    ),
+    "heading": (
+        "padding": 0,
+        "padding-small": 0
+    ),
+    "blockquote": (
+        "margin-inline": 0,
+        "padding-inline": 1em
+    ),
+    "table": (
+        "cell-padding": 6px 13px
+    ),
+    "media": (
+        "img-max-width": 100%
+    ),
+    "scrollbar": (
+        "size": 10px
+    )
+);
+
+@function md-config($keys...) {
+    $value: $md-config;
+
+    @each $key in $keys {
+        @if $value == null {
+            @return null;
+        }
+
+        $value: map.get($value, $key);
+    }
+
+    @return $value;
+}
+
+@function md-color($name, $mode: null) {
+    $palette: md-config("colors");
+    $value: map.get($palette, $name);
+
+    @if $mode == "light" {
+        @return if($value != null, list.nth($value, 1), null);
+    }
+
+    @if $mode == "dark" {
+        @return if($value != null, list.nth($value, 2), null);
+    }
+
+    @return $value;
+}
+
+@function md-light-dark($name) {
+    $value: md-color($name);
+
+    @if $value == null {
+        @return null;
+    }
+
+    @return light-dark(#{list.nth($value, 1)}, #{list.nth($value, 2)});
+}

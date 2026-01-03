@@ -22,7 +22,7 @@
 .form-select {
   width: 100%;
   padding: var(--space-md) var(--space-lg);
-  border: 0.5px solid var(--basic-outline);
+  border: none;
   border-radius: var(--basic-radius-lg);
   background: var(--basic-surface-container-high);
   color: var(--basic-on-surface);
@@ -35,12 +35,11 @@
 
   &:hover {
     background: var(--basic-surface-container-highest);
-    border-color: var(--basic-outline);
+    box-shadow: var(--basic-elev-1);
   }
 
   &:focus {
     outline: none;
-    border-color: var(--basic-primary);
     box-shadow: var(--basic-focus-ring);
     background: var(--basic-surface-container);
   }
@@ -96,18 +95,19 @@
     width: 20px;
     height: 20px;
     border-radius: var(--basic-radius-sm);
-    border: 1px solid var(--basic-outline);
-    background: var(--basic-surface);
+    border: none;
+    background: var(--basic-surface-container-highest);
     cursor: pointer;
     transition: all var(--basic-motion-fast);
     appearance: none;
     position: relative;
     accent-color: var(--basic-primary);
+    box-shadow: var(--basic-elev-0);
 
     // Checked state
     &:checked {
       background: var(--basic-primary);
-      border-color: var(--basic-primary);
+      box-shadow: var(--basic-elev-1);
 
       // Checkmark
       &::after {
@@ -147,17 +147,18 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 1px solid var(--basic-outline);
-    background: var(--basic-surface);
+    border: none;
+    background: var(--basic-surface-container-highest);
     cursor: pointer;
     transition: all var(--basic-motion-fast);
     appearance: none;
     position: relative;
     accent-color: var(--basic-primary);
+    box-shadow: var(--basic-elev-0);
 
     &:checked {
       background: var(--basic-primary);
-      border-color: var(--basic-primary);
+      box-shadow: var(--basic-elev-1);
 
       &::after {
         content: '';
@@ -228,11 +229,9 @@
     .form-input,
     .form-textarea,
     .form-select {
-      border-color: var(--basic-error);
       background: color-mix(in oklab, var(--basic-error) 5%, var(--basic-surface-container-high));
 
       &:focus {
-        border-color: var(--basic-error);
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--basic-error) 35%, transparent);
       }
     }
@@ -242,11 +241,9 @@
     .form-input,
     .form-textarea,
     .form-select {
-      border-color: var(--basic-success);
       background: color-mix(in oklab, var(--basic-success) 5%, var(--basic-surface-container-high));
 
       &:focus {
-        border-color: var(--basic-success);
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--basic-success) 35%, transparent);
       }
     }

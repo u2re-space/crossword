@@ -1,7 +1,7 @@
-@use "../lib/mixins" as mixins;
-@use "../lib/tokens" as tokens;
-@use "../lib/config" as config;
-@use "../lib/props";
+@use "./lib/mixins" as mixins;
+@use "./lib/tokens" as tokens;
+@use "./lib/config" as config;
+@use "./lib/props";
 
 @layer markdown-editor {
   // ============================================================================
@@ -141,7 +141,7 @@
         align-items: center;
         gap: var(--space-xs);
         padding: var(--space-sm) var(--space-lg);
-        border: 0.5px solid var(--basic-outline);
+        border: none;
         background: var(--basic-surface-container);
         color: var(--basic-on-surface);
         font-size: var(--text-sm);
@@ -164,22 +164,20 @@
 
         &:hover {
           background: var(--basic-surface-container-high);
-          border-color: var(--basic-primary);
+          box-shadow: var(--basic-elev-1);
         }
 
         &:focus-visible {
-          outline: 1px solid var(--basic-primary);
-          outline-offset: 1px;
+          outline: none;
+          box-shadow: var(--basic-focus-ring);
         }
 
         &.primary {
           background: var(--basic-primary);
           color: var(--basic-on-primary);
-          border-color: var(--basic-primary);
 
           &:hover {
             background: color-mix(in oklab, var(--basic-primary) 90%, black);
-            border-color: color-mix(in oklab, var(--basic-primary) 90%, black);
           }
         }
 

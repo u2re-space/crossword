@@ -1,7 +1,7 @@
-@use "../lib/mixins" as mixins;
-@use "../lib/tokens" as tokens;
-@use "../lib/config" as config;
-@use "../lib/props";
+@use "./lib/mixins" as mixins;
+@use "./lib/tokens" as tokens;
+@use "./lib/config" as config;
+@use "./lib/props";
 
 /* ==========================================================================
    Unified Markdown Viewer Styles
@@ -33,14 +33,12 @@
     // Hover effects for immersive feel
     &:hover {
       box-shadow: var(--basic-elev-2);
-      border-color: var(--basic-primary);
     }
 
     // Focus state
     &:focus-within {
-      outline: 2px solid var(--basic-primary);
-      outline-offset: 2px;
-      box-shadow: var(--basic-elev-2);
+      outline: none;
+      box-shadow: var(--basic-focus-ring), var(--basic-elev-2);
     }
 
     // ============================================================================
@@ -115,7 +113,7 @@
           align-items: center;
           gap: var(--space-xs);
           padding: var(--space-sm) var(--space-lg);
-          border: 1px solid var(--basic-outline);
+          border: none;
           border-radius: var(--basic-radius-lg);
           background: var(--basic-surface-container);
           color: var(--basic-on-surface);
@@ -140,7 +138,6 @@
 
           &:hover {
             background: var(--basic-surface-container-highest);
-            border-color: var(--basic-primary);
             transform: translateY(-1px);
             box-shadow: var(--basic-elev-1);
           }
@@ -151,8 +148,8 @@
           }
 
           &:focus-visible {
-            outline: 2px solid var(--basic-primary);
-            outline-offset: 2px;
+            outline: none;
+            box-shadow: var(--basic-focus-ring);
           }
 
           // Icon button variant
@@ -321,8 +318,8 @@
           }
 
           &:focus-visible {
-            outline: 2px solid var(--basic-primary);
-            outline-offset: 2px;
+            outline: none;
+            box-shadow: var(--basic-focus-ring);
             border-radius: var(--basic-radius-sm);
           }
         }
