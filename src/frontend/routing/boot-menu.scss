@@ -1,274 +1,296 @@
 @layer choice-screen {
-  :root {
-    /* Material You-inspired palette. Rebalanced for better contrast and harmony. */
-    --choice-bg: #0a0d12;
-    --choice-fg: #e8ecf2;
-    --choice-card: #1a1f26;
-    --choice-card-hover: #202632;
-    --choice-card-active: #252c36;
-    --choice-muted: rgba(232, 236, 242, 0.68);
-    --choice-focus: rgba(140, 185, 255, 0.24);
-    --choice-primary: #8bb7ff;
-    --choice-primary-fg: #0a0d12;
-    --choice-highlight-bg: #e8ecf2;
-    --choice-highlight-fg: #0a0d12;
+    :root {
+        /* Material You-inspired palette. Rebalanced for better contrast and harmony. */
+        --choice-bg: #0a0d12;
+        --choice-fg: #e8ecf2;
+        --choice-card: #1a1f26;
+        --choice-card-hover: #202632;
+        --choice-card-active: #252c36;
+        --choice-muted: rgba(232, 236, 242, 0.68);
+        --choice-focus: rgba(140, 185, 255, 0.24);
+        --choice-primary: #8bb7ff;
+        --choice-primary-fg: #0a0d12;
+        --choice-highlight-bg: #e8ecf2;
+        --choice-highlight-fg: #0a0d12;
 
-    /* Material You elevation system */
-    --choice-elev-0: none;
-    --choice-elev-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
-    --choice-elev-2: 0 3px 6px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.24);
-    --choice-elev-3: 0 6px 12px rgba(0, 0, 0, 0.36), 0 4px 8px rgba(0, 0, 0, 0.28);
+        /* Material You elevation system */
+        --choice-elev-0: none;
+        --choice-elev-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
+        --choice-elev-2: 0 3px 6px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.24);
+        --choice-elev-3: 0 6px 12px rgba(0, 0, 0, 0.36), 0 4px 8px rgba(0, 0, 0, 0.28);
 
-    /* Material You shape system */
-    --choice-radius-xs: 4px;
-    --choice-radius-sm: 8px;
-    --choice-radius-md: 12px;
-    --choice-radius-lg: 16px;
-    --choice-radius-xl: 24px;
-    --choice-radius-full: 9999px;
+        /* Material You shape system */
+        --choice-radius-xs: 4px;
+        --choice-radius-sm: 8px;
+        --choice-radius-md: 12px;
+        --choice-radius-lg: 16px;
+        --choice-radius-xl: 24px;
+        --choice-radius-full: 9999px;
 
-    /* Typography - more modern, less monospace-heavy */
-    --choice-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --choice-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-  }
-
-  :where(html, body) {
-    block-size: 100%;
-    min-block-size: 100%;
-    background: var(--choice-bg);
-    color: var(--choice-fg);
-    font-family: var(--choice-font);
-  }
-
-  :where(body) {
-    margin: 0;
-    /* Material You-inspired subtle gradient background */
-    background:
-      radial-gradient(ellipse 1200px 800px at 50% 20%, rgba(139, 183, 255, 0.08) 0%, rgba(10, 13, 18, 0.85) 45%, var(--choice-bg) 100%);
-    background-color: var(--choice-bg);
-    /* Subtle pattern overlay */
-    background-image:
-      radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.01) 0%, transparent 50%);
-  }
-
-  .choice.container {
-    inline-size: min(640px, 100%);
-    margin-inline: auto;
-    margin-block: 0;
-    margin-block-start: calc(0.5 * min(80cqb, 28rem));
-    padding: var(--choice-radius-xl);
-    display: grid;
-    gap: var(--choice-radius-lg);
-    align-content: start;
-    justify-items: stretch;
-    color: var(--choice-fg);
-    background: var(--choice-card);
-    border-radius: var(--choice-radius-xl);
-    box-shadow: var(--choice-elev-3);
-    font-family: var(--choice-font);
-    max-block-size: min(80cqb, 28rem);
-    position: relative;
-    /* Subtle border using tonal elevation */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-      pointer-events: none;
+        /* Typography - more modern, less monospace-heavy */
+        --choice-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --choice-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
     }
-  }
 
+    :where(html, body) {
+        block-size: 100%;
+        min-block-size: 100%;
+        background: var(--choice-bg);
+        color: var(--choice-fg);
+        font-family: var(--choice-font);
+        margin: 0;
+        padding: 0;
+        border: none 0px transparent;
+        outline: none 0px transparent;
+    }
 
-  .choice-header {
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1.3;
-    margin: 0;
-    letter-spacing: -0.01em;
-    text-align: center;
-    color: var(--choice-fg);
-  }
+    :where(body) {
+        margin: 0;
+        padding: 0;
+        border: none 0px transparent;
+        outline: none 0px transparent;
+        /* Material You-inspired subtle gradient background */
+        background:
+            radial-gradient(ellipse 1200px 800px at 50% 20%, rgba(139, 183, 255, 0.08) 0%, rgba(10, 13, 18, 0.85) 45%, var(--choice-bg) 100%);
+        background-color: var(--choice-bg);
+        /* Subtle pattern overlay */
+        background-image:
+            radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+            radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.01) 0%, transparent 50%);
 
-  .choice-countdown {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--choice-muted);
-    line-height: 1.4;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.03);
-    padding: var(--choice-radius-sm) var(--choice-radius-md);
-    border-radius: var(--choice-radius-md);
-  }
+        & > :where(*) {
+            box-sizing: border-box;
+        }
 
-  .choice-hint {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--choice-muted);
-    line-height: 1.4;
-    text-align: center;
-    opacity: 0.8;
-  }
+        & :where(*) {
+            box-sizing: border-box;
+        }
 
-  .choice-menu {
-    display: grid;
-    gap: var(--choice-radius-sm);
-    padding: var(--choice-radius-md);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: var(--choice-radius-lg);
-  }
+        & :where(button, p, span, a, input, textarea, select, option, optgroup, fieldset, legend, label, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, details, figcaption, figure, footer, header, hgroup, main, menu, nav, section, summary, time, mark, audio, video) {
+            line-height: normal;
+        }
+    }
 
-  .choice-reasons {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--choice-muted);
-    text-align: center;
-    padding: var(--choice-radius-sm) var(--choice-radius-md);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: var(--choice-radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .choice-remember {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--choice-radius-sm);
-    padding: var(--choice-radius-md) var(--choice-radius-lg);
-    border-radius: var(--choice-radius-lg);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    user-select: none;
-    transition: all 200ms ease;
-    cursor: pointer;
-  }
-
-  .choice-remember:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .choice-remember input[type="checkbox"] {
-    inline-size: 20px;
-    block-size: 20px;
-    accent-color: var(--choice-primary);
-    margin: 0;
-  }
-
-  .choice-remember span {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--choice-fg);
-    opacity: 0.9;
-  }
-
-  .choice.container button {
-    appearance: none;
-    inline-size: 100%;
-    border: none;
-    border-radius: var(--choice-radius-lg);
-    padding: var(--choice-radius-md) var(--choice-radius-lg);
-    font-size: 15px;
-    font-family: var(--choice-font);
-    font-weight: 500;
-    line-height: 1.4;
-    cursor: pointer;
-    background: transparent;
-    color: var(--choice-fg);
-    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-    text-align: center;
-    position: relative;
-    box-shadow: var(--choice-elev-0);
-    /* Subtle surface tint */
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  .choice.container button:hover {
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: var(--choice-elev-1);
-    transform: translateY(-1px);
-  }
-
-  .choice.container button:active {
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: var(--choice-elev-0);
-    transform: translateY(0);
-  }
-
-  .choice.container button:focus-visible {
-    outline: none;
-    background: rgba(139, 183, 255, 0.12);
-    color: var(--choice-fg);
-    box-shadow: var(--choice-elev-1), 0 0 0 3px var(--choice-focus);
-  }
-
-  .choice.container button.big {
-    font-size: 16px;
-    font-weight: 600;
-    padding: var(--choice-radius-lg) var(--choice-radius-xl);
-  }
-
-  .choice.container button.recommended {
-    background: var(--choice-primary);
-    color: var(--choice-primary-fg);
-    box-shadow: var(--choice-elev-1);
-  }
-
-  .choice.container button.recommended:hover {
-    background: color-mix(in oklab, var(--choice-primary) 90%, black);
-    box-shadow: var(--choice-elev-2);
-  }
-
-  .choice.container button.faint {
-    opacity: 0.7;
-    font-weight: 400;
-  }
-
-  .choice.container button.faint:hover {
-    opacity: 0.8;
-  }
-
-  @media (max-inline-size: 520px) {
     .choice.container {
-      inline-size: 100%;
-      border-radius: var(--choice-radius-lg);
-      padding: var(--choice-radius-lg);
-      margin-block-start: calc(0.5 * min(80cqb, 24rem));
-      max-block-size: min(80cqb, 24rem);
-      gap: var(--choice-radius-md);
+        inline-size: min(640px, 100%);
+        margin-inline: auto;
+        margin-block: 0;
+        margin-block-start: calc(0.5 * min(80cqb, 28rem));
+        padding: var(--choice-radius-xl);
+        display: grid;
+        gap: var(--choice-radius-lg);
+        align-content: start;
+        justify-items: stretch;
+        color: var(--choice-fg);
+        background: var(--choice-card);
+        border-radius: var(--choice-radius-xl);
+        box-shadow: var(--choice-elev-3);
+        font-family: var(--choice-font);
+        max-block-size: min(80cqb, 28rem);
+        position: relative;
+        box-sizing: border-box;
+
+        /* Subtle border using tonal elevation */
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+        }
     }
+
 
     .choice-header {
-      font-size: 18px;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 0;
+        letter-spacing: -0.01em;
+        text-align: center;
+        color: var(--choice-fg);
     }
 
     .choice-countdown {
-      font-size: 13px;
-      padding: var(--choice-radius-xs) var(--choice-radius-sm);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--choice-muted);
+        line-height: 1.4;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.03);
+        padding: var(--choice-radius-sm) var(--choice-radius-md);
+        border-radius: var(--choice-radius-md);
     }
 
     .choice-hint {
-      font-size: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--choice-muted);
+        line-height: 1.4;
+        text-align: center;
+        opacity: 0.8;
     }
 
     .choice-menu {
-      padding: var(--choice-radius-sm);
-      gap: var(--choice-radius-xs);
+        display: grid;
+        gap: var(--choice-radius-sm);
+        padding: var(--choice-radius-md);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: var(--choice-radius-lg);
     }
 
     .choice-reasons {
-      font-size: 13px;
-      padding: var(--choice-radius-xs) var(--choice-radius-sm);
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--choice-muted);
+        text-align: center;
+        padding: var(--choice-radius-sm) var(--choice-radius-md);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: var(--choice-radius-md);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .choice-remember {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--choice-radius-sm);
+        padding: var(--choice-radius-md) var(--choice-radius-lg);
+        border-radius: var(--choice-radius-lg);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        user-select: none;
+        transition: all 200ms ease;
+        cursor: pointer;
+    }
+
+    .choice-remember:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .choice-remember input[type="checkbox"] {
+        inline-size: 20px;
+        block-size: 20px;
+        accent-color: var(--choice-primary);
+        margin: 0;
+    }
+
+    .choice-remember span {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--choice-fg);
+        opacity: 0.9;
     }
 
     .choice.container button {
-      padding: var(--choice-radius-sm) var(--choice-radius-md);
-      font-size: 14px;
+        appearance: none;
+        inline-size: 100%;
+        border: none;
+        border-radius: var(--choice-radius-lg);
+        padding: var(--choice-radius-md) var(--choice-radius-lg);
+        font-size: 15px;
+        font-family: var(--choice-font);
+        font-weight: 500;
+        line-height: 1.4;
+        cursor: pointer;
+        background: transparent;
+        color: var(--choice-fg);
+        transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+        text-align: center;
+        position: relative;
+        box-shadow: var(--choice-elev-0);
+        /* Subtle surface tint */
+        background: rgba(255, 255, 255, 0.02);
+        min-block-size: max-content;
+    }
+
+    .choice.container button:hover {
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: var(--choice-elev-1);
+        transform: translateY(-1px);
+    }
+
+    .choice.container button:active {
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: var(--choice-elev-0);
+        transform: translateY(0);
+    }
+
+    .choice.container button:focus-visible {
+        outline: none;
+        background: rgba(139, 183, 255, 0.12);
+        color: var(--choice-fg);
+        box-shadow: var(--choice-elev-1), 0 0 0 3px var(--choice-focus);
     }
 
     .choice.container button.big {
-      padding: var(--choice-radius-md) var(--choice-radius-lg);
+        font-size: 16px;
+        font-weight: 600;
+        padding: var(--choice-radius-lg) var(--choice-radius-xl);
     }
-  }
+
+    .choice.container button.recommended {
+        background: var(--choice-primary);
+        color: var(--choice-primary-fg);
+        box-shadow: var(--choice-elev-1);
+    }
+
+    .choice.container button.recommended:hover {
+        background: color-mix(in oklab, var(--choice-primary) 90%, black);
+        box-shadow: var(--choice-elev-2);
+    }
+
+    .choice.container button.faint {
+        opacity: 0.7;
+        font-weight: 400;
+    }
+
+    .choice.container button.faint:hover {
+        opacity: 0.8;
+    }
+
+    @container (max-inline-size: 520px) {
+        .choice.container {
+            inline-size: 100%;
+            border-radius: var(--choice-radius-lg);
+            padding: var(--choice-radius-lg);
+            margin-block-start: calc(0.5 * min(80cqb, 24rem));
+            max-block-size: min(80cqb, 24rem);
+            gap: var(--choice-radius-md);
+        }
+
+        .choice-header {
+            font-size: 18px;
+        }
+
+        .choice-countdown {
+            font-size: 13px;
+            padding: var(--choice-radius-xs) var(--choice-radius-sm);
+        }
+
+        .choice-hint {
+            font-size: 12px;
+        }
+
+        .choice-menu {
+            padding: var(--choice-radius-sm);
+            gap: var(--choice-radius-xs);
+        }
+
+        .choice-reasons {
+            font-size: 13px;
+            padding: var(--choice-radius-xs) var(--choice-radius-sm);
+        }
+
+        .choice.container button {
+            padding: var(--choice-radius-sm) var(--choice-radius-md);
+            font-size: 14px;
+        }
+
+        .choice.container button.big {
+            padding: var(--choice-radius-md) var(--choice-radius-lg);
+        }
+    }
 }

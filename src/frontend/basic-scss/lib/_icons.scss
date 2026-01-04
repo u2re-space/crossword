@@ -1,0 +1,111 @@
+@use "./config" as config;
+
+// ============================================================================
+// ICON UTILITIES - Replace emoji with ui-icon components
+// ============================================================================
+
+/// Create a ui-icon element with specified icon
+/// @param {String} $icon - Phosphor icon name (e.g., "pencil", "check", "x")
+/// @param {String} $size - Icon size class (xs, sm, md, lg, xl)
+/// @param {String} $style - Icon style (duotone, fill, regular, thin, light, bold)
+/// @return {String} HTML for ui-icon element
+@function icon($icon, $size: "md", $style: "duotone") {
+    @return '<ui-icon icon="#{$icon}" icon-style="#{$style}" class="icon-#{$size}"></ui-icon>';
+}
+
+/// Common icon mappings for emoji replacement
+/// Maps emoji to appropriate Phosphor icon names
+$emoji-to-icon: (
+    "📝": "pencil",
+    "✏️": "pencil-simple",
+    "⚡": "lightning",
+    "⚙️": "gear",
+    "🎨": "palette",
+    "🖼️": "image",
+    "📄": "file-text",
+    "📋": "clipboard-text",
+    "✅": "check",
+    "⚠️": "warning",
+    "❌": "x",
+    "🔄": "arrow-clockwise",
+    "📤": "upload",
+    "📥": "download",
+    "💾": "floppy-disk",
+    "🗑️": "trash",
+    "➕": "plus",
+    "➖": "minus",
+    "🔍": "magnifying-glass",
+    "🎯": "target",
+    "🔧": "wrench",
+    "📁": "folder",
+    "🗂️": "folders",
+    "🎪": "tent",
+    "📊": "chart-bar",
+    "📈": "trend-up",
+    "📉": "trend-down",
+    "📌": "push-pin",
+    "🔗": "link",
+    "🔔": "bell",
+    "💡": "lightbulb",
+    "🌙": "moon",
+    "☀️": "sun",
+    "🎛️": "sliders",
+    "🔒": "lock",
+    "🔓": "lock-open",
+    "🔔": "bell",
+    "🎨": "paint-brush",
+    "💡": "lightbulb"
+);
+
+/// Get icon name from emoji
+/// @param {String} $emoji - Emoji character
+/// @return {String} Phosphor icon name
+@function emoji-to-icon($emoji) {
+    @return map.get($emoji-to-icon, $emoji);
+}
+
+/// Create icon from emoji (convenience function)
+/// @param {String} $emoji - Emoji to convert
+/// @param {String} $size - Icon size
+/// @param {String} $style - Icon style
+/// @return {String} HTML for ui-icon element
+@function icon-from-emoji($emoji, $size: "md", $style: "duotone") {
+    $icon-name: emoji-to-icon($emoji);
+    @if $icon-name == null {
+        @warn "No icon mapping found for emoji: #{$emoji}";
+        @return $emoji; // Fallback to original emoji
+    }
+    @return icon($icon-name, $size, $style);
+}
+
+// ============================================================================
+// ICON COMPONENT STYLES
+// ============================================================================
+
+@layer components {
+    // Ensure ui-icon elements are properly styled
+    ui-icon {
+        --icon-color: currentColor;
+        --icon-size: 1rem;
+        --icon-padding: 0.125rem;
+
+        display: inline-grid;
+        place-content: center;
+        place-items: center;
+        color: var(--icon-color);
+        aspect-ratio: 1;
+
+        &[class*="icon-"] {
+            // Size classes are handled by utilities
+        }
+
+        // Ensure icons don't interfere with text flow
+        vertical-align: middle;
+        margin-inline-end: 0.125rem;
+
+        // Last icon in text shouldn't have margin
+        &:last-child {
+            margin-inline-end: 0;
+        }
+    }
+}

@@ -1,1 +1,46 @@
 @import "../basic-scss/Main.scss";
+
+// Component loading and error states
+.component-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+  color: var(--text-secondary, #666);
+
+  .loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--border, #ddd);
+    border-top: 2px solid var(--primary, #007bff);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+.component-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+  color: var(--text-secondary, #666);
+  text-align: center;
+
+  h3 {
+    color: var(--error, #dc3545);
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

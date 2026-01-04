@@ -5,19 +5,19 @@
 // === Main page styles ===
 @page {
     size: A4;
-    margin: config.md-config("page", "margin");
+    margin: config("page", "margin");
 
     @bottom-center {
         content: counter(page);
-        font-family: config.md-config("font", "body");
-        font-size: config.md-config("font", "size-base");
+        font-family: config("typography", "font-family", "sans");
+        font-size: config("typography", "font-size", "base");
         line-height: tokens.$line-height-base;
     }
 
     @top-right {
         content: "UC";
-        font-family: config.md-config("font", "body");
-        font-size: config.md-config("font", "size-base");
+        font-family: config("typography", "font-family", "sans");
+        font-size: config("typography", "font-size", "base");
     }
 }
 
@@ -76,8 +76,8 @@
         }
 
         :where(html, body, :host) {
-            font-family: config.md-config("font", "body");
-            font-size: config.md-config("font", "size-base");
+            font-family: config("typography", "font-family", "sans");
+            font-size: config("typography", "font-size", "base");
             line-height: tokens.$line-height-base;
         }
 

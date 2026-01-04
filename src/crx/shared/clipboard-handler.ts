@@ -52,12 +52,10 @@ export const detectContext = (): CRXClipboardContext => {
 /**
  * Show toast feedback (only works in content script context)
  */
-const showFeedback = async (message: string): Promise<void> => {
-    try {
-        // Dynamic import to avoid bundling overlay in offscreen
-        const { showToast } = await import("@rs-frontend/shared/overlay");
-        showToast(message);
-    } catch {
+const showFeedback = (message: string, toastFn?: (message: string) => void): void => {
+    if (toastFn) {
+        toastFn(message);
+    } else {
         console.log("[Clipboard]", message);
     }
 };
@@ -169,7 +167,7 @@ const writeTextWithRAF = async (text: string, maxRetries = 3): Promise<{ ok: boo
  */
 export const handleCopyRequest = async (
     data: unknown,
-    options: { showFeedback?: boolean; errorMessage?: string; maxRetries?: number } = {}
+    options: { showFeedback?: boolean; errorMessage?: string; maxRetries?: number; toastFn?: (message: string) => void } = {}
 ): Promise<CopyResponse> => {
     const text = toText(data).trim();
     const { maxRetries = 3 } = options;
@@ -187,9 +185,9 @@ export const handleCopyRequest = async (
     // Show feedback if requested and in appropriate context
     if (options.showFeedback && detectContext() === "content") {
         if (result.ok) {
-            await showFeedback("Copied to clipboard");
+            showFeedback("Copied to clipboard", options.toastFn);
         } else {
-            await showFeedback(options.errorMessage || result.error || "Failed to copy");
+            showFeedback(options.errorMessage || result.error || "Failed to copy", options.toastFn);
         }
     }
 
@@ -213,13 +211,15 @@ export const initClipboardHandler = (
         targetFilter?: string;
         /** Show toast feedback on copy */
         showFeedback?: boolean;
+        /** Custom toast function */
+        toastFn?: (message: string) => void;
     } = {}
 ): void => {
     if (_handlerRegistered) return;
     _handlerRegistered = true;
 
     const context = detectContext();
-    const { targetFilter, showFeedback: feedback = context === "content" } = options;
+    const { targetFilter, showFeedback: feedback = context === "content", toastFn } = options;
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log(`[Clipboard] Received message:`, message, `from:`, sender);
@@ -235,7 +235,8 @@ export const initClipboardHandler = (
             console.log(`[Clipboard] Processing COPY_HACK message with data:`, message?.data?.substring?.(0, 50) + '...');
             handleCopyRequest(message?.data, {
                 showFeedback: feedback,
-                errorMessage: message?.error
+                errorMessage: message?.error,
+                toastFn: toastFn
             }).then(response => {
                 console.log(`[Clipboard] COPY_HACK response:`, response);
                 sendResponse(response);

@@ -95,15 +95,15 @@
     box-shadow: var(--basic-elev-1);
   }
 
-  // Responsive adjustments
-  @media (max-inline-size: 768px) {
+  // Responsive adjustments using container queries
+  @container (max-inline-size: 768px) {
     --ui-pad-y: var(--space-xs);
     --ui-pad-x: var(--space-md);
     --ui-font-size: var(--text-xs);
     --ui-min-h: 36px;
   }
 
-  @media (max-inline-size: 480px) {
+  @container (max-inline-size: 480px) {
     --ui-pad-y: var(--space-xs);
     --ui-pad-x: var(--space-xs);
     --ui-font-size: var(--text-xs);

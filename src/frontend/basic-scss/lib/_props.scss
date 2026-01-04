@@ -95,31 +95,31 @@
         --borderColor-done-emphasis: var(--basic-info);
 
         /* Markdown tokens */
-        --active-brightness: #{config.md-config("effects", "active-brightness")};
-        --border-radius: #{config.md-config("shape", "border-radius")};
-        --box-shadow: #{config.md-config("shape", "box-shadow")};
-        --color-accent: #{config.md-light-dark("accent")};
-        --color-bg: #{config.md-light-dark("bg")};
-        --color-bg-secondary: #{config.md-light-dark("bg-secondary")};
-        --color-link: #{config.md-light-dark("link")};
-        --color-secondary: #{config.md-light-dark("secondary")};
-        --color-secondary-accent: #{config.md-light-dark("secondary-accent")};
-        --color-shadow: #{config.md-light-dark("shadow")};
-        --color-table: #{config.md-light-dark("table")};
-        --color-text: #{config.md-light-dark("text")};
-        --color-text-secondary: #{config.md-light-dark("text-secondary")};
-        --color-scrollbar: #{config.md-light-dark("scrollbar")};
-        --font-family-emoji-flag-capable: #{config.md-config("font", "emoji")};
-        --font-family: #{config.md-config("font", "body")};
-        --hover-brightness: #{config.md-config("effects", "hover-brightness")};
-        --justify-important: #{config.md-config("layout", "justify-important")};
-        --justify-normal: #{config.md-config("layout", "justify-normal")};
-        --line-height: #{config.md-config("layout", "line-height")};
-        --width-card: #{config.md-config("layout", "widths", "card")};
-        --width-card-medium: #{config.md-config("layout", "widths", "card-medium")};
-        --width-card-wide: #{config.md-config("layout", "widths", "card-wide")};
-        --width-content: #{config.md-config("layout", "widths", "content")};
-        --md-scrollbar-size: #{config.md-config("scrollbar", "size")};
+        --active-brightness: #{config("effects", "active-brightness")};
+        --border-radius: #{config("shape", "border-radius")};
+        --box-shadow: #{config("shape", "box-shadow")};
+        --color-accent: #{light-dark("accent")};
+        --color-bg: #{light-dark("bg")};
+        --color-bg-secondary: #{light-dark("bg-secondary")};
+        --color-link: #{light-dark("link")};
+        --color-secondary: #{light-dark("secondary")};
+        --color-secondary-accent: #{light-dark("secondary-accent")};
+        --color-shadow: #{light-dark("shadow")};
+        --color-table: #{light-dark("table")};
+        --color-text: #{light-dark("text")};
+        --color-text-secondary: #{light-dark("text-secondary")};
+        --color-scrollbar: #{light-dark("scrollbar")};
+        --font-family-emoji-flag-capable: #{config("typography", "font-family", "emoji")};
+        --font-family: #{config("typography", "font-family", "sans")};
+        --hover-brightness: #{config("effects", "hover-brightness")};
+        --justify-important: #{config("layout", "justify-important")};
+        --justify-normal: #{config("layout", "justify-normal")};
+        --line-height: #{config("layout", "line-height")};
+        --width-card: #{config("layout", "widths", "card")};
+        --width-card-medium: #{config("layout", "widths", "card-medium")};
+        --width-card-wide: #{config("layout", "widths", "card-wide")};
+        --width-content: #{config("layout", "widths", "content")};
+        --md-scrollbar-size: #{config("scrollbar", "size")};
     }
 }
 

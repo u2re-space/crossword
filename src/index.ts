@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 // Import routing and choice functionality
-import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/routing/sw-handling";
+import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/routing/pwa-handling";
 import { loadSubApp } from "./frontend/routing/routing";
 import { ChoiceScreen, type FrontendChoice } from "./frontend/routing/boot-menu";
 
@@ -13,7 +13,7 @@ import {
     handleShareTarget,
     setupLaunchQueueConsumer,
     checkPendingShareData
-} from "./frontend/routing/pwa-handling";
+} from "./frontend/routing/sw-handling";
 
 
 

@@ -409,10 +409,10 @@
         align-items: center;
         gap: var(--space-xs);
 
-        &::before {
-          content: "📝";
-          font-size: var(--text-sm);
+        ui-icon {
           opacity: 0.7;
+          inline-size: var(--text-sm);
+          block-size: var(--text-sm);
         }
       }
     }

@@ -89,7 +89,7 @@ export class MarkdownViewer {
   async loadFromCache(): Promise<string | null> {
     try {
       if (navigator?.storage) {
-        const cachedFile = await import("fest/core").then(m => m.provide("/user/cache/last.md"));
+        const cachedFile = await import("fest/lure").then(m => m.provide("/user/cache/last.md"));
         return cachedFile?.text?.() || null;
       }
       return localStorage.getItem("$cached-md$");
@@ -105,7 +105,7 @@ export class MarkdownViewer {
   async writeToCache(content: string): Promise<void> {
     try {
       if (navigator?.storage) {
-        const forWrite = await import("fest/core").then(m => m.provide("/user/cache/last.md", true));
+        const forWrite = await import("fest/lure").then(m => m.provide("/user/cache/last.md", true));
         await forWrite?.write?.(content);
         await forWrite?.close?.();
       } else {

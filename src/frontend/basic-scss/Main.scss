@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Unified Main SCSS - Reorganized and Optimized
+   Main SCSS Entry Point - Modern Atomic Design System
    ========================================================================== */
 
 @layer reset, base, components, layout, utilities;
@@ -7,30 +7,26 @@
 /* ==========================================================================
    RESET & NORMALIZE - Cross-browser consistency
    ========================================================================== */
+/* TODO: Re-enable normalize import when path resolution is fixed */
 @import "../basic-scss/normalize.scss" layer(reset);
 
 /* ==========================================================================
-   BASE STYLES - Foundation and typography
+   BASE STYLES - Foundation with modern utilities
    ========================================================================== */
-/* TODO: Re-enable veela framework import when path is resolved */
 @import "../basic-scss/lib/_typed-properties.scss" layer(base);
 
 /* ==========================================================================
-   COMPONENTS - Reusable UI components
+   COMPONENT STYLES - Reusable UI components
    ========================================================================== */
 @import "../basic-scss/buttons.scss" layer(components);
 @import "../basic-scss/forms.scss" layer(components);
 @import "../basic-scss/workcenter.scss" layer(components);
-
-/* ==========================================================================
-   MARKDOWN COMPONENTS - Specialized markdown rendering
-   ========================================================================== */
 @import "../basic-scss/markdown-render.scss" layer(components);
 @import "../basic-scss/markdown-viewer.scss" layer(components);
 @import "../basic-scss/markdown-editor.scss" layer(components);
 
 /* ==========================================================================
-   LAYOUT & UTILITIES - Layout systems and helpers
+   LAYOUT & UTILITY STYLES - Layout systems and helpers
    ========================================================================== */
 @import "../basic-scss/layout.scss" layer(layout);
 @import "../basic-scss/utilities.scss" layer(utilities);
@@ -428,9 +424,10 @@
           align-items: center;
           gap: var(--space-xs);
 
-          &::before {
-            content: "📝";
+          ui-icon {
             opacity: 0.7;
+            inline-size: 1rem;
+            block-size: 1rem;
           }
         }
       }
