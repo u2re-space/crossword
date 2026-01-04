@@ -138,8 +138,21 @@ export const detectDataKindFromContent = (content: string): DataKind => {
     // Check for URL
     if (URL.canParse(trimmed?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) return "url";
 
-    // Check for base64 image
-    if (trimmed.startsWith("data:image/") && trimmed.includes(";base64,")) return "input_image";
+    // Check for SVG - treat as XML/text, not image
+    if (trimmed.includes('<svg') && trimmed.includes('</svg>')) return "xml";
+
+    // Check for base64 image - only if the entire content is a data URL
+    if (trimmed.startsWith("data:image/") && trimmed.includes(";base64,") && !trimmed.includes("\n") && trimmed.length < 100000) {
+        // Additional validation: try to parse as data URL
+        try {
+            const url = new URL(trimmed);
+            if (url.protocol === "data:" && url.pathname.startsWith("image/")) {
+                return "input_image";
+            }
+        } catch {
+            // Not a valid data URL
+        }
+    }
 
     // Check for math expressions
     if (/\$\$[\s\S]+\$\$|\$[^$]+\$|\\begin\{equation\}/.test(trimmed)) return "math";

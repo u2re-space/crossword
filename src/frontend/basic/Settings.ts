@@ -8,13 +8,13 @@ import { createCustomInstructionsEditor } from "./CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
 
 export type SettingsViewOptions = {
-  isExtension: boolean;
-  onTheme?: (theme: AppSettings["appearance"] extends { theme?: infer T } ? (T extends string ? T : "auto") : "auto") => void;
+    isExtension: boolean;
+    onTheme?: (theme: AppSettings["appearance"] extends { theme?: infer T } ? (T extends string ? T : "auto") : "auto") => void;
 };
 
 export const createSettingsView = (opts: SettingsViewOptions) => {
-  loadAsAdopted(style)
-  const root = H`<div class="basic-settings">
+    loadAsAdopted(style)
+    const root = H`<div class="basic-settings">
     <h2>Settings</h2>
 
     <section class="card">
@@ -87,91 +87,91 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     </section>
   </div>` as HTMLElement;
 
-  const field = (sel: string) => root.querySelector(sel) as HTMLInputElement | HTMLSelectElement | null;
-  const note = root.querySelector("[data-note]") as HTMLElement | null;
+    const field = (sel: string) => root.querySelector(sel) as HTMLInputElement | HTMLSelectElement | null;
+    const note = root.querySelector("[data-note]") as HTMLElement | null;
 
-  const apiUrl = field('[data-field="ai.baseUrl"]') as HTMLInputElement | null;
-  const apiKey = field('[data-field="ai.apiKey"]') as HTMLInputElement | null;
-  const showKey = field('[data-field="ui.showKey"]') as HTMLInputElement | null;
-  const mode = field('[data-field="ai.shareTargetMode"]') as HTMLSelectElement | null;
-  const responseLanguage = field('[data-field="ai.responseLanguage"]') as HTMLSelectElement | null;
-  const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
-  const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
-  const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
-  const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
-  const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
+    const apiUrl = field('[data-field="ai.baseUrl"]') as HTMLInputElement | null;
+    const apiKey = field('[data-field="ai.apiKey"]') as HTMLInputElement | null;
+    const showKey = field('[data-field="ui.showKey"]') as HTMLInputElement | null;
+    const mode = field('[data-field="ai.shareTargetMode"]') as HTMLSelectElement | null;
+    const responseLanguage = field('[data-field="ai.responseLanguage"]') as HTMLSelectElement | null;
+    const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
+    const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
+    const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
+    const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
+    const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
 
-  const setNote = (t: string) => {
-    if (!note) return;
-    note.textContent = t;
-    if (t) setTimeout(() => (note.textContent = ""), 1500);
-  };
+    const setNote = (t: string) => {
+        if (!note) return;
+        note.textContent = t;
+        if (t) setTimeout(() => (note.textContent = ""), 1500);
+    };
 
-  void loadSettings()
-    .then((s) => {
-      if (apiUrl) apiUrl.value = (s?.ai?.baseUrl || "").trim();
-      if (apiKey) apiKey.value = (s?.ai?.apiKey || "").trim();
-      if (mode) mode.value = (s?.ai?.shareTargetMode || "recognize") as any;
-      if (responseLanguage) responseLanguage.value = (s?.ai?.responseLanguage || "auto") as any;
-      if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
-      if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
-      if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
-      if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
-      opts.onTheme?.((theme?.value as any) || "auto");
-    })
-    .catch(() => void 0);
+    void loadSettings()
+        .then((s) => {
+            if (apiUrl) apiUrl.value = (s?.ai?.baseUrl || "").trim();
+            if (apiKey) apiKey.value = (s?.ai?.apiKey || "").trim();
+            if (mode) mode.value = (s?.ai?.shareTargetMode || "recognize") as any;
+            if (responseLanguage) responseLanguage.value = (s?.ai?.responseLanguage || "auto") as any;
+            if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
+            if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
+            if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
+            if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
+            opts.onTheme?.((theme?.value as any) || "auto");
+        })
+        .catch(() => void 0);
 
-  showKey?.addEventListener("change", () => {
-    if (!apiKey || !showKey) return;
-    apiKey.type = showKey.checked ? "text" : "password";
-  });
-
-  theme?.addEventListener("change", () => {
-    opts.onTheme?.((theme.value as any) || "auto");
-  });
-
-  root.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement | null;
-    const btn = t?.closest?.('button[data-action="save"]') as HTMLButtonElement | null;
-    if (!btn) return;
-
-    void (async () => {
-      const next: AppSettings = {
-        ai: {
-          baseUrl: apiUrl?.value?.trim?.() || "",
-          apiKey: apiKey?.value?.trim?.() || "",
-          shareTargetMode: (mode?.value as any) || "recognize",
-          responseLanguage: (responseLanguage?.value as any) || "auto",
-          translateResults: Boolean(translateResults?.checked),
-          generateSvgGraphics: Boolean(generateSvgGraphics?.checked),
-        },
-        core: {
-          ntpEnabled: Boolean(ntpEnabled?.checked),
-        },
-        appearance: {
-          theme: (theme?.value as any) || "auto",
-        },
-      };
-      await saveSettings(next);
-      setNote("Saved.");
-    })().catch((err) => setNote(String(err)));
-  });
-
-  if (opts.isExtension) {
-    if (extSection) extSection.hidden = false;
-    const extNote = H`<div class="ext-note">Extension mode: settings are stored in <code>chrome.storage.local</code>.</div>` as HTMLElement;
-    root.append(extNote);
-  }
-
-  const instructionsContainer = root.querySelector("[data-custom-instructions]") as HTMLElement | null;
-  if (instructionsContainer) {
-    const instructionsEditor = createCustomInstructionsEditor({
-      onUpdate: () => setNote("Instructions updated.")
+    showKey?.addEventListener("change", () => {
+        if (!apiKey || !showKey) return;
+        apiKey.type = showKey.checked ? "text" : "password";
     });
-    instructionsContainer.append(instructionsEditor);
-  }
 
-  return root;
+    theme?.addEventListener("change", () => {
+        opts.onTheme?.((theme.value as any) || "auto");
+    });
+
+    root.addEventListener("click", (e) => {
+        const t = e.target as HTMLElement | null;
+        const btn = t?.closest?.('button[data-action="save"]') as HTMLButtonElement | null;
+        if (!btn) return;
+
+        void (async () => {
+            const next: AppSettings = {
+                ai: {
+                    baseUrl: apiUrl?.value?.trim?.() || "",
+                    apiKey: apiKey?.value?.trim?.() || "",
+                    shareTargetMode: (mode?.value as any) || "recognize",
+                    responseLanguage: (responseLanguage?.value as any) || "auto",
+                    translateResults: Boolean(translateResults?.checked),
+                    generateSvgGraphics: Boolean(generateSvgGraphics?.checked),
+                },
+                core: {
+                    ntpEnabled: Boolean(ntpEnabled?.checked),
+                },
+                appearance: {
+                    theme: (theme?.value as any) || "auto",
+                },
+            };
+            await saveSettings(next);
+            setNote("Saved.");
+        })().catch((err) => setNote(String(err)));
+    });
+
+    if (opts.isExtension) {
+        if (extSection) extSection.hidden = false;
+        const extNote = H`<div class="ext-note">Extension mode: settings are stored in <code>chrome.storage.local</code>.</div>` as HTMLElement;
+        root.append(extNote);
+    }
+
+    const instructionsContainer = root.querySelector("[data-custom-instructions]") as HTMLElement | null;
+    if (instructionsContainer) {
+        const instructionsEditor = createCustomInstructionsEditor({
+            onUpdate: () => setNote("Instructions updated.")
+        });
+        instructionsContainer.append(instructionsEditor);
+    }
+
+    return root;
 };
 
 

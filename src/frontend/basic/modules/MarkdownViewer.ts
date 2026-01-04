@@ -259,20 +259,20 @@ export class MarkdownViewer {
 
         // Create a simple markdown renderer function
         this.view = {
-            setMarkdown: (text: string = "") => {
+            setMarkdown: async (text: string = "") => {
                 try {
-                    const html = marked.parse((text || "").trim());
-                    const sanitized = DOMPurify?.sanitize?.((html || "").trim()) || "";
+                    const html = await marked.parse((text || "")?.trim?.() || "");
+                    const sanitized = DOMPurify?.sanitize?.((html || "")?.trim?.() || "") || "";
                     viewElement.innerHTML = sanitized;
 
                     console.log('[MarkdownViewer] Markdown rendered successfully:', {
-                        inputLength: text.length,
-                        outputLength: sanitized.length,
+                        inputLength: text?.length ?? 0,
+                        outputLength: sanitized?.length ?? 0,
                         hasContent: !!sanitized
                     });
                 } catch (error) {
                     console.error('[MarkdownViewer] Error rendering markdown:', error);
-                    viewElement.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${error.message}</div>`;
+                    viewElement.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
                 }
             }
         } as any;

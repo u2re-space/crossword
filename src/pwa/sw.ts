@@ -10,11 +10,12 @@ import {
     getAIProcessingConfig,
     logShareDataSummary,
     hasProcessableContent,
+    processShareTargetWithExecutionCore,
     type ShareData
 } from './lib/ShareTargetUtils';
 
 // Import direct GPT functions
-import { recognizeByInstructions } from '@rs-core/service/AI-ops/RecognizeData';
+import { processDataWithInstruction } from '@rs-core/service/AI-ops/RecognizeData';
 import { getUsableData } from '@rs-core/service/model/GPT-Responses';
 import { pushToIDBQueue } from '@rs-core/service/AI-ops/ServiceHelper';
 import { fileToDataUrl } from './lib/ImageUtils';
@@ -449,120 +450,50 @@ const processShareWithAI = async (
                 dataToProcess = inputData;
             }
 
-            // For analysis, we use a different approach - direct entity extraction
-            const usableData = await getUsableData({ dataSource: dataToProcess });
-            const input = [{
-                type: "message",
-                role: "user",
-                content: [usableData]
-            }];
+            // Use execution core for unified processing
+            const processingResult = await processShareTargetWithExecutionCore(shareData, sessionId);
 
-            // Use recognizeByInstructions with entity extraction instruction
-            const entityExtractionInstruction = `Extract structured data/entities from the provided content. Return the data in a structured JSON format with clear entity types and properties. Focus on identifying people, places, organizations, dates, amounts, and other meaningful entities.`;
-
-            const result = await recognizeByInstructions(input, entityExtractionInstruction, undefined, undefined, {
-                customInstruction: config.customInstruction,
-                useActiveInstruction: false
-            });
-
-            if (result.ok && result.data) {
-                // Try to parse as JSON and create entity-like results
-                let entities = [];
-                try {
-                    const parsed = JSON.parse(result.data);
-                    entities = Array.isArray(parsed) ? parsed : [parsed];
-                } catch {
-                    // If not JSON, create a simple entity
-                    entities = [{
-                        type: 'unknown',
-                        data: result.data,
-                        source: 'share-target-analysis'
-                    }];
-                }
-
-                const results = entities.map(entity => ({
-                    status: 'queued',
-                    data: result.data,
-                    entity: entity,
-                    subId: Date.now(),
-                    dataType: 'json',
-                    detection: {
-                        type: 'unknown',
-                        confidence: 0.5
-                    }
-                }));
-
-                await pushToIDBQueue(results);
-
-                // Broadcast the result data directly for immediate clipboard copy
+            if (processingResult.success && processingResult.result) {
+                // Broadcast the result for immediate clipboard copy (handled by execution core)
                 notifyAIResult({
                     success: true,
-                    data: result.data
+                    data: processingResult.result.content
                 });
 
                 // Store for persistent delivery if frontend wasn't ready
                 await storeClipboardOperation({
                     id: `analysis-${Date.now()}`,
-                    data: result.data,
+                    data: processingResult.result.content,
                     type: 'ai-result',
                     timestamp: Date.now()
                 });
 
-                return { success: true, results };
+                return { success: true, result: processingResult.result };
             } else {
                 notifyAIResult({ success: false, error: result.error || 'Analysis failed' });
                 return { success: false, results: [] };
             }
 
         } else {
-            // For recognize mode, use direct recognition
-            const usableData = await getUsableData({ dataSource: inputData });
-            const input = [{
-                type: "message",
-                role: "user",
-                content: [usableData]
-            }];
+            // Use execution core for unified processing (recognize mode)
+            const processingResult = await processShareTargetWithExecutionCore(shareData, sessionId);
 
-            const result = await recognizeByInstructions(input, "", undefined, undefined, {
-                customInstruction: config.customInstruction,
-                useActiveInstruction: true
-            });
-
-            if (result.ok && result.data) {
-                // Create recognition-style result for consistency
-                const results = [{
-                    status: 'queued',
-                    data: result.data,
-                    path: `/docs/preferences/pasted-${Date.now()}.md`,
-                    name: `shared-${Date.now()}.md`,
-                    subId: Date.now(),
-                    directory: '/docs/preferences/',
-                    dataType: 'markdown',
-                    detection: {
-                        type: 'markdown',
-                        confidence: 0.8,
-                        hints: ['share-target-recognition']
-                    }
-                }];
-
-                await pushToIDBQueue(results);
-
-                // Also broadcast the result data directly for immediate clipboard copy
-                // For direct GPT calls, the result.data is already the final content
+            if (processingResult.success && processingResult.result) {
+                // Broadcast the result for immediate clipboard copy (handled by execution core)
                 notifyAIResult({
                     success: true,
-                    data: result.data
+                    data: processingResult.result.content
                 });
 
                 // Store for persistent delivery if frontend wasn't ready
                 await storeClipboardOperation({
                     id: `recognition-${Date.now()}`,
-                    data: result.data,
+                    data: processingResult.result.content,
                     type: 'ai-result',
                     timestamp: Date.now()
                 });
 
-                return { success: true, results };
+                return { success: true, result: processingResult.result };
             } else {
                 notifyAIResult({ success: false, error: result.error || 'Recognition failed' });
                 return { success: false, results: [] };

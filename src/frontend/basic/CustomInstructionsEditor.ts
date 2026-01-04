@@ -3,7 +3,6 @@ import { observe } from "fest/object";
 import { loadSettings, saveSettings } from "@rs-core/config/Settings";
 import type { CustomInstruction, AppSettings } from "@rs-core/config/SettingsTypes";
 import {
-    getCustomInstructions,
     addInstruction,
     addInstructions,
     updateInstruction,

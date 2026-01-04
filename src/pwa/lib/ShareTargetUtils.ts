@@ -7,6 +7,8 @@ import { getRuntimeSettings } from '@rs-core/config/RuntimeSettings';
 import { loadSettings } from '@rs-core/config/Settings';
 import type { AppSettings, CustomInstruction } from '@rs-core/config/SettingsTypes';
 import { DEFAULT_SETTINGS } from '@rs-core/config/SettingsTypes';
+import { executionCore } from '@rs-core/service/ExecutionCore';
+import type { ActionContext, ActionInput } from '@rs-core/service/ActionHistory';
 
 // ============================================================================
 // TYPES
@@ -431,3 +433,46 @@ export const logShareDataSummary = (shareData: ShareData): void => {
  */
 export const hasProcessableContent = (shareData: ShareData): boolean =>
     !!(shareData.text || shareData.url || shareData.files.length > 0 || shareData.imageFiles.length > 0 || shareData.textFiles.length > 0 || shareData.otherFiles.length > 0 || shareData.title);
+
+/**
+ * Process share target data using the execution core
+ */
+export const processShareTargetWithExecutionCore = async (
+    shareData: ShareData,
+    sessionId?: string
+): Promise<{ success: boolean; result?: any; error?: string }> => {
+    try {
+        // Convert share data to action input
+        const actionInput: ActionInput = {
+            type: shareData.files.length > 0 ? 'files' : shareData.text ? 'text' : 'url',
+            files: shareData.files.length > 0 ? shareData.files : undefined,
+            text: shareData.text || undefined,
+            url: shareData.url || undefined,
+            metadata: {
+                title: shareData.title,
+                timestamp: shareData.timestamp
+            }
+        };
+
+        // Create execution context
+        const context: ActionContext = {
+            source: 'share-target',
+            sessionId: sessionId || `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+
+        // Execute through execution core
+        const result = await executionCore.execute(actionInput, context);
+
+        return {
+            success: result.type !== 'error',
+            result: result
+        };
+
+    } catch (error) {
+        console.error('[ShareTarget] Execution core processing failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+};

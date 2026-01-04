@@ -4,8 +4,6 @@ import {
     getDataKindByMIMEType,
     typesForKind,
     detectDataKindFromContent,
-    PROMPT_COMPUTE_EFFORT,
-    COMPUTE_TEMPERATURE,
     buildModificationPrompt,
     DATA_MODIFICATION_PROMPT,
     DATA_SELECTION_PROMPT,
@@ -52,7 +50,7 @@ function getTimeoutConfig(effort: "low" | "medium" | "high"): { timeout: number;
         const timeoutSettings = settings?.requestTimeout;
         const maxRetries = settings?.maxRetries ?? DEFAULT_MAX_RETRIES;
 
-        const timeout = (timeoutSettings?.[effort] ?? DEFAULT_REQUEST_TIMEOUTS[effort]) * 1000; // Convert to ms
+        const timeout = timeoutSettings?.[effort] ?? DEFAULT_REQUEST_TIMEOUTS[effort]; // Already in ms
 
         return { timeout, maxRetries };
     } catch {
@@ -65,7 +63,7 @@ function getTimeoutConfig(effort: "low" | "medium" | "high"): { timeout: number;
 }
 
 // Optimized base64 encoding with memory safety
-const toBase64 = (bytes: Uint8Array): string => {
+export const toBase64 = (bytes: Uint8Array): string => {
     // Node.js environment
     if (typeof (globalThis as any).Buffer !== "undefined") {
         return (globalThis as any).Buffer.from(bytes).toString("base64");
@@ -179,16 +177,31 @@ export const getUsableData = async (data: DataInput) => {
         // Auto-detect data kind if not specified
         const effectiveKind = data?.dataKind || detectDataKindFromContent(data.dataSource);
 
-        // be aware, this may be base64 encoded image
-        if (
-            (data?.dataSource?.startsWith?.("data:image/") && data?.dataSource?.includes?.(";base64,")) ||
-            URL.canParse(data?.dataSource?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || "")) ||
-            (typesForKind?.[effectiveKind] == "input_image")
-        ) {
-            return {
-                "type": "input_image",
-                "image_url": data?.dataSource,
-                "detail": "auto"
+        // Only treat as image if explicitly detected as input_image kind
+        if (typesForKind?.[effectiveKind] == "input_image") {
+            // Validate that it's actually a proper data URL or regular URL
+            const content = data?.dataSource?.trim?.() || "";
+            if (content.startsWith("data:image/") && content.includes(";base64,")) {
+                // Validate data URL format
+                try {
+                    const url = new URL(content);
+                    if (url.protocol === "data:" && url.pathname.startsWith("image/")) {
+                        return {
+                            "type": "input_image",
+                            "image_url": content,
+                            "detail": "auto"
+                        };
+                    }
+                } catch {
+                    // Invalid data URL, treat as text
+                }
+            } else if (URL.canParse(content, typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
+                // Valid regular URL
+                return {
+                    "type": "input_image",
+                    "image_url": content,
+                    "detail": "auto"
+                };
             }
         }
 
@@ -377,17 +390,18 @@ export class GPTResponses {
         };
 
         // Add temperature if specified
-        if (options?.temperature !== undefined) {
+        /*if (options?.temperature !== undefined) {
             requestBody.temperature = options.temperature;
-        }
+        }*/
 
         // Execute request with retry logic and timeout
         const { timeout: timeoutMs, maxRetries } = getTimeoutConfig(effort);
         console.log("[GPT] Making request to:", `${this?.apiUrl}/responses`);
         console.log("[GPT] API key present:", !!this?.apiKey);
-        console.log("[GPT] Request timeout:", `${timeoutMs}ms (${effort} effort)`);
+        console.log("[GPT] Request timeout:", `${timeoutMs}ms (${timeoutMs/1000}s) (${effort} effort)`);
         console.log("[GPT] Max retries:", maxRetries);
         console.log("[GPT] Request body size:", JSON.stringify(requestBody).length, "characters");
+        console.log("[GPT] Request input count:", filteredInput.length, "items");
 
         let lastError: Error | null = null;
 
@@ -400,10 +414,11 @@ export class GPTResponses {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => {
-                    console.warn(`[GPT] Request timeout after ${timeoutMs}ms (attempt ${attempt + 1})`);
-                    controller.abort();
+                    console.warn(`[GPT] Request timeout after ${timeoutMs}ms (attempt ${attempt + 1}) - aborting request`);
+                    controller.abort('timeout');
                 }, timeoutMs);
 
+                console.log(`[GPT] Sending request (attempt ${attempt + 1})...`);
                 const response = await fetch(`${this?.apiUrl}/responses`, {
                     method: "POST",
                     priority: 'auto',
@@ -415,6 +430,7 @@ export class GPTResponses {
                     },
                     body: JSON.stringify(requestBody),
                 });
+                console.log(`[GPT] Request sent successfully (attempt ${attempt + 1})`);
 
                 clearTimeout(timeoutId);
 
@@ -472,6 +488,14 @@ export class GPTResponses {
         });
         if (!resp) return null;
 
+        console.log("[GPT] Raw API response structure:", {
+            type: typeof resp,
+            isArray: Array.isArray(resp),
+            keys: Object.keys(resp).slice(0, 10),
+            keysLength: Object.keys(resp).length,
+            sample: JSON.stringify(resp).substring(0, 300)
+        });
+
         //
         this.responseMap.set((this.responseId = (resp?.id || resp?.response_id || this.responseId)), resp);
         this?.messages?.push?.(...(this?.pending || []));
@@ -482,18 +506,73 @@ export class GPTResponses {
         const extractText = (r: any): string | null => {
             try {
                 if (!r) return null;
-                if (typeof r === "string") return r;
+                if (typeof r === "string") {
+                    // Check if the string looks like JSON (starts and ends with quotes and contains escaped content)
+                    if (r.startsWith('"') && r.endsWith('"') && r.includes('\\n')) {
+                        try {
+                            // Try to parse as JSON string
+                            const parsed = JSON.parse(r);
+                            console.log("[GPT] Parsed JSON string response:", typeof parsed, parsed?.substring?.(0, 100) || 'object');
+                            if (typeof parsed === "string") {
+                                return parsed;
+                            } else if (typeof parsed === "object") {
+                                // If it's an object, try to extract text from it
+                                return extractText(parsed);
+                            }
+                        } catch (e) {
+                            console.log("[GPT] Failed to parse JSON string, treating as plain text");
+                        }
+                    }
+                    return r;
+                }
+
+                // Handle array responses (like when response has numeric keys)
+                if (Array.isArray(r)) {
+                    console.log("[GPT] Response is array with", r.length, "items");
+                    console.log("[GPT] First few array items:", r.slice(0, 3).map(item => ({
+                        type: typeof item,
+                        keys: typeof item === 'object' ? Object.keys(item || {}) : 'N/A',
+                        sample: typeof item === 'string' ? item.substring(0, 50) : JSON.stringify(item).substring(0, 100)
+                    })));
+                    const texts: string[] = [];
+                    for (const item of r) {
+                        if (typeof item === "string") texts.push(item);
+                        else if (item?.text) texts.push(item.text);
+                        else if (item?.content) texts.push(item.content);
+                        else if (item?.message?.content) texts.push(item.message.content);
+                    }
+                    if (texts.length) return texts.join("\n\n");
+                }
+
+                // Handle object with numeric keys (array-like)
+                if (typeof r === "object" && Object.keys(r).every(key => !isNaN(Number(key)))) {
+                    console.log("[GPT] Response looks like array with", Object.keys(r).length, "numeric keys");
+                    const texts: string[] = [];
+                    for (const key of Object.keys(r).sort((a, b) => Number(a) - Number(b))) {
+                        const item = r[key];
+                        if (typeof item === "string") texts.push(item);
+                        else if (item?.text) texts.push(item.text);
+                        else if (item?.content) texts.push(item.content);
+                        else if (item?.message?.content) texts.push(item.message.content);
+                    }
+                    if (texts.length) return texts.join("\n\n");
+                }
+
                 if (r.output_text && Array.isArray(r.output_text) && r.output_text.length) {
                     return r.output_text.join("\n\n");
                 }
-                const outputs = r.output || [];
+                const outputs = r.output || r.choices || [];
                 const texts: string[] = [];
                 for (const msg of outputs) {
-                    const content = msg?.content || [];
+                    const content = msg?.content || msg?.message?.content || [];
                     if (!content) continue;
-                    for (const part of content) {
-                        if (typeof part?.text === "string") texts.push(part.text);
-                        else if (part?.text?.value) texts.push(part.text.value);
+                    if (typeof content === "string") {
+                        texts.push(content);
+                    } else if (Array.isArray(content)) {
+                        for (const part of content) {
+                            if (typeof part?.text === "string") texts.push(part.text);
+                            else if (part?.text?.value) texts.push(part.text.value);
+                        }
                     }
                 }
                 if (texts.length) return texts.join("\n\n");
@@ -504,13 +583,47 @@ export class GPTResponses {
         };
 
         const text = extractText(resp);
-        if (text != null) return text;
+        console.log("[GPT] Extracted text result:", text ? `"${text.substring(0, 100)}..."` : "null");
+        if (text != null) {
+            // Return in the expected OpenAI format for compatibility
+            return JSON.stringify({
+                choices: [{
+                    message: {
+                        content: text
+                    }
+                }],
+                usage: resp?.usage || {},
+                id: this.responseId,
+                object: "chat.completion"
+            });
+        }
 
         // Fallback: return last message content as JSON string
         try {
-            return JSOX.parse(resp?.output ?? resp) as any;
+            const fallbackText = JSOX.parse(resp?.output ?? resp) as any;
+            if (fallbackText) {
+                return JSON.stringify({
+                    choices: [{
+                        message: {
+                            content: typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)
+                        }
+                    }],
+                    usage: resp?.usage || {},
+                    id: this.responseId,
+                    object: "chat.completion"
+                });
+            }
         } catch { /* noop */ }
-        return "";
+        return JSON.stringify({
+            choices: [{
+                message: {
+                    content: "No text content available"
+                }
+            }],
+            usage: {},
+            id: this.responseId,
+            object: "chat.completion"
+        });
     }
 
     // === NEW METHODS FOR DATA MODIFICATION ===

@@ -1,10 +1,11 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./service/RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, processDataWithInstruction } from "./service/RecognizeData";
 import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
 import { loadSettings } from "@rs-core/config/Settings";
+import { executionCore, type ActionContext, type ActionInput } from "@rs-core/service/ExecutionCore";
 
 // Safe wrapper for loading custom instructions
 const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
@@ -13,6 +14,33 @@ const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
     } catch (e) {
         console.warn("Failed to load custom instructions:", e);
         return [];
+    }
+};
+
+/**
+ * Process Chrome extension action through execution core
+ */
+const processChromeExtensionAction = async (
+    input: ActionInput,
+    sessionId?: string
+): Promise<{ success: boolean; result?: any; error?: string }> => {
+    try {
+        const context: ActionContext = {
+            source: 'chrome-extension',
+            sessionId: sessionId || `crx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+
+        const result = await executionCore.execute(input, context);
+        return {
+            success: result.type !== 'error',
+            result
+        };
+    } catch (error) {
+        console.error('[CRX] Execution core processing failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        };
     }
 };
 
@@ -744,7 +772,11 @@ Include all relevant CSS properties including layout, colors, typography, spacin
                 status: "processing"
             });
 
-            recognizeByInstructions(message?.input, instructionText, (result) => {
+            processDataWithInstruction(message?.input, {
+                instruction: instructionText,
+                outputFormat: 'auto',
+                intermediateRecognition: { enabled: false }
+            }).then(result => {
                 const response = { ok: result?.ok, data: result?.data, error: result?.error };
 
                 broadcast(AI_RECOGNITION_CHANNEL, {
@@ -754,6 +786,17 @@ Include all relevant CSS properties including layout, colors, typography, spacin
                     label: instructionLabel,
                     ...response
                 });
+            }).catch(error => {
+                console.error("AI processing error:", error);
+                broadcast(AI_RECOGNITION_CHANNEL, {
+                    type: "result",
+                    requestId,
+                    mode: "custom",
+                    label: instructionLabel,
+                    ok: false,
+                    error: error.message || "Processing failed"
+                });
+            });
 
                 if (result?.ok && result?.data && message?.autoCopy !== false) {
                     requestClipboardCopy(result.data, true);

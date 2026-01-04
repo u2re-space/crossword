@@ -627,83 +627,8 @@ export const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | 
 export type RecognizeByInstructionsOptions = {
     customInstruction?: string;
     useActiveInstruction?: boolean;
-};
-
-//
-export const recognizeByInstructions = async (
-    input: any,
-    instructions: string,
-    sendResponse?: (result: any) => void,
-    config?: AIConfig,
-    options?: RecognizeByInstructionsOptions
-): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    const settings = (await loadSettings())?.ai;
-
-    const token = config?.apiKey || settings?.apiKey;
-    if (!token) {
-        const result = { ok: false, error: "No API key or input" };
-        sendResponse?.(result);
-        return result;
-    }
-    if (!input) {
-        const result = { ok: false, error: "No input provided" };
-        sendResponse?.(result);
-        return result;
-    }
-
-    // Apply custom instructions if provided or if useActiveInstruction is set
-    let finalInstructions = instructions;
-    console.log("[RecognizeData] Custom instruction from options:", !!options?.customInstruction);
-    console.log("[RecognizeData] useActiveInstruction:", options?.useActiveInstruction);
-
-    if (options?.customInstruction) {
-        console.log("[RecognizeData] Using provided custom instruction");
-        finalInstructions = buildInstructionPrompt(instructions, options.customInstruction);
-    } else if (options?.useActiveInstruction !== false) {
-        console.log("[RecognizeData] Fetching active instruction from settings...");
-        const activeInstruction = await getActiveCustomInstruction();
-        console.log("[RecognizeData] Active instruction:", activeInstruction ? `"${activeInstruction.substring(0, 50)}..."` : "(none)");
-        if (activeInstruction) {
-            finalInstructions = buildInstructionPrompt(instructions, activeInstruction);
-            console.log("[RecognizeData] Applied active custom instruction");
-        }
-    } else {
-        console.log("[RecognizeData] Custom instructions disabled via options");
-    }
-
-    // Use GPTResponses class instead of direct API call for consistency
-    const gpt = createGPTInstance(token, config?.baseUrl || settings?.baseUrl || DEFAULT_API_URL, config?.model || settings?.model || DEFAULT_MODEL);
-
-    // Clear any previous pending items and set up the instruction
-    gpt.clearPending();
-    await gpt.askToDoAction(finalInstructions);
-
-    // Check if input is already formatted as a message array (from analyzeRecognizeUnified)
-    if (Array.isArray(input) && (input?.[0]?.type === "message" || input?.[0]?.['role'])) {
-        // Input is already formatted, add it directly to pending
-        await gpt?.getPending?.()?.push?.(...input);
-    } else {
-        // Input is raw data source, attach it properly
-        await gpt?.attachToRequest?.(input);
-    }
-
-    // Send the request
-    let response;
-    let error;
-    try {
-        response = await gpt?.sendRequest?.("low", "low");
-    } catch (e) {
-        error = String(e);
-    }
-
-    const output = {
-        ok: !!response && !error,
-        data: response?.trim?.() || undefined,
-        error: error || (response ? undefined : "No response from AI")
-    };
-
-    sendResponse?.(output);
-    return output;
+    recognitionEffort?: 'low' | 'medium' | 'high';
+    recognitionVerbosity?: 'low' | 'medium' | 'high';
 };
 
 //
@@ -749,7 +674,7 @@ export const analyzeRecognizeUnified = async (
 //
 export const recognizeWithContext = async (
     data: File | Blob | string,
-    context: DataContext,
+    context?: DataContext,
     mode: RecognitionMode = "auto",
     config?: AIConfig
 ): Promise<RecognitionResult> => {
@@ -776,7 +701,7 @@ export const recognizeWithContext = async (
         }
 
         // Set context
-        gpt.setContext(context);
+        gpt.setContext(context || null);
 
         // Determine data kind
         let dataKind: DataKind = "input_text";
@@ -809,17 +734,17 @@ export const recognizeWithContext = async (
             : DATA_CONVERSION_INSTRUCTION;
 
         // Add context to instruction
-        const contextAddition = context.entityType
-            ? `\n\nExpected entity type context: ${context.entityType}`
+        const contextAddition = context?.entityType
+            ? `\n\nExpected entity type context: ${context?.entityType}`
             : "";
-        const searchAddition = context.searchTerms?.length
-            ? `\n\nFocus on finding: ${context.searchTerms.join(", ")}`
+        const searchAddition = context?.searchTerms?.length
+            ? `\n\nFocus on finding: ${context?.searchTerms?.join?.(", ")}`
             : "";
 
         await gpt.askToDoAction(instruction + contextAddition + searchAddition);
 
         const raw = await gpt.sendRequest(
-            context.priority === "high" ? "high" : "medium",
+            context?.priority === "high" ? "high" : "medium",
             "medium",
             null,
             { responseFormat: "json", temperature: 0.3 }
@@ -908,6 +833,53 @@ export const batchRecognize = async (
 }
 
 //
+// ============================================================================
+// NEW UNIFIED AI PROCESSING INTERFACE
+// ============================================================================
+
+export type OutputFormat = 'auto' | 'markdown' | 'html' | 'json' | 'text' |
+                          'typescript' | 'javascript' | 'python' | 'java' | 'cpp' | 'csharp' |
+                          'php' | 'ruby' | 'go' | 'rust' | 'xml' | 'yaml' | 'css' | 'scss' |
+                          'most-suitable' | 'most-optimized' | 'most-legibility';
+
+export type OutputLanguage = 'auto' | 'en' | 'ru';
+
+export type ProcessDataWithInstructionOptions = {
+    // Core instruction
+    instruction?: string; // What to do with the data
+
+    // Output configuration
+    outputFormat?: OutputFormat;
+    outputLanguage?: OutputLanguage;
+    enableSVGImageGeneration?: boolean | 'auto'; // Generate SVG graphics when appropriate
+
+    // Intermediate recognition (for images)
+    intermediateRecognition?: {
+        enabled?: boolean; // Whether to use intermediate recognition
+        dataPriorityInstruction?: string; // Custom instruction for recognition (defaults to generic)
+        outputFormat?: OutputFormat; // Format for recognized data
+        cacheResults?: boolean; // Whether to cache recognition results
+        forceRefresh?: boolean; // Force re-recognition even if cached
+    };
+
+    // Processing parameters
+    processingEffort?: 'low' | 'medium' | 'high';
+    processingVerbosity?: 'low' | 'medium' | 'high';
+
+    // Custom instructions
+    customInstruction?: string;
+    useActiveInstruction?: boolean;
+
+    // Legacy compatibility (will be deprecated)
+    includeImageRecognition?: boolean;
+    maxProcessingStages?: number;
+    dataType?: 'auto' | 'text' | 'markdown' | 'image' | 'svg' | 'json' | 'xml' | 'code';
+    recognitionEffort?: 'low' | 'medium' | 'high';
+    recognitionVerbosity?: 'low' | 'medium' | 'high';
+};
+
+//
+
 export const extractEntities = async (
     data: File | Blob | string,
     config?: AIConfig
@@ -1450,11 +1422,583 @@ export const extractCSS = async (
 export const solveEquation = solveAndAnswer;
 export const answerQuestion = solveAndAnswer;
 
+// Helper function to determine optimal processing parameters based on task complexity
+function determineProcessingParameters(instructions: string, options?: ProcessDataWithInstructionOptions): {
+    processingEffort: 'low' | 'medium' | 'high';
+    processingVerbosity: 'low' | 'medium' | 'high';
+} {
+    // Check if custom parameters are already specified
+    if (options?.processingEffort && options?.processingVerbosity) {
+        return {
+            processingEffort: options?.processingEffort || 'low',
+            processingVerbosity: options?.processingVerbosity || 'low'
+        };
+    }
+
+    const instructionLower = instructions.toLowerCase();
+
+    // Default parameters optimized for efficiency
+    let processingEffort: 'low' | 'medium' | 'high' = 'low';
+    let processingVerbosity: 'low' | 'medium' | 'high' = 'low';
+
+    // Increase effort for complex analytical tasks
+    const complexTasks = [
+        'analyze', 'compare', 'evaluate', 'assess', 'critique', 'review',
+        'summarize', 'extract', 'interpret', 'understand', 'explain',
+        'solve', 'calculate', 'compute', 'reason', 'logic',
+        'research', 'investigate', 'study', 'examine'
+    ];
+
+    const hasComplexTask = complexTasks.some(task => instructionLower.includes(task));
+    if (hasComplexTask) {
+        processingEffort = 'medium';
+    }
+
+    // Increase verbosity for tasks that need detailed output
+    const detailedTasks = [
+        'explain', 'describe', 'detail', 'comprehensive', 'thorough',
+        'step-by-step', 'detailed', 'complete', 'full', 'extensive',
+        'elaborate', 'in-depth', 'thoroughly'
+    ];
+
+    const needsDetail = detailedTasks.some(task => instructionLower.includes(task));
+    if (needsDetail) {
+        processingVerbosity = 'medium';
+    }
+
+    // Increase both for very complex tasks
+    const veryComplexTasks = [
+        'design', 'architecture', 'system', 'complex', 'advanced',
+        'sophisticated', 'intricate', 'complicated', 'challenging'
+    ];
+
+    const isVeryComplex = veryComplexTasks.some(task => instructionLower.includes(task));
+    if (isVeryComplex) {
+        processingEffort = 'high';
+        processingVerbosity = 'medium';
+    }
+
+    // Special case: code generation tasks often need more precision
+    if (instructionLower.includes('code') || instructionLower.includes('program') ||
+        instructionLower.includes('function') || instructionLower.includes('class') ||
+        instructionLower.includes('typescript') || instructionLower.includes('javascript')) {
+        processingEffort = 'medium';
+        processingVerbosity = 'low'; // Code should be concise
+    }
+
+    return { processingEffort, processingVerbosity };
+}
+
+// Helper function to unwrap unwanted code block formatting
+function unwrapUnwantedCodeBlocks(content: string): string {
+    if (!content) return content;
+
+    // Remove wrapping code blocks that are not intended for code
+    // Pattern: ```language\ncontent\n```
+    const codeBlockRegex = /^```(?:katex|md|markdown|html|xml|json|text)?\n([\s\S]*?)\n```$/;
+
+    const match = content.trim().match(codeBlockRegex);
+    if (match) {
+        const unwrapped = match[1].trim();
+
+        // Additional check: if the unwrapped content looks like it should be wrapped
+        // (e.g., actual code, or multiple lines that are clearly formatted content),
+        // keep the original. Otherwise, unwrap it.
+        const lines = unwrapped.split('\n');
+
+        // If it's a single line or looks like markup/math, unwrap
+        if (lines.length === 1 ||
+            unwrapped.includes('<math') ||
+            unwrapped.includes('<span class="katex') ||
+            unwrapped.includes('<content') ||
+            unwrapped.startsWith('<') && unwrapped.endsWith('>') ||
+            /^\s*<[^>]+>/.test(unwrapped)) {
+            console.log('[AI Response] Unwrapped unwanted code block formatting');
+            return unwrapped;
+        }
+
+        // If it looks like actual code (multiple lines, indentation, etc.), keep wrapped
+        if (lines.length > 3 ||
+            lines.some(line => line.match(/^\s{4,}/) || line.includes('function') || line.includes('const ') || line.includes('let '))) {
+            return content; // Keep the code block
+        }
+
+        // Default to unwrapping for single/multiple simple lines
+        console.log('[AI Response] Unwrapped unwanted code block formatting');
+        return unwrapped;
+    }
+
+    return content;
+}
+
+// ============================================================================
+// RECOGNITION CACHE/DATABASE
+// ============================================================================
+
+interface RecognitionCacheEntry {
+    dataHash: string; // Hash of the image data for identification
+    recognizedData: string;
+    recognizedAs: OutputFormat;
+    timestamp: number;
+    responseId: string;
+    metadata?: Record<string, any>;
+}
+
+class RecognitionCache {
+    private cache = new Map<string, RecognitionCacheEntry>();
+    private maxEntries = 100; // Limit cache size
+    private ttl = 24 * 60 * 60 * 1000; // 24 hours TTL
+
+    private generateDataHash(data: any): string {
+        // Simple hash for image data - in production, use proper crypto hash
+        if (data instanceof File) {
+            return `${data.name}-${data.size}-${data.lastModified}`;
+        }
+        if (typeof data === 'string') {
+            return btoa(data).substring(0, 32); // Simple hash for data URLs
+        }
+        return JSON.stringify(data).substring(0, 32);
+    }
+
+    get(data: any, format?: OutputFormat): RecognitionCacheEntry | null {
+        const hash = this.generateDataHash(data);
+        const entry = this.cache.get(hash);
+
+        if (!entry) return null;
+
+        // Check TTL
+        if (Date.now() - entry.timestamp > this.ttl) {
+            this.cache.delete(hash);
+            return null;
+        }
+
+        // Check format match if specified
+        if (format && entry.recognizedAs !== format) {
+            return null;
+        }
+
+        return entry;
+    }
+
+    set(data: any, recognizedData: string, recognizedAs: OutputFormat, responseId: string, metadata?: Record<string, any>): void {
+        const hash = this.generateDataHash(data);
+
+        // Clean up old entries if cache is full
+        if (this.cache.size >= this.maxEntries) {
+            const oldestKey = Array.from(this.cache.entries())
+                .sort(([,a], [,b]) => a.timestamp - b.timestamp)[0][0];
+            this.cache.delete(oldestKey);
+        }
+
+        this.cache.set(hash, {
+            dataHash: hash,
+            recognizedData,
+            recognizedAs,
+            timestamp: Date.now(),
+            responseId,
+            metadata
+        });
+    }
+
+    clear(): void {
+        this.cache.clear();
+    }
+
+    getStats() {
+        return {
+            entries: this.cache.size,
+            maxEntries: this.maxEntries,
+            ttl: this.ttl
+        };
+    }
+}
+
+const recognitionCache = new RecognitionCache();
+
+// ============================================================================
+// NEW UNIFIED PROCESSING FUNCTION
+// ============================================================================
+
+export type ProcessDataWithInstructionResult = {
+    ok: boolean;
+    data?: string;
+    error?: string;
+    responseId?: string;
+    processingStages?: number;
+    recognizedImages?: boolean;
+    intermediateRecognizedData?: Array<{
+        originalData: any;
+        recognizedData: string;
+        recognizedAs: OutputFormat;
+        responseId: string;
+    }>;
+};
+
+// Main unified processing function that replaces all the specialized functions
+export const processDataWithInstruction = async (
+    input: any,
+    options: ProcessDataWithInstructionOptions = {},
+    sendResponse?: (result: ProcessDataWithInstructionResult) => void
+): Promise<ProcessDataWithInstructionResult> => {
+    const settings = (await loadSettings())?.ai;
+
+    // Extract options with defaults
+    const {
+        instruction = "",
+        outputFormat = 'auto',
+        outputLanguage = 'auto',
+        enableSVGImageGeneration = 'auto',
+        intermediateRecognition,
+        processingEffort = 'low',
+        processingVerbosity = 'low',
+        customInstruction,
+        useActiveInstruction = false,
+
+        // Legacy compatibility options
+        includeImageRecognition,
+        maxProcessingStages,
+        dataType,
+        recognitionEffort,
+        recognitionVerbosity
+    } = options;
+
+    const token = settings?.apiKey;
+    if (!token) {
+        const result: ProcessDataWithInstructionResult = { ok: false, error: "No API key available" };
+        sendResponse?.(result);
+        return result;
+    }
+
+    if (!input) {
+        const result: ProcessDataWithInstructionResult = { ok: false, error: "No input provided" };
+        sendResponse?.(result);
+        return result;
+    }
+
+    // Build final instruction
+    let finalInstruction = instruction;
+
+    // Apply custom instruction if provided
+    if (customInstruction) {
+        finalInstruction = buildInstructionPrompt(finalInstruction, customInstruction);
+    } else if (useActiveInstruction) {
+        const activeInstruction = await getActiveCustomInstruction();
+        if (activeInstruction) {
+            finalInstruction = buildInstructionPrompt(finalInstruction, activeInstruction);
+        }
+    }
+
+    // Add language instruction
+    const languageInstruction = await getLanguageInstruction();
+    if (languageInstruction) {
+        finalInstruction += languageInstruction;
+    }
+
+    // Add SVG graphics instruction
+    const shouldEnableSVG = enableSVGImageGeneration === true ||
+                           (enableSVGImageGeneration === 'auto' && outputFormat === 'html');
+    if (shouldEnableSVG) {
+        const svgAddon = await getSvgGraphicsAddon();
+        if (svgAddon) {
+            finalInstruction += svgAddon;
+        }
+    }
+
+    // Add output format instruction
+    if (outputFormat !== 'auto') {
+        const formatInstruction = getOutputFormatInstruction(outputFormat);
+        if (formatInstruction) {
+            finalInstruction += formatInstruction;
+        }
+    }
+
+    console.log("[ProcessDataWithInstruction] Final instruction:", finalInstruction.substring(0, 200) + "...");
+
+    // Create GPT instance
+    const gpt = createGPTInstance(token, settings?.baseUrl || DEFAULT_API_URL, settings?.model || DEFAULT_MODEL);
+
+    // Clear any previous pending items
+    gpt.clearPending();
+
+    let processingStages = 1;
+    let recognizedImages = false;
+    const intermediateRecognizedData: ProcessDataWithInstructionResult['intermediateRecognizedData'] = [];
+
+    // Handle different data types
+    if (Array.isArray(input) && (input?.[0]?.type === "message" || input?.[0]?.['role'])) {
+        // Input is already formatted, add it directly to pending
+        await gpt.getPending()?.push(...input);
+    } else {
+        // Process input based on type
+        const inputData = Array.isArray(input) ? input : [input];
+
+        for (const item of inputData) {
+            let processedItem = item;
+
+            // Special handling for SVG - treat as text/XML
+            if (typeof item === 'string' && dataType === 'svg' || (typeof item === 'string' && item.trim().startsWith('<svg'))) {
+                console.log("[ProcessDataWithInstruction] Detected SVG content, treating as text/XML");
+                processedItem = item;
+            }
+            // Handle images with intermediate recognition
+            else if (isImageData(item)) {
+                recognizedImages = true;
+
+                // Check if intermediate recognition is enabled
+                const useIntermediateRecognition = intermediateRecognition?.enabled !== false &&
+                                                  (intermediateRecognition?.enabled || includeImageRecognition);
+
+                if (useIntermediateRecognition) {
+                    processingStages = 2;
+
+                    // Check cache first (unless force refresh)
+                    const cachedResult = !intermediateRecognition?.forceRefresh
+                        ? recognitionCache.get(item, intermediateRecognition?.outputFormat)
+                        : null;
+
+                    let recognizedContent: string;
+                    let recognitionResponseId: string;
+
+                    if (cachedResult) {
+                        console.log("[ProcessDataWithInstruction] Using cached recognition result");
+                        recognizedContent = cachedResult.recognizedData;
+                        recognitionResponseId = cachedResult.responseId;
+                    } else {
+                        // Perform intermediate recognition
+                        const recognitionInstruction = intermediateRecognition?.dataPriorityInstruction ||
+                            getIntermediateRecognitionInstruction(intermediateRecognition?.outputFormat || 'markdown');
+
+                        console.log("[ProcessDataWithInstruction] Performing intermediate recognition");
+
+                        const recognitionResult = await recognizeByInstructions(
+                            item,
+                            recognitionInstruction,
+                            undefined,
+                            { apiKey: token, baseUrl: settings?.baseUrl, model: settings?.model },
+                            {
+                                customInstruction: undefined,
+                                useActiveInstruction: false
+                            }
+                        );
+
+                        if (!recognitionResult.ok || !recognitionResult.data) {
+                            console.warn("[ProcessDataWithInstruction] Intermediate recognition failed, using original image");
+                            recognizedContent = ""; // Will use original image
+                            recognitionResponseId = "";
+                        } else {
+                            recognizedContent = recognitionResult.data;
+                            recognitionResponseId = recognitionResult.responseId || "";
+
+                            // Cache the result
+                            if (intermediateRecognition?.cacheResults !== false) {
+                                const recognizedAs = intermediateRecognition?.outputFormat || 'markdown';
+                                recognitionCache.set(item, recognizedContent, recognizedAs, recognitionResponseId);
+                            }
+                        }
+                    }
+
+                    // Store intermediate recognition data
+                    intermediateRecognizedData.push({
+                        originalData: item,
+                        recognizedData: recognizedContent,
+                        recognizedAs: intermediateRecognition?.outputFormat || 'markdown',
+                        responseId: recognitionResponseId
+                    });
+
+                    // Use recognized content instead of original image (unless empty)
+                    if (recognizedContent) {
+                        processedItem = recognizedContent;
+                        console.log("[ProcessDataWithInstruction] Using recognized content for processing");
+                    }
+                }
+            }
+
+            // Attach processed item
+            if (processedItem !== null && processedItem !== undefined) {
+                await gpt?.attachToRequest?.(processedItem);
+            }
+        }
+    }
+
+    // Set the final instruction
+    await gpt.askToDoAction(finalInstruction);
+
+    // Send the request
+    let response;
+    let error;
+    try {
+        console.log("[ProcessDataWithInstruction] Sending request with effort:", processingEffort, "verbosity:", processingVerbosity);
+        response = await gpt?.sendRequest?.(processingEffort, processingVerbosity, null, {
+            responseFormat: getResponseFormat(outputFormat),
+            temperature: 0.3
+        });
+        console.log("[ProcessDataWithInstruction] Response received:", !!response);
+    } catch (e) {
+        console.error("[ProcessDataWithInstruction] Error:", e);
+        error = String(e);
+    }
+
+    // Parse the response if it's a JSON string (from GPT processing)
+    let parsedResponse = response;
+    if (typeof response === 'string') {
+        try {
+            parsedResponse = JSON.parse(response);
+        } catch (e) {
+            console.error("[ProcessDataWithInstruction] Failed to parse response JSON:", e);
+            parsedResponse = null;
+        }
+    }
+
+    const responseContent = parsedResponse?.choices?.[0]?.message?.content;
+    const cleanedResponse = responseContent ? unwrapUnwantedCodeBlocks(responseContent.trim()) : null;
+
+    const result: ProcessDataWithInstructionResult = {
+        ok: !!cleanedResponse && !error,
+        data: cleanedResponse || undefined,
+        error: error || (!cleanedResponse ? "No response content" : undefined),
+        responseId: parsedResponse?.id || gpt?.getResponseId?.(),
+        processingStages,
+        recognizedImages,
+        intermediateRecognizedData: intermediateRecognizedData.length > 0 ? intermediateRecognizedData : undefined
+    };
+
+    sendResponse?.(result);
+    return result;
+};
+
+// Helper functions for the new unified function
+function isImageData(data: any): boolean {
+    return (data instanceof File && data.type.startsWith('image/')) ||
+           (data instanceof Blob && data.type?.startsWith('image/')) ||
+           (typeof data === 'string' && (data.startsWith('data:image/') || data.startsWith('http') || data.startsWith('https://')));
+}
+
+function getOutputFormatInstruction(format: OutputFormat): string {
+    if (format === 'auto' || format === undefined) return "";
+
+    const instructions: Record<OutputFormat, string> = {
+        'auto': "",
+        'markdown': "\n\nOutput the result in Markdown format.",
+        'html': "\n\nOutput the result in HTML format.",
+        'json': "\n\nOutput the result as valid JSON.",
+        'text': "\n\nOutput the result as plain text.",
+        'typescript': "\n\nOutput the result as TypeScript code.",
+        'javascript': "\n\nOutput the result as JavaScript code.",
+        'python': "\n\nOutput the result as Python code.",
+        'java': "\n\nOutput the result as Java code.",
+        'cpp': "\n\nOutput the result as C++ code.",
+        'csharp': "\n\nOutput the result as C# code.",
+        'php': "\n\nOutput the result as PHP code.",
+        'ruby': "\n\nOutput the result as Ruby code.",
+        'go': "\n\nOutput the result as Go code.",
+        'rust': "\n\nOutput the result as Rust code.",
+        'xml': "\n\nOutput the result as XML.",
+        'yaml': "\n\nOutput the result as YAML.",
+        'css': "\n\nOutput the result as CSS.",
+        'scss': "\n\nOutput the result as SCSS.",
+        'most-suitable': "\n\nChoose the most suitable output format for the content and task.",
+        'most-optimized': "\n\nChoose the most optimized output format for clarity and usability.",
+        'most-legibility': "\n\nChoose the most legible output format for human readability."
+    };
+
+    return instructions[format] || "";
+}
+
+function getIntermediateRecognitionInstruction(format: OutputFormat): string {
+    const baseInstruction = "Extract all readable text, equations, and data from this image. Focus on accuracy and completeness.";
+
+    if (format === 'markdown') {
+        return baseInstruction + " Format the extracted content as clean Markdown.";
+    } else if (format === 'html') {
+        return baseInstruction + " Format the extracted content as semantic HTML.";
+    } else if (format === 'text') {
+        return baseInstruction + " Extract as plain text only.";
+    } else if (format === 'most-suitable') {
+        return "Analyze this image and extract all readable content in the most appropriate format for further processing.";
+    } else if (format === 'most-optimized') {
+        return "Extract content from this image in the most efficient format for token usage and processing.";
+    } else if (format === 'most-legibility') {
+        return "Extract content from this image with maximum legibility and human readability.";
+    }
+
+    return baseInstruction + " Format appropriately for the content type.";
+}
+
+function getResponseFormat(format: OutputFormat): 'json' | 'text' {
+    // Use JSON for structured formats, text for everything else
+    const jsonFormats: OutputFormat[] = ['json', 'xml', 'yaml'];
+    return jsonFormats.includes(format) ? 'json' : 'text';
+}
+
 // ============================================================================
 // UNIFIED AI SERVICE INTERFACE
 // ============================================================================
 // This interface provides consistent access to all AI functions across platforms
 // (PWA, CRX, Core, ShareTarget). All platforms should use these exports.
+
+// ============================================================================
+// BACKWARD COMPATIBILITY ALIASES (will be deprecated)
+// ============================================================================
+
+// Legacy function aliases - redirect to new unified function
+export const recognizeByInstructions = async (
+    input: any,
+    instructions: string,
+    sendResponse?: (result: any) => void,
+    config?: AIConfig,
+    options?: RecognizeByInstructionsOptions
+): Promise<{ ok: boolean; data?: string; error?: string; responseId?: string }> => {
+    const result = await processDataWithInstruction(input, {
+        instruction: instructions,
+        customInstruction: options?.customInstruction,
+        useActiveInstruction: options?.useActiveInstruction,
+        processingEffort: options?.recognitionEffort || 'low',
+        processingVerbosity: options?.recognitionVerbosity || 'low',
+        outputFormat: 'auto',
+        outputLanguage: 'auto',
+        enableSVGImageGeneration: 'auto'
+    });
+
+    const legacyResult = {
+        ok: result.ok,
+        data: result.data,
+        error: result.error,
+        responseId: result.responseId
+    };
+
+    sendResponse?.(legacyResult);
+    return legacyResult;
+};
+
+export const processDataByInstruction = async (
+    input: any,
+    instructions: string,
+    sendResponse?: (result: any) => void,
+    config?: AIConfig,
+    options?: ProcessDataWithInstructionOptions
+): Promise<{ ok: boolean; data?: string; error?: string; responseId?: string; processingStages?: number; recognizedImages?: boolean }> => {
+    const result = await processDataWithInstruction(input, {
+        instruction: instructions,
+        ...options,
+        outputFormat: options?.outputFormat || 'auto',
+        outputLanguage: options?.outputLanguage || 'auto',
+        enableSVGImageGeneration: options?.enableSVGImageGeneration || 'auto'
+    });
+
+    const legacyResult = {
+        ok: result.ok,
+        data: result.data,
+        error: result.error,
+        responseId: result.responseId,
+        processingStages: result.processingStages,
+        recognizedImages: result.recognizedImages
+    };
+
+    sendResponse?.(legacyResult);
+    return legacyResult;
+};
+
+// Other legacy aliases can be added here as needed
 
 export const UnifiedAIService = {
     // Platform detection and adaptation
@@ -1467,25 +2011,25 @@ export const UnifiedAIService = {
     getSvgGraphicsAddon,
     getActiveCustomInstruction,
 
-    // Core AI functions
-    recognizeByInstructions,
-    recognizeImageData,
-    convertTextualData,
-    analyzeRecognizeUnified,
+    // New unified processing function (recommended)
+    processDataWithInstruction,
 
-    // Specialized AI functions (unified across platforms)
+    // Recognition cache management
+    clearRecognitionCache: () => recognitionCache.clear(),
+    getRecognitionCacheStats: () => recognitionCache.getStats(),
+
+    // Legacy functions (deprecated - use processDataWithInstruction instead)
+    recognizeByInstructions, // Deprecated
+    processDataByInstruction, // Deprecated
+
+    // Specialized functions (keep for specific use cases)
     solveAndAnswer,
-    solveEquation,
-    answerQuestion,
     writeCode,
     extractCSS,
 
     // Utility functions
-    batchRecognize,
     extractEntities,
     smartRecognize
-
-    // Types are available as module exports: RecognitionResult, BatchRecognitionResult, etc.
 };
 
 // Default export for convenience
