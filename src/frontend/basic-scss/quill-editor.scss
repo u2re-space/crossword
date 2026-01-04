@@ -1,0 +1,514 @@
+/* Enhanced Quill Editor Styles */
+
+@layer quill-editor {
+  /* Quill Editor Layout */
+  .quill-editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .quill-wrapper {
+    flex: 1;
+    background: var(--basic-surface-container);
+    border-radius: var(--basic-radius-xl);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .quill-editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .quill-editor .ql-toolbar {
+    border: none;
+    background: var(--basic-surface-container-high);
+    border-radius: var(--basic-radius-xl) var(--basic-radius-xl) 0 0;
+  }
+
+  .quill-editor .ql-container {
+    border: none;
+    font-family: var(--font-family);
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+  }
+
+  .quill-editor .ql-editor {
+    padding: var(--space-lg);
+    min-height: 400px;
+    color: var(--basic-on-surface);
+
+    &::before {
+      color: var(--basic-on-surface-variant);
+      opacity: 0.7;
+      font-style: normal;
+    }
+
+    &:focus::before {
+      opacity: 0;
+    }
+  }
+
+  .quill-editor .ql-editor.ql-blank::before {
+    color: var(--basic-on-surface-variant);
+    opacity: 0.7;
+  }
+
+  /* Quill toolbar customization */
+  .quill-editor .ql-toolbar .ql-picker-label {
+    color: var(--basic-on-surface);
+  }
+
+  .quill-editor .ql-toolbar .ql-stroke {
+    stroke: var(--basic-on-surface-variant);
+  }
+
+  .quill-editor .ql-toolbar .ql-fill {
+    fill: var(--basic-on-surface-variant);
+  }
+
+  .quill-editor .ql-toolbar button:hover,
+  .quill-editor .ql-toolbar button:focus {
+    color: var(--basic-primary);
+  }
+
+  .quill-editor .ql-toolbar button:hover .ql-stroke,
+  .quill-editor .ql-toolbar button:focus .ql-stroke {
+    stroke: var(--basic-primary);
+  }
+
+  .quill-editor .ql-toolbar button:hover .ql-fill,
+  .quill-editor .ql-toolbar button:focus .ql-fill {
+    fill: var(--basic-primary);
+  }
+
+  .quill-editor .ql-toolbar button.ql-active,
+  .quill-editor .ql-toolbar .ql-picker-label.ql-active,
+  .quill-editor .ql-toolbar .ql-picker-item.ql-selected {
+    color: var(--basic-primary);
+  }
+
+  .quill-editor .ql-toolbar button.ql-active .ql-stroke,
+  .quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke,
+  .quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-stroke {
+    stroke: var(--basic-primary);
+  }
+
+  .quill-editor .ql-toolbar button.ql-active .ql-fill,
+  .quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-fill,
+  .quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-fill {
+    fill: var(--basic-primary);
+  }
+
+  /* Custom scrollbar for Quill editor */
+  .quill-editor .ql-editor::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .quill-editor .ql-editor::-webkit-scrollbar-track {
+    background: var(--basic-surface-container);
+    border-radius: 4px;
+  }
+
+  .quill-editor .ql-editor::-webkit-scrollbar-thumb {
+    background: var(--basic-outline);
+    border-radius: 4px;
+  }
+
+  .quill-editor .ql-editor::-webkit-scrollbar-thumb:hover {
+    background: var(--basic-outline-variant);
+  }
+
+  /* Responsive Quill editor */
+  @media (max-width: 768px) {
+    .quill-editor .ql-editor {
+      padding: var(--space-md);
+      font-size: var(--text-sm);
+    }
+
+    .quill-editor .ql-toolbar {
+      padding: var(--space-sm);
+    }
+
+    .quill-editor .ql-toolbar .ql-formats {
+      margin-right: var(--space-sm);
+    }
+  }
+
+  /* Enhanced Quill Editor Container Theming */
+  .quill-editor-container {
+    background: var(--basic-surface-container);
+    padding: var(--space-lg);
+    color: var(--basic-on-surface);
+    position: relative;
+
+    // Content positioning
+    & > * {
+      position: relative;
+    }
+
+    // Responsive padding
+    @container (max-width: 1024px) {
+      padding: var(--space-md);
+    }
+
+    @container (max-width: 768px) {
+      padding: var(--space-sm);
+    }
+
+    @container (max-width: 480px) {
+      padding: var(--space-xs);
+    }
+
+    // Simple hover effect
+    &:hover {
+      // Removed border color change to eliminate contrast
+    }
+
+    // Focus state
+    &:focus-within {
+      outline: none;
+      box-shadow: var(--basic-focus-ring);
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-lg);
+
+      // Responsive layout
+      @container (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+      }
+
+      @container (max-width: 480px) {
+        gap: var(--space-sm);
+      }
+
+      h3 {
+        margin: 0;
+        font-size: var(--text-2xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--basic-on-surface);
+        letter-spacing: -0.025em;
+        line-height: var(--leading-tight);
+
+        @container (max-width: 1024px) {
+          font-size: var(--text-xl);
+        }
+
+        @container (max-width: 768px) {
+          text-align: center;
+          font-size: var(--text-lg);
+        }
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: var(--space-sm);
+        align-items: center;
+        flex-wrap: wrap;
+
+        // Responsive button layout
+        @container (max-width: 640px) {
+          gap: var(--space-xs);
+        }
+
+        @container (max-width: 480px) {
+          justify-content: center;
+          gap: var(--space-sm);
+        }
+
+        // Scrollable on very small screens
+        @container (max-width: 360px) {
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: var(--space-xs);
+
+          &::-webkit-scrollbar {
+            display: none;
+          }
+
+          flex-wrap: nowrap;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--space-xs);
+          padding: var(--space-sm) var(--space-lg);
+          border-radius: var(--basic-radius-lg);
+          background: var(--basic-surface-container-high);
+          color: var(--basic-on-surface);
+          font-size: var(--text-sm);
+          font-weight: var(--font-weight-medium);
+          cursor: pointer;
+          transition: all var(--basic-motion-fast);
+          position: relative;
+          white-space: nowrap;
+          min-height: 44px;
+          box-shadow: var(--basic-elev-0);
+
+          @container (max-width: 640px) {
+            padding: var(--space-xs) var(--space-md);
+            font-size: var(--text-xs);
+            min-height: 40px;
+          }
+
+          @container (max-width: 480px) {
+            padding: var(--space-sm) var(--space-md);
+            min-height: 44px;
+          }
+
+          &:hover {
+            background: var(--basic-surface-container-highest);
+            transform: translateY(-1px);
+            box-shadow: var(--basic-elev-1);
+          }
+
+          &:active {
+            transform: translateY(0);
+            box-shadow: none;
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: var(--basic-focus-ring);
+          }
+
+          &.primary {
+            background: var(--basic-secondary);
+            color: var(--basic-on-secondary);
+
+            &:hover {
+              background: color-mix(in oklab, var(--basic-secondary) 85%, black);
+            }
+          }
+
+          // Icon button variant
+          &.btn-icon {
+            padding: var(--space-sm);
+
+            @container (max-width: 640px) {
+              padding: var(--space-xs);
+            }
+
+            ui-icon {
+              flex-shrink: 0;
+              transition: color var(--basic-motion-fast);
+            }
+
+            .btn-text {
+              @container (max-width: 640px) {
+                display: none;
+              }
+            }
+
+            &:hover ui-icon {
+              color: var(--basic-secondary);
+            }
+
+            &.primary:hover ui-icon {
+              color: var(--basic-on-secondary);
+            }
+          }
+
+          // Loading state
+          &.loading {
+            opacity: 0.7;
+            pointer-events: none;
+
+            &::after {
+              content: "";
+              width: 16px;
+              height: 16px;
+              border: 2px solid transparent;
+              border-top: 2px solid currentColor;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin-left: var(--space-xs);
+            }
+          }
+        }
+      }
+    }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--space-xl);
+      padding-top: var(--space-lg);
+
+      // Responsive layout
+      @container (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+        margin-top: var(--space-lg);
+        padding-top: var(--space-md);
+      }
+
+      @container (max-width: 480px) {
+        gap: var(--space-sm);
+      }
+
+      .editor-stats {
+        display: flex;
+        gap: var(--space-lg);
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+
+        // Responsive layout
+        @container (max-width: 768px) {
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: var(--space-md);
+        }
+
+        span {
+          font-weight: var(--font-weight-medium);
+        }
+      }
+
+      .editor-info {
+        display: flex;
+        gap: var(--space-md);
+        align-items: center;
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+
+        // Responsive layout
+        @container (max-width: 768px) {
+          justify-content: center;
+          gap: var(--space-sm);
+        }
+
+        .format-indicator {
+          padding: var(--space-xs) var(--space-sm);
+          border-radius: var(--basic-radius-sm);
+          font-weight: var(--font-weight-semibold);
+          color: var(--basic-secondary);
+        }
+      }
+    }
+  }
+
+  /* Enhanced Dark theme overrides for Quill */
+  .basic-app[data-theme="dark"] .quill-editor-container {
+    .editor-header {
+      h3 {
+        color: var(--basic-on-surface);
+      }
+
+      .btn {
+        background: var(--basic-surface-container-low);
+        border-color: var(--basic-outline);
+        color: var(--basic-on-surface);
+
+        &:hover {
+          background: var(--basic-surface-container);
+          border-color: var(--basic-secondary);
+        }
+
+        &.primary {
+          background: var(--basic-secondary);
+          color: var(--basic-on-secondary);
+          border-color: var(--basic-secondary);
+
+          &:hover {
+            background: color-mix(in oklab, var(--basic-secondary) 85%, black);
+            border-color: color-mix(in oklab, var(--basic-secondary) 85%, black);
+          }
+        }
+      }
+    }
+
+    .quill-wrapper {
+      .ql-toolbar {
+        background: var(--basic-surface-container-low);
+
+        .ql-stroke {
+          stroke: var(--basic-on-surface);
+        }
+
+        .ql-fill {
+          fill: var(--basic-on-surface);
+        }
+
+        .ql-active {
+          color: var(--basic-secondary);
+          background: color-mix(in oklab, var(--basic-secondary) 15%, transparent);
+        }
+      }
+
+      .ql-container {
+        background: var(--basic-surface-container-low);
+
+        .ql-editor {
+          color: var(--basic-on-surface);
+
+          &::before {
+            color: var(--basic-on-surface-variant);
+          }
+
+          pre {
+            background: var(--basic-surface-container);
+            border-color: var(--basic-outline);
+            color: var(--basic-on-surface);
+          }
+
+          blockquote {
+            background: var(--basic-surface-container);
+            color: var(--basic-on-surface);
+          }
+
+          table {
+            border-color: var(--basic-outline);
+
+            th {
+              background: var(--basic-surface-container);
+            }
+
+            th, td {
+              border-color: var(--basic-outline);
+            }
+          }
+
+          .ql-syntax {
+            background: var(--basic-surface-container);
+            border-color: var(--basic-outline);
+            color: var(--basic-on-surface);
+          }
+        }
+      }
+    }
+
+    .editor-footer {
+      .editor-stats {
+        color: var(--basic-on-surface-variant);
+      }
+
+      .editor-info {
+        color: var(--basic-on-surface-variant);
+
+        .format-indicator {
+          background: var(--basic-surface-container-high);
+        }
+      }
+    }
+  }
+}

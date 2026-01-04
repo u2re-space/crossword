@@ -59,8 +59,8 @@
 
   /* */
   button {
-    block-size: max-content;
-    inline-size: max-content;
+    min-block-size: fit-content;
+    min-inline-size: fit-content;
     padding-inline: 1rem;
     padding-block: 0.5rem;
     gap: 0.25rem;

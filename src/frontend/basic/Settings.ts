@@ -1,9 +1,11 @@
-import "./Settings.scss";
+//@ts-ignore
+import style from "./Settings.scss?inline";
 
 import { H } from "fest/lure";
 import { loadSettings, saveSettings } from "@rs-core/config/Settings";
 import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { createCustomInstructionsEditor } from "./CustomInstructionsEditor";
+import { loadAsAdopted } from "fest/dom";
 
 export type SettingsViewOptions = {
   isExtension: boolean;
@@ -11,6 +13,7 @@ export type SettingsViewOptions = {
 };
 
 export const createSettingsView = (opts: SettingsViewOptions) => {
+  loadAsAdopted(style)
   const root = H`<div class="basic-settings">
     <h2>Settings</h2>
 

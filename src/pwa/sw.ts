@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routing'
-import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
 import {
@@ -726,7 +726,7 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
 }, "POST")
 
 //
-setDefaultHandler(new CacheFirst({
+setDefaultHandler(new StaleWhileRevalidate({
     cacheName: 'default-cache',
     fetchOptions: {
         credentials: 'include',
@@ -743,8 +743,13 @@ setDefaultHandler(new CacheFirst({
 
 // Assets (JS/CSS)
 registerRoute(
-    ({ request }) => request?.destination === 'script' || request?.destination === 'style',
-    new StaleWhileRevalidate({
+    ({ request }) => (
+        request?.destination === 'script' ||
+        request?.destination === 'style' ||
+        request?.destination === 'worker' ||
+        request?.url?.trim?.().toLowerCase?.()?.match(/(\.m?js|\.css)$/)
+    ),
+    new NetworkFirst({
         cacheName: 'assets-cache',
         fetchOptions: {
             credentials: 'include',
@@ -762,8 +767,8 @@ registerRoute(
 
 // Images
 registerRoute(
-    ({ request }) => request?.destination === 'image',
-    new CacheFirst({
+    ({ request }) => (request?.destination === 'image' || request?.url?.trim?.().toLowerCase?.()?.match?.(/(\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg)$/i)),
+    new StaleWhileRevalidate({
         cacheName: 'image-cache',
         fetchOptions: {
             credentials: 'include',

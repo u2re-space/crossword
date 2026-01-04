@@ -1,5 +1,11 @@
 import { H } from "fest/lure";
-import "./boot-menu.scss";
+import { loadAsAdopted } from "fest/dom";
+//@ts-ignore
+import style from "./boot-menu.scss?inline";
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 export type FrontendChoice = "basic" | "faint" | "print" | "" | "/";
 
@@ -15,6 +21,10 @@ export type ChoiceScreenResult = {
     container: HTMLElement;
     countdownEl: HTMLElement;
 };
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
 /**
  * Try to navigate to a routed path instead of loading sub-app
@@ -45,36 +55,121 @@ const tryRoutedPath = (choice: FrontendChoice): boolean => {
     }
 };
 
+/**
+ * Save user choice preference to localStorage
+ */
+const saveChoicePreference = (choice: FrontendChoice, remember: boolean): void => {
+    if (!remember) return;
+
+    try {
+        localStorage.setItem("rs-frontend-choice", choice);
+        localStorage.setItem("rs-frontend-choice-remember", "1");
+    } catch {
+        // Ignore localStorage errors
+    }
+};
+
+// ============================================================================
+// Main Choice Screen Component
+// ============================================================================
+
 export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
+    // Create UI elements
+    const elements = createUIElements(opts);
+    const container = createContainer(opts, elements);
+
+    // Set up event handlers
+    setupEventHandlers(opts, elements);
+
+    // Initialize focus
+    queueMicrotask(() => elements.keyboardNavigation.focusAt(0));
+
+    return { container, countdownEl: elements.countdown };
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Create all UI elements for the choice screen
+ */
+const createUIElements = (opts: ChoiceScreenOptions) => {
     const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
     const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Basic</b> version is the default.</div>` as HTMLElement;
 
     const countdown = H`<div class="choice-countdown">Auto-starting in <b>${opts.seconds}</b> seconds…</div>` as HTMLElement;
     const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
+
+    // Remember checkbox
     const remember = H`<label class="choice-remember">
-    <input type="checkbox" />
-    <span>Remember my choice</span>
-  </label>` as HTMLElement;
+        <input type="checkbox" />
+        <span>Remember my choice</span>
+    </label>` as HTMLElement;
     const rememberInput = remember.querySelector("input") as HTMLInputElement | null;
     if (rememberInput) rememberInput.checked = Boolean(opts.initialRemember);
 
+    // Menu buttons
     const bigBasicButton = H`<button class="basic big recommended" type="button">Basic</button>` as HTMLButtonElement;
     const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (unstable)</button>` as HTMLButtonElement;
 
+    // Keyboard navigation setup
+    const buttons = [bigBasicButton, unstableFaint];
+    let currentIndex = 0;
+
+    const focusAt = (nextIdx: number) => {
+        const len = buttons.length;
+        currentIndex = ((nextIdx % len) + len) % len;
+        buttons[currentIndex]?.focus?.();
+    };
+
+    return {
+        headerText,
+        reasonsText,
+        countdown,
+        hint,
+        remember,
+        rememberInput,
+        bigBasicButton,
+        unstableFaint,
+        buttons,
+        keyboardNavigation: { focusAt, currentIndex }
+    };
+};
+
+/**
+ * Create and assemble the main container
+ */
+const createContainer = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
+    const container = H`<div class="choice container"></div>` as HTMLElement;
+    const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
+
+    menu.append(elements.bigBasicButton, elements.unstableFaint);
+    container.append(
+        elements.headerText,
+        elements.countdown,
+        elements.hint,
+        menu,
+        elements.remember,
+        elements.reasonsText
+    );
+
+    return container;
+};
+
+/**
+ * Set up event handlers for buttons and keyboard navigation
+ */
+const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
+    const { bigBasicButton, unstableFaint, buttons, keyboardNavigation, rememberInput } = elements;
+
+    // Button click handlers
     const handleChoice = (choice: FrontendChoice) => {
         const remember = Boolean(rememberInput?.checked);
 
         // Try routed path first if enabled
         if (opts.tryRoutedPath && tryRoutedPath(choice)) {
-            // Successfully navigated to route, save choice preference
-            if (remember) {
-                try {
-                    localStorage.setItem("rs-frontend-choice", choice);
-                    localStorage.setItem("rs-frontend-choice-remember", "1");
-                } catch {
-                    // ignore
-                }
-            }
+            saveChoicePreference(choice, remember);
             return;
         }
 
@@ -85,29 +180,17 @@ export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
     bigBasicButton.addEventListener("click", () => handleChoice("basic"));
     unstableFaint.addEventListener("click", () => handleChoice("faint"));
 
-    const container = H`<div class="choice container"></div>` as HTMLElement;
-
-    const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
-    menu.append(bigBasicButton, unstableFaint);
-
-    // Minimal boot-menu keyboard navigation (↑/↓ + Enter)
-    const options = [bigBasicButton, unstableFaint];
-    let idx = 0;
-    const focusAt = (nextIdx: number) => {
-        const len = options.length;
-        if (!len) return;
-        idx = ((nextIdx % len) + len) % len;
-        options[idx]?.focus?.();
-    };
+    // Keyboard navigation
+    const container = bigBasicButton.closest('.choice.container') as HTMLElement;
     container.addEventListener("keydown", (e) => {
         if (e.key === "ArrowDown") {
             e.preventDefault();
-            focusAt(idx + 1);
+            keyboardNavigation.focusAt(keyboardNavigation.currentIndex + 1);
             return;
         }
         if (e.key === "ArrowUp") {
             e.preventDefault();
-            focusAt(idx - 1);
+            keyboardNavigation.focusAt(keyboardNavigation.currentIndex - 1);
             return;
         }
         if (e.key === "Enter") {
@@ -116,15 +199,11 @@ export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
             btn?.click?.();
         }
     });
-
-    container.append(headerText, countdown, hint, menu, remember, reasonsText);
-
-    queueMicrotask(() => focusAt(0));
-    return { container, countdownEl: countdown };
 };
 
 //
 export default (mountingElement: HTMLElement) => {
+    loadAsAdopted(style)
     mountingElement.append(ChoiceScreen({
         seconds: 10,
         defaultChoice: "basic",

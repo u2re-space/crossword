@@ -1,4 +1,5 @@
-import "./Main.scss";
+//@ts-ignore
+import style from "./Main.scss?inline";
 
 import { H } from "fest/lure";
 import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-core/service/AI-ops/RecognizeData";
@@ -14,6 +15,7 @@ import { createFileHandler } from "./modules/FileHandling";
 import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
 import { CHANNELS } from "@rs-frontend/routing/sw-handling";
+import { loadAsAdopted } from "fest/dom";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter";
 
@@ -93,8 +95,11 @@ const readMdFromUrlIfPossible = async (candidate: string): Promise<string | null
     }
 };
 
-
+//
 export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOptions = {}) => {
+    loadAsAdopted(style)
+
+    //
     const root = H`<div class="basic-app" />` as HTMLElement;
     mountElement.replaceChildren(root);
 

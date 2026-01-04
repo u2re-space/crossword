@@ -63,7 +63,9 @@
     }
 
     // Ensure toolbar doesn't shrink below minimum usable size
-    min-width: fit-content;
+    min-inline-size: fit-content;
+    max-inline-size: none;
+    inline-size: stretch;
   }
 
   // Enhanced Toolbar sections
@@ -73,7 +75,6 @@
       display: flex;
       gap: var(--space-md);
       align-items: center;
-      flex-shrink: 0;
 
       // Responsive gaps
       @container (max-width: 1024px) {
@@ -99,20 +100,26 @@
         cursor: pointer;
         transition: all var(--basic-motion-fast);
         white-space: nowrap;
-        min-height: 36px;
+        min-block-size: 36px;
+        max-block-size: none;
+        inline-size: max-content;
+        block-size: max-content;
         display: inline-flex;
         align-items: center;
         gap: var(--space-xs);
+        min-inline-size: calc-size(fit-content, max(size, 25px) + 0.5rem + var(--icon-size, 1rem));
 
         @container (max-width: 1024px) {
           padding: var(--space-xs) var(--space-sm);
           font-size: var(--text-xs);
-          min-height: 32px;
+          min-block-size: 32px;
+          min-inline-size: calc-size(fit-content, max(size, 32px) + 0.5rem + var(--icon-size, 1rem));
         }
 
         @container (max-width: 768px) {
           padding: 2px var(--space-xs);
-          min-height: 28px;
+          min-block-size: 28px;
+          min-inline-size: calc-size(fit-content, max(size, 28px) + 0.5rem + var(--icon-size, 1rem));
         }
 
         &:hover {
@@ -139,11 +146,11 @@
             padding: 4px;
           }
 
-          ui-phosphor-icon {
+          ui-icon {
             transition: color var(--basic-motion-fast);
           }
 
-          &:hover ui-phosphor-icon {
+          &:hover ui-icon {
             color: var(--basic-primary);
           }
 
@@ -937,8 +944,8 @@
 
   .editor-actions,
   .viewer-actions {
-    width: 100%;
-    justify-content: flex-end;
+    inline-size: 100%;
+    justify-content: stretch;
   }
 
   .editor-footer {
@@ -1212,17 +1219,20 @@
 
   .toolbar .left,
   .toolbar .right {
-    flex-wrap: nowrap; /* Prevent wrapping on tablets */
+    flex-wrap: nowrap; /* Single row layout */
     gap: var(--space-xs);
-    min-width: 0;
+    min-inline-size: 0;
+    justify-content: flex-start;
   }
 
   .toolbar .left .btn,
   .toolbar .right .btn {
-    flex-shrink: 0;
     font-size: var(--text-sm);
     padding: var(--space-xs) var(--space-sm);
-    min-width: auto;
+    inline-size: max-content; /* Natural button width */
+    min-inline-size: calc-size(fit-content, max(size, 2.5rem) + 0.5rem + var(--icon-size, 1rem)); /* Minimum touch target */
+    min-block-size: 2.5rem;
+    flex-shrink: 0;
   }
 
   .content {
@@ -1249,31 +1259,40 @@
 @media (max-width: 480px) {
   .toolbar {
     padding: var(--space-xs);
-    min-block-size: 2.5rem;
+    min-block-size: 3rem; /* Increase height for better touch targets */
   }
 
   .toolbar .left,
   .toolbar .right {
-    flex-wrap: nowrap; /* Keep horizontal scrolling instead of stacking */
+    flex-wrap: nowrap; /* Single row layout */
     gap: var(--space-xs);
     align-items: center;
+    justify-content: flex-start;
   }
 
   .toolbar .left .btn,
   .toolbar .right .btn {
-    flex-shrink: 0;
     font-size: var(--text-xs);
     padding: var(--space-xs);
-    min-width: 2rem;
-    min-height: 2rem;
+    inline-size: max-content; /* Natural button width */
+    min-inline-size: calc-size(fit-content, max(size, 2.5rem) + 0.5rem + var(--icon-size, 1rem)); /* Minimum touch target */
+    min-block-size: 2.5rem;
+    flex-shrink: 0;
   }
 
-  /* Hide button text on very small screens, keep icons */
+  /* For icon-only buttons on very small screens */
+  .toolbar .left .toolbar-btn-icon,
+  .toolbar .right .toolbar-btn-icon {
+    min-inline-size: calc-size(fit-content, max(size, 2.5rem) + 0.5rem + var(--icon-size, 1rem));
+    padding: var(--space-xs);
+  }
+
+  /* Improve tooltip positioning for small screens */
   .toolbar .left .btn:not([title*="Rich"])::after,
   .toolbar .right .btn:not([title*="Voice"])::after {
     content: attr(title);
     position: absolute;
-    top: -2rem;
+    top: -2.5rem; /* Move higher to avoid overlap */
     left: 50%;
     transform: translateX(-50%);
     background: var(--basic-surface-container-high);
@@ -1286,6 +1305,9 @@
     pointer-events: none;
     transition: opacity var(--basic-motion-fast);
     z-index: 1000;
+    max-inline-size: 150px; /* Limit tooltip width */
+    word-wrap: break-word;
+    text-align: center;
   }
 
   .toolbar .left .btn:hover::after,
@@ -1316,144 +1338,6 @@
   }
 }
 
-/* Quill Editor Layout */
-.quill-editor-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  height: 100%;
-  max-height: 100%;
-}
-
-.quill-wrapper {
-  flex: 1;
-  background: var(--basic-surface-container);
-  border-radius: var(--basic-radius-xl);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.quill-editor {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.quill-editor .ql-toolbar {
-  border: none;
-  background: var(--basic-surface-container-high);
-  border-radius: var(--basic-radius-xl) var(--basic-radius-xl) 0 0;
-}
-
-.quill-editor .ql-container {
-  border: none;
-  font-family: var(--font-family);
-  font-size: var(--text-base);
-  line-height: var(--leading-relaxed);
-}
-
-.quill-editor .ql-editor {
-  padding: var(--space-lg);
-  min-height: 400px;
-  color: var(--basic-on-surface);
-
-  &::before {
-    color: var(--basic-on-surface-variant);
-    opacity: 0.7;
-    font-style: normal;
-  }
-
-  &:focus::before {
-    opacity: 0;
-  }
-}
-
-.quill-editor .ql-editor.ql-blank::before {
-  color: var(--basic-on-surface-variant);
-  opacity: 0.7;
-}
-
-/* Quill toolbar customization */
-.quill-editor .ql-toolbar .ql-picker-label {
-  color: var(--basic-on-surface);
-}
-
-.quill-editor .ql-toolbar .ql-stroke {
-  stroke: var(--basic-on-surface-variant);
-}
-
-.quill-editor .ql-toolbar .ql-fill {
-  fill: var(--basic-on-surface-variant);
-}
-
-.quill-editor .ql-toolbar button:hover,
-.quill-editor .ql-toolbar button:focus {
-  color: var(--basic-primary);
-}
-
-.quill-editor .ql-toolbar button:hover .ql-stroke,
-.quill-editor .ql-toolbar button:focus .ql-stroke {
-  stroke: var(--basic-primary);
-}
-
-.quill-editor .ql-toolbar button:hover .ql-fill,
-.quill-editor .ql-toolbar button:focus .ql-fill {
-  fill: var(--basic-primary);
-}
-
-.quill-editor .ql-toolbar button.ql-active,
-.quill-editor .ql-toolbar .ql-picker-label.ql-active,
-.quill-editor .ql-toolbar .ql-picker-item.ql-selected {
-  color: var(--basic-primary);
-}
-
-.quill-editor .ql-toolbar button.ql-active .ql-stroke,
-.quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke,
-.quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-stroke {
-  stroke: var(--basic-primary);
-}
-
-.quill-editor .ql-toolbar button.ql-active .ql-fill,
-.quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-fill,
-.quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-fill {
-  fill: var(--basic-primary);
-}
-
-/* Custom scrollbar for Quill editor */
-.quill-editor .ql-editor::-webkit-scrollbar {
-  width: 8px;
-}
-
-.quill-editor .ql-editor::-webkit-scrollbar-track {
-  background: var(--basic-surface-container);
-  border-radius: 4px;
-}
-
-.quill-editor .ql-editor::-webkit-scrollbar-thumb {
-  background: var(--basic-outline);
-  border-radius: 4px;
-}
-
-.quill-editor .ql-editor::-webkit-scrollbar-thumb:hover {
-  background: var(--basic-outline-variant);
-}
-
-/* Responsive Quill editor */
-@media (max-width: 768px) {
-  .quill-editor .ql-editor {
-    padding: var(--space-md);
-    font-size: var(--text-sm);
-  }
-
-  .quill-editor .ql-toolbar {
-    padding: var(--space-sm);
-  }
-
-  .quill-editor .ql-toolbar .ql-formats {
-    margin-right: var(--space-sm);
-  }
-}
 
 // ============================================================================
 // ANIMATIONS

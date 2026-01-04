@@ -5,9 +5,40 @@ import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import { extractJSONFromAIResponse } from "@rs-core/utils/AIResponseParser";
+import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 
-// Configure marked with KaTeX extension for MathML output
-marked?.use?.(markedKatex({ throwOnError: false, nonStandard: true, output: "mathml", strict: false }) as unknown as MarkedExtension);
+// Configure marked with KaTeX extension for HTML output with proper delimiters
+marked?.use?.(markedKatex({
+    throwOnError: false,
+    nonStandard: true,
+    output: "mathml",
+    strict: false,
+}) as unknown as MarkedExtension,
+{
+    hooks: {
+        preprocess: (markdown: string): string => {
+            if (/\\(.*\\)|\\[.*\\]/.test(markdown)) {
+                const katexNode = document.createElement('div')
+                katexNode.innerHTML = markdown
+                renderMathInElement(katexNode, {
+                    throwOnError: false,
+                    nonStandard: true,
+                    output: "mathml",
+                    strict: false,
+                    delimiters: [
+                        { left: "$$", right: "$$", display: true },
+                        { left: "\\[", right: "\\]", display: true },
+                        { left: "$", right: "$", display: false },
+                        { left: "\\(", right: "\\)", display: false }
+                    ]
+                })
+
+                return katexNode.innerHTML
+            }
+            return markdown
+        },
+    },
+});
 
 export interface WorkCenterState {
     files: File[];
@@ -84,39 +115,16 @@ export class WorkCenterManager {
       </div>
 
       <div class="workcenter-content">
-        <div class="left-panel">
-          <div class="input-section">
-            <div class="file-input-area" data-dropzone>
-              <div class="file-drop-zone">
-                <div class="drop-zone-content">
-                  <ui-icon icon="folder" size="4rem" icon-style="duotone" class="drop-icon"></ui-icon>
-                  <div class="drop-text">Drop files here or click to browse</div>
-                  <div class="drop-hint">Supports: Images, Documents, Text files, PDFs</div>
-                  <button class="btn file-select-btn" data-action="select-files">Choose Files</button>
-                </div>
-              </div>
-              <div class="file-list" data-file-list></div>
-              ${this.state.recognizedContent ? H`<div class="recognized-status">
-                <ui-icon icon="check-circle" size="16" icon-style="duotone" class="status-icon"></ui-icon>
-                <span>Content recognized - ready for actions</span>
-                <button class="btn small clear-recognized" data-action="clear-recognized">Clear</button>
-              </div>` : ''}
-            </div>
-          </div>
-
-          <div class="history-section">
-            <div class="history-header">
-              <h3>Recent Activity</h3>
-              <button class="btn" data-action="view-full-history">View All History</button>
-            </div>
-            <div class="recent-history" data-recent-history></div>
-          </div>
-        </div>
-
-        <div class="right-panel">
+        <div class="main-panel">
           <div class="output-section">
             <div class="output-header">
               <h3>Results</h3>
+              <div class="file-counters">
+                <span class="file-counter" data-file-count>
+                  <ui-icon icon="file" size="14" icon-style="duotone"></ui-icon>
+                  <span class="count">${this.state.files.length}</span>
+                </span>
+              </div>
               <div class="output-actions">
                 <button class="btn btn-icon" data-action="copy-results" title="Copy results">
                   <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
@@ -128,11 +136,27 @@ export class WorkCenterManager {
                 </button>
               </div>
             </div>
-            <div class="output-content" data-output></div>
+            <div class="output-content" data-output data-dropzone></div>
           </div>
 
           <div class="prompt-section">
-            <div class="prompt-input-group">
+            <div class="file-input-area">
+              <div class="file-drop-zone">
+                <div class="drop-zone-content">
+                  <ui-icon icon="folder" size="4rem" icon-style="duotone" class="drop-icon"></ui-icon>
+                  <div class="drop-text">Drop files here or click to browse</div>
+                  <div class="drop-hint">Supports: Images, Documents, Text files, PDFs</div>
+                </div>
+              </div>
+              <div class="file-list" data-file-list></div>
+              ${this.state.recognizedContent ? H`<div class="recognized-status">
+                <ui-icon icon="check-circle" size="16" icon-style="duotone" class="status-icon"></ui-icon>
+                <span>Content recognized - ready for actions</span>
+                <button class="btn small clear-recognized" data-action="clear-recognized">Clear</button>
+              </div>` : ''}
+            </div>
+
+            <div class="prompt-input-group" data-dropzone>
               <div class="prompt-controls">
                 <select class="template-select">
                   <option value="">Select Template...</option>
@@ -141,6 +165,10 @@ export class WorkCenterManager {
                 <button class="btn btn-icon" data-action="edit-templates" title="Edit Templates">
                   <ui-icon icon="gear" size="18" icon-style="duotone"></ui-icon>
                   <span class="btn-text">Templates</span>
+                </button>
+                <button class="btn btn-icon" data-action="select-files" title="Choose Files">
+                  <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
+                  <span class="btn-text">Files</span>
                 </button>
               </div>
               <textarea
@@ -159,17 +187,25 @@ export class WorkCenterManager {
 
           <div class="action-section">
             <div class="action-controls">
-              <label class="auto-action-label">
-                <input type="checkbox" class="auto-action-checkbox" ${this.state.autoAction ? 'checked' : ''}>
-                Auto-action (use last successful)
-              </label>
               <div class="action-buttons">
                 <button class="btn primary action-btn" data-action="execute">
                   <ui-icon icon="brain" size="20" icon-style="duotone"></ui-icon>
                   <span class="btn-text">Recognize & Take Action</span>
                 </button>
               </div>
+              <label class="auto-action-label" title="Auto-action (use last successful)">
+                <input type="checkbox" class="auto-action-checkbox" ${this.state.autoAction ? 'checked' : ''}>
+                <ui-icon icon="zap" size="20" icon-style="duotone"></ui-icon>
+              </label>
             </div>
+          </div>
+
+          <div class="history-section">
+            <div class="history-header">
+              <h3>Recent Activity</h3>
+              <button class="btn" data-action="view-full-history">View All History</button>
+            </div>
+            <div class="recent-history" data-recent-history></div>
           </div>
         </div>
       </div>
@@ -178,8 +214,9 @@ export class WorkCenterManager {
         // Set up event listeners
         this.setupWorkCenterEvents(container);
 
-        // Update file list and recent history
+        // Update file list, file counter, and recent history
         this.updateFileList(container);
+        this.updateFileCounter(container);
         this.updateRecentHistory(container);
 
         return container;
@@ -197,24 +234,61 @@ export class WorkCenterManager {
             this.state.files.push(...files);
             this.clearRecognizedContent(); // Clear cached content when files change
             this.updateFileList(container);
+            this.updateFileCounter(container);
         });
 
-        // Drag and drop
-        const dropZone = container.querySelector('[data-dropzone]') as HTMLElement;
-        dropZone.addEventListener('dragover', (e) => {
+        // Drag and drop - on both prompt-input-group and output-content
+        const promptDropZone = container.querySelector('.prompt-input-group[data-dropzone]') as HTMLElement;
+        const outputDropZone = container.querySelector('.output-content[data-dropzone]') as HTMLElement;
+        const overlay = container.querySelector('.file-input-area') as HTMLElement;
+
+        // Helper function to handle drag events
+        const handleDragOver = (e: DragEvent, zone: HTMLElement) => {
             e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-        dropZone.addEventListener('drop', (e) => {
+            overlay.classList.add('drag-over');
+            zone.classList.add('drag-over');
+        };
+
+        const handleDragLeave = (e: DragEvent, zone: HTMLElement) => {
+            // Only hide overlay if leaving the drop zone entirely
+            const rect = zone.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                overlay.classList.remove('drag-over');
+                zone.classList.remove('drag-over');
+            }
+        };
+
+        const handleDrop = (e: DragEvent, zone: HTMLElement) => {
             e.preventDefault();
-            dropZone.classList.remove('drag-over');
+            overlay.classList.remove('drag-over');
+            zone.classList.remove('drag-over');
             const files = Array.from(e.dataTransfer?.files || []);
             this.state.files.push(...files);
             this.clearRecognizedContent(); // Clear cached content when files change
             this.updateFileList(container);
+            this.updateFileCounter(container);
+        };
+
+        // Prompt area drop events
+        promptDropZone.addEventListener('dragover', (e) => handleDragOver(e, promptDropZone));
+        promptDropZone.addEventListener('dragleave', (e) => handleDragLeave(e, promptDropZone));
+        promptDropZone.addEventListener('drop', (e) => handleDrop(e, promptDropZone));
+
+        // Output area drop events
+        outputDropZone.addEventListener('dragover', (e) => handleDragOver(e, outputDropZone));
+        outputDropZone.addEventListener('dragleave', (e) => handleDragLeave(e, outputDropZone));
+        outputDropZone.addEventListener('drop', (e) => handleDrop(e, outputDropZone));
+
+        // Output area click to select files (when empty)
+        outputDropZone.addEventListener('click', (e) => {
+            // Only trigger file selection if the output area is empty
+            if (!outputDropZone.textContent?.trim() && outputDropZone.children.length === 0) {
+                e.preventDefault();
+                fileInput.click();
+            }
         });
 
         // Paste support
@@ -225,6 +299,7 @@ export class WorkCenterManager {
                 this.state.files.push(...files);
                 this.clearRecognizedContent(); // Clear cached content when files change
                 this.updateFileList(container);
+                this.updateFileCounter(container);
             }
         });
 
@@ -318,6 +393,13 @@ export class WorkCenterManager {
             });
     }
 
+    private updateFileCounter(container: HTMLElement): void {
+        const counter = container.querySelector('[data-file-count] .count') as HTMLElement;
+        if (counter) {
+            counter.textContent = this.state.files.length.toString();
+        }
+    }
+
     private updateFileList(container: HTMLElement): void {
         const fileList = container.querySelector('[data-file-list]') as HTMLElement;
         fileList.innerHTML = '';
@@ -341,6 +423,7 @@ export class WorkCenterManager {
                 this.state.files.splice(index, 1);
                 this.clearRecognizedContent(); // Clear cached content when files change
                 this.updateFileList(container);
+                this.updateFileCounter(container);
             });
 
             fileList.append(fileItem);

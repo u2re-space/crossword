@@ -189,7 +189,7 @@
             padding: var(--space-xs);
           }
 
-          ui-phosphor-icon {
+          ui-icon {
             flex-shrink: 0;
             transition: color var(--basic-motion-fast);
           }
@@ -200,11 +200,11 @@
             }
           }
 
-          &:hover ui-phosphor-icon {
+          &:hover ui-icon {
             color: var(--basic-tertiary);
           }
 
-          &.primary:hover ui-phosphor-icon {
+          &.primary:hover ui-icon {
             color: var(--basic-on-tertiary);
           }
         }
