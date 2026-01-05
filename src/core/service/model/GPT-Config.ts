@@ -1,4 +1,4 @@
-export type DataKind = "math" | "url" | "output_text" | "input_text" | "image" | "image_url" | "text" | "input_image" | "input_url" | "json" | "markdown" | "code" | "entity" | "structured" | "unknown";
+export type DataKind = "math" | "url" | "output_text" | "input_text" | "image" | "image_url" | "text" | "input_image" | "input_url" | "json" | "markdown" | "code" | "entity" | "structured" | "unknown" | "svg" | "xml";
 export type DataInput = {
     dataSource: string | Blob | File | any,
     dataKind?: DataKind | null,
@@ -106,7 +106,10 @@ export const typesForKind: Record<DataKind, "input_text" | "image_url" | "input_
     "markdown": "input_text",
     "code": "input_text",
     "entity": "input_text",
-    "structured": "input_text"
+    "structured": "input_text",
+    "unknown": "input_text",
+    "svg": "input_text",
+    "xml": "input_text"
 }
 
 //

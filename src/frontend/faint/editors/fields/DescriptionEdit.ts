@@ -1,4 +1,4 @@
-import { isReactive, observe, propRef } from "fest/object";
+import { isObservable, observe } from "fest/object";
 import { H, M } from "fest/lure";
 import { JSOX } from "jsox";
 
@@ -24,7 +24,7 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
     if (!key && !parts) return { block: null, saveEvent: () => { } };
 
     //
-    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
+    if (parts != null && (!isObservable(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
     parts ??= observe([]) as string[];
 
     // AI, remain as function, in future may be needed...
@@ -32,13 +32,13 @@ export const DescriptionEdit = ({ object, key, parts }: ObjectAndKey) => {
         // if key is presented and object has key, and parts is empty, push the value to parts
         if (key != null && object?.[key] != null && parts?.length <= 0) {
             // TODO: make better idea...
-            if (Array.isArray(object[key])) {
-                parts?.push(...object[key].map((item) => {
+            if (Array.isArray((object as any)[key])) {
+                parts?.push(...(object as any)[key].map((item) => {
                     if (typeof item == "object" && (item != null || "value" in item)) { return item.value; } else
                         return String(item);
                 }));
             } else
-                if (typeof object[key] == "object" && (object[key] != null || "value" in object[key])) {
+                if (typeof (object as any)[key] == "object" && ((object as any)[key] != null || "value" in (object as any)[key])) {
                     parts?.push(object[key].value);
                 } else
                     parts?.push(object[key]);

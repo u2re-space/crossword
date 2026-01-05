@@ -1,11 +1,13 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
-import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, processDataWithInstruction } from "./service/RecognizeData";
+import { recognizeImageData } from "./service/RecognizeData";
 import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
 import { loadSettings } from "@rs-core/config/Settings";
-import { executionCore, type ActionContext, type ActionInput } from "@rs-core/service/ExecutionCore";
+import { executionCore } from "@rs-core/service/ExecutionCore";
+import { processDataWithInstruction } from "@rs-core/service/AI-ops/RecognizeData";
+import type { ActionContext, ActionInput } from "@rs-core/service/ActionHistory";
 
 // Safe wrapper for loading custom instructions
 const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
@@ -786,29 +788,20 @@ Include all relevant CSS properties including layout, colors, typography, spacin
                     label: instructionLabel,
                     ...response
                 });
-            }).catch(error => {
-                console.error("AI processing error:", error);
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "custom",
-                    label: instructionLabel,
-                    ok: false,
-                    error: error.message || "Processing failed"
-                });
-            });
 
                 if (result?.ok && result?.data && message?.autoCopy !== false) {
                     requestClipboardCopy(result.data, true);
                 }
 
                 sendResponse(response);
-            })?.catch?.((e: any) => {
+            }).catch((e: any) => {
+                console.error("AI processing error:", e);
                 const errorResponse = { ok: false, error: String(e) };
                 broadcast(AI_RECOGNITION_CHANNEL, {
                     type: "result",
                     requestId,
                     mode: "custom",
+                    label: instructionLabel,
                     ...errorResponse
                 });
                 showExtensionToast(`${instructionLabel} failed: ${e}`, "error");

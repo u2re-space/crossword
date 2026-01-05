@@ -7,14 +7,14 @@ export const EntityRegistry = observe(new Map<string, EntityInterface<any, any>>
 //
 export const registerEntity = (entity: EntityInterface<any, any>) => {
     if (entity.id) {
-        EntityRegistry.set(entity.id, entity);
+        EntityRegistry?.set(entity.id, entity);
     }
 };
 
 //
 export const unregisterEntity = (entity: EntityInterface<any, any>) => {
     if (entity.id) {
-        EntityRegistry.delete(entity.id);
+        EntityRegistry?.delete(entity.id);
     }
 };
 
@@ -23,8 +23,8 @@ export const findEntities = (pattern: string): EntityInterface<any, any>[] => {
     if (!pattern) return [];
 
     // Optimization: direct lookup
-    if (EntityRegistry.has(pattern)) {
-        const e = EntityRegistry.get(pattern);
+    if (EntityRegistry?.has?.(pattern)) {
+        const e = EntityRegistry?.get?.(pattern);
         if (e) return [e];
     }
 
@@ -47,8 +47,8 @@ export const findEntities = (pattern: string): EntityInterface<any, any>[] => {
             return [];
         }
 
-        for (const [id, entity] of EntityRegistry) {
-            if (regex.test(id)) {
+        for (const [id, entity] of EntityRegistry?.entries?.() || []) {
+            if (regex?.test?.(id)) {
                 results.push(entity);
             }
         }
@@ -58,4 +58,3 @@ export const findEntities = (pattern: string): EntityInterface<any, any>[] => {
 
     return results;
 };
-

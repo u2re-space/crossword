@@ -1,5 +1,5 @@
 import { H, M, openDirectory } from "fest/lure";
-import { $trigger, isReactive, observe, numberRef, iterated, affected } from "fest/object";
+import { $trigger, isObservable, observe, numberRef, iterated, affected } from "fest/object";
 import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createDayDescriptor, formatAsDate, getComparableTimeValue, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement, MakeLazyCardElement, type LazyCardOptions } from "./Cards";
@@ -141,8 +141,8 @@ const MakeItemsLoaderForTabPage = <
             if (!obj || currentGeneration !== loadGeneration) return null;
 
             let processedObj = obj as E;
-            if (typeof obj === 'object') {
-                processedObj = (isReactive(obj) ? obj : observe(obj)) as E;
+            if (typeof obj === 'object' && obj != null) {
+                processedObj = (isObservable(obj) ? obj : observe(obj)) as E;
                 (processedObj as any).__name = name;
                 (processedObj as any).__path = `${sourceRef.DIR}${name}`;
             }

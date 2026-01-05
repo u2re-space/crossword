@@ -1,5 +1,5 @@
 // similar to DescriptorEdit, but use input[type="@N"]
-import { computed, isReactive, observe, propRef } from "fest/object";
+import { computed, isObservable, observe, propRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
 import { JSOX } from "jsox";
 
@@ -77,7 +77,7 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
     if (!key && !parts) return { block: null, saveEvent: () => { } };
 
     //
-    if (parts != null && (!isReactive(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
+    if (parts != null && (!isObservable(parts) || !Array.isArray(parts))) { parts = observe(!Array.isArray(parts) ? [parts] : parts); }
     parts ??= observe([]); const ars = parts;//wrapSetAsArray(parts);
     description ??= { label: "Part", type: "text" };
 
@@ -86,16 +86,16 @@ export const InputListEdit = ({ object, key, parts }: ObjectAndKey, description?
         // if key is presented and object has key, and parts is empty, push the value to parts
         if (key != null && object?.[key] != null && ars?.length <= 0) {
             // TODO: make better idea...
-            if (Array.isArray(object[key])) {
-                ars?.push(...object[key].map((item) => {
+            if (Array.isArray((object as any)[key])) {
+                ars?.push(...(object as any)[key].map((item) => {
                     if (typeof item == "object" && (item != null || "value" in item)) { return item.value; } else
                         return String(item);
                 }));
             } else
-                if (typeof object[key] == "object" && (object[key] != null || "value" in object[key])) {
-                    ars?.push(object[key].value);
+                if (typeof (object as any)[key] == "object" && ((object as any)[key] != null || "value" in (object as any)[key])) {
+                    ars?.push((object as any)[key].value);
                 } else
-                ars?.push(object[key]);
+                ars?.push((object as any)[key]);
         }
     }
 

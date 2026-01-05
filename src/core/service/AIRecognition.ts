@@ -5,6 +5,7 @@
  */
 
 import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast";
+import { MAX_FILE_SIZE } from "./model/GPT-Responses";
 
 export type RecognitionMode = "recognize" | "analyze";
 
@@ -180,9 +181,6 @@ export const initRecognitionService = (): (() => void) => {
  * Convert image to base64 data URL with size validation and error handling
  */
 export const imageToDataUrl = async (image: Blob | File): Promise<string> => {
-    // Import size limit for consistency
-    const { MAX_FILE_SIZE } = await import("../model/GPT-Responses");
-
     if (image.size > MAX_FILE_SIZE) {
         throw new Error(`Image too large: ${(image.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed: ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(1)}MB`);
     }
@@ -225,4 +223,3 @@ export default {
     imageToDataUrl,
     dataUrlToBlob
 };
-
