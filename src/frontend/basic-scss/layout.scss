@@ -205,8 +205,8 @@
         transition: all var(--basic-motion-normal);
         background-color: transparent;
         block-size: stretch;
-
         grid-row: content-row;
+        contain: strict;
 
         // Subtle gradient overlay
         &::before {
@@ -224,15 +224,6 @@
         & > * {
             position: relative;
             z-index: 1;
-        }
-
-        // Responsive padding
-        @container (max-width: 1024px) {
-            border-radius: var(--basic-radius-lg);
-        }
-
-        @container (max-width: 480px) {
-            border-radius: var(--basic-radius-md);
         }
 
         // Hover effects

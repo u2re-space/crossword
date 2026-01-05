@@ -976,6 +976,8 @@
         flex-direction: column;
         block-size: max-content;
         min-block-size: 250px;
+        contain: strict;
+        overflow: auto;
 
         .output-header {
             display: flex;
@@ -1084,6 +1086,7 @@
             min-block-size: 150px;
             block-size: stretch;
             max-block-size: stretch;
+            contain: strict;
         }
 
         .output-content {
@@ -1097,6 +1100,8 @@
             position: relative;
             border-radius: var(--basic-radius-lg);
             transition: all var(--basic-motion-normal);
+            contain: strict;
+            overflow: auto;
 
             // Drop zone styling
             &[data-dropzone] {
