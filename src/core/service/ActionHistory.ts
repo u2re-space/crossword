@@ -290,6 +290,7 @@ export class ActionHistoryStore {
 
     private loadHistory(): void {
         try {
+            if (typeof localStorage === "undefined") return;
             const stored = localStorage.getItem(this.storageKey);
             if (stored) {
                 const data = JSON.parse(stored);
@@ -313,6 +314,7 @@ export class ActionHistoryStore {
         if (!this.state.autoSave) return;
 
         try {
+            if (typeof localStorage === "undefined") return;
             localStorage.setItem(this.storageKey, JSON.stringify(this.state.entries));
         } catch (e) {
             console.warn('Failed to save action history:', e);

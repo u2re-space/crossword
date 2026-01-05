@@ -16,6 +16,8 @@ import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
 import { CHANNELS } from "@rs-frontend/routing/sw-handling";
 import { loadAsAdopted } from "fest/dom";
+import { dynamicTheme } from "fest/lure";
+import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "./explorer";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
@@ -107,9 +109,31 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     // Initialize icon system
     try {
         const sheet = ensureStyleSheet();
+        reinitializeRegistry(); // Ensure registry is properly restored
         console.log('[Icons] Initialized stylesheet:', sheet);
     } catch (error) {
         console.error('[Icons] Failed to initialize stylesheet:', error);
+    }
+
+    // Initialize dynamic status bar color theming
+    try {
+        dynamicTheme(root);
+        console.log('[Theme] Dynamic status bar color theming initialized');
+    } catch (error) {
+        console.error('[Theme] Failed to initialize dynamic status bar color theming:', error);
+    }
+
+    // Add debug functions to window for troubleshooting icon issues
+    if (typeof window !== "undefined") {
+        (window as any).clearIconCaches = () => {
+            clearIconCaches();
+            clearIconCache().catch(console.error);
+            console.log('[Debug] Icon caches cleared');
+        };
+        (window as any).invalidateIconCache = clearIconCaches; // Alias for easier access
+        (window as any).testIconRacing = testIconRacing; // Test racing functionality
+        (window as any).reinitializeIconRegistry = reinitializeRegistry; // Reinitialize registry
+        (window as any).debugIconSystem = debugIconSystem; // Debug icon system status
     }
 
     const ext = isLikelyExtension();

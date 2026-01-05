@@ -373,6 +373,7 @@ export class HistoryManager {
 
     private loadHistory(): void {
         try {
+            if (typeof localStorage === "undefined") return;
             const stored = localStorage.getItem(this.storageKey);
             if (stored) {
                 const parsedEntries = JSON.parse(stored) as HistoryEntry[];
@@ -391,6 +392,7 @@ export class HistoryManager {
 
     private saveHistory(): void {
         try {
+            if (typeof localStorage === "undefined") return;
             localStorage.setItem(this.storageKey, JSON.stringify(this.entries));
         } catch (error) {
             console.warn('Failed to save history to storage:', error);
