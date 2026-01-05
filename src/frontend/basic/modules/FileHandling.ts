@@ -1,6 +1,7 @@
 export interface FileHandlingOptions {
-    onFilesAdded: (files: File[]) => void;
+    onFilesAdded: (files: File[]) => void | Promise<void>;
     onError?: (error: string) => void;
+    onProgress?: (file: File, loaded: number, total: number) => void;
 }
 
 export class FileHandler {
@@ -8,7 +9,7 @@ export class FileHandler {
     private dragOverElements: Set<HTMLElement> = new Set();
 
     constructor(options: FileHandlingOptions) {
-        this.options = options;
+        this.options = { ...options }; // Clone to avoid mutations
     }
 
     /**
@@ -161,24 +162,60 @@ export class FileHandler {
     /**
      * Read file content as text
      */
-    async readFileAsText(file: File): Promise<string> {
+    async readFileAsText(file: File, onProgress?: (loaded: number, total: number) => void): Promise<string> {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+            if (onProgress) {
+                reader.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        onProgress(e.loaded, e.total);
+                    }
+                };
+            }
             reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Read file content as ArrayBuffer
+     */
+    async readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as ArrayBuffer);
+            reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    /**
+     * Read file content as Data URL
+     */
+    async readFileAsDataURL(file: File): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+            reader.readAsDataURL(file);
         });
     }
 
     /**
      * Read multiple files as text
      */
-    async readFilesAsText(files: File[]): Promise<{ file: File, content: string }[]> {
+    async readFilesAsText(
+        files: File[],
+        onProgress?: (file: File, loaded: number, total: number) => void
+    ): Promise<{ file: File, content: string }[]> {
         const results: { file: File, content: string }[] = [];
 
         for (const file of files) {
             try {
-                const content = await this.readFileAsText(file);
+                const content = await this.readFileAsText(file, (loaded, total) => {
+                    onProgress?.(file, loaded, total);
+                });
                 results.push({ file, content });
             } catch (error) {
                 console.warn(`Failed to read file ${file.name}:`, error);
@@ -255,6 +292,54 @@ export class FileHandler {
             file.type.includes('xml');
     }
 
+    /**
+     * Check if a file is a binary file
+     */
+    isBinaryFile(file: File): boolean {
+        return !this.isTextFile(file) && !this.isImageFile(file);
+    }
+
+    /**
+     * Get file metadata
+     */
+    getFileMetadata(file: File): {
+        name: string;
+        extension: string;
+        size: number;
+        type: string;
+        lastModified: number;
+        isText: boolean;
+        isImage: boolean;
+        isBinary: boolean;
+        formattedSize: string;
+        icon: string;
+    } {
+        const extension = file.name.split('.').pop()?.toLowerCase() || '';
+        const isText = this.isTextFile(file);
+        const isImage = this.isImageFile(file);
+        const isBinary = this.isBinaryFile(file);
+
+        return {
+            name: file.name,
+            extension,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+            isText,
+            isImage,
+            isBinary,
+            formattedSize: this.formatFileSize(file.size),
+            icon: this.getFileIcon(file.type)
+        };
+    }
+
+    /**
+     * Get files metadata for multiple files
+     */
+    getFilesMetadata(files: File[]): Array<ReturnType<FileHandler['getFileMetadata']>> {
+        return files.map(file => this.getFileMetadata(file));
+    }
+
     private addDragOver(element: HTMLElement): void {
         if (!this.dragOverElements.has(element)) {
             this.dragOverElements.add(element);
@@ -267,6 +352,55 @@ export class FileHandler {
             this.dragOverElements.delete(element);
             element.classList.remove('drag-over');
         }
+    }
+
+    /**
+     * Manually trigger file processing with the provided files
+     */
+    processFiles(files: File[]): void {
+        this.options.onFilesAdded(files);
+    }
+
+    /**
+     * Create a downloadable file from content
+     */
+    createDownloadableFile(content: string | Blob | ArrayBuffer, filename: string, mimeType?: string): void {
+        let blob: Blob;
+
+        if (content instanceof Blob) {
+            blob = content;
+        } else if (content instanceof ArrayBuffer) {
+            blob = new Blob([content], { type: mimeType || 'application/octet-stream' });
+        } else {
+            blob = new Blob([content], { type: mimeType || 'text/plain;charset=utf-8' });
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Clean up the URL object
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
+
+    /**
+     * Create a shareable file URL
+     */
+    createFileURL(file: File): string {
+        return URL.createObjectURL(file);
+    }
+
+    /**
+     * Revoke a file URL to free memory
+     */
+    revokeFileURL(url: string): void {
+        URL.revokeObjectURL(url);
     }
 
     /**

@@ -51,9 +51,10 @@ alwaysApply: false
 - **`ref(initial)`**
   Creates an observable reference with a `value` property.
 
-- **`computed(sub)`**
-  Similar to `ref`, but computes its value from a reactive source.
-  - Setting the value has no effect on the source.
+- **`computed(src, cb, behavior, prop)`**
+  Creates a computed reactive value from a source.
+  - Computes its value using a callback function.
+  - Automatically updates when dependencies change.
 
 - **`conditional(cond, ifTrue, ifFalse)`**
   Reactive value that switches between `ifTrue` and `ifFalse` based on `cond.value`.
@@ -61,27 +62,62 @@ alwaysApply: false
 ### Install
 
 ```bash
-npm i @fest/object
+npm i @fest-lib/object.ts
 ```
 
 ### Importing
 
 ```ts
 import {
+  // Core reactivity
+  observe,
+  affected,
+  makeArrayObservable,
+  isObservable,
+  recoverReactive,
+
+  // Primitive refs
   ref,
   numberRef,
   stringRef,
   booleanRef,
   autoRef,
   promised,
-  observe,
-  subscribe,
-  observe,
-  unsubscribe,
+
+  // Computed and derived values
+  computed,
   derivate,
+  conditional,
+  remap,
+  unified,
+
+  // Binding and assignment
   bindBy,
-  safe
-} from "@fest/object";
+  assign,
+  link,
+
+  // Collection utilities
+  observableBySet,
+  observableByMap,
+  iterated,
+
+  // Subscription management
+  unaffected,
+  triggerWithDelay,
+  delayedBehavior,
+  delayedOrInstantBehavior,
+
+  // Utilities
+  safe,
+  deref,
+  unwrap,
+  propRef,
+
+  // Legacy (deprecated)
+  createReactive,
+  createReactiveMap,
+  createReactiveSet
+} from "@fest-lib/object.ts";
 ```
 
 ### Quick start

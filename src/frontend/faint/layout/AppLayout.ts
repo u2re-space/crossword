@@ -1,34 +1,53 @@
 import { observe, propRef, affected } from "fest/object";
 import { H, C } from "fest/lure";
 import { navigate, historyState } from "fest/lure";
-import { isPrimitive } from "fest-src/fest/core/index";
+import { isPrimitive } from "fest/core";
 import { makeWallpaper, SpeedDial } from "../views/SpeedDial";
 
 //
 let skipCreateNewView = false;
+
+// Prevent recursive onClose calls
+let isClosingView = false;
+let closingViewKey = "";
+
 export const onClose = (tabName: string, currentView: any, existsViews: Map<string, any>, closingView?: string) => {
-    let isClosed = false;
-    if (tabName?.replace?.(/^#/, "") && (tabName?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || !closingView?.replace?.(/^#/, ""))) {
-        tabName = tabName?.replace?.(/^#/, "") ?? tabName;
-        if (!tabName || tabName == "home") return;
+    const viewKey = tabName?.replace?.(/^#/, "") || closingView?.replace?.(/^#/, "");
 
-        //
-        const curView = isPrimitive(currentView) ? (currentView?.replace?.(/^#/, "") ?? currentView) : ((currentView as { value: string })?.value?.replace?.(/^#/, "") ?? (currentView as { value: string })?.value);
-        const oldView = (tabName || curView)?.replace?.(/^#/, "");
-        const toReplace = [...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home";
-
-        // We need to know if we are closing the ACTIVE view
-        if (existsViews.has(oldView) && toReplace != oldView && oldView != "home") {
-            existsViews.delete(oldView); isClosed = true;
-        }
-
-        //
-        if ((curView == oldView || toReplace != curView) && isClosed) {
-            // Use replaceState to avoid pushing this "close" action as a new navigation step
-            navigate(`#${toReplace}`, existsViews.has(toReplace));
-        }
+    // Prevent recursive calls for the same view
+    if (isClosingView && closingViewKey === viewKey) {
+        return false;
     }
-    return isClosed;
+
+    isClosingView = true;
+    closingViewKey = viewKey;
+
+    try {
+        let isClosed = false;
+        if (tabName?.replace?.(/^#/, "") && (tabName?.replace?.(/^#/, "") == closingView?.replace?.(/^#/, "") || !closingView?.replace?.(/^#/, ""))) {
+            tabName = tabName?.replace?.(/^#/, "") ?? tabName;
+            if (!tabName || tabName == "home") return false;
+
+            //
+            const curView = isPrimitive(currentView) ? (currentView?.replace?.(/^#/, "") ?? currentView) : ((currentView as { value: string })?.value?.replace?.(/^#/, "") ?? (currentView as { value: string })?.value);
+            const oldView = (tabName || curView)?.replace?.(/^#/, "");
+            const toReplace = [...existsViews?.keys?.()]?.filter?.(k => k != oldView && k != "home")?.[0] || "home";
+
+            // We need to know if we are closing the ACTIVE view
+            if (existsViews.has(oldView) && toReplace != oldView && oldView != "home") {
+                existsViews.delete(oldView); isClosed = true;
+            }
+
+            //
+            if ((curView == oldView || toReplace != curView) && isClosed) {
+                // Use replaceState to avoid pushing this "close" action as a new navigation step
+                navigate(`#${toReplace}`, existsViews.has(toReplace));
+            }
+        }
+        return isClosed;
+    } finally {
+        isClosingView = false;
+    }
 }
 
 //
@@ -38,26 +57,44 @@ export const $comment$ = document.createComment("");
 export const $toolbar$ = document.createComment("");
 export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeView: (key: string) => any, sidebar: HTMLElement) => {
     const rPair = observe([document.createComment(""), document.createComment("")])
+
+    // Prevent recursive setView calls
+    let isSettingView = false;
+    let currentViewKey = "";
+
     const setView = async (key: string, forceCreateNewView?: boolean) => {
         key = key?.replace?.(/^#/, "") ?? key;
-        const $homeView = "home";
 
-        // `skipCreateNewView` should depending on replace or push state happened
-        if (!skipCreateNewView && !forceCreateNewView && (historyState as any)?.action != null) {
-            skipCreateNewView ||= ["REPLACE", "POP", "BACK"]?.includes?.((historyState as any)?.action);
+        // Prevent recursive calls for the same view
+        if (isSettingView && currentViewKey === key) {
+            return;
         }
 
-        //
-        if (forceCreateNewView || !key || key == $homeView) {
+        isSettingView = true;
+        currentViewKey = key;
+
+        try {
+            const $homeView = "home";
+
+            // `skipCreateNewView` should depending on replace or push state happened
+            if (!skipCreateNewView && !forceCreateNewView && (historyState as any)?.action != null) {
+                skipCreateNewView ||= ["REPLACE", "POP", "BACK"]?.includes?.((historyState as any)?.action);
+            }
+
+            //
+            if (forceCreateNewView || !key || key == $homeView) {
+                skipCreateNewView = false;
+            }
+
+            //
+            const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView)) || [$toolbar$, $comment$];
+            const npr = (skipCreateNewView ? ext : (await makeView(key || $homeView) || await makeView($homeView))) || ext;
             skipCreateNewView = false;
+            rPair[0] = (await npr?.[0]) || $toolbar$;
+            rPair[1] = (await npr?.[1]) || $comment$;
+        } finally {
+            isSettingView = false;
         }
-
-        //
-        const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView)) || [$toolbar$, $comment$];
-        const npr = (skipCreateNewView ? ext : (await makeView(key || $homeView) || await makeView($homeView))) || ext;
-        skipCreateNewView = false;
-        rPair[0] = (await npr?.[0]) || $toolbar$;
-        rPair[1] = (await npr?.[1]) || $comment$;
     }
 
     //

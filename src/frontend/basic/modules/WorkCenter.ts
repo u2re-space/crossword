@@ -60,9 +60,10 @@ export interface WorkCenterState {
     recognizedData: {
         content: string;
         timestamp: number;
-        source: 'files' | 'text' | 'mixed';
-        recognizedAs: 'markdown' | 'html' | 'text' | 'json' | 'xml' | 'other';
-        metadata?: any;
+        source: 'files' | 'text' | 'url' | 'markdown' | 'image' | 'mixed';
+        recognizedAs: 'markdown' | 'html' | 'text' | 'json' | 'xml' | 'other'; // Format recognized as
+        metadata?: Record<string, any>;
+        responseId?: string; // GPT/AI response ID from HTTP level
     } | null; // Raw recognized content from files/images
 
     processedData: {
@@ -301,7 +302,7 @@ export class WorkCenterManager {
               </div>
               <label class="auto-action-label" title="Auto-action (use last successful)">
                 <input type="checkbox" class="auto-action-checkbox" ${this.state.autoAction ? 'checked' : ''}>
-                <ui-icon icon="zap" size="20" icon-style="duotone"></ui-icon>
+                <ui-icon icon="lightning-a" size="20" icon-style="duotone"></ui-icon>
               </label>
             </div>
           </div>
@@ -830,10 +831,9 @@ export class WorkCenterManager {
                     source: isTextFile ? 'text' : 'files',
                     recognizedAs: this.determineRecognizedFormat(result.content, isTextFile),
                     metadata: {
-                        fileCount: this.state.files.length,
-                        responseId: result.responseId
+                        fileCount: this.state.files.length
                     },
-                    responseId: result.responseId
+                    responseId: result.responseId || "unknown"
                 };
                 this.updateRecognizedStatus(container);
 

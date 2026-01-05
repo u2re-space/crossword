@@ -16,8 +16,9 @@ import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
 import { CHANNELS } from "@rs-frontend/routing/sw-handling";
 import { loadAsAdopted } from "fest/dom";
+import type { FileManager } from "./explorer";
 
-export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter";
+export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
 
 export type BasicAppOptions = {
     initialView?: BasicView;
@@ -116,7 +117,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     // Initialize managers that are always needed
     const fileHandler = createFileHandler({
-        onFilesAdded: async (files: File[]) => {
+        onFilesAdded: async (files: File[]): Promise<void> => {
             // Handle files based on current view - lazy load components if needed
             if (state.view === 'workcenter') {
                 const workCenter = await getCachedComponent(
@@ -172,8 +173,12 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     const templateManager = createTemplateManager();
 
+    // Determine initial view based on content availability
+    const hasExistingContent = localStorage.getItem("rs-basic-markdown") || options.initialMarkdown;
+    const defaultView = options.initialView || (hasExistingContent ? "markdown-viewer" : "file-picker");
+
     const state = {
-        view: (options.initialView || "markdown-viewer") as BasicView,
+        view: defaultView as BasicView,
         markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
         editing: false,
         busy: false,
@@ -218,6 +223,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         <button class="btn ${state.view === 'markdown-viewer' ? 'active' : ''}" data-action="view-markdown-viewer" type="button" title="Markdown Viewer">
           <ui-icon icon="eye" icon-style="duotone"></ui-icon>
           <span>Viewer</span>
+        </button>
+        <button class="btn ${state.view === 'file-explorer' ? 'active' : ''}" data-action="view-file-explorer" type="button" title="File Explorer">
+          <ui-icon icon="folder" icon-style="duotone"></ui-icon>
+          <span>Explorer</span>
         </button>
         <button class="btn ${state.view === 'workcenter' ? 'active' : ''}" data-action="view-workcenter" type="button" title="AI Work Center">
           <ui-icon icon="lightning" icon-style="duotone"></ui-icon>
@@ -273,7 +282,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     const statusLine = H`<div class="status" aria-live="polite"></div>` as HTMLElement;
     const content = H`<div class="content"></div>` as HTMLElement;
-    root.append(toolbar, statusLine, content);
+    root.append(toolbar, content);
 
     // Setup file input for markdown view
     const fileInput = H`<input class="file-input" type="file" accept=".md,text/markdown,text/plain" />` as HTMLInputElement;
@@ -776,6 +785,120 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             return;
         }
 
+        if (state.view === "file-picker") {
+            // Simple file picker view
+            content.innerHTML = `
+                <div class="file-picker">
+                    <div class="file-picker-header">
+                        <h2>Open File</h2>
+                        <p>Select a file to open in the viewer or editor</p>
+                    </div>
+                    <div class="file-picker-actions">
+                        <button class="btn btn-primary" data-action="open-markdown" type="button">
+                            <ui-icon icon="file-text" size="18" icon-style="duotone"></ui-icon>
+                            <span>Open Markdown</span>
+                        </button>
+                        <button class="btn" data-action="open-any" type="button">
+                            <ui-icon icon="file" size="18" icon-style="duotone"></ui-icon>
+                            <span>Open Any File</span>
+                        </button>
+                    </div>
+                    <div class="file-picker-info">
+                        <p><strong>Markdown files</strong> will open in the viewer/editor</p>
+                        <p><strong>Other files</strong> will be processed by the work center</p>
+                    </div>
+                </div>
+            `;
+
+            // Add event listeners for the buttons
+            const openMarkdownBtn = content.querySelector('[data-action="open-markdown"]') as HTMLButtonElement;
+            const openAnyBtn = content.querySelector('[data-action="open-any"]') as HTMLButtonElement;
+
+            if (openMarkdownBtn) {
+                openMarkdownBtn.addEventListener('click', () => {
+                    // Trigger file input for markdown files
+                    fileInput.accept = ".md,.markdown,.txt,text/markdown";
+                    fileInput.click();
+                });
+            }
+
+            if (openAnyBtn) {
+                openAnyBtn.addEventListener('click', () => {
+                    // Trigger file input for any files
+                    fileInput.accept = "*";
+                    fileInput.click();
+                });
+            }
+
+            renderStatus();
+            return;
+        }
+
+        if (state.view === "file-explorer") {
+            // Lazy load file explorer
+            content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading File Explorer...</span></div>';
+
+            getCachedComponent(
+                'file-explorer',
+                () => import('./explorer'),
+                { componentName: 'FileManager' }
+            ).then(() => {
+                try {
+                    const explorerEl = document.createElement('ui-file-manager') as FileManager & HTMLElement;
+
+                    // Listen for file selection events from the explorer
+                    explorerEl.addEventListener('open-item', (e: any) => {
+                        const { item } = e.detail;
+                        if (item?.kind === 'file' && item?.file) {
+                            // Handle file selection - pass to file handler
+                            fileHandler.processFiles([item.file]);
+                        }
+                    });
+
+                    // Listen for open events (double-click on files)
+                    explorerEl.addEventListener('open', (e: any) => {
+                        const { item } = e.detail;
+                        if (item?.kind === 'file' && item?.file) {
+                            // Handle file opening - check file type and switch to appropriate view
+                            if (fileHandler.isMarkdownFile(item.file)) {
+                                // Switch to markdown viewer and load the file
+                                state.view = 'markdown-viewer';
+                                fileHandler.readFileAsText(item.file).then(content => {
+                                    state.markdown = content;
+                                    persistMarkdown();
+                                    render();
+                                }).catch(error => {
+                                    console.error('Failed to read markdown file:', error);
+                                    state.message = 'Failed to read file';
+                                    renderStatus();
+                                    setTimeout(() => {
+                                        state.message = '';
+                                        renderStatus();
+                                    }, 3000);
+                                });
+                            } else {
+                                // For other files, just add to file handler
+                                fileHandler.processFiles([item.file]);
+                            }
+                        }
+                    });
+
+                    content.innerHTML = '';
+                    content.append(explorerEl);
+                    renderStatus();
+                } catch (error) {
+                    console.error('Failed to create file explorer:', error);
+                    content.innerHTML = '<div class="component-error"><h3>Failed to create File Explorer</h3><p>Please try refreshing the page.</p></div>';
+                    renderStatus();
+                }
+            }).catch(error => {
+                console.error('Failed to load file explorer:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load File Explorer</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
+            });
+            return;
+        }
+
         if (state.view === "workcenter") {
             // Lazy load work center
             content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Work Center...</span></div>';
@@ -839,6 +962,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             if (action === "view-workcenter") state.view = "workcenter";
             if (action === "view-settings") state.view = "settings";
             if (action === "view-history") state.view = "history";
+            if (action === "view-file-explorer") state.view = "file-explorer";
 
             if (action === "open-md") fileInput.click();
             if (action === "save-md") saveToFile();

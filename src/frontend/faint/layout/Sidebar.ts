@@ -1,6 +1,6 @@
 import { H, M, navigate } from "fest/lure";
 import { NAVIGATION_SHORTCUTS } from "../../utils/StateStorage";
-import { isPrimitive } from "fest-src/fest/core/utils/Primitive";
+import { isPrimitive } from "fest/core";
 
 //
 export const Sidebar: any = (currentView: { value: string }, entityViews, existsViews, _makeView: (key: string) => any) => {

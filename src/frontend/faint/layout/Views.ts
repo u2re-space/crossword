@@ -1,7 +1,6 @@
 import { $comment$, $toolbar$, AppLayout, onClose } from "./AppLayout";
 import { loadAsAdopted } from "fest/dom";
 import { observe, $trigger } from "fest/object";
-import { initialize as initDOM } from "fest/veela";
 
 //
 import "fest/fl-ui";
@@ -62,46 +61,81 @@ const checkIsActive = (registryKey: string, closingView: string) => {
 }
 
 //
+console.log("[faint] Creating current view reference");
 export const CURRENT_VIEW = historyViewRef(`#${$defaultView}`, { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
-import { startGeoTracking } from "@rs-core/service/GeoService";
-import { startTimeTracking, requestNotificationPermission } from "@rs-core/service/TimeService";
-import { initTheme } from "@rs-frontend/utils/Theme";
+console.log("[faint] Current view reference created");
+import { startGeoTracking } from "../../../core/service/GeoService";
+import { startTimeTracking, requestNotificationPermission } from "../../../core/service/TimeService";
+import { initTheme } from "../../utils/Theme";
 
 //
 export async function frontend(mountElement) {
+    console.log("[faint] Starting frontend initialization");
 
-    await Promise.allSettled([
-        document.requestStorageAccess(),
-        navigator.permissions.query({ name: "storage-access" as PermissionName }),
-        navigator.permissions.query({ name: "top-level-storage-access" as PermissionName }),
-        navigator.permissions.query({ name: "geolocation" as PermissionName }),
-        navigator.permissions.query({ name: "clipboard-write" as PermissionName }),
-        navigator.permissions.query({ name: "clipboard-read" as PermissionName }),
-        navigator.permissions.query({ name: "notifications" as PermissionName }),
-        navigator.permissions.query({ name: "microphone" as PermissionName }),
+    // Make permissions non-blocking
+    console.log("[faint] Requesting permissions");
+    Promise.allSettled([
+        document.requestStorageAccess?.(),
+        navigator.permissions?.query?.({ name: "storage-access" as PermissionName }),
+        navigator.permissions?.query?.({ name: "top-level-storage-access" as PermissionName }),
+        navigator.permissions?.query?.({ name: "geolocation" as PermissionName }),
+        navigator.permissions?.query?.({ name: "clipboard-write" as PermissionName }),
+        navigator.permissions?.query?.({ name: "clipboard-read" as PermissionName }),
+        navigator.permissions?.query?.({ name: "notifications" as PermissionName }),
+        navigator.permissions?.query?.({ name: "microphone" as PermissionName }),
     ]).then((results) => {
-        console.log("Permissions granted", results);
+        console.log("[faint] Permissions checked", results);
     })?.catch?.((error) => {
-        console.log("Permissions denied", error);
+        console.log("[faint] Permissions error", error);
     });
 
+    // Removed heavy veela runtime styles loading that causes freezing/hanging
+    // console.log("[faint] Initializing DOM");
+    // console.time("[faint] DOM init time");
+    // try {
+    //     const domPromise = initDOM(document.body);
+    //     if (domPromise) {
+    //         await Promise.race([
+    //             domPromise,
+    //             new Promise((_, reject) => setTimeout(() => reject(new Error("DOM init timeout")), 5000))
+    //         ]);
+    //     }
+    //     console.timeEnd("[faint] DOM init time");
+        console.log("[faint] DOM initialized, loading styles");
+        console.time("[faint] Style load time");
 
-    initDOM(document.body)?.then?.(()=>loadAsAdopted(style));
-    Promise.allSettled([
-        initTheme(),
-        initBackNavigation({
+        await Promise.race([
+            loadAsAdopted(style),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Style load timeout")), 3000))
+        ]);
+        console.timeEnd("[faint] Style load time");
+        console.log("[faint] Styles loaded");
+    // } catch (error) {
+    //     console.error("[faint] Failed to initialize DOM or load styles", error);
+    //     // Continue anyway - don't let this block the entire app
+    // }
+
+    console.log("[faint] Initializing services");
+    console.time("[faint] Services init time");
+    // Make services non-blocking and handle errors individually
+    [
+        () => initTheme(),
+        () => initBackNavigation({
             preventDefaultNavigation: false,
             pushInitialState: true
         }),
-        initGlobalClipboard(),
-        startGeoTracking(),
-        startTimeTracking(),
-        requestNotificationPermission()
-    ])?.catch?.((error) => {
-        console.warn("Failed to initialize some services", error);
+        () => initGlobalClipboard(),
+        () => startGeoTracking(),
+        () => startTimeTracking(),
+        () => requestNotificationPermission()
+    ].forEach((initFn, index) => {
+        (initFn?.() as unknown as Promise<any>)?.catch?.((error) => {
+            console.warn(`[faint] Service ${index} failed to initialize`, error);
+        });
     });
+    console.timeEnd("[faint] Services init time");
 
-    //
+    console.log("[faint] Creating entity views map");
     const entityViews = new Map([
         ["task", { icon: "calendar-dots", label: "Plan", groupedBy: "days", tabs: ["all", "pending", "in_progress", "completed", "failed", "delayed", "canceled", "other"], availableActions: ["generate", "debug-gen", "add", "paste-and-recognize", "share-clipboard"] }],
         ["event", { icon: "calendar", label: "Event", groupedBy: "days", tabs: ["all","education", "lecture", "conference", "meeting", "seminar", "workshop", "presentation", "celebration", "opening", "other"], availableActions: ["upload", "paste-and-analyze", "add"] }],
@@ -183,14 +217,49 @@ export async function frontend(mountElement) {
         }
 
         //
+        // Clean up creation flag
+        existsViews.delete(`_creating_${registryKey}`);
         return existsViews.get(registryKey);
     }
 
-    //
-    const existsViews: Map<string, any> = observe(new Map<string, any>()) as Map<string, any>;
+    console.log("[faint] Creating reactive views registry");
+    const existsViews = observe(new Map<string, any>());
+    console.log("[faint] Reactive views registry created");
+
+    // Track view creation to prevent excessive memory usage
+    let viewCreationCount = 0;
+    const MAX_VIEWS = 50;
+
+    // Prevent recursive hash navigation
+    let isNavigating = false;
+    let currentHash = "";
     const makeView = (registryKey, props?: any)=>{
         if (!registryKey) return null; registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
         if (!registryKey) return null;
+
+        // Prevent recursive calls that could cause infinite loops
+        if (existsViews.has(`_creating_${registryKey}`)) {
+            console.warn(`[faint] Preventing recursive view creation for ${registryKey}`);
+            return null;
+        }
+
+        // Prevent rapid successive calls for the same view (debounce)
+        const currentHash = location.hash;
+        if (isNavigating && currentHash === currentHash && registryKey === currentHash.replace(/^#/, "")) {
+            console.warn(`[faint] Preventing rapid navigation to ${registryKey}`);
+            return existsViews.get(registryKey) || null;
+        }
+
+        // Check view creation limit
+        const currentViewCount = Array.from(existsViews.keys()).filter(k => !k.startsWith('_creating_')).length;
+        if (currentViewCount >= MAX_VIEWS) {
+            console.warn(`[faint] View creation limit reached (${MAX_VIEWS}), skipping ${registryKey}`);
+            return null;
+        }
+
+        // Mark as being created to prevent recursion
+        existsViews.set(`_creating_${registryKey}`, true);
+        viewCreationCount++;
 
         //
         let actions: any = {};
@@ -208,25 +277,40 @@ export async function frontend(mountElement) {
             const promised = Promise.withResolvers<any>();
             const toolbarPromise = Promise.withResolvers<any>();
 
-            // Defer heavy view creation
+            // Defer heavy view creation with timeout protection
+            const timeoutId = setTimeout(() => {
+                console.warn(`[faint] View creation timeout for ${registryKey}`);
+                if (!element) promised.resolve(element = document.createElement('div'));
+                if (!actions) toolbarPromise.resolve(actions = document.createElement('div'));
+            }, 10000); // 10 second timeout
+
             requestIdleCallback(async () => {
-                promised.resolve(element = await makeEntityView(registryKey, entityView));
-                toolbarPromise.resolve(actions = await makeToolbar(entityView?.availableActions || [], {
-                    label: entityView?.label || registryKey,
-                    type: registryKey,
-                    DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
-                }, element));
+                try {
+                    clearTimeout(timeoutId);
+                    promised.resolve(element = await makeEntityView(registryKey, entityView));
+                    toolbarPromise.resolve(actions = await makeToolbar(entityView?.availableActions || [], {
+                        label: entityView?.label || registryKey,
+                        type: registryKey,
+                        DIR: (registryKey == "task" || registryKey == "timeline") ? `/timeline/` : `/data/${registryKey}/`
+                    }, element));
 
-                //
-                const cached = existsViews.get(registryKey);
-                if (cached) {
-                    cached[0] = actions;
-                    cached[1] = element;
+                    //
+                    const cached = existsViews.get(registryKey);
+                    if (cached) {
+                        cached[0] = actions;
+                        cached[1] = element;
+                    }
+
+                    //
+                    element?.setAttribute?.("data-view-id", registryKey);
+                    actions?.setAttribute?.("data-view-id", registryKey);
+                } catch (error) {
+                    console.error(`[faint] Failed to create view ${registryKey}:`, error);
+                    clearTimeout(timeoutId);
+                    // Provide fallback elements
+                    if (!element) promised.resolve(element = document.createElement('div'));
+                    if (!actions) toolbarPromise.resolve(actions = document.createElement('div'));
                 }
-
-                //
-                element?.setAttribute?.("data-view-id", registryKey);
-                actions?.setAttribute?.("data-view-id", registryKey);
             });
 
             // use by promise
@@ -285,11 +369,40 @@ export async function frontend(mountElement) {
         return;
     }
 
-    //
-    const $sidebar = Sidebar(CURRENT_VIEW, entityViews, existsViews, makeView);
-    const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, $sidebar);
-    mountElement?.append?.(layout);
-    mountElement?.append?.(createCtxMenu());
+    console.log("[faint] Creating layout components");
+    console.time("[faint] Layout creation time");
+
+    // Add timeout protection for layout creation
+    const layoutPromise = Promise.race([
+        (async () => {
+            console.log("[faint] Creating sidebar");
+            const $sidebar = Sidebar(CURRENT_VIEW, entityViews, existsViews, makeView);
+            console.log("[faint] Sidebar created, creating main layout");
+
+            const layout = AppLayout(CURRENT_VIEW, existsViews as any, makeView, $sidebar);
+            console.log("[faint] Main layout created, mounting to DOM");
+
+            mountElement?.append?.(layout);
+            mountElement?.append?.(createCtxMenu());
+            return true;
+        })(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Layout creation timeout")), 10000))
+    ]);
+
+    try {
+        await layoutPromise;
+        console.timeEnd("[faint] Layout creation time");
+        console.log("[faint] Layout components created and mounted");
+    } catch (error) {
+        console.error("[faint] Failed to create layout:", error);
+        console.timeEnd("[faint] Layout creation time");
+
+        // Fallback: create a basic error message
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = '<h1>Faint App Error</h1><p>Failed to initialize the application layout. Please check the console for details.</p>';
+        errorDiv.style.cssText = 'padding: 20px; color: red; font-family: monospace;';
+        mountElement?.append?.(errorDiv);
+    }
 
     //
     mountElement?.addEventListener?.("open", (event: CustomEvent) => {

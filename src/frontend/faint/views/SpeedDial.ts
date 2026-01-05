@@ -598,7 +598,7 @@ export function createCtxMenu() {
         }
     };
 
-    const ctxMenu = H`<ul class="grid-rows c2-surface round-decor ctx-menu ux-anchor"></ul>`;
+    const ctxMenu = H`<ul class="grid-rows round-decor ctx-menu ux-anchor"></ul>`;
     ctxMenuTrigger(Q("#home") || document.body, ctxMenuDesc as any, ctxMenu);
     return ctxMenu;
 }
