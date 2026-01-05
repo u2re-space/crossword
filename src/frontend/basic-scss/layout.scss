@@ -8,7 +8,8 @@
         padding: var(--space-md) var(--space-xl);
         background: var(--basic-surface-container-high);
         box-shadow: var(--basic-elev-1);
-        block-size: 4rem;
+        min-block-size: 4rem;
+        block-size: max-content;
         contain: strict;
         position: relative;
         overflow: hidden;
@@ -39,17 +40,18 @@
         // Responsive padding and height
         @container (max-width: 1024px) {
             padding: var(--space-sm) var(--space-lg);
-            block-size: 3.5rem;
+            min-block-size: 3.5rem;
         }
 
         @container (max-width: 768px) {
             padding: var(--space-xs) var(--space-md);
-            block-size: 3rem;
+            min-block-size: 3rem;
         }
 
         @container (max-width: 480px) {
             padding: var(--space-xs);
-            block-size: 2.75rem;
+            min-block-size: 2.75rem;
+            flex-direction: column;
         }
 
         // Enhanced scrolling behavior
@@ -197,11 +199,7 @@
     .content {
         flex: 1;
         overflow: auto;
-        //padding: var(--space-xl);
         padding: 0px;
-        //background: var(--basic-surface-container);
-        //border-radius: var(--basic-radius-xl);
-        //border: 1px solid color-mix(in oklab, var(--basic-outline) 20%, transparent);
         box-shadow: var(--basic-elev-1);
         position: relative;
         transition: all var(--basic-motion-normal);
@@ -218,9 +216,6 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg,
-                    color-mix(in oklab, var(--basic-surface-container) 98%, var(--basic-primary) 2%) 0%,
-                    var(--basic-surface-container) 100%);
             border-radius: inherit;
             pointer-events: none;
         }
@@ -233,16 +228,10 @@
 
         // Responsive padding
         @container (max-width: 1024px) {
-            padding: var(--space-lg);
             border-radius: var(--basic-radius-lg);
         }
 
-        @container (max-width: 768px) {
-            padding: var(--space-md);
-        }
-
         @container (max-width: 480px) {
-            padding: var(--space-sm);
             border-radius: var(--basic-radius-md);
         }
 

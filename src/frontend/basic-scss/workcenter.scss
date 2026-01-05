@@ -123,6 +123,7 @@
         gap: var(--space-lg);
         padding: var(--space-sm);
         background: var(--basic-surface-container-low);
+        border-radius: var(--basic-radius-sm);
 
         // Responsive adjustments
         @container (max-width: 1200px) {
@@ -192,10 +193,6 @@
                 @container (max-width: 900px) {
                     font-size: var(--text-xs);
                     justify-content: flex-start;
-                }
-
-                @container (max-width: 640px) {
-                    display: none; // Hide labels on very small screens
                 }
             }
 
