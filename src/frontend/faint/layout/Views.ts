@@ -20,6 +20,7 @@ import { Settings } from "../views/Settings";
 import { DataExplorer } from "../views/DataExplorer";
 import { MakeMarkdownView } from "../views/Markdown";
 import { initGlobalClipboard } from "fest/lure";
+import initVeela from "fest/veela";
 
 //
 import { UIPhosphorIcon } from "fest/icon";
@@ -89,7 +90,17 @@ export async function frontend(mountElement) {
         console.log("[faint] Permissions error", error);
     });
 
-    // Removed heavy veela runtime styles loading that causes freezing/hanging
+    // Re-enable Veela runtime styles in a non-blocking way (async stylesheet parsing).
+    // This restores common base tokens/resets without freezing the UI.
+    try {
+        // Defer to idle time so first paint happens quickly.
+        (globalThis as any).requestIdleCallback?.(() => initVeela(document.body), { timeout: 1500 })
+            ?? setTimeout(() => initVeela(document.body), 0);
+    } catch {
+        // ignore
+    }
+
+    // (App-specific styles)
     // console.log("[faint] Initializing DOM");
     // console.time("[faint] DOM init time");
     // try {
@@ -217,8 +228,7 @@ export async function frontend(mountElement) {
         }
 
         //
-        // Clean up creation flag
-        existsViews.delete(`_creating_${registryKey}`);
+        // Clean up creation flag (kept in a separate Set now)
         return existsViews.get(registryKey);
     }
 
@@ -226,39 +236,47 @@ export async function frontend(mountElement) {
     const existsViews = observe(new Map<string, any>());
     console.log("[faint] Reactive views registry created");
 
+    // Track in-progress creation separately; do NOT leak these markers into the tabs Map.
+    const creatingViews = new Set<string>();
+
     // Track view creation to prevent excessive memory usage
     let viewCreationCount = 0;
     const MAX_VIEWS = 50;
 
     // Prevent recursive hash navigation
     let isNavigating = false;
-    let currentHash = "";
+    let lastHash = "";
     const makeView = (registryKey, props?: any)=>{
         if (!registryKey) return null; registryKey = registryKey?.replace?.(/^#/, "") ?? registryKey;
         if (!registryKey) return null;
 
+        // Home is a built-in part of the layout (SpeedDial/wallpaper). Do not treat it as a dynamic tab/view.
+        if (registryKey === "home") {
+            return [$toolbar$, $comment$];
+        }
+
         // Prevent recursive calls that could cause infinite loops
-        if (existsViews.has(`_creating_${registryKey}`)) {
+        if (creatingViews.has(registryKey)) {
             console.warn(`[faint] Preventing recursive view creation for ${registryKey}`);
             return null;
         }
 
         // Prevent rapid successive calls for the same view (debounce)
-        const currentHash = location.hash;
-        if (isNavigating && currentHash === currentHash && registryKey === currentHash.replace(/^#/, "")) {
+        const hashNow = location.hash;
+        if (isNavigating && hashNow === lastHash && registryKey === hashNow.replace(/^#/, "")) {
             console.warn(`[faint] Preventing rapid navigation to ${registryKey}`);
             return existsViews.get(registryKey) || null;
         }
 
         // Check view creation limit
-        const currentViewCount = Array.from(existsViews.keys()).filter(k => !k.startsWith('_creating_')).length;
+        const currentViewCount = Array.from(existsViews.keys()).length;
         if (currentViewCount >= MAX_VIEWS) {
             console.warn(`[faint] View creation limit reached (${MAX_VIEWS}), skipping ${registryKey}`);
             return null;
         }
 
         // Mark as being created to prevent recursion
-        existsViews.set(`_creating_${registryKey}`, true);
+        creatingViews.add(registryKey);
         viewCreationCount++;
 
         //
@@ -267,6 +285,7 @@ export async function frontend(mountElement) {
 
         //
         if (existsViews.has(registryKey)) {
+            creatingViews.delete(registryKey);
             return existsViews.get(registryKey);
         }
 
@@ -310,6 +329,8 @@ export async function frontend(mountElement) {
                     // Provide fallback elements
                     if (!element) promised.resolve(element = document.createElement('div'));
                     if (!actions) toolbarPromise.resolve(actions = document.createElement('div'));
+                } finally {
+                    creatingViews.delete(registryKey);
                 }
             });
 
@@ -351,21 +372,18 @@ export async function frontend(mountElement) {
             }, element);
         }
 
-        // home now inside of app-layout
-        if (registryKey == "home") {
-            element = $comment$;
-            actions = $toolbar$;
-        }
-
         //
         if (!element) return;
 
         //
         if (element && !existsViews.has(registryKey)) {
-            return addElement(registryKey, [actions, element], existsViews);
+            const added = addElement(registryKey, [actions, element], existsViews);
+            creatingViews.delete(registryKey);
+            return added;
         }
 
         //
+        creatingViews.delete(registryKey);
         return;
     }
 

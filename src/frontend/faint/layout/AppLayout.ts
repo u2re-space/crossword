@@ -76,19 +76,23 @@ export const AppLayout = (currentView: any, existsViews: Map<string, any>, makeV
         try {
             const $homeView = "home";
 
+            // Home is a built-in view (SpeedDial/wallpaper). Never create/register it as a dynamic tab.
+            if (!key || key === $homeView) {
+                skipCreateNewView = false;
+                rPair[0] = $toolbar$;
+                rPair[1] = $comment$;
+                return;
+            }
+
             // `skipCreateNewView` should depending on replace or push state happened
             if (!skipCreateNewView && !forceCreateNewView && (historyState as any)?.action != null) {
                 skipCreateNewView ||= ["REPLACE", "POP", "BACK"]?.includes?.((historyState as any)?.action);
             }
 
             //
-            if (forceCreateNewView || !key || key == $homeView) {
-                skipCreateNewView = false;
-            }
-
             //
             const ext = (existsViews?.get?.(key || $homeView) || existsViews?.get?.($homeView)) || [$toolbar$, $comment$];
-            const npr = (skipCreateNewView ? ext : (await makeView(key || $homeView) || await makeView($homeView))) || ext;
+            const npr = (skipCreateNewView ? ext : (await makeView(key))) || ext;
             skipCreateNewView = false;
             rPair[0] = (await npr?.[0]) || $toolbar$;
             rPair[1] = (await npr?.[1]) || $comment$;

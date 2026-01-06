@@ -273,9 +273,11 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         cors: {
             allowedHeaders: "*",
             preflightContinue: true,
+            // Don't combine wildcard origin with credentials=true (browsers will reject it).
+            // Echo request Origin instead.
+            origin: true,
             credentials: true,
             methods: "PROPFIND,GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-            origin: "*"
         },
         headers: {
             "Depth": "1",
@@ -287,8 +289,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             "Cross-Origin-Embedder-Policy": "require-corp",
             "Cross-Origin-Opener-Policy": "same-origin",
             "Access-Control-Allow-Methods": "PROPFIND,HEAD,GET,POST,PUT,MOVE,DELETE,PATCH,OPTIONS",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "*",
             "Access-Control-Request-Headers": "*"
         }
     };

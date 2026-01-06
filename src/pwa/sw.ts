@@ -660,7 +660,9 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
 setDefaultHandler(new StaleWhileRevalidate({
     cacheName: 'default-cache',
     fetchOptions: {
-        credentials: 'include',
+        // Never force credentials=include for cross-origin requests (breaks many CDNs with ACAO="*").
+        // same-origin keeps cookies for same-origin only.
+        credentials: 'same-origin',
         priority: 'auto',
         cache: 'force-cache'
     },
@@ -678,12 +680,12 @@ registerRoute(
         request?.destination === 'script' ||
         request?.destination === 'style' ||
         request?.destination === 'worker' ||
-        request?.url?.trim?.().toLowerCase?.()?.match(/(\.m?js|\.css)$/)
+        request?.url?.trim?.().toLowerCase?.()?.match?.(/(\.m?js|\.css)$/)
     ),
     new NetworkFirst({
         cacheName: 'assets-cache',
         fetchOptions: {
-            credentials: 'include',
+            credentials: 'same-origin',
             priority: 'high',
             cache: 'default'
         },
@@ -702,7 +704,7 @@ registerRoute(
     new StaleWhileRevalidate({
         cacheName: 'image-cache',
         fetchOptions: {
-            credentials: 'include',
+            credentials: 'same-origin',
             priority: 'auto',
             cache: 'force-cache'
         },
@@ -719,7 +721,7 @@ registerRoute(
 setCatchHandler(({ event }: any): Promise<Response> => {
     switch (event?.request?.destination) {
         case 'document':
-            return caches.match("/").then((r: any) => {
+            return caches?.match?.("/")?.then?.((r: any) => {
                 return r ? Promise.resolve(r) : Promise.resolve(Response.error());
             })
         default:
@@ -1010,7 +1012,7 @@ registerRoute(
             return networkResponse;
         } catch {
             // Fall back to cache
-            const cached = await caches.match('/');
+            const cached = await caches?.match?.('/');
             return cached || Response.error();
         }
     }
