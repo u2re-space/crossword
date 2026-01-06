@@ -145,7 +145,8 @@
 
     // File operations
     &[data-action="open-md"],
-    &[data-action="export-md"] {
+    &[data-action="export-md"],
+    &[data-action="export-docx"] {
         --ui-font-size: 12px;
         --ui-pad-x: 8px;
         --ui-pad-y: 0px;

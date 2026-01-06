@@ -206,8 +206,8 @@ export const imageToDataUrl = async (image: Blob | File): Promise<string> => {
  * Convert base64 data URL to Blob
  */
 export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
-    const response = await fetch(dataUrl);
-    return response.blob();
+    const { stringToBlob } = await import("../utils/Base64Data");
+    return await stringToBlob(dataUrl);
 };
 
 // Default export for convenience

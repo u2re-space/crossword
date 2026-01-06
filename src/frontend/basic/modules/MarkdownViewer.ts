@@ -3,6 +3,7 @@ import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
+import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
@@ -83,6 +84,10 @@ export class MarkdownViewer {
           <button class="btn btn-icon" data-action="download" title="Download as markdown" aria-label="Download as markdown">
             <ui-icon icon="download" size="20" icon-style="duotone"></ui-icon>
             <span class="btn-text">Download</span>
+          </button>
+          <button class="btn btn-icon" data-action="export-docx" title="Export as DOCX" aria-label="Export as DOCX">
+            <ui-icon icon="file-doc" size="20" icon-style="duotone"></ui-icon>
+            <span class="btn-text">DOCX</span>
           </button>
           <button class="btn btn-icon" data-action="print" title="Print content" aria-label="Print content">
             <ui-icon icon="printer" size="20" icon-style="duotone"></ui-icon>
@@ -191,6 +196,18 @@ export class MarkdownViewer {
     }
 
     /**
+     * Export content as DOCX file
+     */
+    async exportDocx(): Promise<void> {
+        const md = this.content || "";
+        if (!md.trim()) return;
+        await downloadMarkdownAsDocx(md, {
+            title: this.options.title || "Markdown Content",
+            filename: `markdown-content-${new Date().toISOString().split('T')[0]}.docx`,
+        });
+    }
+
+    /**
      * Print content
      */
     printContent(): void {
@@ -288,7 +305,8 @@ export class MarkdownViewer {
         // Set up event listeners
         container.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
-            const action = target.getAttribute('data-action');
+            const btn = target?.closest?.('[data-action]') as HTMLElement | null;
+            const action = btn?.getAttribute('data-action');
 
             if (action === 'open') {
                 this.options.onOpen?.();
@@ -296,6 +314,8 @@ export class MarkdownViewer {
                 this.copyContent();
             } else if (action === 'download') {
                 this.downloadContent();
+            } else if (action === 'export-docx') {
+                void this.exportDocx();
             } else if (action === 'print') {
                 this.printContent();
             }

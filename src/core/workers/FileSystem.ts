@@ -194,10 +194,12 @@ export interface shareTargetFormData {
 //
 export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
     if (typeof item === 'string') {
-        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) { // @ts-ignore
-            const arrayBuffer = Uint8Array.fromBase64(item.split(';base64,')[1]);
-            const type = item.split(';')[0].split(':')[1];
-            return handler({ url: item, file: new File([arrayBuffer], 'clipboard-image', { type }) } as any);
+        if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) {
+            const { stringToFile, parseDataUrl } = await import("../utils/Base64Data");
+            const parts = parseDataUrl(item);
+            const mimeType = parts?.mimeType || "image/png";
+            const file = await stringToFile(item, "clipboard-image", { mimeType, uriComponent: true });
+            return handler({ url: item, file } as any);
         } else
             if (URL.canParse(item?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) { return handler({ url: item } as any); }
     } else
@@ -313,8 +315,9 @@ export const normalizePayload = async (payload: shareTargetFormData): Promise<sh
             const { mime, data } = match.groups;
             const byteLen = Math.ceil((data.length * 3) / 4);
             if (byteLen > MAX_BASE64_SIZE) {
-                const binary = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-                const blob = new Blob([binary], { type: mime });
+                const { decodeBase64ToBytes } = await import("../utils/Base64Data");
+                const bytes = decodeBase64ToBytes(data, { alphabet: "base64", lastChunkHandling: "loose" });
+                const blob = new Blob([bytes], { type: mime });
                 const converted = await convertImageToJPEG(blob);
                 return { file: converted };
             }

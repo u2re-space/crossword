@@ -5,6 +5,7 @@ import "./print.scss";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
+import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../shared/DocxExport";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
@@ -67,11 +68,29 @@ export default async function printApp(mountElement: HTMLElement, options: Print
         urlParams.get('markdown-content') ||
         urlParams.get('text') || '';
     const title = options.title || urlParams.get('title') || 'Document';
-    const autoPrint = options.autoPrint ?? (urlParams.get('auto-print') !== 'false');
+    const wantsDocx = urlParams.get('export') === 'docx' || urlParams.get('format') === 'docx';
+    const autoPrint = (options.autoPrint ?? (urlParams.get('auto-print') !== 'false')) && !wantsDocx;
     const className = options.className || 'print-view';
 
     // Check if printing is supported
     const canPrint = typeof window !== 'undefined' && 'print' in window;
+
+    if (wantsDocx && content.trim()) {
+        const filename = `${(title || 'document').replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '-').slice(0, 180)}.docx`;
+        const looksLikeHtml = content.trim().startsWith('<');
+        if (looksLikeHtml) {
+            await downloadHtmlAsDocx(content, { title, filename });
+        } else {
+            await downloadMarkdownAsDocx(content, { title, filename });
+        }
+        if (urlParams.get('close') === 'true') {
+            try {
+                window.close?.();
+            } catch {
+                // ignore
+            }
+        }
+    }
 
     // Create pure markdown content layout with no UI elements
     const printElement = H`

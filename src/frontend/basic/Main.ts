@@ -19,6 +19,7 @@ import { loadAsAdopted } from "fest/dom";
 import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "./explorer";
+import { downloadMarkdownAsDocx } from "../shared/DocxExport";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
 
@@ -277,6 +278,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         <button class="btn btn-icon" data-action="export-md" type="button" title="Export as Markdown">
           <ui-icon icon="download" size="18" icon-style="duotone"></ui-icon>
           <span class="btn-text">Export</span>
+        </button>
+        <button class="btn btn-icon" data-action="export-docx" type="button" title="Export as DOCX">
+          <ui-icon icon="file-doc" size="18" icon-style="duotone"></ui-icon>
+          <span class="btn-text">DOCX</span>
         </button>` : ''}
         ${isMarkdownView ? H`<button class="btn" data-action="voice" type="button" title="Voice Input">
           <ui-icon icon="microphone" icon-style="duotone"></ui-icon>
@@ -991,6 +996,15 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             if (action === "open-md") fileInput.click();
             if (action === "save-md") saveToFile();
             if (action === "export-md") exportMarkdown();
+            if (action === "export-docx") {
+                const md = state.markdown || "";
+                if (md.trim()) {
+                    await downloadMarkdownAsDocx(md, {
+                        title: "CrossWord",
+                        filename: `crossword-${Date.now()}.docx`,
+                    });
+                }
+            }
 
             if (action === "toggle-edit") {
                 if (state.view !== "markdown-viewer" && state.view !== "markdown-editor") return;

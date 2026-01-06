@@ -1,6 +1,7 @@
 import { H } from "fest/lure";
 import { MarkdownViewer } from "./MarkdownViewer";
 import { UIPhosphorIcon } from "fest/icon";
+import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
 
 export interface MarkdownEditorOptions {
     initialContent?: string;
@@ -78,6 +79,10 @@ export class MarkdownEditor {
                 <ui-icon icon="printer" size="16" icon-style="duotone"></ui-icon>
                 Print
               </button>
+              <button class="btn small" data-action="export-docx" title="Export as DOCX">
+                <ui-icon icon="file-doc" size="16" icon-style="duotone"></ui-icon>
+                DOCX
+              </button>
             </div>
             <div class="editor-mode">
               <button class="btn small active" data-mode="edit">Edit</button>
@@ -147,6 +152,15 @@ export class MarkdownEditor {
             // Fallback to current content printing
             this.printCurrentContent();
         }
+    }
+
+    async exportDocx(): Promise<void> {
+        const content = this.getContent();
+        if (!content.trim()) return;
+        await downloadMarkdownAsDocx(content, {
+            title: "Markdown Editor Content",
+            filename: `markdown-editor-${new Date().toISOString().split('T')[0]}.docx`,
+        });
     }
 
     /**
@@ -241,7 +255,8 @@ export class MarkdownEditor {
         // Toolbar actions
         container.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
-            const action = target.getAttribute('data-action');
+            const btn = target?.closest?.('[data-action]') as HTMLElement | null;
+            const action = btn?.getAttribute('data-action');
 
             if (action) {
                 e.preventDefault();
@@ -347,6 +362,9 @@ export class MarkdownEditor {
                 return;
             case 'print':
                 this.printContent();
+                return;
+            case 'export-docx':
+                void this.exportDocx();
                 return;
         }
 
