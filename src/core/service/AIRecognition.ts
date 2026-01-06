@@ -6,6 +6,7 @@
 
 import { CHANNEL_NAMES, postMessage, affected } from "../utils/Broadcast";
 import { MAX_FILE_SIZE } from "./model/GPT-Responses";
+import { stringToBlob } from "fest/lure";
 
 export type RecognitionMode = "recognize" | "analyze";
 
@@ -206,7 +207,6 @@ export const imageToDataUrl = async (image: Blob | File): Promise<string> => {
  * Convert base64 data URL to Blob
  */
 export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
-    const { stringToBlob } = await import("../utils/Base64Data");
     return await stringToBlob(dataUrl);
 };
 

@@ -1,10 +1,10 @@
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
 import { dumpAndClear } from "@rs-core/store/IDBQueue";
-import { getDirectoryHandle, getFileHandle } from "fest/lure";
+import { getDirectoryHandle, getFileHandle, decodeBase64ToBytes, stringToFile, parseDataUrl } from "fest/lure";
 import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
 import { fixEntityId } from "@rs-core/template/EntityId";
-import { opfsModifyJson } from "./OPFSMod.ts";
-import { writeFileSmart } from "./WriteFileSmart-v2.ts";
+import { opfsModifyJson } from "./OPFSMod";
+import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
 import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
@@ -195,7 +195,6 @@ export interface shareTargetFormData {
 export const handleDataByType = async (item: File | string | Blob, handler: (payload: shareTargetFormData) => Promise<void>) => {
     if (typeof item === 'string') {
         if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) {
-            const { stringToFile, parseDataUrl } = await import("../utils/Base64Data");
             const parts = parseDataUrl(item);
             const mimeType = parts?.mimeType || "image/png";
             const file = await stringToFile(item, "clipboard-image", { mimeType, uriComponent: true });
@@ -315,7 +314,6 @@ export const normalizePayload = async (payload: shareTargetFormData): Promise<sh
             const { mime, data } = match.groups;
             const byteLen = Math.ceil((data.length * 3) / 4);
             if (byteLen > MAX_BASE64_SIZE) {
-                const { decodeBase64ToBytes } = await import("../utils/Base64Data");
                 const bytes = decodeBase64ToBytes(data, { alphabet: "base64", lastChunkHandling: "loose" });
                 const blob = new Blob([bytes], { type: mime });
                 const converted = await convertImageToJPEG(blob);

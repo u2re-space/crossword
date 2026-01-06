@@ -6,7 +6,7 @@
         "**/*.d.ts",
         "**/*.tsx",
         "**/*.vue"
-    ],
+, "../../modules/projects/lur.e/src/extension/core/Base64Data.ts"    ],
     "exclude": [
         "node_modules/**",
         "externals/**",
