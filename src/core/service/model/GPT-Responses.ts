@@ -322,11 +322,37 @@ export class GPTResponses {
     }
 
     //
-    async giveForRequest(whatIsIt: string) {
+    async giveForRequest(whatIsIt: any) {
+        // If the caller passes non-string input (File/Blob/object), we must NOT put it into input_text.text.
+        // Convert it into a proper content item via getUsableData() (e.g. {type:"input_image", image_url:"data:..."}).
+        if (typeof whatIsIt !== "string") {
+            try {
+                const dataKind = getDataKindByMIMEType(whatIsIt?.type) || "input_text";
+                const usable = await getUsableData({ dataSource: whatIsIt, dataKind, context: this.context });
+                this?.pending?.push?.({
+                    type: "message",
+                    role: "user",
+                    content: [
+                        { type: "input_text", text: "Additional data for request:" },
+                        { type: "input_text", text: "\n === BEGIN:ATTACHED_DATA === \n" },
+                        { ...usable },
+                        { type: "input_text", text: "\n === END:ATTACHED_DATA === \n" },
+                    ]
+                });
+                return this?.pending?.[this?.pending?.length - 1];
+            } catch (e) {
+                // Fall back to string coercion (still must be string)
+                whatIsIt = String(whatIsIt);
+            }
+        }
+
         this?.pending?.push?.({
             type: "message",
             role: "user",
-            content: [{ type: "input_text", text: "Additional data for request: " }, { type: "input_text", text: whatIsIt }]
+            content: [
+                { type: "input_text", text: "Additional data for request:" },
+                { type: "input_text", text: String(whatIsIt) }
+            ]
         });
         return this?.pending?.[this?.pending?.length - 1];
     }
