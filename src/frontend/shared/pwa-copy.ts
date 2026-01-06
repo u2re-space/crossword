@@ -45,6 +45,31 @@ const extractRecognizedContent = (data: unknown): unknown => {
                 return obj.verbose_data;
             }
 
+            // Common shape: { type: "markdown"|"text"|..., content: "..." }
+            if (typeof (obj as any).content === 'string' && (obj as any).content.trim()) {
+                return (obj as any).content;
+            }
+
+            // OpenAI Chat Completions style
+            const choices = (obj as any).choices;
+            if (Array.isArray(choices) && choices.length > 0) {
+                const first = choices[0];
+                const msgContent = first?.message?.content;
+                if (typeof msgContent === 'string' && msgContent.trim()) return msgContent;
+                const txt = first?.text;
+                if (typeof txt === 'string' && txt.trim()) return txt;
+            }
+
+            // Other common shapes
+            const outText = (obj as any).output_text;
+            if (typeof outText === 'string' && outText.trim()) return outText;
+            const output = (obj as any).output;
+            if (Array.isArray(output) && output.length > 0) {
+                const firstOut = output[0];
+                const text0 = firstOut?.content?.[0]?.text;
+                if (typeof text0 === 'string' && text0.trim()) return text0;
+            }
+
             // No recognized_data, return original data
             return data;
         }
@@ -67,6 +92,31 @@ const extractRecognizedContent = (data: unknown): unknown => {
         if (typeof obj.verbose_data === 'string' && obj.verbose_data.trim()) {
             return obj.verbose_data;
         }
+
+        // Common shape: { type: "markdown"|"text"|..., content: "..." }
+        if (typeof (obj as any).content === 'string' && (obj as any).content.trim()) {
+            return (obj as any).content;
+        }
+
+        // OpenAI Chat Completions style
+        const choices = (obj as any).choices;
+        if (Array.isArray(choices) && choices.length > 0) {
+            const first = choices[0];
+            const msgContent = first?.message?.content;
+            if (typeof msgContent === 'string' && msgContent.trim()) return msgContent;
+            const txt = first?.text;
+            if (typeof txt === 'string' && txt.trim()) return txt;
+        }
+
+        // Other common shapes
+        const outText = (obj as any).output_text;
+        if (typeof outText === 'string' && outText.trim()) return outText;
+        const output = (obj as any).output;
+        if (Array.isArray(output) && output.length > 0) {
+            const firstOut = output[0];
+            const text0 = firstOut?.content?.[0]?.text;
+            if (typeof text0 === 'string' && text0.trim()) return text0;
+        }
     }
 
     return data;
@@ -87,7 +137,7 @@ const checkPendingClipboardOperations = async (): Promise<void> => {
             for (const operation of data.operations) {
                 if (operation.type === 'ai-result' && operation.data) {
                     console.log('[PWA-Copy] Processing pending AI result:', operation.id);
-                    const text = typeof operation.data === 'string' ? operation.data : JSON.stringify(operation.data);
+                    const text = extractRecognizedContent(operation.data);
                     const { copy } = await import("./Clipboard");
                     await copy(text, { showFeedback: true });
 
@@ -190,7 +240,7 @@ export const initPWAClipboard = (): (() => void) => {
             if (type === "ai-result" && data) {
                 console.log('[PWA-Copy] AI result from SW:', data);
                 if (data.success && data.data) {
-                    const text = typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
+                    const text = extractRecognizedContent(data.data);
                     const { copy } = await import("./Clipboard");
                     await copy(text, { showFeedback: true });
                 } else {

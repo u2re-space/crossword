@@ -2,6 +2,8 @@
 // SERVICE WORKER AND ASSET UPDATE HANDLING
 // ============================================================================
 
+import { ensureServiceWorkerRegistered } from "./sw-url";
+
 // Utility function to check if running as Chrome extension
 const isExtension = () => {
     try {
@@ -217,15 +219,7 @@ class ServiceWorkerUpdateManager {
         }
 
         try {
-            const swUrl = new URL('../sw.js', import.meta.url).href;
-            console.log('[SW] Registering service worker:', swUrl);
-
-            this.registration = await navigator.serviceWorker.register(swUrl, {
-                scope: '/',
-                type: 'module',
-                updateViaCache: 'none'
-            });
-
+            this.registration = await ensureServiceWorkerRegistered();
             console.log('[SW] Service worker registered successfully');
 
             this.setupUpdateListeners();

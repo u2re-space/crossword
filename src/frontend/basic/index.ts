@@ -1,11 +1,41 @@
 import type { BasicAppOptions } from "./Main";
 import { mountBasicApp } from "./Main";
+import { loadSettings } from "@rs-core/config/Settings";
 
-export default function frontend(mountElement: HTMLElement, options: BasicAppOptions = {}) {
+export default async function frontend(mountElement: HTMLElement, options: BasicAppOptions = {}) {
     // Check for markdown content in URL parameters (from launch queue or direct links)
     const urlParams = new URLSearchParams(window.location.search);
     const markdownContent = urlParams.get('markdown-content');
-    const markdownFilename = urlParams.get('markdown-filename');
+    const sharedFlag = urlParams.get('shared');
+
+    let sharedFilesForAutoAI: File[] | null = null;
+
+    // If this is a share-target navigation, try to pull real files from cache and pass them into Basic.
+    // (SW stores only counts in the metadata; files are stored as cache entries + a manifest.)
+    if (sharedFlag === "1" || sharedFlag === "true") {
+        try {
+            const { consumeCachedShareTargetPayload } = await import("../routing/sw-handling");
+            const payload = await consumeCachedShareTargetPayload({ clear: true });
+            const files = payload?.files ?? [];
+
+            if (files.length > 0) {
+                sharedFilesForAutoAI = files;
+                // If it's a single markdown file, prefer opening it in the viewer.
+                if (files.length === 1 && (files[0].type === "text/markdown" || files[0].name.toLowerCase().endsWith(".md"))) {
+                    const md = await files[0].text();
+                    options.initialView = "markdown-viewer";
+                    options.initialMarkdown = md;
+                } else {
+                    // Otherwise: open WorkCenter and attach files.
+                    (options as any).initialView = "workcenter";
+                    (options as any).initialFiles = files;
+                }
+            }
+        } catch (e) {
+            // If anything goes wrong, just fall back to existing behavior.
+            console.warn("[Basic] Failed to consume share-target cached files:", e);
+        }
+    }
 
     if (markdownContent) {
         console.log('[Basic] Loading markdown content from URL parameters');
@@ -18,8 +48,35 @@ export default function frontend(mountElement: HTMLElement, options: BasicAppOpt
         const url = new URL(window.location.href);
         url.searchParams.delete('markdown-content');
         url.searchParams.delete('markdown-filename');
+        url.searchParams.delete('shared');
         window.history.replaceState({}, '', url.pathname + url.hash);
     }
 
     mountBasicApp(mountElement, options);
+
+    // Optional: auto-run AI recognition and auto-copy result to clipboard (enabled by default).
+    // This happens after the app is mounted so toasts/receivers are ready.
+    if (sharedFilesForAutoAI && sharedFilesForAutoAI.length > 0) {
+        queueMicrotask(() => {
+            void (async () => {
+                const settings = await loadSettings().catch(() => null);
+                const auto = (settings?.ai?.autoProcessShared ?? true) !== false;
+                const hasKey = Boolean(settings?.ai?.apiKey?.trim?.());
+                if (!auto || !hasKey) return;
+
+                try {
+                    const { processShareTargetData } = await import("../routing/sw-handling");
+                    await processShareTargetData({
+                        files: sharedFilesForAutoAI,
+                        fileCount: sharedFilesForAutoAI.length,
+                        imageCount: sharedFilesForAutoAI.filter(f => (f?.type || "").toLowerCase().startsWith("image/")).length,
+                        timestamp: Date.now(),
+                        source: "share-cache",
+                    } as any, false);
+                } catch (e) {
+                    console.warn("[Basic] Auto AI processing failed:", e);
+                }
+            })();
+        });
+    }
 }

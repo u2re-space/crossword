@@ -249,21 +249,16 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             // Handle specific routes to serve appropriate HTML files
             server.middlewares.use((req, res, next) => {
                 const url = req.url || '';
+                const pathname = url.split('?')[0] || '';
+
+                // Never rewrite service worker requests (must be JS, not HTML)
+                if (pathname === '/sw.js' || pathname === '/apps/cw/sw.js') {
+                    return next();
+                }
 
                 // Handle print route - serve print.html
-                if (url.startsWith('/print')) {
-                    req.url = '/src/print.html';
-                }
-                // Handle basic route - serve basic.html
-                else if (url.startsWith('/basic')) {
-                    req.url = '/src/basic.html';
-                }
-                // Handle faint route - serve faint.html
-                else if (url.startsWith('/faint')) {
-                    req.url = '/src/faint.html';
-                }
-                // Handle index route - serve index.html
-                else if (url === '/' || url.startsWith('/?')) {
+                // CrossWord uses a single HTML entry in dev; route to index.html.
+                if (url.startsWith('/print') || url.startsWith('/basic') || url.startsWith('/faint') || url === '/' || url.startsWith('/?')) {
                     req.url = '/index.html';
                 }
 

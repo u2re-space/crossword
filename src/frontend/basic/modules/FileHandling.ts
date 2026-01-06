@@ -13,6 +13,15 @@ export class FileHandler {
     }
 
     /**
+     * Programmatically add files into the same pipeline as UI selection / DnD / paste.
+     * Used by PWA share-target and launchQueue ingestion.
+     */
+    addFiles(files: File[]): void | Promise<void> {
+        if (!Array.isArray(files) || files.length === 0) return;
+        return this.options.onFilesAdded(files);
+    }
+
+    /**
      * Set up file input element with file selection
      */
     setupFileInput(container: HTMLElement, accept: string = "*"): HTMLInputElement {

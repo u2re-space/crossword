@@ -93,6 +93,8 @@ export type AppSettings = {
         customModel?: string;
         mcp?: MCPConfig[];
         shareTargetMode?: "analyze" | "recognize";
+        /** When true (default), share-target / launch-queue will auto run AI and copy result to clipboard. */
+        autoProcessShared?: boolean;
         customInstructions?: CustomInstruction[];
         activeInstructionId?: string;
         // Language and translation settings
@@ -154,6 +156,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         customModel: "",
         mcp: [],
         shareTargetMode: "recognize",
+        autoProcessShared: true,
         customInstructions: [],
         activeInstructionId: "",
         responseLanguage: "auto",

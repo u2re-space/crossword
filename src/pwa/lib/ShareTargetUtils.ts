@@ -267,6 +267,16 @@ export const buildShareData = async (formData: FormData): Promise<ShareData> => 
 
 const SHARE_CACHE_NAME = 'share-target-data';
 const SHARE_CACHE_KEY = '/share-target-data';
+const SHARE_FILES_MANIFEST_KEY = '/share-target-files';
+const SHARE_FILE_PREFIX = '/share-target-file/';
+
+type CachedShareFileMeta = {
+    key: string;
+    name: string;
+    type: string;
+    size: number;
+    lastModified?: number;
+};
 
 /**
  * Cache share data metadata for client retrieval
@@ -289,6 +299,45 @@ export const cacheShareData = async (shareData: ShareData): Promise<boolean> => 
                 headers: { 'Content-Type': 'application/json' }
             })
         );
+
+        // Also cache actual files (so the UI can attach them to WorkCenter / open markdown)
+        // We store each file as a Response in Cache Storage + a manifest describing them.
+        const fileManifest: CachedShareFileMeta[] = [];
+        if (shareData.files?.length) {
+            for (let i = 0; i < shareData.files.length; i++) {
+                const file = shareData.files[i];
+                const safeTs = Number.isFinite(shareData.timestamp) ? shareData.timestamp : Date.now();
+                const key = `${SHARE_FILE_PREFIX}${safeTs}-${i}`;
+
+                // Cache the raw bytes with metadata headers.
+                const headers = new Headers();
+                headers.set('Content-Type', file.type || 'application/octet-stream');
+                headers.set('X-File-Name', encodeURIComponent(file.name || `file-${i}`));
+                headers.set('X-File-Size', String(file.size || 0));
+                headers.set('X-File-LastModified', String((file as any).lastModified ?? 0));
+
+                await cache.put(
+                    key,
+                    new Response(file, { headers })
+                );
+
+                fileManifest.push({
+                    key,
+                    name: file.name || `file-${i}`,
+                    type: file.type || 'application/octet-stream',
+                    size: file.size || 0,
+                    lastModified: (file as any).lastModified ?? undefined
+                });
+            }
+        }
+
+        await cache.put(
+            SHARE_FILES_MANIFEST_KEY,
+            new Response(JSON.stringify({ files: fileManifest, timestamp: shareData.timestamp }), {
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+
         return true;
     } catch (error: any) {
         console.warn('[ShareTarget] Cache storage failed:', error?.message);
@@ -316,6 +365,9 @@ export const getAIProcessingConfig = async (): Promise<AIProcessingConfig> => {
             };
         }
 
+        // Allow user to disable auto-processing for share target / file open flows.
+        const autoEnabled = (settings?.ai?.autoProcessShared ?? true) !== false;
+
         // Get active custom instruction
         let customInstruction = '';
         const instructions: CustomInstruction[] = settings.ai.customInstructions || [];
@@ -327,7 +379,7 @@ export const getAIProcessingConfig = async (): Promise<AIProcessingConfig> => {
         }
 
         return {
-            enabled: true,
+            enabled: autoEnabled,
             mode: (settings.ai.shareTargetMode as 'recognize' | 'analyze') || 'recognize',
             customInstruction,
             apiKey: settings.ai.apiKey

@@ -1,6 +1,7 @@
 // PWA clipboard and service worker communication
 import { initPWAClipboard } from "../shared/pwa-copy";
 import { showToast } from "../shared/Toast";
+import { ensureServiceWorkerRegistered } from "./sw-url";
 
 // ============================================================================
 // CSS INJECTION
@@ -83,20 +84,11 @@ export const initServiceWorker = async (): Promise<ServiceWorkerRegistration | n
         }
 
         try {
-            // Determine SW path based on context
-            const swPath = './apps/cw/sw.js';
-            const swUrl = new URL(swPath, window.location.origin).href;
-
-            console.log('[PWA] Registering service worker:', swUrl);
-
-            const registration = await navigator.serviceWorker.register(swUrl, {
-                scope: '/',
-                type: 'module',
-                updateViaCache: 'none'
-            })?.catch?.((error) => {
-                console.error('[PWA] Service worker registration failed:', error);
+            const registration = await ensureServiceWorkerRegistered();
+            if (!registration) {
+                console.error('[PWA] Service worker registration failed: no valid sw.js found');
                 return null;
-            });
+            }
 
             _swRegistration = registration;
 
@@ -168,6 +160,7 @@ interface ShareDataInput {
     timestamp?: number;
     aiProcessed?: boolean;
     results?: any[];
+    source?: string;
 }
 
 /**
@@ -343,15 +336,131 @@ export const CHANNELS = {
     CLIPBOARD: 'rs-clipboard'
 } as const;
 
-//
-const state = {
-    history: [] as {
-        ts: number;
-        prompt: string;
-        before: string;
-        after: string;
-        ok: boolean;
-    }[]
+// ============================================================================
+// SHARE TARGET CACHE CONSUMPTION (FILES)
+// ============================================================================
+
+const SHARE_CACHE_NAME = 'share-target-data';
+const SHARE_CACHE_KEY = '/share-target-data';
+const SHARE_FILES_MANIFEST_KEY = '/share-target-files';
+
+type CachedShareFileMeta = {
+    key: string;
+    name: string;
+    type: string;
+    size: number;
+    lastModified?: number;
+};
+
+export type CachedShareTargetPayload = {
+    meta: any;
+    files: File[];
+    fileMeta: CachedShareFileMeta[];
+};
+
+const SHARE_FILE_PREFIX = '/share-target-file/';
+
+export const storeShareTargetPayloadToCache = async (payload: { files: File[]; meta?: any }): Promise<boolean> => {
+    if (typeof window === "undefined" || !('caches' in window)) return false;
+    const files = Array.isArray(payload.files) ? payload.files : [];
+    const meta = payload.meta ?? {};
+
+    try {
+        const cache = await caches.open(SHARE_CACHE_NAME);
+        const timestamp = Number(meta?.timestamp) || Date.now();
+
+        await cache.put(
+            SHARE_CACHE_KEY,
+            new Response(JSON.stringify({
+                title: meta?.title,
+                text: meta?.text,
+                url: meta?.url,
+                timestamp,
+                fileCount: files.length,
+                imageCount: files.filter(f => (f?.type || '').toLowerCase().startsWith('image/')).length,
+            }), { headers: { 'Content-Type': 'application/json' } })
+        );
+
+        const fileManifest: CachedShareFileMeta[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const key = `${SHARE_FILE_PREFIX}${timestamp}-${i}`;
+
+            const headers = new Headers();
+            headers.set('Content-Type', file.type || 'application/octet-stream');
+            headers.set('X-File-Name', encodeURIComponent(file.name || `file-${i}`));
+            headers.set('X-File-Size', String(file.size || 0));
+            headers.set('X-File-LastModified', String((file as any).lastModified ?? 0));
+
+            await cache.put(key, new Response(file, { headers }));
+            fileManifest.push({
+                key,
+                name: file.name || `file-${i}`,
+                type: file.type || 'application/octet-stream',
+                size: file.size || 0,
+                lastModified: (file as any).lastModified ?? undefined
+            });
+        }
+
+        await cache.put(
+            SHARE_FILES_MANIFEST_KEY,
+            new Response(JSON.stringify({ files: fileManifest, timestamp }), {
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+
+        return true;
+    } catch (e) {
+        console.warn('[ShareTarget] Failed to store payload to cache:', e);
+        return false;
+    }
+};
+
+/**
+ * Read and (optionally) clear share-target cached payload, including real files.
+ * This is used by Basic edition to attach incoming files to WorkCenter or open markdown.
+ */
+export const consumeCachedShareTargetPayload = async (opts: { clear?: boolean } = {}): Promise<CachedShareTargetPayload | null> => {
+    const clear = opts.clear !== false;
+    if (typeof window === "undefined" || !('caches' in window)) return null;
+
+    try {
+        const cache = await caches.open(SHARE_CACHE_NAME);
+        const metaResp = await cache.match(SHARE_CACHE_KEY);
+        const manifestResp = await cache.match(SHARE_FILES_MANIFEST_KEY);
+
+        if (!metaResp && !manifestResp) return null;
+
+        const meta = metaResp ? await metaResp.json().catch(() => null) : null;
+        const manifest = manifestResp ? await manifestResp.json().catch(() => null) : null;
+        const fileMeta: CachedShareFileMeta[] = Array.isArray(manifest?.files) ? manifest.files : [];
+
+        const files: File[] = [];
+        for (const fm of fileMeta) {
+            if (!fm?.key) continue;
+            const r = await cache.match(fm.key);
+            if (!r) continue;
+            const blob = await r.blob();
+            const file = new File([blob], fm.name || 'shared-file', {
+                type: fm.type || blob.type || 'application/octet-stream',
+                lastModified: Number(fm.lastModified) || Date.now()
+            });
+            files.push(file);
+        }
+
+        if (clear) {
+            await cache.delete(SHARE_CACHE_KEY).catch(() => {});
+            await cache.delete(SHARE_FILES_MANIFEST_KEY).catch(() => {});
+            for (const fm of fileMeta) {
+                if (fm?.key) await cache.delete(fm.key).catch(() => {});
+            }
+        }
+
+        return { meta, files, fileMeta };
+    } catch (e) {
+        console.warn('[ShareTarget] Failed to consume cached share payload:', e);
+        return null;
+    }
 };
 
 /**
@@ -632,6 +741,8 @@ export const setupLaunchQueueConsumer = async () => {
                             // Navigate to the app with markdown content
                             // We'll use a special URL parameter to indicate this is a direct markdown view
                             const url = new URL(window.location.href);
+                            // Ensure Basic is used for direct markdown opening (avoid boot menu / other routes)
+                            url.pathname = '/basic';
                             url.searchParams.set('markdown-content', content);
                             url.searchParams.set('markdown-filename', markdownFile.name);
                             url.hash = ''; // Clear any hash to ensure we load the main app
@@ -652,11 +763,25 @@ export const setupLaunchQueueConsumer = async () => {
 
                     // Show immediate feedback that files were received
                     showToast({
-                        message: `Processing ${files.length} launched file(s)...`,
+                        message: `Received ${files.length} file(s)`,
                         kind: 'info'
                     });
 
-                    // Process through the existing share target flow
+                    // For file opener: prefer attachment preview in Basic (WorkCenter) over auto AI processing.
+                    const stored = await storeShareTargetPayloadToCache({
+                        files,
+                        meta: { timestamp: Date.now(), source: 'launch-queue' }
+                    });
+                    if (stored) {
+                        const url = new URL(window.location.href);
+                        url.pathname = '/share-target';
+                        url.searchParams.set('shared', '1');
+                        url.hash = '';
+                        window.location.href = url.toString();
+                        return;
+                    }
+
+                    // Fallback: keep old behavior if caching fails.
                     try {
                         const success = await processShareTargetData(shareData, false);
                         if (!success) {

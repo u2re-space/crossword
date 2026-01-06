@@ -1,5 +1,3 @@
-import { H } from "fest/lure";
-
 // Import routing and choice functionality
 import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/routing/pwa-handling";
 import { loadSubApp } from "./frontend/routing/routing";
@@ -139,7 +137,7 @@ const setLoadingState = (mountElement: HTMLElement, message: string = "Loading..
  * Clear loading state and prepare for app mounting
  */
 const clearLoadingState = (mountElement: HTMLElement) => {
-    const loading = mountElement.querySelector('.app-loading');
+    const loading = mountElement.querySelector('.app-loading') as HTMLElement | null;
     if (loading) {
         loading.style.transition = 'opacity 0.3s ease-out';
         loading.style.opacity = '0';
@@ -267,8 +265,8 @@ export default async function index(mountElement: HTMLElement) {
         console.log('[Index] PWA initialization complete');
 
         // Handle route changes from boot menu
-        const handleRouteChange = async (event: CustomEvent) => {
-            const { path, source } = event.detail;
+        const handleRouteChange = async (event: Event) => {
+            const { path, source } = (event as CustomEvent)?.detail ?? {};
             console.log('[Index] Route change from', source, 'to path:', path);
 
             if (source === 'boot-menu') {
@@ -301,7 +299,7 @@ export default async function index(mountElement: HTMLElement) {
             }
         };
 
-        window.addEventListener('route-changed', handleRouteChange as EventListener);
+        window.addEventListener('route-changed', handleRouteChange);
 
         const defaultChoice: FrontendChoice = "basic";
 
@@ -309,10 +307,33 @@ export default async function index(mountElement: HTMLElement) {
         const adjustedPathname = getNormalizedPathname();
         const urlParams = new URLSearchParams(window.location.search);
         const markdownContent = urlParams.get('markdown-content');
+        const sharedFlag = urlParams.get('shared');
 
         console.log('[Index] Processing route:', adjustedPathname);
 
+        // Share target entry paths should always resolve into Basic (then Basic consumes cache + shows preview).
+        if (adjustedPathname === "share-target" || adjustedPathname === "share_target") {
+            console.log('[Index] Share target route - forcing Basic app load');
+            clearLoadingState(mountElement);
+            const appLoader = await loadSubApp("basic");
+            await appLoader.mount(mountElement);
+            console.log('[Index] Basic app loaded (share target route)');
+            return;
+        }
+
         if (!adjustedPathname || adjustedPathname === "" || adjustedPathname === "/") {
+            // Root path is normally boot menu, but query-driven launches must bypass it:
+            // - Share target redirects to "/?shared=1"
+            // - Launch queue may use "?markdown-content=..."
+            if (sharedFlag === "1" || sharedFlag === "true" || Boolean(markdownContent)) {
+                console.log('[Index] Root path with share/markdown params - forcing Basic app load');
+                clearLoadingState(mountElement);
+                const appLoader = await loadSubApp("basic");
+                await appLoader.mount(mountElement);
+                console.log('[Index] Basic app loaded (root param override)');
+                return;
+            }
+
             clearLoadingState(mountElement);
             const appLoader = await loadSubApp("");
             await appLoader.mount(mountElement);

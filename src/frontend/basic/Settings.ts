@@ -38,6 +38,10 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
           <option value="analyze">Analyze and store</option>
         </select>
       </label>
+      <label class="field checkbox form-checkbox">
+        <input type="checkbox" data-field="ai.autoProcessShared" />
+        <span>Auto AI on Share Target / File Open (and copy to clipboard)</span>
+      </label>
       <label class="field">
         <span>Response language</span>
         <select class="form-select" data-field="ai.responseLanguage">
@@ -94,6 +98,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const apiKey = field('[data-field="ai.apiKey"]') as HTMLInputElement | null;
     const showKey = field('[data-field="ui.showKey"]') as HTMLInputElement | null;
     const mode = field('[data-field="ai.shareTargetMode"]') as HTMLSelectElement | null;
+    const autoProcessShared = field('[data-field="ai.autoProcessShared"]') as HTMLInputElement | null;
     const responseLanguage = field('[data-field="ai.responseLanguage"]') as HTMLSelectElement | null;
     const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
     const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
@@ -112,6 +117,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
             if (apiUrl) apiUrl.value = (s?.ai?.baseUrl || "").trim();
             if (apiKey) apiKey.value = (s?.ai?.apiKey || "").trim();
             if (mode) mode.value = (s?.ai?.shareTargetMode || "recognize") as any;
+            if (autoProcessShared) autoProcessShared.checked = (s?.ai?.autoProcessShared ?? true) !== false;
             if (responseLanguage) responseLanguage.value = (s?.ai?.responseLanguage || "auto") as any;
             if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
             if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
@@ -141,6 +147,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
                     baseUrl: apiUrl?.value?.trim?.() || "",
                     apiKey: apiKey?.value?.trim?.() || "",
                     shareTargetMode: (mode?.value as any) || "recognize",
+                    autoProcessShared: (autoProcessShared?.checked ?? true) !== false,
                     responseLanguage: (responseLanguage?.value as any) || "auto",
                     translateResults: Boolean(translateResults?.checked),
                     generateSvgGraphics: Boolean(generateSvgGraphics?.checked),

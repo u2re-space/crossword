@@ -14,12 +14,7 @@ import {
     type ShareData
 } from './lib/ShareTargetUtils';
 
-// Import direct GPT functions
-import { processDataWithInstruction } from '@rs-core/service/AI-ops/RecognizeData';
-import { getUsableData } from '@rs-core/service/model/GPT-Responses';
-import { pushToIDBQueue } from '@rs-core/service/AI-ops/ServiceHelper';
-import { fileToDataUrl } from './lib/ImageUtils';
-import { MAX_BASE64_SIZE, convertImageToJPEG } from '@rs-core/utils/ImageProcess';
+// (Share target AI processing uses executionCore; no direct image conversion needed here.)
 
 //
 // @ts-ignore
@@ -223,20 +218,6 @@ const removeClipboardOperation = async (operationId: string): Promise<void> => {
 };
 
 /**
- * Send pending clipboard operations to frontend
- */
-const sendPendingClipboardOperations = async (): Promise<void> => {
-    const operations = await getStoredClipboardOperations();
-    if (operations.length > 0) {
-        console.log('[SW] Sending', operations.length, 'pending clipboard operations to frontend');
-        broadcast(CHANNELS.CLIPBOARD, { type: 'pending-operations', operations });
-
-        // Clear the queue after sending
-        await clearStoredClipboardOperations();
-    }
-};
-
-/**
  * Try to parse JSON and extract recognized content
  * AI returns JSON like {"recognized_data": [...], "verbose_data": "..."}
  * We want to extract just the actual content for clipboard
@@ -311,7 +292,8 @@ const ASSET_VERSIONS = new Map<string, string>();
 /**
  * Enhanced fetch handler with cache busting and version tracking
  */
-async function handleAssetRequest(request: Request): Promise<Response> {
+async function handleAssetRequest(arg: any): Promise<Response> {
+    const request: Request = arg?.request ?? arg;
     const url = new URL(request.url);
     const pathname = url.pathname;
 
@@ -365,7 +347,7 @@ async function handleAssetRequest(request: Request): Promise<Response> {
 
         // Fallback to cache
         const cache = await caches.open('crossword-assets-v1');
-        const cachedResponse = await cache.match(request);
+        const cachedResponse = await cache?.match?.(request);
         if (cachedResponse) {
             console.log(`[SW] Serving cached asset: ${pathname}`);
             return cachedResponse;
@@ -386,143 +368,40 @@ async function handleAssetRequest(request: Request): Promise<Response> {
 const processShareWithAI = async (
     shareData: ShareData,
     config: { mode: 'recognize' | 'analyze'; customInstruction: string }
-): Promise<{ success: boolean; results?: any[] }> => {
+): Promise<{ success: boolean; results?: any[]; error?: string }> => {
     console.log('[ShareTarget] Processing with direct GPT calls, mode:', config.mode);
 
     try {
-        // Extract processable content from share data
-        let inputData: string | File;
+        // Use execution core for unified processing.
+        // Mode and instruction are resolved from settings/context; SW still passes mode for logging and errors.
+        const processingResult = await processShareTargetWithExecutionCore(shareData);
 
-        // Priority: files > text > url
-        if (shareData.imageFiles?.length > 0) {
-            // Use first image file
-            let imageFile = shareData.imageFiles[0];
-            console.log('[ShareTarget] Processing image file:', imageFile.name, 'size:', imageFile.size);
+        if (processingResult.success && processingResult.result) {
+            // Broadcast the result for immediate clipboard copy (frontend receiver handles actual clipboard)
+            notifyAIResult({
+                success: true,
+                data: processingResult.result.content
+            });
 
-            // Compress large images to avoid memory issues and timeouts
-            // Only compress PNG images in service workers (Canvas API not available)
-            const isPNG = imageFile.type?.toLowerCase() === 'image/png';
-            const shouldCompress = imageFile.size > MAX_BASE64_SIZE && (isPNG || typeof window !== 'undefined');
+            // Store for persistent delivery if frontend wasn't ready
+            await storeClipboardOperation({
+                id: `${config.mode}-${Date.now()}`,
+                data: processingResult.result.content,
+                type: 'ai-result',
+                timestamp: Date.now()
+            });
 
-            if (shouldCompress) {
-                console.log('[ShareTarget] Image too large, compressing to JPEG:', imageFile.size, '>', MAX_BASE64_SIZE);
-                try {
-                    imageFile = await convertImageToJPEG(imageFile) as File;
-                    console.log('[ShareTarget] Compressed image size:', imageFile.size);
-                } catch (compressionError) {
-                    console.warn('[ShareTarget] Image compression failed:', compressionError);
-                    // Continue with original file if compression fails
-                }
-            } else if (!isPNG && imageFile.size > MAX_BASE64_SIZE) {
-                console.warn('[ShareTarget] Large non-PNG image cannot be compressed in service worker, proceeding with original file');
-            }
-
-            inputData = imageFile;
-        } else if (shareData.files?.length > 0) {
-            // Use first non-image file
-            const file = shareData.files[0];
-            console.log('[ShareTarget] Processing file:', file.name);
-            inputData = file;
-        } else if (shareData.text?.trim()) {
-            console.log('[ShareTarget] Processing text content');
-            inputData = shareData.text;
-        } else if (shareData.url) {
-            console.log('[ShareTarget] Processing URL:', shareData.url);
-            inputData = shareData.url;
-        } else {
-            throw new Error('No processable content found in share data');
+            return { success: true, results: [processingResult.result] };
         }
 
-        if (config.mode === 'analyze') {
-            let dataToProcess: string | File | Blob;
-            let text = '';
-
-            if (inputData instanceof File || inputData instanceof Blob) {
-                if (inputData.type.startsWith('image/')) {
-                    console.log('[ShareTarget] Converting image to data URL for analysis');
-                    dataToProcess = await fileToDataUrl(inputData);
-                } else {
-                    text = await inputData.text();
-                    dataToProcess = text;
-                }
-            } else {
-                text = inputData;
-                dataToProcess = inputData;
-            }
-
-            // Use execution core for unified processing
-            const processingResult = await processShareTargetWithExecutionCore(shareData, sessionId);
-
-            if (processingResult.success && processingResult.result) {
-                // Broadcast the result for immediate clipboard copy (handled by execution core)
-                notifyAIResult({
-                    success: true,
-                    data: processingResult.result.content
-                });
-
-                // Store for persistent delivery if frontend wasn't ready
-                await storeClipboardOperation({
-                    id: `analysis-${Date.now()}`,
-                    data: processingResult.result.content,
-                    type: 'ai-result',
-                    timestamp: Date.now()
-                });
-
-                return { success: true, result: processingResult.result };
-            } else {
-                notifyAIResult({ success: false, error: result.error || 'Analysis failed' });
-                return { success: false, results: [] };
-            }
-
-        } else {
-            // Use execution core for unified processing (recognize mode)
-            const processingResult = await processShareTargetWithExecutionCore(shareData, sessionId);
-
-            if (processingResult.success && processingResult.result) {
-                // Broadcast the result for immediate clipboard copy (handled by execution core)
-                notifyAIResult({
-                    success: true,
-                    data: processingResult.result.content
-                });
-
-                // Store for persistent delivery if frontend wasn't ready
-                await storeClipboardOperation({
-                    id: `recognition-${Date.now()}`,
-                    data: processingResult.result.content,
-                    type: 'ai-result',
-                    timestamp: Date.now()
-                });
-
-                return { success: true, result: processingResult.result };
-            } else {
-                notifyAIResult({ success: false, error: result.error || 'Recognition failed' });
-                return { success: false, results: [] };
-            }
-        }
+        const errMsg = processingResult.error || `${config.mode} failed`;
+        notifyAIResult({ success: false, error: errMsg });
+        return { success: false, results: [], error: errMsg };
 
     } catch (error: any) {
         console.error('[ShareTarget] Direct AI processing error:', error);
         throw error;
     }
-};
-
-/**
- * Handle AI processing result and show appropriate toast
- */
-const handleAIResult = (
-    mode: 'recognize' | 'analyze',
-    result: { success: boolean; results?: any[] }
-): boolean => {
-    if (result.success) {
-        const message = mode === 'analyze'
-            ? 'Content analyzed and processed'
-            : 'Content recognized and copied';
-        sendToast(message, 'success');
-        return true;
-    }
-
-    sendToast(mode === 'analyze' ? 'Analysis completed' : 'Recognition completed', 'info');
-    return false;
 };
 
 /**
@@ -647,7 +526,8 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
         // Step 7: Redirect to app
         return new Response(null, {
             status: 302,
-            headers: { Location: '/?shared=1' }
+            // Prefer share-target entry path (SPA), then app decides how to handle.
+            headers: { Location: '/share-target?shared=1' }
         });
     } catch (err: any) {
         console.error('[ShareTarget] Handler error:', err);
@@ -756,7 +636,7 @@ self.addEventListener?.('notificationclick', (event: any) => {
 // Handle service worker lifecycle events
 self.addEventListener?.('install', (e: any) => {
     console.log('[SW] Installing new service worker...');
-    e?.waitUntil?.(self?.skipWaiting?.());
+    e?.waitUntil?.((self as any)?.skipWaiting?.());
 });
 
 self.addEventListener?.('activate', (e: any) => {
@@ -774,7 +654,7 @@ self.addEventListener?.('activate', (e: any) => {
 
 // Handle messages from clients
 self.addEventListener?.('message', (e: any) => {
-    const { type, data } = e.data || {};
+    const { type } = e.data || {};
 
     switch (type) {
         case 'SKIP_WAITING':

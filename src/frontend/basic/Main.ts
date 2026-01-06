@@ -26,6 +26,8 @@ export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | 
 export type BasicAppOptions = {
     initialView?: BasicView;
     initialMarkdown?: string;
+    /** PWA share-target / launchQueue can inject files to pre-attach in WorkCenter */
+    initialFiles?: File[];
 };
 
 type HistoryEntry = {
@@ -221,6 +223,19 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         markdownEditor: null as any,
         quillEditor: null as any
     };
+
+    // If we were launched with files (share-target), force WorkCenter and attach them.
+    // (This must run after state + fileHandler exist.)
+    if (Array.isArray(options.initialFiles) && options.initialFiles.length > 0) {
+        state.view = "workcenter";
+        try {
+            // Use the same pipeline as UI file selection.
+            state.fileHandler?.addFiles?.(options.initialFiles);
+            state.message = `Received ${options.initialFiles.length} file(s)`;
+        } catch (e) {
+            console.warn("[Basic] Failed to attach initial files:", e);
+        }
+    }
 
     const persistMarkdown = () => {
         try {

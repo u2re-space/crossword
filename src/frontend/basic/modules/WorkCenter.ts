@@ -88,6 +88,7 @@ export interface WorkCenterDependencies {
 export class WorkCenterManager {
     private state: WorkCenterState;
     private deps: WorkCenterDependencies;
+    private previewUrlCache = new WeakMap<File, string>();
 
     constructor(dependencies: WorkCenterDependencies) {
         this.deps = dependencies;
@@ -110,6 +111,58 @@ export class WorkCenterManager {
             currentProcessingStep: 0,
             ...this.loadWorkCenterState() // Load persisted state
         };
+    }
+
+    private isMarkdownFile(file: File): boolean {
+        const name = (file?.name || "").toLowerCase();
+        const type = (file?.type || "").toLowerCase();
+        return type === "text/markdown" || name.endsWith(".md") || name.endsWith(".markdown") || name.endsWith(".mdown") || name.endsWith(".mkd") || name.endsWith(".mkdn");
+    }
+
+    private isImageFile(file: File): boolean {
+        const type = (file?.type || "").toLowerCase();
+        return type.startsWith("image/");
+    }
+
+    private getOrCreatePreviewUrl(file: File): string | null {
+        if (!file) return null;
+        if (!this.isImageFile(file)) return null;
+        const cached = this.previewUrlCache.get(file);
+        if (cached) return cached;
+        try {
+            const url = URL.createObjectURL(file);
+            this.previewUrlCache.set(file, url);
+            return url;
+        } catch {
+            return null;
+        }
+    }
+
+    private revokePreviewUrl(file: File): void {
+        const url = this.previewUrlCache.get(file);
+        if (url) {
+            try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+        }
+        this.previewUrlCache.delete(file);
+    }
+
+    private async openMarkdownInViewerFromWorkCenter(file: File): Promise<void> {
+        try {
+            const md = await file.text();
+            // Basic edition stores markdown in localStorage + state.markdown.
+            try { localStorage.setItem("rs-basic-markdown", md); } catch { /* ignore */ }
+            try {
+                if (this.deps?.state) {
+                    this.deps.state.markdown = md;
+                    this.deps.state.view = "markdown-viewer";
+                }
+            } catch { /* ignore */ }
+            this.deps.showMessage?.(`Opened ${file.name}`);
+            this.deps.render?.();
+        } catch (e) {
+            this.deps.showMessage?.(`Failed to open ${file.name}`);
+            console.warn("[WorkCenter] Failed to open markdown file:", e);
+        }
     }
 
     getState(): WorkCenterState {
@@ -560,6 +613,11 @@ export class WorkCenterManager {
                         break;
                     case 'clear-pipeline':
                         this.clearRecognizedData();
+                        // Also clear attachments & preview URLs (pipeline reset means "start over")
+                        this.revokeAllPreviewUrls();
+                        this.state.files = [];
+                        this.updateFileList(container);
+                        this.updateFileCounter(container);
                         // Update UI
                         const statusEl = container.querySelector('.recognized-status');
                         if (statusEl) {
@@ -606,17 +664,33 @@ export class WorkCenterManager {
         }
 
         this.state.files.forEach((file, index) => {
+            const isImage = this.isImageFile(file);
+            const isMarkdown = this.isMarkdownFile(file);
+            const previewUrl = isImage ? this.getOrCreatePreviewUrl(file) : null;
+
             const fileItem = H`<div class="file-item">
         <div class="file-info">
           <span class="file-icon">${this.createFileIconElement(file.type)}</span>
+          ${previewUrl ? H`<img class="file-preview" alt=${file.name || "image"} src=${previewUrl} loading="lazy" decoding="async" />` : ''}
           <span class="file-name">${file.name}</span>
           <span class="file-size">(${this.formatFileSize(file.size)})</span>
+          ${isMarkdown ? H`<button class="btn small" data-open-md="${index}" title="Open in Markdown Viewer">Open</button>` : ''}
         </div>
         <button class="btn small remove-btn" data-remove="${index}">✕</button>
       </div>` as HTMLElement;
 
+            const openBtn = fileItem.querySelector(`[data-open-md="${index}"]`) as HTMLButtonElement | null;
+            openBtn?.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const f = this.state.files[index];
+                if (f) await this.openMarkdownInViewerFromWorkCenter(f);
+            });
+
             fileItem.querySelector('.remove-btn')?.addEventListener('click', () => {
+                const removed = this.state.files[index];
                 this.state.files.splice(index, 1);
+                if (removed) this.revokePreviewUrl(removed);
                 this.clearRecognizedData(); // Clear cached content when files change
                 this.updateFileList(container);
                 this.updateFileCounter(container);
@@ -1694,6 +1768,16 @@ export class WorkCenterManager {
         this.state.recognizedData = null;
         this.state.processedData = null;
         this.state.currentProcessingStep = 0;
+    }
+
+    private revokeAllPreviewUrls(): void {
+        try {
+            for (const f of this.state.files) {
+                this.revokePreviewUrl(f);
+            }
+        } catch {
+            // ignore
+        }
     }
 
     private determineRecognizedFormat(content: string, isTextFile: boolean): 'markdown' | 'html' | 'text' | 'json' | 'xml' | 'other' {
