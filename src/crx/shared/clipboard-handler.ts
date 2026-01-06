@@ -15,6 +15,61 @@ export type CopyResponse = {
 
 export type CRXClipboardContext = "content" | "offscreen" | "unknown";
 
+const tryParseJson = (input: string): unknown => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return null;
+    try { return JSON.parse(trimmed); } catch { return null; }
+};
+
+const extractLLMContent = (data: unknown): string => {
+    if (data == null) return "";
+
+    // If we got a JSON string, try to parse it first.
+    if (typeof data === "string") {
+        const parsed = tryParseJson(data);
+        if (parsed != null) {
+            const extracted = extractLLMContent(parsed);
+            if (extracted) return extracted;
+        }
+        return data;
+    }
+
+    // OpenAI Chat Completions: { choices: [ { message: { content } } ] }
+    if (typeof data === "object") {
+        const anyData = data as any;
+
+        const choice0 = anyData?.choices?.[0];
+        const chatContent = choice0?.message?.content ?? choice0?.delta?.content ?? choice0?.text;
+        if (typeof chatContent === "string" && chatContent.trim()) return chatContent;
+
+        // OpenAI Responses: { output_text } or { output: [ { content: [ { text } ] } ] }
+        const outputText = anyData?.output_text;
+        if (typeof outputText === "string" && outputText.trim()) return outputText;
+
+        const output0 = anyData?.output?.[0];
+        const outText =
+            output0?.content?.find?.((c: any) => typeof c?.text === "string")?.text ??
+            output0?.content?.[0]?.text ??
+            output0?.content?.[0]?.content ??
+            output0?.text;
+        if (typeof outText === "string" && outText.trim()) return outText;
+
+        // Common wrappers: { message: { content } } or { content }
+        const directMessage = anyData?.message?.content;
+        if (typeof directMessage === "string" && directMessage.trim()) return directMessage;
+        if (typeof anyData?.content === "string" && anyData.content.trim()) return anyData.content;
+
+        // ExecutionCore-like: { result: { ... } } – try recursively.
+        if (anyData?.result != null) {
+            const nested = extractLLMContent(anyData.result);
+            if (nested) return nested;
+        }
+    }
+
+    return "";
+};
+
 /**
  * Get the best available timing function for scheduling callbacks
  * Prefers requestAnimationFrame when available, falls back to setTimeout
@@ -169,7 +224,8 @@ export const handleCopyRequest = async (
     data: unknown,
     options: { showFeedback?: boolean; errorMessage?: string; maxRetries?: number; toastFn?: (message: string) => void } = {}
 ): Promise<CopyResponse> => {
-    const text = toText(data).trim();
+    const extracted = extractLLMContent(data);
+    const text = (extracted || toText(data)).trim();
     const { maxRetries = 3 } = options;
 
     if (!text) {

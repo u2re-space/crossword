@@ -86,23 +86,34 @@ export const generateInstructionId = (): string => {
 export const DEFAULT_INSTRUCTION_TEMPLATES: Omit<CustomInstruction, "id">[] = [
     {
         label: "Markdown & KaTeX",
-        instruction: `Format all recognized content as clean Markdown with proper KaTeX math notation.
+        instruction: `Format the output as GitHub-compatible Markdown with KaTeX.
 
-Rules for math expressions:
-- Inline math: use SINGLE dollar signs, e.g. $x^2 + y^2 = z^2$
-- Block/display math: use DOUBLE dollar signs on separate lines:
-  $$\\int_0^1 f(x) dx$$
-- Do NOT add extra dollar signs - use exactly one $ for inline, exactly two $$ for block
-- Preserve original mathematical notation accurately
+Structure rules:
+- Use headings for structure:
+  - Main sections: start from ### (H3) minimum
+  - Subsections: #### / ##### when needed
+- Avoid long paragraphs: prefer lists and sub-lists.
 
-Rules for text formatting:
-- Use proper heading levels (# ## ###)
-- Format lists with - or 1. 2. 3.
-- Use **bold** and *italic* appropriately
-- Format code as \`inline\` or \`\`\`block\`\`\`
-- Format tables as | Markdown | tables |
+KaTeX / math rules:
+- Prefer inline formulas: $...$ (use this most of the time).
+- Avoid $$...$$ blocks; only use block math if strictly necessary.
+  - Prefer block math as \\[ ... \\] instead of $$...$$.
+- Inside KaTeX, write a vertical bar as \\| (example: $A \\| B$).
 
-Prioritize mathematical accuracy and proper Markdown structure.`,
+Tables:
+- Use strict GitHub Markdown table syntax.
+- Inside table cells:
+  - Use <br> for line breaks (no real newlines inside cells).
+  - If source data uses ';' as a separator, replace ';' with <br>.
+
+Colon / key-value formatting:
+- For "key: value" style lines, make the part before ':' bold:
+  - **Key**: value
+
+General:
+- Use bullet lists (-) or numbered steps (1., 2., 3.) where appropriate.
+- Keep formatting consistent and readable in dark themes.
+- Preserve meaning and math accuracy.`,
         enabled: true,
         order: 0
     },
@@ -119,7 +130,7 @@ Format:
 **Explanation:** <clear reasoning>
 
 For multiple choice: identify correct option + explain why.
-For math: use $ for inline, $$ for block equations.
+For math: prefer $inline$; avoid $$block$$ and prefer \\[block\\] only if strictly necessary.
 Show all work and simplify the final answer.`,
         enabled: true,
         order: 1

@@ -1878,7 +1878,29 @@ function getOutputFormatInstruction(format: OutputFormat): string {
 
     const instructions: Record<OutputFormat, string> = {
         'auto': "",
-        'markdown': "\n\nOutput the result in Markdown format.",
+        'markdown': `\n\nOutput the result in GitHub-compatible Markdown.
+
+Markdown structure:
+- Use headings for structure:
+  - Main sections: start from ### (H3) minimum
+  - Subsections: #### / ##### when needed
+- Avoid long paragraphs: prefer lists and sub-lists.
+
+KaTeX / math:
+- Prefer inline formulas: $...$
+- Avoid $$...$$ blocks; only use block math if strictly necessary.
+  - Prefer block math as \\[ ... \\] instead of $$...$$.
+- Inside KaTeX, write a vertical bar as \\| (example: $A \\| B$).
+
+Tables:
+- Use strict GitHub Markdown table syntax.
+- Inside table cells:
+  - Use <br> for line breaks (no real newlines inside cells).
+  - If source data uses ';' as a separator, replace ';' with <br>.
+
+Colon formatting:
+- For "key: value" style lines, make the part before ':' bold:
+  - **Key**: value`,
         'html': "\n\nOutput the result in HTML format.",
         'json': "\n\nOutput the result as valid JSON.",
         'text': "\n\nOutput the result as plain text.",
