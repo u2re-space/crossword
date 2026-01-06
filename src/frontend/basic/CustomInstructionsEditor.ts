@@ -1,7 +1,7 @@
-import { H, M } from "fest/lure";
+import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings, saveSettings } from "@rs-core/config/Settings";
-import type { CustomInstruction, AppSettings } from "@rs-core/config/SettingsTypes";
+import { loadSettings } from "@rs-core/config/Settings";
+import type { CustomInstruction } from "@rs-core/config/SettingsTypes";
 import {
     addInstruction,
     addInstructions,

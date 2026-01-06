@@ -1,281 +1,281 @@
 .basic-settings {
-  padding: 14px;
-  display: grid;
-  gap: 14px;
-  block-size: max-content;
-  max-block-size: none;
+    padding: 14px;
+    display: grid;
+    gap: 14px;
+    block-size: max-content;
+    max-block-size: none;
 }
 
 .basic-settings h2 {
-  margin: 0;
-  font-size: 18px;
-  letter-spacing: 0.01em;
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: 0.01em;
 }
 
 .basic-settings .card {
-  display: grid;
-  gap: 10px;
+    display: grid;
+    gap: 10px;
 }
 
 .basic-settings .card h3 {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.95;
-  letter-spacing: 0.01em;
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.95;
+    letter-spacing: 0.01em;
 }
 
 .basic-settings .field {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
 }
 
 .basic-settings .field > span {
-  opacity: 0.9;
-  color: var(--basic-on-surface-variant);
+    opacity: 0.9;
+    color: var(--basic-on-surface-variant);
 }
 
 /* Inputs/selects are now standardized via `forms.scss` (`.form-input`, `.form-select`). */
 
 .basic-settings .field.checkbox {
-  grid-auto-flow: column;
-  grid-auto-columns: max-content 1fr;
-  align-items: center;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content 1fr;
+    align-items: center;
 }
 
 .basic-settings .actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .basic-settings .note {
-  font-size: 12px;
-  opacity: 0.9;
-  color: var(--basic-on-surface-variant);
+    font-size: 12px;
+    opacity: 0.9;
+    color: var(--basic-on-surface-variant);
 }
 
 .basic-settings .ext-note {
-  font-size: 12px;
-  opacity: 0.8;
-  color: var(--basic-on-surface-variant);
+    font-size: 12px;
+    opacity: 0.8;
+    color: var(--basic-on-surface-variant);
 }
 
 // Custom Instructions Editor
 .custom-instructions-editor {
-  display: grid;
-  gap: 12px;
-
-  .ci-header {
     display: grid;
-    gap: 4px;
+    gap: 12px;
 
-    h4 {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--basic-on-surface);
+    .ci-header {
+        display: grid;
+        gap: 4px;
+
+        h4 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--basic-on-surface);
+        }
+
+        .ci-desc {
+            margin: 0;
+            font-size: 11px;
+            opacity: 0.8;
+            color: var(--basic-on-surface-variant);
+        }
     }
 
-    .ci-desc {
-      margin: 0;
-      font-size: 11px;
-      opacity: 0.8;
-      color: var(--basic-on-surface-variant);
-    }
-  }
+    .ci-active-select {
+        label {
+            display: grid;
+            gap: 6px;
+            font-size: 12px;
 
-  .ci-active-select {
-    label {
-      display: grid;
-      gap: 6px;
-      font-size: 12px;
+            span {
+                opacity: 0.9;
+                color: var(--basic-on-surface-variant);
+            }
+        }
 
-      span {
-        opacity: 0.9;
-        color: var(--basic-on-surface-variant);
-      }
-    }
+        .ci-select {
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: var(--basic-surface-container-highest);
+            color: var(--basic-on-surface);
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            transition: background-color var(--basic-motion-fast);
 
-    .ci-select {
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: var(--basic-surface-container-highest);
-      color: var(--basic-on-surface);
-      font-size: 12px;
-      outline: none;
-      cursor: pointer;
-      transition: background-color var(--basic-motion-fast);
-
-      &:focus-visible {
-        // Removed border and box-shadow for cleaner appearance
-      }
-    }
-  }
-
-  .ci-list {
-    display: grid;
-    gap: 8px;
-
-    .ci-empty {
-      padding: 16px;
-      text-align: center;
-      font-size: 12px;
-      opacity: 0.7;
-      color: var(--basic-on-surface-variant);
-      background: var(--basic-surface-container);
-      border-radius: 10px;
-    }
-  }
-
-  .ci-item {
-    border-radius: 10px;
-    padding: 10px;
-    background: var(--basic-surface-container);
-    transition: background-color var(--basic-motion-fast);
-
-    &.active {
-      background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
+            &:focus-visible {
+                // Removed border and box-shadow for cleaner appearance
+            }
+        }
     }
 
-    .ci-item-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+    .ci-list {
+        display: grid;
+        gap: 8px;
+
+        .ci-empty {
+            padding: 16px;
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.7;
+            color: var(--basic-on-surface-variant);
+            background: var(--basic-surface-container);
+            border-radius: 10px;
+        }
     }
 
-    .ci-item-label {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--basic-on-surface);
-      flex: 1;
-      min-inline-size: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .ci-item {
+        border-radius: 10px;
+        padding: 10px;
+        background: var(--basic-surface-container);
+        transition: background-color var(--basic-motion-fast);
+
+        &.active {
+            background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
+        }
+
+        .ci-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .ci-item-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--basic-on-surface);
+            flex: 1;
+            min-inline-size: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ci-item-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .ci-badge {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+
+            &.active {
+                background: color-mix(in oklab, var(--basic-primary) 20%, transparent);
+                color: var(--basic-primary);
+            }
+        }
+
+        .ci-item-preview {
+            margin-block-start: 8px;
+            padding: 8px;
+            background: var(--basic-surface-container-highest);
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--basic-on-surface-variant);
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .ci-edit-form {
+            margin-block-start: 10px;
+            display: grid;
+            gap: 8px;
+        }
     }
 
-    .ci-item-actions {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      flex-shrink: 0;
+    .ci-input {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--basic-surface-container-highest);
+        color: var(--basic-on-surface);
+        font-size: 12px;
+        outline: none;
+        transition: background-color var(--basic-motion-fast);
+
+        &:focus-visible {
+            // Removed border and box-shadow for cleaner appearance
+        }
+
+        &::placeholder {
+            color: var(--basic-on-surface-variant);
+            opacity: 0.6;
+        }
     }
 
-    .ci-badge {
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
+    .ci-textarea {
+        padding: 10px;
+        border-radius: 8px;
+        background: var(--basic-surface-container-highest);
+        color: var(--basic-on-surface);
+        font-size: 12px;
+        line-height: 1.5;
+        resize: vertical;
+        min-block-size: 60px;
+        outline: none;
+        font-family: inherit;
+        transition: background-color var(--basic-motion-fast);
 
-      &.active {
-        background: color-mix(in oklab, var(--basic-primary) 20%, transparent);
-        color: var(--basic-primary);
-      }
+        &:focus-visible {
+            // Removed border and box-shadow for cleaner appearance
+        }
+
+        &::placeholder {
+            color: var(--basic-on-surface-variant);
+            opacity: 0.6;
+        }
     }
 
-    .ci-item-preview {
-      margin-block-start: 8px;
-      padding: 8px;
-      background: var(--basic-surface-container-highest);
-      border-radius: 8px;
-      font-size: 11px;
-      line-height: 1.5;
-      color: var(--basic-on-surface-variant);
-      word-break: break-word;
-      white-space: pre-wrap;
+    .ci-edit-actions,
+    .ci-add-actions {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
     }
 
-    .ci-edit-form {
-      margin-block-start: 10px;
-      display: grid;
-      gap: 8px;
-    }
-  }
-
-  .ci-input {
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: var(--basic-surface-container-highest);
-    color: var(--basic-on-surface);
-    font-size: 12px;
-    outline: none;
-    transition: background-color var(--basic-motion-fast);
-
-    &:focus-visible {
-      // Removed border and box-shadow for cleaner appearance
+    .ci-add-form {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 10px;
+        background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
     }
 
-    &::placeholder {
-      color: var(--basic-on-surface-variant);
-      opacity: 0.6;
-    }
-  }
-
-  .ci-textarea {
-    padding: 10px;
-    border-radius: 8px;
-    background: var(--basic-surface-container-highest);
-    color: var(--basic-on-surface);
-    font-size: 12px;
-    line-height: 1.5;
-    resize: vertical;
-    min-block-size: 60px;
-    outline: none;
-    font-family: inherit;
-    transition: background-color var(--basic-motion-fast);
-
-    &:focus-visible {
-      // Removed border and box-shadow for cleaner appearance
+    .ci-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
-    &::placeholder {
-      color: var(--basic-on-surface-variant);
-      opacity: 0.6;
+    .btn.tiny {
+        padding: 4px 8px;
+        font-size: 10px;
+        border-radius: 6px;
+
+        &.danger {
+            color: var(--basic-error, #c62828);
+
+            &:hover {
+                background: color-mix(in oklab, var(--basic-error, #c62828) 15%, transparent);
+            }
+        }
     }
-  }
 
-  .ci-edit-actions,
-  .ci-add-actions {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-  }
-
-  .ci-add-form {
-    display: grid;
-    gap: 8px;
-    padding: 12px;
-    border-radius: 10px;
-    background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
-  }
-
-  .ci-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .btn.tiny {
-    padding: 4px 8px;
-    font-size: 10px;
-    border-radius: 6px;
-
-    &.danger {
-      color: var(--basic-error, #c62828);
-
-      &:hover {
-        background: color-mix(in oklab, var(--basic-error, #c62828) 15%, transparent);
-      }
+    .btn.small {
+        padding: 6px 12px;
+        font-size: 11px;
+        border-radius: 8px;
     }
-  }
-
-  .btn.small {
-    padding: 6px 12px;
-    font-size: 11px;
-    border-radius: 8px;
-  }
 }

@@ -1,289 +1,290 @@
 /* Button Components - Material Design 3 */
 
 .btn {
-  /* Variable-driven defaults (works well with typed `@property`) */
-  --ui-bg: var(--basic-surface-container-high);
-  --ui-fg: var(--basic-on-surface);
-  --ui-bg-hover: var(--basic-surface-container-highest);
-  --ui-radius: var(--basic-radius-lg);
-  --ui-pad-y: var(--space-sm);
-  --ui-pad-x: var(--space-lg);
-  --ui-font-size: var(--text-sm);
-  --ui-font-weight: var(--font-weight-semibold);
-  --ui-min-h: 40px;
-  --ui-opacity: 1;
-  --ui-ring: var(--basic-primary);
+    /* Variable-driven defaults (works well with typed `@property`) */
+    --ui-bg: var(--basic-surface-container-high);
+    --ui-fg: var(--basic-on-surface);
+    --ui-bg-hover: var(--basic-surface-container-highest);
+    --ui-radius: var(--basic-radius-lg);
+    --ui-pad-y: var(--space-sm);
+    --ui-pad-x: var(--space-lg);
+    --ui-font-size: var(--text-sm);
+    --ui-font-weight: var(--font-weight-semibold);
+    --ui-min-h: 40px;
+    --ui-opacity: 1;
+    --ui-ring: var(--basic-primary);
 
-  // Base button styles
-  appearance: none;
-  border: none;
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  border-radius: var(--ui-radius);
-  padding: max(var(--ui-pad-y, 0px), 0px) max(var(--ui-pad-x, 0px), 0px);
-  font-size: var(--ui-font-size);
-  font-weight: var(--ui-font-weight);
-  letter-spacing: 0.01em;
-  line-height: 1.2;
-  block-size: calc-size(fit-content, max(var(--ui-min-h), size));
-  cursor: pointer;
-  transition:
-    background-color var(--basic-motion-fast),
-    box-shadow var(--basic-motion-fast),
-    transform var(--basic-motion-fast);
-  box-shadow: var(--basic-elev-0);
-  user-select: none;
-  touch-action: manipulation;
-  pointer-events: auto;
-  display: inline-flex;
-  gap: var(--space-xs);
-  text-transform: none;
-  opacity: var(--ui-opacity);
-  min-block-size: fit-content;
-  min-inline-size: calc-size(fit-content, size + 0.5rem + var(--icon-size, 1rem));
-  max-inline-size: none;
-  max-block-size: stretch;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  text-wrap: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-  text-align: center;
-  text-decoration: none;
-  text-shadow: none;
-  text-rendering: auto;
-  contain: none;
-  container-type: normal;
-
-  //
-  place-items: center;
-  place-content: center;
-
-  //
-  justify-content: safe center;
-  justify-items: safe center;
-
-  //
-  align-content: safe center;
-  align-items: safe center;
-
-  // Interactive states
-  &:hover {
-    background: var(--ui-bg-hover);
-    box-shadow: var(--basic-elev-1);
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
+    // Base button styles
+    appearance: none;
+    border: none;
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    border-radius: var(--ui-radius);
+    padding: max(var(--ui-pad-y, 0px), 0px) max(var(--ui-pad-x, 0px), 0px);
+    font-size: var(--ui-font-size);
+    font-weight: var(--ui-font-weight);
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    block-size: calc-size(fit-content, max(var(--ui-min-h), size));
+    cursor: pointer;
+    transition:
+        background-color var(--basic-motion-fast),
+        box-shadow var(--basic-motion-fast),
+        transform var(--basic-motion-fast);
     box-shadow: var(--basic-elev-0);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-ring) 35%, transparent);
-  }
-
-  // Button variants
-  &.primary {
-    --ui-bg: var(--basic-primary);
-    --ui-fg: var(--basic-on-primary);
-    --ui-ring: var(--basic-primary);
-    --ui-bg-hover: color-mix(in oklab, var(--basic-primary) 90%, black);
-
-    &:hover {
-      /* hover colors driven by --ui-bg-hover / --ui-border-hover */
-    }
-  }
-
-  &.small {
-    --ui-pad-y: var(--space-xs);
-    --ui-pad-x: var(--space-md);
-    --ui-font-size: var(--text-xs);
-    --ui-min-h: 32px;
-    --ui-radius: var(--basic-radius-md);
-  }
-
-  &.icon-btn {
-    inline-size: 40px;
-    block-size: 40px;
-    --ui-pad-y: 0px;
-    --ui-pad-x: 0px;
-    --ui-radius: 9999px;
-    --ui-font-size: var(--text-lg);
-  }
-
-  &.active {
-    --ui-bg: var(--basic-primary);
-    --ui-fg: var(--basic-on-primary);
-    --ui-ring: var(--basic-primary);
-    box-shadow: var(--basic-elev-1);
-  }
-
-  // Responsive adjustments using container queries
-  @container (max-inline-size: 768px) {
-    --ui-pad-y: var(--space-xs);
-    --ui-pad-x: var(--space-md);
-    --ui-font-size: var(--text-xs);
-    --ui-min-h: 36px;
-  }
-
-  @container (max-inline-size: 480px) {
-    --ui-pad-y: var(--space-xs);
-    --ui-pad-x: var(--space-xs);
-    --ui-font-size: var(--text-xs);
-    --ui-min-h: 32px;
-    white-space: nowrap;
-    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+    pointer-events: auto;
+    display: inline-flex;
+    gap: var(--space-xs);
+    text-transform: none;
+    opacity: var(--ui-opacity);
+    min-block-size: fit-content;
+    min-inline-size: calc-size(fit-content, size + 0.5rem + var(--icon-size, 1rem));
+    max-inline-size: none;
+    max-block-size: stretch;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    text-wrap: nowrap;
     text-overflow: ellipsis;
-  }
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: center;
+    text-decoration: none;
+    text-shadow: none;
+    text-rendering: auto;
+    contain: none;
+    container-type: normal;
+
+    //
+    place-items: center;
+    place-content: center;
+
+    //
+    justify-content: safe center;
+    justify-items: safe center;
+
+    //
+    align-content: safe center;
+    align-items: safe center;
+
+    // Interactive states
+    &:hover {
+        background: var(--ui-bg-hover);
+        box-shadow: var(--basic-elev-1);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+        box-shadow: var(--basic-elev-0);
+    }
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-ring) 35%, transparent);
+    }
+
+    // Button variants
+    &.primary {
+        --ui-bg: var(--basic-primary);
+        --ui-fg: var(--basic-on-primary);
+        --ui-ring: var(--basic-primary);
+        --ui-bg-hover: color-mix(in oklab, var(--basic-primary) 90%, black);
+
+        &:hover {
+            /* hover colors driven by --ui-bg-hover / --ui-border-hover */
+        }
+    }
+
+    &.small {
+        --ui-pad-y: var(--space-xs);
+        --ui-pad-x: var(--space-md);
+        --ui-font-size: var(--text-xs);
+        --ui-min-h: 32px;
+        --ui-radius: var(--basic-radius-md);
+    }
+
+    &.icon-btn {
+        inline-size: 40px;
+        block-size: 40px;
+        --ui-pad-y: 0px;
+        --ui-pad-x: 0px;
+        --ui-radius: 9999px;
+        --ui-font-size: var(--text-lg);
+    }
+
+    &.active {
+        --ui-bg: var(--basic-primary);
+        --ui-fg: var(--basic-on-primary);
+        --ui-ring: var(--basic-primary);
+        box-shadow: var(--basic-elev-1);
+    }
+
+    // Responsive adjustments using container queries
+    @container (max-inline-size: 768px) {
+        --ui-pad-y: var(--space-xs);
+        --ui-pad-x: var(--space-md);
+        --ui-font-size: var(--text-xs);
+        --ui-min-h: 36px;
+    }
+
+    @container (max-inline-size: 480px) {
+        --ui-pad-y: var(--space-xs);
+        --ui-pad-x: var(--space-xs);
+        --ui-font-size: var(--text-xs);
+        --ui-min-h: 32px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 
 // Action-specific button styles
 .btn {
-  // File operations
-  &[data-action="open-md"],
-  &[data-action="export-md"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-  }
 
-  // View navigation buttons
-  &[data-action="view-markdown-viewer"],
-  &[data-action="view-markdown-editor"],
-  &[data-action="view-rich-editor"],
-  &[data-action="view-settings"],
-  &[data-action="view-history"],
-  &[data-action="view-workcenter"] {
-    --ui-font-size: 13px;
-    --ui-font-weight: 500;
-    --ui-pad-x: 12px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 32px;
-    --ui-radius: 16px;
-    text-transform: capitalize;
-
-    &[data-current],
-    &.active {
-      --ui-bg: var(--basic-surface-container-highest);
-      --ui-fg: var(--basic-primary);
-      --ui-ring: var(--basic-primary);
+    // File operations
+    &[data-action="open-md"],
+    &[data-action="export-md"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
     }
-  }
 
-  // Edit toggle
-  &[data-action="toggle-edit"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // View navigation buttons
+    &[data-action="view-markdown-viewer"],
+    &[data-action="view-markdown-editor"],
+    &[data-action="view-rich-editor"],
+    &[data-action="view-settings"],
+    &[data-action="view-history"],
+    &[data-action="view-workcenter"] {
+        --ui-font-size: 13px;
+        --ui-font-weight: 500;
+        --ui-pad-x: 12px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 32px;
+        --ui-radius: 16px;
+        text-transform: capitalize;
 
-  // Screen capture
-  &[data-action="snip"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+        &[data-current],
+        &.active {
+            --ui-bg: var(--basic-surface-container-highest);
+            --ui-fg: var(--basic-primary);
+            --ui-ring: var(--basic-primary);
+        }
+    }
 
-  // AI operations
-  &[data-action="solve"],
-  &[data-action="code"],
-  &[data-action="css"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // Edit toggle
+    &[data-action="toggle-edit"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // Voice input
-  &[data-action="voice"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // Screen capture
+    &[data-action="snip"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // Template management
-  &[data-action="edit-templates"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // AI operations
+    &[data-action="solve"],
+    &[data-action="code"],
+    &[data-action="css"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // Work center actions
-  &[data-action="recognize"],
-  &[data-action="analyze"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // Voice input
+    &[data-action="voice"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // File selection
-  &[data-action="select-files"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // Template management
+    &[data-action="edit-templates"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // Prompt actions
-  &[data-action="clear-prompt"],
-  &[data-action="edit-templates"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // Work center actions
+    &[data-action="recognize"],
+    &[data-action="analyze"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 
-  // History actions
-  &[data-action="view-full-history"] {
-    --ui-font-size: 12px;
-    --ui-pad-x: 8px;
-    --ui-pad-y: 0px;
-    --ui-min-h: 28px;
-    --ui-radius: 14px;
-  }
+    // File selection
+    &[data-action="select-files"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
+
+    // Prompt actions
+    &[data-action="clear-prompt"],
+    &[data-action="edit-templates"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
+
+    // History actions
+    &[data-action="view-full-history"] {
+        --ui-font-size: 12px;
+        --ui-pad-x: 8px;
+        --ui-pad-y: 0px;
+        --ui-min-h: 28px;
+        --ui-radius: 14px;
+    }
 }
 
 /* Legacy button styles for backward compatibility */
 .btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
 
-  &:hover {
-    background: var(--basic-surface-container-high);
-    box-shadow: var(--basic-elev-0);
-  }
+    &:hover {
+        background: var(--basic-surface-container-high);
+        box-shadow: var(--basic-elev-0);
+    }
 }
 
 /* Motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  .btn {
-    transition: none;
-    transform: none !important;
+    .btn {
+        transition: none;
+        transform: none !important;
 
-    &:hover {
-      transform: none !important;
-    }
+        &:hover {
+            transform: none !important;
+        }
 
-    &:active {
-      transform: none !important;
+        &:active {
+            transform: none !important;
+        }
     }
-  }
 }
