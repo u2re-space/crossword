@@ -1,7 +1,7 @@
-@use "./lib/mixins" as mixins;
-@use "./lib/tokens" as tokens;
-@use "./lib/config" as config;
-@use "./lib/props";
+@use "../../../scss/lib/mixins" as mixins;
+@use "../../../scss/lib/tokens" as tokens;
+@use "../../../scss/lib/config" as config;
+@use "../../../scss/lib/props";
 
 @layer markdown-editor {
     // ============================================================================

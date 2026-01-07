@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import "./print.scss";
+import "./markdown-print.scss";
 
 //
 import { marked, type MarkedExtension } from "marked";

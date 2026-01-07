@@ -4,6 +4,7 @@ import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
+import { getWorkCenterComm } from "../../shared/AppCommunicator";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
@@ -46,6 +47,7 @@ export interface MarkdownViewerOptions {
     onDownload?: (content: string) => void;
     onPrint?: (content: string) => void;
     onOpen?: () => void;
+    onAttachToWorkCenter?: (content: string) => void;
 }
 
 export class MarkdownViewer {
@@ -92,6 +94,10 @@ export class MarkdownViewer {
           <button class="btn btn-icon" data-action="print" title="Print content" aria-label="Print content">
             <ui-icon icon="printer" size="20" icon-style="duotone"></ui-icon>
             <span class="btn-text">Print</span>
+          </button>
+          <button class="btn btn-icon" data-action="attach-workcenter" title="Attach to Work Center" aria-label="Attach to Work Center">
+            <ui-icon icon="lightning" size="20" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Work Center</span>
           </button>
         </div>` : ''}
       </div>` : ''}
@@ -318,8 +324,35 @@ export class MarkdownViewer {
                 void this.exportDocx();
             } else if (action === 'print') {
                 this.printContent();
+            } else if (action === 'attach-workcenter') {
+                this.attachToWorkCenter();
             }
         });
+    }
+
+    /**
+     * Attach content to work center
+     */
+    private async attachToWorkCenter(): Promise<void> {
+        if (this.options.onAttachToWorkCenter) {
+            this.options.onAttachToWorkCenter(this.content);
+        } else {
+            // Fallback: broadcast to work center via WorkCenterCommunicator
+            try {
+                const workCenterComm = getWorkCenterComm();
+                await workCenterComm.sendMessage('share-target-input', {
+                    text: this.content,
+                    timestamp: Date.now(),
+                    metadata: {
+                        source: 'markdown-viewer',
+                        title: this.options.title || 'Markdown Content'
+                    }
+                }, { priority: 'normal' });
+                console.log('[MarkdownViewer] Attached content to work center via WorkCenterComm');
+            } catch (error) {
+                console.warn('[MarkdownViewer] Failed to attach to work center:', error);
+            }
+        }
     }
 }
 

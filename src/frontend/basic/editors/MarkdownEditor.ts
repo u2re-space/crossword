@@ -1,5 +1,5 @@
 import { H } from "fest/lure";
-import { MarkdownViewer } from "./MarkdownViewer";
+import { MarkdownViewer } from "../modules/MarkdownViewer";
 import { UIPhosphorIcon } from "fest/icon";
 import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
 

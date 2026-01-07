@@ -1,7 +1,7 @@
-@use "./lib/mixins" as mixins;
-@use "./lib/tokens" as tokens;
-@use "./lib/config" as config;
-@use "./lib/props";
+@use "../lib/mixins" as mixins;
+@use "../lib/tokens" as tokens;
+@use "../lib/config" as config;
+@use "../lib/props";
 
 @layer markdown-render {
     @include props.markdown-root-props();

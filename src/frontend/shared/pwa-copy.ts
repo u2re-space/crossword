@@ -6,10 +6,12 @@
 
 import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "./Clipboard";
 import { initToastReceiver, showToast } from "./Toast";
+import { getWorkCenterComm } from "./AppCommunicator";
 
 // Track initialization
 let _pwaClipboardInitialized = false;
 let _cleanupFns: (() => void)[] = [];
+let _workCenterComm = getWorkCenterComm();
 
 // Helper function to extract recognized content from AI responses
 const tryParseJSON = (data: unknown): unknown => {
@@ -141,6 +143,29 @@ const checkPendingClipboardOperations = async (): Promise<void> => {
                     const { copy } = await import("./Clipboard");
                     await copy(text, { showFeedback: true });
 
+                    // Also broadcast to work center for visibility
+                    try {
+                        const workCenterChannel = new BroadcastChannel("rs-workcenter");
+                        workCenterChannel.postMessage({
+                            type: 'share-target-result',
+                            data: {
+                                content: typeof text === 'string' ? text : JSON.stringify(text),
+                                rawData: operation.data,
+                                timestamp: Date.now(),
+                                source: 'share-target',
+                                action: 'AI Processing (Pending)',
+                                metadata: {
+                                    operationId: operation.id,
+                                    fromPendingQueue: true
+                                }
+                            }
+                        });
+                        workCenterChannel.close();
+                        console.log('[PWA-Copy] Broadcasted pending share target result to work center');
+                    } catch (error) {
+                        console.warn('[PWA-Copy] Failed to broadcast pending result to work center:', error);
+                    }
+
                     // Remove the processed operation from the queue
                     try {
                         await fetch(`/clipboard/remove/${operation.id}`, { method: 'DELETE' });
@@ -201,6 +226,29 @@ export const initPWAClipboard = (): (() => void) => {
                         const { copy } = await import("./Clipboard");
                         await copy(text, { showFeedback: true });
 
+                        // Also broadcast to work center for visibility
+                        try {
+                            const workCenterChannel = new BroadcastChannel("rs-workcenter");
+                            workCenterChannel.postMessage({
+                                type: 'share-target-result',
+                                data: {
+                                    content: text,
+                                    rawData: operation.data,
+                                    timestamp: Date.now(),
+                                    source: 'share-target',
+                                    action: 'AI Processing (Broadcasted)',
+                                    metadata: {
+                                        operationId: operation.id,
+                                        fromBroadcast: true
+                                    }
+                                }
+                            });
+                            workCenterChannel.close();
+                            console.log('[PWA-Copy] Broadcasted broadcasted share target result to work center');
+                        } catch (error) {
+                            console.warn('[PWA-Copy] Failed to broadcast broadcasted result to work center:', error);
+                        }
+
                         // Remove the processed operation from the queue
                         try {
                             await fetch(`/clipboard/remove/${operation.id}`, { method: 'DELETE' });
@@ -243,10 +291,36 @@ export const initPWAClipboard = (): (() => void) => {
                     const text = extractRecognizedContent(data.data);
                     const { copy } = await import("./Clipboard");
                     await copy(text, { showFeedback: true });
+
+                    // Also broadcast to work center for visibility
+                    await _workCenterComm.sendMessage('share-target-result', {
+                        content: typeof text === 'string' ? text : JSON.stringify(text),
+                        rawData: data.data,
+                        timestamp: Date.now(),
+                        source: 'share-target',
+                        action: 'AI Processing',
+                        metadata: {
+                            fromServiceWorker: true,
+                            shareTargetId: data.id || 'unknown'
+                        }
+                    }, { priority: 'high' });
                 } else {
                     const { showToast } = await import("./Toast");
                     showToast({ message: data.error || "Processing failed", kind: "error" });
                 }
+            }
+
+            // Handle share target input attachment (when files/text/URLs come in)
+            if (type === "share-received" && data) {
+                console.log('[PWA-Copy] Share received, broadcasting input to work center:', data);
+                await _workCenterComm.sendMessage('share-target-input', {
+                    ...data,
+                    timestamp: Date.now(),
+                    metadata: {
+                        fromServiceWorker: true,
+                        ...data.metadata
+                    }
+                }, { priority: 'high' });
             }
         };
 
@@ -272,6 +346,20 @@ export const initPWAClipboard = (): (() => void) => {
                         const extractedContent = extractRecognizedContent(result.data);
                         const { copy } = await import("./Clipboard");
                         await copy(extractedContent, { showFeedback: true });
+
+                        // Also broadcast to work center for visibility
+                        await _workCenterComm.sendMessage('share-target-result', {
+                            content: typeof extractedContent === 'string' ? extractedContent : JSON.stringify(extractedContent),
+                            rawData: result.data,
+                            timestamp: Date.now(),
+                            source: 'share-target',
+                            action: 'Legacy AI Processing',
+                            metadata: {
+                                legacyCommit: true,
+                                resultStatus: result.status
+                            }
+                        }, { priority: 'normal' });
+
                         break; // Only copy the first successful result
                     }
                 }

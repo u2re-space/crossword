@@ -1,0 +1,74 @@
+/* WorkCenter Base Styles */
+
+@layer workcenter {
+    .workcenter-view {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+        padding: var(--space-lg);
+        overflow: auto;
+        background: var(--basic-background);
+        color: var(--basic-on-background);
+        min-block-size: stretch;
+        block-size: stretch;
+        max-block-size: stretch;
+
+        textarea, input, select, button {
+            box-sizing: border-box;
+            max-inline-size: stretch;
+        }
+
+        button {
+            flex-wrap: nowrap;
+            text-wrap: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+            text-align: center;
+            text-transform: none;
+            text-decoration: none;
+            text-shadow: none;
+            text-rendering: auto;
+        }
+
+        // Responsive padding adjustments
+        @container (max-width: 1024px) {
+            padding: var(--space-md);
+            gap: var(--space-md);
+        }
+
+        @container (max-width: 768px) {
+            padding: var(--space-sm);
+            gap: var(--space-sm);
+        }
+
+        @container (max-width: 480px) {
+            padding: var(--space-xs);
+            gap: var(--space-xs);
+        }
+
+        // Simple scrollbar
+        &::-webkit-scrollbar {
+            inline-size: 4px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--basic-outline-variant);
+            border-radius: 2px;
+        }
+
+        &::-webkit-scrollbar-thumb:hover {
+            background: var(--basic-outline);
+        }
+
+        // Focus and interaction states
+        &:focus-visible {
+            outline: 2px solid var(--basic-primary);
+            outline-offset: -2px;
+        }
+    }
+}

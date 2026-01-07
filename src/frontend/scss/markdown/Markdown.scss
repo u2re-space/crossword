@@ -1,6 +1,6 @@
-@use "./scss/markdown-render.scss";
-@use "./scss/markdown-print.scss";
-@use "./lib/mixins" as mixins;
+@use "./markdown-render.scss";
+@use "../../print/markdown-print.scss";
+@use "../lib/mixins" as mixins;
 
 //
 // === Markdown page container ===

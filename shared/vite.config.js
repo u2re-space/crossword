@@ -231,6 +231,22 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', '192.168.0.200', '95.188.82.223'],
         appType: 'spa',
         https,
+        proxy: {
+            // Proxy Phosphor icons to avoid CORS issues
+            '/api/phosphor-icons': {
+                target: 'https://cdn.jsdelivr.net',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/phosphor-icons/, '/npm/@phosphor-icons/core@2/assets'),
+                configure: (proxy, options) => {
+                    proxy.on('error', (err, req, res) => {
+                        console.log('Phosphor icons proxy error:', err.message);
+                    });
+                    proxy.on('proxyReq', (proxyReq, req, res) => {
+                        console.log('Proxying Phosphor icon request:', req.url, '->', proxyReq.path);
+                    });
+                }
+            }
+        },
         fs: {
             strict: false,
             allow: [

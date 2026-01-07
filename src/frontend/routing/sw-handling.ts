@@ -636,6 +636,22 @@ export const handleShareTarget = () => {
                 }
             } else if (msgType === "ai-result") {
                 console.log("[ShareTarget] AI result broadcast received (handled by PWA clipboard)");
+            } else if (msgType === "share-received") {
+                console.log("[ShareTarget] Share received broadcast:", event.data);
+                // Broadcast to work center for input attachment
+                import("../shared/AppCommunicator").then(({ getWorkCenterComm }) => {
+                    const workCenterComm = getWorkCenterComm();
+                    workCenterComm.sendMessage('share-target-input', {
+                        ...event.data,
+                        timestamp: Date.now(),
+                        metadata: {
+                            fromServiceWorker: true,
+                            ...event.data.metadata
+                        }
+                    }, { priority: 'high' });
+                }).catch(error => {
+                    console.warn("[ShareTarget] Failed to load WorkCenterComm:", error);
+                });
             }
         });
 

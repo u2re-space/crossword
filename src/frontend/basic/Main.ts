@@ -8,7 +8,7 @@ import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
 
 // Import lazy loading utility
-import { getCachedComponent } from "./LazyLoader";
+import { getCachedComponent } from "./modules/LazyLoader";
 
 // Import file handling components that are always needed
 import { createFileHandler } from "./modules/FileHandling";
@@ -149,11 +149,16 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             if (state.view === 'workcenter') {
                 const workCenter = await getCachedComponent(
                     'workcenter',
-                    () => import('./modules/WorkCenter').then(m => m.WorkCenterManager),
+                    () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
                     { componentName: 'WorkCenter' }
                 );
 
-                const workCenterManager = new workCenter.component({
+                // Cleanup previous work center manager
+                if (state.workCenterManager && typeof state.workCenterManager.destroy === 'function') {
+                    state.workCenterManager.destroy();
+                }
+
+                const                 workCenterManager = new workCenter.component({
                     state: state,
                     history: state.history,
                     getSpeechPrompt,
@@ -165,7 +170,11 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                             renderStatus();
                         }, 3000);
                     },
-                    render: () => render()
+                    render: () => render(),
+                    onFilesChanged: () => {
+                        // Re-render toolbar to update file count badge
+                        renderToolbar();
+                    }
                 });
 
                 workCenterManager.getState().files.push(...files);
@@ -271,6 +280,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         <button class="btn ${state.view === 'workcenter' ? 'active' : ''}" data-action="view-workcenter" type="button" title="AI Work Center">
           <ui-icon icon="lightning" icon-style="duotone"></ui-icon>
           <span>Work Center</span>
+          ${state.workCenterManager && state.workCenterManager.getState().files.length > 0 ? H`<span class="workcenter-badge" title="${state.workCenterManager.getState().files.length} files ready for processing">${state.workCenterManager.getState().files.length}</span>` : ''}
         </button>
         <button class="btn ${state.view === 'settings' ? 'active' : ''}" data-action="view-settings" type="button" title="Settings">
           <ui-icon icon="gear" icon-style="duotone"></ui-icon>
@@ -385,6 +395,43 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         state.message = "";
                         renderStatus();
                     }, 2000);
+                },
+                onAttachToWorkCenter: async (content: string) => {
+                    // Switch to work center view and attach content
+                    state.view = "workcenter";
+                    render();
+
+                    // Attach content to work center after a short delay to ensure it's rendered
+                    setTimeout(async () => {
+                        if (state.workCenterManager) {
+                            try {
+                                const { getWorkCenterComm } = await import('../shared/AppCommunicator');
+                                const workCenterComm = getWorkCenterComm();
+                                await workCenterComm.sendMessage('share-target-input', {
+                                    text: content,
+                                    timestamp: Date.now(),
+                                    metadata: {
+                                        source: 'markdown-viewer',
+                                        title: 'Markdown Content'
+                                    }
+                                }, { priority: 'normal' });
+                                state.message = "Content attached to Work Center";
+                                renderStatus();
+                                setTimeout(() => {
+                                    state.message = "";
+                                    renderStatus();
+                                }, 3000);
+                            } catch (error) {
+                                console.warn('[Main] Failed to attach markdown to work center:', error);
+                                state.message = "Failed to attach to Work Center";
+                                renderStatus();
+                                setTimeout(() => {
+                                    state.message = "";
+                                    renderStatus();
+                                }, 3000);
+                            }
+                        }
+                    }, 100);
                 }
             });
 
@@ -422,7 +469,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load markdown editor
             const editorModule = await getCachedComponent(
                 'markdown-editor',
-                () => import('./modules/MarkdownEditor'),
+                () => import('./editors/MarkdownEditor'),
                 { componentName: 'MarkdownEditor' }
             );
 
@@ -477,7 +524,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load quill editor
             const editorModule = await getCachedComponent(
                 'quill-editor',
-                () => import('./modules/QuillEditor'),
+                () => import('./editors/QuillEditor'),
                 { componentName: 'QuillEditor' }
             );
 
@@ -549,7 +596,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     // Lazy load work center if needed
                     getCachedComponent(
                         'workcenter',
-                        () => import('./modules/WorkCenter').then(m => m.WorkCenterManager),
+                        () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
                         { componentName: 'WorkCenter' }
                     ).then(workCenterModule => {
                         if (state.workCenterManager) {
@@ -763,7 +810,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             getCachedComponent(
                 'settings',
-                () => import('./Settings'),
+                () => import('./settings/Settings'),
                 { componentName: 'Settings', cssPath: './Settings.scss' }
             ).then(settingsModule => {
                 const settingsEl = settingsModule.component.createSettingsView({
@@ -949,7 +996,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             getCachedComponent(
                 'workcenter',
-                () => import('./modules/WorkCenter').then(m => m.WorkCenterManager),
+                () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
                 { componentName: 'WorkCenter' }
             ).then(workCenterModule => {
                 // Create work center manager if not already created
@@ -957,6 +1004,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     state.workCenterManager = new workCenterModule.component({
                         state: state,
                         history: state.history,
+                        onFilesChanged: () => {
+                            // Re-render toolbar to update file count badge
+                            renderToolbar();
+                        },
                         getSpeechPrompt,
                         showMessage: (message: string) => {
                             state.message = message;

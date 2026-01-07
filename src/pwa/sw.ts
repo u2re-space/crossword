@@ -597,6 +597,65 @@ registerRoute(
     })
 );
 
+// Phosphor Icons Proxy (for PWA offline support)
+registerRoute(
+    ({ url }) => url?.pathname?.startsWith?.('/api/phosphor-icons/'),
+    async ({ url, request }) => {
+        try {
+            // Convert proxy path to actual CDN URL
+            const pathParts = url.pathname.replace('/api/phosphor-icons/', '').split('/');
+            const iconStyle = pathParts[0];
+            const iconFile = pathParts.slice(1).join('/');
+
+            // Build the actual CDN URL
+            const cdnUrl = `https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2/assets/${iconStyle}/${iconFile}`;
+
+            console.log('[SW] Proxying Phosphor icon:', url.pathname, '->', cdnUrl);
+
+            // Fetch from CDN with appropriate caching
+            const response = await fetch(cdnUrl, {
+                ...request,
+                headers: {
+                    ...Object.fromEntries(request.headers.entries()),
+                    'Accept': 'image/svg+xml, image/*',
+                }
+            });
+
+            if (response.ok) {
+                // Cache the response for offline use
+                const cache = await caches.open('phosphor-icons-cache');
+                cache.put(url, response.clone());
+
+                return response;
+            } else {
+                console.warn('[SW] Failed to fetch Phosphor icon:', cdnUrl, response.status);
+                // Try to serve from cache if available
+                const cache = await caches.open('phosphor-icons-cache');
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    console.log('[SW] Serving cached Phosphor icon:', url.pathname);
+                    return cachedResponse;
+                }
+                return response;
+            }
+        } catch (error) {
+            console.error('[SW] Error proxying Phosphor icon:', error);
+            // Try to serve from cache if available
+            try {
+                const cache = await caches.open('phosphor-icons-cache');
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    console.log('[SW] Serving cached Phosphor icon (fallback):', url.pathname);
+                    return cachedResponse;
+                }
+            } catch (cacheError) {
+                console.error('[SW] Cache fallback failed:', cacheError);
+            }
+            return new Response('Icon not available', { status: 503 });
+        }
+    }
+);
+
 // fallback to app-shell for document request
 setCatchHandler(({ event }: any): Promise<Response> => {
     switch (event?.request?.destination) {

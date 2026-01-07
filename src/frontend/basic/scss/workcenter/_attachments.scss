@@ -1,0 +1,255 @@
+/* WorkCenter Attachments Styles */
+
+@layer workcenter {
+    .file-attachment-area {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        flex: 1;
+        min-block-size: 0;
+    }
+
+    .file-drop-zone {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        min-block-size: max-content;
+        block-size: stretch;
+        max-block-size: none;
+        position: relative;
+        border-radius: var(--basic-radius-lg);
+        transition: all var(--basic-motion-normal);
+        contain: strict;
+        overflow: auto;
+        cursor: pointer;
+
+        // Drop zone styling
+        &[data-dropzone] {
+            min-block-size: 200px;
+            padding: var(--space-lg);
+            background: var(--basic-surface-container-low);
+            border: 2px dashed color-mix(in oklab, var(--basic-outline-variant) 40%, transparent);
+
+            &:hover {
+                border-color: color-mix(in oklab, var(--basic-primary) 40%, transparent);
+                background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low));
+            }
+
+            // Visual feedback when dragging over
+            &.drag-over {
+                border-color: var(--basic-primary);
+                background: color-mix(in oklab, var(--basic-primary) 10%, var(--basic-surface-container-low));
+                box-shadow: var(--basic-focus-ring);
+
+                &::before {
+                    content: "";
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(45deg,
+                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 25%,
+                            transparent 25%,
+                            transparent 50%,
+                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 50%,
+                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 75%,
+                            transparent 75%);
+                    background-size: 20px 20px;
+                    border-radius: inherit;
+                    pointer-events: none;
+                    z-index: 1;
+                }
+
+                // Style content above the overlay
+                & > * {
+                    position: relative;
+                    z-index: 2;
+                }
+            }
+        }
+    }
+
+    .drop-zone-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-md);
+        text-align: center;
+        block-size: max-content;
+    }
+
+    .drop-icon {
+        color: var(--basic-primary);
+        opacity: 0.7;
+    }
+
+    .drop-text {
+        font-size: var(--text-lg);
+        font-weight: 500;
+        color: var(--basic-on-surface);
+    }
+
+    .drop-hint {
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+        opacity: 0.8;
+    }
+
+    .file-list {
+        flex: 1;
+        min-block-size: 0;
+        overflow-y: auto;
+        max-block-size: 300px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        border-radius: var(--basic-radius-sm);
+        background: var(--basic-surface-container-high);
+        border: 1px solid var(--basic-outline-variant);
+        margin-bottom: var(--space-xs);
+
+        &:hover {
+            background: var(--basic-surface-container-highest);
+        }
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        flex: 1;
+        min-width: 0;
+    }
+
+    .file-icon {
+        flex-shrink: 0;
+    }
+
+    .file-preview {
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        border-radius: var(--basic-radius-sm);
+        flex-shrink: 0;
+    }
+
+    .file-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .file-name {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--basic-on-surface);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .file-size,
+    .file-type {
+        font-size: var(--text-xs);
+        color: var(--basic-on-surface-variant);
+    }
+
+    .remove-btn {
+        background: var(--basic-error-container);
+        color: var(--basic-on-error-container);
+        border: none;
+        border-radius: var(--basic-radius-sm);
+        padding: var(--space-xs);
+        cursor: pointer;
+        font-size: var(--text-sm);
+        line-height: 1;
+        flex-shrink: 0;
+
+        &:hover {
+            background: var(--basic-error);
+            color: var(--basic-on-error);
+        }
+    }
+
+    .file-stats {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        flex-wrap: wrap;
+        padding: var(--space-sm);
+        background: var(--basic-surface-container-high);
+        border-radius: var(--basic-radius-sm);
+        border: 1px solid var(--basic-outline-variant);
+    }
+
+    .file-counter,
+    .data-counter {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+
+        .count {
+            font-weight: 600;
+            color: var(--basic-primary);
+        }
+
+        .label {
+            font-size: var(--text-xs);
+        }
+    }
+
+    .data-counter {
+        &.recognized {
+            color: var(--basic-tertiary);
+
+            .count {
+                color: var(--basic-on-tertiary-container);
+            }
+        }
+
+        &.processed {
+            color: var(--basic-secondary);
+
+            .count {
+                color: var(--basic-on-secondary-container);
+            }
+        }
+    }
+
+    .recognized-status {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        background: color-mix(in oklab, var(--basic-tertiary) 10%, var(--basic-surface-container-high));
+        border: 1px solid color-mix(in oklab, var(--basic-tertiary) 30%, transparent);
+        border-radius: var(--basic-radius-sm);
+        font-size: var(--text-sm);
+        color: var(--basic-on-surface-variant);
+
+        .status-icon {
+            color: var(--basic-tertiary);
+            flex-shrink: 0;
+        }
+
+        .clear-recognized {
+            margin-left: auto;
+            background: var(--basic-tertiary-container);
+            color: var(--basic-on-tertiary-container);
+            border: none;
+            border-radius: var(--basic-radius-sm);
+            padding: var(--space-xs) var(--space-sm);
+            font-size: var(--text-xs);
+            cursor: pointer;
+
+            &:hover {
+                background: var(--basic-tertiary);
+                color: var(--basic-on-tertiary);
+            }
+        }
+    }
+}

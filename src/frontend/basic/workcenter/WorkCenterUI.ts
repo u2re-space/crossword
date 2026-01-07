@@ -1,0 +1,214 @@
+import { H } from "fest/lure";
+import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
+import type { WorkCenterResults } from "./WorkCenterResults";
+import type { WorkCenterAttachments } from "./WorkCenterAttachments";
+import type { WorkCenterPrompts } from "./WorkCenterPrompts";
+import type { WorkCenterHistory } from "./WorkCenterHistory";
+
+export class WorkCenterUI {
+    private container: HTMLElement | null = null;
+    private deps: WorkCenterDependencies;
+    private attachments: WorkCenterAttachments;
+    private prompts: WorkCenterPrompts;
+    private results: WorkCenterResults;
+    private history: WorkCenterHistory;
+
+    constructor(
+        dependencies: WorkCenterDependencies,
+        attachments: WorkCenterAttachments,
+        prompts: WorkCenterPrompts,
+        results: WorkCenterResults,
+        history: WorkCenterHistory
+    ) {
+        this.deps = dependencies;
+        this.attachments = attachments;
+        this.prompts = prompts;
+        this.results = results;
+        this.history = history;
+    }
+
+    setContainer(container: HTMLElement | null): void {
+        this.container = container;
+        this.attachments.setContainer(container);
+        this.prompts.setContainer(container);
+        this.results.setContainer(container);
+        this.history.setContainer(container);
+    }
+
+    getContainer(): HTMLElement | null {
+        return this.container;
+    }
+
+    renderWorkCenterView(state: WorkCenterState): HTMLElement {
+        const container = H`<div class="workcenter-view">
+      <div class="workcenter-header">
+        <h2>AI Work Center</h2>
+        <div class="control-selectors">
+          <div class="format-selector">
+            <label>Output Format:</label>
+            <select class="format-select">
+              <option value="auto" ${state.outputFormat === 'auto' ? 'selected' : ''}>Auto</option>
+              <option value="markdown" ${state.outputFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
+              <option value="json" ${state.outputFormat === 'json' ? 'selected' : ''}>JSON</option>
+              <option value="text" ${state.outputFormat === 'text' ? 'selected' : ''}>Plain Text</option>
+              <option value="html" ${state.outputFormat === 'html' ? 'selected' : ''}>HTML</option>
+            </select>
+          </div>
+          <div class="language-selector">
+            <label>Language:</label>
+            <select class="language-select">
+              <option value="auto" ${state.selectedLanguage === 'auto' ? 'selected' : ''}>Auto</option>
+              <option value="en" ${state.selectedLanguage === 'en' ? 'selected' : ''}>English</option>
+              <option value="ru" ${state.selectedLanguage === 'ru' ? 'selected' : ''}>Русский</option>
+            </select>
+          </div>
+          <div class="recognition-selector">
+            <label>Recognize as:</label>
+            <select class="recognition-select">
+              <option value="auto" ${state.recognitionFormat === 'auto' ? 'selected' : ''}>Auto</option>
+              <option value="most-suitable" ${state.recognitionFormat === 'most-suitable' ? 'selected' : ''}>Most Suitable</option>
+              <option value="most-optimized" ${state.recognitionFormat === 'most-optimized' ? 'selected' : ''}>Most Optimized</option>
+              <option value="most-legibility" ${state.recognitionFormat === 'most-legibility' ? 'selected' : ''}>Most Legible</option>
+              <option value="markdown" ${state.recognitionFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
+              <option value="html" ${state.recognitionFormat === 'html' ? 'selected' : ''}>HTML</option>
+              <option value="text" ${state.recognitionFormat === 'text' ? 'selected' : ''}>Plain Text</option>
+              <option value="json" ${state.recognitionFormat === 'json' ? 'selected' : ''}>JSON</option>
+            </select>
+          </div>
+          <div class="processing-selector">
+            <label>Process as:</label>
+            <select class="processing-select">
+              <option value="markdown" ${state.processingFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
+              <option value="html" ${state.processingFormat === 'html' ? 'selected' : ''}>HTML</option>
+              <option value="json" ${state.processingFormat === 'json' ? 'selected' : ''}>JSON</option>
+              <option value="text" ${state.processingFormat === 'text' ? 'selected' : ''}>Plain Text</option>
+              <option value="typescript" ${state.processingFormat === 'typescript' ? 'selected' : ''}>TypeScript</option>
+              <option value="javascript" ${state.processingFormat === 'javascript' ? 'selected' : ''}>JavaScript</option>
+              <option value="python" ${state.processingFormat === 'python' ? 'selected' : ''}>Python</option>
+              <option value="java" ${state.processingFormat === 'java' ? 'selected' : ''}>Java</option>
+              <option value="cpp" ${state.processingFormat === 'cpp' ? 'selected' : ''}>C++</option>
+              <option value="csharp" ${state.processingFormat === 'csharp' ? 'selected' : ''}>C#</option>
+              <option value="php" ${state.processingFormat === 'php' ? 'selected' : ''}>PHP</option>
+              <option value="ruby" ${state.processingFormat === 'ruby' ? 'selected' : ''}>Ruby</option>
+              <option value="go" ${state.processingFormat === 'go' ? 'selected' : ''}>Go</option>
+              <option value="rust" ${state.processingFormat === 'rust' ? 'selected' : ''}>Rust</option>
+              <option value="xml" ${state.processingFormat === 'xml' ? 'selected' : ''}>XML</option>
+              <option value="yaml" ${state.processingFormat === 'yaml' ? 'selected' : ''}>YAML</option>
+              <option value="css" ${state.processingFormat === 'css' ? 'selected' : ''}>CSS</option>
+              <option value="scss" ${state.processingFormat === 'scss' ? 'selected' : ''}>SCSS</option>
+            </select>
+          </div>
+      </div>
+          </div>
+
+      <div class="workcenter-content">
+        <div class="workcenter-layout">
+          <!-- File Attachments Section -->
+          <div class="workcenter-column attachments-column">
+            ${this.attachments.renderAttachmentsSection(state)}
+          </div>
+
+          <!-- Input Prompts Section -->
+          <div class="workcenter-column prompts-column">
+            ${this.prompts.renderPromptsSection(state)}
+          </div>
+
+          <!-- Results & Processing Section -->
+          <div class="workcenter-column results-column">
+            <div class="results-section">
+              <div class="section-header">
+                <h3>Results & Processing</h3>
+                <div class="result-actions">
+                  <button class="btn btn-icon" data-action="view-action-history" title="View Action History">
+                    <ui-icon icon="history" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">History</span>
+                  </button>
+                  <button class="btn" data-action="view-full-history">View All History</button>
+                </div>
+              </div>
+
+              <div class="output-section">
+                ${this.results.renderOutputHeader(state)}
+              </div>
+
+              ${this.results.renderDataPipeline(state)}
+
+              <div class="history-section">
+                <div class="history-header">
+                  <h4>Recent Activity</h4>
+                </div>
+                <div class="recent-history" data-recent-history></div>
+                <div class="action-stats" data-action-stats style="display: none;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>` as HTMLElement;
+
+        this.container = container;
+        this.attachments.setContainer(container);
+        this.prompts.setContainer(container);
+        this.results.setContainer(container);
+
+        // Initialize UI components
+        this.initializeUI(state);
+
+        return container;
+    }
+
+    private initializeUI(state: WorkCenterState): void {
+        // Setup drop zone functionality for attachments
+        this.attachments.setupDropZone(state);
+
+        // Initialize file list and counters
+        this.attachments.updateFileList(state);
+        this.attachments.updateFileCounter(state);
+        this.history.updateRecentHistory(state);
+    }
+
+    updateFileCounter(state: WorkCenterState): void {
+        this.attachments.updateFileCounter(state);
+    }
+
+    updateFileList(state: WorkCenterState): void {
+        this.attachments.updateFileList(state);
+    }
+
+    updatePromptInput(state: WorkCenterState): void {
+        this.prompts.updatePromptInput(state);
+    }
+
+    updateTemplateSelect(state: WorkCenterState): void {
+        this.prompts.updateTemplateSelect(state);
+    }
+
+    updateVoiceButton(state: WorkCenterState): void {
+        this.prompts.updateVoiceButton(state);
+    }
+
+
+    updateDataPipeline(state: WorkCenterState): void {
+        this.results.updateDataPipeline(state);
+    }
+
+    showProcessingMessage(message: string): void {
+        this.results.showProcessingMessage(message);
+    }
+
+    showResult(state: WorkCenterState): void {
+        this.results.showResult(state);
+    }
+
+    showError(error: string): void {
+        this.results.showError(error);
+    }
+
+    clearResults(): void {
+        this.results.clearResults();
+    }
+
+    revokeAllPreviewUrls(state: WorkCenterState): void {
+        this.attachments.revokeAllPreviewUrls(state);
+    }
+}

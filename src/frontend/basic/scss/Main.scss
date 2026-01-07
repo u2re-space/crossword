@@ -8,29 +8,29 @@
    RESET & NORMALIZE - Cross-browser consistency
    ========================================================================== */
 /* TODO: Re-enable normalize import when path resolution is fixed */
-@import "../basic-scss/normalize.scss" layer(reset);
+@import "../scss/normalize.scss" layer(reset);
 
 /* ==========================================================================
    BASE STYLES - Foundation with modern utilities
    ========================================================================== */
-@import "../basic-scss/lib/_typed-properties.scss" layer(base);
+@import "../scss/lib/_typed-properties.scss" layer(base);
 
 /* ==========================================================================
    COMPONENT STYLES - Reusable UI components
    ========================================================================== */
-@import "../basic-scss/buttons.scss" layer(components);
-@import "../basic-scss/forms.scss" layer(components);
-@import "../basic-scss/workcenter.scss" layer(components);
-@import "../basic-scss/markdown-render.scss" layer(components);
-@import "../basic-scss/markdown-viewer.scss" layer(components);
-@import "../basic-scss/markdown-editor.scss" layer(components);
-@import "../basic-scss/quill-editor.scss" layer(components);
+@import "../scss/buttons.scss" layer(components);
+@import "../scss/forms.scss" layer(components);
+@import "scss/workcenter/workcenter.scss" layer(components);
+@import "../scss/markdown/markdown-render.scss" layer(components);
+@import "../scss/markdown/markdown-viewer.scss" layer(components);
+@import "scss/editor/markdown-editor.scss" layer(components);
+@import "scss/editor/quill-editor.scss" layer(components);
 
 /* ==========================================================================
    LAYOUT & UTILITY STYLES - Layout systems and helpers
    ========================================================================== */
-@import "../basic-scss/layout.scss" layer(layout);
-@import "../basic-scss/utilities.scss" layer(utilities);
+@import "scss/layout/layout.scss" layer(layout);
+@import "../scss/utilities.scss" layer(utilities);
 
 /* ==========================================================================
    ANIMATIONS - Keyframe definitions

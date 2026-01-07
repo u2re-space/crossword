@@ -1,0 +1,10 @@
+/* WorkCenter Styles - Modular Architecture */
+
+/* Import modular style components */
+@use "base";
+@use "header";
+@use "layout";
+@use "attachments";
+@use "prompts";
+@use "results";
+@use "animations";
