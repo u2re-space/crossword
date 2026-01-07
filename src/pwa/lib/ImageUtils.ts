@@ -65,7 +65,7 @@ export const fileToDataUrl = async (file: File | Blob): Promise<string> => {
  * Extract base64 content from data URL
  */
 export const extractBase64FromDataUrl = (dataUrl: string): string | null => {
-    const match = dataUrl.match(/^data:[^;]+;base64,(.+)$/);
+    const match = dataUrl?.match?.(/^data:[^;]+;base64,(.+)$/);
     return match ? match[1] : null;
 };
 
@@ -73,7 +73,7 @@ export const extractBase64FromDataUrl = (dataUrl: string): string | null => {
  * Get MIME type from data URL
  */
 export const getMimeTypeFromDataUrl = (dataUrl: string): string | null => {
-    const match = dataUrl.match(/^data:([^;]+);/);
+    const match = dataUrl?.match?.(/^data:([^;]+);/);
     return match ? match[1] : null;
 };
 

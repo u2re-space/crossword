@@ -245,47 +245,87 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
         console.log("[ShareTarget] Starting AI processing for type:", type);
         showToast({ message: "Processing shared content...", kind: "info" });
 
-        // Import AI functions dynamically
-        const { recognizeByInstructions } = await import("@rs-core/service/AI-ops/RecognizeData");
-        const { getUsableData } = await import("@rs-core/service/model/GPT-Responses");
+        // Utility function to convert file to base64
+        const fileToBase64 = (file: File): Promise<string> => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        };
 
-        let inputData: string | File;
+        // Use unified processing endpoint
+        console.log("[ShareTarget] Using unified processing endpoint");
+
+        let processingContent: any;
+        let contentType: string;
 
         if (type === 'file' && shareData.files?.[0]) {
-            inputData = shareData.files[0] as File;
-            console.log("[ShareTarget] Processing file:", { name: inputData.name, type: inputData.type, size: inputData.size });
+            const file = shareData.files[0] as File;
+            console.log("[ShareTarget] Processing file:", { name: file.name, type: file.type, size: file.size });
+
+            // Convert file to base64 for API transport
+            const base64 = await fileToBase64(file);
+            processingContent = base64;
+            contentType = 'base64';
         } else if (content) {
-            inputData = content;
+            processingContent = content;
+            contentType = 'text';
             console.log("[ShareTarget] Processing text content, length:", content.length);
         } else {
             throw new Error("No processable content found");
         }
 
-        // Convert to usable format
-        console.log("[ShareTarget] Converting to usable data format");
-        const usableData = await getUsableData({ dataSource: inputData });
+        // Call unified processing endpoint
+        console.log("[ShareTarget] Calling unified processing API");
+        const response = await fetch('/api/processing', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                content: processingContent,
+                contentType,
+                processingType: 'general-processing',
+                metadata: {
+                    source: 'share-target',
+                    title: shareData.title || 'Shared Content',
+                    timestamp: Date.now()
+                }
+            })
+        });
 
-        const input = [{
-            type: "message",
-            role: "user",
-            content: [usableData]
-        }];
+        if (!response.ok) {
+            throw new Error(`Processing API failed: ${response.status}`);
+        }
 
-        console.log("[ShareTarget] Calling AI recognition");
-        // Process with AI
-        const result = await recognizeByInstructions(input, "", undefined, undefined, { useActiveInstruction: true });
+        const result = await response.json();
+        console.log("[ShareTarget] Unified processing completed:", { success: result.success });
 
-        console.log("[ShareTarget] AI recognition completed:", { ok: result?.ok, hasData: !!result?.data, dataLength: result?.data?.length });
+        if (result.success && result.data) {
+            // Use unified messaging to handle the result
+            console.log("[ShareTarget] Processing result via unified messaging");
 
-        if (result?.ok && result?.data) {
-            // Broadcast result to PWA clipboard handlers
-            console.log("[ShareTarget] Broadcasting successful AI result to clipboard handlers");
-            const shareChannel = new BroadcastChannel(CHANNELS.SHARE_TARGET);
-            shareChannel.postMessage({
-                type: 'ai-result',
-                data: { success: true, data: result.data }
+            // Send to clipboard if configured
+            const clipboardChannel = new BroadcastChannel(CHANNELS.CLIPBOARD);
+            clipboardChannel.postMessage({
+                type: 'copy',
+                data: result.data
             });
-            shareChannel.close();
+            clipboardChannel.close();
+
+            // Send to workcenter for display
+            const workCenterChannel = new BroadcastChannel(CHANNELS.SHARE_TARGET);
+            workCenterChannel.postMessage({
+                type: 'share-result',
+                data: {
+                    success: true,
+                    content: result.data,
+                    metadata: result.metadata
+                }
+            });
+            workCenterChannel.close();
 
             return true;
         } else {
@@ -333,7 +373,11 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
 export const CHANNELS = {
     SHARE_TARGET: 'rs-share-target',
     TOAST: 'rs-toast',
-    CLIPBOARD: 'rs-clipboard'
+    CLIPBOARD: 'rs-clipboard',
+    BASIC_APP: 'basic-app',
+    MAIN_APP: 'main-app',
+    FILE_EXPLORER: 'file-explorer',
+    PRINT_VIEWER: 'print-viewer'
 } as const;
 
 // ============================================================================

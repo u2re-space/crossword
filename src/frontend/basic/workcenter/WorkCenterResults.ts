@@ -157,6 +157,10 @@ export class WorkCenterResults {
                     <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
                     <span class="btn-text">Copy</span>
                     </button>
+                    <button class="btn btn-icon" data-action="save-to-explorer" title="Save to Explorer">
+                    <ui-icon icon="floppy-disk" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">Save</span>
+                    </button>
                     <button class="btn btn-icon" data-action="clear-results" title="Clear results">
                     <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
                     <span class="btn-text">Clear</span>

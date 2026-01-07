@@ -1,5 +1,5 @@
 import { H, provide } from "fest/lure";
-import { createMarkdownViewer } from "../../basic/modules/MarkdownViewer";
+import { createMarkdownViewer } from "../../basic/viewer/MarkdownViewer";
 
 // View
 export const MakeMarkdownView = async (path: string, id: string) => {

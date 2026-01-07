@@ -597,6 +597,208 @@ registerRoute(
     })
 );
 
+// Test route to verify service worker API routing
+registerRoute(
+    ({ url }) => url?.pathname === '/api/test' && request?.method === 'GET',
+    async () => {
+        console.log('[SW] Test API route hit');
+        return new Response(JSON.stringify({
+            success: true,
+            message: 'Service Worker API routing is working',
+            timestamp: new Date().toISOString(),
+            source: 'service-worker'
+        }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+);
+
+// Unified Processing API (for PWA processing support)
+registerRoute(
+    ({ url }) => url?.pathname === '/api/processing' && request?.method === 'POST',
+    async ({ request }) => {
+        try {
+            console.log('[SW] Processing API request received');
+
+            // Try to proxy to backend first
+            try {
+                const backendUrl = new URL(request.url);
+                // Use same origin but ensure it's the backend
+                backendUrl.protocol = location.protocol;
+                backendUrl.host = location.host;
+
+                console.log('[SW] Proxying processing request to backend:', backendUrl.href);
+
+                const response = await fetch(backendUrl.href, {
+                    method: 'POST',
+                    headers: request.headers,
+                    body: request.body,
+                    // Add timeout for processing requests
+                    signal: AbortSignal.timeout(30000) // 30 second timeout
+                });
+
+                if (response.ok) {
+                    // Cache successful processing results for offline use
+                    const cache = await caches.open('processing-cache');
+                    cache.put(request, response.clone());
+
+                    console.log('[SW] Processing completed via backend, cached result');
+                    return response;
+                } else {
+                    console.warn('[SW] Backend processing failed:', response.status);
+                }
+            } catch (backendError) {
+                console.warn('[SW] Backend processing unavailable:', backendError);
+            }
+
+            // Backend unavailable - try cached responses for similar requests
+            const cache = await caches.open('processing-cache');
+
+            // Try to find a cached response with similar content
+            const cacheKeys = await cache.keys();
+            for (const cacheRequest of cacheKeys) {
+                try {
+                    // Check if the request body is similar (basic heuristic)
+                    const cachedResponse = await cache.match(cacheRequest);
+                    if (cachedResponse) {
+                        console.log('[SW] Serving cached processing result');
+                        return cachedResponse;
+                    }
+                } catch (cacheError) {
+                    console.warn('[SW] Cache lookup failed:', cacheError);
+                }
+            }
+
+            // No cached response available - return offline response
+            console.log('[SW] Processing unavailable offline');
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Processing unavailable offline',
+                message: 'AI processing requires internet connection',
+                code: 'OFFLINE_UNAVAILABLE',
+                offline: true,
+                timestamp: new Date().toISOString()
+            }), {
+                status: 503,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Offline': 'true'
+                }
+            });
+
+        } catch (error) {
+            console.error('[SW] Processing API error:', error);
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Processing failed',
+                message: error.message,
+                code: 'PROCESSING_ERROR',
+                timestamp: new Date().toISOString()
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+);
+
+// Analysis API (lighter processing for quick analysis)
+registerRoute(
+    ({ url }) => url?.pathname === '/api/analyze' && request?.method === 'POST',
+    async ({ request }) => {
+        try {
+            console.log('[SW] Analysis API request received');
+
+            // Try backend first
+            try {
+                const backendUrl = new URL(request.url);
+                backendUrl.protocol = location.protocol;
+                backendUrl.host = location.host;
+
+                const response = await fetch(backendUrl.href, {
+                    method: 'POST',
+                    headers: request.headers,
+                    body: request.body,
+                    signal: AbortSignal.timeout(10000) // 10 second timeout for analysis
+                });
+
+                if (response.ok) {
+                    console.log('[SW] Analysis completed via backend');
+                    return response;
+                }
+            } catch (backendError) {
+                console.warn('[SW] Backend analysis unavailable:', backendError);
+            }
+
+            // Fallback: Basic content type detection
+            try {
+                const requestData = await request.json();
+                const content = requestData.content || '';
+                const contentType = requestData.contentType || 'text';
+
+                let analysis = '';
+
+                if (contentType === 'text' || contentType === 'markdown') {
+                    // Basic text analysis
+                    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
+                    const charCount = content.length;
+                    const lineCount = content.split('\n').length;
+
+                    analysis = `Text content: ${wordCount} words, ${charCount} characters, ${lineCount} lines`;
+
+                    if (content.includes('# ')) {
+                        analysis += ' (appears to be markdown with headings)';
+                    }
+                } else if (contentType === 'file') {
+                    analysis = 'File content detected - full analysis requires backend';
+                } else {
+                    analysis = `${contentType} content detected - detailed analysis requires backend`;
+                }
+
+                console.log('[SW] Basic offline analysis provided');
+                return new Response(JSON.stringify({
+                    success: true,
+                    analysis,
+                    contentType,
+                    basicAnalysis: true,
+                    offline: true,
+                    timestamp: new Date().toISOString()
+                }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+            } catch (parseError) {
+                console.warn('[SW] Failed to parse request for basic analysis:', parseError);
+            }
+
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Analysis unavailable offline',
+                message: 'Content analysis requires internet connection',
+                code: 'OFFLINE_UNAVAILABLE',
+                offline: true,
+                timestamp: new Date().toISOString()
+            }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+        } catch (error) {
+            console.error('[SW] Analysis API error:', error);
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Analysis failed',
+                message: error.message,
+                code: 'ANALYSIS_ERROR',
+                timestamp: new Date().toISOString()
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+);
+
 // Phosphor Icons Proxy (for PWA offline support)
 registerRoute(
     ({ url }) => url?.pathname?.startsWith?.('/api/phosphor-icons/'),
@@ -605,12 +807,21 @@ registerRoute(
             // Convert proxy path to actual CDN URL
             const pathParts = url.pathname.replace('/api/phosphor-icons/', '').split('/');
             const iconStyle = pathParts[0];
-            const iconFile = pathParts.slice(1).join('/');
+            let iconFile = pathParts.slice(1).join('/');
+
+            // Fix the icon filename - add the style suffix for duotone and other styles
+            // (e.g., "eye.svg" -> "eye-duotone.svg" for duotone style)
+            if (iconStyle === 'duotone' && !iconFile.includes('-duotone')) {
+                iconFile = iconFile.replace('.svg', '-duotone.svg');
+            } else if (iconStyle !== 'regular' && !iconFile.includes(`-${iconStyle}`)) {
+                // For other styles like bold, fill, etc., add the style suffix if not present
+                iconFile = iconFile.replace('.svg', `-${iconStyle}.svg`);
+            }
 
             // Build the actual CDN URL
             const cdnUrl = `https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2/assets/${iconStyle}/${iconFile}`;
 
-            console.log('[SW] Proxying Phosphor icon:', url.pathname, '->', cdnUrl);
+            console.log('[SW] Proxying Phosphor icon:', url.pathname, '->', cdnUrl, `(fixed: ${iconFile})`);
 
             // Fetch from CDN with appropriate caching
             const response = await fetch(cdnUrl, {
@@ -631,7 +842,7 @@ registerRoute(
                 console.warn('[SW] Failed to fetch Phosphor icon:', cdnUrl, response.status);
                 // Try to serve from cache if available
                 const cache = await caches.open('phosphor-icons-cache');
-                const cachedResponse = await cache.match(url);
+                const cachedResponse = await cache?.match?.(url);
                 if (cachedResponse) {
                     console.log('[SW] Serving cached Phosphor icon:', url.pathname);
                     return cachedResponse;
@@ -643,7 +854,7 @@ registerRoute(
             // Try to serve from cache if available
             try {
                 const cache = await caches.open('phosphor-icons-cache');
-                const cachedResponse = await cache.match(url);
+                const cachedResponse = await cache?.match?.(url);
                 if (cachedResponse) {
                     console.log('[SW] Serving cached Phosphor icon (fallback):', url.pathname);
                     return cachedResponse;

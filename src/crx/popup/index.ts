@@ -120,15 +120,159 @@ const sendSnipMessage = (messageType: string) => {
 
 //
 const implementActions = () => {
-    const snipRecognize = document.getElementById('snip-recognize') as HTMLButtonElement;
-    const snipSolve = document.getElementById('snip-solve') as HTMLButtonElement;
-    const snipCode = document.getElementById('snip-code') as HTMLButtonElement;
-    const snipCss = document.getElementById('snip-css') as HTMLButtonElement;
+    const snipActionSelect = document.getElementById('snip-action-select') as HTMLSelectElement;
+    const snipDoButton = document.getElementById('snip-do') as HTMLButtonElement;
 
-    snipRecognize?.addEventListener('click', () => sendSnipMessage("START_SNIP"));
-    snipSolve?.addEventListener('click', () => sendSnipMessage("SOLVE_AND_ANSWER"));
-    snipCode?.addEventListener('click', () => sendSnipMessage("WRITE_CODE"));
-    snipCss?.addEventListener('click', () => sendSnipMessage("EXTRACT_CSS"));
+    // Unified Snip & Do button handler
+    snipDoButton?.addEventListener('click', async () => {
+        const selectedAction = snipActionSelect?.value;
+
+        if (!selectedAction) {
+            console.warn('[CRX-SNIP] No action selected');
+            return;
+        }
+
+        try {
+            // Handle CRX-Snip actions that need special processing
+            if (selectedAction === 'CRX_SNIP_TEXT') {
+                await handleCrxSnipText();
+            } else if (selectedAction === 'CRX_SNIP_SCREEN') {
+                await handleCrxSnipScreen();
+            } else {
+                // Regular snip actions - send to content script
+                sendSnipMessage(selectedAction);
+            }
+        } catch (error) {
+            console.error('[CRX-SNIP] Failed to execute snip action:', error);
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: `Failed to execute ${selectedAction}`
+            });
+        }
+    });
+
+    // CRX-Snip Text handler
+    const handleCrxSnipText = async () => {
+        // Get the active tab
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+
+        if (!activeTab?.id) {
+            console.warn('[CRX-SNIP] No active tab found');
+            return;
+        }
+
+        // Get selected text from the active tab
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            func: () => window.getSelection()?.toString() || ''
+        });
+
+        const selectedText = results[0]?.result || '';
+
+        if (!selectedText.trim()) {
+            // No selection - show notification
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: 'Please select some text first!'
+            });
+            return;
+        }
+
+        // Send to service worker for processing
+        chrome.runtime.sendMessage({
+            type: "crx-snip",
+            content: selectedText,
+            contentType: "text"
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.warn('[CRX-SNIP] Message failed:', chrome.runtime.lastError);
+                return;
+            }
+
+            if (response?.success) {
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icons/icon.png',
+                    title: 'CrossWord CRX-Snip',
+                    message: 'Text processed and copied to clipboard!'
+                });
+            } else {
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icons/icon.png',
+                    title: 'CrossWord CRX-Snip',
+                    message: `Text processing failed: ${response?.error || 'Unknown error'}`
+                });
+            }
+        });
+
+        // Close popup
+        window?.close?.();
+    };
+
+    // CRX-Snip Screen handler
+    const handleCrxSnipScreen = async () => {
+        // Get the active tab
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+
+        if (!activeTab?.id) {
+            console.warn('[CRX-SNIP] No active tab found');
+            return;
+        }
+
+        // Close popup first
+        window?.close?.();
+
+        // Small delay to allow popup to close
+        setTimeout(async () => {
+            try {
+                // Send message to content script to start rectangle selection
+                chrome.tabs.sendMessage(activeTab.id, {
+                    type: 'crx-snip-select-rect'
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.warn('[CRX-SNIP] Rectangle selection message failed:', chrome.runtime.lastError);
+                        return;
+                    }
+
+                    // Response will contain the selected rectangle
+                    if (response?.rect) {
+                        console.log('[CRX-SNIP] Rectangle selected:', response.rect);
+
+                        // Send message to service worker with rect coordinates
+                        chrome.runtime.sendMessage({
+                            type: "crx-snip-screen-capture",
+                            rect: response.rect,
+                            scale: 1 // Use scale: 1 to avoid scaling issues
+                        });
+                    } else {
+                        console.log('[CRX-SNIP] Rectangle selection cancelled');
+                        chrome.notifications.create({
+                            type: 'basic',
+                            iconUrl: 'icons/icon.png',
+                            title: 'CrossWord CRX-Snip',
+                            message: 'Rectangle selection cancelled'
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.error('[CRX-SNIP] Failed to select rectangle:', error);
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icons/icon.png',
+                    title: 'CrossWord CRX-Snip',
+                    message: 'Failed to select rectangle area'
+                });
+            }
+        }, 100);
+    };
 };
 
 //

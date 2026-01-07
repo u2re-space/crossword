@@ -10,11 +10,16 @@
         <h1>Content Helper Menu</h1>
         <section>
             <h2>Snip Actions</h2>
-            <div class="action-grid">
-                <button type="button" id="snip-recognize" title="Recognize text/content from screen">📝 Recognize</button>
-                <button type="button" id="snip-solve" title="Solve equations or answer questions">🧮 Solve/Answer</button>
-                <button type="button" id="snip-code" title="Generate code from description">💻 Write Code</button>
-                <button type="button" id="snip-css" title="Extract CSS styles from UI">🎨 Extract CSS</button>
+            <div class="snip-controls">
+                <select id="snip-action-select">
+                    <option value="START_SNIP">📝 Recognize text/content from screen</option>
+                    <option value="SOLVE_AND_ANSWER">🧮 Solve equations or answer questions</option>
+                    <option value="WRITE_CODE">💻 Generate code from description</option>
+                    <option value="EXTRACT_CSS">🎨 Extract CSS styles from UI</option>
+                    <option value="CRX_SNIP_TEXT">📝 CRX-Snip Text (selected text)</option>
+                    <option value="CRX_SNIP_SCREEN">📸 CRX-Snip Screen (rectangle capture)</option>
+                </select>
+                <button type="button" id="snip-do" title="Execute selected snip action">⚡ Snip & Do</button>
             </div>
         </section>
         <section>

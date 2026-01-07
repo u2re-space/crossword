@@ -29,7 +29,10 @@
         "tabCapture",
         "downloads",
         "webNavigation",
-        "offscreen"
+        "offscreen",
+        "notifications",
+        "commands",
+        "desktopCapture"
     ],
     "content_security_policy": {
         "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://u2re.space https://*.u2re.space *;",
@@ -61,6 +64,22 @@
         ],
         "matches": ["<all_urls>"]
     }],
+    "commands": {
+        "crx-snip-text": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+X",
+                "mac": "Command+Shift+X"
+            },
+            "description": "Process selected text with CrossWord CRX-Snip"
+        },
+        "crx-snip-screen": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Y",
+                "mac": "Command+Shift+Y"
+            },
+            "description": "Capture and process screen area with CrossWord CRX-Snip"
+        }
+    },
     "icons": {
         "512": "icons/icon.png"
     }

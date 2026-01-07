@@ -24,188 +24,6 @@ import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, 
 import type { FileManager } from "./explorer";
 import { downloadMarkdownAsDocx } from "../shared/DocxExport";
 
-// ============================================================================
-// UTILITY FUNCTIONS & HELPERS
-// ============================================================================
-
-/**
- * Safe localStorage operations with error handling
- */
-const safeLocalStorage = {
-    get: (key: string, defaultValue = "") => {
-        try { return localStorage.getItem(key) || defaultValue; } catch { return defaultValue; }
-    },
-    set: (key: string, value: string) => {
-        try { localStorage.setItem(key, value); } catch { /* ignore */ }
-    }
-};
-
-// showStatusMessage will be defined inside mountBasicApp to access state and renderStatus
-
-/**
- * Unified component loading with error handling
- */
-const loadComponent = async (componentName: string, importFn: () => Promise<any>, options: { componentName: string; cssPath?: string } = { componentName }) => {
-    try {
-        return await getCachedComponent(componentName, importFn, options);
-    } catch (error) {
-        console.error(`Failed to load ${componentName}:`, error);
-        throw error;
-    }
-};
-
-/**
- * Create unified messaging handler for view switching
- */
-const createViewHandler = (destination: string, view: BasicView) => ({
-    canHandle: (msg: any) => msg.destination === destination,
-    handle: async (msg: any) => {
-        state.view = view;
-        setViewHash(view);
-        render();
-    }
-});
-
-/**
- * Create content attachment handler for work center
- */
-const createContentHandler = (destination: string, contentType?: string) => ({
-    canHandle: (msg: any) => msg.destination === destination,
-    handle: async (msg: any) => {
-        // Reuse the existing work center attachment logic
-        // Note: This handler is registered at module level, but needs access to state
-        // We'll need to modify this to get state from the messaging system
-        console.warn('[Basic] handleWorkCenterAttachment called from handler without state access');
-    }
-});
-
-// Module-level state
-let workCenterAttachmentInProgress = false;
-
-/**
- * Work center attachment logic (extracted for reuse)
- */
-const handleWorkCenterAttachment = async (msg: any, state: any, setViewHash: any, render: any, showStatusMessage: any, skipRender = false) => {
-    // Prevent multiple simultaneous attachments
-    if (workCenterAttachmentInProgress) {
-        console.log('[Basic] Work center attachment already in progress, ignoring duplicate request');
-        return;
-    }
-    workCenterAttachmentInProgress = true;
-
-    try {
-        // Set view to work center (only if not already set)
-        if (state.view !== 'workcenter') {
-            state.view = 'workcenter';
-            setViewHash('workcenter');
-        }
-
-        // Convert content to file-like object
-        let fileToAttach: File | null = null;
-        try {
-            if (msg.data.file instanceof File) {
-                fileToAttach = msg.data.file;
-            } else if (msg.data.blob instanceof Blob) {
-                const filename = msg.data.filename || `attachment-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
-                fileToAttach = new File([msg.data.blob], filename, { type: msg.data.blob.type });
-            } else if (msg.data.text || msg.data.content) {
-                const content = msg.data.text || msg.data.content;
-                const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                const filename = msg.data.filename || `content-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
-                const mimeType = msg.contentType === 'markdown' ? 'text/markdown' : 'text/plain';
-                fileToAttach = new File([textContent], filename, { type: mimeType });
-                console.log('[Basic] Created file for attachment:', { filename, mimeType, size: textContent.length });
-            }
-        } catch (error) {
-            console.warn('[Basic] Failed to create file from message data:', error);
-            showStatusMessage("Failed to process content");
-            return;
-        }
-
-        if (!fileToAttach) {
-            console.warn('[Basic] No valid file content found in message');
-            return;
-        }
-
-        // Trigger render only if not skipped (to prevent loops during initialization)
-        if (!skipRender) {
-            render();
-        }
-
-        // Wait for work center to be loaded and attach content
-        await attachToWorkCenterWhenReady(fileToAttach, state, showStatusMessage);
-
-    } finally {
-        workCenterAttachmentInProgress = false;
-    }
-};
-
-/**
- * Wait for work center to load and attach file
- */
-const attachToWorkCenterWhenReady = async (file: File, state: any, showStatusMessage: any) => {
-    try {
-        // If work center is already loaded, attach immediately
-        if (state.managers.workCenter.instance) {
-            state.managers.workCenter.instance.getState().files.push(file);
-            // Update the UI after adding the file
-            state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
-            state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
-            showStatusMessage(`Attached ${file.name} to Work Center`);
-            return;
-        }
-
-        // Wait for work center to load
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max wait
-
-        while (!state.managers.workCenter.instance && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-
-        if (state.managers.workCenter.instance) {
-            state.managers.workCenter.instance.getState().files.push(file);
-
-            // Update the UI after adding the file
-            state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
-            state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
-
-            showStatusMessage(`Attached ${file.name} to Work Center`);
-        } else {
-            throw new Error('Work center failed to load');
-        }
-
-    } catch (error) {
-        console.warn('[Basic] Failed to attach content to workcenter:', error);
-        showStatusMessage("Failed to attach content");
-    }
-};
-
-/**
- * Render component with unified error handling
- */
-const renderComponent = async (
-    componentKey: string,
-    importFn: () => Promise<any>,
-    options: { componentName: string; cssPath?: string },
-    renderCallback?: (component: any) => void
-) => {
-    try {
-        const componentModule = await loadComponent(componentKey, importFn, options);
-
-        if (renderCallback) {
-            renderCallback(componentModule.component);
-        }
-
-        return componentModule.component;
-    } catch (error) {
-        console.error(`Failed to load ${componentKey}:`, error);
-        content.innerHTML = `<div class="component-error"><h3>Failed to load ${options.componentName}</h3><p>Please try refreshing the page.</p></div>`;
-        renderStatus();
-    }
-};
-
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
 
 export type BasicAppOptions = {
@@ -252,9 +70,21 @@ const VIEW_HASH_MAPPING = {
 
 
 
-// Use the new safe localStorage helper
-const loadLastSrc = () => safeLocalStorage.get(LAST_SRC_KEY);
-const saveLastSrc = (src: string) => safeLocalStorage.set(LAST_SRC_KEY, src);
+const loadLastSrc = () => {
+    try {
+        return localStorage.getItem(LAST_SRC_KEY) || "";
+    } catch {
+        return "";
+    }
+};
+
+const saveLastSrc = (src: string) => {
+    try {
+        localStorage.setItem(LAST_SRC_KEY, src);
+    } catch {
+        // ignore
+    }
+};
 
 const isLikelyExtension = () => {
     try {
@@ -372,15 +202,22 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 );
 
                 // Cleanup previous work center manager
-                if (state.managers.workCenter.instance && typeof state.managers.workCenter.instance.destroy === 'function') {
-                    state.managers.workCenter.instance.destroy();
+                if (state.workCenterManager && typeof state.workCenterManager.destroy === 'function') {
+                    state.workCenterManager.destroy();
                 }
 
                 const                 workCenterManager = new workCenter.component({
                     state: state,
                     history: state.history,
                     getSpeechPrompt,
-                    showMessage: showStatusMessage,
+                    showMessage: (message: string) => {
+                        state.message = message;
+                        renderStatus();
+                        setTimeout(() => {
+                            state.message = "";
+                            renderStatus();
+                        }, 3000);
+                    },
                     render: () => render(),
                     onFilesChanged: () => {
                         // Re-render toolbar to update file count badge
@@ -390,7 +227,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
                 workCenterManager.getState().files.push(...files);
                 // Store reference for future use
-                state.managers.workCenter.instance = workCenterManager;
+                state.workCenterManager = workCenterManager;
                 render();
             } else if (state.view === 'markdown-viewer') {
                 // Handle markdown files for viewer
@@ -400,15 +237,21 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     if (fileContents.length > 0) {
                         const content = fileContents[0].content;
                         state.markdown = content;
-                        showStatusMessage(`Loaded ${markdownFiles[0].name}`);
+                        state.message = `Loaded ${markdownFiles[0].name}`;
                         persistMarkdown();
+                        renderStatus();
+                        setTimeout(() => {
+                            state.message = "";
+                            renderStatus();
+                        }, 3000);
                         render();
                     }
                 }
             }
         },
         onError: (error: string) => {
-            showStatusMessage(`File error: ${error}`);
+            state.message = error;
+            renderStatus();
         }
     });
 
@@ -419,7 +262,6 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     const defaultView = options.initialView || (hasExistingContent ? "markdown-viewer" : "file-picker");
 
     const state = {
-        // Core app state
         view: defaultView as BasicView,
         markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
         editing: false,
@@ -427,58 +269,20 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         message: "",
         history: [] as HistoryEntry[],
         lastSavedTheme: "auto" as AppSettings["appearance"] extends { theme?: infer T } ? (T extends string ? T : "auto") : "auto",
-
-        // Core services (always available)
-        services: {
-            fileHandler,
-            templateManager,
-        },
-
-        // Component managers (lazy loaded, with metadata)
-        managers: {
-            workCenter: {
-                instance: null as any,
-                initialized: false, // Track if work center has been initialized with messaging
-            },
-            history: {
-                instance: null as any,
-            },
-        },
-
-        // UI components (lazy loaded)
-        components: {
-            settings: {
-                view: null as any,
-            },
-            markdown: {
-                viewer: null as any,
-                editor: null as any,
-            },
-            quill: {
-                editor: null as any,
-            },
-            explorer: {
-                element: null as any,
-            },
-        },
-    };
-
-    /**
-     * Standard status message display with auto-hide
-     */
-    const showStatusMessage = (message: string, duration = 3000) => {
-        state.message = message;
-        renderStatus();
-        setTimeout(() => {
-            if (state.message === message) {
-                state.message = "";
-                renderStatus();
-            }
-        }, duration);
+        // Add managers to state for access (will be lazy loaded)
+        fileHandler,
+        templateManager,
+        // Components will be cached here when lazy loaded
+        workCenterManager: null as any,
+        historyManager: null as any,
+        settingsView: null as any,
+        markdownViewer: null as any,
+        markdownEditor: null as any,
+        quillEditor: null as any,
+        explorerElement: null as any
     };
 
     // Initialize unified messaging for this app instance
-    // Initialize unified messaging handlers using helper functions
     unifiedMessaging.registerHandler('markdown-viewer', {
         canHandle: (msg) => msg.destination === 'markdown-viewer',
         handle: async (msg) => {
@@ -491,7 +295,14 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         }
     });
 
-    unifiedMessaging.registerHandler('workcenter', createViewHandler('workcenter', 'workcenter'));
+    unifiedMessaging.registerHandler('workcenter', {
+        canHandle: (msg) => msg.destination === 'workcenter',
+        handle: async (msg) => {
+            state.view = 'workcenter';
+            setViewHash('workcenter');
+            render();
+        }
+    });
 
     // Handler for basic-viewer (places/renders content in view)
     unifiedMessaging.registerHandler('basic-viewer', {
@@ -505,13 +316,173 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 setViewHash('markdown-viewer');
                 persistMarkdown();
                 render();
-                showStatusMessage("Content loaded in viewer");
+
+                state.message = "Content loaded in viewer";
+                renderStatus();
+                setTimeout(() => {
+                    state.message = "";
+                    renderStatus();
+                }, 3000);
             }
         }
     });
 
     // Handler for basic-workcenter (attaches as file input/attachment)
-    unifiedMessaging.registerHandler('basic-workcenter', createContentHandler('basic-workcenter'));
+    let workCenterAttachmentInProgress = false;
+    unifiedMessaging.registerHandler('basic-workcenter', {
+        canHandle: (msg) => msg.destination === 'basic-workcenter',
+        handle: async (msg) => {
+            // Prevent multiple simultaneous attachments
+            if (workCenterAttachmentInProgress) {
+                console.log('[Basic] Work center attachment already in progress, ignoring duplicate request');
+                return;
+            }
+            workCenterAttachmentInProgress = true;
+            // Default action: attach as file input/attachment
+            state.view = 'workcenter';
+            setViewHash('workcenter');
+
+            // Convert content to file-like object first
+            let fileToAttach: File | null = null;
+            try {
+                if (msg.data.file instanceof File) {
+                    fileToAttach = msg.data.file;
+                } else if (msg.data.blob instanceof Blob) {
+                    // Create file from blob
+                    const filename = msg.data.filename || `attachment-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
+                    fileToAttach = new File([msg.data.blob], filename, { type: msg.data.blob.type });
+                } else if (msg.data.text || msg.data.content) {
+                    // Create file from text content
+                    const content = msg.data.text || msg.data.content;
+                    const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                    const filename = msg.data.filename || `content-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
+                    const mimeType = msg.contentType === 'markdown' ? 'text/markdown' : 'text/plain';
+                    fileToAttach = new File([textContent], filename, { type: mimeType });
+
+                    console.log('[Basic] Created file for attachment:', {
+                        filename,
+                        mimeType,
+                        size: textContent.length,
+                        contentPreview: textContent.substring(0, 100) + '...'
+                    });
+                }
+            } catch (error) {
+                console.warn('[Basic] Failed to create file from message data:', error);
+                state.message = "Failed to process content";
+                renderStatus();
+                setTimeout(() => {
+                    state.message = "";
+                    renderStatus();
+                }, 3000);
+                return;
+            }
+
+            if (!fileToAttach) {
+                console.warn('[Basic] No valid file content found in message');
+                return;
+            }
+
+            // Store the file to attach for later processing
+            const pendingAttachment = { file: fileToAttach, message: msg };
+
+            // Trigger render to show work center view and start loading
+            render();
+
+            // Wait for work center to be loaded and then attach content
+            const attachWhenReady = async () => {
+                try {
+                    // If work center is already loaded, attach immediately
+                    if (state.workCenterManager) {
+                        state.workCenterManager.getState().files.push(fileToAttach);
+                        state.message = `Attached ${fileToAttach.name} to Work Center`;
+                        renderStatus();
+                        setTimeout(() => {
+                            state.message = "";
+                            renderStatus();
+                        }, 3000);
+                        return;
+                    }
+
+                    // Wait a bit more for the render function to load the work center
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    // If still not loaded, the render function might have failed
+                    if (!state.workCenterManager) {
+                        throw new Error('Work center failed to load');
+                    }
+
+                    // Now attach the file
+                    console.log('[Basic] Adding file to work center state:', fileToAttach.name, 'files before:', state.workCenterManager.getState().files.length);
+                    state.workCenterManager.getState().files.push(fileToAttach);
+                    console.log('[Basic] Files after adding:', state.workCenterManager.getState().files.length);
+
+                    // Trigger UI update by re-rendering the work center
+                    const workCenterContainer = document.querySelector('.workcenter-view');
+                    if (workCenterContainer) {
+                        console.log('[Basic] Found work center container, re-rendering');
+                        const newView = state.workCenterManager.renderWorkCenterView();
+                        workCenterContainer.replaceWith(newView);
+                    } else {
+                        console.log('[Basic] No work center container found for re-rendering, current containers:', document.querySelectorAll('*[class*="workcenter"]'));
+                        // Fallback: trigger a full render
+                        render();
+                    }
+
+                    state.message = `Attached ${fileToAttach.name} to Work Center`;
+                    renderStatus();
+                    setTimeout(() => {
+                        state.message = "";
+                        renderStatus();
+                    }, 3000);
+
+                } catch (error) {
+                    console.warn('[Basic] Failed to attach content to workcenter:', error);
+                    state.message = "Failed to attach content";
+                    renderStatus();
+                    setTimeout(() => {
+                        state.message = "";
+                        renderStatus();
+                    }, 3000);
+                }
+            };
+
+            // Attach content after ensuring work center is loaded
+            const attachAfterLoad = async () => {
+                try {
+                    // If work center is already loaded, attach immediately
+                    if (state.workCenterManager) {
+                        await attachWhenReady();
+                        return;
+                    }
+
+                    // Wait for work center to load (with timeout)
+                    let attempts = 0;
+                    const maxAttempts = 50; // 5 seconds max wait
+
+                    while (!state.workCenterManager && attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+
+                    if (state.workCenterManager) {
+                        await attachWhenReady();
+                    } else {
+                        console.error('[Basic] Work center failed to load within timeout');
+                        state.message = "Failed to load Work Center";
+                        renderStatus();
+                        setTimeout(() => {
+                            state.message = "";
+                            renderStatus();
+                        }, 3000);
+                    }
+                } finally {
+                    workCenterAttachmentInProgress = false;
+                }
+            };
+
+            attachAfterLoad();
+        }
+    });
 
     // Handler for basic-explorer destination (saves to OPFS or performs file operations)
     unifiedMessaging.registerHandler('basic-explorer', {
@@ -546,10 +517,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                             fileToSave = new File([textContent], filename, { type: 'text/plain' });
                         }
 
-                        if (fileToSave && state.components.explorer.element) {
+                        if (fileToSave && state.explorerElement) {
                             // Navigate to target path first
-                            if (path && path !== state.components.explorer.element.path) {
-                                state.components.explorer.element.path = path;
+                            if (path && path !== state.explorerElement.path) {
+                                state.explorerElement.path = path;
                             }
 
                             // Use the file explorer's upload functionality
@@ -564,8 +535,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         }
                     } else if (action === 'view' && msg.data?.path) {
                         // Navigate to path for viewing
-                        if (state.components.explorer.element && path) {
-                            state.components.explorer.element.path = path;
+                        if (state.explorerElement && path) {
+                            state.explorerElement.path = path;
                             console.log(`[Basic] Navigated Explorer to path: ${path}`);
                             state.message = `Opened Explorer at ${path}`;
                             renderStatus();
@@ -577,8 +548,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     } else if (action === 'place' && msg.data?.place && msg.data?.into) {
                         // Place data into specific path
                         const targetPath = msg.data.into;
-                        if (state.components.explorer.element && targetPath) {
-                            state.components.explorer.element.path = targetPath;
+                        if (state.explorerElement && targetPath) {
+                            state.explorerElement.path = targetPath;
                             console.log(`[Basic] Navigated Explorer to place data at: ${targetPath}`);
                             state.message = `Explorer ready at ${targetPath}`;
                             renderStatus();
@@ -589,8 +560,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         }
                     } else if (action === 'navigate' && path) {
                         // Simple navigation
-                        if (state.components.explorer.element) {
-                            state.components.explorer.element.path = path;
+                        if (state.explorerElement) {
+                            state.explorerElement.path = path;
                             state.message = `Explorer navigated to ${path}`;
                             renderStatus();
                             setTimeout(() => {
@@ -681,7 +652,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         setViewHash("workcenter");
         try {
             // Use the same pipeline as UI file selection.
-            state.services.fileHandler?.addFiles?.(options.initialFiles);
+            state.fileHandler?.addFiles?.(options.initialFiles);
             state.message = `Received ${options.initialFiles.length} file(s)`;
         } catch (e) {
             console.warn("[Basic] Failed to attach initial files:", e);
@@ -722,7 +693,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         <button class="btn ${state.view === 'workcenter' ? 'active' : ''}" data-action="view-workcenter" type="button" title="AI Work Center">
           <ui-icon icon="lightning" icon-style="duotone"></ui-icon>
           <span>Work Center</span>
-          ${state.managers.workCenter.instance && state.managers.workCenter.instance.getState().files.length > 0 ? H`<span class="workcenter-badge" title="${state.managers.workCenter.instance.getState().files.length} files ready for processing">${state.managers.workCenter.instance.getState().files.length}</span>` : ''}
+          ${state.workCenterManager && state.workCenterManager.getState().files.length > 0 ? H`<span class="workcenter-badge" title="${state.workCenterManager.getState().files.length} files ready for processing">${state.workCenterManager.getState().files.length}</span>` : ''}
         </button>
         <button class="btn ${state.view === 'settings' ? 'active' : ''}" data-action="view-settings" type="button" title="Settings">
           <ui-icon icon="gear" icon-style="duotone"></ui-icon>
@@ -782,7 +753,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     root.append(fileInput);
 
     // Setup file handling for work center
-    state.services.fileHandler.setupCompleteFileHandling(
+    state.fileHandler.setupCompleteFileHandling(
         root,
         H`<button style="display:none">File Select</button>` as HTMLElement,
         undefined, // No specific drop zone - handle globally
@@ -883,16 +854,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Initialize component with catch-up messaging
             initializeComponent('basic-viewer', { viewer, element: viewerElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in viewer logic
+                // Process any pending messages for viewer
                 for (const message of pendingMessages) {
                   console.log(`[Viewer] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in viewer");
-                  }
+                  await unifiedMessaging.sendMessage(message);
                 }
               })
               .catch(error => {
@@ -957,16 +922,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Initialize component with catch-up messaging
             initializeComponent('markdown-editor', { editor, element: editorElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in editor logic
+                // Process any pending messages for editor
                 for (const message of pendingMessages) {
                   console.log(`[Editor] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in editor");
-                  }
+                  await unifiedMessaging.sendMessage(message);
                 }
               })
               .catch(error => {
@@ -1031,16 +990,10 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Initialize component with catch-up messaging
             initializeComponent('rich-editor', { editor, element: editorElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in rich editor logic
+                // Process any pending messages for rich editor
                 for (const message of pendingMessages) {
                   console.log(`[RichEditor] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in rich editor");
-                  }
+                  await unifiedMessaging.sendMessage(message);
                 }
               })
               .catch(error => {
@@ -1095,8 +1048,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
                         { componentName: 'WorkCenter' }
                     ).then(workCenterModule => {
-                        if (state.managers.workCenter.instance) {
-                            state.managers.workCenter.instance.getState().currentPrompt = entry.prompt;
+                        if (state.workCenterManager) {
+                            state.workCenterManager.getState().currentPrompt = entry.prompt;
                             render();
                         }
                     });
@@ -1106,20 +1059,15 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Initialize component with catch-up messaging
             initializeComponent('history', { manager: historyManager, element: historyElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in history logic
+                // Process any pending messages for history
                 for (const message of pendingMessages) {
                   console.log(`[History] Processing pending message:`, message);
-                  // History component handles its own message processing
-                  if (message.type === 'navigation') {
-                    // Handle navigation to history view
-                    state.view = 'history';
-                    render();
-                  }
+                  await unifiedMessaging.sendMessage(message);
                 }
               })
               .catch(error => {
                 console.warn('[History] Failed to initialize with catch-up messaging:', error);
-              });
+            });
 
             // Replace loading element with actual content
             loadingElement.replaceWith(historyElement);
@@ -1181,156 +1129,6 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     }
                 }
             });
-
-            // Listen for unified messaging system channels
-            const basicAppChannel = new BroadcastChannel('basic-app');
-            basicAppChannel.addEventListener("message", (event) => {
-                const message = event.data;
-                console.log('[BasicApp] Received message:', message);
-
-                if (message.type === 'content-view') {
-                    // Handle content for viewer
-                    if (message.data?.text || message.data?.content) {
-                        const content = message.data.text || message.data.content;
-                        state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                        state.view = 'markdown-viewer';
-                        setViewHash('markdown-viewer');
-                        persistMarkdown();
-                        render();
-                        showStatusMessage("Content loaded in viewer");
-                    }
-                } else if (message.type === 'content-attach') {
-                    // Handle content attachment for work center
-                    handleWorkCenterAttachment(message, state, setViewHash, render, showStatusMessage);
-                } else if (message.type === 'navigation') {
-                    // Handle navigation messages
-                    if (message.destination === 'settings') {
-                        state.view = 'settings';
-                        setViewHash('settings');
-                        render();
-                    } else if (message.destination === 'history') {
-                        state.view = 'history';
-                        setViewHash('history');
-                        render();
-                    }
-                }
-            });
-
-            // Listen for main app navigation messages
-            const mainAppChannel = new BroadcastChannel('main-app');
-            mainAppChannel.addEventListener("message", (event) => {
-                const message = event.data;
-                console.log('[MainApp] Received message:', message);
-
-                if (message.type === 'navigation') {
-                    if (message.destination === 'settings') {
-                        state.view = 'settings';
-                        setViewHash('settings');
-                        render();
-                    } else if (message.destination === 'history') {
-                        state.view = 'history';
-                        setViewHash('history');
-                        render();
-                    }
-                }
-            });
-
-            // Listen for file explorer messages
-            const fileExplorerChannel = new BroadcastChannel('file-explorer');
-            fileExplorerChannel.addEventListener("message", (event) => {
-                const message = event.data;
-                console.log('[FileExplorer] Received message:', message);
-
-                if (message.type === 'content-explorer') {
-                    // Handle explorer operations
-                    if (state.view !== 'file-explorer') {
-                        state.view = 'file-explorer';
-                        setViewHash('file-explorer');
-                        render();
-                    }
-
-                    // Process explorer action
-                    setTimeout(async () => {
-                        try {
-                            const action = message.data?.action || 'save';
-                            const path = message.data?.path || message.data?.into || '/';
-
-                            if (action === 'save' && (message.data?.file || message.data?.text || message.data?.content)) {
-                                // Save content to explorer
-                                let fileToSave: File | null = null;
-
-                                if (message.data.file instanceof File) {
-                                    fileToSave = message.data.file;
-                                } else if (message.data.blob instanceof Blob) {
-                                    const filename = message.data.filename || `file-${Date.now()}`;
-                                    fileToSave = new File([message.data.blob], filename, { type: message.data.blob.type });
-                                } else if (message.data.text || message.data.content) {
-                                    const content = message.data.text || message.data.content;
-                                    const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                                    const filename = message.data.filename || `content-${Date.now()}.txt`;
-                                    fileToSave = new File([textContent], filename, { type: 'text/plain' });
-                                }
-
-                                if (fileToSave && state.components.explorer.element) {
-                                    // Navigate to target path first
-                                    if (path && path !== state.components.explorer.element.path) {
-                                        state.components.explorer.element.path = path;
-                                    }
-                                    showStatusMessage(`Saved ${fileToSave.name} to Explorer`);
-                                }
-                            } else if (action === 'view' && message.data?.path) {
-                                // Navigate to path for viewing
-                                if (state.components.explorer.element && path) {
-                                    state.components.explorer.element.path = path;
-                                    showStatusMessage(`Opened Explorer at ${path}`);
-                                }
-                            }
-                        } catch (error) {
-                            console.warn('[FileExplorer] Failed to handle message:', error);
-                            showStatusMessage("Failed to perform Explorer action");
-                        }
-                    }, 100);
-                }
-            });
-
-            // Listen for print viewer messages
-            const printViewerChannel = new BroadcastChannel('print-viewer');
-            printViewerChannel.addEventListener("message", (event) => {
-                const message = event.data;
-                console.log('[PrintViewer] Received message:', message);
-
-                if (message.type === 'content-print') {
-                    // Handle printable content
-                    if (message.data?.text || message.data?.content) {
-                        const content = message.data.text || message.data.content;
-                        const printableContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-
-                        // Open print dialog
-                        const printWindow = window.open('', '_blank', 'width=800,height=600');
-                        if (printWindow) {
-                            printWindow.document.write(`
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <title>Print - CrossWord</title>
-                                    <style>
-                                        body { font-family: system-ui, -apple-system, sans-serif; margin: 2rem; line-height: 1.6; }
-                                        pre { white-space: pre-wrap; word-wrap: break-word; }
-                                        @media print { body { margin: 1rem; } }
-                                    </style>
-                                </head>
-                                <body>
-                                    <pre>${printableContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                                </body>
-                                </html>
-                            `);
-                            printWindow.document.close();
-                            printWindow.print();
-                        }
-                    }
-                }
-            });
-
         } catch (error) {
             console.error('[Broadcast] Failed to initialize broadcast listeners:', error);
         }
@@ -1457,7 +1255,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         }
     };
 
-    const render = async () => {
+    const render = () => {
         // Update toolbar for current view
         const newToolbar = renderToolbar();
         toolbar.replaceWith(newToolbar);
@@ -1466,166 +1264,98 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         // Re-attach event listeners
         attachToolbarListeners();
 
-        // Update hash to match current view
-        setViewHash(state.view);
+            // Update hash to match current view
+            setViewHash(state.view);
 
         content.replaceChildren();
 
-        // ============================================================================
-        // VIEW RENDERING MAP - Optimized with switch/case and unified error handling
-        // ============================================================================
+        if (state.view === "settings") {
+            // Lazy load settings view
+            content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Settings...</span></div>';
 
-        // Common error handler for component loading failures
-        const handleComponentError = (componentName: string, error: any) => {
-            console.error(`Failed to load ${componentName}:`, error);
-            content.innerHTML = `<div class="component-error"><h3>Failed to load ${componentName}</h3><p>Please try refreshing the page.</p></div>`;
-            renderStatus();
-        };
-
-        // Common success handler for component rendering
-        const handleComponentSuccess = (element: HTMLElement) => {
-            content.append(element);
-            renderStatus();
-        };
-
-        // View rendering configuration map
-        const viewRenderers: Record<string, () => Promise<HTMLElement> | void> = {
-            'settings': async () => {
-                content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Settings...</span></div>';
-
-                const settingsModule = await loadComponent('settings',
-                    () => import('./settings/Settings'),
-                    { componentName: 'Settings', cssPath: './Settings.scss' }
-                );
-
+            getCachedComponent(
+                'settings',
+                () => import('./settings/Settings'),
+                { componentName: 'Settings', cssPath: './Settings.scss' }
+            ).then(settingsModule => {
                 const settingsEl = settingsModule.component.createSettingsView({
                     isExtension: isLikelyExtension(),
                     onTheme: (t) => applyTheme(root, t),
                 });
 
                 // Initialize component with catch-up messaging
-                try {
-                    const pendingMessages = await initializeComponent('settings', { element: settingsEl });
-                    // Process any pending messages directly in settings logic
+                initializeComponent('settings', { element: settingsEl })
+                  .then(async (pendingMessages) => {
+                    // Process any pending messages for settings
                     for (const message of pendingMessages) {
-                        console.log(`[Settings] Processing pending message:`, message);
-                        // Settings component handles its own message processing
-                        if (message.type === 'navigation') {
-                            // Handle navigation to settings view
-                            state.view = 'settings';
-                            render();
-                        }
+                      console.log(`[Settings] Processing pending message:`, message);
+                      await unifiedMessaging.sendMessage(message);
                     }
-                } catch (error) {
+                  })
+                  .catch(error => {
                     console.warn('[Settings] Failed to initialize with catch-up messaging:', error);
-                }
+                  });
 
                 content.innerHTML = '';
-                return settingsEl;
-            },
+                content.append(settingsEl);
+                renderStatus();
+            }).catch(error => {
+                console.error('Failed to load settings:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load Settings</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
+            });
+            return;
+        }
 
-            'file-explorer': async () => {
-                content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading File Explorer...</span></div>';
+        if (state.view === "history") {
+            renderHistoryView().then(historyElement => {
+                content.append(historyElement);
+                renderStatus();
+            }).catch(error => {
+                console.error('Failed to load history view:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load History View</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
+            });
+            return;
+        }
 
-                await loadComponent('file-explorer', () => import('./explorer'), { componentName: 'FileManager' });
+        if (state.view === "markdown-viewer") {
+            renderMarkdownViewer().then(viewerElement => {
+                content.append(viewerElement);
+                renderStatus();
+            }).catch(error => {
+                console.error('Failed to load markdown viewer:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load Markdown Viewer</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
+            });
+            return;
+        }
 
-                const explorerEl = document.createElement('ui-file-manager') as FileManager & HTMLElement;
+        if (state.view === "markdown-editor") {
+            renderMarkdownEditor().then(editorElement => {
+                content.append(editorElement);
+                renderStatus();
 
-                // Set up event listeners (extracted from original code)
-                explorerEl.addEventListener('open-item', async (e: any) => {
-                    const { item } = e.detail;
-                    if (item?.kind === 'file' && item?.file) {
-                        await unifiedMessaging.sendMessage({
-                            id: crypto.randomUUID(),
-                            type: 'content-share',
-                            source: 'basic-explorer',
-                            destination: 'basic-workcenter',
-                            contentType: 'file',
-                            data: { file: item.file, filename: item.name, path: explorerEl.path },
-                            metadata: { title: item.name, timestamp: Date.now(), source: 'file-explorer' }
-                        });
-                    }
-                });
+            }).catch(error => {
+                console.error('Failed to load markdown editor:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load Markdown Editor</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
 
-                explorerEl.addEventListener('open', async (e: any) => {
-                    const { item } = e.detail;
-                    if (item?.kind === 'file' && item?.file) {
-                        const isMarkdown = fileHandler.isMarkdownFile(item.file);
-                        const destination = isMarkdown ? 'basic-viewer' : 'basic-workcenter';
-                        await unifiedMessaging.sendMessage({
-                            id: crypto.randomUUID(),
-                            type: 'content-share',
-                            source: 'basic-explorer',
-                            destination,
-                            contentType: isMarkdown ? 'markdown' : 'file',
-                            data: { file: item.file, filename: item.name, path: explorerEl.path },
-                            metadata: { title: item.name, timestamp: Date.now(), source: 'file-explorer' }
-                        });
-                    }
-                });
+            });
+            return;
+        }
 
-                explorerEl.addEventListener('context-action', async (e: any) => {
-                    const { action, item } = e.detail;
-                    if (action === 'attach-workcenter' && item?.kind === 'file' && item?.file) {
-                        await unifiedMessaging.sendMessage({
-                            id: crypto.randomUUID(),
-                            type: 'content-share',
-                            source: 'basic-explorer',
-                            destination: 'basic-workcenter',
-                            contentType: 'file',
-                            data: { file: item.file, filename: item.name, path: explorerEl.path },
-                            metadata: { title: `Attach ${item.name} to Work Center`, timestamp: Date.now(), source: 'file-explorer' }
-                        });
-                    } else if (action === 'view' && item?.kind === 'file' && item?.file) {
-                        const isMarkdown = fileHandler.isMarkdownFile(item.file);
-                        const destination = isMarkdown ? 'basic-viewer' : 'basic-workcenter';
-                        await unifiedMessaging.sendMessage({
-                            id: crypto.randomUUID(),
-                            type: 'content-share',
-                            source: 'basic-explorer',
-                            destination,
-                            contentType: isMarkdown ? 'markdown' : 'file',
-                            data: { file: item.file, filename: item.name, path: explorerEl.path },
-                            metadata: { title: `View ${item.name}`, timestamp: Date.now(), source: 'file-explorer' }
-                        });
-                    }
-                });
+        if (state.view === "rich-editor") {
+            renderRichEditor().then(editorElement => {
+                content.append(editorElement);
+                renderStatus();
 
-                // Store reference and initialize with catch-up messaging
-                state.components.explorer.element = explorerEl;
-                try {
-                    const pendingMessages = await initializeComponent('basic-explorer', { element: explorerEl, path: explorerEl.path });
-                    for (const message of pendingMessages) {
-                        console.log(`[Explorer] Processing pending message:`, message);
-                        await unifiedMessaging.sendMessage(message);
-                    }
-                } catch (error) {
-                    console.warn('[Explorer] Failed to initialize with catch-up messaging:', error);
-                }
+            }).catch(error => {
+                console.error('Failed to load rich editor:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load Rich Editor</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
 
-                content.innerHTML = '';
-                return explorerEl;
-            },
-
-            'history': () => renderHistoryView(),
-            'markdown-viewer': () => renderMarkdownViewer(),
-            'markdown-editor': () => renderMarkdownEditor(),
-            'rich-editor': () => renderRichEditor()
-        };
-
-        // Get the renderer for current view
-        const renderer = viewRenderers[state.view];
-
-        if (renderer) {
-            try {
-                const result = await renderer();
-                if (result) {
-                    handleComponentSuccess(result);
-                }
-            } catch (error) {
-                const componentName = state.view.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                handleComponentError(componentName, error);
-            }
+            });
             return;
         }
 
@@ -1679,6 +1409,151 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             return;
         }
 
+        if (state.view === "file-explorer") {
+            // Lazy load file explorer
+            content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading File Explorer...</span></div>';
+
+            getCachedComponent(
+                'file-explorer',
+                () => import('./explorer'),
+                { componentName: 'FileManager' }
+            ).then(() => {
+                try {
+                    const explorerEl = document.createElement('ui-file-manager') as FileManager & HTMLElement;
+
+                    // Listen for file selection events from the explorer
+                    explorerEl.addEventListener('open-item', async (e: any) => {
+                        const { item } = e.detail;
+                        if (item?.kind === 'file' && item?.file) {
+                            // Use unified messaging to handle file opening
+                            await unifiedMessaging.sendMessage({
+                                id: crypto.randomUUID(),
+                                type: 'content-share',
+                                source: 'basic-explorer',
+                                destination: 'basic-workcenter', // Default to workcenter for attachment
+                                contentType: 'file',
+                                data: {
+                                    file: item.file,
+                                    filename: item.name,
+                                    path: explorerEl.path
+                                },
+                                metadata: {
+                                    title: item.name,
+                                    timestamp: Date.now(),
+                                    source: 'file-explorer'
+                                }
+                            });
+                        }
+                    });
+
+                    // Listen for open events (double-click on files)
+                    explorerEl.addEventListener('open', async (e: any) => {
+                        const { item } = e.detail;
+                        if (item?.kind === 'file' && item?.file) {
+                            // Determine destination based on file type
+                            const isMarkdown = fileHandler.isMarkdownFile(item.file);
+                            const destination = isMarkdown ? 'basic-viewer' : 'basic-workcenter';
+
+                            await unifiedMessaging.sendMessage({
+                                id: crypto.randomUUID(),
+                                type: 'content-share',
+                                source: 'basic-explorer',
+                                destination,
+                                contentType: isMarkdown ? 'markdown' : 'file',
+                                data: {
+                                    file: item.file,
+                                    filename: item.name,
+                                    path: explorerEl.path
+                                },
+                                metadata: {
+                                    title: item.name,
+                                    timestamp: Date.now(),
+                                    source: 'file-explorer'
+                                }
+                            });
+                        }
+                    });
+
+                    // Listen for context menu actions
+                    explorerEl.addEventListener('context-action', async (e: any) => {
+                        const { action, item } = e.detail;
+
+                        if (action === 'attach-workcenter' && item?.kind === 'file' && item?.file) {
+                            await unifiedMessaging.sendMessage({
+                                id: crypto.randomUUID(),
+                                type: 'content-share',
+                                source: 'basic-explorer',
+                                destination: 'basic-workcenter',
+                                contentType: 'file',
+                                data: {
+                                    file: item.file,
+                                    filename: item.name,
+                                    path: explorerEl.path
+                                },
+                                metadata: {
+                                    title: `Attach ${item.name} to Work Center`,
+                                    timestamp: Date.now(),
+                                    source: 'file-explorer'
+                                }
+                            });
+                        } else if (action === 'view' && item?.kind === 'file' && item?.file) {
+                            const isMarkdown = fileHandler.isMarkdownFile(item.file);
+                            const destination = isMarkdown ? 'basic-viewer' : 'basic-workcenter';
+
+                            await unifiedMessaging.sendMessage({
+                                id: crypto.randomUUID(),
+                                type: 'content-share',
+                                source: 'basic-explorer',
+                                destination,
+                                contentType: isMarkdown ? 'markdown' : 'file',
+                                data: {
+                                    file: item.file,
+                                    filename: item.name,
+                                    path: explorerEl.path
+                                },
+                                metadata: {
+                                    title: `View ${item.name}`,
+                                    timestamp: Date.now(),
+                                    source: 'file-explorer'
+                                }
+                            });
+                        }
+                    });
+
+                    // Store reference for unified messaging
+                    state.explorerElement = explorerEl;
+
+                    // Initialize component with catch-up messaging
+                    initializeComponent('basic-explorer', { element: explorerEl, path: explorerEl.path })
+                      .then(async (pendingMessages) => {
+                        // Process any pending messages
+                        for (const message of pendingMessages) {
+                          console.log(`[Explorer] Processing pending message:`, message);
+                          await unifiedMessaging.sendMessage(message);
+                        }
+                      })
+                      .catch(error => {
+                        console.warn('[Explorer] Failed to initialize with catch-up messaging:', error);
+                    });
+
+                    content.innerHTML = '';
+                    content.append(explorerEl);
+                    renderStatus();
+                } catch (error) {
+                    console.error('Failed to create file explorer:', error);
+                    content.innerHTML = '<div class="component-error"><h3>Failed to create File Explorer</h3><p>Please try refreshing the page.</p></div>';
+                    renderStatus();
+
+                }
+            }).catch(error => {
+                console.error('Failed to load file explorer:', error);
+                content.innerHTML = '<div class="component-error"><h3>Failed to load File Explorer</h3><p>Please try refreshing the page.</p></div>';
+                renderStatus();
+
+            });
+            return;
+        }
+
         if (state.view === "workcenter") {
             // Lazy load work center
             content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Work Center...</span></div>';
@@ -1689,8 +1564,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 { componentName: 'WorkCenter' }
             ).then(workCenterModule => {
                 // Create work center manager if not already created
-                if (!state.managers.workCenter.instance) {
-                    state.managers.workCenter.instance = new workCenterModule.component({
+                if (!state.workCenterManager) {
+                    state.workCenterManager = new workCenterModule.component({
                         state: state,
                         history: state.history,
                         onFilesChanged: () => {
@@ -1710,29 +1585,21 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     });
                 }
 
-                // Initialize component with catch-up messaging (only once per manager)
-                if (!state.managers.workCenter.initialized) {
-                  state.managers.workCenter.initialized = true;
-                  initializeComponent('basic-workcenter', {
-                    manager: state.managers.workCenter.instance,
-                    state: state.managers.workCenter.instance.getState()
-                  }).then(async (pendingMessages) => {
-                    // Process any pending messages directly in work center logic
-                    // Use skipRender to prevent loops during initialization
-                    for (const message of pendingMessages) {
-                      console.log(`[WorkCenter] Processing pending message:`, message);
-                      // Process the attachment with skipRender=true to prevent loops
-                      await handleWorkCenterAttachment(message, state, setViewHash, render, showStatusMessage, true);
-                    }
-                  }).catch(error => {
-                    console.warn('[WorkCenter] Failed to initialize with catch-up messaging:', error);
-                    showStatusMessage("Failed to initialize work center");
-                    // Reset initialization flag on error so it can retry
-                    state.managers.workCenter.initialized = false;
-                  });
-                }
+                // Initialize component with catch-up messaging
+                initializeComponent('basic-workcenter', {
+                  manager: state.workCenterManager,
+                  state: state.workCenterManager.getState()
+                }).then(async (pendingMessages) => {
+                  // Process any pending messages for work center
+                  for (const message of pendingMessages) {
+                    console.log(`[WorkCenter] Processing pending message:`, message);
+                    await unifiedMessaging.sendMessage(message);
+                  }
+                }).catch(error => {
+                  console.warn('[WorkCenter] Failed to initialize with catch-up messaging:', error);
+                });
 
-                const workCenterElement = state.managers.workCenter.instance.renderWorkCenterView();
+                const workCenterElement = state.workCenterManager.renderWorkCenterView();
                 content.innerHTML = '';
                 content.append(workCenterElement);
                 renderStatus();
@@ -1820,7 +1687,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             if (action === "process-content") {
                 // Use unified messaging to send to work center for processing
-                if (state.managers.workCenter.instance) {
+                if (state.workCenterManager) {
                     await unifiedMessaging.sendMessage({
                         id: crypto.randomUUID(),
                         type: 'content-process',
@@ -1837,8 +1704,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             if (action === "save-to-explorer") {
                 // Save work center results to explorer
-                if (state.managers.workCenter.instance) {
-                    const workCenterState = state.managers.workCenter.instance.getState();
+                if (state.workCenterManager) {
+                    const workCenterState = state.workCenterManager.getState();
                     const results = workCenterState.results || [];
 
                     if (results.length > 0) {

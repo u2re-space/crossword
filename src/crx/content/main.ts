@@ -2,6 +2,7 @@ import { showToast, initOverlay } from "@rs-frontend/shared/overlay";
 import { initToastReceiver } from "@rs-frontend/shared/Toast";
 import { initClipboardReceiver } from "@rs-frontend/shared/Clipboard";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
+import "./rect-selector";
 
 // Initialize overlay and broadcast receivers for service worker communication
 initOverlay();
@@ -18,6 +19,81 @@ if (typeof window !== "undefined") {
 
 // Import message handlers (auto-initialize on load)
 import "./copy"; // handles COPY_HACK messages
+
+// Handle CRX-Snip rectangle selection and result delivery
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === 'crx-snip-select-rect') {
+        // Start rectangle selection
+        (async () => {
+            try {
+                const rect = await (window as any).crxSnipSelectRect?.();
+                sendResponse({ rect });
+            } catch (error) {
+                console.error('[CRX-SNIP] Rectangle selection failed:', error);
+                sendResponse({ rect: null, error: error instanceof Error ? error.message : String(error) });
+            }
+        })();
+        return true; // Keep message channel open for async response
+    }
+});
+
+// Listen for result delivery from pipeline
+const resultBroadcastChannel = new BroadcastChannel('rs-content-script');
+resultBroadcastChannel.onmessage = (event) => {
+    const message = event.data;
+
+    if (message?.type === 'crx-result-delivered') {
+        const { result, destination, timestamp } = message;
+
+        console.log('[ContentScript] Received result delivery:', {
+            resultId: result.id,
+            type: result.type,
+            source: result.source,
+            destination,
+            timestamp
+        });
+
+        // Handle result based on type and content
+        if (result.type === 'processed' && typeof result.content === 'string') {
+            // Could inject results into page, show overlay, etc.
+            // For now, just log the delivery
+            console.log('[ContentScript] Processed result content:', result.content.substring(0, 200) + '...');
+
+            // Optionally show a page-level notification
+            showPageNotification(`CrossWord: ${result.content.substring(0, 50)}...`, 'success');
+        }
+    }
+};
+
+// Simple page notification function
+function showPageNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
+    const notification = document.createElement('div');
+    Object.assign(notification.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6',
+        color: 'white',
+        padding: '12px 16px',
+        borderRadius: '6px',
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '14px',
+        zIndex: '10000',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        maxWidth: '300px',
+        wordWrap: 'break-word'
+    });
+
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
 import "./snip"; // handles START_SNIP messages
 
 // coordinate and element tracking (similar to CrossHelp state.ts)

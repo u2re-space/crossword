@@ -198,4 +198,46 @@ export class WorkCenterActions {
         state.lastRawResult = null;
         this.results.clearResults();
     }
+
+    async saveResultsToExplorer(state: WorkCenterState): Promise<void> {
+        if (!state.lastRawResult) {
+            this.deps.showMessage('No results to save');
+            return;
+        }
+
+        try {
+            // Import the unified messaging system
+            const { unifiedMessaging } = await import('../../shared/UnifiedMessaging');
+
+            // Create the content to save
+            const resultContent = typeof state.lastRawResult === 'string'
+                ? state.lastRawResult
+                : JSON.stringify(state.lastRawResult, null, 2);
+
+            // Send to explorer for saving
+            await unifiedMessaging.sendMessage({
+                id: crypto.randomUUID(),
+                type: 'content-save',
+                source: 'workcenter',
+                destination: 'basic-explorer',
+                data: {
+                    action: 'save',
+                    text: resultContent,
+                    filename: `workcenter-result-${Date.now()}.${state.outputFormat === 'json' ? 'json' : 'txt'}`,
+                    path: '/workcenter-results/'
+                },
+                metadata: {
+                    title: 'Work Center Result',
+                    timestamp: Date.now(),
+                    source: 'workcenter',
+                    format: state.outputFormat
+                }
+            });
+
+            this.deps.showMessage('Results saved to Explorer');
+        } catch (error) {
+            console.error('Failed to save results to explorer:', error);
+            this.deps.showMessage('Failed to save results to Explorer');
+        }
+    }
 }

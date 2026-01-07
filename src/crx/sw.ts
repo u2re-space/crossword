@@ -51,6 +51,12 @@ const TOAST_CHANNEL = "rs-toast";
 const CLIPBOARD_CHANNEL = "rs-clipboard";
 const AI_RECOGNITION_CHANNEL = "rs-ai-recognition";
 
+// CRX Result Pipeline Channels
+const RESULT_PIPELINE_CHANNEL = "rs-result-pipeline";
+const CONTENT_SCRIPT_CHANNEL = "rs-content-script";
+const POPUP_CHANNEL = "rs-popup";
+const WORKCENTER_CHANNEL = "rs-workcenter";
+
 // Broadcast helper for extension contexts
 const broadcast = (channel: string, message: unknown): void => {
     try {
@@ -77,6 +83,503 @@ const requestClipboardCopy = (data: unknown, showFeedback = true): void => {
         data,
         options: { showFeedback }
     });
+};
+
+// ============================================================================
+// CRX RESULT PIPELINE SYSTEM
+//
+// This system provides a structured way to handle results from CRX operations,
+// routing them to appropriate destinations (clipboard, content scripts, popup, workcenter, notifications)
+//
+// USAGE EXAMPLES:
+//
+// 1. Send text result to clipboard and workcenter:
+//    const resultId = await sendToClipboard("Processed text");
+//    const resultId = await sendToWorkCenter("Processed text");
+//
+// 2. Send image result to multiple destinations:
+//    const result: CrxResult = {
+//        id: crypto.randomUUID(),
+//        type: 'image',
+//        content: imageData,
+//        source: 'crx-snip',
+//        timestamp: Date.now()
+//    };
+//    await crxResultPipeline.enqueueResult(result, [
+//        { type: 'clipboard' },
+//        { type: 'workcenter' },
+//        { type: 'notification' }
+//    ]);
+//
+// 3. Query pipeline status:
+//    chrome.runtime.sendMessage({ type: 'crx-pipeline-status' }, response => {
+//        console.log('Pipeline status:', response.status);
+//    });
+//
+// 4. Get pending results:
+//    chrome.runtime.sendMessage({ type: 'crx-pipeline-pending' }, response => {
+//        console.log('Pending results:', response.pending);
+//    });
+//
+// ============================================================================
+
+// Result Pipeline Types
+interface CrxResult {
+    id: string;
+    type: 'text' | 'image' | 'markdown' | 'processed';
+    content: string | ArrayBuffer;
+    source: 'crx-snip' | 'content-script' | 'ai-processing';
+    timestamp: number;
+    metadata?: Record<string, any>;
+}
+
+interface PendingResult {
+    id: string;
+    result: CrxResult;
+    destinations: CrxDestination[];
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    attempts: number;
+    createdAt: number;
+    completedAt?: number;
+    error?: string;
+}
+
+interface CrxDestination {
+    type: 'clipboard' | 'content-script' | 'popup' | 'workcenter' | 'notification';
+    tabId?: number;
+    frameId?: number;
+    options?: Record<string, any>;
+}
+
+// Result Pipeline Manager
+class CrxResultPipeline {
+    private resultQueue: PendingResult[] = [];
+    private maxQueueSize = 50;
+    private maxRetries = 3;
+    private processingInterval: number | null = null;
+
+    constructor() {
+        this.startProcessing();
+    }
+
+    // Add result to pipeline
+    async enqueueResult(
+        result: CrxResult,
+        destinations: CrxDestination[]
+    ): Promise<string> {
+        const pendingResult: PendingResult = {
+            id: crypto.randomUUID(),
+            result,
+            destinations,
+            status: 'pending',
+            attempts: 0,
+            createdAt: Date.now()
+        };
+
+        this.resultQueue.push(pendingResult);
+
+        // Keep queue size manageable
+        if (this.resultQueue.length > this.maxQueueSize) {
+            this.resultQueue.shift(); // Remove oldest
+        }
+
+        console.log(`[CRX-Pipeline] Enqueued result ${pendingResult.id} for ${destinations.length} destinations`);
+
+        return pendingResult.id;
+    }
+
+    // Get pending results for a specific destination
+    getPendingForDestination(destinationType: string): PendingResult[] {
+        return this.resultQueue.filter(r =>
+            r.status === 'pending' &&
+            r.destinations.some(d => d.type === destinationType)
+        );
+    }
+
+    // Process pending results
+    private async processPendingResults(): Promise<void> {
+        const pendingResults = this.resultQueue.filter(r => r.status === 'pending');
+
+        for (const pending of pendingResults) {
+            try {
+                await this.processResult(pending);
+            } catch (error) {
+                console.warn(`[CRX-Pipeline] Failed to process result ${pending.id}:`, error);
+                pending.status = 'failed';
+                pending.error = error instanceof Error ? error.message : String(error);
+            }
+        }
+    }
+
+    // Process a single result to all its destinations
+    private async processResult(pending: PendingResult): Promise<void> {
+        pending.status = 'processing';
+        pending.attempts++;
+
+        const successDestinations: CrxDestination[] = [];
+
+        for (const destination of pending.destinations) {
+            try {
+                await this.deliverToDestination(pending.result, destination);
+                successDestinations.push(destination);
+            } catch (error) {
+                console.warn(`[CRX-Pipeline] Failed to deliver to ${destination.type}:`, error);
+            }
+        }
+
+        if (successDestinations.length > 0) {
+            pending.status = 'completed';
+            pending.completedAt = Date.now();
+            console.log(`[CRX-Pipeline] Result ${pending.id} delivered to ${successDestinations.length} destinations`);
+        } else if (pending.attempts >= this.maxRetries) {
+            pending.status = 'failed';
+            pending.error = 'All destinations failed';
+        } else {
+            // Reset to pending for retry
+            pending.status = 'pending';
+        }
+    }
+
+    // Deliver result to specific destination
+    private async deliverToDestination(result: CrxResult, destination: CrxDestination): Promise<void> {
+        switch (destination.type) {
+            case 'clipboard':
+                await this.deliverToClipboard(result, destination);
+                break;
+            case 'content-script':
+                await this.deliverToContentScript(result, destination);
+                break;
+            case 'popup':
+                await this.deliverToPopup(result, destination);
+                break;
+            case 'workcenter':
+                await this.deliverToWorkCenter(result, destination);
+                break;
+            case 'notification':
+                await this.deliverToNotification(result, destination);
+                break;
+            default:
+                throw new Error(`Unknown destination type: ${destination.type}`);
+        }
+    }
+
+    // Clipboard delivery
+    private async deliverToClipboard(result: CrxResult, destination: CrxDestination): Promise<void> {
+        let contentToCopy = '';
+
+        if (typeof result.content === 'string') {
+            contentToCopy = result.content;
+        } else if (result.content instanceof ArrayBuffer) {
+            // For images, we might want to copy as data URL or just acknowledge
+            contentToCopy = `[Image processed - ${result.content.byteLength} bytes]`;
+        }
+
+        if (contentToCopy) {
+            // Use the existing clipboard system
+            requestClipboardCopy(contentToCopy, destination.options?.showFeedback !== false);
+
+            console.log(`[CRX-Pipeline] Copied ${result.type} result to clipboard`);
+        }
+    }
+
+    // Content script delivery
+    private async deliverToContentScript(result: CrxResult, destination: CrxDestination): Promise<void> {
+        const message = {
+            type: 'crx-result-delivered',
+            result: result,
+            destination: destination.type,
+            timestamp: Date.now()
+        };
+
+        if (destination.tabId) {
+            // Send to specific tab
+            await chrome.tabs.sendMessage(destination.tabId, message, {
+                frameId: destination.frameId
+            });
+        } else {
+            // Broadcast to all content scripts
+            broadcast(CONTENT_SCRIPT_CHANNEL, message);
+        }
+
+        console.log(`[CRX-Pipeline] Delivered result to content script (tab: ${destination.tabId || 'all'})`);
+    }
+
+    // Popup delivery
+    private async deliverToPopup(result: CrxResult, destination: CrxDestination): Promise<void> {
+        broadcast(POPUP_CHANNEL, {
+            type: 'crx-result-delivered',
+            result: result,
+            destination: destination.type,
+            timestamp: Date.now()
+        });
+
+        console.log(`[CRX-Pipeline] Delivered result to popup`);
+    }
+
+    // WorkCenter delivery (via unified messaging)
+    private async deliverToWorkCenter(result: CrxResult, destination: CrxDestination): Promise<void> {
+        try {
+            // Import unified messaging dynamically
+            const { unifiedMessaging } = await import('../frontend/shared/UnifiedMessaging');
+
+            await unifiedMessaging.sendMessage({
+                id: result.id,
+                type: 'content-share',
+                source: 'crx-snip',
+                destination: 'basic-workcenter',
+                contentType: result.type,
+                data: {
+                    text: typeof result.content === 'string' ? result.content : undefined,
+                    processed: true,
+                    source: result.source,
+                    metadata: result.metadata
+                },
+                metadata: {
+                    title: `CRX-Snip ${result.type} Result`,
+                    timestamp: result.timestamp,
+                    source: result.source
+                }
+            });
+
+            console.log(`[CRX-Pipeline] Delivered result to WorkCenter via unified messaging`);
+        } catch (error) {
+            console.warn('[CRX-Pipeline] Failed to deliver to WorkCenter:', error);
+            throw error;
+        }
+    }
+
+    // Notification delivery
+    private async deliverToNotification(result: CrxResult, destination: CrxDestination): Promise<void> {
+        const title = `CrossWord ${result.source}`;
+        let message = '';
+
+        if (typeof result.content === 'string') {
+            message = result.content.length > 100
+                ? result.content.substring(0, 100) + '...'
+                : result.content;
+        } else {
+            message = `${result.type} processed successfully`;
+        }
+
+        await chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon.png',
+            title: title,
+            message: message
+        });
+
+        console.log(`[CRX-Pipeline] Showed notification for result`);
+    }
+
+    // Start processing interval
+    private startProcessing(): void {
+        if (this.processingInterval) return;
+
+        this.processingInterval = window.setInterval(() => {
+            this.processPendingResults();
+        }, 1000); // Process every second
+    }
+
+    // Stop processing
+    destroy(): void {
+        if (this.processingInterval) {
+            clearInterval(this.processingInterval);
+            this.processingInterval = null;
+        }
+        this.resultQueue = [];
+    }
+
+    // Get pipeline status
+    getStatus(): {
+        queueSize: number;
+        pendingCount: number;
+        processingCount: number;
+        completedCount: number;
+        failedCount: number;
+    } {
+        const counts = {
+            pending: 0,
+            processing: 0,
+            completed: 0,
+            failed: 0
+        };
+
+        this.resultQueue.forEach(r => {
+            counts[r.status]++;
+        });
+
+        return {
+            queueSize: this.resultQueue.length,
+            pendingCount: counts.pending,
+            processingCount: counts.processing,
+            completedCount: counts.completed,
+            failedCount: counts.failed
+        };
+    }
+}
+
+// Global pipeline instance
+const crxResultPipeline = new CrxResultPipeline();
+
+// Debug function to log pipeline status periodically
+const startPipelineDebugging = () => {
+    setInterval(() => {
+        const status = crxResultPipeline.getStatus();
+        if (status.queueSize > 0) {
+            console.log('[CRX-Pipeline] Status:', status);
+        }
+    }, 10000); // Log every 10 seconds if queue has items
+};
+
+// Start debugging
+startPipelineDebugging();
+
+// Cleanup on service worker termination
+self.addEventListener('beforeunload', () => {
+    crxResultPipeline.destroy();
+    console.log('[CRX-Pipeline] Service worker terminating, pipeline destroyed');
+});
+
+// Helper functions for common result operations
+const sendToClipboard = (content: string, showFeedback = true): Promise<string> => {
+    const result: CrxResult = {
+        id: crypto.randomUUID(),
+        type: 'text',
+        content: content,
+        source: 'crx-snip',
+        timestamp: Date.now()
+    };
+
+    return crxResultPipeline.enqueueResult(result, [{
+        type: 'clipboard',
+        options: { showFeedback }
+    }]);
+};
+
+const sendToWorkCenter = (content: string | CrxResult): Promise<string> => {
+    const result: CrxResult = typeof content === 'string' ? {
+        id: crypto.randomUUID(),
+        type: 'text',
+        content: content,
+        source: 'crx-snip',
+        timestamp: Date.now()
+    } : content;
+
+    return crxResultPipeline.enqueueResult(result, [{
+        type: 'workcenter'
+    }]);
+};
+
+const sendToContentScript = (result: CrxResult, tabId?: number): Promise<string> => {
+    return crxResultPipeline.enqueueResult(result, [{
+        type: 'content-script',
+        tabId: tabId
+    }]);
+};
+
+const showResultNotification = (result: CrxResult): Promise<string> => {
+    return crxResultPipeline.enqueueResult(result, [{
+        type: 'notification'
+    }]);
+};
+
+// Pipeline management functions
+const getPipelineStatus = () => {
+    return crxResultPipeline.getStatus();
+};
+
+const getPendingResults = (destinationType?: string) => {
+    if (destinationType) {
+        return crxResultPipeline.getPendingForDestination(destinationType);
+    }
+    return crxResultPipeline.resultQueue.filter(r => r.status === 'pending');
+};
+
+const clearCompletedResults = () => {
+    const completedResults = crxResultPipeline.resultQueue.filter(r => r.status === 'completed');
+    crxResultPipeline.resultQueue = crxResultPipeline.resultQueue.filter(r => r.status !== 'completed');
+    return completedResults.length;
+};
+
+// Process CRX-Snip with pipeline integration
+const processCrxSnipWithPipeline = async (
+    content: string | ArrayBuffer,
+    contentType: string = 'text',
+    additionalDestinations: CrxDestination[] = []
+): Promise<{ success: boolean; resultId?: string; error?: string }> => {
+    try {
+        const isImage = contentType === 'image' || content instanceof ArrayBuffer;
+        console.log('[CRX-SNIP] Processing', isImage ? 'image' : 'text', 'content with pipeline');
+
+        let processedContent: string | ArrayBuffer = content;
+        let finalContentType = contentType;
+
+        // If it's image data, process it for recognition
+        if (isImage && content instanceof ArrayBuffer) {
+            try {
+                console.log('[CRX-SNIP] Processing image for recognition...');
+                const blob = new Blob([content], { type: 'image/png' });
+                const recognitionResult = await recognizeImageData(blob);
+                processedContent = recognitionResult.text || '';
+                finalContentType = 'text';
+                console.log('[CRX-SNIP] Image recognition result:', processedContent.substring(0, 100) + '...');
+            } catch (recognitionError) {
+                console.warn('[CRX-SNIP] Image recognition failed:', recognitionError);
+                return { success: false, error: 'Image recognition failed' };
+            }
+        }
+
+        // Create AI processing input
+        const input: ActionInput = {
+            type: 'process',
+            content: processedContent,
+            contentType: finalContentType as any,
+            metadata: {
+                source: 'crx-snip',
+                timestamp: Date.now(),
+                background: true,
+                originalType: contentType
+            }
+        };
+
+        // Process through execution core
+        const result = await processChromeExtensionAction(input);
+
+        if (result.success && result.result) {
+            // Create result object
+            const crxResult: CrxResult = {
+                id: crypto.randomUUID(),
+                type: 'processed',
+                content: typeof result.result === 'string' ? result.result : String(result.result),
+                source: 'crx-snip',
+                timestamp: Date.now(),
+                metadata: {
+                    originalContentType: contentType,
+                    processingTime: Date.now() - input.metadata.timestamp
+                }
+            };
+
+            // Default destinations based on CRX-Snip rules
+            const destinations: CrxDestination[] = [
+                { type: 'clipboard', options: { showFeedback: true } },
+                { type: 'workcenter' },
+                { type: 'notification' }
+            ];
+
+            // Add any additional destinations
+            destinations.push(...additionalDestinations);
+
+            // Enqueue for pipeline processing
+            const resultId = await crxResultPipeline.enqueueResult(crxResult, destinations);
+
+            return { success: true, resultId };
+        } else {
+            return { success: false, error: result.error };
+        }
+    } catch (error) {
+        console.error('[CRX-SNIP] Pipeline processing error:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
 };
 
 // Note: Offscreen document management is handled in crx/service/api.ts
@@ -1019,9 +1522,497 @@ chrome.webNavigation?.onCompleted?.addListener?.((details) => {
     })().catch(console.warn.bind(console));
 });
 
+// Screen capture for CRX-SNIP image processing using chrome.tabCapture
+const captureScreenArea = async (options?: {
+    rect?: { x: number; y: number; width: number; height: number };
+    scale?: number;
+}): Promise<ArrayBuffer | null> => {
+    try {
+        console.log('[CRX-SNIP] Starting screen capture...', options);
+
+        // Get the active tab
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+
+        if (!activeTab?.id) {
+            throw new Error('No active tab found');
+        }
+
+        // Capture the visible tab area with optional rect and scale
+        const captureOptions: chrome.tabs.CaptureVisibleTabOptions = {
+            format: 'png',
+            quality: 100
+        };
+
+        // Add rect if provided (for partial screen capture)
+        if (options?.rect) {
+            captureOptions.rect = options.rect;
+        }
+
+        // Add scale if provided (default to 1 to avoid scaling issues)
+        if (options?.scale !== undefined) {
+            captureOptions.scale = options.scale;
+        } else {
+            // Default to scale: 1 to prevent scaling problems
+            captureOptions.scale = 1;
+        }
+
+        const screenshot = await chrome.tabs.captureVisibleTab(
+            activeTab.windowId,
+            captureOptions
+        );
+
+        // Convert base64 data URL to ArrayBuffer
+        const base64Data = screenshot.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const arrayBuffer = bytes.buffer;
+
+        console.log('[CRX-SNIP] Screen capture completed, size:', arrayBuffer.byteLength);
+        return arrayBuffer;
+
+    } catch (error) {
+        console.error('[CRX-SNIP] Screen capture failed:', error);
+
+        // If tab capture fails, try desktop capture as fallback
+        try {
+            console.log('[CRX-SNIP] Trying desktop capture as fallback...');
+
+            const streamId = await new Promise<string>((resolve, reject) => {
+                chrome.desktopCapture.chooseDesktopMedia(
+                    ['screen', 'window'],
+                    { frameRate: 1 }, // Lower frame rate for screenshot
+                    (streamId, options) => {
+                        if (streamId) {
+                            resolve(streamId);
+                        } else {
+                            reject(new Error('Desktop capture cancelled'));
+                        }
+                    }
+                );
+            });
+
+            // For desktop capture, we need an offscreen document to process the stream
+            const offscreenUrl = chrome.runtime.getURL('offscreen/capture.html');
+
+            // Create offscreen document if it doesn't exist
+            const existingContexts = await chrome.runtime.getContexts({
+                contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT]
+            });
+
+            if (existingContexts.length === 0) {
+                await chrome.offscreen.createDocument({
+                    url: offscreenUrl,
+                    reasons: [chrome.offscreen.Reason.USER_MEDIA],
+                    justification: 'Screen capture for CRX-Snip image processing'
+                });
+            }
+
+            // Send message to offscreen document to capture
+            const response = await chrome.runtime.sendMessage({
+                type: 'capture-desktop',
+                streamId: streamId
+            });
+
+            if (response?.success && response?.imageData) {
+                return response.imageData;
+            }
+
+            throw new Error('Offscreen capture failed');
+
+        } catch (fallbackError) {
+            console.error('[CRX-SNIP] Desktop capture fallback failed:', fallbackError);
+            return null;
+        }
+    }
+};
+
+// CRX-SNIP: Background processing without opening PWA
+const processCrxSnip = async (content: string | ArrayBuffer, contentType: string = 'text') => {
+    try {
+        const isImage = contentType === 'image' || content instanceof ArrayBuffer;
+        console.log('[CRX-SNIP] Processing', isImage ? 'image' : 'text', 'content in background');
+
+        let processedContent: string | ArrayBuffer = content;
+        let finalContentType = contentType;
+
+        // If it's image data (ArrayBuffer), we need to process it for recognition
+        if (isImage && content instanceof ArrayBuffer) {
+            try {
+                console.log('[CRX-SNIP] Processing image for recognition...');
+
+                // Convert ArrayBuffer to blob for processing
+                const blob = new Blob([content], { type: 'image/png' });
+
+                // Use the image recognition functionality
+                const recognitionResult = await recognizeImageData(blob);
+                processedContent = recognitionResult.text || '';
+                finalContentType = 'text'; // Recognition output is text
+
+                console.log('[CRX-SNIP] Image recognition result:', processedContent.substring(0, 100) + '...');
+            } catch (recognitionError) {
+                console.warn('[CRX-SNIP] Image recognition failed:', recognitionError);
+                return { success: false, error: 'Image recognition failed' };
+            }
+        }
+
+        // Create the processing input
+        const input: ActionInput = {
+            type: 'process',
+            content: processedContent,
+            contentType: finalContentType as any,
+            metadata: {
+                source: 'crx-snip',
+                timestamp: Date.now(),
+                background: true,
+                originalType: contentType // Keep track of original input type
+            }
+        };
+
+        // Process through execution core
+        const result = await processChromeExtensionAction(input);
+
+        if (result.success && result.result) {
+            // Write result to clipboard if enabled in settings
+            const settings = await loadSettings();
+            const writeToClipboard = settings?.processing?.writeToClipboard ?? true;
+
+            if (writeToClipboard && typeof result.result === 'string') {
+                try {
+                    await navigator.clipboard.writeText(result.result);
+                    console.log('[CRX-SNIP] Result written to clipboard');
+                } catch (clipboardError) {
+                    console.warn('[CRX-SNIP] Failed to write to clipboard:', clipboardError);
+                }
+            }
+
+            // Send to associated destination (workcenter) without opening PWA
+            // This uses the unified messaging system to attach content
+            try {
+                // Import the unified messaging system
+                const { unifiedMessaging } = await import('../frontend/shared/UnifiedMessaging');
+
+                await unifiedMessaging.sendMessage({
+                    id: crypto.randomUUID(),
+                    type: 'content-share',
+                    source: 'crx-snip',
+                    destination: 'basic-workcenter',
+                    contentType: 'text',
+                    data: {
+                        text: result.result,
+                        processed: true,
+                        source: 'crx-snip'
+                    },
+                    metadata: {
+                        title: 'CRX-Snip Result',
+                        timestamp: Date.now(),
+                        source: 'crx-snip'
+                    }
+                });
+
+                console.log('[CRX-SNIP] Result sent to workcenter');
+            } catch (messagingError) {
+                console.warn('[CRX-SNIP] Failed to send to workcenter:', messagingError);
+            }
+
+            return { success: true, result: result.result };
+        } else {
+            console.warn('[CRX-SNIP] Processing failed:', result.error);
+            return { success: false, error: result.error };
+        }
+    } catch (error) {
+        console.error('[CRX-SNIP] Background processing error:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+};
+
+// Context menu for CRX-SNIP processing
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+        id: "crx-snip-text",
+        title: "Process Text with CrossWord (CRX-Snip)",
+        contexts: ["selection"]
+    });
+
+    chrome.contextMenus.create({
+        id: "crx-snip-screen",
+        title: "Capture & Process Screen Area (CRX-Snip)",
+        contexts: ["page", "frame", "editable"]
+    });
+});
+
+// Handle keyboard commands
+chrome.commands.onCommand.addListener(async (command) => {
+    if (command === "crx-snip-text") {
+        // Get the active tab and try to get selected text
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs[0]?.id) {
+            try {
+                // Execute script to get selected text
+                const results = await chrome.scripting.executeScript({
+                    target: { tabId: tabs[0].id },
+                    func: () => window.getSelection()?.toString() || ''
+                });
+
+                const selectedText = results[0]?.result || '';
+                if (selectedText) {
+                    console.log('[CRX-SNIP] Text keyboard shortcut triggered with selection:', selectedText.substring(0, 100) + '...');
+
+                    const result = await processCrxSnipWithPipeline(selectedText, 'text');
+
+                    // Show notification
+                    if (result.success) {
+                        chrome.notifications.create({
+                            type: 'basic',
+                            iconUrl: 'icons/icon.png',
+                            title: 'CrossWord CRX-Snip',
+                            message: 'Text processed and copied to clipboard!'
+                        });
+                    } else {
+                        chrome.notifications.create({
+                            type: 'basic',
+                            iconUrl: 'icons/icon.png',
+                            title: 'CrossWord CRX-Snip',
+                            message: `Text processing failed: ${result.error || 'Unknown error'}`
+                        });
+                    }
+                } else {
+                    // No selection, show instruction
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon.png',
+                        title: 'CrossWord CRX-Snip',
+                        message: 'Please select some text first, then use Ctrl+Shift+X'
+                    });
+                }
+            } catch (error) {
+                console.error('[CRX-SNIP] Failed to get selected text:', error);
+            }
+        }
+    } else if (command === "crx-snip-screen") {
+        console.log('[CRX-SNIP] Screen capture keyboard shortcut triggered');
+
+        try {
+            // Capture screen area
+            const imageData = await captureScreenArea();
+
+            if (imageData) {
+                // Process the captured image with CRX-SNIP pipeline
+                const result = await processCrxSnipWithPipeline(imageData, 'image');
+
+                // Show notification
+                if (result.success) {
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon.png',
+                        title: 'CrossWord CRX-Snip',
+                        message: 'Screen area processed and copied to clipboard!'
+                    });
+                } else {
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon.png',
+                        title: 'CrossWord CRX-Snip',
+                        message: `Screen processing failed: ${result.error || 'Unknown error'}`
+                    });
+                }
+            } else {
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icons/icon.png',
+                    title: 'CrossWord CRX-Snip',
+                    message: 'Screen capture was cancelled'
+                });
+            }
+        } catch (error) {
+            console.error('[CRX-SNIP] Screen capture processing failed:', error);
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: 'Screen capture processing failed'
+            });
+        }
+    }
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === "crx-snip-text" && info.selectionText) {
+        console.log('[CRX-SNIP] Context menu triggered with text selection:', info.selectionText.substring(0, 100) + '...');
+
+        // Process the selected text with CRX-SNIP
+        const result = await processCrxSnipWithPipeline(info.selectionText, 'text');
+
+        // Show notification of result
+        if (result.success) {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: 'Text processed and copied to clipboard!'
+            });
+        } else {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: `Text processing failed: ${result.error || 'Unknown error'}`
+            });
+        }
+    } else if (info.menuItemId === "crx-snip-screen") {
+        console.log('[CRX-SNIP] Context menu triggered for screen capture');
+
+        try {
+            // Capture screen area
+            const imageData = await captureScreenArea();
+
+            if (imageData) {
+                // Process the captured image with CRX-SNIP
+                const result = await processCrxSnipWithPipeline(imageData, 'image');
+
+                // Show notification of result
+                if (result.success) {
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon.png',
+                        title: 'CrossWord CRX-Snip',
+                        message: 'Screen area processed and copied to clipboard!'
+                    });
+                } else {
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon.png',
+                        title: 'CrossWord CRX-Snip',
+                        message: `Screen processing failed: ${result.error || 'Unknown error'}`
+                    });
+                }
+            } else {
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icons/icon.png',
+                    title: 'CrossWord CRX-Snip',
+                    message: 'Screen capture was cancelled'
+                });
+            }
+        } catch (error) {
+            console.error('[CRX-SNIP] Screen capture processing failed:', error);
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: 'Screen capture processing failed'
+            });
+        }
+    }
+});
+
 // Viewer asks the service worker to fetch markdown with host permissions + URL normalization.
+// Also handles CRX-SNIP processing requests.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
+        // Handle CRX-SNIP processing
+        if (message?.type === "crx-snip") {
+            const content = message?.content;
+            const contentType = typeof message?.contentType === "string" ? message.contentType : "text";
+
+            if (!content) {
+                sendResponse({ success: false, error: "missing content" });
+                return;
+            }
+
+            const result = await processCrxSnipWithPipeline(content, contentType);
+            sendResponse(result);
+            return;
+        }
+
+        // Handle CRX-SNIP screen capture trigger from popup
+        if (message?.type === "crx-snip-screen-capture") {
+            try {
+                console.log('[CRX-SNIP] Screen capture triggered from popup');
+
+                // Check if rect coordinates were provided
+                let captureOptions;
+                if (message.rect) {
+                    captureOptions = {
+                        rect: message.rect,
+                        scale: message.scale || 1
+                    };
+                }
+
+                // Capture screen area (with optional rect)
+                const imageData = await captureScreenArea(captureOptions);
+
+                if (imageData) {
+                    // Process the captured image with CRX-SNIP
+                    const result = await processCrxSnipWithPipeline(imageData, 'image');
+
+                    // Send response back (though popup is closed, notifications will show)
+                    sendResponse({ success: result.success, error: result.error });
+                } else {
+                    sendResponse({ success: false, error: "Screen capture cancelled" });
+                }
+            } catch (error) {
+                console.error('[CRX-SNIP] Screen capture from popup failed:', error);
+                sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+            }
+            return;
+        }
+
+        // Handle CRX pipeline management queries
+        if (message?.type === "crx-pipeline-status") {
+            const status = getPipelineStatus();
+            sendResponse({ success: true, status });
+            return;
+        }
+
+        if (message?.type === "crx-pipeline-pending") {
+            const destinationType = message?.destinationType;
+            const pending = getPendingResults(destinationType);
+            sendResponse({ success: true, pending });
+            return;
+        }
+
+        if (message?.type === "crx-pipeline-clear-completed") {
+            const clearedCount = clearCompletedResults();
+            sendResponse({ success: true, clearedCount });
+            return;
+        }
+
+        if (message?.type === "crx-result-send-to-destination") {
+            const { resultId, destination } = message;
+            if (!resultId || !destination) {
+                sendResponse({ success: false, error: "Missing resultId or destination" });
+                return;
+            }
+
+            try {
+                // Find the result in the queue
+                const pendingResult = crxResultPipeline.resultQueue.find(r => r.id === resultId);
+                if (!pendingResult) {
+                    sendResponse({ success: false, error: "Result not found" });
+                    return;
+                }
+
+                // Add the new destination
+                pendingResult.destinations.push(destination);
+                if (pendingResult.status === 'completed') {
+                    pendingResult.status = 'pending'; // Re-queue for new destination
+                }
+
+                sendResponse({ success: true, resultId });
+            } catch (error) {
+                sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+            }
+            return;
+        }
+
+        // Handle markdown loading (existing functionality)
         if (message?.type !== "md:load") return;
         const src = typeof message?.src === "string" ? message.src : "";
         if (!src) {

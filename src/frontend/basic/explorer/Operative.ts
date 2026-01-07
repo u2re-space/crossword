@@ -195,6 +195,18 @@ export class FileOperative {
                 case "open":
                     this.itemAction(item as FileEntryItem);
                     break;
+                case "view":
+                    // Dispatch custom event for unified messaging
+                    this.dispatchEvent(new CustomEvent('context-action', {
+                        detail: { action: 'view', item }
+                    }));
+                    break;
+                case "attach-workcenter":
+                    // Dispatch custom event for unified messaging
+                    this.dispatchEvent(new CustomEvent('context-action', {
+                        detail: { action: 'attach-workcenter', item }
+                    }));
+                    break;
                 case "download":
                     Promise.try(async () => {
                         if (item?.kind === "file") {
