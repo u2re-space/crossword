@@ -9,6 +9,7 @@ import { ensureStyleSheet } from "fest/icon";
 
 // Import unified messaging system
 import { unifiedMessaging, sendToWorkCenter, sendToClipboard, navigateToView, initializeComponent, hasPendingMessages } from "../shared/UnifiedMessaging";
+import { createMessageWithOverrides } from "../shared/UnifiedMessaging";
 
 // Import lazy loading utility
 import { getCachedComponent } from "./modules/LazyLoader";
@@ -504,7 +505,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 state.view = 'markdown-viewer';
                 setViewHash('markdown-viewer');
                 persistMarkdown();
-                render();
+                // Don't call render() immediately to prevent loops - let hash change trigger it
                 showStatusMessage("Content loaded in viewer");
             }
         }
@@ -835,23 +836,37 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     }, 2000);
                 },
                 onAttachToWorkCenter: async (content: string) => {
-                    // Use unified messaging to send to work center
-                    await unifiedMessaging.sendMessage({
-                        id: crypto.randomUUID(),
-                        type: 'content-share',
-                        source: 'basic-viewer',
-                        destination: 'basic-workcenter',
-                        contentType: 'markdown',
-                        data: {
-                            text: content,
-                            filename: `content-${Date.now()}.md`
-                        },
-                        metadata: {
+                    try {
+                        // Use unified messaging with override factors for explicit workcenter attachment
+                        const message = createMessageWithOverrides(
+                            'content-share',
+                            'basic-viewer',
+                            'markdown',
+                            {
+                                text: content,
+                                filename: `content-${Date.now()}.md`
+                            },
+                            ['explicit-workcenter'], // Override default viewer association
+                            'button-attach-workcenter' // Use button-specific processing rules
+                        );
+
+                        // Add metadata
+                        message.metadata = {
                             title: 'Content from Viewer',
                             timestamp: Date.now(),
                             source: 'markdown-viewer'
+                        };
+
+                        await unifiedMessaging.sendMessage(message);
+                    } catch (error) {
+                        // Handle throttling errors gracefully
+                        if (error instanceof Error && error.message.includes('throttled')) {
+                            console.log('[Main] Message creation throttled - ignoring duplicate action');
+                        } else {
+                            console.error('[Main] Failed to create attach message:', error);
+                            showStatusMessage("Failed to attach content - please wait a moment");
                         }
-                    });
+                    }
                 },
                 onPrint: async (content: string) => {
                     // Use unified messaging to send to print destination
@@ -880,19 +895,26 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             fileHandler.setupDragAndDrop(viewerElement);
             fileHandler.setupPasteHandling(viewerElement);
 
-            // Initialize component with catch-up messaging
+            // Initialize component with catch-up messaging (no render calls to prevent loops)
             initializeComponent('basic-viewer', { viewer, element: viewerElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in viewer logic
+                // Process any pending messages directly in viewer logic (no render calls)
+                let contentLoaded = false;
                 for (const message of pendingMessages) {
                   console.log(`[Viewer] Processing pending message:`, message);
                   if (message.data?.text || message.data?.content) {
                     const content = message.data.text || message.data.content;
                     state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
                     persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in viewer");
+                    contentLoaded = true;
                   }
+                }
+                if (contentLoaded) {
+                  // Update the viewer content without triggering render
+                  if (viewer.updateContent) {
+                    viewer.updateContent(state.markdown);
+                  }
+                  showStatusMessage("Content loaded in viewer");
                 }
               })
               .catch(error => {
@@ -954,19 +976,26 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             const editorElement = editor.render();
 
-            // Initialize component with catch-up messaging
+            // Initialize component with catch-up messaging (no render calls to prevent loops)
             initializeComponent('markdown-editor', { editor, element: editorElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in editor logic
+                // Process any pending messages directly in editor logic (no render calls)
+                let contentLoaded = false;
                 for (const message of pendingMessages) {
                   console.log(`[Editor] Processing pending message:`, message);
                   if (message.data?.text || message.data?.content) {
                     const content = message.data.text || message.data.content;
                     state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
                     persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in editor");
+                    contentLoaded = true;
                   }
+                }
+                if (contentLoaded) {
+                  // Update the editor content without triggering render
+                  if (editor.updateContent) {
+                    editor.updateContent(state.markdown);
+                  }
+                  showStatusMessage("Content loaded in editor");
                 }
               })
               .catch(error => {
@@ -1028,19 +1057,26 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             const editorElement = editor.render();
 
-            // Initialize component with catch-up messaging
+            // Initialize component with catch-up messaging (no render calls to prevent loops)
             initializeComponent('rich-editor', { editor, element: editorElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in rich editor logic
+                // Process any pending messages directly in rich editor logic (no render calls)
+                let contentLoaded = false;
                 for (const message of pendingMessages) {
                   console.log(`[RichEditor] Processing pending message:`, message);
                   if (message.data?.text || message.data?.content) {
                     const content = message.data.text || message.data.content;
                     state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
                     persistMarkdown();
-                    render();
-                    showStatusMessage("Content loaded in rich editor");
+                    contentLoaded = true;
                   }
+                }
+                if (contentLoaded) {
+                  // Update the editor content without triggering render
+                  if (editor.updateContent) {
+                    editor.updateContent(state.markdown);
+                  }
+                  showStatusMessage("Content loaded in rich editor");
                 }
               })
               .catch(error => {
@@ -1095,25 +1131,26 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
                         { componentName: 'WorkCenter' }
                     ).then(workCenterModule => {
-                        if (state.managers.workCenter.instance) {
-                            state.managers.workCenter.instance.getState().currentPrompt = entry.prompt;
-                            render();
-                        }
+                    if (state.managers.workCenter.instance) {
+                        state.managers.workCenter.instance.getState().currentPrompt = entry.prompt;
+                        // Don't call render() directly - let component handle its own updates
+                    }
                     });
                 }
             });
 
-            // Initialize component with catch-up messaging
+            // Initialize component with catch-up messaging (no render calls to prevent loops)
             initializeComponent('history', { manager: historyManager, element: historyElement })
               .then(async (pendingMessages) => {
-                // Process any pending messages directly in history logic
+                // Process any pending messages directly in history logic (no render calls)
                 for (const message of pendingMessages) {
                   console.log(`[History] Processing pending message:`, message);
                   // History component handles its own message processing
                   if (message.type === 'navigation') {
-                    // Handle navigation to history view
+                    // Handle navigation to history view (don't call render here to prevent loops)
                     state.view = 'history';
-                    render();
+                    // Schedule a render instead of calling it directly
+                    setTimeout(() => render(), 0);
                   }
                 }
               })
@@ -1155,9 +1192,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     });
                     persistHistory();
 
-                    if (state.view === "history") {
-                        render();
-                    }
+                    // Don't call render() in message handlers to prevent loops
+                    // History component will update itself when needed
                 }
             });
 
@@ -1176,9 +1212,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     });
                     persistHistory();
 
-                    if (state.view === "history") {
-                        render();
-                    }
+                    // Don't call render() in message handlers to prevent loops
+                    // History component will update itself when needed
                 }
             });
 
@@ -1196,22 +1231,22 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         state.view = 'markdown-viewer';
                         setViewHash('markdown-viewer');
                         persistMarkdown();
-                        render();
+                        // Don't call render() - let hash change trigger it to prevent loops
                         showStatusMessage("Content loaded in viewer");
                     }
                 } else if (message.type === 'content-attach') {
                     // Handle content attachment for work center
                     handleWorkCenterAttachment(message, state, setViewHash, render, showStatusMessage);
                 } else if (message.type === 'navigation') {
-                    // Handle navigation messages
+                    // Handle navigation messages (avoid render calls to prevent loops)
                     if (message.destination === 'settings') {
                         state.view = 'settings';
                         setViewHash('settings');
-                        render();
+                        // Don't call render() - let hash change trigger it
                     } else if (message.destination === 'history') {
                         state.view = 'history';
                         setViewHash('history');
-                        render();
+                        // Don't call render() - let hash change trigger it
                     }
                 }
             });
@@ -1226,11 +1261,11 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     if (message.destination === 'settings') {
                         state.view = 'settings';
                         setViewHash('settings');
-                        render();
+                        // Don't call render() - let hash change trigger it to prevent loops
                     } else if (message.destination === 'history') {
                         state.view = 'history';
                         setViewHash('history');
-                        render();
+                        // Don't call render() - let hash change trigger it to prevent loops
                     }
                 }
             });
@@ -1242,11 +1277,11 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 console.log('[FileExplorer] Received message:', message);
 
                 if (message.type === 'content-explorer') {
-                    // Handle explorer operations
+                    // Handle explorer operations (avoid render calls to prevent loops)
                     if (state.view !== 'file-explorer') {
                         state.view = 'file-explorer';
                         setViewHash('file-explorer');
-                        render();
+                        // Don't call render() - let hash change trigger it
                     }
 
                     // Process explorer action
@@ -1457,19 +1492,33 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         }
     };
 
+    // Render protection to prevent loops
+    let isRendering = false;
+    let renderScheduled = false;
+
     const render = async () => {
-        // Update toolbar for current view
-        const newToolbar = renderToolbar();
-        toolbar.replaceWith(newToolbar);
-        // Update reference
-        toolbar = newToolbar;
-        // Re-attach event listeners
-        attachToolbarListeners();
+        // Prevent recursive render calls
+        if (isRendering) {
+            renderScheduled = true;
+            return;
+        }
 
-        // Update hash to match current view
-        setViewHash(state.view);
+        isRendering = true;
+        renderScheduled = false;
 
-        content.replaceChildren();
+        try {
+            // Update toolbar for current view
+            const newToolbar = renderToolbar();
+            toolbar.replaceWith(newToolbar);
+            // Update reference
+            toolbar = newToolbar;
+            // Re-attach event listeners
+            attachToolbarListeners();
+
+            // Update hash to match current view
+            setViewHash(state.view);
+
+            content.replaceChildren();
 
         // ============================================================================
         // VIEW RENDERING MAP - Optimized with switch/case and unified error handling
@@ -1503,17 +1552,18 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     onTheme: (t) => applyTheme(root, t),
                 });
 
-                // Initialize component with catch-up messaging
+                // Initialize component with catch-up messaging (no render calls to prevent loops)
                 try {
                     const pendingMessages = await initializeComponent('settings', { element: settingsEl });
-                    // Process any pending messages directly in settings logic
+                    // Process any pending messages directly in settings logic (no render calls)
                     for (const message of pendingMessages) {
                         console.log(`[Settings] Processing pending message:`, message);
                         // Settings component handles its own message processing
                         if (message.type === 'navigation') {
-                            // Handle navigation to settings view
+                            // Handle navigation to settings view (don't call render here to prevent loops)
                             state.view = 'settings';
-                            render();
+                            // Schedule a render instead of calling it directly
+                            setTimeout(() => render(), 0);
                         }
                     }
                 } catch (error) {
@@ -1591,13 +1641,52 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     }
                 });
 
-                // Store reference and initialize with catch-up messaging
+                // Store reference and initialize with catch-up messaging (no re-sending messages to prevent loops)
                 state.components.explorer.element = explorerEl;
                 try {
                     const pendingMessages = await initializeComponent('basic-explorer', { element: explorerEl, path: explorerEl.path });
                     for (const message of pendingMessages) {
                         console.log(`[Explorer] Processing pending message:`, message);
-                        await unifiedMessaging.sendMessage(message);
+                        // Process explorer actions directly instead of re-sending through messaging (prevents loops)
+                        if (message.type === 'content-explorer') {
+                            const action = message.data?.action || 'save';
+                            const path = message.data?.path || message.data?.into || '/';
+
+                            setTimeout(async () => {
+                                try {
+                                    if (action === 'save' && (message.data?.file || message.data?.text || message.data?.content)) {
+                                        let fileToSave: File | null = null;
+
+                                        if (message.data.file instanceof File) {
+                                            fileToSave = message.data.file;
+                                        } else if (message.data.blob instanceof Blob) {
+                                            const filename = message.data.filename || `file-${Date.now()}`;
+                                            fileToSave = new File([message.data.blob], filename, { type: message.data.blob.type });
+                                        } else if (message.data.text || message.data.content) {
+                                            const content = message.data.text || message.data.content;
+                                            const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                                            const filename = message.data.filename || `content-${Date.now()}.txt`;
+                                            fileToSave = new File([textContent], filename, { type: 'text/plain' });
+                                        }
+
+                                        if (fileToSave && explorerEl) {
+                                            if (path && path !== explorerEl.path) {
+                                                explorerEl.path = path;
+                                            }
+                                            showStatusMessage(`Saved ${fileToSave.name} to Explorer`);
+                                        }
+                                    } else if (action === 'view' && message.data?.path) {
+                                        if (explorerEl && path) {
+                                            explorerEl.path = path;
+                                            showStatusMessage(`Opened Explorer at ${path}`);
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.warn('[Explorer] Failed to handle pending message:', error);
+                                    showStatusMessage("Failed to perform Explorer action");
+                                }
+                            }, 100);
+                        }
                     }
                 } catch (error) {
                     console.warn('[Explorer] Failed to initialize with catch-up messaging:', error);
@@ -1757,6 +1846,14 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             renderStatus();
 
         });
+
+        } finally {
+            isRendering = false;
+            // If another render was scheduled during this one, run it now
+            if (renderScheduled) {
+                setTimeout(() => render(), 0);
+            }
+        }
     };
 
     const attachToolbarListeners = () => {

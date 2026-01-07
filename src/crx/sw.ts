@@ -9,6 +9,9 @@ import { executionCore } from "@rs-core/service/ExecutionCore";
 import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
 import type { ActionContext, ActionInput } from "@rs-core/service/ActionHistory";
 
+// Import built-in AI instructions
+import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '../frontend/shared/BuiltInAI';
+
 // Safe wrapper for loading custom instructions
 const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
     try {
@@ -1021,14 +1024,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                     return;
                 }
 
-                const SOLVE_AND_ANSWER_INSTRUCTION = `You are an expert mathematician and problem solver. Analyze the provided content and provide a clear, step-by-step solution or answer.
-
-If the content contains:
-- Mathematical equations: Solve them showing all work
-- Word problems: Break down the problem and solve step by step
-- Multiple choice questions: Show reasoning and select the best answer
-
-Always show your work clearly and provide the final answer prominently.`;
+                const SOLVE_AND_ANSWER_INSTRUCTION = CRX_SOLVE_AND_ANSWER_INSTRUCTION;
 
                 console.log("[CRX-SW] Setting up GPT for solve/answer");
                 // Create a simple message structure for solve/answer
@@ -1106,9 +1102,7 @@ Always show your work clearly and provide the final answer prominently.`;
                     return;
                 }
 
-                const WRITE_CODE_INSTRUCTION = `You are an expert software developer. Analyze the provided content and generate high-quality, working code.
-
-Provide clean, well-commented, production-ready code. Include all necessary imports, error handling, and follow best practices for the detected programming language. If multiple languages are possible, choose the most appropriate one.`;
+                const WRITE_CODE_INSTRUCTION = CRX_WRITE_CODE_INSTRUCTION;
 
                 console.log("[CRX-SW] Setting up GPT for code generation");
                 // Create a simple message structure for code generation
@@ -1185,17 +1179,7 @@ Provide clean, well-commented, production-ready code. Include all necessary impo
                     return;
                 }
 
-                const EXTRACT_CSS_INSTRUCTION = `You are an expert CSS developer. Analyze the provided content and extract/generate the corresponding CSS styles.
-
-Provide clean, modern CSS using:
-- CSS custom properties for colors, spacing, typography
-- Flexbox/Grid for layouts
-- Modern CSS features (clamp(), CSS nesting if appropriate)
-- Responsive design principles
-- Semantic class names
-- Well-organized, maintainable code structure
-
-Include all relevant CSS properties including layout, colors, typography, spacing, borders, shadows, and animations.`;
+                const EXTRACT_CSS_INSTRUCTION = CRX_EXTRACT_CSS_INSTRUCTION;
 
                 console.log("[CRX-SW] Setting up GPT for CSS extraction");
                 // Create a simple message structure for CSS extraction

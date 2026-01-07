@@ -236,13 +236,27 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             '/api/phosphor-icons': {
                 target: 'https://cdn.jsdelivr.net',
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api\/phosphor-icons/, '/npm/@phosphor-icons/core@2/assets'),
+                rewrite: (path) => {
+                    // Extract style from path (e.g., /api/phosphor-icons/duotone/copy.svg)
+                    const pathParts = path.replace(/^\/api\/phosphor-icons\//, '').split('/');
+                    const style = pathParts[0];
+                    const iconName = pathParts[1]?.replace(/\.svg$/, '') || '';
+
+                    // Add style suffix for duotone and other styles
+                    let finalIconName = iconName;
+                    if (style === 'duotone') {
+                        finalIconName = `${iconName}-duotone`;
+                    } else if (style !== 'regular') {
+                        finalIconName = `${iconName}-${style}`;
+                    }
+
+                    const rewrittenPath = `/npm/@phosphor-icons/core@2/assets/${style}/${finalIconName}.svg`;
+                    console.log('Proxying Phosphor icon request:', path, '->', rewrittenPath);
+                    return rewrittenPath;
+                },
                 configure: (proxy, options) => {
                     proxy.on('error', (err, req, res) => {
                         console.log('Phosphor icons proxy error:', err.message);
-                    });
-                    proxy.on('proxyReq', (proxyReq, req, res) => {
-                        console.log('Proxying Phosphor icon request:', req.url, '->', proxyReq.path);
                     });
                 }
             }

@@ -533,67 +533,15 @@ Expected output structure:
 `;
 
 //
-export const SOLVE_AND_ANSWER_INSTRUCTION = `
-Solve equations, answer questions, and explain mathematical or logical problems from the provided content.
-
-For equations and math problems:
-- Show step-by-step solutions
-- Provide final answers clearly marked
-- Explain reasoning for each step
-
-For general questions:
-- Provide accurate, well-reasoned answers
-- Include relevant context and explanations
-- If multiple interpretations possible, address them
-
-For quizzes and tests:
-- Show the correct answer with explanation
-- Explain why other options are incorrect
-
-Always respond in the specified language and format results clearly.
-`;
+// Import built-in AI instructions from unified location
+import { SOLVE_AND_ANSWER_INSTRUCTION, WRITE_CODE_INSTRUCTION, EXTRACT_CSS_INSTRUCTION } from '../../../frontend/shared/BuiltInAI';
 
 export const EQUATION_SOLVE_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
 export const ANSWER_QUESTION_INSTRUCTION = SOLVE_AND_ANSWER_INSTRUCTION;
 
-export const WRITE_CODE_INSTRUCTION = `
-Write clean, efficient, and well-documented code based on the provided description, requirements, or image.
+// WRITE_CODE_INSTRUCTION imported from BuiltInAI
 
-Code requirements:
-- Use appropriate programming language for the task
-- Follow language-specific best practices and conventions
-- Include proper error handling
-- Add meaningful comments and documentation
-- Make code readable and maintainable
-- Use appropriate data structures and algorithms
-
-If generating from an image or visual description:
-- Analyze the visual elements and requirements
-- Implement the described functionality
-- Ensure code compiles and runs correctly
-
-Always respond in the specified language and provide complete, working code.
-`;
-
-export const EXTRACT_CSS_INSTRUCTION = `
-Extract and generate clean, modern CSS from the provided content, image, or description.
-
-CSS requirements:
-- Use modern CSS features and best practices
-- Generate semantic, maintainable stylesheets
-- Include responsive design considerations
-- Use appropriate selectors and specificity
-- Follow CSS naming conventions (BEM, etc.)
-- Include comments for complex styles
-
-If extracting from an image:
-- Analyze visual design elements
-- Generate corresponding CSS rules
-- Preserve layout, colors, typography, and spacing
-- Use modern CSS features (Flexbox, Grid, etc.)
-
-Always respond in the specified language and provide complete, valid CSS.
-`;
+// EXTRACT_CSS_INSTRUCTION imported from BuiltInAI
 
 //
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };

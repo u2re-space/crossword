@@ -1,5 +1,8 @@
 import { H } from "fest/lure";
 
+// Import built-in templates
+import { DEFAULT_TEMPLATES } from "../../shared/BuiltInAI";
+
 export interface PromptTemplate {
     id?: string;
     name: string;
@@ -312,56 +315,13 @@ export class TemplateManager {
     }
 
     private getDefaultTemplates(): PromptTemplate[] {
-        return [
-            {
-                name: "Recognize Content",
-                prompt: "Recognize and extract information from the provided content",
-                category: "Analysis",
-                tags: ["recognition", "extraction", "analysis"]
-            },
-            {
-                name: "Analyze Document",
-                prompt: "Analyze this document and provide a summary with key insights",
-                category: "Analysis",
-                tags: ["analysis", "summary", "insights"]
-            },
-            {
-                name: "Solve Problems",
-                prompt: "Solve any equations, problems, or questions in the content",
-                category: "Problem Solving",
-                tags: ["math", "problems", "solutions"]
-            },
-            {
-                name: "Generate Code",
-                prompt: "Generate code based on the requirements or description provided",
-                category: "Development",
-                tags: ["code", "programming", "development"]
-            },
-            {
-                name: "Extract CSS",
-                prompt: "Extract or generate CSS from the content or images",
-                category: "Design",
-                tags: ["css", "styling", "design"]
-            },
-            {
-                name: "Summarize Text",
-                prompt: "Provide a concise summary of the following text",
-                category: "Writing",
-                tags: ["summary", "writing", "concise"]
-            },
-            {
-                name: "Translate Content",
-                prompt: "Translate the following content to English",
-                category: "Translation",
-                tags: ["translate", "language", "english"]
-            },
-            {
-                name: "Generate Ideas",
-                prompt: "Generate creative ideas based on the provided topic or content",
-                category: "Creative",
-                tags: ["ideas", "creative", "brainstorming"]
-            }
-        ];
+        return DEFAULT_TEMPLATES.map(template => ({
+            ...template,
+            id: this.generateId(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            usageCount: 0
+        }));
     }
 
     private generateId(): string {

@@ -17,6 +17,7 @@
  */
 
 import { CHANNELS } from '../routing/sw-handling';
+import { UNIFIED_PROCESSING_RULES } from './UnifiedAIConfig';
 
 // Additional custom channels for unified messaging
 const CUSTOM_CHANNELS = {
@@ -94,7 +95,7 @@ export type ResultAction =
   | 'show-notification'
   | 'none';
 
-// Content association map
+// Content association map (default destinations)
 export const CONTENT_ASSOCIATIONS: Record<ContentType, Destination> = {
   'file': 'file-explorer', // Will be processed based on file type
   'blob': 'basic-workcenter', // Attach as file input/attachment
@@ -104,6 +105,154 @@ export const CONTENT_ASSOCIATIONS: Record<ContentType, Destination> = {
   'url': 'basic-workcenter', // Attach for processing
   'base64': 'basic-workcenter' // Attach for processing
 };
+
+// Override association map (higher priority when override factors are present)
+export const OVERRIDE_ASSOCIATIONS: Record<AssociationOverrideFactor, Destination> = {
+  'explicit-workcenter': 'basic-workcenter',
+  'explicit-viewer': 'basic-viewer',
+  'explicit-explorer': 'basic-explorer',
+  'force-attachment': 'basic-workcenter',
+  'force-processing': 'basic-workcenter',
+  'bypass-default': 'basic-workcenter', // Default override destination
+  'user-action': 'basic-workcenter' // Default for user actions
+};
+
+// Smart association resolver that considers override factors and processing rules
+export function resolveDestination(
+  contentType: ContentType,
+  overrideFactors?: AssociationOverrideFactor[],
+  source?: MessageSource,
+  processingType?: string
+): Destination {
+
+  // Check for override factors first (highest priority)
+  if (overrideFactors && overrideFactors.length > 0) {
+    // Check for explicit overrides
+    for (const factor of overrideFactors) {
+      if (factor.startsWith('explicit-')) {
+        const destination = OVERRIDE_ASSOCIATIONS[factor];
+        if (destination) {
+          return destination;
+        }
+      }
+    }
+
+    // Check for force overrides
+    if (overrideFactors.includes('force-attachment') || overrideFactors.includes('force-processing')) {
+      return 'basic-workcenter';
+    }
+
+    // Check for bypass flag
+    if (overrideFactors.includes('bypass-default')) {
+      return 'basic-workcenter'; // Default override destination
+    }
+
+    // Check for user action (generic override)
+    if (overrideFactors.includes('user-action')) {
+      return 'basic-workcenter'; // User actions typically go to workcenter
+    }
+  }
+
+  // Check processing rules for association overrides (second priority)
+  if (source && UNIFIED_PROCESSING_RULES[source]) {
+    const rule = UNIFIED_PROCESSING_RULES[source];
+    if (rule.associationOverrides && rule.associationOverrides[contentType]) {
+      const factors = rule.associationOverrides[contentType];
+      if (factors.length > 0) {
+        // Recursively resolve with the rule's override factors
+        return resolveDestination(contentType, factors);
+      }
+    }
+    if (rule.defaultOverrideFactors && rule.defaultOverrideFactors.length > 0) {
+      return resolveDestination(contentType, rule.defaultOverrideFactors);
+    }
+  }
+
+  // Check processing type specific rules
+  if (processingType && UNIFIED_PROCESSING_RULES[processingType]) {
+    const rule = UNIFIED_PROCESSING_RULES[processingType];
+    if (rule.associationOverrides && rule.associationOverrides[contentType]) {
+      const factors = rule.associationOverrides[contentType];
+      if (factors.length > 0) {
+        return resolveDestination(contentType, factors);
+      }
+    }
+    if (rule.defaultOverrideFactors && rule.defaultOverrideFactors.length > 0) {
+      return resolveDestination(contentType, rule.defaultOverrideFactors);
+    }
+  }
+
+  // Fall back to default content associations (lowest priority)
+  return CONTENT_ASSOCIATIONS[contentType] || 'basic-workcenter';
+}
+
+// Helper function to get override factors from processing rules
+export function getOverrideFactorsForSource(
+  source: MessageSource,
+  processingType?: string
+): AssociationOverrideFactor[] {
+  // Check processing type first (higher priority)
+  if (processingType && UNIFIED_PROCESSING_RULES[processingType]) {
+    return UNIFIED_PROCESSING_RULES[processingType].defaultOverrideFactors || [];
+  }
+
+  // Check source
+  if (UNIFIED_PROCESSING_RULES[source]) {
+    return UNIFIED_PROCESSING_RULES[source].defaultOverrideFactors || [];
+  }
+
+  return [];
+}
+
+// Throttling cache for createMessageWithOverrides to prevent spam calls
+const messageThrottleCache = new Map<string, number>();
+
+// Helper function to create a message with proper override factors
+export function createMessageWithOverrides(
+  type: MessageType,
+  source: MessageSource,
+  contentType: ContentType,
+  data: any,
+  customOverrides?: AssociationOverrideFactor[],
+  processingType?: string
+): UnifiedMessage {
+  // Throttle to prevent spam creation (100ms minimum between identical messages)
+  const now = Date.now();
+  const throttleKey = `${type}|${source}|${contentType}|${JSON.stringify(data).substring(0, 100)}`;
+
+  const lastCreateTime = messageThrottleCache.get(throttleKey);
+  if (lastCreateTime && (now - lastCreateTime) < 100) {
+    throw new Error('Message creation throttled - too frequent');
+  }
+
+  messageThrottleCache.set(throttleKey, now);
+
+  // Clean up old throttle entries
+  if (messageThrottleCache.size > 500) {
+    const cutoffTime = now - 10000; // Keep entries for 10 seconds
+    for (const [key, time] of messageThrottleCache.entries()) {
+      if (time < cutoffTime) {
+        messageThrottleCache.delete(key);
+      }
+    }
+  }
+
+  const overrideFactors = customOverrides || getOverrideFactorsForSource(source, processingType);
+  const destination = resolveDestination(contentType, overrideFactors, source, processingType);
+
+  return {
+    id: crypto.randomUUID(),
+    type,
+    source,
+    destination,
+    contentType,
+    data,
+    overrideFactors,
+    processing: processingType ? {
+      rules: UNIFIED_PROCESSING_RULES[processingType] || UNIFIED_PROCESSING_RULES[source]
+    } : undefined
+  };
+}
 
 // Hash-based view associations for basic app
 export const HASH_ASSOCIATIONS: Record<string, Destination> = {
@@ -199,6 +348,16 @@ export const PROCESSING_RULES = {
 };
 
 // Message interface
+// Override factors for bypassing default associations
+export type AssociationOverrideFactor =
+  | 'explicit-workcenter'        // User explicitly chose workcenter (e.g., button click)
+  | 'explicit-viewer'           // User explicitly chose viewer
+  | 'explicit-explorer'         // User explicitly chose file explorer
+  | 'force-attachment'          // Force as attachment regardless of content type
+  | 'force-processing'          // Force processing regardless of content type
+  | 'bypass-default'            // Generic bypass flag
+  | 'user-action';              // Any user-initiated action that overrides default
+
 export interface UnifiedMessage {
   id: string;
   type: MessageType;
@@ -218,6 +377,8 @@ export interface UnifiedMessage {
     action?: ProcessingAction;
     rules?: typeof PROCESSING_RULES[keyof typeof PROCESSING_RULES];
   };
+  // Override factors for custom association logic
+  overrideFactors?: AssociationOverrideFactor[];
 }
 
 // Message handler interface
@@ -238,6 +399,10 @@ export class UnifiedMessagingManager {
   private persistentMessages: Map<Destination, UnifiedMessage[]> = new Map();
   private componentStates: Map<Destination, any> = new Map();
   private maxPersistentMessages = 10; // Keep last N messages per destination
+
+  // Throttling to prevent spam actions (minimum 100ms between same actions)
+  private lastActionTimes: Map<string, number> = new Map();
+  private throttleMs = 100; // Minimum time between same actions
 
   private constructor() {
     this.initializeChannels();
@@ -354,12 +519,68 @@ export class UnifiedMessagingManager {
   }
 
   async sendMessage(message: UnifiedMessage): Promise<void> {
+    // Throttle to prevent spam actions (same type/source/content within 100ms)
+    if (!this.shouldAllowMessage(message)) {
+      console.log(`[UnifiedMessaging] Throttled duplicate message:`, message);
+      return;
+    }
+
     // Add to processing queue
     this.messageQueue.push(message);
 
     // Process queue if not already processing
     if (!this.processing) {
       await this.processMessageQueue();
+    }
+  }
+
+  private shouldAllowMessage(message: UnifiedMessage): boolean {
+    const now = Date.now();
+    const actionKey = this.getActionKey(message);
+
+    const lastTime = this.lastActionTimes.get(actionKey);
+    if (lastTime && (now - lastTime) < this.throttleMs) {
+      return false; // Too soon, throttle
+    }
+
+    // Update last action time
+    this.lastActionTimes.set(actionKey, now);
+
+    // Clean up old entries periodically (keep map from growing too large)
+    if (this.lastActionTimes.size > 1000) {
+      this.cleanupOldActionTimes(now);
+    }
+
+    return true;
+  }
+
+  private getActionKey(message: UnifiedMessage): string {
+    // Create a unique key based on message type, source, content type, and key data
+    const parts = [
+      message.type,
+      message.source,
+      message.contentType || 'unknown'
+    ];
+
+    // Include some data fingerprint for content-specific throttling
+    if (message.data?.text && typeof message.data.text === 'string') {
+      // Use first 50 chars as fingerprint for text content
+      parts.push(message.data.text.substring(0, 50));
+    } else if (message.data?.filename) {
+      parts.push(message.data.filename);
+    } else if (message.data?.file && message.data.file instanceof File) {
+      parts.push(message.data.file.name);
+    }
+
+    return parts.join('|');
+  }
+
+  private cleanupOldActionTimes(now: number): void {
+    const cutoffTime = now - (this.throttleMs * 10); // Keep entries for 10x throttle time
+    for (const [key, time] of this.lastActionTimes.entries()) {
+      if (time < cutoffTime) {
+        this.lastActionTimes.delete(key);
+      }
     }
   }
 
@@ -381,7 +602,12 @@ export class UnifiedMessagingManager {
 
     // Determine destination if not specified
     if (!message.destination && message.contentType) {
-      message.destination = CONTENT_ASSOCIATIONS[message.contentType];
+      message.destination = resolveDestination(
+        message.contentType,
+        message.overrideFactors,
+        message.source,
+        message.processing?.rules ? undefined : undefined // processingType not directly available
+      );
     }
 
     // Handle hash-based destinations (e.g., #viewer -> basic-viewer)
@@ -580,8 +806,8 @@ export class UnifiedMessagingManager {
   }
 
   // Get associated destination for content type
-  getAssociatedDestination(contentType: ContentType): Destination {
-    return CONTENT_ASSOCIATIONS[contentType] || 'workcenter';
+  getAssociatedDestination(contentType: ContentType, overrideFactors?: AssociationOverrideFactor[], source?: MessageSource): Destination {
+    return resolveDestination(contentType, overrideFactors, source);
   }
 
   // Check if content should be processed automatically

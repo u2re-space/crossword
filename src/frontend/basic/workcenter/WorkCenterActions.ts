@@ -60,12 +60,22 @@ export class WorkCenterActions {
                 recognizedContent: state.recognizedData?.content || undefined
             };
 
-            // Add language instruction if specific language selected
-            if (state.selectedLanguage !== 'auto') {
-                const languageInstruction = state.selectedLanguage === 'ru'
-                    ? "Please respond in Russian language."
-                    : "Please respond in English language.";
-                actionInput.text = `${languageInstruction} ${actionInput.text}`;
+            // Handle special templates that need dynamic language processing
+            const isTranslateTemplate = state.selectedTemplate &&
+                state.selectedTemplate.includes("Translate the following content to the selected language");
+
+            if (isTranslateTemplate && state.selectedLanguage !== 'auto') {
+                // For "Translate to Language" template, replace the generic instruction with specific language
+                const targetLanguage = state.selectedLanguage === 'ru' ? 'Russian' : 'English';
+                actionInput.text = `Translate the following content to ${targetLanguage}. Maintain the original formatting and structure where possible. If the content is already in ${targetLanguage}, provide a natural rephrasing or improvement instead.`;
+            } else {
+                // Add language instruction if specific language selected (for other operations)
+                if (state.selectedLanguage !== 'auto') {
+                    const languageInstruction = state.selectedLanguage === 'ru'
+                        ? "Please respond in Russian language."
+                        : "Please respond in English language.";
+                    actionInput.text = `${languageInstruction} ${actionInput.text}`;
+                }
             }
 
             // Execute through execution core
