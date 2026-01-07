@@ -6,7 +6,7 @@ import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
 import { loadSettings } from "@rs-core/config/Settings";
 import { executionCore } from "@rs-core/service/ExecutionCore";
-import { processDataWithInstruction } from "@rs-core/service/AI-ops/RecognizeData";
+import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
 import type { ActionContext, ActionInput } from "@rs-core/service/ActionHistory";
 
 // Safe wrapper for loading custom instructions
@@ -375,7 +375,7 @@ class CrxResultPipeline {
     private startProcessing(): void {
         if (this.processingInterval) return;
 
-        this.processingInterval = window.setInterval(() => {
+        this.processingInterval = globalThis.setInterval(() => {
             this.processPendingResults();
         }, 1000); // Process every second
     }
@@ -423,7 +423,7 @@ const crxResultPipeline = new CrxResultPipeline();
 
 // Debug function to log pipeline status periodically
 const startPipelineDebugging = () => {
-    setInterval(() => {
+    globalThis.setInterval(() => {
         const status = crxResultPipeline.getStatus();
         if (status.queueSize > 0) {
             console.log('[CRX-Pipeline] Status:', status);
@@ -562,6 +562,7 @@ const processCrxSnipWithPipeline = async (
             // Default destinations based on CRX-Snip rules
             const destinations: CrxDestination[] = [
                 { type: 'clipboard', options: { showFeedback: true } },
+                { type: 'content-script' }, // Show page-level toast notification
                 { type: 'workcenter' },
                 { type: 'notification' }
             ];
@@ -1277,7 +1278,7 @@ Include all relevant CSS properties including layout, colors, typography, spacin
                 status: "processing"
             });
 
-            processDataWithInstruction(message?.input, {
+            UnifiedAIService.processDataWithInstruction(message?.input, {
                 instruction: instructionText,
                 outputFormat: 'auto',
                 intermediateRecognition: { enabled: false }

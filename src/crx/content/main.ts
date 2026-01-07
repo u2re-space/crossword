@@ -20,13 +20,27 @@ if (typeof window !== "undefined") {
 // Import message handlers (auto-initialize on load)
 import "./copy"; // handles COPY_HACK messages
 
+// Ensure rect selector is available
+import "./rect-selector";
+
 // Handle CRX-Snip rectangle selection and result delivery
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === 'crx-snip-select-rect') {
         // Start rectangle selection
         (async () => {
             try {
-                const rect = await (window as any).crxSnipSelectRect?.();
+                // Ensure rect selector is available
+                if (!window.crxSnipSelectRect) {
+                    console.warn('[CRX-SNIP] Rect selector not available, retrying...');
+                    // Wait a bit for module to load
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                if (!window.crxSnipSelectRect) {
+                    throw new Error('Rectangle selector not available');
+                }
+
+                const rect = await window.crxSnipSelectRect();
                 sendResponse({ rect });
             } catch (error) {
                 console.error('[CRX-SNIP] Rectangle selection failed:', error);
@@ -55,44 +69,147 @@ resultBroadcastChannel.onmessage = (event) => {
 
         // Handle result based on type and content
         if (result.type === 'processed' && typeof result.content === 'string') {
-            // Could inject results into page, show overlay, etc.
-            // For now, just log the delivery
-            console.log('[ContentScript] Processed result content:', result.content.substring(0, 200) + '...');
+            // Show success notification for CRX-Snip completion
+            console.log('[ContentScript] CRX-Snip result delivered:', result.content.substring(0, 200) + '...');
 
-            // Optionally show a page-level notification
-            showPageNotification(`CrossWord: ${result.content.substring(0, 50)}...`, 'success');
+            // Show page-level toast notification
+            const previewText = result.content.length > 60
+                ? result.content.substring(0, 60) + '...'
+                : result.content;
+
+            showPageNotification(`📋 Copied to clipboard!\n${previewText}`, 'success');
         }
     }
 };
 
-// Simple page notification function
+// Enhanced page notification function with better visibility
 function showPageNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
-    const notification = document.createElement('div');
-    Object.assign(notification.style, {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        backgroundColor: type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6',
-        color: 'white',
-        padding: '12px 16px',
-        borderRadius: '6px',
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '14px',
-        zIndex: '10000',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        maxWidth: '300px',
-        wordWrap: 'break-word'
-    });
+    try {
+        // Remove any existing notifications first
+        const existingNotifications = document.querySelectorAll('.crossword-crx-notification');
+        existingNotifications.forEach(el => el.remove());
 
-    notification.textContent = message;
-    document.body.appendChild(notification);
+        const notification = document.createElement('div');
+        notification.className = 'crossword-crx-notification';
 
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
+        // Determine colors and icon based on type
+        let bgColor = '#3b82f6'; // info blue
+        let icon = 'ℹ️';
+
+        if (type === 'success') {
+            bgColor = '#10b981'; // green
+            icon = '✅';
+        } else if (type === 'error') {
+            bgColor = '#ef4444'; // red
+            icon = '❌';
         }
-    }, 3000);
+
+        Object.assign(notification.style, {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: bgColor,
+            color: 'white',
+            padding: '16px 20px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            fontWeight: '500',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1)',
+            zIndex: '2147483647', // Maximum z-index
+            maxWidth: '450px',
+            wordWrap: 'break-word',
+            opacity: '0',
+            transform: 'translateY(-20px) scale(0.95)',
+            transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(10px)',
+            cursor: 'pointer'
+        });
+
+        // Create content with icon
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 18px; line-height: 1;">${icon}</span>
+                <div style="flex: 1; line-height: 1.4;">${message}</div>
+                <button style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 16px;
+                    padding: 0;
+                    margin-left: 8px;
+                    opacity: 0.7;
+                    transition: opacity 0.2s;
+                " onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+
+        // Make clickable to dismiss
+        notification.addEventListener('click', () => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-20px) scale(0.95)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 400);
+        });
+
+        // Ensure body exists and append
+        if (document.body) {
+            document.body.appendChild(notification);
+        } else {
+            // If body doesn't exist yet, wait for DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.body.appendChild(notification);
+                    animateIn();
+                });
+            } else {
+                document.documentElement.appendChild(notification);
+            }
+            return;
+        }
+
+        // Animate in
+        function animateIn() {
+            requestAnimationFrame(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateY(0) scale(1)';
+            });
+        }
+        animateIn();
+
+        // Auto-remove after 5 seconds
+        const timeoutId = setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(-20px) scale(0.95)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        }, 5000);
+
+        // Store timeout ID for potential cleanup
+        (notification as any)._timeoutId = timeoutId;
+
+        console.log('[CRX-Content] Page notification shown:', message);
+
+    } catch (error) {
+        console.error('[CRX-Content] Failed to show page notification:', error);
+        // Fallback: try to use browser notification API
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('CrossWord CRX-Snip', {
+                body: message,
+                icon: chrome.runtime.getURL('icons/icon.png')
+            });
+        }
+    }
 }
 import "./snip"; // handles START_SNIP messages
 
