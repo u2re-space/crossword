@@ -232,11 +232,7 @@ Return in JSON format:
 \`\`\`
 `;
 
-//
-// Import built-in AI instructions
-import { CRX_SOLVE_AND_ANSWER_INSTRUCTION } from '../../frontend/shared/BuiltInAI';
-
-// Use the unified CRX-optimized instruction
+// Use the unified CRX-optimized instructions
 // Use the unified CRX-optimized instructions
 export const SOLVE_AND_ANSWER_INSTRUCTION = CRX_SOLVE_AND_ANSWER_INSTRUCTION;
 
