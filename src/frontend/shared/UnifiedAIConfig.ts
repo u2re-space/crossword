@@ -43,8 +43,48 @@ export interface ProcessingRule {
 
 // AI_INSTRUCTIONS imported from BuiltInAI module
 
-// Import override factors from UnifiedMessaging
-import type { AssociationOverrideFactor } from './UnifiedMessaging';
+// Core content types
+export type ContentType =
+  | 'file'
+  | 'blob'
+  | 'text'
+  | 'markdown'
+  | 'image'
+  | 'url'
+  | 'base64';
+
+// Content contexts (where content comes from)
+export type ContentContext =
+    | 'share-target'
+    | 'launch-queue'
+    | 'paste'
+    | 'drag-drop'
+    | 'file-open'
+    | 'url-open'
+    | 'crx-snip'
+    | 'api-upload'
+    | 'initial-load'
+    | 'broadcast';
+
+// Content actions (what to do with the content)
+export type ContentAction =
+    | 'view'          // Display in appropriate viewer
+    | 'edit'          // Open in editor
+    | 'attach'        // Attach to work center
+    | 'process'       // Process with AI
+    | 'save'          // Save to explorer
+    | 'print'         // Send to print
+    | 'clipboard';    // Copy to clipboard
+
+// Association override factors for content routing
+export type AssociationOverrideFactor =
+    | 'explicit-workcenter'
+    | 'explicit-viewer'
+    | 'explicit-explorer'
+    | 'force-attachment'
+    | 'force-processing'
+    | 'bypass-default'
+    | 'user-action';
 
 // Unified Processing Configuration
 export interface UnifiedProcessingConfig {

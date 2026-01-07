@@ -11,16 +11,16 @@
     "categories": ["productivity", "lifestyle", "finance", "navigation"],
     "icons": [
         {
-            "src": "./icons/icon-duotone.png",
+            "src": "icons/icon.svg",
             "sizes": "512x512",
-            "type": "image/png",
+            "type": "image/svg+xml",
             "purpose": "any"
         },
         {
-            "src": "./icons/icon-duotone.png",
+            "src": "icons/icon.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "monochrome"
+            "purpose": "any"
         }
     ],
     "file_handlers": [
@@ -90,21 +90,5 @@
     "edge_side_delegate": {
         "url": "/",
         "edge_side": "left"
-    },
-    "screenshots": [
-        {
-            "src": "./icons/screenshot-desktop.png",
-            "sizes": "1280x800",
-            "type": "image/png",
-            "platform": "wide",
-            "label": "Desktop interface showing AI recognition and markdown editing"
-        },
-        {
-            "src": "./icons/screenshot-mobile.png",
-            "sizes": "390x844",
-            "type": "image/png",
-            "platform": "narrow",
-            "label": "Mobile interface with text recognition"
-        }
-    ]
+    }
 }

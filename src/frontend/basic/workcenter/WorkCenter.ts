@@ -48,6 +48,9 @@ import { WorkCenterVoice } from "./WorkCenterVoice";
 import { WorkCenterActions } from "./WorkCenterActions";
 import { WorkCenterDataProcessing } from "./WorkCenterDataProcessing";
 import { WorkCenterEvents } from "./WorkCenterEvents";
+
+// Import component registration system
+import { registerComponent, initializeComponent } from "../../shared/UnifiedMessaging";
 import { WorkCenterResults } from "./WorkCenterResults";
 import { WorkCenterAttachments } from "./WorkCenterAttachments";
 import { WorkCenterPrompts } from "./WorkCenterPrompts";
@@ -104,8 +107,22 @@ export class WorkCenterManager {
         // Initialize share target result listener
         this.shareTarget.initShareTargetListener(this.state);
 
+        // Register component for catch-up messaging
+        registerComponent('workcenter-core', 'basic-workcenter');
+
         // Process any queued messages that were sent before work center was available
         this.shareTarget.processQueuedMessages(this.state);
+
+        // Process pending messages from component registry
+        const pendingMessages = initializeComponent('workcenter-core');
+        for (const message of pendingMessages) {
+            console.log(`[WorkCenter] Processing pending message:`, message);
+            // Handle the message based on its type
+            if (message.type === 'content-share' && message.data) {
+                // Convert message data to file-like object and add to state
+                this.handleIncomingContent(message.data, message.contentType || 'text');
+            }
+        }
     }
 
     // File handling methods - delegate to fileOps module
@@ -115,6 +132,37 @@ export class WorkCenterManager {
 
     async handlePastedContent(content: string, sourceType: string): Promise<void> {
         return this.fileOps.handlePastedContent(this.state, content, sourceType);
+    }
+
+    // Handle incoming content from unified messaging system
+    private async handleIncomingContent(data: any, contentType: string): Promise<void> {
+        try {
+            let fileToAttach: File | null = null;
+
+            if (data.file instanceof File) {
+                fileToAttach = data.file;
+            } else if (data.blob instanceof Blob) {
+                const filename = data.filename || `attachment-${Date.now()}.${contentType === 'markdown' ? 'md' : 'txt'}`;
+                fileToAttach = new File([data.blob], filename, { type: data.blob.type });
+            } else if (data.text || data.content) {
+                const content = data.text || data.content;
+                const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                const filename = data.filename || `content-${Date.now()}.${contentType === 'markdown' ? 'md' : 'txt'}`;
+                const mimeType = contentType === 'markdown' ? 'text/markdown' : 'text/plain';
+                fileToAttach = new File([textContent], filename, { type: mimeType });
+            }
+
+            if (fileToAttach) {
+                this.state.files.push(fileToAttach);
+                // Update UI to reflect new file
+                this.ui.updateFileList(this.state);
+                this.ui.updateFileCounter(this.state);
+                this.deps.showMessage(`Attached ${fileToAttach.name} to Work Center`);
+            }
+        } catch (error) {
+            console.warn('[WorkCenter] Failed to handle incoming content:', error);
+            this.deps.showMessage('Failed to attach content');
+        }
     }
 
 

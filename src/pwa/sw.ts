@@ -14,6 +14,372 @@ import {
     type ShareData
 } from './lib/ShareTargetUtils';
 
+// ============================================================================
+// SERVICE WORKER CONTENT ASSOCIATION SYSTEM
+// ============================================================================
+
+/**
+ * Content contexts for service worker processing
+ */
+type SWContentContext =
+    | 'share-target'
+    | 'launch-queue'
+    | 'push-message'
+    | 'background-sync';
+
+/**
+ * Content actions for service worker
+ */
+type SWContentAction =
+    | 'cache'          // Cache content for later delivery
+    | 'process'        // Process immediately with AI
+    | 'notify'         // Show notification to user
+    | 'open-app'       // Open app with content
+    | 'queue'          // Queue for later processing
+    | 'broadcast';     // Broadcast to active clients
+
+/**
+ * Association conditions for service worker
+ */
+interface SWAssociationCondition {
+    type: 'file-count' | 'content-size' | 'mime-type' | 'has-text' | 'has-files';
+    value: string | number | boolean;
+    match: 'equals' | 'gt' | 'lt' | 'contains' | 'exists';
+}
+
+/**
+ * Content association rule for service worker
+ */
+interface SWContentAssociation {
+    contentType: string;
+    context: SWContentContext;
+    action: SWContentAction;
+    priority: number;
+    conditions?: SWAssociationCondition[];
+    immediate?: boolean; // Process immediately vs queue
+}
+
+/**
+ * Service Worker Content Association Registry
+ */
+const SW_CONTENT_ASSOCIATIONS: SWContentAssociation[] = [
+    // Share Target Associations
+    { contentType: 'text', context: 'share-target', action: 'cache', priority: 100, immediate: true },
+    { contentType: 'url', context: 'share-target', action: 'cache', priority: 95, immediate: true },
+    { contentType: 'files', context: 'share-target', action: 'cache', priority: 90, immediate: true },
+    { contentType: 'image', context: 'share-target', action: 'cache', priority: 85, immediate: true },
+
+    // Launch Queue Associations
+    { contentType: 'files', context: 'launch-queue', action: 'open-app', priority: 100, immediate: true },
+    { contentType: 'text', context: 'launch-queue', action: 'open-app', priority: 95, immediate: true },
+
+    // Push Message Associations
+    { contentType: 'text', context: 'push-message', action: 'notify', priority: 100, immediate: true },
+    { contentType: 'data', context: 'push-message', action: 'cache', priority: 90, immediate: false },
+
+    // Background Sync Associations
+    { contentType: 'any', context: 'background-sync', action: 'process', priority: 50, immediate: false }
+];
+
+/**
+ * Check if association conditions are met
+ */
+function checkSWAssociationConditions(conditions: SWAssociationCondition[], content: any): boolean {
+    return conditions.every(condition => {
+        let contentValue: any;
+
+        switch (condition.type) {
+            case 'file-count':
+                contentValue = content?.files?.length || 0;
+                break;
+            case 'content-size':
+                contentValue = content?.text?.length || content?.size || 0;
+                break;
+            case 'mime-type':
+                contentValue = content?.type || content?.mimeType || '';
+                break;
+            case 'has-text':
+                contentValue = !!(content?.text?.trim());
+                break;
+            case 'has-files':
+                contentValue = !!(content?.files?.length > 0);
+                break;
+            default:
+                return false;
+        }
+
+        switch (condition.match) {
+            case 'equals':
+                return contentValue === condition.value;
+            case 'gt':
+                return Number(contentValue) > Number(condition.value);
+            case 'lt':
+                return Number(contentValue) < Number(condition.value);
+            case 'contains':
+                return String(contentValue).includes(String(condition.value));
+            case 'exists':
+                return Boolean(contentValue);
+            default:
+                return false;
+        }
+    });
+}
+
+/**
+ * Resolve content association for service worker processing
+ */
+function resolveSWContentAssociation(
+    contentType: string,
+    context: SWContentContext,
+    content: any
+): SWContentAssociation | null {
+
+    // Find matching associations
+    const matches = SW_CONTENT_ASSOCIATIONS
+        .filter(assoc => (assoc.contentType === contentType || assoc.contentType === 'any') &&
+                        assoc.context === context)
+        .filter(assoc => !assoc.conditions || checkSWAssociationConditions(assoc.conditions, content))
+        .sort((a, b) => b.priority - a.priority);
+
+    return matches.length > 0 ? matches[0] : null;
+}
+
+/**
+ * Process content based on association rules
+ */
+async function processContentWithAssociation(
+    contentType: string,
+    context: SWContentContext,
+    content: any,
+    event?: any
+): Promise<Response> {
+
+    const association = resolveSWContentAssociation(contentType, context, content);
+
+    if (!association) {
+        console.warn(`[SW-Association] No association found for ${contentType} in ${context}`);
+        return new Response(null, { status: 302, headers: { Location: '/' } });
+    }
+
+    console.log(`[SW-Association] Resolved ${contentType} in ${context} -> ${association.action} (priority: ${association.priority})`);
+
+    try {
+        switch (association.action) {
+            case 'cache':
+                return await handleCacheAction(content, context, event);
+
+            case 'process':
+                return await handleProcessAction(content, context, event);
+
+            case 'notify':
+                return await handleNotifyAction(content, context, event);
+
+            case 'open-app':
+                return await handleOpenAppAction(content, context, event);
+
+            case 'queue':
+                return await handleQueueAction(content, context, event);
+
+            case 'broadcast':
+                return await handleBroadcastAction(content, context, event);
+
+            default:
+                console.warn(`[SW-Association] Unknown action: ${association.action}`);
+                return new Response(null, { status: 302, headers: { Location: '/' } });
+        }
+    } catch (error) {
+        console.error(`[SW-Association] Failed to execute ${association.action}:`, error);
+        return new Response(null, { status: 302, headers: { Location: '/' } });
+    }
+}
+
+// Action handlers
+async function handleCacheAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    try {
+        // Cache the content for later retrieval by the main app
+        const cacheKey = `sw-content-${context}-${Date.now()}`;
+        const cache = await (self as any).caches?.open?.('sw-content-cache');
+
+        if (cache) {
+            await cache.put(cacheKey, new Response(JSON.stringify({
+                content,
+                context,
+                timestamp: Date.now(),
+                cacheKey
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+
+        // Store cache key for main app to retrieve
+        const cacheKeys = await getStoredCacheKeys();
+        cacheKeys.push({ key: cacheKey, context, timestamp: Date.now() });
+        await storeCacheKeys(cacheKeys.slice(-50)); // Keep last 50
+
+        // Broadcast to active clients
+        await broadcastToClients('content-cached', { cacheKey, context, content });
+
+        return new Response(null, {
+            status: 302,
+            headers: { Location: `/?cached=${cacheKey}` }
+        });
+
+    } catch (error) {
+        console.error('[SW-Cache] Failed to cache content:', error);
+        throw error;
+    }
+}
+
+async function handleProcessAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    // For now, cache and let main app process
+    console.log('[SW-Process] Queuing content for processing:', context);
+    return await handleCacheAction(content, context, event);
+}
+
+async function handleNotifyAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    try {
+        // Show notification
+        const notificationOptions: NotificationOptions = {
+            body: content.text?.substring(0, 100) || 'Content received',
+            icon: '/icons/icon.png',
+            badge: '/icons/icon.png',
+            tag: `sw-${context}-${Date.now()}`,
+            requireInteraction: false,
+            silent: false
+        };
+
+        await (self as any).registration?.showNotification?.('CrossWord', notificationOptions);
+
+        // Also cache the content
+        return await handleCacheAction(content, context, event);
+
+    } catch (error) {
+        console.error('[SW-Notify] Failed to show notification:', error);
+        throw error;
+    }
+}
+
+async function handleOpenAppAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    try {
+        // Cache content first
+        await handleCacheAction(content, context, event);
+
+        // Try to focus existing window or open new one
+        const clients = await (self as any).clients?.matchAll?.({ type: 'window' });
+        if (clients?.length > 0) {
+            // Focus existing window
+            await clients[0].focus();
+            return new Response(null, {
+                status: 302,
+                headers: { Location: `/?context=${context}` }
+            });
+        } else {
+            // Open new window
+            await (self as any).clients?.openWindow?.(`/?context=${context}`);
+            return new Response(null, { status: 200 });
+        }
+
+    } catch (error) {
+        console.error('[SW-OpenApp] Failed to open app:', error);
+        throw error;
+    }
+}
+
+async function handleQueueAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    // Queue for background sync
+    console.log('[SW-Queue] Queuing content for background sync:', context);
+    return await handleCacheAction(content, context, event);
+}
+
+async function handleBroadcastAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+    try {
+        await broadcastToClients('content-received', { content, context });
+        return await handleCacheAction(content, context, event);
+    } catch (error) {
+        console.error('[SW-Broadcast] Failed to broadcast:', error);
+        throw error;
+    }
+}
+
+// Cache key management
+interface CacheKeyEntry {
+    key: string;
+    context: SWContentContext;
+    timestamp: number;
+}
+
+const CACHE_KEYS_DB_NAME = 'sw-cache-keys';
+const CACHE_KEYS_STORE_NAME = 'keys';
+
+async function getStoredCacheKeys(): Promise<CacheKeyEntry[]> {
+    try {
+        const db = await openCacheKeysDB();
+        return new Promise((resolve) => {
+            const transaction = db.transaction([CACHE_KEYS_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(CACHE_KEYS_STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => resolve([]);
+        });
+    } catch (error) {
+        console.warn('[SW-CacheKeys] Failed to get stored keys:', error);
+        return [];
+    }
+}
+
+async function storeCacheKeys(keys: CacheKeyEntry[]): Promise<void> {
+    try {
+        const db = await openCacheKeysDB();
+        const transaction = db.transaction([CACHE_KEYS_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(CACHE_KEYS_STORE_NAME);
+
+        // Clear existing
+        await new Promise((resolve) => {
+            const clearRequest = store.clear();
+            clearRequest.onsuccess = resolve;
+            clearRequest.onerror = resolve;
+        });
+
+        // Add new keys
+        for (const key of keys) {
+            store.add(key);
+        }
+    } catch (error) {
+        console.warn('[SW-CacheKeys] Failed to store keys:', error);
+    }
+}
+
+function openCacheKeysDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(CACHE_KEYS_DB_NAME, 1);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as any).result;
+            if (!db.objectStoreNames.contains(CACHE_KEYS_STORE_NAME)) {
+                db.createObjectStore(CACHE_KEYS_STORE_NAME, { keyPath: 'key' });
+            }
+        };
+    });
+}
+
+// Broadcast to active clients
+async function broadcastToClients(type: string, data: any): Promise<void> {
+    try {
+        const clients = await (self as any).clients?.matchAll?.();
+        if (clients) {
+            for (const client of clients) {
+                client.postMessage({ type, data });
+            }
+        }
+    } catch (error) {
+        console.warn('[SW-Broadcast] Failed to broadcast to clients:', error);
+    }
+}
+
 // (Share target AI processing uses executionCore; no direct image conversion needed here.)
 
 //
@@ -659,7 +1025,7 @@ registerRoute(
             for (const cacheRequest of cacheKeys) {
                 try {
                     // Check if the request body is similar (basic heuristic)
-                    const cachedResponse = await cache.match(cacheRequest);
+                    const cachedResponse = await cache?.match?.(cacheRequest);
                     if (cachedResponse) {
                         console.log('[SW] Serving cached processing result');
                         return cachedResponse;
@@ -1055,31 +1421,17 @@ async function handleShareTargetRequest(event: any): Promise<Response> {
             filesCount: shareData?.files?.length || 0
         });
 
-        // Store in cache
-        try {
-            const cache = await (self as any).caches?.open?.('share-target-data')?.catch?.((error: any) => {
-                console.error('[ShareTarget] Failed to open cache:', error);
-                return null;
-            });
-            if (cache) {
-                await cache?.put?.('/share-target-data', new Response(JSON.stringify(shareData), {
-                    headers: { 'Content-Type': 'application/json' }
-                }));
-            }
-        } catch (e) {
-            console.warn('[ShareTarget] Cache store failed:', e);
+        // Determine content type for association system
+        let primaryContentType = 'text';
+        if (shareData.files?.length > 0) {
+            primaryContentType = 'files';
+        } else if (shareData.url) {
+            primaryContentType = 'url';
         }
 
-        // Broadcast
-        (self as any).notifyShareReceived?.(shareData) ?? console.log('[ShareTarget] Broadcast function not available');
+        // Process through content association system
+        return await processContentWithAssociation(primaryContentType, 'share-target', shareData, event);
 
-        // Show notification
-        (self as any).sendToast?.('Content received', 'info') || console.log('[ShareTarget] Toast function not available');
-
-        return new Response(null, {
-            status: 302,
-            headers: { Location: '/?shared=1' }
-        });
     } catch (err) {
         console.warn('[ShareTarget] Manual handler error:', err);
         return new Response(null, { status: 302, headers: { Location: '/' } });
@@ -1098,6 +1450,157 @@ registerRoute(
     },
     'GET'
 );
+
+// Handle requests for cached content from SW association system
+registerRoute(
+    ({ url }) => url?.pathname?.startsWith('/sw-content/'),
+    async ({ url }) => {
+        const cacheKey = url.pathname.replace('/sw-content/', '');
+        console.log('[SW] Received request for cached content:', cacheKey);
+
+        try {
+            const cache = await (self as any).caches?.open?.('sw-content-cache');
+            if (cache) {
+                const response = await cache?.match?.(cacheKey);
+                if (response) {
+                    // Delete from cache after retrieval (one-time use)
+                    await cache.delete(cacheKey);
+                    return response;
+                }
+            }
+        } catch (error) {
+            console.warn('[SW] Failed to retrieve cached content:', error);
+        }
+
+        return new Response(JSON.stringify({ error: 'Content not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'GET'
+);
+
+// Handle requests for available cached content keys
+registerRoute(
+    ({ url }) => url?.pathname === '/sw-content/available',
+    async () => {
+        console.log('[SW] Received request for available cached content');
+        const cacheKeys = await getStoredCacheKeys();
+        return new Response(JSON.stringify({ cacheKeys }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'GET'
+);
+
+// ============================================================================
+// LAUNCH QUEUE SUPPORT
+// ============================================================================
+
+// Handle launch queue events (when app is launched with files)
+self.addEventListener?.('launchqueue', async (event: any) => {
+    console.log('[LaunchQueue] Launch queue event received');
+
+    try {
+        const launchQueue = event?.launchQueue;
+        if (!launchQueue) {
+            console.warn('[LaunchQueue] No launch queue available');
+            return;
+        }
+
+        // Process launch queue files
+        for await (const fileHandle of launchQueue.files) {
+            try {
+                console.log('[LaunchQueue] Processing file:', fileHandle.name);
+
+                // Get file from handle
+                const file = await fileHandle.getFile();
+                const content = {
+                    files: [file],
+                    timestamp: Date.now(),
+                    source: 'launch-queue'
+                };
+
+                // Process through association system
+                await processContentWithAssociation('files', 'launch-queue', content, event);
+
+            } catch (error) {
+                console.error('[LaunchQueue] Failed to process file:', error);
+            }
+        }
+
+    } catch (error) {
+        console.error('[LaunchQueue] Failed to handle launch queue:', error);
+    }
+});
+
+// ============================================================================
+// PUSH MESSAGE SUPPORT
+// ============================================================================
+
+// Handle push messages with association system
+self.addEventListener?.('push', async (event: any) => {
+    console.log('[Push] Push message received');
+
+    try {
+        const data = event?.data?.json?.() || {};
+
+        // Process push data through association system
+        await processContentWithAssociation('text', 'push-message', {
+            text: data.message || data.body || '',
+            title: data.title || '',
+            timestamp: Date.now(),
+            source: 'push'
+        }, event);
+
+    } catch (error) {
+        console.error('[Push] Failed to handle push message:', error);
+    }
+});
+
+// ============================================================================
+// BACKGROUND SYNC SUPPORT
+// ============================================================================
+
+// Handle background sync with association system
+self.addEventListener?.('sync', async (event: any) => {
+    console.log('[BackgroundSync] Background sync event:', event.tag);
+
+    if (event.tag === 'content-processing') {
+        try {
+            // Get any cached content that needs processing
+            const cacheKeys = await getStoredCacheKeys();
+            const processingKeys = cacheKeys.filter(k => k.context === 'background-sync');
+
+            for (const cacheKey of processingKeys) {
+                try {
+                    const cache = await (self as any).caches?.open?.('sw-content-cache');
+                    if (cache) {
+                        const response = await cache?.match?.(cacheKey.key);
+                        if (response) {
+                            const content = await response.json();
+
+                            // Process through association system
+                            await processContentWithAssociation('any', 'background-sync', content, event);
+
+                            // Remove from cache after processing
+                            await cache.delete(cacheKey.key);
+                        }
+                    }
+                } catch (error) {
+                    console.error('[BackgroundSync] Failed to process cached content:', error);
+                }
+            }
+
+            // Update cache keys (remove processed ones)
+            const remainingKeys = cacheKeys.filter(k => k.context !== 'background-sync');
+            await storeCacheKeys(remainingKeys);
+
+        } catch (error) {
+            console.error('[BackgroundSync] Failed to handle background sync:', error);
+        }
+    }
+});
 
 // Clear clipboard operations queue
 registerRoute(

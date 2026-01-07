@@ -14,10 +14,12 @@
  * - Share target processing
  * - Launch queue handling
  * - CRX integration
+ * - Component initialization with catch-up messaging
+ * - Centralized content association registry
  */
 
 import { CHANNELS } from '../routing/sw-handling';
-import { UNIFIED_PROCESSING_RULES } from './UnifiedAIConfig';
+import { UNIFIED_PROCESSING_RULES, type AssociationOverrideFactor, type ContentType, type ContentContext, type ContentAction } from './UnifiedAIConfig';
 
 // Additional custom channels for unified messaging
 const CUSTOM_CHANNELS = {
@@ -26,6 +28,148 @@ const CUSTOM_CHANNELS = {
     FILE_EXPLORER: 'file-explorer',
     PRINT_VIEWER: 'print-viewer'
 } as const;
+
+// ============================================================================
+// CENTRALIZED CONTENT ASSOCIATION SYSTEM
+// ============================================================================
+
+/**
+ * Content Association Registry
+ * Maps content types and contexts to appropriate destinations and actions
+ */
+export interface ContentAssociation {
+    contentType: ContentType;
+    context: ContentContext;
+    destination: Destination;
+    action: ContentAction;
+    priority: number;
+    conditions?: AssociationCondition[];
+}
+
+// Types are now imported from UnifiedAIConfig.ts
+
+/**
+ * Association conditions for more specific routing
+ */
+export interface AssociationCondition {
+    type: 'file-extension' | 'mime-type' | 'size' | 'content-pattern';
+    value: string | RegExp;
+    match: 'equals' | 'contains' | 'regex' | 'gt' | 'lt';
+}
+
+/**
+ * Centralized Content Association Registry
+ * Defines how different content types should be handled in different contexts
+ */
+export const CONTENT_ASSOCIATION_REGISTRY: ContentAssociation[] = [
+    // Share Target Associations
+    { contentType: 'markdown', context: 'share-target', destination: 'basic-viewer', action: 'view', priority: 100 },
+    { contentType: 'text', context: 'share-target', destination: 'basic-workcenter', action: 'attach', priority: 90 },
+    { contentType: 'image', context: 'share-target', destination: 'basic-workcenter', action: 'attach', priority: 95 },
+    { contentType: 'url', context: 'share-target', destination: 'basic-workcenter', action: 'attach', priority: 85 },
+
+    // Launch Queue Associations
+    { contentType: 'file', context: 'launch-queue', destination: 'basic-workcenter', action: 'attach', priority: 100 },
+    { contentType: 'markdown', context: 'launch-queue', destination: 'basic-viewer', action: 'view', priority: 95 },
+    { contentType: 'image', context: 'launch-queue', destination: 'basic-workcenter', action: 'attach', priority: 90 },
+
+    // File Open Associations
+    { contentType: 'file', context: 'file-open', destination: 'basic-workcenter', action: 'attach', priority: 100,
+      conditions: [{ type: 'mime-type', value: 'text/markdown', match: 'equals' }] },
+    { contentType: 'file', context: 'file-open', destination: 'basic-viewer', action: 'view', priority: 95,
+      conditions: [{ type: 'file-extension', value: '.md', match: 'equals' }] },
+    { contentType: 'file', context: 'file-open', destination: 'basic-workcenter', action: 'attach', priority: 90 },
+
+    // CRX Snip Associations
+    { contentType: 'text', context: 'crx-snip', destination: 'basic-workcenter', action: 'attach', priority: 100 },
+    { contentType: 'image', context: 'crx-snip', destination: 'basic-workcenter', action: 'attach', priority: 100 },
+
+    // Paste Associations
+    { contentType: 'text', context: 'paste', destination: 'basic-workcenter', action: 'attach', priority: 100 },
+    { contentType: 'markdown', context: 'paste', destination: 'basic-viewer', action: 'view', priority: 95 },
+
+    // Default fallback associations
+    { contentType: 'text', context: 'initial-load', destination: 'basic-viewer', action: 'view', priority: 50 },
+    { contentType: 'markdown', context: 'initial-load', destination: 'basic-viewer', action: 'view', priority: 60 },
+    { contentType: 'file', context: 'initial-load', destination: 'basic-workcenter', action: 'attach', priority: 55 },
+    { contentType: 'image', context: 'initial-load', destination: 'basic-workcenter', action: 'attach', priority: 55 },
+];
+
+/**
+ * Resolve content association based on content type, context, and conditions
+ */
+export function resolveContentAssociation(
+    contentType: ContentType,
+    context: ContentContext,
+    content?: any,
+    overrideFactors?: AssociationOverrideFactor[]
+): { destination: Destination; action: ContentAction; priority: number } | null {
+
+    // Check override factors first (highest priority)
+    if (overrideFactors?.includes('explicit-workcenter')) {
+        return { destination: 'basic-workcenter', action: 'attach', priority: 1000 };
+    }
+    if (overrideFactors?.includes('explicit-viewer')) {
+        return { destination: 'basic-viewer', action: 'view', priority: 1000 };
+    }
+    if (overrideFactors?.includes('explicit-explorer')) {
+        return { destination: 'basic-explorer', action: 'save', priority: 1000 };
+    }
+
+    // Find matching associations
+    const matches = CONTENT_ASSOCIATION_REGISTRY
+        .filter(assoc => assoc.contentType === contentType && assoc.context === context)
+        .filter(assoc => !assoc.conditions || checkAssociationConditions(assoc.conditions, content))
+        .sort((a, b) => b.priority - a.priority);
+
+    return matches.length > 0 ? {
+        destination: matches[0].destination,
+        action: matches[0].action,
+        priority: matches[0].priority
+    } : null;
+}
+
+/**
+ * Check if association conditions are met
+ */
+function checkAssociationConditions(conditions: AssociationCondition[], content: any): boolean {
+    return conditions.every(condition => {
+        let contentValue: any;
+
+        switch (condition.type) {
+            case 'file-extension':
+                contentValue = content?.name ? content.name.split('.').pop()?.toLowerCase() : '';
+                break;
+            case 'mime-type':
+                contentValue = content?.type || content?.mimeType || '';
+                break;
+            case 'size':
+                contentValue = content?.size || content?.length || 0;
+                break;
+            case 'content-pattern':
+                contentValue = typeof content === 'string' ? content :
+                              content?.text || content?.content || '';
+                break;
+            default:
+                return false;
+        }
+
+        switch (condition.match) {
+            case 'equals':
+                return contentValue === condition.value;
+            case 'contains':
+                return String(contentValue).includes(String(condition.value));
+            case 'regex':
+                return new RegExp(condition.value as string).test(String(contentValue));
+            case 'gt':
+                return Number(contentValue) > Number(condition.value);
+            case 'lt':
+                return Number(contentValue) < Number(condition.value);
+            default:
+                return false;
+        }
+    });
+}
 
 // Message types
 export type MessageType =
@@ -39,15 +183,7 @@ export type MessageType =
   | 'file-open'
   | 'module-command';
 
-// Content types
-export type ContentType =
-  | 'file'
-  | 'blob'
-  | 'text'
-  | 'markdown'
-  | 'image'
-  | 'url'
-  | 'base64';
+// Content types are now defined in UnifiedAIConfig.ts
 
 // Destinations (inbox/mailbox concept)
 export type Destination =
@@ -348,15 +484,6 @@ export const PROCESSING_RULES = {
 };
 
 // Message interface
-// Override factors for bypassing default associations
-export type AssociationOverrideFactor =
-  | 'explicit-workcenter'        // User explicitly chose workcenter (e.g., button click)
-  | 'explicit-viewer'           // User explicitly chose viewer
-  | 'explicit-explorer'         // User explicitly chose file explorer
-  | 'force-attachment'          // Force as attachment regardless of content type
-  | 'force-processing'          // Force processing regardless of content type
-  | 'bypass-default'            // Generic bypass flag
-  | 'user-action';              // Any user-initiated action that overrides default
 
 export interface UnifiedMessage {
   id: string;
@@ -385,6 +512,256 @@ export interface UnifiedMessage {
 export interface MessageHandler {
   canHandle(message: UnifiedMessage): boolean;
   handle(message: UnifiedMessage): Promise<void> | void;
+}
+
+// ============================================================================
+// COMPONENT INITIALIZATION WITH CATCH-UP MESSAGING
+// ============================================================================
+
+/**
+ * Component State Tracking for Catch-up Messaging
+ */
+interface ComponentState {
+    id: string;
+    destination: Destination;
+    isInitialized: boolean;
+    pendingMessages: UnifiedMessage[];
+    lastActivity: number;
+    initializationPromise?: Promise<UnifiedMessage[]>;
+}
+
+/**
+ * Component Registry for Catch-up Messaging
+ */
+class ComponentRegistry {
+    private components = new Map<string, ComponentState>();
+
+    /**
+     * Register a component for catch-up messaging
+     */
+    registerComponent(componentId: string, destination: Destination): void {
+        if (!this.components.has(componentId)) {
+            this.components.set(componentId, {
+                id: componentId,
+                destination,
+                isInitialized: false,
+                pendingMessages: [],
+                lastActivity: Date.now()
+            });
+        }
+    }
+
+    /**
+     * Mark component as initialized and return pending messages
+     */
+    initializeComponent(componentId: string): UnifiedMessage[] {
+        const component = this.components.get(componentId);
+        if (!component) {
+            console.warn(`[ComponentRegistry] Component ${componentId} not registered`);
+            return [];
+        }
+
+        component.isInitialized = true;
+        component.lastActivity = Date.now();
+
+        const pendingMessages = [...component.pendingMessages];
+        component.pendingMessages = []; // Clear pending messages
+
+        console.log(`[ComponentRegistry] Component ${componentId} initialized with ${pendingMessages.length} pending messages`);
+        return pendingMessages;
+    }
+
+    /**
+     * Add pending message for component
+     */
+    addPendingMessage(destination: Destination, message: UnifiedMessage): boolean {
+        let componentFound = false;
+
+        for (const [componentId, component] of this.components.entries()) {
+            if (component.destination === destination) {
+                if (!component.isInitialized) {
+                    component.pendingMessages.push(message);
+                    console.log(`[ComponentRegistry] Added pending message to ${componentId}:`, message.type);
+                }
+                component.lastActivity = Date.now();
+                componentFound = true;
+            }
+        }
+
+        return componentFound;
+    }
+
+    /**
+     * Get pending message count for destination
+     */
+    getPendingCount(destination: Destination): number {
+        let count = 0;
+        for (const component of this.components.values()) {
+            if (component.destination === destination && !component.isInitialized) {
+                count += component.pendingMessages.length;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Check if any components for destination are initialized
+     */
+    hasInitializedComponents(destination: Destination): boolean {
+        for (const component of this.components.values()) {
+            if (component.destination === destination && component.isInitialized) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clean up old component registrations
+     */
+    cleanup(maxAge: number = 5 * 60 * 1000): void { // 5 minutes default
+        const now = Date.now();
+        for (const [componentId, component] of this.components.entries()) {
+            if (now - component.lastActivity > maxAge) {
+                console.log(`[ComponentRegistry] Cleaning up old component: ${componentId}`);
+                this.components.delete(componentId);
+            }
+        }
+    }
+}
+
+// Global component registry instance
+const componentRegistry = new ComponentRegistry();
+
+// Periodic cleanup
+setInterval(() => componentRegistry.cleanup(), 60 * 1000); // Clean up every minute
+
+// ============================================================================
+// MAIN/INDEX LEVEL CONTENT PROCESSING
+// ============================================================================
+
+/**
+ * Initial Content Processing Options
+ */
+export interface InitialContentOptions {
+    content: any;
+    contentType: ContentType;
+    context: ContentContext;
+    source: MessageSource;
+    overrideFactors?: AssociationOverrideFactor[];
+    metadata?: Record<string, any>;
+}
+
+/**
+ * Process initial content based on associations
+ * This is used at the main/index/boot level to handle share targets, launch queue, etc.
+ */
+export async function processInitialContent(options: InitialContentOptions): Promise<void> {
+    const { content, contentType, context, source, overrideFactors, metadata } = options;
+
+    console.log(`[InitialContent] Processing ${contentType} from ${context} (${source})`);
+
+    // Resolve content association
+    const association = resolveContentAssociation(contentType, context, content, overrideFactors);
+
+    if (!association) {
+        console.warn(`[InitialContent] No association found for ${contentType} in ${context}`);
+        return;
+    }
+
+    console.log(`[InitialContent] Resolved association:`, association);
+
+    // Create unified message
+    const message: UnifiedMessage = {
+        id: crypto.randomUUID(),
+        type: 'content-share',
+        source,
+        destination: association.destination,
+        contentType,
+        data: content,
+        metadata: {
+            timestamp: Date.now(),
+            association: association,
+            context,
+            ...metadata
+        },
+        overrideFactors
+    };
+
+    // Send the message through unified messaging
+    await unifiedMessaging.sendMessage(message);
+
+    // Handle initial actions based on the association
+    await executeInitialAction(message, association);
+}
+
+/**
+ * Execute initial action for content processing
+ */
+async function executeInitialAction(message: UnifiedMessage, association: { destination: Destination; action: ContentAction; priority: number }): Promise<void> {
+    console.log(`[InitialContent] Executing ${association.action} action for ${message.contentType}`);
+
+    switch (association.action) {
+        case 'view':
+            // Ensure the view is set and hash is updated
+            if (typeof window !== 'undefined' && window.location) {
+                // This will be handled by the component handlers
+                // The message routing will take care of setting the view
+            }
+            break;
+
+        case 'attach':
+            // For attach actions, we might need to wait for the work center to be ready
+            // This is handled by the component initialization system
+            break;
+
+        case 'process':
+            // Processing is handled by the destination component
+            break;
+
+        case 'save':
+            // Saving is handled by the destination component
+            break;
+
+        case 'print':
+            // Print is handled by the print destination handler
+            break;
+
+        default:
+            console.warn(`[InitialContent] Unknown action: ${association.action}`);
+    }
+}
+
+// ============================================================================
+// COMPONENT INITIALIZATION API
+// ============================================================================
+
+/**
+ * Register a component for catch-up messaging
+ */
+export function registerComponent(componentId: string, destination: Destination): void {
+    componentRegistry.registerComponent(componentId, destination);
+}
+
+/**
+ * Initialize component and get pending messages
+ */
+export function initializeComponent(componentId: string): UnifiedMessage[] {
+    return componentRegistry.initializeComponent(componentId);
+}
+
+/**
+ * Check if there are pending messages for a destination
+ */
+export function hasPendingMessages(destination: Destination): number {
+    return componentRegistry.getPendingCount(destination);
+}
+
+/**
+ * Check if any components are initialized for a destination
+ */
+export function hasInitializedComponents(destination: Destination): boolean {
+    return componentRegistry.hasInitializedComponents(destination);
 }
 
 // Unified Messaging Manager
@@ -621,6 +998,8 @@ export class UnifiedMessagingManager {
     // Store message for persistence (for components that load later)
     if (message.destination) {
       this.storePersistentMessage(message.destination, message);
+      // Also add to component registry for catch-up messaging
+      componentRegistry.addPendingMessage(message.destination, message);
     }
 
     // Find and execute handlers
@@ -935,54 +1314,4 @@ export function navigateToView(destination: Destination): Promise<void> {
     destination,
     data: { view: destination }
   });
-}
-
-// ============================================================================
-// COMPONENT INITIALIZATION HELPERS
-// ============================================================================
-
-/**
- * Initialize a component with catch-up messaging
- * Call this when a component/view mounts/initializes
- */
-export async function initializeComponent(destination: Destination, componentState?: any): Promise<UnifiedMessage[]> {
-  // Register component state if provided
-  if (componentState !== undefined) {
-    unifiedMessaging.setComponentState(destination, componentState);
-  }
-
-  // Get any pending messages for this component
-  const pendingMessages = await unifiedMessaging.onComponentInit(destination);
-
-  console.log(`[ComponentInit] ${destination} initialized with ${pendingMessages.length} pending messages`);
-
-  return pendingMessages;
-}
-
-/**
- * Update component state for synchronization
- */
-export function updateComponentState(destination: Destination, state: any): void {
-  unifiedMessaging.setComponentState(destination, state);
-}
-
-/**
- * Get current component state
- */
-export function getComponentState(destination: Destination): any {
-  return unifiedMessaging.getComponentState(destination);
-}
-
-/**
- * Check if there are pending messages for a component
- */
-export function hasPendingMessages(destination: Destination): boolean {
-  return unifiedMessaging.hasPendingMessages(destination);
-}
-
-/**
- * Get count of pending messages
- */
-export function getPendingMessageCount(destination: Destination): number {
-  return unifiedMessaging.getPendingMessageCount(destination);
 }

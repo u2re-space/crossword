@@ -6,6 +6,9 @@ import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
 import { getWorkCenterComm } from "../../shared/AppCommunicator";
 
+// Import component registration system
+import { registerComponent, initializeComponent } from "../../shared/UnifiedMessaging";
+
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
     throwOnError: false,
@@ -65,6 +68,19 @@ export class MarkdownViewer {
             ...options
         };
         this.content = this.options.content || "";
+
+        // Register component for catch-up messaging
+        registerComponent('markdown-viewer-instance', 'basic-viewer');
+
+        // Process any pending messages
+        const pendingMessages = initializeComponent('markdown-viewer-instance');
+        for (const message of pendingMessages) {
+            console.log(`[MarkdownViewer] Processing pending message:`, message);
+            if (message.data?.text || message.data?.content) {
+                const content = message.data.text || message.data.content;
+                this.content = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            }
+        }
     }
 
     /**

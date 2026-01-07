@@ -8,8 +8,50 @@ import type { AppSettings } from "@rs-core/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
 
 // Import unified messaging system
-import { unifiedMessaging, sendToWorkCenter, sendToClipboard, navigateToView, initializeComponent, hasPendingMessages } from "../shared/UnifiedMessaging";
+import {
+    unifiedMessaging,
+    sendToWorkCenter,
+    sendToClipboard,
+    navigateToView,
+    initializeComponent,
+    hasPendingMessages,
+    registerComponent,
+    processInitialContent
+} from "../shared/UnifiedMessaging";
 import { createMessageWithOverrides } from "../shared/UnifiedMessaging";
+import type { ContentContext, ContentType } from "../shared/UnifiedAIConfig";
+
+// Service Worker content retrieval utilities
+async function getSWCachedContent(): Promise<any[]> {
+    try {
+        const response = await fetch('/sw-content/available');
+        if (response.ok) {
+            const data = await response.json();
+            const cachedContent = [];
+
+            for (const cacheKey of data.cacheKeys || []) {
+                try {
+                    const contentResponse = await fetch(`/sw-content/${cacheKey.key}`);
+                    if (contentResponse.ok) {
+                        const content = await contentResponse.json();
+                        cachedContent.push({
+                            ...content,
+                            cacheKey: cacheKey.key,
+                            swContext: cacheKey.context
+                        });
+                    }
+                } catch (error) {
+                    console.warn('[Main] Failed to retrieve SW cached content:', error);
+                }
+            }
+
+            return cachedContent;
+        }
+    } catch (error) {
+        console.warn('[Main] Failed to get SW cached content:', error);
+    }
+    return [];
+}
 
 // Import lazy loading utility
 import { getCachedComponent } from "./modules/LazyLoader";
@@ -363,49 +405,36 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     // Initialize managers that are always needed
     const fileHandler = createFileHandler({
-        onFilesAdded: async (files: File[]): Promise<void> => {
-            // Handle files based on current view - lazy load components if needed
-            if (state.view === 'workcenter') {
-                const workCenter = await getCachedComponent(
-                    'workcenter',
-                    () => import('./workcenter/WorkCenter').then(m => m.WorkCenterManager),
-                    { componentName: 'WorkCenter' }
-                );
+        onFilesAdded: (files: File[]): void => {
+            // Process files through centralized content association system
+            for (const file of files) {
+                // Determine content type
+                const contentType: ContentType = file.type?.startsWith('text/') ? 'text' :
+                                                file.type?.startsWith('image/') ? 'image' :
+                                                file.name?.toLowerCase().endsWith('.md') ? 'markdown' : 'file';
 
-                // Cleanup previous work center manager
-                if (state.managers.workCenter.instance && typeof state.managers.workCenter.instance.destroy === 'function') {
-                    state.managers.workCenter.instance.destroy();
-                }
+                // Determine context based on current view
+                const context: ContentContext = state.view === 'workcenter' ? 'drag-drop' :
+                                               state.view === 'markdown-viewer' ? 'file-open' :
+                                               'file-open';
 
-                const                 workCenterManager = new workCenter.component({
-                    state: state,
-                    history: state.history,
-                    getSpeechPrompt,
-                    showMessage: showStatusMessage,
-                    render: () => render(),
-                    onFilesChanged: () => {
-                        // Re-render toolbar to update file count badge
-                        renderToolbar();
+                // Process through centralized system (async, but we don't await)
+                processInitialContent({
+                    content: { file, filename: file.name, type: file.type },
+                    contentType,
+                    context,
+                    source: 'manual',
+                    metadata: {
+                        title: `File: ${file.name}`,
+                        filename: file.name,
+                        mimeType: file.type
                     }
+                }).then(() => {
+                    showStatusMessage(`Processed ${file.name}`);
+                }).catch((e) => {
+                    console.warn(`[Main] Failed to process file ${file.name}:`, e);
+                    showStatusMessage(`Failed to process ${file.name}`);
                 });
-
-                workCenterManager.getState().files.push(...files);
-                // Store reference for future use
-                state.managers.workCenter.instance = workCenterManager;
-                render();
-            } else if (state.view === 'markdown-viewer') {
-                // Handle markdown files for viewer
-                const markdownFiles = files.filter(f => fileHandler.isMarkdownFile(f));
-                if (markdownFiles.length > 0) {
-                    const fileContents = await fileHandler.readFilesAsText(markdownFiles);
-                    if (fileContents.length > 0) {
-                        const content = fileContents[0].content;
-                        state.markdown = content;
-                        showStatusMessage(`Loaded ${markdownFiles[0].name}`);
-                        persistMarkdown();
-                        render();
-                    }
-                }
             }
         },
         onError: (error: string) => {
@@ -675,19 +704,88 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         }
     }
 
-    // If we were launched with files (share-target), force WorkCenter and attach them.
-    // (This must run after state + fileHandler exist.)
+    // Process initial files using centralized content association system
     if (Array.isArray(options.initialFiles) && options.initialFiles.length > 0) {
-        state.view = "workcenter";
-        setViewHash("workcenter");
-        try {
-            // Use the same pipeline as UI file selection.
-            state.services.fileHandler?.addFiles?.(options.initialFiles);
-            state.message = `Received ${options.initialFiles.length} file(s)`;
-        } catch (e) {
-            console.warn("[Basic] Failed to attach initial files:", e);
+        console.log(`[Main] Processing ${options.initialFiles.length} initial files`);
+
+        for (const file of options.initialFiles) {
+            // Determine content type
+            const contentType: ContentType = file.type?.startsWith('text/') ? 'text' :
+                                            file.type?.startsWith('image/') ? 'image' :
+                                            file.name?.toLowerCase().endsWith('.md') ? 'markdown' : 'file';
+
+            // Process through centralized system (async, but we don't await)
+            processInitialContent({
+                content: { file, filename: file.name, type: file.type },
+                contentType,
+                context: 'launch-queue',
+                source: 'launch-queue',
+                metadata: {
+                    title: `Launch Queue: ${file.name}`,
+                    filename: file.name,
+                    mimeType: file.type
+                }
+            }).then(() => {
+                state.message = `Processed ${file.name}`;
+                renderStatus();
+            }).catch((e) => {
+                console.warn(`[Main] Failed to process initial file ${file.name}:`, e);
+            });
         }
     }
+
+    // Process cached content from service worker
+    getSWCachedContent().then(cachedContent => {
+        if (cachedContent.length > 0) {
+            console.log(`[Main] Processing ${cachedContent.length} cached content items from SW`);
+
+            for (const cachedItem of cachedContent) {
+                try {
+                    // Determine content type and context
+                    let contentType: ContentType = 'text';
+                    let context: ContentContext = 'share-target';
+
+                    if (cachedItem.content?.files?.length > 0) {
+                        contentType = 'file';
+                    } else if (cachedItem.content?.url) {
+                        contentType = 'url';
+                    }
+
+                    if (cachedItem.swContext) {
+                        context = cachedItem.swContext as ContentContext;
+                    }
+
+                    // Process through centralized system
+                    processInitialContent({
+                        content: cachedItem.content,
+                        contentType,
+                        context,
+                        source: 'service-worker',
+                        metadata: {
+                            title: `SW Cached: ${cachedItem.swContext || 'content'}`,
+                            fromSW: true,
+                            cacheKey: cachedItem.cacheKey,
+                            timestamp: cachedItem.timestamp
+                        }
+                    }).then(() => {
+                        state.message = `Processed cached content`;
+                        renderStatus();
+                        setTimeout(() => {
+                            state.message = "";
+                            renderStatus();
+                        }, 2000);
+                    }).catch((e) => {
+                        console.warn(`[Main] Failed to process SW cached content:`, e);
+                    });
+
+                } catch (error) {
+                    console.warn(`[Main] Failed to process cached item:`, error);
+                }
+            }
+        }
+    }).catch(error => {
+        console.warn('[Main] Failed to retrieve SW cached content:', error);
+    });
 
     const persistMarkdown = () => {
         try {
@@ -895,31 +993,30 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             fileHandler.setupDragAndDrop(viewerElement);
             fileHandler.setupPasteHandling(viewerElement);
 
-            // Initialize component with catch-up messaging (no render calls to prevent loops)
-            initializeComponent('basic-viewer', { viewer, element: viewerElement })
-              .then(async (pendingMessages) => {
-                // Process any pending messages directly in viewer logic (no render calls)
-                let contentLoaded = false;
-                for (const message of pendingMessages) {
-                  console.log(`[Viewer] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    contentLoaded = true;
-                  }
-                }
-                if (contentLoaded) {
-                  // Update the viewer content without triggering render
-                  if (viewer.updateContent) {
-                    viewer.updateContent(state.markdown);
-                  }
-                  showStatusMessage("Content loaded in viewer");
-                }
-              })
-              .catch(error => {
-                console.warn('[Viewer] Failed to initialize with catch-up messaging:', error);
-              });
+            // Register component for catch-up messaging
+            registerComponent('markdown-viewer', 'basic-viewer');
+
+            // Initialize component with catch-up messaging
+            const pendingMessages = initializeComponent('markdown-viewer');
+
+            // Process any pending messages directly in viewer logic (no render calls)
+            let contentLoaded = false;
+            for (const message of pendingMessages) {
+              console.log(`[Viewer] Processing pending message:`, message);
+              if (message.data?.text || message.data?.content) {
+                const content = message.data.text || message.data.content;
+                state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                persistMarkdown();
+                contentLoaded = true;
+              }
+            }
+            if (contentLoaded) {
+              // Update the viewer content without triggering render
+              if (viewer.updateContent) {
+                viewer.updateContent(state.markdown);
+              }
+              showStatusMessage("Content loaded in viewer");
+            }
 
             // Replace loading element with actual content
             loadingElement.replaceWith(viewerElement);
@@ -976,31 +1073,30 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             const editorElement = editor.render();
 
-            // Initialize component with catch-up messaging (no render calls to prevent loops)
-            initializeComponent('markdown-editor', { editor, element: editorElement })
-              .then(async (pendingMessages) => {
-                // Process any pending messages directly in editor logic (no render calls)
-                let contentLoaded = false;
-                for (const message of pendingMessages) {
-                  console.log(`[Editor] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    contentLoaded = true;
-                  }
-                }
-                if (contentLoaded) {
-                  // Update the editor content without triggering render
-                  if (editor.updateContent) {
-                    editor.updateContent(state.markdown);
-                  }
-                  showStatusMessage("Content loaded in editor");
-                }
-              })
-              .catch(error => {
-                console.warn('[Editor] Failed to initialize with catch-up messaging:', error);
-              });
+            // Register component for catch-up messaging
+            registerComponent('markdown-editor', 'markdown-editor');
+
+            // Initialize component with catch-up messaging
+            const pendingMessages = initializeComponent('markdown-editor');
+
+            // Process any pending messages directly in editor logic (no render calls)
+            let contentLoaded = false;
+            for (const message of pendingMessages) {
+              console.log(`[Editor] Processing pending message:`, message);
+              if (message.data?.text || message.data?.content) {
+                const content = message.data.text || message.data.content;
+                state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                persistMarkdown();
+                contentLoaded = true;
+              }
+            }
+            if (contentLoaded) {
+              // Update the editor content without triggering render
+              if (editor.updateContent) {
+                editor.updateContent(state.markdown);
+              }
+              showStatusMessage("Content loaded in editor");
+            }
 
             // Replace loading element with actual content
             loadingElement.replaceWith(editorElement);
@@ -1057,31 +1153,30 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             const editorElement = editor.render();
 
-            // Initialize component with catch-up messaging (no render calls to prevent loops)
-            initializeComponent('rich-editor', { editor, element: editorElement })
-              .then(async (pendingMessages) => {
-                // Process any pending messages directly in rich editor logic (no render calls)
-                let contentLoaded = false;
-                for (const message of pendingMessages) {
-                  console.log(`[RichEditor] Processing pending message:`, message);
-                  if (message.data?.text || message.data?.content) {
-                    const content = message.data.text || message.data.content;
-                    state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                    persistMarkdown();
-                    contentLoaded = true;
-                  }
-                }
-                if (contentLoaded) {
-                  // Update the editor content without triggering render
-                  if (editor.updateContent) {
-                    editor.updateContent(state.markdown);
-                  }
-                  showStatusMessage("Content loaded in rich editor");
-                }
-              })
-              .catch(error => {
-                console.warn('[RichEditor] Failed to initialize with catch-up messaging:', error);
-              });
+            // Register component for catch-up messaging
+            registerComponent('rich-editor', 'rich-editor');
+
+            // Initialize component with catch-up messaging
+            const pendingMessages = initializeComponent('rich-editor');
+
+            // Process any pending messages directly in rich editor logic (no render calls)
+            let contentLoaded = false;
+            for (const message of pendingMessages) {
+              console.log(`[RichEditor] Processing pending message:`, message);
+              if (message.data?.text || message.data?.content) {
+                const content = message.data.text || message.data.content;
+                state.markdown = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                persistMarkdown();
+                contentLoaded = true;
+              }
+            }
+            if (contentLoaded) {
+              // Update the editor content without triggering render
+              if (editor.updateContent) {
+                editor.updateContent(state.markdown);
+              }
+              showStatusMessage("Content loaded in rich editor");
+            }
 
             // Replace loading element with actual content
             loadingElement.replaceWith(editorElement);
@@ -1139,24 +1234,23 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 }
             });
 
-            // Initialize component with catch-up messaging (no render calls to prevent loops)
-            initializeComponent('history', { manager: historyManager, element: historyElement })
-              .then(async (pendingMessages) => {
-                // Process any pending messages directly in history logic (no render calls)
-                for (const message of pendingMessages) {
-                  console.log(`[History] Processing pending message:`, message);
-                  // History component handles its own message processing
-                  if (message.type === 'navigation') {
-                    // Handle navigation to history view (don't call render here to prevent loops)
-                    state.view = 'history';
-                    // Schedule a render instead of calling it directly
-                    setTimeout(() => render(), 0);
-                  }
-                }
-              })
-              .catch(error => {
-                console.warn('[History] Failed to initialize with catch-up messaging:', error);
-              });
+            // Register component for catch-up messaging
+            registerComponent('history-view', 'history');
+
+            // Initialize component with catch-up messaging
+            const pendingMessages = initializeComponent('history-view');
+
+            // Process any pending messages directly in history logic (no render calls)
+            for (const message of pendingMessages) {
+              console.log(`[History] Processing pending message:`, message);
+              // History component handles its own message processing
+              if (message.type === 'navigation') {
+                // Handle navigation to history view (don't call render here to prevent loops)
+                state.view = 'history';
+                // Schedule a render instead of calling it directly
+                setTimeout(() => render(), 0);
+              }
+            }
 
             // Replace loading element with actual content
             loadingElement.replaceWith(historyElement);
@@ -1552,22 +1646,22 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     onTheme: (t) => applyTheme(root, t),
                 });
 
-                // Initialize component with catch-up messaging (no render calls to prevent loops)
-                try {
-                    const pendingMessages = await initializeComponent('settings', { element: settingsEl });
-                    // Process any pending messages directly in settings logic (no render calls)
-                    for (const message of pendingMessages) {
-                        console.log(`[Settings] Processing pending message:`, message);
-                        // Settings component handles its own message processing
-                        if (message.type === 'navigation') {
-                            // Handle navigation to settings view (don't call render here to prevent loops)
-                            state.view = 'settings';
-                            // Schedule a render instead of calling it directly
-                            setTimeout(() => render(), 0);
-                        }
+                // Register component for catch-up messaging
+                registerComponent('settings-view', 'settings');
+
+                // Initialize component with catch-up messaging
+                const pendingMessages = initializeComponent('settings-view');
+
+                // Process any pending messages directly in settings logic (no render calls)
+                for (const message of pendingMessages) {
+                    console.log(`[Settings] Processing pending message:`, message);
+                    // Settings component handles its own message processing
+                    if (message.type === 'navigation') {
+                        // Handle navigation to settings view (don't call render here to prevent loops)
+                        state.view = 'settings';
+                        // Schedule a render instead of calling it directly
+                        setTimeout(() => render(), 0);
                     }
-                } catch (error) {
-                    console.warn('[Settings] Failed to initialize with catch-up messaging:', error);
                 }
 
                 content.innerHTML = '';
@@ -1641,55 +1735,57 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     }
                 });
 
-                // Store reference and initialize with catch-up messaging (no re-sending messages to prevent loops)
+                // Register component for catch-up messaging
+                registerComponent('file-explorer', 'basic-explorer');
+
+                // Store reference and initialize with catch-up messaging
                 state.components.explorer.element = explorerEl;
-                try {
-                    const pendingMessages = await initializeComponent('basic-explorer', { element: explorerEl, path: explorerEl.path });
-                    for (const message of pendingMessages) {
-                        console.log(`[Explorer] Processing pending message:`, message);
-                        // Process explorer actions directly instead of re-sending through messaging (prevents loops)
-                        if (message.type === 'content-explorer') {
-                            const action = message.data?.action || 'save';
-                            const path = message.data?.path || message.data?.into || '/';
 
-                            setTimeout(async () => {
-                                try {
-                                    if (action === 'save' && (message.data?.file || message.data?.text || message.data?.content)) {
-                                        let fileToSave: File | null = null;
+                // Initialize component with catch-up messaging
+                const pendingMessages = initializeComponent('file-explorer');
 
-                                        if (message.data.file instanceof File) {
-                                            fileToSave = message.data.file;
-                                        } else if (message.data.blob instanceof Blob) {
-                                            const filename = message.data.filename || `file-${Date.now()}`;
-                                            fileToSave = new File([message.data.blob], filename, { type: message.data.blob.type });
-                                        } else if (message.data.text || message.data.content) {
-                                            const content = message.data.text || message.data.content;
-                                            const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                                            const filename = message.data.filename || `content-${Date.now()}.txt`;
-                                            fileToSave = new File([textContent], filename, { type: 'text/plain' });
-                                        }
+                for (const message of pendingMessages) {
+                    console.log(`[Explorer] Processing pending message:`, message);
+                    // Process explorer actions directly instead of re-sending through messaging (prevents loops)
+                    if (message.type === 'content-explorer') {
+                        const action = message.data?.action || 'save';
+                        const path = message.data?.path || message.data?.into || '/';
 
-                                        if (fileToSave && explorerEl) {
-                                            if (path && path !== explorerEl.path) {
-                                                explorerEl.path = path;
-                                            }
-                                            showStatusMessage(`Saved ${fileToSave.name} to Explorer`);
-                                        }
-                                    } else if (action === 'view' && message.data?.path) {
-                                        if (explorerEl && path) {
-                                            explorerEl.path = path;
-                                            showStatusMessage(`Opened Explorer at ${path}`);
-                                        }
+                        setTimeout(async () => {
+                            try {
+                                if (action === 'save' && (message.data?.file || message.data?.text || message.data?.content)) {
+                                    let fileToSave: File | null = null;
+
+                                    if (message.data.file instanceof File) {
+                                        fileToSave = message.data.file;
+                                    } else if (message.data.blob instanceof Blob) {
+                                        const filename = message.data.filename || `file-${Date.now()}`;
+                                        fileToSave = new File([message.data.blob], filename, { type: message.data.blob.type });
+                                    } else if (message.data.text || message.data.content) {
+                                        const content = message.data.text || message.data.content;
+                                        const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                                        const filename = message.data.filename || `content-${Date.now()}.txt`;
+                                        fileToSave = new File([textContent], filename, { type: 'text/plain' });
                                     }
-                                } catch (error) {
-                                    console.warn('[Explorer] Failed to handle pending message:', error);
-                                    showStatusMessage("Failed to perform Explorer action");
+
+                                    if (fileToSave && explorerEl) {
+                                        if (path && path !== explorerEl.path) {
+                                            explorerEl.path = path;
+                                        }
+                                        showStatusMessage(`Saved ${fileToSave.name} to Explorer`);
+                                    }
+                                } else if (action === 'view' && message.data?.path) {
+                                    if (explorerEl && path) {
+                                        explorerEl.path = path;
+                                        showStatusMessage(`Opened Explorer at ${path}`);
+                                    }
                                 }
-                            }, 100);
-                        }
+                            } catch (error) {
+                                console.warn('[Explorer] Failed to handle pending message:', error);
+                                showStatusMessage("Failed to perform Explorer action");
+                            }
+                        }, 100);
                     }
-                } catch (error) {
-                    console.warn('[Explorer] Failed to initialize with catch-up messaging:', error);
                 }
 
                 content.innerHTML = '';
@@ -1799,26 +1895,23 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     });
                 }
 
-                // Initialize component with catch-up messaging (only once per manager)
+                // Register and initialize component with catch-up messaging
                 if (!state.managers.workCenter.initialized) {
                   state.managers.workCenter.initialized = true;
-                  initializeComponent('basic-workcenter', {
-                    manager: state.managers.workCenter.instance,
-                    state: state.managers.workCenter.instance.getState()
-                  }).then(async (pendingMessages) => {
-                    // Process any pending messages directly in work center logic
-                    // Use skipRender to prevent loops during initialization
-                    for (const message of pendingMessages) {
-                      console.log(`[WorkCenter] Processing pending message:`, message);
-                      // Process the attachment with skipRender=true to prevent loops
-                      await handleWorkCenterAttachment(message, state, setViewHash, render, showStatusMessage, true);
-                    }
-                  }).catch(error => {
-                    console.warn('[WorkCenter] Failed to initialize with catch-up messaging:', error);
-                    showStatusMessage("Failed to initialize work center");
-                    // Reset initialization flag on error so it can retry
-                    state.managers.workCenter.initialized = false;
-                  });
+
+                  // Register component for catch-up messaging
+                  registerComponent('workcenter-manager', 'basic-workcenter');
+
+                  // Initialize component with catch-up messaging
+                  const pendingMessages = initializeComponent('workcenter-manager');
+
+                  // Process any pending messages directly in work center logic
+                  // Use skipRender to prevent loops during initialization
+                  for (const message of pendingMessages) {
+                    console.log(`[WorkCenter] Processing pending message:`, message);
+                    // Process the attachment with skipRender=true to prevent loops
+                    handleWorkCenterAttachment(message, state, setViewHash, render, showStatusMessage, true);
+                  }
                 }
 
                 const workCenterElement = state.managers.workCenter.instance.renderWorkCenterView();

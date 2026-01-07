@@ -493,10 +493,10 @@ export const consumeCachedShareTargetPayload = async (opts: { clear?: boolean } 
         }
 
         if (clear) {
-            await cache.delete(SHARE_CACHE_KEY).catch(() => {});
-            await cache.delete(SHARE_FILES_MANIFEST_KEY).catch(() => {});
+            await cache.delete(SHARE_CACHE_KEY).catch(() => { });
+            await cache.delete(SHARE_FILES_MANIFEST_KEY).catch(() => { });
             for (const fm of fileMeta) {
-                if (fm?.key) await cache.delete(fm.key).catch(() => {});
+                if (fm?.key) await cache.delete(fm.key).catch(() => { });
             }
         }
 
@@ -737,37 +737,96 @@ export const setupLaunchQueueConsumer = async () => {
 
     try {
         // Set up the consumer for launch queue
-        window.launchQueue!.setConsumer(async (launchParams: LaunchParams) => {
+        window.launchQueue!.setConsumer((launchParams: LaunchParams) => {
             console.log('[LaunchQueue] Launch params received:', launchParams);
+            const $files = [...launchParams.files];
 
             // Handle files from launch queue
-            if (launchParams.files && launchParams.files.length > 0) {
-                console.log(`[LaunchQueue] Processing ${launchParams.files.length} file(s)`);
+            if (!$files || $files.length === 0) {
+                console.log('[LaunchQueue] No files in launch params - this may indicate:');
+                console.log('  - File opener was used but no files were selected');
+                console.log('  - Launch queue consumer called with empty payload');
+                console.log('  - Permission issues preventing file access');
+                console.log('  - Browser compatibility issues');
+                return;
+            }
 
-                // Convert FileSystemHandle objects to actual File objects
-                const files: File[] = [];
-                let hasMarkdownFile = false;
-                for (const fileHandle of launchParams.files) {
+            //
+            console.log(`[LaunchQueue] Processing ${$files.length} file handle(s)`);
+
+            // Convert FileSystemHandle objects to actual File objects
+            const files: File[] = [];
+            const failedHandles: any[] = [];
+            let hasMarkdownFile = false;
+
+            //
+            (async () => {
+                for (const fileHandle of $files) {
                     try {
+                        console.log('[LaunchQueue] Processing file handle:', {
+                            name: fileHandle.name || 'unknown',
+                            type: fileHandle.constructor.name,
+                            hasGetFile: typeof fileHandle.getFile === 'function',
+                            isFile: fileHandle instanceof File
+                        });
+
                         // For file handles, get the actual file
                         if (fileHandle.getFile) {
-                            const file = await fileHandle.getFile();
-                            files.push(file);
-                            // Check if this is a markdown file
-                            if (file.type === 'text/markdown' || file.name.toLowerCase().endsWith('.md')) {
-                                hasMarkdownFile = true;
+                            try {
+                                // Check if we have permission to access the file
+                                if ('queryPermission' in fileHandle) {
+                                    const permission = await (fileHandle as any).queryPermission();
+                                    console.log('[LaunchQueue] File handle permission:', permission);
+                                    if (permission !== 'granted') {
+                                        console.warn('[LaunchQueue] No permission to access file:', fileHandle.name);
+                                        failedHandles.push(fileHandle);
+                                        continue;
+                                    }
+                                }
+
+                                const file = await fileHandle.getFile();
+                                console.log('[LaunchQueue] Got file from handle:', file.name, file.type, file.size);
+                                files.push(file);
+                                // Check if this is a markdown file
+                                if (file.type === 'text/markdown' || file.name.toLowerCase().endsWith('.md')) {
+                                    hasMarkdownFile = true;
+                                }
+                            } catch (permError) {
+                                console.warn('[LaunchQueue] Permission or access error for file handle:', permError, fileHandle);
+                                failedHandles.push(fileHandle);
                             }
                         } else if (fileHandle instanceof File) {
                             // Already a File object
+                            console.log('[LaunchQueue] File handle is already a File object:', fileHandle.name, fileHandle.type);
                             files.push(fileHandle);
                             // Check if this is a markdown file
                             if (fileHandle.type === 'text/markdown' || fileHandle.name.toLowerCase().endsWith('.md')) {
                                 hasMarkdownFile = true;
                             }
+                        } else {
+                            console.warn('[LaunchQueue] Unknown file handle type:', fileHandle.constructor.name);
+                            failedHandles.push(fileHandle);
                         }
                     } catch (error) {
-                        console.warn('[LaunchQueue] Failed to get file from handle:', error);
+                        console.warn('[LaunchQueue] Failed to get file from handle:', error, fileHandle);
+                        failedHandles.push(fileHandle);
                     }
+                }
+
+                console.log(`[LaunchQueue] Successfully processed ${files.length} files, ${failedHandles.length} failed`);
+
+                // Check if we have any successfully processed files
+                if (files.length === 0) {
+                    if (failedHandles.length > 0) {
+                        console.error('[LaunchQueue] All file handles failed to process');
+                        showToast({
+                            message: `Failed to process ${failedHandles.length} launched file(s)`,
+                            kind: 'error'
+                        });
+                    } else {
+                        console.log('[LaunchQueue] No files to process after filtering');
+                    }
+                    return;
                 }
 
                 if (files.length > 0) {
@@ -861,13 +920,13 @@ export const setupLaunchQueueConsumer = async () => {
                         });
                     }
                 }
-            }
 
-            // Handle any target URL if present (for custom protocol launches)
-            if (launchParams.targetURL) {
-                console.log('[LaunchQueue] Target URL:', launchParams.targetURL);
-                // Could handle URL-based launches here if needed
-            }
+                // Handle any target URL if present (for custom protocol launches)
+                if (launchParams.targetURL) {
+                    console.log('[LaunchQueue] Target URL:', launchParams.targetURL);
+                    // Could handle URL-based launches here if needed
+                }
+            })();
         });
 
         console.log('[LaunchQueue] Consumer set up successfully');

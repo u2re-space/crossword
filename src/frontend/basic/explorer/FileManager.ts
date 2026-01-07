@@ -1,6 +1,9 @@
 import { H, defineElement, property, getDir, valueLink } from "fest/lure";
 import { addEvent, preloadStyle } from "fest/dom";
 
+// Import component registration system
+import { registerComponent, initializeComponent } from "../../shared/UnifiedMessaging";
+
 //
 import FileManagerContent from "./FileManagerContent";
 
@@ -41,6 +44,29 @@ export class FileManager extends UIElement {
     //
     onInitialize() {
         super.onInitialize();
+
+        // Register component for catch-up messaging
+        registerComponent('file-manager-instance', 'basic-explorer');
+
+        // Process any pending messages
+        const pendingMessages = initializeComponent('file-manager-instance');
+        for (const message of pendingMessages) {
+            console.log(`[FileManager] Processing pending message:`, message);
+            // Handle explorer actions
+            if (message.type === 'content-explorer') {
+                const action = message.data?.action || 'save';
+                const path = message.data?.path || message.data?.into || '/';
+
+                if (action === 'save' && (message.data?.file || message.data?.text || message.data?.content)) {
+                    // Handle save action - this would be processed by the explorer logic
+                    console.log(`[FileManager] Processing save action:`, message.data);
+                } else if (action === 'view' && message.data?.path) {
+                    // Navigate to path
+                    this.path = path;
+                    console.log(`[FileManager] Navigating to path: ${path}`);
+                }
+            }
+        }
 
         //
         const self: any = this;
