@@ -517,7 +517,7 @@
             place-self: center;
             min-inline-size: max-content;
             max-inline-size: stretch;
-            inline-size: 60cqi;
+            inline-size: max(60cqi, min(24rem, 100%));
             place-items: center;
             place-content: stretch;
 

@@ -195,8 +195,8 @@ export class WorkCenterEvents {
                     await this.actions.executeUnifiedAction(this.state);
                 }
             }
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
         });
     }
 
@@ -204,10 +204,10 @@ export class WorkCenterEvents {
         if (!this.container) return;
 
         const promptInput = this.container.querySelector('.prompt-input') as HTMLTextAreaElement;
-        promptInput.addEventListener('input', () => {
+        promptInput.addEventListener('input', async () => {
             this.state.currentPrompt = promptInput.value;
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
 
             // Auto-process if we have recognized data and user entered text
             if (this.state.recognizedData && promptInput.value.trim()) {
@@ -241,45 +241,46 @@ export class WorkCenterEvents {
 
         // Format selector
         const formatSelect = this.container.querySelector('.format-select') as HTMLSelectElement;
-        formatSelect.addEventListener('change', () => {
+        formatSelect.addEventListener('change', async () => {
             const newFormat = formatSelect.value as "auto" | "markdown" | "json" | "text" | "html";
             this.state.outputFormat = newFormat;
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
 
             // Re-render existing results if available
             if (this.state.lastRawResult) {
                 const outputContent = this.container?.querySelector('[data-output]') as HTMLElement;
-                const { formatResult } = require('./WorkCenterDataProcessing');
-                const formattedResult = new formatResult(this.state.lastRawResult, newFormat);
+                const { WorkCenterDataProcessing } = await import('./WorkCenterDataProcessing');
+                const dataProcessing = new WorkCenterDataProcessing();
+                const formattedResult = dataProcessing.formatResult(this.state.lastRawResult, newFormat);
                 outputContent.innerHTML = `<div class="result-content">${formattedResult}</div>`;
             }
         });
 
         // Language selector
         const languageSelect = this.container.querySelector('.language-select') as HTMLSelectElement;
-        languageSelect.addEventListener('change', () => {
+        languageSelect.addEventListener('change', async () => {
             this.state.selectedLanguage = languageSelect.value as "auto" | "en" | "ru";
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
             // Language change doesn't need re-rendering since it affects future AI calls
         });
 
         // Recognition format selector
         const recognitionSelect = this.container.querySelector('.recognition-select') as HTMLSelectElement;
-        recognitionSelect.addEventListener('change', () => {
+        recognitionSelect.addEventListener('change', async () => {
             this.state.recognitionFormat = recognitionSelect.value as "auto" | "markdown" | "html" | "text" | "json" | "most-suitable" | "most-optimized" | "most-legibility";
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
             // Recognition format change doesn't need re-rendering since it affects future AI calls
         });
 
         // Processing format selector
         const processingSelect = this.container.querySelector('.processing-select') as HTMLSelectElement;
-        processingSelect.addEventListener('change', () => {
+        processingSelect.addEventListener('change', async () => {
             this.state.processingFormat = processingSelect.value as "markdown" | "html" | "json" | "text" | "typescript" | "javascript" | "python" | "java" | "cpp" | "csharp" | "php" | "ruby" | "go" | "rust" | "xml" | "yaml" | "css" | "scss";
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
             // Processing format change doesn't need re-rendering since it affects future AI calls
         });
     }
@@ -288,10 +289,10 @@ export class WorkCenterEvents {
         if (!this.container) return;
 
         const autoCheckbox = this.container.querySelector('.auto-action-checkbox') as HTMLInputElement;
-        autoCheckbox.addEventListener('change', () => {
+        autoCheckbox.addEventListener('change', async () => {
             this.state.autoAction = autoCheckbox.checked;
-            const { saveState } = require('./WorkCenterState');
-            saveState(this.state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
         });
     }
 
@@ -328,8 +329,8 @@ export class WorkCenterEvents {
                     await this.actions.executeUnifiedAction(this.state);
                     break;
                 case 'clear-recognized':
-                    const { clearRecognizedData } = require('./WorkCenterState');
-                    clearRecognizedData(this.state);
+                    const { WorkCenterStateManager: StateManager1 } = await import('./WorkCenterState');
+                    StateManager1.clearRecognizedData(this.state);
                     // Update the UI to remove the recognized status and pipeline
                     const statusElement = this.container?.querySelector('.recognized-status');
                     if (statusElement) {
@@ -338,7 +339,8 @@ export class WorkCenterEvents {
                     this.ui.updateDataPipeline(this.state);
                     break;
                 case 'clear-pipeline':
-                    clearRecognizedData(this.state);
+                    const { WorkCenterStateManager: StateManager2 } = await import('./WorkCenterState');
+                    StateManager2.clearRecognizedData(this.state);
                     // Also clear attachments & preview URLs (pipeline reset means "start over")
                     this.ui.revokeAllPreviewUrls(this.state);
                     this.state.files = [];
@@ -359,7 +361,7 @@ export class WorkCenterEvents {
     private setupPipelineRestoration(): void {
         if (!this.container) return;
 
-        this.container.addEventListener('click', (e) => {
+        this.container.addEventListener('click', async (e) => {
             const target = e.target as HTMLElement;
             const stepIndex = target.getAttribute('data-restore-step');
 
@@ -369,8 +371,9 @@ export class WorkCenterEvents {
                     const step = this.state.processedData[index];
                     // Restore this processing step result to the output
                     const outputContent = this.container?.querySelector('[data-output]') as HTMLElement;
-                    const { formatResult } = require('./WorkCenterDataProcessing');
-                    const formattedResult = new formatResult({ content: step.content }, this.state.outputFormat);
+                    const { WorkCenterDataProcessing } = await import('./WorkCenterDataProcessing');
+                    const dataProcessing = new WorkCenterDataProcessing();
+                    const formattedResult = dataProcessing.formatResult({ content: step.content }, this.state.outputFormat);
                     outputContent.innerHTML = `<div class="result-content">${formattedResult}</div>`;
                     this.state.lastRawResult = { data: step.content };
                 }

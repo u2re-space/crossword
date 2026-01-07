@@ -111,8 +111,8 @@ export class WorkCenterActions {
             });
 
             // Save state
-            const { saveState } = require('./WorkCenterState');
-            saveState(state);
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(state);
 
             // Store raw result for copying
             state.lastRawResult = result.rawData;
@@ -160,8 +160,8 @@ export class WorkCenterActions {
                     metadata: { step: state.currentProcessingStep + 1 }
                 };
 
-                const { addProcessedStep } = require('./WorkCenterState');
-                addProcessedStep(state, processedEntry);
+                const { WorkCenterStateManager: StateManager } = await import('./WorkCenterState');
+                StateManager.addProcessedStep(state, processedEntry);
             }
 
         } catch (error) {

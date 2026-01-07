@@ -46,7 +46,8 @@ export class WorkCenterPrompts {
 
               <div class="prompt-actions">
                 <button class="btn voice-btn ${state.voiceRecording ? 'recording' : ''}" data-action="voice-input">
-                  🎤 ${state.voiceRecording ? 'Recording...' : 'Hold for Voice'}
+                  <ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon>
+                  ${state.voiceRecording ? 'Recording...' : 'Hold for Voice'}
                 </button>
                 <label class="auto-action-label" title="Auto-action (use last successful)">
                   <input type="checkbox" class="auto-action-checkbox" ${state.autoAction ? 'checked' : ''}>
@@ -98,7 +99,7 @@ export class WorkCenterPrompts {
         if (!this.container) return;
         const voiceBtn = this.container.querySelector('[data-action="voice-input"]') as HTMLButtonElement;
         if (voiceBtn) {
-            voiceBtn.textContent = state.voiceRecording ? '🎤 Recording...' : '🎤 Hold for Voice';
+            voiceBtn.innerHTML = state.voiceRecording ? '<ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon> Recording...' : '<ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon> Hold for Voice';
             voiceBtn.classList.toggle('recording', state.voiceRecording);
         }
     }

@@ -30,7 +30,7 @@ export class WorkCenterTemplates {
     </div>` as HTMLElement;
 
         // Template editor events
-        modal.addEventListener('click', (e) => {
+        modal.addEventListener('click', async (e) => {
             const target = e.target as HTMLElement;
             const action = target.getAttribute('data-action');
             const index = target.getAttribute('data-index');
@@ -40,7 +40,7 @@ export class WorkCenterTemplates {
                 modal.remove();
                 this.showTemplateEditor(state, container);
             } else if (action === 'save-templates') {
-                this.saveTemplates(state, modal);
+                await this.saveTemplates(state, modal);
                 modal.remove();
                 this.deps.render?.();
             } else if (action === 'close-editor') {
@@ -65,7 +65,7 @@ export class WorkCenterTemplates {
         }
     }
 
-    private saveTemplates(state: WorkCenterState, modal: HTMLElement): void {
+    private async saveTemplates(state: WorkCenterState, modal: HTMLElement): Promise<void> {
         // Update templates from inputs
         const nameInputs = modal.querySelectorAll('.template-name');
         const promptInputs = modal.querySelectorAll('.template-prompt');
@@ -76,8 +76,8 @@ export class WorkCenterTemplates {
         }));
 
         // Save to localStorage
-        const { savePromptTemplates } = require('./WorkCenterState');
-        savePromptTemplates(state.promptTemplates);
+        const { WorkCenterStateManager } = await import('./WorkCenterState');
+        WorkCenterStateManager.savePromptTemplates(state.promptTemplates);
 
         this.deps.showMessage?.('Templates saved');
     }

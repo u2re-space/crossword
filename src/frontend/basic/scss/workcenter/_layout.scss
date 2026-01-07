@@ -7,14 +7,19 @@
         block-size: stretch;
         max-block-size: stretch;
         box-sizing: border-box;
+        inline-size: stretch;
+        max-inline-size: stretch;
 
         .workcenter-layout {
             display: grid;
-            grid-auto-rows: minmax(0, 1fr);
+            grid-template-columns: minmax(0px, 1fr);
+            grid-auto-rows: minmax(0, max-content);
             gap: var(--space-lg);
             block-size: max-content;
             min-block-size: calc-size(max-content, max(size, 600px));
             max-block-size: none;
+            inline-size: stretch;
+            max-inline-size: stretch;
 
             @container (max-width: 1400px) {
                 gap: var(--space-md);
@@ -38,6 +43,8 @@
                 gap: var(--space-md);
                 min-block-size: 0;
                 box-sizing: border-box;
+                inline-size: stretch;
+                max-inline-size: stretch;
 
                 &.inputs-column, &.attachments-column {
                     order: 3;
@@ -110,13 +117,17 @@
                     gap: var(--space-md);
                     flex: 1;
                     min-block-size: max-content;
-                    min-block-size: calc-size(max-content, max(size, 16rem));
+                    min-block-size: calc-size(max-content, max(size, 36rem));
                     background: var(--basic-surface-container-low);
                     border-radius: var(--basic-radius-md);
                     border: 1px solid var(--basic-outline-variant);
                     padding: var(--space-md);
-                    block-size: stretch;
+                    block-size: max-content;
                     max-block-size: none;
+                    inline-size: stretch;
+                    max-inline-size: stretch;
+                    box-sizing: border-box;
+                    overflow: hidden;
 
                     @container (max-width: 1024px) {
                         padding: var(--space-sm);
@@ -126,6 +137,11 @@
                     @container (max-width: 768px) {
                         padding: var(--space-xs);
                         gap: var(--space-xs);
+                    }
+
+                    &.attachments-section,
+                    &.prompts-section {
+                        min-block-size: calc-size(max-content, max(size, 12rem));
                     }
 
                 }

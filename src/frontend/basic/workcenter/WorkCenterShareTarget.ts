@@ -43,7 +43,7 @@ export class WorkCenterShareTarget {
         }
     }
 
-    private addShareTargetResult(state: WorkCenterState, resultData: any): void {
+    private async addShareTargetResult(state: WorkCenterState, resultData: any): Promise<void> {
         // Add to processedData pipeline
         const processedEntry = {
             content: resultData.content || '',
@@ -57,12 +57,11 @@ export class WorkCenterShareTarget {
         };
 
         // Import the state manager function
-        const { addProcessedStep } = require('./WorkCenterState');
-        addProcessedStep(state, processedEntry);
+        const { WorkCenterStateManager } = await import('./WorkCenterState');
+        WorkCenterStateManager.addProcessedStep(state, processedEntry);
 
         // Save state
-        const { saveState } = require('./WorkCenterState');
-        saveState(state);
+        WorkCenterStateManager.saveState(state);
 
         // Show notification
         this.deps.showMessage?.(`Share target result added to work center`);
@@ -143,12 +142,11 @@ export class WorkCenterShareTarget {
             }
 
             // Clear recognized data when new inputs are added
-            const { clearRecognizedData } = require('./WorkCenterState');
-            clearRecognizedData(state);
+            const { WorkCenterStateManager: StateManager } = await import('./WorkCenterState');
+            StateManager.clearRecognizedData(state);
 
             // Save state
-            const { saveState } = require('./WorkCenterState');
-            saveState(state);
+            StateManager.saveState(state);
 
             // Notify about file changes for toolbar updates
             if (filesAdded > 0 || textAdded) {
