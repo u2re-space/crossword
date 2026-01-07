@@ -39,26 +39,19 @@
                 min-block-size: 0;
                 box-sizing: border-box;
 
-                &.inputs-column {
-                    order: 1;
+                &.inputs-column, &.attachments-column {
+                    order: 3;
                 }
 
                 &.results-column {
+                    order: 1;
+                }
+
+                &.prompts-column {
                     order: 2;
                 }
 
-                @container (max-width: 1200px) {
-                    &.inputs-column {
-                        order: 1;
-                    }
-
-                    &.results-column {
-                        order: 2;
-                    }
-                }
-
                 .section-header {
-                    display: flex;
                     align-items: center;
                     justify-content: space-between;
                     padding: var(--space-md);
@@ -66,11 +59,24 @@
                     border-radius: var(--basic-radius-sm);
                     border: 1px solid var(--basic-outline-variant);
 
+                    display: grid;
+                    grid-template-columns: minmax(0px, 1fr) minmax(0px, max-content);
+                    grid-template-rows: minmax(max-content, 1fr);
+                    gap: var(--space-md, 0.75rem);
+                    place-self: center;
+                    min-inline-size: max-content;
+                    max-inline-size: stretch;
+                    inline-size: stretch;
+                    place-items: center;
+                    place-content: stretch;
+
                     h3 {
                         margin: 0;
                         font-size: var(--text-lg);
                         font-weight: var(--font-weight-semibold);
                         color: var(--basic-on-surface);
+                        text-align: start;
+                        justify-self: start;
 
                         @container (max-width: 1024px) {
                             font-size: var(--text-base);
@@ -86,6 +92,8 @@
                         display: flex;
                         align-items: center;
                         gap: var(--space-sm);
+                        place-items: center;
+                        place-content: center;
 
                         .btn {
                             padding: var(--space-xs) var(--space-sm);
@@ -120,85 +128,6 @@
                         gap: var(--space-xs);
                     }
 
-                    .file-counters {
-                        display: flex;
-                        align-items: center;
-                        gap: var(--space-sm);
-                        margin-inline-start: var(--space-md);
-                        inline-size: max-content;
-
-                        .file-counter {
-                            display: inline-flex;
-                            align-items: center;
-                            gap: var(--space-xs);
-                            padding: var(--space-xs) var(--space-sm);
-                            background: var(--basic-surface-container-high);
-                            border-radius: var(--basic-radius-md);
-                            font-size: var(--text-sm);
-                            font-weight: var(--font-weight-medium);
-                            color: var(--basic-on-surface-variant);
-                            border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 30%, transparent);
-                            inline-size: max-content;
-                            min-inline-size: calc-size(fit-content, max(size, 25px) + 0.5rem + var(--icon-size, 1rem));
-
-                            ui-icon {
-                                color: var(--basic-primary);
-                                opacity: 0.8;
-                            }
-
-                            .count {
-                                min-inline-size: 1ch;
-                                text-align: center;
-                            }
-
-                            // Hide when no files
-                            &:has(.count:empty),
-                            &:has(.count:not([data-count]):not(:has-text):not([data-count="0"]):not(:has(.count:empty))) {
-                                display: none;
-                            }
-                        }
-
-                        .data-counter {
-                            display: inline-flex;
-                            align-items: center;
-                            gap: var(--space-xs);
-                            padding: var(--space-xs) var(--space-sm);
-                            border-radius: var(--basic-radius-md);
-                            font-size: var(--text-sm);
-                            font-weight: var(--font-weight-medium);
-                            inline-size: max-content;
-                            min-inline-size: 1.5rem;
-
-                            ui-icon {
-                                font-size: var(--text-sm);
-                            }
-
-                            .count {
-                                min-inline-size: 1ch;
-                                text-align: center;
-                            }
-
-                            &.recognized {
-                                background: var(--basic-secondary-container);
-                                color: var(--basic-on-secondary-container);
-                                border: 1px solid var(--basic-secondary);
-
-                                ui-icon {
-                                    color: var(--basic-on-secondary-container);
-                                }
-                            }
-
-                            &.processed {
-                                background: var(--basic-tertiary-container);
-                                color: var(--basic-on-tertiary-container);
-                                border: 1px solid var(--basic-tertiary);
-
-                                ui-icon {
-                                    color: var(--basic-on-tertiary-container);
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

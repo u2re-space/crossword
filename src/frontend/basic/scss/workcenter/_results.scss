@@ -19,7 +19,6 @@
         justify-content: space-between;
         gap: var(--space-sm);
         padding-bottom: var(--space-sm);
-        border-bottom: 1px solid var(--basic-outline-variant);
 
         h3 {
             margin: 0;
@@ -400,6 +399,19 @@
         margin-top: var(--space-lg);
         padding-top: var(--space-lg);
         border-top: 1px solid var(--basic-outline-variant);
+
+        .result-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            place-items: center;
+            place-content: center;
+
+            .btn {
+                padding: var(--space-xs) var(--space-sm);
+                font-size: var(--text-sm);
+            }
+        }
     }
 
     .history-header {

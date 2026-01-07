@@ -16,59 +16,6 @@ export class WorkCenterResults {
         this.container = container;
     }
 
-    // Counter management methods
-    updateFileCounter(state: WorkCenterState): void {
-        if (!this.container) return;
-        const counter = this.container.querySelector('[data-file-count] .count') as HTMLElement;
-        if (counter) {
-            counter.textContent = state.files.length.toString();
-        }
-    }
-
-    updateDataCounters(state: WorkCenterState): void {
-        if (!this.container) return;
-
-        // Update recognized data counter
-        const recognizedCounter = this.container.querySelector('.data-counter.recognized') as HTMLElement;
-        if (state.recognizedData) {
-            if (!recognizedCounter) {
-                // Add recognized counter if it doesn't exist
-                const countersContainer = this.container.querySelector('.file-counters');
-                if (countersContainer) {
-                    const newCounter = H`<span class="data-counter recognized" title="Recognized data available">
-                        <ui-icon icon="eye" size="14" icon-style="duotone"></ui-icon>
-                    </span>` as HTMLElement;
-                    countersContainer.appendChild(newCounter);
-                }
-            }
-        } else if (recognizedCounter) {
-            recognizedCounter.remove();
-        }
-
-        // Update processed data counter
-        const processedCounter = this.container.querySelector('.data-counter.processed') as HTMLElement;
-        if (state.processedData && state.processedData.length > 0) {
-            if (processedCounter) {
-                const countSpan = processedCounter.querySelector('.count') as HTMLElement;
-                if (countSpan) {
-                    countSpan.textContent = state.processedData.length.toString();
-                }
-                processedCounter.setAttribute('title', `${state.processedData.length} processing steps`);
-            } else {
-                // Add processed counter if it doesn't exist
-                const countersContainer = this.container.querySelector('.file-counters');
-                if (countersContainer) {
-                    const newCounter = H`<span class="data-counter processed" title="${state.processedData.length} processing steps">
-                        <ui-icon icon="cogs" size="14" icon-style="duotone"></ui-icon>
-                        <span class="count">${state.processedData.length}</span>
-                    </span>` as HTMLElement;
-                    countersContainer.appendChild(newCounter);
-                }
-            }
-        } else if (processedCounter) {
-            processedCounter.remove();
-        }
-    }
 
     // Output display methods
     showProcessingMessage(message: string): void {
@@ -203,30 +150,20 @@ export class WorkCenterResults {
     renderOutputHeader(state: WorkCenterState): string {
         return `
             <div class="output-header">
-              <h3>Results</h3>
-              <div class="file-counters">
-                <span class="file-counter" data-file-count>
-                  <ui-icon icon="file" size="14" icon-style="duotone"></ui-icon>
-                  <span class="count">${state.files.length}</span>
-                </span>
-                ${state.recognizedData ? `<span class="data-counter recognized" title="Recognized data available">
-                  <ui-icon icon="eye" size="14" icon-style="duotone"></ui-icon>
-                </span>` : ''}
-                ${state.processedData && state.processedData.length > 0 ? `<span class="data-counter processed" title="${state.processedData.length} processing steps">
-                  <ui-icon icon="cogs" size="14" icon-style="duotone"></ui-icon>
-                  <span class="count">${state.processedData.length}</span>
-                </span>` : ''}
+              <div class="section-header">
+                <h3>Results & Processing</h3>
+                <div class="output-actions">
+                    <button class="btn btn-icon" data-action="copy-results" title="Copy results">
+                    <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">Copy</span>
+                    </button>
+                    <button class="btn btn-icon" data-action="clear-results" title="Clear results">
+                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">Clear</span>
+                    </button>
+                </div>
               </div>
-              <div class="output-actions">
-                <button class="btn btn-icon" data-action="copy-results" title="Copy results">
-                  <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
-                  <span class="btn-text">Copy</span>
-                </button>
-                <button class="btn btn-icon" data-action="clear-results" title="Clear results">
-                  <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
-                  <span class="btn-text">Clear</span>
-                </button>
-              </div>
+
             </div>
             <div class="output-content" data-output data-dropzone></div>
         `;
@@ -250,8 +187,7 @@ export class WorkCenterResults {
 
     // Batch update method for efficiency
     updateAllResultsUI(state: WorkCenterState): void {
-        this.updateFileCounter(state);
-        this.updateDataCounters(state);
+        // File counters are now handled by WorkCenterAttachments
         this.updateDataPipeline(state);
         this.updateRecognizedStatus(state);
     }

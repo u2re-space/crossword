@@ -103,30 +103,10 @@ export class WorkCenterUI {
 
       <div class="workcenter-content">
         <div class="workcenter-layout">
-          <!-- File Attachments Section -->
-          <div class="workcenter-column attachments-column">
-            ${this.attachments.renderAttachmentsSection(state)}
-          </div>
-
-          <!-- Input Prompts Section -->
-          <div class="workcenter-column prompts-column">
-            ${this.prompts.renderPromptsSection(state)}
-          </div>
 
           <!-- Results & Processing Section -->
           <div class="workcenter-column results-column">
             <div class="results-section">
-              <div class="section-header">
-                <h3>Results & Processing</h3>
-                <div class="result-actions">
-                  <button class="btn btn-icon" data-action="view-action-history" title="View Action History">
-                    <ui-icon icon="history" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">History</span>
-                  </button>
-                  <button class="btn" data-action="view-full-history">View All History</button>
-                </div>
-              </div>
-
               <div class="output-section">
                 ${this.results.renderOutputHeader(state)}
               </div>
@@ -136,11 +116,28 @@ export class WorkCenterUI {
               <div class="history-section">
                 <div class="history-header">
                   <h4>Recent Activity</h4>
+                  <div class="result-actions">
+                    <button class="btn btn-icon" data-action="view-action-history" title="View Action History">
+                        <ui-icon icon="history" size="18" icon-style="duotone"></ui-icon>
+                        <span class="btn-text">History</span>
+                    </button>
+                    <button class="btn" data-action="view-full-history">View All History</button>
+                  </div>
                 </div>
                 <div class="recent-history" data-recent-history></div>
                 <div class="action-stats" data-action-stats style="display: none;"></div>
               </div>
             </div>
+          </div>
+
+          <!-- Input Prompts Section -->
+          <div class="workcenter-column prompts-column">
+            ${this.prompts.renderPromptsSection(state)}
+          </div>
+
+          <!-- File Attachments Section -->
+          <div class="workcenter-column attachments-column">
+            ${this.attachments.renderAttachmentsSection(state)}
           </div>
         </div>
       </div>
@@ -190,6 +187,10 @@ export class WorkCenterUI {
 
     updateDataPipeline(state: WorkCenterState): void {
         this.results.updateDataPipeline(state);
+    }
+
+    updateDataCounters(state: WorkCenterState): void {
+        this.attachments.updateDataCounters(state);
     }
 
     showProcessingMessage(message: string): void {

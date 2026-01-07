@@ -139,6 +139,7 @@ export class WorkCenterActions {
                     responseId: result.responseId || "unknown"
                 };
                 this.results.updateDataPipeline(state);
+                this.ui.updateDataCounters(state);
 
                 // Auto-process with selected template if available
                 if (state.selectedTemplate && state.selectedTemplate.trim()) {
@@ -170,6 +171,7 @@ export class WorkCenterActions {
 
         this.history.updateRecentHistory(state);
         this.ui.updateDataPipeline(state);
+        this.ui.updateDataCounters(state);
     }
 
     private getLastSuccessfulPrompt(): string {

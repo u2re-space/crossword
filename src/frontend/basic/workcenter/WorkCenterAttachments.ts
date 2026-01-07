@@ -283,6 +283,52 @@ export class WorkCenterAttachments {
         }
     }
 
+    // Update data counters (recognized and processed)
+    updateDataCounters(state: WorkCenterState): void {
+        if (!this.container) return;
+
+        // Update recognized data counter
+        const recognizedCounter = this.container.querySelector('.data-counter.recognized') as HTMLElement;
+        if (state.recognizedData) {
+            if (!recognizedCounter) {
+                // Add recognized counter if it doesn't exist
+                const statsContainer = this.container.querySelector('.file-stats');
+                if (statsContainer) {
+                    const newCounter = H`<div class="data-counter recognized">
+                        <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
+                        <span>Content recognized</span>
+                    </div>` as HTMLElement;
+                    statsContainer.appendChild(newCounter);
+                }
+            }
+        } else if (recognizedCounter) {
+            recognizedCounter.remove();
+        }
+
+        // Update processed data counter
+        const processedCounter = this.container.querySelector('.data-counter.processed') as HTMLElement;
+        if (state.processedData && state.processedData.length > 0) {
+            if (processedCounter) {
+                const span = processedCounter.querySelector('span') as HTMLElement;
+                if (span) {
+                    span.textContent = `${state.processedData.length} processing steps`;
+                }
+            } else {
+                // Add processed counter if it doesn't exist
+                const statsContainer = this.container.querySelector('.file-stats');
+                if (statsContainer) {
+                    const newCounter = H`<div class="data-counter processed">
+                        <ui-icon icon="cogs" size="16" icon-style="duotone"></ui-icon>
+                        <span>${state.processedData.length} processing steps</span>
+                    </div>` as HTMLElement;
+                    statsContainer.appendChild(newCounter);
+                }
+            }
+        } else if (processedCounter) {
+            processedCounter.remove();
+        }
+    }
+
     // Clear all files
     clearAllFiles(state: WorkCenterState): void {
         // Revoke all preview URLs
@@ -290,6 +336,7 @@ export class WorkCenterAttachments {
         state.files.length = 0;
         this.updateFileList(state);
         this.updateFileCounter(state);
+        this.updateDataCounters(state);
         this.deps.onFilesChanged?.();
     }
 
