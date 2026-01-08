@@ -52,7 +52,7 @@ export class WorkCenterShareTarget {
         }
     }
 
-    private async addShareTargetResult(state: WorkCenterState, resultData: any): Promise<void> {
+    async addShareTargetResult(state: WorkCenterState, resultData: any): Promise<void> {
         // Add to processedData pipeline
         const processedEntry = {
             content: resultData.content || '',
@@ -69,11 +69,17 @@ export class WorkCenterShareTarget {
         const { WorkCenterStateManager } = await import('./WorkCenterState');
         WorkCenterStateManager.addProcessedStep(state, processedEntry);
 
+        // Also set lastRawResult so output area can render/copy/view it.
+        state.lastRawResult = resultData.rawData ?? resultData.content ?? null;
+
         // Save state
         WorkCenterStateManager.saveState(state);
 
         // Show notification
         this.deps.showMessage?.(`Share target result added to work center`);
+
+        // Re-render to update output + pipeline
+        this.deps.render?.();
     }
 
     async addShareTargetInput(state: WorkCenterState, inputData: any): Promise<void> {
@@ -174,6 +180,11 @@ export class WorkCenterShareTarget {
                 this.deps.showMessage?.(message);
             }
 
+            // Re-render so attachment list/count reflects new inputs.
+            if (filesAdded > 0 || textAdded) {
+                this.deps.render?.();
+            }
+
         } catch (error) {
             console.error('[WorkCenter] Failed to add share target input:', error);
             this.deps.showMessage?.('Failed to add share target input');
@@ -221,7 +232,7 @@ export class WorkCenterShareTarget {
         }
     }
 
-    private async handleAIResult(state: WorkCenterState, resultData: any): Promise<void> {
+    async handleAIResult(state: WorkCenterState, resultData: any): Promise<void> {
         const { success, data, error } = resultData;
 
         if (!success) {
@@ -255,8 +266,14 @@ export class WorkCenterShareTarget {
             const { WorkCenterStateManager } = await import('./WorkCenterState');
             WorkCenterStateManager.addProcessedStep(state, processedEntry);
 
+            // Set last result for output actions
+            state.lastRawResult = data;
+
             // Save state
             WorkCenterStateManager.saveState(state);
+
+            // Re-render to show output/pipeline updates
+            this.deps.render?.();
 
             // Show notification
             this.deps.showMessage?.('AI processing result added to work center');
@@ -275,7 +292,7 @@ export class WorkCenterShareTarget {
     private async retrieveCachedFiles(state: WorkCenterState, cacheKey: string): Promise<void> {
         try {
             // Try to fetch cached file manifest from service worker
-            const response = await fetch(`/share-target-files?cacheKey=${encodeURIComponent(cacheKey)}`);
+            const response = await fetch(`/share-target-files?cacheKey=${encodeURIComponent(cacheKey || 'latest')}`);
             if (!response.ok) return;
 
             const fileManifest = await response.json();
@@ -286,7 +303,10 @@ export class WorkCenterShareTarget {
                 for (const fileMeta of fileManifest.files) {
                     try {
                         // Fetch the actual file data from cache
-                        const fileResponse = await fetch(`/share-target-file/${fileMeta.key}`);
+                        // Manifest keys already include the full cache path (e.g. "/share-target-file/<ts>-<i>")
+                        const fileUrl = typeof fileMeta.key === "string" ? fileMeta.key : "";
+                        if (!fileUrl) continue;
+                        const fileResponse = await fetch(fileUrl);
                         if (fileResponse.ok) {
                             const fileBlob = await fileResponse.blob();
                             const file = new File([fileBlob], fileMeta.name, { type: fileMeta.type });

@@ -91,6 +91,17 @@ export const initServiceWorker = async (): Promise<ServiceWorkerRegistration | n
             }
 
             _swRegistration = registration;
+            const viteEnv = (import.meta as any)?.env;
+
+            // In dev, aggressively activate updated SW to avoid stale Workbox routes breaking Vite module fetches.
+            // This prevents "Failed to fetch dynamically imported module: /src/..." when an old SW is still controlling the page.
+            try {
+                if (viteEnv?.DEV && registration.waiting) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            } catch (e) {
+                console.warn('[PWA] Failed to auto-skip-waiting in dev:', e);
+            }
 
             // Handle updates
             registration?.addEventListener?.('updatefound', () => {
@@ -100,6 +111,13 @@ export const initServiceWorker = async (): Promise<ServiceWorkerRegistration | n
                         if (newWorker?.state === 'installed' && navigator.serviceWorker.controller) {
                             console.log('[PWA] New service worker available');
                             showToast({ message: 'App update available', kind: 'info' });
+                            try {
+                                if (viteEnv?.DEV && registration.waiting) {
+                                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            } catch (e) {
+                                console.warn('[PWA] Failed to auto-skip-waiting on updatefound:', e);
+                            }
                         }
                     });
                 }
@@ -304,7 +322,6 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
         console.log("[ShareTarget] Unified processing completed:", { success: result.success });
 
         if (result.success && result.data) {
-            // Use unified messaging to handle the result
             console.log("[ShareTarget] Processing result via unified messaging");
 
             // Send to clipboard if configured
@@ -315,17 +332,39 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
             });
             clipboardChannel.close();
 
-            // Send to workcenter for display
-            const workCenterChannel = new BroadcastChannel(CHANNELS.SHARE_TARGET);
-            workCenterChannel.postMessage({
-                type: 'share-result',
-                data: {
-                    success: true,
-                    content: result.data,
-                    metadata: result.metadata
-                }
-            });
-            workCenterChannel.close();
+            // Send to workcenter for display (destination-aware)
+            try {
+                const { unifiedMessaging } = await import("@rs-com/core/UnifiedMessaging");
+                await unifiedMessaging.sendMessage({
+                    type: 'share-target-result',
+                    source: 'share-target',
+                    destination: 'basic-workcenter',
+                    data: {
+                        content: typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2),
+                        rawData: result.data,
+                        timestamp: Date.now(),
+                        source: 'share-target',
+                        action: 'Processing (/api/processing)',
+                        metadata: result.metadata
+                    },
+                    metadata: { priority: 'high' }
+                } as any);
+            } catch (e) {
+                // Fallback to legacy broadcast (best-effort)
+                const workCenterChannel = new BroadcastChannel(BROADCAST_CHANNELS.WORK_CENTER);
+                workCenterChannel.postMessage({
+                    type: 'share-target-result',
+                    data: {
+                        content: result.data,
+                        rawData: result.data,
+                        timestamp: Date.now(),
+                        source: 'share-target',
+                        action: 'Processing (/api/processing)',
+                        metadata: result.metadata
+                    }
+                });
+                workCenterChannel.close();
+            }
 
             return true;
         } else {
@@ -682,26 +721,6 @@ export const handleShareTarget = () => {
                 }
             } else if (msgType === "ai-result") {
                 console.log("[ShareTarget] AI result broadcast received (handled by PWA clipboard)");
-            } else if (msgType === "share-received") {
-                console.log("[ShareTarget] Share received broadcast:", event.data);
-                // Broadcast to work center for input attachment
-                import("@rs-com/core/UnifiedMessaging").then(({ unifiedMessaging }) => {
-                    unifiedMessaging.sendMessage({
-                        type: 'share-target-input',
-                        destination: 'workcenter',
-                        data: {
-                            ...event.data,
-                            timestamp: Date.now(),
-                            metadata: {
-                                fromServiceWorker: true,
-                                ...event.data.metadata
-                            }
-                        },
-                        metadata: { priority: 'high' }
-                    });
-                }).catch(error => {
-                    console.warn("[ShareTarget] Failed to load UnifiedMessaging:", error);
-                });
             }
         });
 

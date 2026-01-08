@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { registerRoute, setCatchHandler, setDefaultHandler } from 'workbox-routing'
-import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { NetworkFirst, StaleWhileRevalidate, NetworkOnly } from 'workbox-strategies'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { ExpirationPlugin } from 'workbox-expiration'
 import {
@@ -963,6 +963,32 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
     }
 }, "POST")
 
+// ============================================================================
+// DEV/VITE MODULE BYPASS
+// ============================================================================
+
+// Avoid Workbox caching/intercepting Vite dev ESM modules and internal endpoints.
+// This prevents "Failed to fetch dynamically imported module" on lazy imports like WorkCenter.ts.
+registerRoute(
+    ({ url }) => {
+        const p = url?.pathname || "";
+        return (
+            p.startsWith("/src/") ||
+            p.startsWith("/@") ||
+            p.startsWith("/node_modules/") ||
+            p.startsWith("/__vite") ||
+            p.startsWith("/vite") ||
+            p.startsWith("/@fs/")
+        );
+    },
+    new NetworkOnly({
+        fetchOptions: {
+            credentials: 'same-origin',
+            cache: 'no-store',
+        }
+    })
+);
+
 //
 setDefaultHandler(new StaleWhileRevalidate({
     cacheName: 'default-cache',
@@ -1026,7 +1052,7 @@ registerRoute(
 
 // Test route to verify service worker API routing
 registerRoute(
-    ({ url }) => url?.pathname === '/api/test' && request?.method === 'GET',
+    ({ url, request }) => url?.pathname === '/api/test' && request?.method === 'GET',
     async () => {
         console.log('[SW] Test API route hit');
         return new Response(JSON.stringify({
@@ -1042,7 +1068,7 @@ registerRoute(
 
 // Unified Processing API (for PWA processing support)
 registerRoute(
-    ({ url }) => url?.pathname === '/api/processing' && request?.method === 'POST',
+    ({ url, request }) => url?.pathname === '/api/processing' && request?.method === 'POST',
     async ({ request }) => {
         try {
             console.log('[SW] Processing API request received');
@@ -1115,10 +1141,11 @@ registerRoute(
 
         } catch (error) {
             console.error('[SW] Processing API error:', error);
+            const msg = error instanceof Error ? error.message : String(error);
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Processing failed',
-                message: error.message,
+                message: msg,
                 code: 'PROCESSING_ERROR',
                 timestamp: new Date().toISOString()
             }), {
@@ -1131,7 +1158,7 @@ registerRoute(
 
 // Analysis API (lighter processing for quick analysis)
 registerRoute(
-    ({ url }) => url?.pathname === '/api/analyze' && request?.method === 'POST',
+    ({ url, request }) => url?.pathname === '/api/analyze' && request?.method === 'POST',
     async ({ request }) => {
         try {
             console.log('[SW] Analysis API request received');
@@ -1212,10 +1239,11 @@ registerRoute(
 
         } catch (error) {
             console.error('[SW] Analysis API error:', error);
+            const msg = error instanceof Error ? error.message : String(error);
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Analysis failed',
-                message: error.message,
+                message: msg,
                 code: 'ANALYSIS_ERROR',
                 timestamp: new Date().toISOString()
             }), {
@@ -1251,10 +1279,14 @@ registerRoute(
             console.log('[SW] Proxying Phosphor icon:', url.pathname, '->', cdnUrl, `(fixed: ${iconFile})`);
 
             // Fetch from CDN with appropriate caching
+            const forwardedHeaders: Record<string, string> = {};
+            request?.headers?.forEach?.((value, key) => {
+                forwardedHeaders[key] = value;
+            });
             const response = await fetch(cdnUrl, {
                 ...request,
                 headers: {
-                    ...Object.fromEntries(request.headers.entries()),
+                    ...forwardedHeaders,
                     'Accept': 'image/svg+xml, image/*',
                 }
             });
@@ -1573,17 +1605,10 @@ registerRoute(
 registerRoute(
     ({ url }) => url?.pathname === '/share-target-files',
     async ({ url }) => {
-        const cacheKey = url.searchParams.get('cacheKey');
+        const cacheKey = url.searchParams.get('cacheKey') || 'latest';
         console.log('[SW] Received request for share target files, cacheKey:', cacheKey);
 
         try {
-            if (!cacheKey) {
-                return new Response(JSON.stringify({ error: 'Missing cacheKey parameter' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
             const cache = await (self as any).caches?.open?.(SHARE_CACHE_NAME);
             if (cache) {
                 const manifestResponse = await cache?.match?.(SHARE_FILES_MANIFEST_KEY);

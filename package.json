@@ -47,7 +47,7 @@
         "culori": "^4.0.2",
         "dompurify": "^3.2.4",
         "install": "^0.13.0",
-        "isomorphic-dompurify": "^2.22.0",
+        "isomorphic-dompurify": "^2.35.0",
         "jsdom": "^26.0.0",
         "jsonc-eslint-parser": "^2.4.1",
         "jsox": "^1.2.125",

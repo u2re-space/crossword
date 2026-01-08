@@ -2,36 +2,49 @@
    Main SCSS Entry Point - Modern Atomic Design System
    ========================================================================== */
 
-@layer reset, base, components, layout, utilities;
+@layer reset, base, components, settings, layout, utilities;
 
 /* ==========================================================================
    RESET & NORMALIZE - Cross-browser consistency
    ========================================================================== */
-/* TODO: Re-enable normalize import when path resolution is fixed */
-@import "../scss/normalize.scss" layer(reset);
+@layer reset {
+    @import "../../scss/normalize.scss";
+}
 
 /* ==========================================================================
    BASE STYLES - Foundation with modern utilities
    ========================================================================== */
-@import "../scss/lib/_typed-properties.scss" layer(base);
+@layer base {
+    @import "../../scss/lib/_typed-properties.scss";
+}
 
 /* ==========================================================================
    COMPONENT STYLES - Reusable UI components
    ========================================================================== */
-@import "../scss/buttons.scss" layer(components);
-@import "../scss/forms.scss" layer(components);
-@import "scss/workcenter/workcenter.scss" layer(components);
-@import "../scss/markdown/markdown-render.scss" layer(components);
-@import "../scss/markdown/markdown-viewer.scss" layer(components);
-@import "scss/editor/markdown-editor.scss" layer(components);
-@import "scss/editor/quill-editor.scss" layer(components);
-@import "./scss/settings/Settings.scss" layer(settings);
+@layer components {
+    @import "../../scss/buttons.scss";
+    @import "../../scss/forms.scss";
+    @import "workcenter/workcenter.scss";
+    @import "../../scss/markdown/markdown-render.scss";
+    @import "../../scss/markdown/markdown-viewer.scss";
+    @import "editor/markdown-editor.scss";
+    @import "editor/quill-editor.scss";
+}
+
+@layer settings {
+    @import "settings/Settings.scss";
+}
 
 /* ==========================================================================
    LAYOUT & UTILITY STYLES - Layout systems and helpers
    ========================================================================== */
-@import "scss/layout/layout.scss" layer(layout);
-@import "../scss/utilities.scss" layer(utilities);
+@layer layout {
+    @import "layout/layout.scss";
+}
+
+@layer utilities {
+    @import "../../scss/utilities.scss";
+}
 
 /* ==========================================================================
    ANIMATIONS - Keyframe definitions

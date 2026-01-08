@@ -5,21 +5,12 @@
  * for consistent behavior across different entry points and modules.
  */
 
-import type { RecognizeByInstructionsOptions } from 'src/com/service/AI-ops/RecognizeData';
+import type { RecognizeByInstructionsOptions } from '@rs-com/service/AI-ops/RecognizeData';
 
 // Import built-in AI instructions and templates
 import {
   AI_INSTRUCTIONS,
-  DEFAULT_TEMPLATES,
   BUILT_IN_AI_ACTIONS,
-  SOLVE_AND_ANSWER_INSTRUCTION,
-  WRITE_CODE_INSTRUCTION,
-  EXTRACT_CSS_INSTRUCTION,
-  RECOGNIZE_CONTENT_INSTRUCTION,
-  CONVERT_DATA_INSTRUCTION,
-  EXTRACT_ENTITIES_INSTRUCTION,
-  TRANSLATE_TO_LANGUAGE_INSTRUCTION,
-  GENERAL_PROCESSING_INSTRUCTION
 } from './BuiltInAI';
 
 // AI Processing Types
@@ -200,12 +191,33 @@ export const processingRules = Object.fromEntries(
 );
 
 // AI Processing Rules Configuration (auto-generated from BUILT_IN_AI_ACTIONS)
-export const PROCESSING_RULES: ProcessingRule[] = BUILT_IN_AI_ACTIONS.map(action => ({
-  type: action.id.toLowerCase().replace(/_/g, '-'),
-  instruction: AI_INSTRUCTIONS[action.instructionKey],
-  supportedContentTypes: action.supportedContentTypes,
-  priority: action.priority
-}));
+const AI_PROCESSING_TYPES: readonly AIProcessingType[] = [
+  'solve-and-answer',
+  'write-code',
+  'extract-css',
+  'recognize-content',
+  'convert-data',
+  'extract-entities',
+  'general-processing'
+] as const;
+
+const toAIProcessingType = (id: string): AIProcessingType | null => {
+  const normalized = String(id || '').toLowerCase().replace(/_/g, '-') as AIProcessingType;
+  return (AI_PROCESSING_TYPES as readonly string[]).includes(normalized) ? normalized : null;
+};
+
+export const PROCESSING_RULES: ProcessingRule[] = BUILT_IN_AI_ACTIONS
+  .map(action => {
+    const type = toAIProcessingType(action.id);
+    if (!type) return null;
+    return {
+      type,
+      instruction: AI_INSTRUCTIONS[action.instructionKey],
+      supportedContentTypes: action.supportedContentTypes,
+      priority: action.priority
+    } satisfies ProcessingRule;
+  })
+  .filter((v): v is ProcessingRule => Boolean(v));
 
 // Content Type Mappings
 export const CONTENT_TYPE_MAPPINGS = {
@@ -324,13 +336,9 @@ export function getProcessingTypeFromFile(file: File): AIProcessingType {
 export function createProcessingOptions(
   overrides: Partial<RecognizeByInstructionsOptions> = {}
 ): RecognizeByInstructionsOptions {
-  return {
-    maxRetries: DEFAULT_PROCESSING_CONFIG.maxRetries,
-    timeoutMs: DEFAULT_PROCESSING_CONFIG.timeoutMs,
-    enableCaching: DEFAULT_PROCESSING_CONFIG.enableCaching,
-    enableStreaming: DEFAULT_PROCESSING_CONFIG.enableStreaming,
-    ...overrides
-  };
+  // RecognizeByInstructionsOptions currently only supports instruction + verbosity/effort knobs.
+  // Keep this helper for forward compatibility, but only return supported keys.
+  return { ...overrides };
 }
 
 /**

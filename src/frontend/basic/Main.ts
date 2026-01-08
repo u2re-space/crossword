@@ -16,7 +16,8 @@ import {
     initializeComponent,
     hasPendingMessages,
     registerComponent,
-    processInitialContent
+    processInitialContent,
+    enqueuePendingMessage
 } from "@rs-com/core/UnifiedMessaging";
 import { createMessageWithOverrides } from "@rs-com/core/UnifiedMessaging";
 import type { ContentContext, ContentType } from "@rs-com/core/UnifiedAIConfig";
@@ -31,7 +32,7 @@ async function getSWCachedContent(): Promise<any[]> {
         const response = await fetch('/sw-content/available');
         if (response.ok) {
             const data = await response.json();
-            const cachedContent = [];
+            const cachedContent: any[] = [];
 
             for (const cacheKey of data.cacheKeys || []) {
                 try {
@@ -187,15 +188,6 @@ const setViewHash = (view: BasicView): void => {
     const hash = (VIEW_HASH_MAPPING as any)[view];
     if (hash) {
         window.history.replaceState(null, '', hash);
-    }
-};
-
-const handleHashChange = (): void => {
-    const hashView = getViewFromHash();
-    if (hashView && hashView !== state.view) {
-        console.log(`[HashChange] Switching to view: ${hashView} from hash`);
-        state.view = hashView;
-        render();
     }
 };
 
@@ -551,8 +543,36 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
         }
     });
 
-    // Handler for basic-workcenter (attaches as file input/attachment)
-    unifiedMessaging.registerHandler('basic-workcenter', createContentHandler('basic-workcenter'));
+    // Handler for basic-workcenter:
+    // - If WorkCenter is mounted, forward directly to it (updates attachments + results UI)
+    // - Otherwise, enqueue into pending inbox and navigate to WorkCenter so it can drain on mount.
+    unifiedMessaging.registerHandler('basic-workcenter', {
+        canHandle: (msg) => msg.destination === 'basic-workcenter',
+        handle: async (msg) => {
+            const instance = state.managers?.workCenter?.instance;
+            if (instance?.handleExternalMessage) {
+                try {
+                    await instance.handleExternalMessage(msg);
+                } catch (e) {
+                    console.error('[Basic] WorkCenter message handling failed:', e);
+                }
+                return;
+            }
+
+            try {
+                enqueuePendingMessage('basic-workcenter', msg as any);
+            } catch (e) {
+                console.warn('[Basic] Failed to enqueue pending workcenter message:', e);
+            }
+
+            // Auto-open WorkCenter so queued messages get processed and shown.
+            if (state.view !== 'workcenter') {
+                state.view = 'workcenter';
+                setViewHash('workcenter');
+                render();
+            }
+        }
+    });
 
     // Handler for basic-explorer destination (saves to OPFS or performs file operations)
     unifiedMessaging.registerHandler('basic-explorer', {
@@ -690,6 +710,15 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     // Setup hash location support
     if (typeof window !== "undefined") {
+        const handleHashChange = (): void => {
+            const hashView = getViewFromHash();
+            if (hashView && hashView !== state.view) {
+                console.log(`[HashChange] Switching to view: ${hashView} from hash`);
+                state.view = hashView;
+                render();
+            }
+        };
+
         // Listen for hash changes
         window.addEventListener('hashchange', handleHashChange);
 
@@ -1023,9 +1052,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             }
             if (contentLoaded) {
               // Update the viewer content without triggering render
-              if (viewer.updateContent) {
-                viewer.updateContent(state.markdown);
-              }
+              (viewer as any)?.updateContent?.(state.markdown);
               showStatusMessage("Content loaded in viewer");
             }
 
@@ -1103,9 +1130,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             }
             if (contentLoaded) {
               // Update the editor content without triggering render
-              if (editor.updateContent) {
-                editor.updateContent(state.markdown);
-              }
+              (editor as any)?.updateContent?.(state.markdown);
               showStatusMessage("Content loaded in editor");
             }
 
@@ -1183,9 +1208,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             }
             if (contentLoaded) {
               // Update the editor content without triggering render
-              if (editor.updateContent) {
-                editor.updateContent(state.markdown);
-              }
+              (editor as any)?.updateContent?.(state.markdown);
               showStatusMessage("Content loaded in rich editor");
             }
 

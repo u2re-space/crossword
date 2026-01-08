@@ -315,6 +315,9 @@ export class WorkCenterEvents {
                 case 'copy-results':
                     await this.actions.copyResults(this.state);
                     break;
+                case 'view-output':
+                    await this.actions.viewResultsInViewer(this.state);
+                    break;
                 case 'save-to-explorer':
                     await this.actions.saveResultsToExplorer(this.state);
                     break;

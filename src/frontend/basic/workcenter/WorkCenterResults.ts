@@ -153,6 +153,10 @@ export class WorkCenterResults {
               <div class="section-header">
                 <h3>Results & Processing</h3>
                 <div class="output-actions">
+                    <button class="btn btn-icon" data-action="view-output" title="View output in Viewer">
+                    <ui-icon icon="eye" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">View</span>
+                    </button>
                     <button class="btn btn-icon" data-action="copy-results" title="Copy results">
                     <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
                     <span class="btn-text">Copy</span>

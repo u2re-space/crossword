@@ -117,11 +117,7 @@ export class WorkCenterManager {
         const pendingMessages = initializeComponent('workcenter-core');
         for (const message of pendingMessages) {
             console.log(`[WorkCenter] Processing pending message:`, message);
-            // Handle the message based on its type
-            if (message.type === 'content-share' && message.data) {
-                // Convert message data to file-like object and add to state
-                this.handleIncomingContent(message.data, message.contentType || 'text');
-            }
+            this.handleExternalMessage(message);
         }
 
         // Listen for hash changes to update UI elements like drop hints
@@ -170,6 +166,40 @@ export class WorkCenterManager {
         } catch (error) {
             console.warn('[WorkCenter] Failed to handle incoming content:', error);
             this.deps.showMessage('Failed to attach content');
+        }
+    }
+
+    /**
+     * Public entry for Basic/Main unified-messaging handler and pending inbox replay.
+     * Handles share-target inputs/results and general content-share attachment.
+     */
+    async handleExternalMessage(message: any): Promise<void> {
+        if (!message) return;
+
+        // Share-target messages should update both attachments and results pipeline.
+        if (message.type === 'share-target-input' && message.data) {
+            await this.shareTarget.addShareTargetInput(this.state, message.data);
+            this.ui.updateFileList(this.state);
+            this.ui.updateFileCounter(this.state);
+            this.ui.updateDataPipeline(this.state);
+            return;
+        }
+
+        if (message.type === 'share-target-result' && message.data) {
+            await this.shareTarget.addShareTargetResult(this.state, message.data);
+            this.ui.updateDataPipeline(this.state);
+            return;
+        }
+
+        if (message.type === 'ai-result' && message.data) {
+            await this.shareTarget.handleAIResult(this.state, message.data);
+            this.ui.updateDataPipeline(this.state);
+            return;
+        }
+
+        // Generic content attachment
+        if (message.type === 'content-share' && message.data) {
+            await this.handleIncomingContent(message.data, message.contentType || 'text');
         }
     }
 

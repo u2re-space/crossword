@@ -14,7 +14,7 @@ import {
 } from "./frontend/pwa/sw-handling";
 
 // Import uniform channel manager
-import { initializeAppChannels, channelManager } from "./com/core/UniformChannelManager";
+import { initializeAppChannels } from "./com/core/UniformChannelManager";
 
 
 
@@ -175,7 +175,7 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
             <h2 style="margin: 0 0 1rem 0; color: #d32f2f;">Application Error</h2>
             <p style="margin: 0 0 1.5rem 0; color: #666; max-inline-size: 500px;">${errorMessage}</p>
             ${retryFn ? `
-                <button onclick="(${retryFn.toString()})()" style="
+                <button data-action="retry" style="
                     padding: 0.75rem 1.5rem;
                     background: #007acc;
                     color: white;
@@ -189,7 +189,7 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
                     Try Again
                 </button>
             ` : ''}
-            <button onclick="location.reload()" style="
+            <button data-action="reload" style="
                 padding: 0.5rem 1rem;
                 background: #666;
                 color: white;
@@ -202,6 +202,29 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
             </button>
         </div>
     `;
+
+    // Avoid inline onclick stringification (breaks in module scope; "index is not defined").
+    const retryBtn = mountElement.querySelector('[data-action="retry"]') as HTMLButtonElement | null;
+    if (retryBtn && retryFn) {
+        retryBtn.addEventListener("click", () => {
+            try {
+                retryFn();
+            } catch (e) {
+                console.error("[Index] Retry failed:", e);
+            }
+        });
+    }
+
+    const reloadBtn = mountElement.querySelector('[data-action="reload"]') as HTMLButtonElement | null;
+    if (reloadBtn) {
+        reloadBtn.addEventListener("click", () => {
+            try {
+                location.reload();
+            } catch (e) {
+                console.error("[Index] Reload failed:", e);
+            }
+        });
+    }
 };
 
 // ============================================================================

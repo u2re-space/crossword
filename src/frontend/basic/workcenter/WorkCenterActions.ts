@@ -6,6 +6,7 @@ import type { WorkCenterFileOps } from "./WorkCenterFileOps";
 import type { WorkCenterResults } from "./WorkCenterResults";
 import type { WorkCenterDataProcessing } from "./WorkCenterDataProcessing";
 import type { WorkCenterHistory } from "./WorkCenterHistory";
+import { extractJSONFromAIResponse } from "@rs-core/utils/AIResponseParser";
 
 export class WorkCenterActions {
     private deps: WorkCenterDependencies;
@@ -201,6 +202,47 @@ export class WorkCenterActions {
         } catch (error) {
             console.error('Failed to copy results:', error);
             this.deps.showMessage('Failed to copy results');
+        }
+    }
+
+    async viewResultsInViewer(state: WorkCenterState): Promise<void> {
+        if (!state.lastRawResult) {
+            this.deps.showMessage('No results to view');
+            return;
+        }
+
+        try {
+            const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
+
+            let resultContent = typeof state.lastRawResult === 'string'
+                ? state.lastRawResult
+                : JSON.stringify(state.lastRawResult, null, 2);
+
+            try {
+                resultContent = JSON.parse(resultContent)?.data || resultContent;
+            } catch (error) {
+            }
+
+            await unifiedMessaging.sendMessage({
+                id: crypto.randomUUID(),
+                type: 'content-view',
+                source: 'workcenter',
+                destination: 'basic-viewer',
+                contentType: state.outputFormat === 'markdown' ? 'markdown' : 'text',
+                data: {
+                    text: resultContent,
+                    filename: `workcenter-output-${Date.now()}.${state.outputFormat === 'markdown' ? 'md' : (state.outputFormat === 'json' ? 'json' : 'txt')}`
+                },
+                metadata: {
+                    title: 'Work Center Output',
+                    timestamp: Date.now(),
+                    source: 'workcenter',
+                    format: state.outputFormat
+                }
+            } as any);
+        } catch (error) {
+            console.error('Failed to open output in viewer:', error);
+            this.deps.showMessage('Failed to open output in viewer');
         }
     }
 

@@ -5,31 +5,22 @@
  */
 
 import {
-    createWorkerChannel,
     createQueuedOptimizedWorkerChannel,
     OptimizedWorkerChannel,
     detectExecutionContext,
     supportsDedicatedWorkers,
-    QueuedWorkerChannel
 } from 'fest/uniform';
 
 import { createDeferred, globalChannelRegistry, globalChannelHealthMonitor } from 'fest/core';
 
 import {
     BROADCAST_CHANNELS,
-    COMPONENTS,
-    ROUTE_HASHES,
-    STORAGE_KEYS,
-    MESSAGE_TYPES,
     CONTENT_TYPES,
-    CONTENT_CONTEXTS,
     DESTINATIONS,
-    getChannelForComponent,
-    getHashForComponent,
-    getStorageKeyForComponent
 } from '@rs-com/config/Names';
 
 import { MessageQueue } from './MessageQueue';
+import { resolveAssociation, resolveAssociationPipeline } from "./ContentAssociations";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -103,11 +94,11 @@ export class UnifiedMessagingManager {
     private pipelines = new Map<string, PipelineConfig>();
     private messageQueue = new MessageQueue();
     private initializedViews = new Set<string>();
-    private viewReadyPromises = new Map<string, ReturnType<typeof createDeferred>>();
-    private executionContext: string;
+    private viewReadyPromises = new Map<string, any>();
+    private executionContext: 'service-worker' | 'main' | 'chrome-extension' | undefined;
 
     constructor() {
-        this.executionContext = detectExecutionContext();
+        this.executionContext = detectExecutionContext() as any;
         this.setupGlobalListeners();
     }
 
@@ -151,9 +142,9 @@ export class UnifiedMessagingManager {
     async sendMessage(message: UnifiedMessage): Promise<boolean> {
         // Ensure message has required fields
         const fullMessage: UnifiedMessage = {
+            ...message,
             id: message.id || crypto.randomUUID(),
             metadata: { timestamp: Date.now(), ...message.metadata },
-            ...message
         };
 
         // Try to deliver immediately
@@ -163,6 +154,11 @@ export class UnifiedMessagingManager {
 
         // Queue for later delivery if destination not available
         if (fullMessage.destination) {
+            // Also store a synchronous pending copy for view/component catch-up.
+            // This is used by initializeComponent()/hasPendingMessages(), because IndexedDB-based queues
+            // cannot be drained synchronously during view bootstrap.
+            PendingMessageStore.enqueue(fullMessage.destination, fullMessage);
+
             await this.messageQueue.queueMessage(fullMessage.type, fullMessage, {
                 priority: fullMessage.metadata?.priority || 'normal',
                 maxRetries: fullMessage.metadata?.maxRetries || 3,
@@ -246,7 +242,7 @@ export class UnifiedMessagingManager {
                 script: config.script,
                 options: config.options,
                 context: this.executionContext
-            }, config.protocolOptions, (workerChannel) => {
+            }, config.protocolOptions, (_workerChannel) => {
                 console.log(`[UnifiedMessaging] Channel '${config.name}' ready for view '${viewHash}'`);
             });
 
@@ -432,19 +428,24 @@ export class UnifiedMessagingManager {
 
         for (const queuedMessage of queuedMessages) {
             if (!destination || queuedMessage.destination === destination) {
-                const message: UnifiedMessage = {
-                    id: queuedMessage.id,
-                    type: queuedMessage.type,
-                    source: 'queue',
-                    destination: queuedMessage.destination,
-                    data: queuedMessage.data,
-                    metadata: {
-                        timestamp: queuedMessage.timestamp,
-                        retryCount: queuedMessage.retryCount,
-                        maxRetries: queuedMessage.maxRetries,
-                        ...queuedMessage.metadata
-                    }
-                };
+                // If the queued payload is already a UnifiedMessage, replay it as-is.
+                // Otherwise, wrap it.
+                const dataAsMessage = queuedMessage.data as any;
+                const message: UnifiedMessage = (dataAsMessage && typeof dataAsMessage === "object" && typeof dataAsMessage.type === "string" && typeof dataAsMessage.id === "string")
+                    ? dataAsMessage
+                    : {
+                        id: queuedMessage.id,
+                        type: queuedMessage.type,
+                        source: 'queue',
+                        destination: queuedMessage.destination,
+                        data: queuedMessage.data,
+                        metadata: {
+                            timestamp: queuedMessage.timestamp,
+                            retryCount: queuedMessage.retryCount,
+                            maxRetries: queuedMessage.maxRetries,
+                            ...queuedMessage.metadata
+                        }
+                    };
 
                 if (await this.tryDeliverMessage(message)) {
                     await this.messageQueue.removeMessage(queuedMessage.id);
@@ -479,7 +480,7 @@ export class UnifiedMessagingManager {
     /**
      * Check if a worker configuration is supported
      */
-    private isWorkerSupported(config: WorkerChannelConfig): boolean {
+    private isWorkerSupported(_config: WorkerChannelConfig): boolean {
         if (this.executionContext === 'service-worker') {
             return true; // Service workers can handle their own operations
         }
@@ -527,6 +528,99 @@ export class UnifiedMessagingManager {
 }
 
 // ============================================================================
+// PENDING MESSAGE STORE (SYNC CATCH-UP)
+// ============================================================================
+
+type PendingStoreEntry = {
+    destination: string;
+    message: UnifiedMessage;
+    storedAt: number;
+};
+
+class PendingMessageStore {
+    private static readonly KEY = "rs-unified-messaging-pending";
+    private static readonly MAX = 200;
+    private static readonly DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+    private static read(): PendingStoreEntry[] {
+        if (typeof window === "undefined") return [];
+        try {
+            const raw = localStorage.getItem(PendingMessageStore.KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    private static write(entries: PendingStoreEntry[]): void {
+        if (typeof window === "undefined") return;
+        try {
+            localStorage.setItem(PendingMessageStore.KEY, JSON.stringify(entries));
+        } catch {
+            // ignore
+        }
+    }
+
+    static enqueue(destination: string, message: UnifiedMessage): void {
+        if (!destination) return;
+        const now = Date.now();
+        const ttl = Number(message?.metadata?.expiresAt)
+            ? Math.max(0, Number(message.metadata!.expiresAt) - now)
+            : PendingMessageStore.DEFAULT_TTL_MS;
+
+        // Skip immediately-expired
+        if (ttl <= 0) return;
+
+        const entries = PendingMessageStore.read()
+            .filter(e => e && typeof e === "object")
+            .filter(e => {
+                const expiresAt = Number(e?.message?.metadata?.expiresAt) || (Number(e?.storedAt) + PendingMessageStore.DEFAULT_TTL_MS);
+                return expiresAt > now;
+            });
+
+        entries.push({ destination, message, storedAt: now });
+        if (entries.length > PendingMessageStore.MAX) {
+            entries.splice(0, entries.length - PendingMessageStore.MAX);
+        }
+        PendingMessageStore.write(entries);
+    }
+
+    static drain(destination: string): UnifiedMessage[] {
+        if (!destination) return [];
+        const now = Date.now();
+        const entries = PendingMessageStore.read();
+
+        const keep: PendingStoreEntry[] = [];
+        const out: UnifiedMessage[] = [];
+
+        for (const e of entries) {
+            const expiresAt = Number(e?.message?.metadata?.expiresAt) || (Number(e?.storedAt) + PendingMessageStore.DEFAULT_TTL_MS);
+            if (expiresAt <= now) continue;
+            if (e?.destination === destination && e?.message) {
+                out.push(e.message);
+            } else {
+                keep.push(e);
+            }
+        }
+
+        PendingMessageStore.write(keep);
+        return out;
+    }
+
+    static has(destination: string): boolean {
+        if (!destination) return false;
+        const now = Date.now();
+        return PendingMessageStore.read().some((e) => {
+            if (!e || typeof e !== "object") return false;
+            const expiresAt = Number(e?.message?.metadata?.expiresAt) || (Number(e?.storedAt) + PendingMessageStore.DEFAULT_TTL_MS);
+            return expiresAt > now && e?.destination === destination;
+        });
+    }
+}
+
+// ============================================================================
 // CONVENIENCE FUNCTIONS AND EXPORTS
 // ============================================================================
 
@@ -534,11 +628,11 @@ export class UnifiedMessagingManager {
 export const unifiedMessaging = UnifiedMessagingManager.getInstance();
 
 // Convenience functions
-export function sendMessage(message: Omit<UnifiedMessage, 'id'>): Promise<boolean> {
+export function sendMessage(message: Omit<UnifiedMessage, 'id' | 'source'> & { source?: string }): Promise<boolean> {
     return unifiedMessaging.sendMessage({
-      id: crypto.randomUUID(),
-        ...message
-    });
+        ...message,
+        source: message.source || 'unified-messaging'
+    } as UnifiedMessage);
 }
 
 export function registerHandler(destination: string, handler: MessageHandler): void {
@@ -557,6 +651,7 @@ export function getBroadcastChannel(channelName: string): BroadcastChannel {
 export function sendToWorkCenter(data: any, options?: any): Promise<boolean> {
     return sendMessage({
         type: 'content-share',
+        source: 'unified-messaging',
         destination: DESTINATIONS.WORKCENTER,
         data,
         metadata: options
@@ -566,6 +661,7 @@ export function sendToWorkCenter(data: any, options?: any): Promise<boolean> {
 export function sendToClipboard(data: any, options?: any): Promise<boolean> {
     return sendMessage({
         type: 'clipboard-copy',
+        source: 'unified-messaging',
         destination: DESTINATIONS.CLIPBOARD,
         data,
         metadata: options
@@ -575,6 +671,7 @@ export function sendToClipboard(data: any, options?: any): Promise<boolean> {
 export function navigateToView(view: string): Promise<boolean> {
     return sendMessage({
       type: 'navigation',
+        source: 'unified-messaging',
         destination: 'router',
         data: { view },
         metadata: { priority: 'high' }
@@ -582,28 +679,105 @@ export function navigateToView(view: string): Promise<boolean> {
 }
 
 export function initializeComponent(componentId: string): UnifiedMessage[] {
-    // Return any queued messages for this component
-    // This would need to be implemented based on the MessageQueue
-    return [];
+    // Return any queued messages for this component (sync catch-up).
+    // Components register their destination via registerComponent(...).
+    const destination = _componentRegistry.get(componentId);
+    if (!destination) return [];
+    return PendingMessageStore.drain(destination);
 }
 
 export function hasPendingMessages(destination: string): boolean {
-    // Check if there are queued messages for this destination
-    // This would need to be implemented based on the MessageQueue
-    return false;
+    return PendingMessageStore.has(destination);
+}
+
+/**
+ * Explicitly enqueue a message into the sync pending store.
+ * Useful when a destination has a handler (so sendMessage would "deliver"),
+ * but the real UI component isn't mounted yet and we want catch-up delivery.
+ */
+export function enqueuePendingMessage(destination: string, message: UnifiedMessage): void {
+    const dest = String(destination || '').trim();
+    if (!dest) return;
+    if (!message) return;
+    PendingMessageStore.enqueue(dest, message);
 }
 
 export function registerComponent(componentId: string, destination: string): void {
-    // Register a component with the messaging system
-    // This could set up automatic message routing
+    _componentRegistry.set(componentId, destination);
 }
 
+const _componentRegistry = new Map<string, string>();
+
 export function processInitialContent(content: any): Promise<void> {
-    return sendMessage({
-        type: 'content-process',
-        destination: 'content-processor',
-        data: content
-    }).then(() => {});
+    const contentType = String(content?.contentType || content?.type || CONTENT_TYPES.OTHER);
+    const resolved = resolveAssociationPipeline({
+        contentType,
+        context: content?.context,
+        processingSource: content?.processingSource,
+        overrideFactors: content?.overrideFactors || content?.metadata?.overrideFactors
+    });
+
+    const payload = content?.content ?? content?.data ?? content;
+    const meta = content?.metadata ?? {};
+
+    const source = String(content?.source || meta?.source || 'content-association');
+    const tasks = resolved.pipeline.map((dest) => {
+        if (dest === "basic-viewer") {
+            return sendMessage({
+                type: 'content-view',
+                source,
+                destination: 'basic-viewer',
+                contentType: resolved.normalizedContentType,
+                data: {
+                    content: payload?.text ?? payload?.content ?? payload,
+                    text: payload?.text,
+                    filename: payload?.filename ?? meta?.filename,
+                },
+                metadata: {
+                    ...meta,
+                    overrideFactors: resolved.overrideFactors,
+                    context: content?.context,
+                    processingSource: content?.processingSource
+                }
+            });
+        }
+
+        if (dest === "basic-explorer") {
+            return sendMessage({
+                type: 'content-explorer',
+                source,
+                destination: 'basic-explorer',
+                contentType: resolved.normalizedContentType,
+                data: {
+                    action: 'save',
+                    ...payload,
+                },
+                metadata: {
+                    ...meta,
+                    overrideFactors: resolved.overrideFactors,
+                    context: content?.context,
+                    processingSource: content?.processingSource
+                }
+            });
+        }
+
+        // Default: attach into workcenter.
+        return sendMessage({
+            type: 'content-share',
+            source,
+            destination: 'basic-workcenter',
+            contentType: resolved.normalizedContentType,
+            data: payload,
+            metadata: {
+                ...meta,
+                overrideFactors: resolved.overrideFactors,
+                context: content?.context,
+                processingSource: content?.processingSource
+            }
+        });
+    });
+
+    return Promise.allSettled(tasks).then(() => {});
 }
 
 // ============================================================================
@@ -618,11 +792,22 @@ export function createMessageWithOverrides(
     overrideFactors: string[] = [],
     processingSource?: string
 ): UnifiedMessage {
+    const resolved = resolveAssociation({
+        contentType,
+        context: processingSource,
+        processingSource,
+        overrideFactors
+    });
+
     return {
       id: crypto.randomUUID(),
         type,
       source,
-        destination: 'content-processor',
+        destination: resolved.destination === "basic-viewer"
+            ? 'basic-viewer'
+            : resolved.destination === "basic-explorer"
+                ? 'basic-explorer'
+                : 'basic-workcenter',
       contentType,
         data,
       metadata: {
@@ -633,9 +818,3 @@ export function createMessageWithOverrides(
       }
     };
   }
-
-// ============================================================================
-// TYPE EXPORTS
-// ============================================================================
-
-export type { WorkerChannelConfig, ViewChannelConfig, PipelineConfig, PipelineStage };
