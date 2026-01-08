@@ -129,6 +129,27 @@ const extractRecognizedContent = (data: unknown): unknown => {
  */
 const checkPendingClipboardOperations = async (): Promise<void> => {
     try {
+        // Wait for service worker to be ready and controlling the page
+        if (!navigator.serviceWorker) {
+            console.log('[PWA-Copy] Service workers not supported');
+            return;
+        }
+
+        // Wait for service worker to be controlling the page
+        if (!navigator.serviceWorker.controller) {
+            console.log('[PWA-Copy] Waiting for service worker to control page...');
+
+            // Wait for service worker to become active
+            const registration = await navigator.serviceWorker.ready;
+            if (!registration.active) {
+                console.log('[PWA-Copy] Service worker not active yet');
+                return;
+            }
+
+            // Give it a moment to start controlling
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
         console.log('[PWA-Copy] Checking for pending clipboard operations...');
         const response = await fetch('/clipboard/pending');
         const data = await response.json();

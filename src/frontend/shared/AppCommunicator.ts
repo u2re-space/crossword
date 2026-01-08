@@ -4,6 +4,7 @@
  */
 
 import { getMessageQueue } from './MessageQueue';
+import { BROADCAST_CHANNELS } from '@rs-core/config/Names';
 
 export interface AppMessage {
     type: string;
@@ -322,10 +323,10 @@ class AppCommunicator {
 
 // Predefined channel configurations for common app components
 export const APP_CHANNELS = {
-    WORK_CENTER: 'rs-workcenter',
-    MARKDOWN_VIEWER: 'rs-markdown-viewer',
-    SETTINGS: 'rs-settings',
-    GENERAL: 'rs-app-general'
+    WORK_CENTER: BROADCAST_CHANNELS.WORK_CENTER,
+    MARKDOWN_VIEWER: BROADCAST_CHANNELS.MARKDOWN_VIEWER,
+    SETTINGS: BROADCAST_CHANNELS.SETTINGS,
+    GENERAL: BROADCAST_CHANNELS.GENERAL
 } as const;
 
 // Singleton instances for different channels

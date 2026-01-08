@@ -40,6 +40,15 @@ export class WorkCenterShareTarget {
         } else if (type === 'share-target-input' && data) {
             console.log('[WorkCenter] Received share target input:', data);
             this.addShareTargetInput(state, data);
+        } else if (type === 'ai-result' && data) {
+            console.log('[WorkCenter] Received AI processing result:', data);
+            this.handleAIResult(state, data);
+        } else if (type === 'content-cached' && data) {
+            console.log('[WorkCenter] Received cached content from SW:', data);
+            this.handleCachedContent(state, data);
+        } else if (type === 'content-received' && data) {
+            console.log('[WorkCenter] Received content from SW:', data);
+            this.handleReceivedContent(state, data);
         }
     }
 
@@ -184,6 +193,120 @@ export class WorkCenterShareTarget {
             this.workCenterComm.sendMessage('share-target-input', inputData, { priority: 'high' });
         } catch (error) {
             console.error('[WorkCenter] Failed to send share target input:', error);
+        }
+    }
+
+    private async handleCachedContent(state: WorkCenterState, data: any): Promise<void> {
+        const { cacheKey, context, content } = data;
+
+        if (context === 'share-target' && content) {
+            console.log('[WorkCenter] Processing cached share-target content:', content);
+
+            // Add the content to work center
+            await this.addShareTargetInput(state, content);
+
+            // Try to retrieve additional cached files if any
+            await this.retrieveCachedFiles(state, cacheKey);
+        }
+    }
+
+    private async handleReceivedContent(state: WorkCenterState, data: any): Promise<void> {
+        const { content, context } = data;
+
+        if (context === 'share-target' && content) {
+            console.log('[WorkCenter] Processing received share-target content:', content);
+
+            // Add the content to work center
+            await this.addShareTargetInput(state, content);
+        }
+    }
+
+    private async handleAIResult(state: WorkCenterState, resultData: any): Promise<void> {
+        const { success, data, error } = resultData;
+
+        if (!success) {
+            console.warn('[WorkCenter] AI processing failed:', error);
+            this.deps.showMessage?.('AI processing failed: ' + (error || 'Unknown error'));
+            return;
+        }
+
+        if (!data) {
+            console.warn('[WorkCenter] No data in AI result');
+            return;
+        }
+
+        console.log('[WorkCenter] Adding AI processing result to work center');
+
+        try {
+            // Add to processedData pipeline as an AI processing result
+            const processedEntry = {
+                content: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
+                timestamp: Date.now(),
+                action: 'AI Processing (Share Target)',
+                sourceData: { aiResult: data, source: 'share-target' },
+                metadata: {
+                    source: 'share-target-ai',
+                    processingType: 'ai',
+                    resultType: typeof data
+                }
+            };
+
+            // Import the state manager function
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.addProcessedStep(state, processedEntry);
+
+            // Save state
+            WorkCenterStateManager.saveState(state);
+
+            // Show notification
+            this.deps.showMessage?.('AI processing result added to work center');
+
+            // Trigger UI update if needed
+            if (this.deps.render) {
+                this.deps.render();
+            }
+
+        } catch (error) {
+            console.error('[WorkCenter] Failed to add AI result:', error);
+            this.deps.showMessage?.('Failed to add AI processing result');
+        }
+    }
+
+    private async retrieveCachedFiles(state: WorkCenterState, cacheKey: string): Promise<void> {
+        try {
+            // Try to fetch cached file manifest from service worker
+            const response = await fetch(`/share-target-files?cacheKey=${encodeURIComponent(cacheKey)}`);
+            if (!response.ok) return;
+
+            const fileManifest = await response.json();
+
+            if (fileManifest.files && Array.isArray(fileManifest.files)) {
+                console.log('[WorkCenter] Retrieved cached files:', fileManifest.files.length);
+
+                for (const fileMeta of fileManifest.files) {
+                    try {
+                        // Fetch the actual file data from cache
+                        const fileResponse = await fetch(`/share-target-file/${fileMeta.key}`);
+                        if (fileResponse.ok) {
+                            const fileBlob = await fileResponse.blob();
+                            const file = new File([fileBlob], fileMeta.name, { type: fileMeta.type });
+
+                            console.log('[WorkCenter] Adding cached file:', fileMeta.name);
+                            state.files.push(file);
+                        }
+                    } catch (error) {
+                        console.warn('[WorkCenter] Failed to retrieve cached file:', fileMeta.name, error);
+                    }
+                }
+
+                // Notify about file changes
+                if (fileManifest.files.length > 0) {
+                    this.deps.onFilesChanged?.();
+                    this.deps.showMessage?.(`Added ${fileManifest.files.length} cached file(s) from share-target`);
+                }
+            }
+        } catch (error) {
+            console.warn('[WorkCenter] Failed to retrieve cached files:', error);
         }
     }
 }

@@ -1,6 +1,7 @@
 import { H } from "fest/lure";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";
+import { ROUTE_HASHES } from '@rs-core/config/Names';
 
 export class WorkCenterAttachments {
     private container: HTMLElement | null = null;
@@ -40,7 +41,7 @@ export class WorkCenterAttachments {
                   <div class="drop-zone-content">
                     <ui-icon icon="folder" size="4rem" icon-style="duotone" class="drop-icon"></ui-icon>
                     <div class="drop-text">Drop files here or click to select files</div>
-                    <div class="drop-hint">Supports: Images, Documents, Text files, PDFs, URLs, Base64 data</div>
+                    <div class="drop-hint" data-drop-hint>Supports: Images, Documents, Text files, PDFs, URLs, Base64 data</div>
                   </div>
                 </div>
                 <div class="file-list" data-file-list></div>
@@ -161,6 +162,9 @@ export class WorkCenterAttachments {
         fileInput.accept = 'image/*,.pdf,.txt,.md,.json,.html,.css,.js,.ts';
         fileInput.style.display = 'none';
         this.container.append(fileInput);
+
+        // Update drop hint based on current route
+        this.updateDropHint();
 
         // Click to select files
         dropZone.addEventListener('click', () => fileInput.click());
@@ -458,6 +462,33 @@ export class WorkCenterAttachments {
             return true;
         } catch {
             return false;
+        }
+    }
+
+    updateDropHint(): void {
+        if (!this.container) return;
+
+        const hintElement = this.container.querySelector('[data-drop-hint]') as HTMLElement;
+        if (!hintElement) return;
+
+        const currentHash = window.location.hash;
+
+        switch (currentHash) {
+            case ROUTE_HASHES.SHARE_TARGET_TEXT:
+                hintElement.textContent = 'Drop text files or paste text content here';
+                break;
+            case ROUTE_HASHES.SHARE_TARGET_IMAGE:
+                hintElement.textContent = 'Drop image files here (PNG, JPG, GIF, WebP, etc.)';
+                break;
+            case ROUTE_HASHES.SHARE_TARGET_FILES:
+                hintElement.textContent = 'Drop any files here (images, documents, text files, PDFs, etc.)';
+                break;
+            case ROUTE_HASHES.SHARE_TARGET_URL:
+                hintElement.textContent = 'Paste URLs here (file drops not accepted on this route)';
+                break;
+            default:
+                hintElement.textContent = 'Supports: Images, Documents, Text files, PDFs, URLs, Base64 data';
+                break;
         }
     }
 }

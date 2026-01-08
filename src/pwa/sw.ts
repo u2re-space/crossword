@@ -11,8 +11,12 @@ import {
     logShareDataSummary,
     hasProcessableContent,
     processShareTargetWithExecutionCore,
+    SHARE_FILE_PREFIX,
+    SHARE_CACHE_NAME,
+    SHARE_FILES_MANIFEST_KEY,
     type ShareData
 } from './lib/ShareTargetUtils';
+import { BROADCAST_CHANNELS, MESSAGE_TYPES, STORAGE_KEYS, ROUTE_HASHES, COMPONENTS } from '@rs-core/config/Names';
 
 // ============================================================================
 // SERVICE WORKER CONTENT ASSOCIATION SYSTEM
@@ -219,9 +223,20 @@ async function handleCacheAction(content: any, context: SWContentContext, event?
         // Broadcast to active clients
         await broadcastToClients('content-cached', { cacheKey, context, content });
 
+        // Determine redirect location based on context
+        let redirectLocation: string;
+        if (context === 'share-target') {
+            // For share-target, redirect to specific basic app route
+            const routeHash = determineShareTargetRoute(content);
+            redirectLocation = `/basic${routeHash}?cached=${cacheKey}`;
+        } else {
+            // Default behavior for other contexts
+            redirectLocation = `/?cached=${cacheKey}`;
+        }
+
         return new Response(null, {
             status: 302,
-            headers: { Location: `/?cached=${cacheKey}` }
+            headers: { Location: redirectLocation }
         });
 
     } catch (error) {
@@ -266,16 +281,26 @@ async function handleOpenAppAction(content: any, context: SWContentContext, even
 
         // Try to focus existing window or open new one
         const clients = await (self as any).clients?.matchAll?.({ type: 'window' });
+
+        // Determine the target URL based on context
+        let targetUrl: string;
+        if (context === 'share-target') {
+            const routeHash = determineShareTargetRoute(content);
+            targetUrl = `/basic${routeHash}`;
+        } else {
+            targetUrl = `/?context=${context}`;
+        }
+
         if (clients?.length > 0) {
             // Focus existing window
             await clients[0].focus();
             return new Response(null, {
                 status: 302,
-                headers: { Location: `/?context=${context}` }
+                headers: { Location: targetUrl }
             });
         } else {
             // Open new window
-            await (self as any).clients?.openWindow?.(`/?context=${context}`);
+            await (self as any).clients?.openWindow?.(targetUrl);
             return new Response(null, { status: 200 });
         }
 
@@ -298,6 +323,42 @@ async function handleBroadcastAction(content: any, context: SWContentContext, ev
     } catch (error) {
         console.error('[SW-Broadcast] Failed to broadcast:', error);
         throw error;
+    }
+}
+
+// ============================================================================
+// ROUTE DETERMINATION FOR SHARE TARGET
+// ============================================================================
+
+/**
+ * Determine the appropriate route hash based on share-target content
+ */
+function determineShareTargetRoute(content: any): string {
+    // Determine content type
+    let contentType = 'text';
+    if (content.files?.length > 0) {
+        // Check if files are images
+        const hasImages = content.files.some((file: any) => file.type?.startsWith('image/'));
+        if (hasImages) {
+            contentType = 'image';
+        } else {
+            contentType = 'file';
+        }
+    } else if (content.url) {
+        contentType = 'url';
+    }
+
+    // Map content type to route hash
+    switch (contentType) {
+        case 'image':
+            return ROUTE_HASHES.SHARE_TARGET_IMAGE;
+        case 'file':
+            return ROUTE_HASHES.SHARE_TARGET_FILES;
+        case 'url':
+            return ROUTE_HASHES.SHARE_TARGET_URL;
+        case 'text':
+        default:
+            return ROUTE_HASHES.SHARE_TARGET_TEXT;
     }
 }
 
@@ -390,11 +451,11 @@ if (manifest) {
     precacheAndRoute(manifest);
 }
 
-// Broadcast channel names (matching frontend/shared modules)
+// Broadcast channel names (using centralized naming system)
 const CHANNELS = {
-    SHARE_TARGET: 'rs-share-target',
-    TOAST: 'rs-toast',
-    CLIPBOARD: 'rs-clipboard'
+    SHARE_TARGET: BROADCAST_CHANNELS.SHARE_TARGET,
+    TOAST: BROADCAST_CHANNELS.TOAST,
+    CLIPBOARD: BROADCAST_CHANNELS.CLIPBOARD
 } as const;
 
 // Clipboard queue storage for persistent delivery using IDB
@@ -1440,18 +1501,46 @@ async function handleShareTargetRequest(event: any): Promise<Response> {
 
 // Handle requests for pending clipboard operations
 registerRoute(
-    ({ url }) => url?.pathname === '/clipboard/pending',
+    ({ url }) => {
+        const matches = url?.pathname === '/clipboard/pending';
+        if (matches) {
+            console.log('[SW] Clipboard route matched for:', url?.pathname);
+        }
+        return matches;
+    },
+    async ({ url }) => {
+        try {
+            console.log('[SW] Handling request for pending clipboard operations:', url?.pathname);
+            const operations = await getStoredClipboardOperations();
+            console.log('[SW] Returning', operations.length, 'clipboard operations');
+            return new Response(JSON.stringify({ operations }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('[SW] Error in clipboard pending route:', error);
+            return new Response(JSON.stringify({ error: 'Internal server error' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    },
+    'GET'
+);
+
+// Handle requests for available cached content keys (specific route first)
+registerRoute(
+    ({ url }) => url?.pathname === '/sw-content/available',
     async () => {
-        console.log('[SW] Received request for pending clipboard operations');
-        const operations = await getStoredClipboardOperations();
-        return new Response(JSON.stringify({ operations }), {
+        console.log('[SW] Received request for available cached content');
+        const cacheKeys = await getStoredCacheKeys();
+        return new Response(JSON.stringify({ cacheKeys }), {
             headers: { 'Content-Type': 'application/json' }
         });
     },
     'GET'
 );
 
-// Handle requests for cached content from SW association system
+// Handle requests for cached content from SW association system (general route after specific ones)
 registerRoute(
     ({ url }) => url?.pathname?.startsWith('/sw-content/'),
     async ({ url }) => {
@@ -1480,13 +1569,64 @@ registerRoute(
     'GET'
 );
 
-// Handle requests for available cached content keys
+// Handle requests for share target file manifest
 registerRoute(
-    ({ url }) => url?.pathname === '/sw-content/available',
-    async () => {
-        console.log('[SW] Received request for available cached content');
-        const cacheKeys = await getStoredCacheKeys();
-        return new Response(JSON.stringify({ cacheKeys }), {
+    ({ url }) => url?.pathname === '/share-target-files',
+    async ({ url }) => {
+        const cacheKey = url.searchParams.get('cacheKey');
+        console.log('[SW] Received request for share target files, cacheKey:', cacheKey);
+
+        try {
+            if (!cacheKey) {
+                return new Response(JSON.stringify({ error: 'Missing cacheKey parameter' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            const cache = await (self as any).caches?.open?.(SHARE_CACHE_NAME);
+            if (cache) {
+                const manifestResponse = await cache?.match?.(SHARE_FILES_MANIFEST_KEY);
+                if (manifestResponse) {
+                    const manifest = await manifestResponse.json();
+                    return new Response(JSON.stringify(manifest), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('[SW] Failed to retrieve share target file manifest:', error);
+        }
+
+        return new Response(JSON.stringify({ files: [] }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    'GET'
+);
+
+// Handle requests for individual share target files
+registerRoute(
+    ({ url }) => url?.pathname?.startsWith(SHARE_FILE_PREFIX),
+    async ({ url }) => {
+        const fileKey = url.pathname.replace(SHARE_FILE_PREFIX, '');
+        console.log('[SW] Received request for share target file:', fileKey);
+
+        try {
+            const cache = await (self as any).caches?.open?.(SHARE_CACHE_NAME);
+            if (cache) {
+                const response = await cache?.match?.(SHARE_FILE_PREFIX + fileKey);
+                if (response) {
+                    // Return the file but don't delete from cache (work center may need it multiple times)
+                    return response;
+                }
+            }
+        } catch (error) {
+            console.warn('[SW] Failed to retrieve share target file:', error);
+        }
+
+        return new Response(JSON.stringify({ error: 'File not found' }), {
+            status: 404,
             headers: { 'Content-Type': 'application/json' }
         });
     },
@@ -1657,13 +1797,25 @@ registerRoute(
     async ({ event, request }: any) => {
         try {
             // Try to use the navigation preload response if available
-            const preloadResponse = await event?.preloadResponse;
-            if (preloadResponse) return preloadResponse;
+            if (event?.preloadResponse) {
+                try {
+                    const preloadResponse = await event.preloadResponse;
+                    if (preloadResponse) {
+                        // Extend event lifetime to ensure preload completes
+                        event.waitUntil(Promise.resolve());
+                        return preloadResponse;
+                    }
+                } catch (preloadError) {
+                    // Preload was cancelled or failed, continue to network fetch
+                    console.log('[SW] Navigation preload cancelled, falling back to network');
+                }
+            }
 
             // Otherwise fall back to network
             const networkResponse = await fetch(request);
             return networkResponse;
-        } catch {
+        } catch (error) {
+            console.warn('[SW] Navigation fetch failed:', error);
             // Fall back to cache
             const cached = await caches?.match?.('/');
             return cached || Response.error();

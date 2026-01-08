@@ -121,7 +121,77 @@ const isValidFile = (value: unknown): value is File =>
     value instanceof File && value.size > 0;
 
 /**
- * Collect and deduplicate files from FormData
+ * Check if string is a valid base64 data URL
+ */
+const isBase64DataUrl = (value: string): boolean =>
+    value.startsWith('data:') && value.includes('base64,');
+
+/**
+ * Check if string is a URI component that could be decoded
+ */
+const isUriComponent = (value: string): boolean => {
+    try {
+        decodeURIComponent(value);
+        return value !== decodeURIComponent(value); // Only if it actually decodes to something different
+    } catch {
+        return false;
+    }
+};
+
+/**
+ * Convert base64 data URL to File
+ */
+const base64DataUrlToFile = (dataUrl: string, filename: string = 'base64-data.bin'): File | null => {
+    try {
+        const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) return null;
+
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+
+        // Decode base64
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Generate filename based on MIME type if not provided
+        let finalFilename = filename;
+        if (filename === 'base64-data.bin' && mimeType) {
+            const extension = mimeType.split('/')[1] || 'bin';
+            finalFilename = `base64-data.${extension}`;
+        }
+
+        return new File([bytes], finalFilename, { type: mimeType });
+    } catch (error) {
+        console.warn('[ShareTarget] Failed to convert base64 data URL to file:', error);
+        return null;
+    }
+};
+
+/**
+ * Convert URI component string to File (if it's base64 encoded)
+ */
+const uriComponentToFile = (uriComponent: string, filename: string = 'uri-data.bin'): File | null => {
+    try {
+        const decoded = decodeURIComponent(uriComponent);
+
+        // Check if decoded string is a base64 data URL
+        if (isBase64DataUrl(decoded)) {
+            return base64DataUrlToFile(decoded, filename);
+        }
+
+        // If it's just text, create a text file
+        return new File([decoded], filename, { type: 'text/plain' });
+    } catch (error) {
+        console.warn('[ShareTarget] Failed to convert URI component to file:', error);
+        return null;
+    }
+};
+
+/**
+ * Collect and deduplicate files from FormData (including base64 and URI component support)
  */
 export const collectFilesFromFormData = (formData: FormData): File[] => {
     const seenFiles = new Set<string>();
@@ -135,17 +205,49 @@ export const collectFilesFromFormData = (formData: FormData): File[] => {
         }
     };
 
-    // Check known field names
+    // Check known field names for files
     for (const fieldName of FILE_FIELD_NAMES) {
         for (const value of formData.getAll(fieldName)) {
-            if (isValidFile(value)) addFile(value);
+            if (isValidFile(value)) {
+                addFile(value);
+            } else if (typeof value === 'string') {
+                // Try to convert string to file (base64 or URI component)
+                let convertedFile: File | null = null;
+
+                if (isBase64DataUrl(value)) {
+                    convertedFile = base64DataUrlToFile(value, `${fieldName}-data`);
+                } else if (isUriComponent(value)) {
+                    convertedFile = uriComponentToFile(value, `${fieldName}-data.txt`);
+                }
+
+                if (convertedFile) {
+                    console.log('[ShareTarget] Converted string data to file:', fieldName, convertedFile.name);
+                    addFile(convertedFile);
+                }
+            }
         }
     }
 
-    // Check all entries for files in unknown fields
+    // Check all entries for files and convertible strings in unknown fields
     const entries = Array.from((formData as any).entries?.() || []) as [string, FormDataEntryValue][];
-    for (const [, value] of entries) {
-        if (isValidFile(value)) addFile(value);
+    for (const [fieldName, value] of entries) {
+        if (isValidFile(value)) {
+            addFile(value);
+        } else if (typeof value === 'string') {
+            // Try to convert string to file (base64 or URI component)
+            let convertedFile: File | null = null;
+
+            if (isBase64DataUrl(value)) {
+                convertedFile = base64DataUrlToFile(value, `${fieldName}-data`);
+            } else if (isUriComponent(value)) {
+                convertedFile = uriComponentToFile(value, `${fieldName}-data.txt`);
+            }
+
+            if (convertedFile) {
+                console.log('[ShareTarget] Converted string data to file from field:', fieldName, convertedFile.name);
+                addFile(convertedFile);
+            }
+        }
     }
 
     return files;
@@ -265,10 +367,10 @@ export const buildShareData = async (formData: FormData): Promise<ShareData> => 
 // CACHE OPERATIONS
 // ============================================================================
 
-const SHARE_CACHE_NAME = 'share-target-data';
+export const SHARE_CACHE_NAME = 'share-target-data';
 const SHARE_CACHE_KEY = '/share-target-data';
-const SHARE_FILES_MANIFEST_KEY = '/share-target-files';
-const SHARE_FILE_PREFIX = '/share-target-file/';
+export const SHARE_FILES_MANIFEST_KEY = '/share-target-files';
+export const SHARE_FILE_PREFIX = '/share-target-file/';
 
 type CachedShareFileMeta = {
     key: string;

@@ -280,7 +280,12 @@ const HASH_VIEW_MAPPING = {
   '#settings': 'settings',
   '#history': 'history',
   '#explorer': 'file-explorer',
-  '#rich-editor': 'rich-editor'
+  '#rich-editor': 'rich-editor',
+  // Share-target specific routes - all redirect to workcenter
+  '#share-target-text': 'workcenter',
+  '#share-target-files': 'workcenter',
+  '#share-target-url': 'workcenter',
+  '#share-target-image': 'workcenter'
 } as const;
 
 const VIEW_HASH_MAPPING = {

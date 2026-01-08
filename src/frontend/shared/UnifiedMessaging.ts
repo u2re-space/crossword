@@ -20,13 +20,14 @@
 
 import { CHANNELS } from '../routing/sw-handling';
 import { UNIFIED_PROCESSING_RULES, type AssociationOverrideFactor, type ContentType, type ContentContext, type ContentAction } from './UnifiedAIConfig';
+import { BROADCAST_CHANNELS, COMPONENTS, DESTINATIONS } from '@rs-core/config/Names';
 
 // Additional custom channels for unified messaging
 const CUSTOM_CHANNELS = {
-    BASIC_APP: 'basic-app',
-    MAIN_APP: 'main-app',
-    FILE_EXPLORER: 'file-explorer',
-    PRINT_VIEWER: 'print-viewer'
+    BASIC_APP: BROADCAST_CHANNELS.BASIC_APP,
+    MAIN_APP: BROADCAST_CHANNELS.MAIN_APP,
+    FILE_EXPLORER: BROADCAST_CHANNELS.FILE_EXPLORER,
+    PRINT_VIEWER: BROADCAST_CHANNELS.PRINT_VIEWER
 } as const;
 
 // ============================================================================
@@ -1034,14 +1035,14 @@ export class UnifiedMessagingManager {
       case 'basic-viewer':
       case 'markdown-editor':
       case 'rich-editor':
-        return 'markdown-viewer';
+        return BROADCAST_CHANNELS.MARKDOWN_VIEWER_CHANNEL;
       case 'basic-explorer':
       case 'file-explorer':
-        return 'file-explorer';
+        return BROADCAST_CHANNELS.FILE_EXPLORER_CHANNEL;
       case 'settings':
-        return 'settings';
+        return BROADCAST_CHANNELS.SETTINGS_CHANNEL;
       case 'history':
-        return 'history';
+        return BROADCAST_CHANNELS.HISTORY_CHANNEL;
       case 'print':
         return 'print-viewer';
       default:

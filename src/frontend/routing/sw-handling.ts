@@ -369,15 +369,17 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
     }
 };
 
-// BroadcastChannel names (matching service worker)
+import { BROADCAST_CHANNELS } from '@rs-core/config/Names';
+
+// BroadcastChannel names (using centralized naming system)
 export const CHANNELS = {
-    SHARE_TARGET: 'rs-share-target',
-    TOAST: 'rs-toast',
-    CLIPBOARD: 'rs-clipboard',
-    BASIC_APP: 'basic-app',
-    MAIN_APP: 'main-app',
-    FILE_EXPLORER: 'file-explorer',
-    PRINT_VIEWER: 'print-viewer'
+    SHARE_TARGET: BROADCAST_CHANNELS.SHARE_TARGET,
+    TOAST: BROADCAST_CHANNELS.TOAST,
+    CLIPBOARD: BROADCAST_CHANNELS.CLIPBOARD,
+    BASIC_APP: BROADCAST_CHANNELS.BASIC_APP,
+    MAIN_APP: BROADCAST_CHANNELS.MAIN_APP,
+    FILE_EXPLORER: BROADCAST_CHANNELS.FILE_EXPLORER,
+    PRINT_VIEWER: BROADCAST_CHANNELS.PRINT_VIEWER
 } as const;
 
 // ============================================================================
@@ -470,8 +472,8 @@ export const consumeCachedShareTargetPayload = async (opts: { clear?: boolean } 
 
     try {
         const cache = await caches.open(SHARE_CACHE_NAME);
-        const metaResp = await cache.match(SHARE_CACHE_KEY);
-        const manifestResp = await cache.match(SHARE_FILES_MANIFEST_KEY);
+        const metaResp = await cache?.match?.(SHARE_CACHE_KEY);
+        const manifestResp = await cache?.match?.(SHARE_FILES_MANIFEST_KEY);
 
         if (!metaResp && !manifestResp) return null;
 
@@ -482,7 +484,7 @@ export const consumeCachedShareTargetPayload = async (opts: { clear?: boolean } 
         const files: File[] = [];
         for (const fm of fileMeta) {
             if (!fm?.key) continue;
-            const r = await cache.match(fm.key);
+            const r = await cache?.match?.(fm.key);
             if (!r) continue;
             const blob = await r.blob();
             const file = new File([blob], fm.name || 'shared-file', {
@@ -615,7 +617,7 @@ export const handleShareTarget = () => {
         // No content in params, try cache
         if ('caches' in window) {
             caches.open("share-target-data")
-                .then(cache => cache.match("/share-target-data"))
+                .then(cache => cache?.match?.("/share-target-data"))
                 .then(response => response?.json?.())
                 .then(async (data: ShareDataInput | undefined) => {
                     if (data) {

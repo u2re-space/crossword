@@ -123,6 +123,14 @@ export class WorkCenterManager {
                 this.handleIncomingContent(message.data, message.contentType || 'text');
             }
         }
+
+        // Listen for hash changes to update UI elements like drop hints
+        if (typeof window !== 'undefined') {
+            window.addEventListener('hashchange', () => {
+                // Update drop hints when hash changes
+                this.attachments.updateDropHint?.();
+            });
+        }
     }
 
     // File handling methods - delegate to fileOps module

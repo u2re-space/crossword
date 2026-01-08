@@ -206,14 +206,18 @@ export class ExecutionCore {
                     }
                 } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
                     await navigator.clipboard.writeText(textToCopy.trim());
-                } else {
-                    // Fallback method
+                } else if (typeof document !== 'undefined' && document.body) {
+                    // Fallback method - only available in main thread context
                     const textArea = document.createElement('textarea');
                     textArea.value = textToCopy.trim();
                     document.body.appendChild(textArea);
                     textArea.select();
                     document.execCommand('copy');
                     document.body.removeChild(textArea);
+                } else {
+                    // Service worker context - cannot access DOM
+                    console.log('[ExecutionCore] Cannot auto-copy in service worker context - DOM not available');
+                    return;
                 }
 
                 // Broadcast copy notification
