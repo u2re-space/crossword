@@ -1,5 +1,21 @@
 import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/routing/overlay";
 
+// Import CRX runtime channel module for inline coding style
+import { createRuntimeChannelModule } from '../shared/runtime';
+import { registerCrxHandler } from "../shared/CrxMessaging";
+
+// Check if we're in CRX environment
+const isInCrxEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+
+// Create runtime module for inline usage
+let crxModule: any = null;
+const getCrxModule = async () => {
+    if (!crxModule && isInCrxEnvironment) {
+        crxModule = await createRuntimeChannelModule('crx-content-script');
+    }
+    return crxModule;
+};
+
 // crop area for screen capture
 export interface cropArea {
     x: number;
@@ -58,7 +74,7 @@ const getModeErrorMessage = (mode: SnipMode): string => {
 // use chrome API to capture tab visible area
 // Note: Toast for successful copy is handled by clipboard-handler.ts
 // We only show toasts here for errors/failures
-const captureTab = (rect?: cropArea, mode: SnipMode = "recognize") => {
+const captureTab = async (rect?: cropArea, mode: SnipMode = "recognize") => {
     const messageType = getModeMessageType(mode);
     const payload: any = { type: messageType, rect };
 
@@ -67,27 +83,50 @@ const captureTab = (rect?: cropArea, mode: SnipMode = "recognize") => {
         payload.instructionId = __customInstructionId;
     }
 
-    return chrome.runtime.sendMessage(payload)
-        ?.then?.(res => {
-            console.log(`[Snip] ${mode} result:`, res);
-            // Toast for success is already shown by clipboard handler
-            // Only show toast for errors or no data
-            if (!res?.ok) {
-                if (res?.error) {
-                    const shortError = res.error.length > 50 ? res.error.slice(0, 50) + "..." : res.error;
-                    showToast(shortError);
-                    console.error(`[Snip] ${mode} error:`, res.error);
-                } else {
-                    showToast(getModeErrorMessage(mode));
-                }
-            }
-            return res || { ok: false, error: "no response" };
-        })
-        ?.catch?.(err => {
-            console.error(`[Snip] ${mode} failed:`, err);
-            showToast(`${getModeName(mode)} failed`);
-            return { ok: false, error: String(err) };
-        });
+    // Use fest/uniform CRX messaging for reliability
+    if (!isInCrxEnvironment) {
+        console.warn('[Snip] Not in CRX environment');
+        return Promise.reject(new Error('Chrome extension messaging not available'));
+    }
+
+    // Use CRX runtime module for inline coding style
+    const module = await getCrxModule();
+    if (!module) {
+        throw new Error('CRX runtime module not available');
+    }
+
+    console.log(`[Snip] Starting capture with rect:`, rect, `mode:`, mode);
+
+    // First try just capturing screenshot to test if capture works
+    console.log(`[Snip] Testing screenshot capture...`);
+    const screenshot = await module.captureScreenshot(rect);
+    console.log(`[Snip] Screenshot result:`, {
+        ok: screenshot?.ok,
+        hasImageData: !!screenshot?.imageData,
+        imageDataLength: screenshot?.imageData?.length
+    });
+
+    // Inline coding style: await module.capture(rect)
+    const result = await module.capture(rect, mode);
+
+    console.log(`[Snip] ${mode} result:`, result);
+
+    // Show toast for errors
+    if (!result?.ok) {
+        if (result?.error) {
+            const shortError = result.error.length > 50 ? result.error.slice(0, 50) + "..." : result.error;
+            showToast(shortError);
+            console.error(`[Snip] ${mode} error:`, result.error);
+        } else {
+            showToast(getModeErrorMessage(mode));
+        }
+    } else if (result?.ok && (!result?.data || result.data === '')) {
+        // Success but no data - this indicates the AI didn't find text
+        console.warn(`[Snip] ${mode} succeeded but no text found in image`);
+        showToast(`No text found in selected area`);
+    }
+
+    return result;
 };
 
 // register message listener and export startSnip
@@ -195,9 +234,13 @@ export function startSnip(mode: SnipMode = "recognize", instructionId?: string, 
         showToast(actionTexts[__currentMode] || "Processing...");
 
         try {
-            const result = await captureTab({ x, y, width: w, height: h }, __currentMode);
+            const result = await captureTab({ x, y, width: w, height: h }, __currentMode)?.catch?.(err => {
+                console.warn(err);
+                showToast(`${getModeName(__currentMode)} failed`);
+                return null;
+            });
             // captureTab already shows success/error toast
-            if (!result?.ok) {
+            if (!result?.success) {
                 console.warn("Capture result:", typeof result == "string" ? result : JSON.stringify(result));
             }
         } catch (err) {
@@ -268,6 +311,38 @@ export function startSnip(mode: SnipMode = "recognize", instructionId?: string, 
     };
     if (hint) hint.textContent = hintTexts[__currentMode] || "Select area. Esc — cancel";
     if (sizeBadge) sizeBadge.textContent = "";
+}
+
+// ============================================================================
+// CRX MESSAGING HANDLERS
+// ============================================================================
+
+// Only register CRX messaging handlers if in CRX environment
+if (isInCrxEnvironment) {
+    // Register handlers for async processing updates
+    registerCrxHandler('processingStarted', (data) => {
+        console.log('[Snip] Processing started:', data);
+        // Update UI to show processing indicator
+        showToast(`Starting ${getModeName(__currentMode)}...`, 'info');
+    });
+
+    registerCrxHandler('processingComplete', (data) => {
+        console.log('[Snip] Processing completed:', data);
+        // Processing completion is handled by the main response handler
+    });
+
+    registerCrxHandler('processingError', (data) => {
+        console.error('[Snip] Processing error:', data);
+        showToast(`Processing failed: ${data.error}`, 'error');
+    });
+
+    registerCrxHandler('processingProgress', (data) => {
+        console.log('[Snip] Processing progress:', data);
+        // Could update a progress bar here
+        if (data.progress > 0 && data.progress < 100) {
+            showToast(`${getModeName(__currentMode)}: ${data.progress}%`, 'info');
+        }
+    });
 }
 
 // initialize on module load

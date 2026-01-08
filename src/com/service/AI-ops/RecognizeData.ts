@@ -586,7 +586,14 @@ export const recognizeImageData = async (
     config?: AIConfig,
     options?: RecognizeByInstructionsOptions
 ): Promise<{ ok: boolean; data?: string; error?: string }> => {
-    return recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, config, options);
+    const result = await recognizeByInstructions(input, IMAGE_INSTRUCTION, sendResponse, config, options);
+    console.log('[recognizeImageData] recognizeByInstructions result:', {
+        ok: result.ok,
+        dataLength: result.data?.length || 0,
+        dataPreview: result.data?.substring(0, 100) || 'empty',
+        error: result.error
+    });
+    return result;
 };
 
 //
@@ -1668,6 +1675,12 @@ export const processDataWithInstruction = async (
     // Clear any previous pending items
     gpt.clearPending();
 
+    console.log("[ProcessDataWithInstruction] GPT instance created:", {
+        hasToken: !!token,
+        baseUrl: settings?.baseUrl || DEFAULT_API_URL,
+        model: settings?.model || DEFAULT_MODEL
+    });
+
     let processingStages = 1;
     let recognizedImages = false;
     const intermediateRecognizedData: ProcessDataWithInstructionResult['intermediateRecognizedData'] = [];
@@ -1717,6 +1730,14 @@ export const processDataWithInstruction = async (
                             getIntermediateRecognitionInstruction(intermediateRecognition?.outputFormat || 'markdown');
 
                         console.log("[ProcessDataWithInstruction] Performing intermediate recognition");
+                        console.log("[ProcessDataWithInstruction] Image item details:", {
+                            type: item?.type,
+                            size: item?.size,
+                            name: item?.name,
+                            isFile: item instanceof File,
+                            isBlob: item instanceof Blob,
+                            isString: typeof item === 'string'
+                        });
 
                         const recognitionResult = await recognizeByInstructions(
                             item,
@@ -1729,6 +1750,14 @@ export const processDataWithInstruction = async (
                             }
                         );
 
+                        console.log("[ProcessDataWithInstruction] Intermediate recognition result:", {
+                            ok: recognitionResult.ok,
+                            hasData: !!recognitionResult.data,
+                            dataLength: recognitionResult.data?.length || 0,
+                            dataPreview: recognitionResult.data?.substring(0, 100) || 'empty',
+                            error: recognitionResult.error
+                        });
+
                         if (!recognitionResult.ok || !recognitionResult.data) {
                             console.warn("[ProcessDataWithInstruction] Intermediate recognition failed, using original image");
                             recognizedContent = ""; // Will use original image
@@ -1736,6 +1765,8 @@ export const processDataWithInstruction = async (
                         } else {
                             recognizedContent = recognitionResult.data;
                             recognitionResponseId = recognitionResult.responseId || "";
+
+                            console.log("[ProcessDataWithInstruction] Successfully recognized content:", recognizedContent.substring(0, 200) + "...");
 
                             // Cache the result
                             if (intermediateRecognition?.cacheResults !== false) {
@@ -1776,13 +1807,21 @@ export const processDataWithInstruction = async (
     let error;
     try {
         console.log("[ProcessDataWithInstruction] Sending request with effort:", processingEffort, "verbosity:", processingVerbosity);
+        console.log("[ProcessDataWithInstruction] Pending items count:", gpt.getPending()?.length || 0);
+
         response = await gpt?.sendRequest?.(processingEffort, processingVerbosity, null, {
             responseFormat: getResponseFormat(outputFormat),
             temperature: 0.3
         });
-        console.log("[ProcessDataWithInstruction] Response received:", !!response);
+
+        console.log("[ProcessDataWithInstruction] Raw GPT response received:", {
+            hasResponse: !!response,
+            responseType: typeof response,
+            responseLength: typeof response === 'string' ? response.length : 'N/A',
+            responsePreview: typeof response === 'string' ? response.substring(0, 200) : String(response)
+        });
     } catch (e) {
-        console.error("[ProcessDataWithInstruction] Error:", e);
+        console.error("[ProcessDataWithInstruction] GPT API Error:", e);
         error = String(e);
     }
 
@@ -1798,12 +1837,54 @@ export const processDataWithInstruction = async (
     }
 
     const responseContent = parsedResponse?.choices?.[0]?.message?.content;
-    const cleanedResponse = responseContent ? unwrapUnwantedCodeBlocks(responseContent.trim()) : null;
+    let cleanedResponse = responseContent ? unwrapUnwantedCodeBlocks(responseContent.trim()) : null;
+
+    // For image recognition, handle both JSON and direct responses
+    let finalData = cleanedResponse;
+    if (cleanedResponse && instruction?.includes('Recognize data from image')) {
+        // First try to parse as JSON (if GPT followed the instruction)
+        try {
+            const parsedJson = JSON.parse(cleanedResponse);
+            if (parsedJson?.recognized_data) {
+                // Extract the actual recognized text from the JSON response
+                if (Array.isArray(parsedJson.recognized_data)) {
+                    finalData = parsedJson.recognized_data.join('\n');
+                } else if (typeof parsedJson.recognized_data === 'string') {
+                    finalData = parsedJson.recognized_data;
+                } else {
+                    finalData = JSON.stringify(parsedJson.recognized_data);
+                }
+            } else if (parsedJson?.ok === false) {
+                // Handle the "nothing found" case
+                finalData = null;
+            } else {
+                // If it's valid JSON but doesn't have recognized_data, it might be the direct response
+                finalData = cleanedResponse;
+            }
+        } catch (jsonError) {
+            // Not JSON - GPT returned direct response, use as-is
+            console.log("[ProcessDataWithInstruction] GPT returned direct response (not JSON):", cleanedResponse.substring(0, 100));
+            finalData = cleanedResponse;
+        }
+    }
+
+    console.log("[ProcessDataWithInstruction] Final processing result:", {
+        hasResponse: !!response,
+        hasParsedResponse: !!parsedResponse,
+        hasResponseContent: !!responseContent,
+        responseContentLength: responseContent?.length || 0,
+        cleanedResponseLength: cleanedResponse?.length || 0,
+        finalDataLength: finalData?.length || 0,
+        finalDataPreview: finalData?.substring(0, 200) || 'empty',
+        hasError: !!error,
+        processingStages,
+        recognizedImages
+    });
 
     const result: ProcessDataWithInstructionResult = {
-        ok: !!cleanedResponse && !error,
-        data: cleanedResponse || undefined,
-        error: error || (!cleanedResponse ? "No response content" : undefined),
+        ok: !!finalData && !error,
+        data: finalData || undefined,
+        error: error || (!finalData ? "No data recognized" : undefined),
         responseId: parsedResponse?.id || gpt?.getResponseId?.(),
         processingStages,
         recognizedImages,
@@ -1929,12 +2010,26 @@ export const recognizeByInstructions = async (
         enableSVGImageGeneration: 'auto'
     });
 
+    console.log('[recognizeByInstructions] processDataWithInstruction result:', {
+        ok: result.ok,
+        dataLength: result.data?.length || 0,
+        dataPreview: result.data?.substring(0, 100) || 'empty',
+        error: result.error
+    });
+
     const legacyResult = {
         ok: result.ok,
         data: result.data,
         error: result.error,
         responseId: result.responseId
     };
+
+    console.log('[recognizeByInstructions] legacyResult:', {
+        ok: legacyResult.ok,
+        dataLength: legacyResult.data?.length || 0,
+        dataPreview: legacyResult.data?.substring(0, 100) || 'empty',
+        error: legacyResult.error
+    });
 
     sendResponse?.(legacyResult);
     return legacyResult;

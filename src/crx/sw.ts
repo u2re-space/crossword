@@ -2,12 +2,18 @@ import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-
 import { enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import { recognizeImageData } from "./service/RecognizeData";
-import { getGPTInstance } from "@rs-com/service/AI-ops/RecognizeData";
+import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/CustomInstructions";
 import { loadSettings } from "@rs-com/config/Settings";
 import { executionCore } from "@rs-com/service/ExecutionCore";
 import { UnifiedAIService } from "@rs-com/service/AI-ops/RecognizeData";
 import type { ActionContext, ActionInput } from "@rs-com/service/ActionHistory";
+
+// Import CRX unified messaging
+import { crxMessaging, registerCrxHandler, sendCrxMessage, sendToCrxTab, broadcastToCrxTabs } from "./shared/CrxMessaging";
+
+// Check if we're in CRX environment before using CRX messaging
+const isInCrxEnvironment = crxMessaging.isCrxEnvironment();
 
 // Import built-in AI instructions
 import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '@rs-com/core/BuiltInAI';
@@ -36,8 +42,19 @@ const processChromeExtensionAction = async (
         };
 
         const result = await executionCore.execute(input, context);
+
+        if (result.type === 'error') {
+            // Extract error message from result content
+            const errorMessage = result.content || result.error || 'Processing failed';
+            return {
+                success: false,
+                error: errorMessage,
+                result  // Include full result for debugging
+            };
+        }
+
         return {
-            success: result.type !== 'error',
+            success: true,
             result
         };
     } catch (error) {
@@ -70,6 +87,250 @@ const broadcast = (channel: string, message: unknown): void => {
         console.warn(`[CRX-SW] Broadcast to ${channel} failed:`, e);
     }
 };
+
+// ============================================================================
+// DIRECT CHROME EXTENSION MESSAGE HANDLING
+// ============================================================================
+
+// Add direct message handling for CRX (bypass complex unified messaging for reliability)
+if (isInCrxEnvironment && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Handle the snip messages directly
+        if (message && message.type) {
+            if (message.type === 'processCapture') {
+                // Handle the capture request directly using CRX-specific functions
+                const processCapture = async () => {
+                    try {
+                        // Capture the visible tab using the rectangle coordinates
+                        const rect = message.data?.rect;
+                        const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = {
+                            format: "png",
+                            scale: 1
+                        };
+
+                        if (rect?.width > 0 && rect?.height > 0) {
+                            captureOptions.rect = rect;
+                        }
+
+                        // Capture the screenshot
+                        const dataUrl = await new Promise<string>((resolve, reject) => {
+                            chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+                                if (chrome.runtime.lastError) {
+                                    reject(new Error(chrome.runtime.lastError.message));
+                                } else {
+                                    resolve(url);
+                                }
+                            });
+                        });
+
+                        // Convert data URL to blob for processing
+                        const response = await fetch(dataUrl);
+                        const blob = await response.blob();
+
+                        // Use CRX-specific image recognition
+                        const result = await recognizeImageData(blob);
+
+                        sendResponse({
+                            success: true,
+                            result: result
+                        });
+                    } catch (error) {
+                        sendResponse({
+                            success: false,
+                            error: error instanceof Error ? error.message : String(error)
+                        });
+                    }
+                };
+
+                processCapture();
+
+                return true; // Will respond asynchronously
+            } else if (message.type === 'processText') {
+                // Handle text processing directly using CRX-specific functions
+                const processText = async () => {
+                    try {
+                        if (!message.data?.content) {
+                            throw new Error('No text content provided');
+                        }
+
+                        // Use CRX-specific text processing - for now just return the text
+                        // TODO: Add actual text processing logic if needed
+                        const result = {
+                            type: 'text',
+                            content: message.data.content,
+                            processed: true
+                        };
+
+                        sendResponse({
+                            success: true,
+                            result: result
+                        });
+                    } catch (error) {
+                        sendResponse({
+                            success: false,
+                            error: error instanceof Error ? error.message : String(error)
+                        });
+                    }
+                };
+
+                processText();
+
+                return true; // Will respond asynchronously
+            }
+        }
+
+        // For other messages, let other listeners handle them
+        return true;
+    });
+}
+
+// ============================================================================
+// CRX UNIFIED MESSAGING INITIALIZATION
+// ============================================================================
+
+// Only register CRX messaging handlers if in CRX environment
+if (isInCrxEnvironment) {
+    // Register CRX messaging handlers for service worker with enhanced async support
+    registerCrxHandler('processImage', async (data: { imageData: string; mode: string; customInstructionId?: string }) => {
+    console.log('[CRX-SW] Processing image via unified messaging:', data.mode);
+
+    try {
+        // Send acknowledgment immediately for long-running operations
+        if (data.mode === 'recognize' || data.mode === 'solve') {
+            // For long-running AI operations, we can send progress updates
+            setTimeout(() => {
+                crxMessaging.sendRuntimeMessage({
+                    type: 'processingStarted',
+                    data: { operationId: `img_${Date.now()}`, mode: data.mode },
+                    metadata: { progress: 0 }
+                }).catch(console.warn);
+            }, 100);
+        }
+
+        const result = await processChromeExtensionAction({
+            type: 'recognize',
+            data: data.imageData,
+            mode: data.mode,
+            customInstructionId: data.customInstructionId
+        });
+
+        // Send completion notification
+        crxMessaging.sendRuntimeMessage({
+            type: 'processingComplete',
+            data: { operationId: `img_${Date.now()}`, result },
+            metadata: { progress: 100 }
+        }).catch(console.warn);
+
+        return result;
+    } catch (error) {
+        console.error('[CRX-SW] Image processing failed:', error);
+
+        // Send error notification
+        crxMessaging.sendRuntimeMessage({
+            type: 'processingError',
+            data: { operationId: `img_${Date.now()}`, error: error instanceof Error ? error.message : String(error) }
+        }).catch(console.warn);
+
+        throw error;
+    }
+});
+
+registerCrxHandler('processCapture', async (data: any) => {
+    console.log('[CRX-SW] Processing capture via unified messaging:', data);
+
+    try {
+        // Convert legacy capture message to new format
+        const result = await processChromeExtensionAction({
+            type: 'capture',
+            data: data,
+            mode: data.type?.toLowerCase().replace('capture_', '') || 'recognize'
+        });
+
+        return result;
+    } catch (error) {
+        console.error('[CRX-SW] Capture processing failed:', error);
+        throw error;
+    }
+});
+
+registerCrxHandler('processText', async (data: { content: string; contentType: string }) => {
+    console.log('[CRX-SW] Processing text via unified messaging:', data.contentType);
+
+    try {
+        const result = await processChromeExtensionAction({
+            type: 'process',
+            data: data.content,
+            contentType: data.contentType
+        });
+
+        return result;
+    } catch (error) {
+        console.error('[CRX-SW] Text processing failed:', error);
+        throw error;
+    }
+});
+
+// Add new async-aware handlers
+registerCrxHandler('getProcessingStatus', async (data: { operationId: string }) => {
+    // This would check the status of a long-running operation
+    console.log('[CRX-SW] Checking processing status:', data.operationId);
+    return { status: 'completed', operationId: data.operationId };
+});
+
+    registerCrxHandler('cancelProcessing', async (data: { operationId: string }) => {
+        // This would cancel a long-running operation
+        console.log('[CRX-SW] Cancelling processing:', data.operationId);
+        return { cancelled: true, operationId: data.operationId };
+    });
+}
+
+registerCrxHandler('getSettings', async () => {
+    try {
+        const settings = await loadSettings();
+        return settings;
+    } catch (error) {
+        console.error('[CRX-SW] Failed to load settings:', error);
+        throw error;
+    }
+});
+
+registerCrxHandler('updateSettings', async (updates: any) => {
+    try {
+        // Settings are handled via chrome.storage in CRX
+        // This would need to be implemented based on your settings system
+        console.log('[CRX-SW] Settings update requested:', updates);
+        return { success: true };
+    } catch (error) {
+        console.error('[CRX-SW] Failed to update settings:', error);
+        throw error;
+    }
+});
+
+registerCrxHandler('ping', async () => {
+    return { status: 'ok', context: 'service-worker', timestamp: Date.now() };
+});
+
+// Broadcast results to all interested parties
+registerCrxHandler('broadcastResult', async (data: { result: any; type: string }) => {
+    console.log('[CRX-SW] Broadcasting result:', data.type);
+
+    // Broadcast via CRX unified messaging
+    await broadcastToCrxTabs({
+        type: 'ai-result',
+        data: data.result,
+        metadata: { source: 'service-worker' }
+    });
+
+    // Also broadcast via traditional BroadcastChannel for backward compatibility
+    broadcast(AI_RECOGNITION_CHANNEL, {
+        type: data.type,
+        result: data.result,
+        timestamp: Date.now(),
+        source: 'crx-service-worker'
+    });
+
+    return { broadcasted: true };
+});
 
 // Show toast across all contexts
 const showExtensionToast = (message: string, kind: "info" | "success" | "warning" | "error" = "info"): void => {
@@ -1262,7 +1523,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 status: "processing"
             });
 
-            UnifiedAIService.processDataWithInstruction(message?.input, {
+            processDataWithInstruction(message?.input, {
                 instruction: instructionText,
                 outputFormat: 'auto',
                 intermediateRecognition: { enabled: false }

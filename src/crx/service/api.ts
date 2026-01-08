@@ -4,8 +4,213 @@ import type { RecognizeResult } from "./RecognizeData";
 import { toText } from "@rs-frontend/basic/modules/Clipboard";
 import { getCustomInstructions } from "@rs-com/service/CustomInstructions";
 
+// Import fest/uniform for unified messaging
+import { createChromeExtensionRuntimeChannel, detectExecutionContext, type CrxRuntimeModule } from 'fest/uniform';
+
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
+
+// Handler functions for runtime channel messages
+const handleCapture = async (ext: typeof chrome, data: any, sender: any) => {
+    console.log('[Service API] Starting capture with data:', data);
+    const rect = data.rect;
+    const mode = data.mode || 'recognize';
+    console.log('[Service API] Capture mode:', mode, 'rect:', rect);
+
+    // Capture screenshot
+    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = {
+        format: "png",
+        scale: 1
+    };
+    if (rect?.width > 0 && rect?.height > 0) {
+        captureOptions.rect = rect;
+    }
+    console.log('[Service API] Capture options:', captureOptions);
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+            if (chrome.runtime.lastError) {
+                console.error('[Service API] Capture error:', chrome.runtime.lastError);
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                console.log('[Service API] Screenshot captured, length:', url.length);
+                resolve(url);
+            }
+        });
+    });
+
+    // Compress and validate
+    console.log('[Service API] Compressing image...');
+    let finalUrl = await compressIfNeeded(dataUrl);
+    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+        console.warn('[Service API] Compression failed or invalid image, using original');
+        finalUrl = dataUrl;
+    }
+    console.log('[Service API] Final image length:', finalUrl.length);
+
+    // Process based on mode
+    console.log('[Service API] Converting to file...');
+    const file = await dataUrlToFile(finalUrl, "snip.png");
+    console.log('[Service API] File created:', file.name, 'size:', file.size, 'type:', file.type);
+
+    let result;
+    console.log('[Service API] Starting AI processing with mode:', mode);
+
+    try {
+        switch (mode) {
+            case 'recognize':
+                console.log('[Service API] Calling recognizeImageData...');
+                result = await recognizeImageData(file);
+                console.log('[Service API] recognizeImageData result:', result);
+                console.log('[Service API] Result data type:', typeof result?.data, 'length:', result?.data?.length, 'value:', JSON.stringify(result?.data));
+                break;
+            case 'solve':
+                console.log('[Service API] Calling solveAndAnswer...');
+                result = await solveAndAnswer(file);
+                console.log('[Service API] solveAndAnswer result:', result);
+                break;
+            case 'code':
+                console.log('[Service API] Calling writeCode...');
+                result = await writeCode(file);
+                console.log('[Service API] writeCode result:', result);
+                break;
+            case 'css':
+                console.log('[Service API] Calling extractCSS...');
+                result = await extractCSS(file);
+                console.log('[Service API] extractCSS result:', result);
+                break;
+            default:
+                console.log('[Service API] Defaulting to recognizeImageData...');
+                result = await recognizeImageData(file);
+                console.log('[Service API] recognizeImageData result:', result);
+        }
+    } catch (aiError) {
+        console.error('[Service API] AI processing error:', aiError);
+        result = { ok: false, error: String(aiError) };
+    }
+
+    // Copy to clipboard if successful
+    if (result.ok && result.data) {
+        await COPY_HACK(ext, result, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+    }
+
+    return result;
+};
+
+const handleCaptureScreenshot = async (ext: typeof chrome, data: any) => {
+    const rect = data.rect;
+
+    const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = {
+        format: "png",
+        scale: 1
+    };
+    if (rect?.width > 0 && rect?.height > 0) {
+        captureOptions.rect = rect;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+        chrome.tabs.captureVisibleTab(captureOptions, (url) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(url);
+            }
+        });
+    });
+
+    // Compress and validate
+    let finalUrl = await compressIfNeeded(dataUrl);
+    if (!finalUrl || !(await ableToShowImage(finalUrl))) {
+        finalUrl = dataUrl;
+    }
+
+    // Return just the image data, no AI processing
+    return {
+        ok: true,
+        data: finalUrl,
+        imageData: finalUrl
+    };
+};
+
+const handleProcessImage = async (ext: typeof chrome, data: any, sender: any) => {
+    const imageData = data.imageData;
+    const mode = data.mode || 'recognize';
+
+    // Convert to file if needed
+    let file: File | Blob;
+    if (typeof imageData === 'string') {
+        file = await dataUrlToFile(imageData, "snip.png");
+    } else {
+        file = imageData;
+    }
+
+    // Process based on mode
+    let result;
+    switch (mode) {
+        case 'recognize':
+            result = await recognizeImageData(file);
+            break;
+        case 'solve':
+            result = await solveAndAnswer(file);
+            break;
+        case 'code':
+            result = await writeCode(file);
+            break;
+        case 'css':
+            result = await extractCSS(file);
+            break;
+        default:
+            result = await recognizeImageData(file);
+    }
+
+    // Copy to clipboard if successful
+    if (result.ok && result.data) {
+        await COPY_HACK(ext, result, sender?.tab?.id)?.catch?.(console.warn.bind(console));
+    }
+
+    return result;
+};
+
+const handleProcessText = async (ext: typeof chrome, data: any) => {
+    // Process text through AI pipeline
+    const result = await recognizeImageData(new Blob([data.content], { type: 'text/plain' }));
+    return result;
+};
+
+const handleDoCopy = async (ext: typeof chrome, data: any) => {
+    const result = await COPY_HACK(ext, data.data, data.tabId);
+    return { success: result?.ok || false };
+};
+
+const handleLoadMarkdown = async (data: any) => {
+    const src = data;
+
+    // Load text from source
+    let text = "";
+    try {
+        const u = new URL(src);
+        const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
+        if (!res.ok) {
+            return { error: `Failed to load: ${res.status}` };
+        }
+        text = await res.text();
+    } catch {
+        // Not a URL - treat as raw markdown
+        text = src;
+    }
+
+    // Store in session storage for retrieval
+    const key = `md_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await chrome.storage.session.set({ [key]: text });
+
+    return { key, src: isProbablyUrl(src) ? src : undefined };
+};
+
+const handleCaptureWithRect = async (data: any) => {
+    // This would be triggered from content script with rectangle selection
+    // For now, return a placeholder - actual implementation would wait for rectangle
+    return { status: 'rect_selection_required', mode: data.mode };
+};
 
 const dataUrlToFile = async (dataUrl: string, fallbackName = "snip.png"): Promise<File | Blob> => {
     try {
@@ -271,9 +476,57 @@ const extractRecognizedText = (result: RecognizeResult): string => {
     return (typeof text === "string" ? text : String(text)).trim();
 };
 
+// Service worker doesn't need a channel to itself - handlers are registered directly in message listener
+
 // service worker makes screenshot of visible area (with optional crop rect)
 export const enableCapture = (ext: typeof chrome) => {
+    // Service worker handles messages directly - no need for unified channel
+
     ext.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        // Handle runtime channel messages (new format)
+        if (msg?.id?.startsWith('crx_') && msg?.type && msg?.data) {
+            console.log('[Service API] Received runtime channel message:', msg.type, 'id:', msg.id);
+            (async () => {
+                try {
+                    let result;
+
+                    console.log('[Service API] Processing method:', msg.type);
+                    // Route based on message type (method name)
+                    switch (msg.type) {
+                        case 'capture':
+                            result = await handleCapture(ext, msg.data, sender);
+                            break;
+                        case 'captureScreenshot':
+                            result = await handleCaptureScreenshot(ext, msg.data);
+                            break;
+                        case 'processImage':
+                            result = await handleProcessImage(ext, msg.data, sender);
+                            break;
+                        case 'processText':
+                            result = await handleProcessText(ext, msg.data);
+                            break;
+                        case 'doCopy':
+                            result = await handleDoCopy(ext, msg.data);
+                            break;
+                        case 'loadMarkdown':
+                            result = await handleLoadMarkdown(msg.data);
+                            break;
+                        case 'captureWithRect':
+                            result = await handleCaptureWithRect(msg.data);
+                            break;
+                        default:
+                            result = { ok: false, error: `Unknown method: ${msg.type}` };
+                    }
+
+                    console.log('[Service API] Sending response for', msg.type, ':', result);
+                    sendResponse(result);
+                } catch (error) {
+                    console.error('[Service API] Runtime channel error:', error);
+                    sendResponse({ ok: false, error: String(error) });
+                }
+            })();
+            return true; // async response
+        }
         if (msg?.type === "CAPTURE") {
             (async () => {
                 try {

@@ -1,5 +1,20 @@
 import "./index.scss";
 
+// Import CRX runtime channel module for inline coding style
+import { createRuntimeChannelModule } from '../shared/runtime';
+
+// Check if we're in CRX environment
+const isInCrxEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+
+// Create runtime module for inline usage
+let popupModule: any = null;
+const getPopupModule = async () => {
+    if (!popupModule && isInCrxEnvironment) {
+        popupModule = await createRuntimeChannelModule('crx-popup');
+    }
+    return popupModule;
+};
+
 // Settings storage key - must match @rs-core/config/Settings
 const SETTINGS_KEY = "rs-settings";
 
@@ -183,18 +198,24 @@ const implementActions = () => {
             return;
         }
 
-        // Send to service worker for processing
-        chrome.runtime.sendMessage({
-            type: "crx-snip",
-            content: selectedText,
-            contentType: "text"
-        }, (response) => {
-            if (chrome.runtime.lastError) {
-                console.warn('[CRX-SNIP] Message failed:', chrome.runtime.lastError);
-                return;
+        // Send to service worker for processing via runtime module
+        if (!isInCrxEnvironment) {
+            console.warn('[Popup] Chrome extension environment not available');
+            return;
+        }
+
+        try {
+            const module = await getPopupModule();
+            if (!module) {
+                throw new Error('Popup runtime module not available');
             }
 
-            if (response?.success) {
+            // Inline coding style: await module.processText(text)
+            const result = await module.processText(selectedText);
+
+            if (result && result.ok !== false) {
+                // Handle success
+                console.log('[Popup] Text processed successfully');
                 chrome.notifications.create({
                     type: 'basic',
                     iconUrl: 'icons/icon.png',
@@ -202,14 +223,23 @@ const implementActions = () => {
                     message: 'Text processed and copied to clipboard!'
                 });
             } else {
+                console.error('[Popup] Text processing failed:', result?.error);
                 chrome.notifications.create({
                     type: 'basic',
                     iconUrl: 'icons/icon.png',
                     title: 'CrossWord CRX-Snip',
-                    message: `Text processing failed: ${response?.error || 'Unknown error'}`
+                    message: `Text processing failed: ${result?.error || 'Unknown error'}`
                 });
             }
-        });
+        } catch (error) {
+            console.error('[Popup] Runtime module error:', error);
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon.png',
+                title: 'CrossWord CRX-Snip',
+                message: `Processing failed: ${error instanceof Error ? error.message : String(error)}`
+            });
+        }
 
         // Close popup
         window?.close?.();
@@ -233,7 +263,7 @@ const implementActions = () => {
         setTimeout(async () => {
             try {
                 // Send message to content script to start rectangle selection
-                chrome.tabs.sendMessage(activeTab.id, {
+                chrome.tabs.sendMessage(activeTab.id!, {
                     type: 'crx-snip-select-rect'
                 }, (response) => {
                     if (chrome.runtime.lastError) {
@@ -245,11 +275,34 @@ const implementActions = () => {
                     if (response?.rect) {
                         console.log('[CRX-SNIP] Rectangle selected:', response.rect);
 
-                        // Send message to service worker with rect coordinates
-                        chrome.runtime.sendMessage({
-                            type: "crx-snip-screen-capture",
-                            rect: response.rect,
-                            scale: 1 // Use scale: 1 to avoid scaling issues
+                        // Send message to service worker via runtime module
+                        Promise.try(async () => {
+
+
+                            const module = await getPopupModule();
+                            if (!module) {
+                                throw new Error('Popup runtime module not available');
+                            }
+
+                            // Inline coding style: await module.captureWithRect(mode)
+                            const result = await module.captureWithRect('default');
+
+                            if (!result?.ok) {
+                                chrome.notifications.create({
+                                    type: 'basic',
+                                    iconUrl: 'icons/icon.png',
+                                    title: 'CrossWord CRX-Snip',
+                                    message: `Screen capture failed: ${result?.error || 'Unknown error'}`
+                                });
+                            }
+                        })?.catch?.((error) => {
+                            console.error('[CRX-SNIP] Runtime module screen capture failed:', error);
+                            chrome.notifications.create({
+                                type: 'basic',
+                                iconUrl: 'icons/icon.png',
+                                title: 'CrossWord CRX-Snip',
+                                message: 'Screen capture failed'
+                            });
                         });
                     } else {
                         console.log('[CRX-SNIP] Rectangle selection cancelled');
@@ -274,6 +327,39 @@ const implementActions = () => {
         }, 100);
     };
 };
+
+// ============================================================================
+// UNIFIED MESSAGING SETUP
+// ============================================================================
+
+// Set up unified messaging handlers if in CRX environment
+if (isInCrxEnvironment) {
+    const popupChannel = getPopupModule();
+    if (!popupChannel) {
+        console.error('[Popup] Popup runtime module not available');
+    }
+
+    // Register handlers for async processing updates via unified messaging
+    popupChannel?.request?.('registerHandler', ['processingStarted', async (data: any) => {
+        console.log('[Popup] Processing started:', data);
+        // Could update popup UI to show processing status
+    }]);
+
+    popupChannel?.request?.('registerHandler', ['processingComplete', async (data: any) => {
+        console.log('[Popup] Processing completed:', data);
+        // Could update popup with results or show completion notification
+    }]);
+
+    popupChannel?.request?.('registerHandler', ['processingError', async (data: any) => {
+        console.error('[Popup] Processing error:', data);
+        // Could show error notification in popup
+    }]);
+
+    popupChannel?.request?.('registerHandler', ['processingProgress', async (data: any) => {
+        console.log('[Popup] Processing progress:', data);
+        // Could update progress indicator in popup
+    }]);
+}
 
 //
 implementSettings();

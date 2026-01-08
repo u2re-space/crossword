@@ -1,5 +1,17 @@
 import frontend from "../../frontend/basic";
 
+// Import CRX runtime channel module for inline coding style
+import { createRuntimeChannelModule } from '../shared/runtime';
+
+// Create runtime module for inline usage
+let viewerModule: any = null;
+const getViewerModule = async () => {
+    if (!viewerModule) {
+        viewerModule = await createRuntimeChannelModule('crx-markdown-viewer');
+    }
+    return viewerModule;
+};
+
 const mount = document.getElementById("app") as HTMLElement | null;
 const raw = document.getElementById("raw-md") as HTMLPreElement | null;
 
@@ -72,7 +84,13 @@ const loadTextFromSessionKey = async (key: string) => {
 
 const requestMarkdownFromServiceWorker = async (src: string) => {
   try {
-    const res = await chrome.runtime.sendMessage({ type: "md:load", src });
+    const module = await getViewerModule();
+    if (!module) {
+      return "";
+    }
+
+    // Inline coding style: await module.loadMarkdown(src)
+    const res = await module.loadMarkdown(src);
     const key = res?.key;
     const normalized = res?.src;
     if (typeof normalized === "string" && normalized && normalized !== src && isProbablyUrl(normalized)) {
