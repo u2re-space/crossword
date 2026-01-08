@@ -13,6 +13,8 @@ interface QueuedMessage {
     retryCount: number;
     maxRetries: number;
     expiresAt?: number; // Optional expiration timestamp
+    destination?: string; // Destination for routing
+    metadata?: any; // Additional metadata
 }
 
 interface MessageQueueOptions {
@@ -95,6 +97,8 @@ class MessageQueue {
             priority?: 'low' | 'normal' | 'high';
             maxRetries?: number;
             expiresAt?: number;
+            destination?: string;
+            metadata?: any;
         } = {}
     ): Promise<string> {
         const message: QueuedMessage = {
@@ -105,7 +109,9 @@ class MessageQueue {
             priority: options.priority || 'normal',
             retryCount: 0,
             maxRetries: options.maxRetries || this.options.maxRetries,
-            expiresAt: options.expiresAt || (Date.now() + this.options.defaultExpirationMs)
+            expiresAt: options.expiresAt || (Date.now() + this.options.defaultExpirationMs),
+            destination: options.destination,
+            metadata: options.metadata
         };
 
         try {

@@ -685,18 +685,22 @@ export const handleShareTarget = () => {
             } else if (msgType === "share-received") {
                 console.log("[ShareTarget] Share received broadcast:", event.data);
                 // Broadcast to work center for input attachment
-                import("@rs-com/core/AppCommunicator").then(({ getWorkCenterComm }) => {
-                    const workCenterComm = getWorkCenterComm();
-                    workCenterComm.sendMessage('share-target-input', {
-                        ...event.data,
-                        timestamp: Date.now(),
-                        metadata: {
-                            fromServiceWorker: true,
-                            ...event.data.metadata
-                        }
-                    }, { priority: 'high' });
+                import("@rs-com/core/UnifiedMessaging").then(({ unifiedMessaging }) => {
+                    unifiedMessaging.sendMessage({
+                        type: 'share-target-input',
+                        destination: 'workcenter',
+                        data: {
+                            ...event.data,
+                            timestamp: Date.now(),
+                            metadata: {
+                                fromServiceWorker: true,
+                                ...event.data.metadata
+                            }
+                        },
+                        metadata: { priority: 'high' }
+                    });
                 }).catch(error => {
-                    console.warn("[ShareTarget] Failed to load WorkCenterComm:", error);
+                    console.warn("[ShareTarget] Failed to load UnifiedMessaging:", error);
                 });
             }
         });

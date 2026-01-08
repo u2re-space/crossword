@@ -23,7 +23,7 @@ import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
 import { realtimeStates } from "../Cache";
 
 // @ts-ignore
-import AI_OUTPUT_SCHEMA from "@rs-core/template/Entities-v2.md?raw";
+import AI_OUTPUT_SCHEMA from "@rs-com/template/Entities-v2.md?raw";
 
 //
 import { checkRemainsTime } from "@rs-core/utils/TimeUtils";

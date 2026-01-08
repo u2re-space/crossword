@@ -1,11 +1,39 @@
 /**
- * App Communication Utility
- * Handles broadcasting to different app components with queuing fallback
+ * App Communication Utility - DEPRECATED
+ * This file is now deprecated in favor of the unified messaging system.
+ * Use UnifiedMessaging instead for all new code.
+ *
+ * @deprecated Use UnifiedMessaging from './UnifiedMessaging' instead
  */
 
-import { getMessageQueue } from './MessageQueue';
+import { unifiedMessaging } from './UnifiedMessaging';
+
+// Define interfaces locally since the exports are having runtime issues
+export interface UnifiedMessage {
+    id: string;
+    type: string;
+    source: string;
+    destination?: string;
+    contentType?: string;
+    data: any;
+    metadata?: {
+        timestamp?: number;
+        correlationId?: string;
+        priority?: 'low' | 'normal' | 'high';
+        expiresAt?: number;
+        retryCount?: number;
+        maxRetries?: number;
+        [key: string]: any;
+    };
+}
+
+export interface MessageHandler {
+    canHandle: (message: UnifiedMessage) => boolean;
+    handle: (message: UnifiedMessage) => Promise<void> | void;
+}
 import { BROADCAST_CHANNELS } from '@rs-com/config/Names';
 
+// Legacy interface for backward compatibility
 export interface AppMessage {
     type: string;
     data: any;
@@ -19,148 +47,32 @@ export interface AppCommunicatorOptions {
     pingTimeout?: number;
 }
 
+/**
+ * @deprecated Use UnifiedMessaging instead
+ */
 class AppCommunicator {
-    private channel: BroadcastChannel | null = null;
-    private messageQueue = getMessageQueue();
-    private isTargetAvailable = false;
-    private availabilityCheckInterval: number | null = null;
-    private retryInterval: number | null = null;
-    private options: Required<AppCommunicatorOptions>;
+    private channelName: string;
+    private destination: string;
 
     constructor(options: AppCommunicatorOptions) {
-        this.options = {
-            channelName: 'rs-app-general',
-            availabilityCheckInterval: 2000,
-            retryInterval: 30000,
-            pingTimeout: 500,
-            ...options
+        this.channelName = options.channelName;
+        // Map broadcast channel names to unified messaging destinations
+        this.destination = this.mapChannelToDestination(options.channelName);
+    }
+
+    private mapChannelToDestination(channelName: string): string {
+        const mapping: Record<string, string> = {
+            [BROADCAST_CHANNELS.WORK_CENTER]: 'workcenter',
+            [BROADCAST_CHANNELS.MARKDOWN_VIEWER]: 'markdown-viewer',
+            [BROADCAST_CHANNELS.SETTINGS]: 'settings',
+            [BROADCAST_CHANNELS.CLIPBOARD]: 'clipboard',
+            [BROADCAST_CHANNELS.PRINT_VIEWER]: 'print-viewer'
         };
-
-        this.initChannel();
-        this.startAvailabilityCheck();
-        this.startRetryMechanism();
-    }
-
-    private initChannel(): void {
-        try {
-            this.channel = new BroadcastChannel(this.options.channelName);
-        } catch (error) {
-            console.warn(`[AppCommunicator:${this.options.channelName}] BroadcastChannel not available:`, error);
-        }
-    }
-
-    private startAvailabilityCheck(): void {
-        // Check at configured interval if target becomes available
-        this.availabilityCheckInterval = window.setInterval(() => {
-            this.checkTargetAvailability();
-        }, this.options.availabilityCheckInterval);
-
-        // Initial check
-        this.checkTargetAvailability();
-    }
-
-    private startRetryMechanism(): void {
-        // Retry failed messages every 30 seconds
-        this.retryInterval = window.setInterval(() => {
-            this.retryFailedMessages();
-        }, 30000);
-
-        // Initial retry check
-        this.retryFailedMessages();
-    }
-
-    private async retryFailedMessages(): Promise<void> {
-        try {
-            const queuedMessages = await this.messageQueue.getQueuedMessages();
-            const failedMessages = queuedMessages.filter(msg =>
-                msg.retryCount > 0 && msg.retryCount < msg.maxRetries
-            );
-
-            if (failedMessages.length === 0) return;
-
-            console.log(`[AppCommunicator:${this.options.channelName}] Retrying ${failedMessages.length} failed messages`);
-
-            for (const message of failedMessages) {
-                if (this.isTargetAvailable) {
-                    try {
-                        if (this.channel) {
-                            this.channel.postMessage({
-                                type: message.type,
-                                data: message.data,
-                                timestamp: message.timestamp,
-                                retry: true,
-                                originalId: message.id
-                            });
-
-                            // Reset retry count on successful send
-                            await this.messageQueue.updateMessageRetry(message.id, 0);
-                            await this.messageQueue.removeMessage(message.id);
-                            console.log(`[AppCommunicator:${this.options.channelName}] Successfully retried message: ${message.type} (${message.id})`);
-                        }
-                    } catch (error) {
-                        console.error(`[AppCommunicator:${this.options.channelName}] Retry failed for message ${message.id}:`, error);
-                        // Increment retry count
-                        await this.messageQueue.updateMessageRetry(message.id, message.retryCount + 1);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error(`[AppCommunicator:${this.options.channelName}] Failed to retry messages:`, error);
-        }
-    }
-
-    private async checkTargetAvailability(): Promise<void> {
-        if (!this.channel) return;
-
-        try {
-            // Send a ping message to check if target is listening
-            const pingId = `ping_${Date.now()}_${this.options.channelName}`;
-            let responded = false;
-
-            const handlePong = (event: MessageEvent) => {
-                if (event.data?.type === 'pong' && event.data?.pingId === pingId) {
-                    responded = true;
-                    this.channel?.removeEventListener('message', handlePong);
-                    this.setTargetAvailable(true);
-                }
-            };
-
-            this.channel.addEventListener('message', handlePong);
-
-            // Send ping
-            this.channel.postMessage({
-                type: 'ping',
-                pingId,
-                timestamp: Date.now()
-            });
-
-            // Wait for response
-            setTimeout(() => {
-                this.channel?.removeEventListener('message', handlePong);
-                if (!responded) {
-                    this.setTargetAvailable(false);
-                }
-            }, this.options.pingTimeout);
-
-        } catch (error) {
-            console.warn(`[AppCommunicator:${this.options.channelName}] Availability check failed:`, error);
-        }
-    }
-
-    private setTargetAvailable(available: boolean): void {
-        const wasAvailable = this.isTargetAvailable;
-        this.isTargetAvailable = available;
-
-        if (available && !wasAvailable) {
-            console.log(`[AppCommunicator:${this.options.channelName}] Target became available, processing queued messages`);
-            this.processQueuedMessages();
-        } else if (!available && wasAvailable) {
-            console.log(`[AppCommunicator:${this.options.channelName}] Target became unavailable`);
-        }
+        return mapping[channelName] || 'general';
     }
 
     /**
-     * Send message to work center, queue if not available
+     * @deprecated Use unifiedMessaging.sendMessage() instead
      */
     async sendMessage(
         type: string,
@@ -171,153 +83,44 @@ class AppCommunicator {
             maxRetries?: number;
         } = {}
     ): Promise<boolean> {
-        const { priority = 'normal', queueIfUnavailable = true, maxRetries } = options;
+        console.warn('[AppCommunicator] Deprecated: Use unifiedMessaging.sendMessage() instead');
 
-        try {
-            if (this.isTargetAvailable && this.channel) {
-                // Try to send directly
-                this.channel.postMessage({
-                    type,
-                    data,
-                    timestamp: Date.now(),
-                    ...options
-                });
-                console.log(`[AppCommunicator:${this.options.channelName}] Sent message directly: ${type}`);
-                return true;
-            } else if (queueIfUnavailable) {
-                // Queue for later
-                    await this.messageQueue.queueMessage(type, data, {
-                        priority,
-                        maxRetries: maxRetries || 3
-                    });
-                    console.log(`[AppCommunicator:${this.options.channelName}] Queued message: ${type}`);
-                    return true;
-            } else {
-                console.warn(`[AppCommunicator:${this.options.channelName}] Target not available and queuing disabled: ${type}`);
-                return false;
+        const message: Omit<UnifiedMessage, 'id'> = {
+            type,
+            source: 'legacy-app-communicator',
+            destination: this.destination,
+            data,
+            metadata: {
+                priority: options.priority || 'normal',
+                maxRetries: options.maxRetries || 3,
+                legacy: true
             }
-        } catch (error) {
-            console.error(`[AppCommunicator:${this.options.channelName}] Failed to send message ${type}:`, error);
-            if (queueIfUnavailable) {
-                try {
-                    await this.messageQueue.queueMessage(type, data, {
-                        priority,
-                        maxRetries: maxRetries || 3
-                    });
-                    console.log(`[AppCommunicator:${this.options.channelName}] Queued message after send failure: ${type}`);
-                    return true;
-                } catch (queueError) {
-                    console.error(`[AppCommunicator:${this.options.channelName}] Failed to queue message ${type}:`, queueError);
-                }
-            }
-            return false;
-        }
+        };
+
+        return unifiedMessaging.sendMessage(message);
     }
 
     /**
-     * Process all queued messages
-     */
-    private async processQueuedMessages(): Promise<void> {
-        try {
-            const queuedMessages = await this.messageQueue.getQueuedMessages();
-
-            if (queuedMessages.length === 0) {
-                return;
-            }
-
-            console.log(`[AppCommunicator:${this.options.channelName}] Processing ${queuedMessages.length} queued messages`);
-
-            // Sort by priority and timestamp
-            const priorityOrder = { high: 3, normal: 2, low: 1 };
-            queuedMessages.sort((a, b) => {
-                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-                return priorityDiff !== 0 ? priorityDiff : a.timestamp - b.timestamp;
-            });
-
-            // Process messages in batches to avoid overwhelming the target
-            const batchSize = 5;
-            for (let i = 0; i < queuedMessages.length; i += batchSize) {
-                const batch = queuedMessages.slice(i, i + batchSize);
-
-                for (const message of batch) {
-                    try {
-                        if (this.channel && this.isTargetAvailable) {
-                            this.channel.postMessage({
-                                type: message.type,
-                                data: message.data,
-                                timestamp: message.timestamp,
-                                queued: true,
-                                originalId: message.id
-                            });
-
-                            // Remove from queue after successful send
-                            await this.messageQueue.removeMessage(message.id);
-                            console.log(`[AppCommunicator:${this.options.channelName}] Processed queued message: ${message.type} (${message.id})`);
-                        } else {
-                            // Target became unavailable during processing
-                            console.warn(`[AppCommunicator:${this.options.channelName}] Target unavailable during processing of ${message.id}`);
-                            break;
-                        }
-                    } catch (error) {
-                        console.error(`[AppCommunicator:${this.options.channelName}] Failed to process queued message ${message.id}:`, error);
-
-                        // Increment retry count
-                        message.retryCount++;
-                        if (message.retryCount < message.maxRetries) {
-                            await this.messageQueue.updateMessageRetry(message.id, message.retryCount);
-                            console.log(`[AppCommunicator:${this.options.channelName}] Will retry message ${message.id} (${message.retryCount}/${message.maxRetries})`);
-                        } else {
-                            console.warn(`[AppCommunicator:${this.options.channelName}] Giving up on message ${message.id} after ${message.maxRetries} retries`);
-                            await this.messageQueue.removeMessage(message.id);
-                        }
-                    }
-                }
-
-                // Small delay between batches
-                if (i + batchSize < queuedMessages.length) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
-
-            // Clean up expired messages
-            await this.messageQueue.clearExpiredMessages();
-
-        } catch (error) {
-            console.error('[WorkCenterComm] Failed to process queued messages:', error);
-        }
-    }
-
-    /**
-     * Respond to ping messages (called by work center)
+     * @deprecated Use unifiedMessaging.registerHandler() instead
      */
     respondToPing(pingId: string): void {
-        if (this.channel) {
-            this.channel.postMessage({
-                type: 'pong',
-                pingId,
-                timestamp: Date.now()
-            });
-        }
+        console.warn('[AppCommunicator] Deprecated: Ping/pong handled automatically by unified messaging');
+
+        // Send pong message through unified messaging
+        unifiedMessaging.sendMessage({
+            type: 'pong',
+            source: this.destination,
+            destination: 'ping-requester',
+            data: { pingId },
+            metadata: { legacy: true }
+        });
     }
 
     /**
-     * Clean up resources
+     * @deprecated Cleanup handled automatically by unified messaging
      */
     destroy(): void {
-        if (this.availabilityCheckInterval) {
-            clearInterval(this.availabilityCheckInterval);
-            this.availabilityCheckInterval = null;
-        }
-
-        if (this.retryInterval) {
-            clearInterval(this.retryInterval);
-            this.retryInterval = null;
-        }
-
-        if (this.channel) {
-            this.channel.close();
-            this.channel = null;
-        }
+        console.warn('[AppCommunicator] Deprecated: Cleanup handled automatically by unified messaging');
     }
 }
 
@@ -332,7 +135,12 @@ export const APP_CHANNELS = {
 // Singleton instances for different channels
 const communicators = new Map<string, AppCommunicator>();
 
+/**
+ * @deprecated Use unifiedMessaging directly instead
+ */
 export function getAppCommunicator(channelName: string = APP_CHANNELS.GENERAL, options?: Partial<AppCommunicatorOptions>): AppCommunicator {
+    console.warn('[getAppCommunicator] Deprecated: Use unifiedMessaging directly instead');
+
     const key = channelName;
     if (!communicators.has(key)) {
         communicators.set(key, new AppCommunicator({
@@ -343,24 +151,38 @@ export function getAppCommunicator(channelName: string = APP_CHANNELS.GENERAL, o
     return communicators.get(key)!;
 }
 
-// Backward compatibility - work center specific communicator
+/**
+ * @deprecated Use unifiedMessaging.sendMessage() with destination 'workcenter' instead
+ */
 export function getWorkCenterComm(): AppCommunicator {
+    console.warn('[getWorkCenterComm] Deprecated: Use unifiedMessaging.sendMessage() with destination "workcenter" instead');
     return getAppCommunicator(APP_CHANNELS.WORK_CENTER);
 }
 
-// Convenience functions for common channels
+/**
+ * @deprecated Use unifiedMessaging for markdown viewer messaging instead
+ */
 export function getMarkdownViewerComm(): AppCommunicator {
+    console.warn('[getMarkdownViewerComm] Deprecated: Use unifiedMessaging for markdown viewer messaging instead');
     return getAppCommunicator(APP_CHANNELS.MARKDOWN_VIEWER, {
-        availabilityCheckInterval: 3000, // Check more frequently for UI components
-        retryInterval: 15000 // Retry more frequently
+        availabilityCheckInterval: 3000,
+        retryInterval: 15000
     });
 }
 
+/**
+ * @deprecated Use unifiedMessaging for settings messaging instead
+ */
 export function getSettingsComm(): AppCommunicator {
+    console.warn('[getSettingsComm] Deprecated: Use unifiedMessaging for settings messaging instead');
     return getAppCommunicator(APP_CHANNELS.SETTINGS, {
-        availabilityCheckInterval: 5000, // Less frequent for settings
-        retryInterval: 60000 // Longer retry interval
+        availabilityCheckInterval: 5000,
+        retryInterval: 60000
     });
 }
 
 export { AppCommunicator };
+
+// Export unified messaging functions for easy migration
+export { unifiedMessaging };
+// UnifiedMessage and MessageHandler are now defined locally

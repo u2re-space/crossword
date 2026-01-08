@@ -6,12 +6,11 @@
 
 import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../basic/modules/Clipboard";
 import { initToastReceiver, showToast } from "../routing/Toast";
-import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
+import { unifiedMessaging } from "@rs-com/core/UnifiedMessaging";
 
 // Track initialization
 let _pwaClipboardInitialized = false;
 let _cleanupFns: (() => void)[] = [];
-let _workCenterComm = getWorkCenterComm();
 
 // Helper function to extract recognized content from AI responses
 const tryParseJSON = (data: unknown): unknown => {
@@ -314,17 +313,22 @@ export const initPWAClipboard = (): (() => void) => {
                     await copy(text, { showFeedback: true });
 
                     // Also broadcast to work center for visibility
-                    await _workCenterComm.sendMessage('share-target-result', {
-                        content: typeof text === 'string' ? text : JSON.stringify(text),
-                        rawData: data.data,
-                        timestamp: Date.now(),
-                        source: 'share-target',
-                        action: 'AI Processing',
-                        metadata: {
-                            fromServiceWorker: true,
-                            shareTargetId: data.id || 'unknown'
-                        }
-                    }, { priority: 'high' });
+                    await unifiedMessaging.sendMessage({
+                        type: 'share-target-result',
+                        destination: 'workcenter',
+                        data: {
+                            content: typeof text === 'string' ? text : JSON.stringify(text),
+                            rawData: data.data,
+                            timestamp: Date.now(),
+                            source: 'share-target',
+                            action: 'AI Processing',
+                            metadata: {
+                                fromServiceWorker: true,
+                                shareTargetId: data.id || 'unknown'
+                            }
+                        },
+                        metadata: { priority: 'high' }
+                    });
                 } else {
                     const { showToast } = await import("../routing/Toast");
                     showToast({ message: data.error || "Processing failed", kind: "error" });
@@ -334,14 +338,19 @@ export const initPWAClipboard = (): (() => void) => {
             // Handle share target input attachment (when files/text/URLs come in)
             if (type === "share-received" && data) {
                 console.log('[PWA-Copy] Share received, broadcasting input to work center:', data);
-                await _workCenterComm.sendMessage('share-target-input', {
-                    ...data,
-                    timestamp: Date.now(),
-                    metadata: {
-                        fromServiceWorker: true,
-                        ...data.metadata
-                    }
-                }, { priority: 'high' });
+                await unifiedMessaging.sendMessage({
+                    type: 'share-target-input',
+                    destination: 'workcenter',
+                    data: {
+                        ...data,
+                        timestamp: Date.now(),
+                        metadata: {
+                            fromServiceWorker: true,
+                            ...data.metadata
+                        }
+                    },
+                    metadata: { priority: 'high' }
+                });
             }
         };
 
@@ -369,17 +378,22 @@ export const initPWAClipboard = (): (() => void) => {
                         await copy(extractedContent, { showFeedback: true });
 
                         // Also broadcast to work center for visibility
-                        await _workCenterComm.sendMessage('share-target-result', {
-                            content: typeof extractedContent === 'string' ? extractedContent : JSON.stringify(extractedContent),
-                            rawData: result.data,
-                            timestamp: Date.now(),
-                            source: 'share-target',
-                            action: 'Legacy AI Processing',
-                            metadata: {
-                                legacyCommit: true,
-                                resultStatus: result.status
-                            }
-                        }, { priority: 'normal' });
+                        await unifiedMessaging.sendMessage({
+                            type: 'share-target-result',
+                            destination: 'workcenter',
+                            data: {
+                                content: typeof extractedContent === 'string' ? extractedContent : JSON.stringify(extractedContent),
+                                rawData: result.data,
+                                timestamp: Date.now(),
+                                source: 'share-target',
+                                action: 'Legacy AI Processing',
+                                metadata: {
+                                    legacyCommit: true,
+                                    resultStatus: result.status
+                                }
+                            },
+                            metadata: { priority: 'normal' }
+                        });
 
                         break; // Only copy the first successful result
                     }
