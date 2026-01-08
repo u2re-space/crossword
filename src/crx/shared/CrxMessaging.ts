@@ -12,7 +12,7 @@ import {
     supportsDedicatedWorkers,
     QueuedWorkerChannel,
     createChromeExtensionRuntimeChannel,
-    createChromeExtensionBroadcastChannel
+    createChromeExtensionBroadcast
 } from 'fest/uniform';
 
 import { createDeferred } from 'fest/core';
@@ -86,7 +86,7 @@ export class CrxRuntimeChannel implements OptimizedWorkerChannel {
 
         if (this.isCrxEnv) {
             // Create broadcast-like channel for chrome extension messaging
-            this.broadcastChannel = createChromeExtensionBroadcastChannel(target || 'background');
+            this.broadcastChannel = createChromeExtensionBroadcast(target || 'background');
         }
 
         // Always try to create the channel - it will return a no-op channel if not in CRX

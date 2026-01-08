@@ -50,6 +50,7 @@
         "isomorphic-dompurify": "^2.22.0",
         "jsdom": "^26.0.0",
         "jsonc-eslint-parser": "^2.4.1",
+        "jsox": "^1.2.125",
         "marked": "^15.0.12",
         "marked-katex-extension": "^5.1.5",
         "mathml-to-latex": "^1.5.0",

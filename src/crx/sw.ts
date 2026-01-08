@@ -1,16 +1,15 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-ops/MakeTimeline";
-import { enableCapture } from "./service/api";
+import { COPY_HACK, enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import { recognizeImageData } from "./service/RecognizeData";
 import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/CustomInstructions";
 import { loadSettings } from "@rs-com/config/Settings";
 import { executionCore } from "@rs-com/service/ExecutionCore";
-import { UnifiedAIService } from "@rs-com/service/AI-ops/RecognizeData";
 import type { ActionContext, ActionInput } from "@rs-com/service/ActionHistory";
 
 // Import CRX unified messaging
-import { crxMessaging, registerCrxHandler, sendCrxMessage, sendToCrxTab, broadcastToCrxTabs } from "./shared/CrxMessaging";
+import { crxMessaging, registerCrxHandler, broadcastToCrxTabs } from "./shared/CrxMessaging";
 
 // Check if we're in CRX environment before using CRX messaging
 const isInCrxEnvironment = crxMessaging.isCrxEnvironment();
@@ -180,7 +179,7 @@ if (isInCrxEnvironment && chrome.runtime && chrome.runtime.onMessage) {
         }
 
         // For other messages, let other listeners handle them
-        return true;
+        return false;
     });
 }
 
@@ -341,12 +340,18 @@ const showExtensionToast = (message: string, kind: "info" | "success" | "warning
 };
 
 // Request clipboard copy across contexts
-const requestClipboardCopy = (data: unknown, showFeedback = true): void => {
-    broadcast(CLIPBOARD_CHANNEL, {
-        type: "copy",
-        data,
-        options: { showFeedback }
-    });
+const requestClipboardCopy = async (data: unknown, showFeedback = true, tabId?: number): Promise<void> => {
+    try {
+        let resolvedTabId = tabId;
+        if ((!resolvedTabId || resolvedTabId <= 0) && showFeedback) {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+            resolvedTabId = tabs?.[0]?.id;
+        }
+
+        await COPY_HACK(chrome, { ok: true, data: data as any }, resolvedTabId);
+    } catch (e) {
+        console.warn("[CRX-SW] requestClipboardCopy failed:", e);
+    }
 };
 
 // ============================================================================
@@ -539,8 +544,8 @@ class CrxResultPipeline {
         }
 
         if (contentToCopy) {
-            // Use the existing clipboard system
-            requestClipboardCopy(contentToCopy, destination.options?.showFeedback !== false);
+            // Use the existing clipboard system (content-script/offscreen fallbacks)
+            await requestClipboardCopy(contentToCopy, destination.options?.showFeedback !== false, destination.tabId);
 
             console.log(`[CRX-Pipeline] Copied ${result.type} result to clipboard`);
         }
@@ -561,8 +566,8 @@ class CrxResultPipeline {
                 frameId: destination.frameId
             });
         } else {
-            // Broadcast to all content scripts
-            broadcast(CONTENT_SCRIPT_CHANNEL, message);
+            // Broadcast to all tabs via chrome.tabs messaging (BroadcastChannel can't reach content scripts)
+            await broadcastToCrxTabs(message as any);
         }
 
         console.log(`[CRX-Pipeline] Delivered result to content script (tab: ${destination.tabId || 'all'})`);
@@ -1223,7 +1228,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             status: "processing"
         });
 
-        recognizeImageData(message?.input, (result) => {
+        recognizeImageData(message?.input, async (result) => {
             // keep CrossHelp-compatible shape: res.data.output[...]
             const response = { ok: result?.ok, data: result?.raw, error: result?.error };
 
@@ -1239,7 +1244,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 const textResult = typeof result.raw === "string"
                     ? result.raw
                     : result.raw?.latex || result.raw?.text || JSON.stringify(result.raw);
-                requestClipboardCopy(textResult, true);
+                await requestClipboardCopy(textResult, true);
             }
 
             sendResponse(response);
@@ -1317,7 +1322,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
                 // Auto-copy solution to clipboard if successful
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    requestClipboardCopy(response.data, true);
+                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1393,7 +1398,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    requestClipboardCopy(response.data, true);
+                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1470,7 +1475,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    requestClipboardCopy(response.data, true);
+                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1527,7 +1532,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 instruction: instructionText,
                 outputFormat: 'auto',
                 intermediateRecognition: { enabled: false }
-            }).then(result => {
+            }).then(async (result) => {
                 const response = { ok: result?.ok, data: result?.data, error: result?.error };
 
                 broadcast(AI_RECOGNITION_CHANNEL, {
@@ -1539,7 +1544,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (result?.ok && result?.data && message?.autoCopy !== false) {
-                    requestClipboardCopy(result.data, true);
+                    await requestClipboardCopy(result.data, true, sender?.tab?.id);
                 }
 
                 sendResponse(response);

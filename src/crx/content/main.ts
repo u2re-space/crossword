@@ -82,6 +82,26 @@ resultBroadcastChannel.onmessage = (event) => {
     }
 };
 
+// Also listen via chrome.runtime messaging (service worker -> content script)
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.type === "crx-result-delivered") {
+        const { result, destination, timestamp } = message;
+
+        console.log("[ContentScript] Received result delivery (runtime):", {
+            resultId: result?.id,
+            type: result?.type,
+            source: result?.source,
+            destination,
+            timestamp
+        });
+
+        if (result?.type === "processed" && typeof result?.content === "string") {
+            const previewText = result.content.length > 60 ? result.content.substring(0, 60) + "..." : result.content;
+            showPageNotification(`📋 Copied to clipboard!\n${previewText}`, "success");
+        }
+    }
+});
+
 // Enhanced page notification function with better visibility
 function showPageNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
     try {

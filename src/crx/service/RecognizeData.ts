@@ -21,6 +21,64 @@ const {
     extractCSS: coreExtractCSS
 } = UnifiedAIService;
 
+const pickFirstError = (raw: any): string | undefined => {
+    if (!raw) return undefined;
+    if (typeof raw.error === "string" && raw.error.trim()) return raw.error;
+    if (Array.isArray(raw.errors) && typeof raw.errors[0] === "string" && raw.errors[0].trim()) return raw.errors[0];
+    return undefined;
+};
+
+const extractText = (raw: any): string | undefined => {
+    if (!raw) return undefined;
+
+    // Newer unified result shape
+    if (typeof raw.data === "string") {
+        const t = raw.data.trim();
+        if (t) return t;
+    }
+
+    // Older recognition result shape
+    if (typeof raw.verbose_data === "string") {
+        const t = raw.verbose_data.trim();
+        if (t) return t;
+    }
+
+    const rd = raw.recognized_data;
+    if (typeof rd === "string") {
+        const t = rd.trim();
+        if (t) return t;
+    }
+
+    if (Array.isArray(rd)) {
+        const parts: string[] = [];
+        for (const item of rd) {
+            if (typeof item === "string") {
+                if (item.trim()) parts.push(item.trim());
+                continue;
+            }
+            const maybe = (item?.output ?? item?.text ?? item?.content ?? item?.value) as unknown;
+            if (typeof maybe === "string" && maybe.trim()) parts.push(maybe.trim());
+        }
+        const joined = parts.join("\n").trim();
+        if (joined) return joined;
+    }
+
+    return undefined;
+};
+
+const toCrxResult = (raw: any): RecognizeResult => {
+    const ok = !!raw?.ok;
+    const data = extractText(raw);
+    const error = pickFirstError(raw) ?? (ok && !data ? "No data recognized" : undefined);
+
+    return {
+        ok: ok && !!data,
+        data,
+        error,
+        raw
+    };
+};
+
 // CRX-enhanced versions with additional features
 
 // Enhanced recognizeByInstructions with CRX-specific features
@@ -35,14 +93,9 @@ export const recognizeByInstructions = async (
         const result = await coreRecognizeByInstructions(input, instructions, undefined, undefined, {
             customInstruction: options.customInstruction,
             useActiveInstruction: options.useActiveInstruction
-        }) as RecognitionResult;
+        });
 
-        // Convert unified result format to CRX format
-        const crxResult: RecognizeResult = {
-            ok: result.ok,
-            data: result.verbose_data || result.recognized_data?.[0] || "",
-            error: result.errors?.[0] || undefined
-        };
+        const crxResult = toCrxResult(result as RecognitionResult);
 
         sendResponse?.(crxResult);
         return crxResult;
@@ -63,12 +116,7 @@ export const solveAndAnswer = async (
 ): Promise<RecognizeResult> => {
     try {
         const result = await coreSolveAndAnswer(input, { useActiveInstruction: true });
-
-        const crxResult: RecognizeResult = {
-            ok: result.ok,
-            data: result.verbose_data || result.recognized_data?.[0] || "",
-            error: result.errors?.[0] || undefined
-        };
+        const crxResult = toCrxResult(result as any);
 
         sendResponse?.(crxResult);
         return crxResult;
@@ -89,12 +137,7 @@ export const writeCode = async (
 ): Promise<RecognizeResult> => {
     try {
         const result = await coreWriteCode(input, { useActiveInstruction: true });
-
-        const crxResult: RecognizeResult = {
-            ok: result.ok,
-            data: result.verbose_data || result.recognized_data?.[0] || "",
-            error: result.errors?.[0] || undefined
-        };
+        const crxResult = toCrxResult(result as any);
 
         sendResponse?.(crxResult);
         return crxResult;
@@ -115,12 +158,7 @@ export const extractCSS = async (
 ): Promise<RecognizeResult> => {
     try {
         const result = await coreExtractCSS(input, { useActiveInstruction: true });
-
-        const crxResult: RecognizeResult = {
-            ok: result.ok,
-            data: result.verbose_data || result.recognized_data?.[0] || "",
-            error: result.errors?.[0] || undefined
-        };
+        const crxResult = toCrxResult(result as any);
 
         sendResponse?.(crxResult);
         return crxResult;
