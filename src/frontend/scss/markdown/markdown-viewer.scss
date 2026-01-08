@@ -868,6 +868,12 @@
                     color: black;
                 }
             }
+
+            &[data-raw] {
+                .viewer-content {
+                    background: var(--basic-surface);
+                }
+            }
         }
     }
 
@@ -900,5 +906,22 @@
             opacity: 1;
             transform: translateY(0);
         }
+    }
+
+    // ============================================================================
+    // RAW VIEW (for HTML documents / code / debugging)
+    // ============================================================================
+
+    .markdown-viewer-raw {
+        margin: 0;
+        padding: var(--space-xl);
+        font-family: var(--font-family-mono);
+        font-size: var(--text-sm);
+        line-height: var(--leading-normal);
+        color: var(--basic-on-surface);
+        background: var(--basic-surface);
+        white-space: pre;
+        overflow: auto;
+        tab-size: 2;
     }
 }

@@ -58,6 +58,9 @@ export class MarkdownViewer {
     private view: any = null;
     private container: HTMLElement | null = null;
     private content: string = "";
+    private showRaw = false;
+    private rawElement: HTMLPreElement | null = null;
+    private renderedElement: HTMLElement | null = null;
 
     constructor(options: MarkdownViewerOptions = {}) {
         this.options = {
@@ -98,6 +101,14 @@ export class MarkdownViewer {
           <button class="btn btn-icon" data-action="copy" title="Copy content" aria-label="Copy content">
             <ui-icon icon="copy" size="20" icon-style="duotone"></ui-icon>
             <span class="btn-text">Copy</span>
+          </button>
+          <button class="btn btn-icon" data-action="toggle-raw" title="Toggle raw view" aria-label="Toggle raw view">
+            <ui-icon icon="code" size="20" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Raw</span>
+          </button>
+          <button class="btn btn-icon" data-action="copy-rendered" title="Copy rendered text" aria-label="Copy rendered text">
+            <ui-icon icon="text-t" size="20" icon-style="duotone"></ui-icon>
+            <span class="btn-text">Copy text</span>
           </button>
           <button class="btn btn-icon" data-action="download" title="Download as markdown" aria-label="Download as markdown">
             <ui-icon icon="download" size="20" icon-style="duotone"></ui-icon>
@@ -292,14 +303,46 @@ export class MarkdownViewer {
         const viewElement = document.createElement('div');
         viewElement.className = 'markdown-body markdown-viewer-content result-content';
         viewElement.setAttribute('data-print', 'true');
+        this.renderedElement = viewElement;
+
+        const rawElement = document.createElement("pre");
+        rawElement.className = "markdown-viewer-raw";
+        rawElement.setAttribute("aria-label", "Raw content");
+        rawElement.hidden = true;
+        this.rawElement = rawElement;
 
         contentContainer.innerHTML = '';
-        contentContainer.append(viewElement);
+        contentContainer.append(viewElement, rawElement);
+
+        const looksLikeHtmlDocument = (text: string): boolean => {
+            const t = (text || "").trimStart().toLowerCase();
+            if (t.startsWith("<!doctype html")) return true;
+            if (t.startsWith("<html")) return true;
+            if (t.startsWith("<head")) return true;
+            if (t.startsWith("<body")) return true;
+            if (t.startsWith("<?xml") && t.includes("<html")) return true;
+            return false;
+        };
+
+        const applyViewMode = (showRaw: boolean) => {
+            this.showRaw = showRaw;
+            if (this.rawElement) this.rawElement.hidden = !showRaw;
+            if (this.renderedElement) this.renderedElement.hidden = showRaw;
+            container.toggleAttribute("data-raw", showRaw);
+        };
 
         // Create a simple markdown renderer function
         this.view = {
             setMarkdown: async (text: string = "") => {
                 try {
+                    // Always update raw view text
+                    if (this.rawElement) this.rawElement.textContent = text || "";
+
+                    // Auto-switch to raw when this looks like a full HTML document
+                    if (!this.showRaw && looksLikeHtmlDocument(text || "")) {
+                        applyViewMode(true);
+                    }
+
                     const html = await marked.parse((text || "")?.trim?.() || "");
                     const sanitized = DOMPurify?.sanitize?.((html || "")?.trim?.() || "") || "";
                     viewElement.innerHTML = sanitized;
@@ -334,6 +377,19 @@ export class MarkdownViewer {
                 this.options.onOpen?.();
             } else if (action === 'copy') {
                 this.copyContent();
+            } else if (action === 'toggle-raw') {
+                applyViewMode(!this.showRaw);
+            } else if (action === 'copy-rendered') {
+                const text = (this.renderedElement?.innerText || "").trim();
+                if (!text) return;
+                navigator.clipboard.writeText(text).catch(() => {
+                    const ta = document.createElement("textarea");
+                    ta.value = text;
+                    document.body.append(ta);
+                    ta.select();
+                    document.execCommand("copy");
+                    ta.remove();
+                });
             } else if (action === 'download') {
                 this.downloadContent();
             } else if (action === 'export-docx') {

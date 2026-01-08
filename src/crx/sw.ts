@@ -872,8 +872,12 @@ const isMarkdownUrl = (candidate?: string | null): candidate is string => {
         if (!["http:", "https:", "file:", "ftp:"].includes(url.protocol)) return false;
         // extension-based detection (fast path)
         if (MARKDOWN_EXTENSION_PATTERN.test(url.pathname)) return true;
-        // known raw markdown hosts often have stable paths but sometimes omit extension
-        if (url.hostname === "raw.githubusercontent.com" || url.hostname === "gist.githubusercontent.com") return true;
+        // raw hosts: only treat as markdown if path strongly suggests markdown
+        if (url.hostname === "raw.githubusercontent.com" || url.hostname === "gist.githubusercontent.com") {
+            const path = (url.pathname || "").toLowerCase();
+            if (MARKDOWN_EXTENSION_PATTERN.test(path)) return true;
+            if (/(^|\/)readme(\.md)?($|[?#])/i.test(path)) return true;
+        }
         return false;
     } catch {
         return false;
@@ -1322,7 +1326,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
                 // Auto-copy solution to clipboard if successful
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
+                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1398,7 +1402,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
+                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1475,7 +1479,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, sender?.tab?.id);
+                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
                 }
 
                 sendResponse(response);
@@ -1544,7 +1548,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 });
 
                 if (result?.ok && result?.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(result.data, true, sender?.tab?.id);
+                    await requestClipboardCopy(result.data, true, _sender?.tab?.id);
                 }
 
                 sendResponse(response);

@@ -51,17 +51,144 @@ const isProbablyUrl = (value: string) => {
   }
 };
 
+const looksLikeHtmlDocument = (text: string): boolean => {
+  const t = (text || "").trimStart().toLowerCase();
+  if (t.startsWith("<!doctype html")) return true;
+  if (t.startsWith("<html")) return true;
+  if (t.startsWith("<head")) return true;
+  if (t.startsWith("<body")) return true;
+  if (t.startsWith("<?xml") && t.includes("<html")) return true;
+  return false;
+};
+
+const MARKDOWN_EXTENSION_PATTERN = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
+
+const looksLikeMarkdown = (text: string): boolean => {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return false;
+  if (looksLikeHtmlDocument(trimmed)) return false;
+  let hits = 0;
+  if (/^#{1,6}\s+.+$/m.test(trimmed)) hits++;
+  if (/^\s*[-*+]\s+\S+/m.test(trimmed)) hits++;
+  if (/^\s*\d+\.\s+\S+/m.test(trimmed)) hits++;
+  if (/```[\s\S]*?```/.test(trimmed)) hits++;
+  if (/\[([^\]]+)\]\(([^)]+)\)/.test(trimmed)) hits++;
+  return hits >= 2;
+};
+
+const guessLanguageFromUrl = (url: URL): string => {
+  const name = (url.pathname.split("/").pop() || "").toLowerCase();
+  const ext = name.includes(".") ? name.split(".").pop() : "";
+  switch (ext) {
+    case "ts": return "ts";
+    case "tsx": return "tsx";
+    case "js": return "js";
+    case "jsx": return "jsx";
+    case "json": return "json";
+    case "css": return "css";
+    case "scss": return "scss";
+    case "html":
+    case "htm": return "html";
+    case "xml": return "xml";
+    case "yml":
+    case "yaml": return "yaml";
+    case "py": return "py";
+    case "sh": return "sh";
+    case "go": return "go";
+    case "rs": return "rs";
+    case "java": return "java";
+    default: return "";
+  }
+};
+
+const wrapAsCodeFence = (text: string, lang: string) => {
+  const safe = (text || "").replace(/\r\n/g, "\n");
+  const fence = "```";
+  const tag = lang ? `${lang}` : "";
+  return `${fence}${tag}\n${safe}\n${fence}\n`;
+};
+
+const normalizeSourceUrl = (candidate: string) => {
+  try {
+    const u = new URL(candidate);
+
+    // GitHub: /{owner}/{repo}/blob/{ref}/{path} -> raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}
+    if (u.hostname === "github.com") {
+      const parts = u.pathname.split("/").filter(Boolean);
+      const blobIdx = parts.indexOf("blob");
+      if (parts.length >= 5 && blobIdx === 2) {
+        const owner = parts[0];
+        const repo = parts[1];
+        const ref = parts[3];
+        const rest = parts.slice(4).join("/");
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${rest}`;
+      }
+
+      // GitHub: /{owner}/{repo}/raw/{ref}/{path} -> raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}
+      const rawIdx = parts.indexOf("raw");
+      if (parts.length >= 5 && rawIdx === 2) {
+        const owner = parts[0];
+        const repo = parts[1];
+        const ref = parts[3];
+        const rest = parts.slice(4).join("/");
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${rest}`;
+      }
+    }
+
+    // GitLab: /{group}/{repo}/-/blob/{ref}/{path} -> /{group}/{repo}/-/raw/{ref}/{path}
+    if (u.hostname.endsWith("gitlab.com")) {
+      const parts = u.pathname.split("/").filter(Boolean);
+      const dashIdx = parts.indexOf("-");
+      if (dashIdx >= 0 && parts[dashIdx + 1] === "blob") {
+        const base = parts.slice(0, dashIdx).join("/");
+        const ref = parts[dashIdx + 2] || "";
+        const rest = parts.slice(dashIdx + 3).join("/");
+        return `https://${u.hostname}/${base}/-/raw/${ref}/${rest}`;
+      }
+    }
+
+    // Bitbucket: `?raw=1` works for many src URLs
+    if (u.hostname === "bitbucket.org") {
+      if (!u.searchParams.has("raw")) u.searchParams.set("raw", "1");
+      return u.toString();
+    }
+
+    return u.toString();
+  } catch {
+    return candidate;
+  }
+};
+
 const loadTextFromSrc = async (src: string): Promise<string> => {
   const trimmed = src.trim();
   if (!trimmed) return "";
   try {
-    const u = new URL(trimmed);
-    const res = await fetch(u.href, { credentials: "include", cache: "no-store" });
+    const normalized = normalizeSourceUrl(trimmed);
+    if (normalized !== trimmed && isProbablyUrl(normalized)) {
+      saveLastSrc(normalized);
+    }
+
+    const u = new URL(normalized);
+    const res = await fetch(u.href, { credentials: "include", cache: "no-store", headers: { accept: "text/markdown,text/plain,*/*" } });
     if (!res.ok) {
       const cached = loadLastMarkdown();
       return cached || `# Failed to load\n\n**Status**: ${res.status}\n`;
     }
-    return await res.text();
+    let text = await res.text();
+
+    // If we fetched HTML (e.g. GitHub HTML page), keep it raw; the in-app viewer will default to raw mode.
+    if (looksLikeHtmlDocument(text)) {
+      console.warn("[CRX-MD-Viewer] Fetched HTML document, not markdown:", u.href);
+    } else {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const isMdByUrl = MARKDOWN_EXTENSION_PATTERN.test(u.pathname);
+      const isMdByCt = ct.includes("text/markdown");
+      if (!isMdByUrl && !isMdByCt && !looksLikeMarkdown(text)) {
+        text = wrapAsCodeFence(text, guessLanguageFromUrl(u));
+      }
+    }
+
+    return text;
   } catch {
     // Not a URL - treat as raw markdown
     return trimmed;
