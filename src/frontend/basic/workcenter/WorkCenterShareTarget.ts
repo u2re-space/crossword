@@ -1,4 +1,4 @@
-import { getWorkCenterComm } from "../../shared/AppCommunicator";
+import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";
 

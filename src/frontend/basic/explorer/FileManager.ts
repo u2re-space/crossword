@@ -2,7 +2,7 @@ import { H, defineElement, property, getDir, valueLink } from "fest/lure";
 import { addEvent, preloadStyle } from "fest/dom";
 
 // Import component registration system
-import { registerComponent, initializeComponent } from "../../shared/UnifiedMessaging";
+import { registerComponent, initializeComponent } from "@rs-com/core/UnifiedMessaging";
 
 //
 import FileManagerContent from "./FileManagerContent";

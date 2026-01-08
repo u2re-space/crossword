@@ -4,15 +4,15 @@
  */
 
 // Toast system (re-exported from frontend/shared)
-export * from "@rs-frontend/shared/Toast";
-export { default as Toast } from "@rs-frontend/shared/Toast";
+export * from "@rs-frontend/routing/Toast.js";
+export { default as Toast } from "@rs-frontend/routing/Toast.js";
 
 // Clipboard API (re-exported from frontend/shared)
-export * from "@rs-frontend/shared/Clipboard";
-export { default as Clipboard } from "@rs-frontend/shared/Clipboard";
+export * from "@rs-frontend/basic/modules/Clipboard.js";
+export { default as Clipboard } from "@rs-frontend/basic/modules/Clipboard.js";
 
 // Overlay system (re-exported from frontend/shared)
-export * from "@rs-frontend/shared/overlay";
+export * from "@rs-frontend/routing/overlay.js";
 
 // BroadcastChannel utilities
 export * from "./Broadcast.ts";

@@ -1,11 +1,11 @@
 import { registerRoute } from "workbox-routing";
 import { controlChannel, detectInputType, tryToTimeout, callBackendIfAvailable, getActiveCustomInstruction } from "./shared";
-import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
-import { queueEntityForWriting, pushToIDBQueue } from "@rs-core/service/AI-ops/ServiceHelper";
+import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
+import { queueEntityForWriting, pushToIDBQueue } from "@rs-com/service/AI-ops/ServiceHelper";
 import { tryParseJSON } from "@rs-core/utils/AIResponseParser";
 import { fileToDataUrl, isProcessableImage, isImageDataUrl } from "../lib/ImageUtils";
-import { recognizeByInstructions } from "@rs-core/service/AI-ops/RecognizeData";
-import { getUsableData } from "@rs-core/service/model/GPT-Responses";
+import { recognizeByInstructions } from "@rs-com/service/AI-ops/RecognizeData";
+import { getUsableData } from "@rs-com/service/model/GPT-Responses";
 
 // IDB utilities for clipboard operations
 const CLIPBOARD_DB_NAME = 'rs-clipboard-queue';

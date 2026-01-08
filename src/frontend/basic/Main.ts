@@ -2,9 +2,9 @@
 import style from "./Main.scss?inline";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-core/service/AI-ops/RecognizeData";
-import { loadSettings } from "@rs-core/config/Settings";
-import type { AppSettings } from "@rs-core/config/SettingsTypes";
+import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData";
+import { loadSettings } from "@rs-com/config/Settings";
+import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
 
 // Import unified messaging system
@@ -17,9 +17,13 @@ import {
     hasPendingMessages,
     registerComponent,
     processInitialContent
-} from "../shared/UnifiedMessaging";
-import { createMessageWithOverrides } from "../shared/UnifiedMessaging";
-import type { ContentContext, ContentType } from "../shared/UnifiedAIConfig";
+} from "@rs-com/core/UnifiedMessaging";
+import { createMessageWithOverrides } from "@rs-com/core/UnifiedMessaging";
+import type { ContentContext, ContentType } from "@rs-com/core/UnifiedAIConfig";
+
+// Import uniform channel manager
+import { channelManager } from "@rs-com/core/UniformChannelManager";
+import { ROUTE_HASHES } from "@rs-com/config/Names";
 
 // Service Worker content retrieval utilities
 async function getSWCachedContent(): Promise<any[]> {
@@ -60,12 +64,12 @@ import { getCachedComponent } from "./modules/LazyLoader";
 import { createFileHandler } from "./modules/FileHandling";
 import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
-import { CHANNELS } from "@rs-frontend/routing/sw-handling";
+import { CHANNELS } from "@rs-frontend/pwa/sw-handling";
 import { loadAsAdopted } from "fest/dom";
 import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "./explorer";
-import { downloadMarkdownAsDocx } from "../shared/DocxExport";
+import { downloadMarkdownAsDocx } from "./modules/DocxExport";
 
 // ============================================================================
 // UTILITY FUNCTIONS & HELPERS
@@ -97,159 +101,14 @@ const loadComponent = async (componentName: string, importFn: () => Promise<any>
     }
 };
 
-/**
- * Create unified messaging handler for view switching
- */
-const createViewHandler = (destination: string, view: BasicView) => ({
-    canHandle: (msg: any) => msg.destination === destination,
-    handle: async (msg: any) => {
-        state.view = view;
-        setViewHash(view);
-        render();
-    }
-});
-
-/**
- * Create content attachment handler for work center
- */
-const createContentHandler = (destination: string, contentType?: string) => ({
-    canHandle: (msg: any) => msg.destination === destination,
-    handle: async (msg: any) => {
-        // Reuse the existing work center attachment logic
-        // Note: This handler is registered at module level, but needs access to state
-        // We'll need to modify this to get state from the messaging system
-        console.warn('[Basic] handleWorkCenterAttachment called from handler without state access');
-    }
-});
-
-// Module-level state
+// Module-level variables that don't depend on state
 let workCenterAttachmentInProgress = false;
 
-/**
- * Work center attachment logic (extracted for reuse)
- */
-const handleWorkCenterAttachment = async (msg: any, state: any, setViewHash: any, render: any, showStatusMessage: any, skipRender = false) => {
-    // Prevent multiple simultaneous attachments
-    if (workCenterAttachmentInProgress) {
-        console.log('[Basic] Work center attachment already in progress, ignoring duplicate request');
-        return;
-    }
-    workCenterAttachmentInProgress = true;
-
-    try {
-        // Set view to work center (only if not already set)
-        if (state.view !== 'workcenter') {
-            state.view = 'workcenter';
-            setViewHash('workcenter');
-        }
-
-        // Convert content to file-like object
-        let fileToAttach: File | null = null;
-        try {
-            if (msg.data.file instanceof File) {
-                fileToAttach = msg.data.file;
-            } else if (msg.data.blob instanceof Blob) {
-                const filename = msg.data.filename || `attachment-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
-                fileToAttach = new File([msg.data.blob], filename, { type: msg.data.blob.type });
-            } else if (msg.data.text || msg.data.content) {
-                const content = msg.data.text || msg.data.content;
-                const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-                const filename = msg.data.filename || `content-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
-                const mimeType = msg.contentType === 'markdown' ? 'text/markdown' : 'text/plain';
-                fileToAttach = new File([textContent], filename, { type: mimeType });
-                console.log('[Basic] Created file for attachment:', { filename, mimeType, size: textContent.length });
-            }
-        } catch (error) {
-            console.warn('[Basic] Failed to create file from message data:', error);
-            showStatusMessage("Failed to process content");
-            return;
-        }
-
-        if (!fileToAttach) {
-            console.warn('[Basic] No valid file content found in message');
-            return;
-        }
-
-        // Trigger render only if not skipped (to prevent loops during initialization)
-        if (!skipRender) {
-            render();
-        }
-
-        // Wait for work center to be loaded and attach content
-        await attachToWorkCenterWhenReady(fileToAttach, state, showStatusMessage);
-
-    } finally {
-        workCenterAttachmentInProgress = false;
-    }
-};
-
-/**
- * Wait for work center to load and attach file
- */
-const attachToWorkCenterWhenReady = async (file: File, state: any, showStatusMessage: any) => {
-    try {
-        // If work center is already loaded, attach immediately
-        if (state.managers.workCenter.instance) {
-            state.managers.workCenter.instance.getState().files.push(file);
-            // Update the UI after adding the file
-            state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
-            state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
-            showStatusMessage(`Attached ${file.name} to Work Center`);
-            return;
-        }
-
-        // Wait for work center to load
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max wait
-
-        while (!state.managers.workCenter.instance && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-
-        if (state.managers.workCenter.instance) {
-            state.managers.workCenter.instance.getState().files.push(file);
-
-            // Update the UI after adding the file
-            state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
-            state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
-
-            showStatusMessage(`Attached ${file.name} to Work Center`);
-        } else {
-            throw new Error('Work center failed to load');
-        }
-
-    } catch (error) {
-        console.warn('[Basic] Failed to attach content to workcenter:', error);
-        showStatusMessage("Failed to attach content");
-    }
-};
-
-/**
- * Render component with unified error handling
- */
-const renderComponent = async (
-    componentKey: string,
-    importFn: () => Promise<any>,
-    options: { componentName: string; cssPath?: string },
-    renderCallback?: (component: any) => void
-) => {
-    try {
-        const componentModule = await loadComponent(componentKey, importFn, options);
-
-        if (renderCallback) {
-            renderCallback(componentModule.component);
-        }
-
-        return componentModule.component;
-    } catch (error) {
-        console.error(`Failed to load ${componentKey}:`, error);
-        content.innerHTML = `<div class="component-error"><h3>Failed to load ${options.componentName}</h3><p>Please try refreshing the page.</p></div>`;
-        renderStatus();
-    }
-};
+// renderComponent will be defined inside mountBasicApp
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
+
+export type Destination = "basic-viewer" | "markdown-editor" | "rich-editor" | "basic-workcenter" | "basic-explorer";
 
 export type BasicAppOptions = {
     initialView?: BasicView;
@@ -452,6 +311,153 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     // Determine initial view based on content availability
     const hasExistingContent = localStorage.getItem("rs-basic-markdown") || options.initialMarkdown;
     const defaultView = options.initialView || (hasExistingContent ? "markdown-viewer" : "file-picker");
+
+    /**
+     * Create unified messaging handler for view switching
+     */
+    const createViewHandler = (destination: string, view: BasicView) => ({
+        canHandle: (msg: any) => msg.destination === destination,
+        handle: async (msg: any) => {
+            state.view = view;
+            setViewHash(view);
+            render();
+        }
+    });
+
+    /**
+     * Create content attachment handler for work center
+     */
+    const createContentHandler = (destination: string, contentType?: string) => ({
+        canHandle: (msg: any) => msg.destination === destination,
+        handle: async (msg: any) => {
+            // Reuse the existing work center attachment logic
+            handleWorkCenterAttachment(msg, state, setViewHash, render, showStatusMessage);
+        }
+    });
+
+    /**
+     * Work center attachment logic (extracted for reuse)
+     */
+    const handleWorkCenterAttachment = async (msg: any, state: any, setViewHash: any, render: any, showStatusMessage: any, skipRender = false) => {
+        // Prevent multiple simultaneous attachments
+        if (workCenterAttachmentInProgress) {
+            console.log('[Basic] Work center attachment already in progress, ignoring duplicate request');
+            return;
+        }
+        workCenterAttachmentInProgress = true;
+
+        try {
+            // Set view to work center (only if not already set)
+            if (state.view !== 'workcenter') {
+                state.view = 'workcenter';
+                setViewHash('workcenter');
+            }
+
+            // Convert content to file-like object
+            let fileToAttach: File | null = null;
+            try {
+                if (msg.data.file instanceof File) {
+                    fileToAttach = msg.data.file;
+                } else if (msg.data.blob instanceof Blob) {
+                    const filename = msg.data.filename || `attachment-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
+                    fileToAttach = new File([msg.data.blob], filename, { type: msg.data.blob.type });
+                } else if (msg.data.text || msg.data.content) {
+                    const content = msg.data.text || msg.data.content;
+                    const textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+                    const filename = msg.data.filename || `content-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
+                    const mimeType = msg.contentType === 'markdown' ? 'text/markdown' : 'text/plain';
+                    fileToAttach = new File([textContent], filename, { type: mimeType });
+                    console.log('[Basic] Created file for attachment:', { filename, mimeType, size: textContent.length });
+                }
+            } catch (error) {
+                console.warn('[Basic] Failed to create file from message data:', error);
+                showStatusMessage("Failed to process content");
+                return;
+            }
+
+            if (!fileToAttach) {
+                console.warn('[Basic] No valid file content found in message');
+                return;
+            }
+
+            // Trigger render only if not skipped (to prevent loops during initialization)
+            if (!skipRender) {
+                render();
+            }
+
+            // Wait for work center to be loaded and attach content
+            await attachToWorkCenterWhenReady(fileToAttach, state, showStatusMessage);
+
+        } finally {
+            workCenterAttachmentInProgress = false;
+        }
+    };
+
+    /**
+     * Wait for work center to load and attach file
+     */
+    const attachToWorkCenterWhenReady = async (file: File, state: any, showStatusMessage: any) => {
+        try {
+            // If work center is already loaded, attach immediately
+            if (state.managers.workCenter.instance) {
+                state.managers.workCenter.instance.getState().files.push(file);
+                // Update the UI after adding the file
+                state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
+                state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
+                showStatusMessage(`Attached ${file.name} to Work Center`);
+                return;
+            }
+
+            // Wait for work center to load
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max wait
+
+            while (!state.managers.workCenter.instance && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            if (state.managers.workCenter.instance) {
+                state.managers.workCenter.instance.getState().files.push(file);
+
+                // Update the UI after adding the file
+                state.managers.workCenter.instance.ui.updateFileList(state.managers.workCenter.instance.getState());
+                state.managers.workCenter.instance.ui.updateFileCounter(state.managers.workCenter.instance.getState());
+
+                showStatusMessage(`Attached ${file.name} to Work Center`);
+            } else {
+                throw new Error('Work center failed to load');
+            }
+
+        } catch (error) {
+            console.warn('[Basic] Failed to attach content to workcenter:', error);
+            showStatusMessage("Failed to attach content");
+        }
+    };
+
+    /**
+     * Render component with unified error handling
+     */
+    const renderComponent = async (
+        componentKey: string,
+        importFn: () => Promise<any>,
+        options: { componentName: string; cssPath?: string },
+        renderCallback?: (component: any) => void
+    ) => {
+        try {
+            const componentModule = await loadComponent(componentKey, importFn, options);
+
+            if (renderCallback) {
+                renderCallback(componentModule.component);
+            }
+
+            return componentModule.component;
+        } catch (error) {
+            console.error(`Failed to load ${componentKey}:`, error);
+            content.innerHTML = `<div class="component-error"><h3>Failed to load ${options.componentName}</h3><p>Please try refreshing the page.</p></div>`;
+            renderStatus();
+        }
+    };
 
     const state = {
         // Core app state
@@ -943,7 +949,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         // Use unified messaging with override factors for explicit workcenter attachment
                         const message = createMessageWithOverrides(
                             'content-share',
-                            'basic-viewer',
+                            'main-app',
                             'markdown',
                             {
                                 text: content,
@@ -1643,7 +1649,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
                 const settingsModule = await loadComponent('settings',
                     () => import('./settings/Settings'),
-                    { componentName: 'Settings', cssPath: './Settings.scss' }
+                    { componentName: 'Settings', cssPath: '../scss/settings/Settings.scss' }
                 );
 
                 const settingsEl = settingsModule.component.createSettingsView({

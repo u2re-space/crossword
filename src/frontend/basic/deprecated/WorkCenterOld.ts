@@ -2,9 +2,9 @@ import { H } from "fest/lure";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
-import { actionHistory } from "@rs-core/service/ActionHistory";
-import type { ActionContext, ActionEntry, ActionInput } from "@rs-core/service/ActionHistory";
-import { executionCore } from "@rs-core/service/ExecutionCore";
+import { actionHistory } from "@rs-com/service/ActionHistory";
+import type { ActionContext, ActionEntry, ActionInput } from "@rs-com/service/ActionHistory";
+import { executionCore } from "@rs-com/service/ExecutionCore";
 import { extractJSONFromAIResponse } from "@rs-core/utils/AIResponseParser";
 import DOMPurify from "isomorphic-dompurify";
 
@@ -1751,7 +1751,7 @@ export class WorkCenterManager {
         }
 
         if (textToCopy.trim()) {
-            const { writeText } = await import("@rs-frontend/shared/Clipboard");
+            const { writeText } = await import("@rs-frontend/basic/modules/Clipboard");
             await writeText(textToCopy.trim());
             this.deps.showMessage('Results copied to clipboard');
         }

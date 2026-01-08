@@ -3,12 +3,12 @@
  * Reusable functions for processing share target data with GPT integration
  */
 
-import { getRuntimeSettings } from '@rs-core/config/RuntimeSettings';
-import { loadSettings } from '@rs-core/config/Settings';
-import type { AppSettings, CustomInstruction } from '@rs-core/config/SettingsTypes';
-import { DEFAULT_SETTINGS } from '@rs-core/config/SettingsTypes';
-import { executionCore } from '@rs-core/service/ExecutionCore';
-import type { ActionContext, ActionInput } from '@rs-core/service/ActionHistory';
+import { getRuntimeSettings } from '@rs-com/config/RuntimeSettings';
+import { loadSettings } from '@rs-com/config/Settings';
+import type { AppSettings, CustomInstruction } from '@rs-com/config/SettingsTypes';
+import { DEFAULT_SETTINGS } from '@rs-com/config/SettingsTypes';
+import { executionCore } from '@rs-com/service/ExecutionCore';
+import type { ActionContext, ActionInput } from '@rs-com/service/ActionHistory';
 
 // ============================================================================
 // TYPES

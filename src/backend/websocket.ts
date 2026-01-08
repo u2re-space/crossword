@@ -2,7 +2,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 
-import { type AppSettings } from "../core/config/SettingsTypes.ts";
+import { type AppSettings } from "@rs-com/config/SettingsTypes.js";
 import { loadUserSettings } from "./lib/users.ts";
 
 type ClientInfo = {

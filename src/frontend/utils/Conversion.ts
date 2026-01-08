@@ -7,9 +7,9 @@ import { marked, type MarkedExtension } from 'marked';
 import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFromTextSelection } from './DocTools';
 import { MathMLToLaTeX } from 'mathml-to-latex';
 import { deAlphaChannel } from '@rs-core/utils/ImageProcess';
-import { writeText, writeHTML } from '@rs-frontend/shared/Clipboard';
-import { loadSettings } from '@rs-core/config/Settings';
-import type { ResponseLanguage } from '@rs-core/config/SettingsTypes';
+import { writeText, writeHTML } from '@rs-frontend/basic/modules/Clipboard';
+import { loadSettings } from '@rs-com/config/Settings';
+import type { ResponseLanguage } from '@rs-com/config/SettingsTypes';
 
 // Options for copy operations
 export type CopyOptions = {
@@ -20,13 +20,13 @@ export type CopyOptions = {
 // Translation helper using AI
 const translateContent = async (content: string, targetLang: ResponseLanguage): Promise<string> => {
     if (!content?.trim() || targetLang === "auto") return content;
-    
+
     const langNames: Record<ResponseLanguage, string> = {
         auto: "",
         en: "English",
         ru: "Russian"
     };
-    
+
     try {
         const response = await chrome.runtime.sendMessage({
             type: "gpt:translate",
@@ -111,12 +111,12 @@ export const copyAsMarkdown = async (target: HTMLElement, options?: CopyOptions)
     const container = getContainerFromTextSelection(target);
     let markdown = convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
     let text = markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown;
-    
+
     // Apply translation if enabled
     if (options?.translate !== false) {
         text = await applyTranslation(text);
     }
-    
+
     if (text) await writeText(text);
     return text;
 }
@@ -125,12 +125,12 @@ export const copyAsMarkdown = async (target: HTMLElement, options?: CopyOptions)
 export const copyAsHTML = async (target: HTMLElement, options?: CopyOptions) => {
     const container = getContainerFromTextSelection(target);
     let sourceText = container?.innerText || "";
-    
+
     // Apply translation if enabled
     if (options?.translate !== false) {
         sourceText = await applyTranslation(sourceText);
     }
-    
+
     const html = await convertToHtml(sourceText) || await convertToHtml(container?.innerHTML || container?.outerHTML || "");
     const text = html?.trim?.()?.normalize?.()?.trim?.() || html?.trim?.() || html;
     if (text) await writeHTML(text, sourceText || text);

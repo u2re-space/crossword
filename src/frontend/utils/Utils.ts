@@ -1,7 +1,7 @@
 import { createDayDescriptor, insideOfDay } from "@rs-core/utils/TimeUtils";
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import type { ChapterDescriptor, DayDescriptor } from "@rs-core/utils/Types";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { JSOX } from "jsox";
 
 //

@@ -1,5 +1,5 @@
-import { loadSettings } from "@rs-core/config/Settings";
-import type { AppSettings } from "@rs-core/config/SettingsTypes";
+import { loadSettings } from "@rs-com/config/Settings";
+import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { applyGridSettings } from "@rs-frontend/utils/StateStorage";
 
 //

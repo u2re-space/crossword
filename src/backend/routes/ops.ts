@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import type { WsHub } from "../websocket.ts";
-import type { AppSettings } from "../../core/config/SettingsTypes.ts";
+import type { AppSettings } from "@rs-com/config/SettingsTypes.js";
 
 type HttpDispatchRequest = { url?: string; ip?: string; method?: string; headers?: Record<string, string>; body?: string; unencrypted?: boolean };
 type HttpDispatchBody = {

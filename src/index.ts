@@ -1,5 +1,5 @@
 // Import routing and choice functionality
-import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/routing/pwa-handling";
+import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/pwa/pwa-handling";
 import { loadSubApp } from "./frontend/routing/routing";
 import { ChoiceScreen, type FrontendChoice } from "./frontend/routing/boot-menu";
 
@@ -11,7 +11,10 @@ import {
     handleShareTarget,
     setupLaunchQueueConsumer,
     checkPendingShareData
-} from "./frontend/routing/sw-handling";
+} from "./frontend/pwa/sw-handling";
+
+// Import uniform channel manager
+import { initializeAppChannels, channelManager } from "./com/core/UniformChannelManager";
 
 
 
@@ -211,6 +214,10 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
 
 export default async function index(mountElement: HTMLElement) {
     console.log('[Index] Starting CrossWord frontend loader');
+
+    // Initialize uniform channel manager
+    console.log('[Index] Initializing uniform channels...');
+    initializeAppChannels();
 
     // Set initial loading state
     setLoadingState(mountElement, 'Initializing CrossWord...');

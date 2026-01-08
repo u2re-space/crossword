@@ -4,14 +4,14 @@
  * Supports screenshot capture, advanced image processing, and clipboard operations.
  */
 
-import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
-import type { RecognitionResult } from "@rs-core/service/AI-ops/RecognizeData";
-import { loadSettings } from "@rs-core/config/Settings";
-import { getUsableData } from "@rs-core/service/model/GPT-Responses";
+import { UnifiedAIService } from "@rs-com/service/AI-ops/RecognizeData";
+import type { RecognitionResult } from "@rs-com/service/AI-ops/RecognizeData";
+import { loadSettings } from "@rs-com/config/Settings";
+import { getUsableData } from "@rs-com/service/model/GPT-Responses";
 
 // Import built-in AI instructions
-import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '../../frontend/shared/BuiltInAI';
-import type { DataContext } from "@rs-core/service/model/GPT-Config";
+import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '@rs-com/core/BuiltInAI';
+import type { DataContext } from "@rs-com/service/model/GPT-Config";
 
 // Import unified service functions for internal use
 const {

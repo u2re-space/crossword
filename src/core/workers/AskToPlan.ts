@@ -1,4 +1,4 @@
-import { loadSettings } from "@rs-core/config/Settings";
+import { loadSettings } from "@rs-com/config/Settings";
 import { startTracking } from "@rs-core/workers/GeoLocation";
 
 //

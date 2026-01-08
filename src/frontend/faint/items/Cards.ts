@@ -3,12 +3,12 @@ import { H, M, bindBeh } from "fest/lure";
 import { propRef } from "fest/object";
 import { formatAsTime, formatAsDate, parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import type { EntityDescriptor } from "@rs-core/utils/Types";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { iconsPerAction, labelsPerAction } from "@rs-frontend/utils/Actions";
-import { GeoState, isNearby } from "@rs-core/service/GeoService";
-import { TimeState, isNow, registerEventForNotification } from "@rs-core/service/TimeService";
-import { findEntities } from "@rs-core/service/EntityRegistry";
-import { writeText } from "@rs-frontend/shared/Clipboard";
+import { GeoState, isNearby } from "@rs-com/service/GeoService";
+import { TimeState, isNow, registerEventForNotification } from "@rs-com/service/TimeService";
+import { findEntities } from "@rs-com/service/EntityRegistry";
+import { writeText } from "@rs-frontend/basic/modules/Clipboard";
 
 //
 import { marked } from "marked";

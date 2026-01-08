@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 // Import built-in templates
-import { DEFAULT_TEMPLATES } from "../../shared/BuiltInAI";
+import { DEFAULT_TEMPLATES } from "@rs-com/core/BuiltInAI";
 
 export interface PromptTemplate {
     id?: string;

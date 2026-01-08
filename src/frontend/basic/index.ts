@@ -1,6 +1,6 @@
 import type { BasicAppOptions } from "./Main";
 import { mountBasicApp } from "./Main";
-import { loadSettings } from "@rs-core/config/Settings";
+import { loadSettings } from "@rs-com/config/Settings";
 
 export default async function frontend(mountElement: HTMLElement, options: BasicAppOptions = {}) {
     // Check for markdown content in URL parameters (from launch queue or direct links)
@@ -14,7 +14,7 @@ export default async function frontend(mountElement: HTMLElement, options: Basic
     // (SW stores only counts in the metadata; files are stored as cache entries + a manifest.)
     if (sharedFlag === "1" || sharedFlag === "true") {
         try {
-            const { consumeCachedShareTargetPayload } = await import("../routing/sw-handling");
+            const { consumeCachedShareTargetPayload } = await import("../pwa/sw-handling");
             const payload = await consumeCachedShareTargetPayload({ clear: true });
             const files = payload?.files ?? [];
 
@@ -65,7 +65,7 @@ export default async function frontend(mountElement: HTMLElement, options: Basic
                 if (!auto || !hasKey) return;
 
                 try {
-                    const { processShareTargetData } = await import("../routing/sw-handling");
+                    const { processShareTargetData } = await import("../pwa/sw-handling");
                     await processShareTargetData({
                         files: sharedFilesForAutoAI,
                         fileCount: sharedFilesForAutoAI.length,

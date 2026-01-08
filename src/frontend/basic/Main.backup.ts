@@ -2,13 +2,13 @@
 import style from "./Main.scss?inline";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-core/service/AI-ops/RecognizeData";
-import { loadSettings } from "@rs-core/config/Settings";
-import type { AppSettings } from "@rs-core/config/SettingsTypes";
+import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData";
+import { loadSettings } from "@rs-com/config/Settings";
+import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
 
 // Import unified messaging system
-import { unifiedMessaging, sendToWorkCenter, sendToClipboard, navigateToView, initializeComponent, hasPendingMessages } from "../shared/UnifiedMessaging";
+import { unifiedMessaging, sendToWorkCenter, sendToClipboard, navigateToView, initializeComponent, hasPendingMessages } from "@rs-com/core/UnifiedMessaging";
 
 // Import lazy loading utility
 import { getCachedComponent } from "./modules/LazyLoader";
@@ -17,12 +17,12 @@ import { getCachedComponent } from "./modules/LazyLoader";
 import { createFileHandler } from "./modules/FileHandling";
 import { getSpeechPrompt } from "./modules/VoiceInput";
 import { createTemplateManager } from "./modules/TemplateManager";
-import { CHANNELS } from "@rs-frontend/routing/sw-handling";
+import { CHANNELS } from "@rs-frontend/pwa/sw-handling";
 import { loadAsAdopted } from "fest/dom";
 import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "./explorer";
-import { downloadMarkdownAsDocx } from "../shared/DocxExport";
+import { downloadMarkdownAsDocx } from "./modules/DocxExport";
 
 export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
 

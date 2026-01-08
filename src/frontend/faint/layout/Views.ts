@@ -65,8 +65,8 @@ const checkIsActive = (registryKey: string, closingView: string) => {
 console.log("[faint] Creating current view reference");
 export const CURRENT_VIEW = historyViewRef(`#${$defaultView}`, { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
 console.log("[faint] Current view reference created");
-import { startGeoTracking } from "../../../core/service/GeoService";
-import { startTimeTracking, requestNotificationPermission } from "../../../core/service/TimeService";
+import { startGeoTracking } from "@rs-com/service/GeoService";
+import { startTimeTracking, requestNotificationPermission } from "@rs-com/service/TimeService";
 import { initTheme } from "../../utils/Theme";
 
 //

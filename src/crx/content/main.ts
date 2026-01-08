@@ -1,6 +1,6 @@
-import { showToast, initOverlay } from "@rs-frontend/shared/overlay";
-import { initToastReceiver } from "@rs-frontend/shared/Toast";
-import { initClipboardReceiver } from "@rs-frontend/shared/Clipboard";
+import { showToast, initOverlay } from "@rs-frontend/routing/overlay";
+import { initToastReceiver } from "@rs-frontend/routing/Toast";
+import { initClipboardReceiver } from "@rs-frontend/basic/modules/Clipboard";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
 import "./rect-selector";
 

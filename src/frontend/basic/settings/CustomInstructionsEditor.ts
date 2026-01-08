@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings } from "@rs-core/config/Settings";
-import type { CustomInstruction } from "@rs-core/config/SettingsTypes";
+import { loadSettings } from "@rs-com/config/Settings";
+import type { CustomInstruction } from "@rs-com/config/SettingsTypes";
 import {
     addInstruction,
     addInstructions,
@@ -9,7 +9,7 @@ import {
     deleteInstruction,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
-} from "@rs-core/service/CustomInstructions";
+} from "@rs-com/service/CustomInstructions";
 
 export type CustomInstructionsEditorOptions = {
     onUpdate?: () => void;

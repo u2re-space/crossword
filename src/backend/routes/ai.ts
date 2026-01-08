@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
-import { createOrchestrator } from "../../core/service/AI-ops/Orchestrator.ts";
-import type { CustomInstruction } from "../../core/service/InstructionUtils.ts";
+import { createOrchestrator } from "@rs-com/service/AI-ops/Orchestrator.js";
+import type { CustomInstruction } from "@rs-com/service/InstructionUtils.js";
 
 const getActiveCustomInstruction = (settings: any): string => {
     const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];

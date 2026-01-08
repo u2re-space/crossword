@@ -1,12 +1,12 @@
-import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
+import type { EntityInterface, TimeType } from "@rs-com/template/EntityInterface";
 import type { EntityDescriptor } from "../../../core/utils/Types";
 import { removeFile, writeFile } from "fest/lure";
 import { H, Q, M } from "fest/lure";
 import { observe, stringRef, propRef } from "fest/object";
 
 // helpful imports (all from `@rs-core/template/*`, such as `EntityUtils`, `EntityId`, etc.)
-import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
-import { generateEntityId, fixEntityId, type EntityLike } from "@rs-core/template/EntityId";
+import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
+import { generateEntityId, fixEntityId, type EntityLike } from "@rs-com/template/EntityId";
 import { JSOX } from "jsox";
 
 // field editors

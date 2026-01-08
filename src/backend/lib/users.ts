@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { randomUUID, createHash, scryptSync, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import path from "node:path";
 
-import { DEFAULT_SETTINGS, type AppSettings } from "../../core/config/SettingsTypes.ts";
+import { DEFAULT_SETTINGS, type AppSettings } from "@rs-com/config/SettingsTypes.js";
 import { USERS_FILE, USER_STORAGE_DIR, ensureDataDirs, safeJoin } from "./paths.ts";
 import { mergeSettings } from "./settings.ts";
 

@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 import { MarkdownViewer } from "../viewer/MarkdownViewer";
 import { UIPhosphorIcon } from "fest/icon";
-import { downloadMarkdownAsDocx } from "../../shared/DocxExport";
+import { downloadMarkdownAsDocx } from "../modules/DocxExport";
 
 export interface MarkdownEditorOptions {
     initialContent?: string;

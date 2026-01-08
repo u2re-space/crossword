@@ -1,5 +1,5 @@
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
-import { ROUTE_HASHES } from '@rs-core/config/Names';
+import { ROUTE_HASHES } from '@rs-com/config/Names';
 
 export class WorkCenterFileOps {
     private deps: WorkCenterDependencies;

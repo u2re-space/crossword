@@ -1,11 +1,11 @@
 import { BASE64_PREFIX, convertImageToJPEG, DEFAULT_ENTITY_TYPE, MAX_BASE64_SIZE } from "@rs-core/utils/ImageProcess";
-import { dumpAndClear } from "@rs-core/store/IDBQueue";
+import { dumpAndClear } from "@rs-com/store/IDBQueue";
 import { getDirectoryHandle, getFileHandle, decodeBase64ToBytes, stringToFile, parseDataUrl } from "fest/lure";
-import { detectEntityTypeByJSON } from "@rs-core/template/EntityUtils";
-import { fixEntityId } from "@rs-core/template/EntityId";
+import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
+import { fixEntityId } from "@rs-com/template/EntityId";
 import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
-import { TIMELINE_DIR } from "@rs-core/service/AI-ops/MakeTimeline";
+import { TIMELINE_DIR } from "@rs-com/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
 import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
 

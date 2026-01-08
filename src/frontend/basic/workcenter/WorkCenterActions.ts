@@ -1,5 +1,5 @@
-import { executionCore } from "@rs-core/service/ExecutionCore";
-import type { ActionContext, ActionInput } from "@rs-core/service/ActionHistory";
+import { executionCore } from "@rs-com/service/ExecutionCore";
+import type { ActionContext, ActionInput } from "@rs-com/service/ActionHistory";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterUI } from "./WorkCenterUI";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";
@@ -217,7 +217,7 @@ export class WorkCenterActions {
 
         try {
             // Import the unified messaging system
-            const { unifiedMessaging } = await import('../../shared/UnifiedMessaging');
+            const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
 
             // Create the content to save
             const resultContent = typeof state.lastRawResult === 'string'

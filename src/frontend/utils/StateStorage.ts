@@ -1,7 +1,7 @@
 import { makeObjectAssignable, observe, stringRef, safe } from "fest/object";
 import { makeUIState } from "fest/lure/extension/core/UIState";
 import { JSOX } from "jsox";
-import { readText } from "@rs-frontend/shared/Clipboard";
+import { readText } from "@rs-frontend/basic/modules/Clipboard";
 
 export type GridCell = [number, number];
 

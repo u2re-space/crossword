@@ -5,7 +5,7 @@ import "./markdown-print.scss";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
-import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../shared/DocxExport";
+import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../basic/modules/DocxExport";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({

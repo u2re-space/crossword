@@ -1,4 +1,4 @@
-import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/shared/overlay";
+import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/routing/overlay";
 
 // crop area for screen capture
 export interface cropArea {

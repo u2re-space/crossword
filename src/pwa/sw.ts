@@ -16,7 +16,7 @@ import {
     SHARE_FILES_MANIFEST_KEY,
     type ShareData
 } from './lib/ShareTargetUtils';
-import { BROADCAST_CHANNELS, MESSAGE_TYPES, STORAGE_KEYS, ROUTE_HASHES, COMPONENTS } from '@rs-core/config/Names';
+import { BROADCAST_CHANNELS, MESSAGE_TYPES, STORAGE_KEYS, ROUTE_HASHES, COMPONENTS } from '@rs-com/config/Names';
 
 // ============================================================================
 // SERVICE WORKER CONTENT ASSOCIATION SYSTEM

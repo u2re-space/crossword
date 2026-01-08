@@ -5,15 +5,13 @@ import { makeEntityEdit } from "@rs-frontend/faint/editors/EntityEdit";
 import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite, pasteAndAnalyze, pasteIntoClipboardWithRecognize } from "./FileOps";
 import { toastSuccess, toastError } from "@rs-frontend/faint/items/Toast";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
-import { currentWebDav, loadSettings, saveSettings } from "@rs-core/config/Settings";
+import type { EntityInterface } from "@rs-com/template/EntityInterface";
+import { currentWebDav, loadSettings, saveSettings } from "@rs-com/config/Settings";
 import { getDirectoryHandle, mountAsRoot, navigate } from "fest/lure";
 import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-frontend/utils/StateStorage";
 import { JSOX } from "jsox";
 import { stringRef } from "fest-src/fest/object/index";
-import { writeText, readText } from "@rs-frontend/shared/Clipboard";
-
-
+import { writeText, readText } from "@rs-frontend/basic/modules/Clipboard";
 
 //
 const SERVICE_UUID = '12345678-1234-5678-1234-5678abcdef01';

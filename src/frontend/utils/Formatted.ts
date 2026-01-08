@@ -1,5 +1,5 @@
 import { parseDateCorrectly, getISOWeekNumber } from "@rs-core/utils/TimeUtils";
-import { writeText } from "@rs-frontend/shared/Clipboard";
+import { writeText } from "@rs-frontend/basic/modules/Clipboard";
 
 //
 export const beginDragAsText = (ev: DragEvent) => {

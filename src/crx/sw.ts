@@ -1,16 +1,16 @@
-import { createTimelineGenerator, requestNewTimeline } from "@rs-core/service/AI-ops/MakeTimeline";
+import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-ops/MakeTimeline";
 import { enableCapture } from "./service/api";
-import type { GPTResponses } from "@rs-core/service/model/GPT-Responses";
+import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import { recognizeImageData } from "./service/RecognizeData";
-import { getGPTInstance } from "@rs-core/service/AI-ops/RecognizeData";
-import { getCustomInstructions, type CustomInstruction } from "@rs-core/service/CustomInstructions";
-import { loadSettings } from "@rs-core/config/Settings";
-import { executionCore } from "@rs-core/service/ExecutionCore";
-import { UnifiedAIService } from "@rs-core/service/AI-ops/RecognizeData";
-import type { ActionContext, ActionInput } from "@rs-core/service/ActionHistory";
+import { getGPTInstance } from "@rs-com/service/AI-ops/RecognizeData";
+import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/CustomInstructions";
+import { loadSettings } from "@rs-com/config/Settings";
+import { executionCore } from "@rs-com/service/ExecutionCore";
+import { UnifiedAIService } from "@rs-com/service/AI-ops/RecognizeData";
+import type { ActionContext, ActionInput } from "@rs-com/service/ActionHistory";
 
 // Import built-in AI instructions
-import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '../frontend/shared/BuiltInAI';
+import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '@rs-com/core/BuiltInAI';
 
 // Safe wrapper for loading custom instructions
 const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
@@ -323,7 +323,7 @@ class CrxResultPipeline {
     private async deliverToWorkCenter(result: CrxResult, destination: CrxDestination): Promise<void> {
         try {
             // Import unified messaging dynamically
-            const { unifiedMessaging } = await import('../frontend/shared/UnifiedMessaging');
+            const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
 
             await unifiedMessaging.sendMessage({
                 id: result.id,
@@ -1680,7 +1680,7 @@ const processCrxSnip = async (content: string | ArrayBuffer, contentType: string
             // This uses the unified messaging system to attach content
             try {
                 // Import the unified messaging system
-                const { unifiedMessaging } = await import('../frontend/shared/UnifiedMessaging');
+                const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
 
                 await unifiedMessaging.sendMessage({
                     id: crypto.randomUUID(),

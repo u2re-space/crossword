@@ -4,10 +4,10 @@ import { computeTimelineOrderInGeneral, computeTimelineOrderInsideOfDay, createD
 import { parseDateCorrectly } from "@rs-core/utils/TimeUtils";
 import { MakeCardElement, MakeLazyCardElement, type LazyCardOptions } from "./Cards";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS } from "@rs-frontend/utils/Utils";
 import { bindDropToDir } from "@rs-frontend/utils/FileOps";
-import { registerEntity, unregisterEntity } from "@rs-core/service/EntityRegistry";
+import { registerEntity, unregisterEntity } from "@rs-com/service/EntityRegistry";
 
 // =============================================================================
 // Progressive Loading Configuration

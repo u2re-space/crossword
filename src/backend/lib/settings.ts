@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-import { DEFAULT_SETTINGS, type AppSettings } from "../../core/config/SettingsTypes.ts";
+import { DEFAULT_SETTINGS, type AppSettings } from "@rs-com/config/SettingsTypes.js";
 import { SETTINGS_FILE, ensureDataDirs } from "./paths.ts";
 
 export type SettingsPatch = Partial<AppSettings>;

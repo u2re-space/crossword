@@ -2,7 +2,7 @@ import { H } from "fest/lure";
 import { implementDropEvent, implementPasteEvent } from "../../utils/HookEvent";
 import { observe} from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
-import type { EntityInterface } from "@rs-core/template/EntityInterface";
+import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { renderTabName } from "../../utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { CollectItemsForTabPage, MakeItemBy } from "../items/Items";

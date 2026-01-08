@@ -25,6 +25,7 @@
 @import "../scss/markdown/markdown-viewer.scss" layer(components);
 @import "scss/editor/markdown-editor.scss" layer(components);
 @import "scss/editor/quill-editor.scss" layer(components);
+@import "./scss/settings/Settings.scss" layer(settings);
 
 /* ==========================================================================
    LAYOUT & UTILITY STYLES - Layout systems and helpers

@@ -5,8 +5,9 @@
         "**/*.js",
         "**/*.d.ts",
         "**/*.tsx",
-        "**/*.vue"
-, "../../modules/projects/lur.e/src/extension/core/Base64Data.ts"    ],
+        "**/*.vue",
+        "../../modules/projects/lur.e/src/extension/core/Base64Data.ts"
+    ],
     "exclude": [
         "node_modules/**",
         "externals/**",
@@ -17,48 +18,116 @@
         "skipLibCheck": true,
         "jsx": "preserve",
         "paths": {
-            "/assets/*": ["./assets/*"],
-            "/frontend/*": ["./frontend/*"],
-
-            "@phosphor-icons/core/assets/*": ["./node_modules/@phosphor-icons/core/assets/*"],
-            "icons/*": ["./node_modules/@phosphor-icons/core/assets/*"],
-
-            "assets/fonts/*": ["./assets/fonts/*"],
-            "assets/*": ["./assets/*"],
-
-            "fest-src/*": ["./shared/*"],
-            "fest/*": ["./shared/fest/*"],
-            "fest/fl-ui/*": ["./shared/fest/fl-ui/*"],
-            "fest/dom": ["./shared/fest/dom/index.ts"],
-            "fest/lure": ["./shared/fest/lure/index.ts"],
-            "fest/object": ["./shared/fest/object/index.ts"],
-            "fest/uniform": ["./shared/fest/uniform/index.ts"],
-            "fest/theme": ["./shared/fest/theme/index.ts"],
-            "fest/icon": ["./shared/fest/icon/index.ts"],
-            "fest/polyfill/*": ["./shared/fest/polyfill/*"],
-            "polyfill/*": ["./shared/fest/polyfill/*"],
-            "shared/*": ["./shared/*"],
-
-            "@fl-ui/*": ["./shared/fest/fl-ui/ui/*"],
-            "@fl-src/*": ["./shared/fest/fl-ui/*"],
-            "@fl-design/*": ["./shared/fest/fl-ui/design/*"],
-            "@rs-pwa/*": ["./src/pwa/*"],
-            "@rs-crx/*": ["./src/crx/*"],
-            "@rs-core/*": ["./src/core/*"],
-            "@rs-frontend/*": ["./src/frontend/*"],
-            "@rs-shared/*": ["./shared/*"],
-            "@rs-test/*": ["./test/*"],
-
-            "veela": ["./shared/fest/veela/index.ts"],
-            "veela-runtime": ["./shared/fest/veela/scss/runtime/index.ts"],
-            "veela-runtime/*": ["./shared/fest/veela/scss/runtime/*"],
-            "veela-lib": ["./shared/fest/veela/scss/lib/index.scss"],
-            "veela-lib/*": ["./shared/fest/veela/scss/lib/*"]
+            "/assets/*": [
+                "./assets/*"
+            ],
+            "/frontend/*": [
+                "./frontend/*"
+            ],
+            "@phosphor-icons/core/assets/*": [
+                "./node_modules/@phosphor-icons/core/assets/*"
+            ],
+            "icons/*": [
+                "./node_modules/@phosphor-icons/core/assets/*"
+            ],
+            "assets/fonts/*": [
+                "./assets/fonts/*"
+            ],
+            "assets/*": [
+                "./assets/*"
+            ],
+            "fest-src/*": [
+                "./shared/*"
+            ],
+            "fest/*": [
+                "./shared/fest/*"
+            ],
+            "fest/fl-ui/*": [
+                "./shared/fest/fl-ui/*"
+            ],
+            "fest/dom": [
+                "./shared/fest/dom/index.ts"
+            ],
+            "fest/lure": [
+                "./shared/fest/lure/index.ts"
+            ],
+            "fest/object": [
+                "./shared/fest/object/index.ts"
+            ],
+            "fest/uniform": [
+                "./shared/fest/uniform/index.ts"
+            ],
+            "fest/theme": [
+                "./shared/fest/theme/index.ts"
+            ],
+            "fest/icon": [
+                "./shared/fest/icon/index.ts"
+            ],
+            "fest/polyfill/*": [
+                "./shared/fest/polyfill/*"
+            ],
+            "polyfill/*": [
+                "./shared/fest/polyfill/*"
+            ],
+            "shared/*": [
+                "./shared/*"
+            ],
+            "@fl-ui/*": [
+                "./shared/fest/fl-ui/ui/*"
+            ],
+            "@fl-src/*": [
+                "./shared/fest/fl-ui/*"
+            ],
+            "@fl-design/*": [
+                "./shared/fest/fl-ui/design/*"
+            ],
+            "@rs-pwa/*": [
+                "./src/pwa/*"
+            ],
+            "@rs-crx/*": [
+                "./src/crx/*"
+            ],
+            "@rs-core/*": [
+                "./src/core/*"
+            ],
+            "@rs-com/*": [
+                "./src/com/*"
+            ],
+            "@rs-frontend/*": [
+                "./src/frontend/*"
+            ],
+            "@rs-shared/*": [
+                "./shared/*"
+            ],
+            "@rs-test/*": [
+                "./test/*"
+            ],
+            "veela": [
+                "./shared/fest/veela/index.ts"
+            ],
+            "veela-runtime": [
+                "./shared/fest/veela/scss/runtime/index.ts"
+            ],
+            "veela-runtime/*": [
+                "./shared/fest/veela/scss/runtime/*"
+            ],
+            "veela-lib": [
+                "./shared/fest/veela/scss/lib/index.scss"
+            ],
+            "veela-lib/*": [
+                "./shared/fest/veela/scss/lib/*"
+            ]
         },
-        "types": ["chrome"],
+        "types": [
+            "chrome"
+        ],
         "baseUrl": "./",
         "composite": true,
-        "lib": ["ESNext", "DOM", "WebWorker"],
+        "lib": [
+            "ESNext",
+            "DOM",
+            "WebWorker"
+        ],
         "module": "ESNext",
         "target": "ESNext",
         "resolveJsonModule": true,

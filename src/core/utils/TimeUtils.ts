@@ -1,6 +1,6 @@
 import { observe } from "fest/object";
 import type { ChapterDescriptor, DayDescriptor } from "@rs-core/utils/Types";
-import type { EntityInterface, TimeType } from "@rs-core/template/EntityInterface";
+import type { EntityInterface, TimeType } from "@rs-com/template/EntityInterface";
 
 //
 export const checkInTimeRange = (beginTime: Date, endTime: Date, currentTime: Date) => {

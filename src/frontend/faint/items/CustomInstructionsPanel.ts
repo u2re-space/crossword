@@ -1,7 +1,7 @@
 import { H, M } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings, saveSettings } from "@rs-core/config/Settings";
-import type { CustomInstruction, AppSettings } from "@rs-core/config/SettingsTypes";
+import { loadSettings, saveSettings } from "@rs-com/config/Settings";
+import type { CustomInstruction, AppSettings } from "@rs-com/config/SettingsTypes";
 import {
     getCustomInstructions,
     addInstruction,
@@ -10,7 +10,7 @@ import {
     deleteInstruction,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
-} from "@rs-core/service/CustomInstructions";
+} from "@rs-com/service/CustomInstructions";
 import { toastSuccess, toastError } from "./Toast";
 
 export type CustomInstructionsPanelOptions = {

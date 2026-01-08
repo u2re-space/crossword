@@ -1,5 +1,5 @@
 import { openDirectory, H, M } from "fest/lure";
-import { dataCategories } from "@rs-core/service/Cache";
+import { dataCategories } from "@rs-com/service/Cache";
 import { sendToEntityPipeline } from "@rs-core/workers/FileSystem";
 import { implementDropEvent, implementPasteEvent } from "@rs-frontend/utils/HookEvent";
 

@@ -1,8 +1,8 @@
 import { getDirectoryHandle, handleIncomingEntries } from "fest/lure";
 import { handleDataTransferFiles, postCommitAnalyze, postCommitRecognize, writeFilesToDir } from "@rs-core/workers/FileSystem";
-import { analyzeRecognizeUnified } from "@rs-core/service/AI-ops/RecognizeData";
+import { analyzeRecognizeUnified } from "@rs-com/service/AI-ops/RecognizeData";
 import { sanitizeFileName, writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
-import { writeText, readText } from "@rs-frontend/shared/Clipboard";
+import { writeText, readText } from "@rs-frontend/basic/modules/Clipboard";
 
 //
 export const bindDropToDir = (host: HTMLElement, dir: string) => {

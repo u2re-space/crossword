@@ -5,19 +5,19 @@ import { toastError, toastSuccess } from "@rs-frontend/faint/items/Toast";
 import { createCustomInstructionsPanel } from "@rs-frontend/faint/items/CustomInstructionsPanel";
 
 //
-import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-core/config/SettingsTypes";
-import { DEFAULT_SETTINGS } from "@rs-core/config/SettingsTypes";
+import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-com/config/SettingsTypes";
+import { DEFAULT_SETTINGS } from "@rs-com/config/SettingsTypes";
 import { applyGridSettings, type GridLayoutSettings } from "@rs-frontend/utils/StateStorage";
 
 //
-import { getByPath, loadSettings, saveSettings, slugify } from "@rs-core/config/Settings";
+import { getByPath, loadSettings, saveSettings, slugify } from "@rs-com/config/Settings";
 import { loadTimelineSources } from "@rs-core/workers/FileSystem";
 import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
 
 //
-import { AppSection } from "@rs-core/config/sections/AppSection";
-import { CoreSection } from "@rs-core/config/sections/CoreSection";
-import { RuntimeSection } from "@rs-core/config/sections/RuntimeSection";
+import { AppSection } from "@rs-com/config/sections/AppSection";
+import { CoreSection } from "@rs-com/config/sections/CoreSection";
+import { RuntimeSection } from "@rs-com/config/sections/RuntimeSection";
 import { renderTabName } from "@rs-frontend/utils/Utils";
 import { propRef, stringRef } from "fest/object";
 import { orientRef } from "fest/lure";

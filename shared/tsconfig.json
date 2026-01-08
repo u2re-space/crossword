@@ -22,6 +22,7 @@
             "@rs-pwa/*": ["../src/pwa/*"],
             "@rs-crx/*": ["../src/crx/*"],
             "@rs-core/*": ["../src/core/*"],
+            "@rs-com/*": ["../src/com/*"],
             "@rs-frontend/*": ["../src/frontend/*"],
             "@rs-shared/*": ["./*"],
             "@rs-test/*": ["../test/*"]
