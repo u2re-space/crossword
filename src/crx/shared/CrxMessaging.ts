@@ -73,12 +73,12 @@ export const isCrxEnvironment = (): boolean => {
 // ============================================================================
 
 export class CrxRuntimeChannel implements OptimizedWorkerChannel {
-    private festUniformChannel?: ReturnType<typeof createChromeExtensionRuntimeChannel>;
-    private broadcastChannel?: BroadcastChannel;
-    private listeners = new Map<string, (message: any) => void>();
-    private pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: any) => void; timeout: NodeJS.Timeout }>();
-    private context: CrxMessage['source'];
-    private isCrxEnv: boolean;
+    public festUniformChannel?: ReturnType<typeof createChromeExtensionRuntimeChannel>;
+    public broadcastChannel?: BroadcastChannel;
+    public listeners = new Map<string, (message: any) => void>();
+    public pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: any) => void; timeout: NodeJS.Timeout }>();
+    public context: CrxMessage['source'];
+    public isCrxEnv: boolean;
 
     constructor(private target?: CrxMessage['target']) {
         this.context = getCrxContext();

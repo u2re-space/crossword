@@ -334,31 +334,33 @@ const implementActions = () => {
 
 // Set up unified messaging handlers if in CRX environment
 if (isInCrxEnvironment) {
-    const popupChannel = getPopupModule();
-    if (!popupChannel) {
-        console.error('[Popup] Popup runtime module not available');
-    }
+    Promise.try(async () => {
+        const popupChannel = await getPopupModule();
+        if (!popupChannel) {
+            console.error('[Popup] Popup runtime module not available');
+        }
 
-    // Register handlers for async processing updates via unified messaging
-    popupChannel?.request?.('registerHandler', ['processingStarted', async (data: any) => {
-        console.log('[Popup] Processing started:', data);
-        // Could update popup UI to show processing status
-    }]);
+        // Register handlers for async processing updates via unified messaging
+        popupChannel?.request?.('registerHandler', ['processingStarted', async (data: any) => {
+            console.log('[Popup] Processing started:', data);
+            // Could update popup UI to show processing status
+        }]);
 
-    popupChannel?.request?.('registerHandler', ['processingComplete', async (data: any) => {
-        console.log('[Popup] Processing completed:', data);
-        // Could update popup with results or show completion notification
-    }]);
+        popupChannel?.request?.('registerHandler', ['processingComplete', async (data: any) => {
+            console.log('[Popup] Processing completed:', data);
+            // Could update popup with results or show completion notification
+        }]);
 
-    popupChannel?.request?.('registerHandler', ['processingError', async (data: any) => {
-        console.error('[Popup] Processing error:', data);
-        // Could show error notification in popup
-    }]);
+        popupChannel?.request?.('registerHandler', ['processingError', async (data: any) => {
+            console.error('[Popup] Processing error:', data);
+            // Could show error notification in popup
+        }]);
 
-    popupChannel?.request?.('registerHandler', ['processingProgress', async (data: any) => {
-        console.log('[Popup] Processing progress:', data);
-        // Could update progress indicator in popup
-    }]);
+        popupChannel?.request?.('registerHandler', ['processingProgress', async (data: any) => {
+            console.log('[Popup] Processing progress:', data);
+            // Could update progress indicator in popup
+        }]);
+    });
 }
 
 //

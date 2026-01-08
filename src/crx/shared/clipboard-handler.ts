@@ -4,7 +4,7 @@
  * Auto-detects context and handles messages appropriately
  */
 
-import { writeText, toText } from "@rs-frontend/basic/modules/Clipboard";
+import { toText } from "@rs-frontend/basic/modules/Clipboard";
 
 export type CopyResponse = {
     ok: boolean;

@@ -67,14 +67,10 @@ const processChromeExtensionAction = async (
 
 // BroadcastChannel for cross-context communication (share target-like behavior)
 const TOAST_CHANNEL = "rs-toast";
-const CLIPBOARD_CHANNEL = "rs-clipboard";
 const AI_RECOGNITION_CHANNEL = "rs-ai-recognition";
 
 // CRX Result Pipeline Channels
-const RESULT_PIPELINE_CHANNEL = "rs-result-pipeline";
-const CONTENT_SCRIPT_CHANNEL = "rs-content-script";
 const POPUP_CHANNEL = "rs-popup";
-const WORKCENTER_CHANNEL = "rs-workcenter";
 
 // Broadcast helper for extension contexts
 const broadcast = (channel: string, message: unknown): void => {
@@ -422,10 +418,10 @@ interface CrxDestination {
 
 // Result Pipeline Manager
 class CrxResultPipeline {
-    private resultQueue: PendingResult[] = [];
-    private maxQueueSize = 50;
-    private maxRetries = 3;
-    private processingInterval: number | null = null;
+    public resultQueue: PendingResult[] = [];
+    public maxQueueSize = 50;
+    public maxRetries = 3;
+    public processingInterval: number | null = null;
 
     constructor() {
         this.startProcessing();
@@ -824,7 +820,7 @@ const processCrxSnipWithPipeline = async (
                 timestamp: Date.now(),
                 metadata: {
                     originalContentType: contentType,
-                    processingTime: Date.now() - input.metadata.timestamp
+                    processingTime: Date.now() - (input?.metadata?.timestamp ?? 0)
                 }
             };
 

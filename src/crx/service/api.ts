@@ -4,11 +4,17 @@ import type { RecognizeResult } from "./RecognizeData";
 import { toText } from "@rs-frontend/basic/modules/Clipboard";
 import { getCustomInstructions } from "@rs-com/service/CustomInstructions";
 
-// Import fest/uniform for unified messaging
-import { createChromeExtensionRuntimeChannel, detectExecutionContext, type CrxRuntimeModule } from 'fest/uniform';
-
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;
+
+//
+const isProbablyUrl = (value: string)=>{
+    try {
+        return Boolean(new URL(value));
+    } catch {
+        return false;
+    }
+};
 
 // Handler functions for runtime channel messages
 const handleCapture = async (ext: typeof chrome, data: any, sender: any) => {
@@ -51,7 +57,7 @@ const handleCapture = async (ext: typeof chrome, data: any, sender: any) => {
     // Process based on mode
     console.log('[Service API] Converting to file...');
     const file = await dataUrlToFile(finalUrl, "snip.png");
-    console.log('[Service API] File created:', file.name, 'size:', file.size, 'type:', file.type);
+    console.log('[Service API] File created:', file?.name, 'size:', file?.size, 'type:', file?.type);
 
     let result;
     console.log('[Service API] Starting AI processing with mode:', mode);
