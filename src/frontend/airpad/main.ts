@@ -16,6 +16,7 @@ import { initVirtualKeyboard } from './input/virtual-keyboard';
 import { initClipboardToolbar } from './ui/clipboard-toolbar';
 import { showConfigUI } from './ui/config-ui';
 import { loadAsAdopted } from 'fest/dom';
+import { H } from 'fest/lure';
 
 // =========================
 // Mount function for routing system
@@ -34,7 +35,7 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
     }
 
     // Set up complete HTML structure inside the #app container (based on need-to-port-into-ts.html)
-    appContainer.innerHTML = `
+    appContainer.append(H`
         <div class="container">
             <header class="hero">
                 <h1>Air Trackpad + AI Assistant</h1>
@@ -135,7 +136,7 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
                 class="toolbar-btn" aria-label="Paste (Ctrl+V)">📥</button>
         </div>
         <div id="clipboardPreview" class="clipboard-preview" aria-live="polite"></div>
-    `;
+    `);
 
     // Initialize the airpad functionality
     await initAirpadApp();

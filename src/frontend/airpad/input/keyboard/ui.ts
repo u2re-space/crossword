@@ -2,14 +2,15 @@
 // Keyboard UI Rendering
 // =========================
 
+import { H } from 'fest/lure';
 import { EMOJI_CATEGORIES, KEYBOARD_LAYOUT, KEYBOARD_LAYOUT_UPPER } from './constants';
 import { sendKeyboardChar } from './message';
 import { getToggleButton } from './state';
 
 // Create keyboard HTML structure - hidden by default
 export function createKeyboardHTML(): string {
-    return `
-        <div class="virtual-keyboard-container" data-hidden="true" aria-hidden="true"></div>
+    return H`
+        <div class="virtual-keyboard-container" data-hidden="true" aria-hidden="true" style="display: none;"></div>
             <div class="keyboard-header">
                 <button class="keyboard-close" aria-label="Close keyboard">✕</button>
                 <div class="keyboard-tabs">
