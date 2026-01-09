@@ -17,6 +17,12 @@ const DEBUG_KEYBOARD_INPUT = false;
 
 // Show keyboard
 export function showKeyboard() {
+    // Don't show keyboard if config dialog is open
+    const configOverlay = document.querySelector('.config-overlay');
+    if (configOverlay && configOverlay.classList.contains('flex')) {
+        return;
+    }
+
     const keyboardElement = getKeyboardElement();
     //if (!keyboardElement) return;
 
@@ -86,6 +92,12 @@ export function setupToggleButtonHandler() {
     if (!toggleButton) return;
 
     toggleButton.addEventListener('click', (e) => {
+        // Don't allow keyboard toggle if config dialog is open
+        const configOverlay = document.querySelector('.config-overlay');
+        if (configOverlay && configOverlay.classList.contains('flex')) {
+            return;
+        }
+
         if (virtualKeyboardAPI) {
             e.preventDefault();
         }
@@ -657,17 +669,27 @@ export function setupKeyboardUIHandlers() {
     });
 
     document.addEventListener('focusout', (e) => {
-        hideKeyboard();
+        const target = e?.target as HTMLElement;
+        const relatedTarget = e?.relatedTarget as HTMLElement;
+
+        // Don't hide keyboard if focus is moving within config overlay
+        if (!(target?.closest?.('.config-overlay') || relatedTarget?.closest?.('.config-overlay'))) {
+            hideKeyboard();
+        }
     });
 
     document.addEventListener('click', (e) => {
-        if (!(e?.target as HTMLElement)?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]")) {
+        const target = e?.target as HTMLElement;
+        if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
+              target?.closest?.('.config-overlay'))) {
             hideKeyboard();
         }
     });
 
     document.addEventListener('pointerdown', (e) => {
-        if (!(e?.target as HTMLElement)?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]")) {
+        const target = e?.target as HTMLElement;
+        if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
+              target?.closest?.('.config-overlay'))) {
             hideKeyboard();
         }
     });

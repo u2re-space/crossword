@@ -388,16 +388,17 @@
         }
     }
 
-    /* Configuration overlay - Material You dialog */
+    /* Configuration overlay - Material Design 3 dialog */
     .config-overlay {
         position: fixed;
         inset: 0;
         background: color-mix(in srgb, var(--shadow), transparent 40%);
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(12px);
         display: none;
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        padding: var(--space-4);
 
         &.flex {
             display: flex;
@@ -405,24 +406,37 @@
     }
 
     .config-panel {
-        background: var(--surface);
+        background: var(--surface-container-high);
         border: 1px solid var(--outline-variant);
-        border-radius: var(--radius-xl);
+        border-radius: var(--radius-2xl);
         padding: var(--space-6);
-        max-inline-size: 25rem;
+        max-inline-size: 28rem;
         inline-size: calc(100vw - var(--space-8));
         box-shadow: var(--elevation-5);
+        animation: scaleIn 200ms cubic-bezier(0.4, 0, 0.2, 1);
 
         h3 {
-            margin: 0 0 var(--space-4) 0;
-            font-size: var(--text-xl);
+            margin: 0 0 var(--space-6) 0;
+            font-size: var(--text-2xl);
             font-weight: var(--font-weight-semibold);
             color: var(--on-surface);
+            line-height: var(--line-height-tight);
+        }
+    }
+
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
         }
     }
 
     .config-group {
-        margin-block-end: var(--space-4);
+        margin-block-end: var(--space-5);
 
         label {
             display: block;
@@ -430,29 +444,38 @@
             font-size: var(--text-sm);
             font-weight: var(--font-weight-medium);
             color: var(--on-surface);
+            line-height: var(--line-height-normal);
         }
 
         input,
         textarea,
         select {
             inline-size: 100%;
-            padding: var(--space-3) var(--space-4);
-            background: var(--surface-variant);
+            padding: var(--space-4) var(--space-4);
+            background: var(--surface-container-highest);
             border: 1px solid var(--outline-variant);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             color: var(--on-surface);
             font-family: inherit;
-            font-size: var(--text-sm);
+            font-size: var(--text-base);
             transition: all var(--transition-fast);
             box-sizing: border-box;
+            line-height: var(--line-height-normal);
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            pointer-events: auto;
 
             &:hover {
+                background: var(--surface-container);
                 border-color: var(--outline);
             }
 
             &:focus {
                 outline: none;
                 border-color: var(--primary);
+                background: var(--surface-container-highest);
                 box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 20%);
             }
 
@@ -460,14 +483,72 @@
                 color: var(--on-surface-variant);
                 opacity: 0.7;
             }
+
+            &:invalid {
+                border-color: var(--error);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--error), transparent 20%);
+            }
         }
     }
 
     .config-actions {
         display: flex;
         gap: var(--space-3);
-        margin-block-start: var(--space-5);
+        margin-block-start: var(--space-6);
         justify-content: flex-end;
+
+        button {
+            padding: var(--space-3) var(--space-5);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-family: inherit;
+            font-size: var(--text-base);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            min-inline-size: 6rem;
+
+            &:first-child {
+                background: var(--primary);
+                color: var(--on-primary);
+
+                &:hover {
+                    background: color-mix(in srgb, var(--primary), black 8%);
+                }
+
+                &:active {
+                    background: color-mix(in srgb, var(--primary), black 12%);
+                    transform: scale(0.98);
+                }
+            }
+
+            &:last-child {
+                background: var(--surface-container-high);
+                color: var(--on-surface-variant);
+                border: 1px solid var(--outline-variant);
+
+                &:hover {
+                    background: var(--surface-container-highest);
+                    border-color: var(--outline);
+                }
+
+                &:active {
+                    background: color-mix(in srgb, var(--surface-container-high), var(--state-pressed));
+                    transform: scale(0.98);
+                }
+            }
+
+            &:focus-visible {
+                outline: 2px solid var(--primary);
+                outline-offset: 2px;
+            }
+
+            &:disabled {
+                opacity: 0.38;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+        }
     }
 
     /* Log overlay - Material You dialog */

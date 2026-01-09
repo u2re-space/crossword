@@ -5,6 +5,7 @@
 import { H } from "fest/lure";
 import { getRemoteHost, setRemoteHost, getRemotePort, setRemotePort } from '../config/config';
 import { disconnectWS, connectWS, isWSConnected } from '../network/websocket';
+import { hideKeyboard } from '../input/keyboard/handlers';
 
 // Create configuration overlay
 export function createConfigUI(): HTMLElement {
@@ -65,6 +66,9 @@ export function createConfigUI(): HTMLElement {
 
 // Show configuration overlay
 export function showConfigUI(): void {
+    // Hide virtual keyboard when opening config dialog
+    hideKeyboard();
+
     let overlay = document.querySelector('.config-overlay') as HTMLElement;
     if (!overlay) {
         overlay = createConfigUI();
