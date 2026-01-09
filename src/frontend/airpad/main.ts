@@ -40,25 +40,27 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
                     Подключись к серверу и используй: Air‑кнопку для курсора, AI‑кнопку для голосовых команд.
                 </div>
 
-                <div class="status-bar">
-                    <div class="status-item">
-                        WS:
-                        <span id="wsStatus" class="value ws-status-bad">disconnected</span>
+                <div class="status-container">
+                    <div class="status-bar">
+                        <div class="status-item">
+                            WS:
+                            <span id="wsStatus" class="value ws-status-bad">disconnected</span>
+                        </div>
+                        <div class="status-item">
+                            Air:
+                            <span id="airStatus" class="value">IDLE</span>
+                        </div>
+                        <div class="status-item">
+                            AI:
+                            <span id="aiStatus" class="value">idle</span>
+                        </div>
                     </div>
-                    <div class="status-item">
-                        Air:
-                        <span id="airStatus" class="value">IDLE</span>
-                    </div>
-                    <div class="status-item">
-                        AI:
-                        <span id="aiStatus" class="value">idle</span>
-                    </div>
-                </div>
 
-                <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
-                    class="primary-btn">
-                    Подключить WS
-                </button>
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
+                        class="primary-btn">
+                        Подключить WS
+                    </button>
+                </div>
             </header>
 
             <div class="stage">
@@ -70,15 +72,14 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
                 </div>
 
                 <div class="air-block">
-                    <div contenteditable="false" virtualkeyboardpolicy="manual" id="airButton" class="big-button air">
+                    <div class="air-row">
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airButton" class="big-button air">
                         Air
+                    </button>
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airNeighborButton"
+                        class="neighbor-button">Act</button>
                     </div>
                     <div class="label">Air‑трекбол/курсор и жесты</div>
-                </div>
-
-                <div class="air-block">
-                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airNeighborButton"
-                        class="neighbor-button">Air</button>
                 </div>
             </div>
 
