@@ -1,8 +1,0 @@
-./App_Resources
-App_Resources/
-android/
-ios/
-node_modules/
-package-lock.json
-deno.lock
-platforms/
