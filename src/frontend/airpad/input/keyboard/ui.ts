@@ -6,10 +6,10 @@ import { EMOJI_CATEGORIES, KEYBOARD_LAYOUT, KEYBOARD_LAYOUT_UPPER } from './cons
 import { sendKeyboardChar } from './message';
 import { getToggleButton } from './state';
 
-// Create keyboard HTML structure
+// Create keyboard HTML structure - hidden by default
 export function createKeyboardHTML(): string {
     return `
-        <div class="virtual-keyboard-container">
+        <div class="virtual-keyboard-container" data-hidden="true" aria-hidden="true"></div>
             <div class="keyboard-header">
                 <button class="keyboard-close" aria-label="Close keyboard">✕</button>
                 <div class="keyboard-tabs">

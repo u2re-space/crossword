@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Air Trackpad + AI Remote (pointer events)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS / mobile -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <link rel="icon" href="/icons/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/app-icon.svg" />
+</head>
+
+<body>
+    <div class="container">
+        <header class="hero">
+            <h1>Air Trackpad + AI Assistant</h1>
+            <div class="subtitle">
+                Подключись к серверу и используй: Air‑кнопку для курсора, AI‑кнопку для голосовых команд.
+            </div>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    WS:
+                    <span id="wsStatus" class="value ws-status-bad">disconnected</span>
+                </div>
+                <div class="status-item">
+                    Air:
+                    <span id="airStatus" class="value">IDLE</span>
+                </div>
+                <div class="status-item">
+                    AI:
+                    <span id="aiStatus" class="value">idle</span>
+                </div>
+            </div>
+
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
+                class="primary-btn">
+                Подключить WS
+            </button>
+        </header>
+
+        <div class="stage">
+            <div class="ai-block">
+                <div contenteditable="false" virtualkeyboardpolicy="manual" id="aiButton" class="big-button ai">
+                    AI
+                </div>
+                <div class="label">Голосовой ассистент (удерживай для записи)</div>
+            </div>
+
+            <div class="air-block">
+                <div contenteditable="false" virtualkeyboardpolicy="manual" id="airButton" class="big-button air">
+                    Air
+                </div>
+                <div class="label">Air‑трекбол/курсор и жесты</div>
+            </div>
+
+            <div class="air-block">
+                <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airNeighborButton"
+                    class="neighbor-button">Air</button>
+            </div>
+        </div>
+
+        <div id="voiceText" class="voice-line"></div>
+
+        <div class="hint">
+            Жесты Air‑кнопки:
+            <ul>
+                <li>Короткий тап — клик.</li>
+                <li>Удержание &gt; 100ms — режим air‑мыши (движение по наклону).</li>
+                <li>Свайп вверх/вниз по самой кнопке — скролл.</li>
+                <li>Свайп влево/вправо — жест (можно повесить действие на сервере).</li>
+            </ul>
+            AI‑кнопка:
+            <ul>
+                <li>Нажми и держи — идёт распознавание речи.</li>
+                <li>Отпусти — команда отправится на сервер как <code>voice_command</code>.</li>
+            </ul>
+            Виртуальная клавиатура:
+            <ul>
+                <li>Нажми кнопку ⌨️ в правом нижнем углу для открытия клавиатуры.</li>
+                <li>Поддерживает ввод текста, эмодзи и специальных символов.</li>
+                <li>Использует бинарный формат для быстрой передачи.</li>
+            </ul>
+        </div>
+
+
+        <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logToggle" class="side-log-toggle"
+            aria-controls="logOverlay" aria-expanded="false">
+            Логи
+        </button>
+
+        <div id="logOverlay" class="log-overlay" aria-hidden="true">
+            <div class="log-panel">
+                <div class="log-overlay-header">
+                    <span>Журнал соединения</span>
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logClose"
+                        class="ghost-btn" aria-label="Закрыть логи">Закрыть</button>
+                </div>
+                <div id="log" class="log-area"></div>
+            </div>
+        </div>
+
+        <!-- Bottom clipboard toolbar (phone <-> PC) -->
+        <div class="bottom-toolbar" id="clipboardToolbar" aria-label="Clipboard actions">
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCut"
+                class="toolbar-btn" aria-label="Cut (Ctrl+X)">✂️</button>
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCopy"
+                class="toolbar-btn" aria-label="Copy (Ctrl+C)">📋</button>
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnPaste"
+                class="toolbar-btn" aria-label="Paste (Ctrl+V)">📥</button>
+        </div>
+        <div id="clipboardPreview" class="clipboard-preview" aria-live="polite"></div>
+
+    </div>
+
+    <script defer async type="module" src="src/main.ts"></script>
+</body>
+
+</html>

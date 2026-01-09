@@ -27,6 +27,11 @@ export const loadSubApp = async (choice?: FrontendChoice): Promise<{ mount: (el:
             module = await import("../print");
             console.log('[App] Print app imported successfully');
         } else
+        if (choice == "airpad") {
+            console.log('[App] Importing airpad app...');
+            module = await import("../airpad");
+            console.log('[App] Airpad app imported successfully');
+        } else
         if (!choice || choice == "/") {
             console.log('[App] Importing basic app...');
             module = await import("./boot-menu");

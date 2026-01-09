@@ -7,7 +7,7 @@ import style from "./boot-menu.scss?inline";
 // Type Definitions
 // ============================================================================
 
-export type FrontendChoice = "basic" | "faint" | "print" | "" | "/";
+export type FrontendChoice = "basic" | "faint" | "print" | "airpad" | "" | "/";
 
 export type ChoiceScreenOptions = {
     seconds: number;
@@ -112,9 +112,10 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
     // Menu buttons
     const bigBasicButton = H`<button class="basic big recommended" type="button">Basic</button>` as HTMLButtonElement;
     const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (unstable)</button>` as HTMLButtonElement;
+    const airpadButton = H`<button class="airpad small" type="button">Airpad</button>` as HTMLButtonElement;
 
     // Keyboard navigation setup
-    const buttons = [bigBasicButton, unstableFaint];
+    const buttons = [bigBasicButton, unstableFaint, airpadButton];
     let currentIndex = 0;
 
     const focusAt = (nextIdx: number) => {
@@ -132,6 +133,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
         rememberInput,
         bigBasicButton,
         unstableFaint,
+        airpadButton,
         buttons,
         keyboardNavigation: { focusAt, currentIndex }
     };
@@ -144,7 +146,7 @@ const createContainer = (opts: ChoiceScreenOptions, elements: ReturnType<typeof 
     const container = H`<div class="choice container"></div>` as HTMLElement;
     const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
 
-    menu.append(elements.bigBasicButton, elements.unstableFaint);
+    menu.append(elements.bigBasicButton, elements.unstableFaint, elements.airpadButton);
     container.append(
         elements.headerText,
         elements.countdown,
@@ -161,7 +163,7 @@ const createContainer = (opts: ChoiceScreenOptions, elements: ReturnType<typeof 
  * Set up event handlers for buttons and keyboard navigation
  */
 const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
-    const { bigBasicButton, unstableFaint, buttons, keyboardNavigation, rememberInput } = elements;
+    const { bigBasicButton, unstableFaint, airpadButton, buttons, keyboardNavigation, rememberInput } = elements;
 
     // Button click handlers
     const handleChoice = (choice: FrontendChoice) => {
@@ -179,6 +181,7 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
 
     bigBasicButton.addEventListener("click", () => handleChoice("basic"));
     unstableFaint.addEventListener("click", () => handleChoice("faint"));
+    airpadButton.addEventListener("click", () => handleChoice("airpad"));
 
     // Keyboard navigation
     const container = bigBasicButton.closest('.choice.container') as HTMLElement;

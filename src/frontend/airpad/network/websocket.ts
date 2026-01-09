@@ -3,7 +3,8 @@
 // =========================
 
 import { io, Socket } from 'socket.io-client';
-import { log, wsStatusEl, voiceTextEl } from '../utils/utils';
+import { log, getWsStatusEl, getVoiceTextEl } from '../utils/utils';
+import { remoteHost, remotePort } from '../config/config';
 
 let socket: Socket | null = null;
 let wsConnected = false;
@@ -99,6 +100,7 @@ function updateButtonLabel() {
 
 function setWsStatus(connected: boolean) {
     wsConnected = connected;
+    const wsStatusEl = getWsStatusEl();
     if (wsStatusEl) {
         if (connected) {
             wsStatusEl.textContent = 'connected';
@@ -240,6 +242,7 @@ function handleServerMessage(msg: any) {
         const text =
             msg.message ||
             ('Actions: ' + JSON.stringify(msg.actions || []));
+        const voiceTextEl = getVoiceTextEl();
         if (voiceTextEl) {
             voiceTextEl.textContent = text;
         }
@@ -251,8 +254,8 @@ export function connectWS() {
     if (socket && (socket.connected || (socket as any).connecting)) return;
 
     const protocol = location.protocol === 'https:' ? 'https' : 'http';
-    const port = location.port || (protocol === 'https' ? '8443' : '8080');
-    const url = `${protocol}://${location.hostname}:${port}`;
+    const port = remotePort || (protocol === 'https' ? '8443' : '8080');
+    const url = `${protocol}://${remoteHost}:${port}`;
     log('Connecting Socket.IO: ' + url);
 
     isConnecting = true;

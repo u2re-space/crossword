@@ -2,6 +2,27 @@
 // Конфигурация
 // =========================
 
+// Remote connection settings
+export let remoteHost = location.hostname;
+export let remotePort = location.port || (location.protocol === 'https:' ? '8443' : '8080');
+
+// Configuration getters and setters
+export function getRemoteHost(): string {
+    return remoteHost;
+}
+
+export function setRemoteHost(host: string): void {
+    remoteHost = host;
+}
+
+export function getRemotePort(): string {
+    return remotePort;
+}
+
+export function setRemotePort(port: string): void {
+    remotePort = port;
+}
+
 // Направление и выбор осей (подбирается под телефон)
 export let gyroDirX = -1;
 export let gyroDirY = -1;
@@ -72,6 +93,8 @@ export const REL_ORIENT_MAX_STEP_UP_RATE = 6;    // 1/s, скорость рос
 export const REL_ORIENT_MAX_STEP_DOWN_RATE = 14; // 1/s, скорость уменьшения лимита
 export const REL_ORIENT_SMOOTH_RATE_LOW = 6;   // 1/s, скорость сглаживания при малых движениях
 export const REL_ORIENT_SMOOTH_RATE_HIGH = 24; // 1/s, скорость сглаживания при больших движениях
+
+//
 export let relDirX = -1;
 export let relDirY = -1;
 export let relDirZ = -1;

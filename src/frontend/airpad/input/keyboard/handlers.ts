@@ -37,25 +37,36 @@ export function showKeyboard() {
     renderEmoji('smileys');
 }
 
+// Flag to prevent recursive hideKeyboard calls
+let isHidingKeyboard = false;
+
 // Hide keyboard
 export function hideKeyboard() {
-    const keyboardElement = getKeyboardElement();
-    //if (!keyboardElement) return;
+    // Prevent recursive calls
+    if (isHidingKeyboard) return;
+    isHidingKeyboard = true;
 
-    const virtualKeyboardAPI = getVirtualKeyboardAPI();
-    const toggleButton = getToggleButton();
-    //toggleButton?.focus?.();
+    try {
+        const keyboardElement = getKeyboardElement();
+        //if (!keyboardElement) return;
 
-    setKeyboardVisible(false);
-    keyboardElement?.classList?.remove?.('visible');
+        const virtualKeyboardAPI = getVirtualKeyboardAPI();
+        const toggleButton = getToggleButton();
+        //toggleButton?.focus?.();
 
-    if (virtualKeyboardAPI) {
-        restoreButtonIcon();
-        virtualKeyboardAPI.hide();
-        toggleButton?.blur();
+        setKeyboardVisible(false);
+        keyboardElement?.classList?.remove?.('visible');
+
+        if (virtualKeyboardAPI) {
+            restoreButtonIcon();
+            virtualKeyboardAPI.hide();
+            toggleButton?.blur();
+        }
+
+        (document.activeElement as HTMLElement)?.blur?.();
+    } finally {
+        isHidingKeyboard = false;
     }
-
-    (document.activeElement as HTMLElement)?.blur?.();
 }
 
 // Toggle keyboard visibility

@@ -18,7 +18,7 @@ export function initVirtualKeyboard() {
     const hasAPI = hasVirtualKeyboardAPI();
 
     // Create keyboard element
-    const container = document.body;
+    const container = document.querySelector('#app') ?? document.body;
     const keyboardHTML = createKeyboardHTML();
     container.insertAdjacentHTML('beforeend', keyboardHTML);
     const keyboardElement = document.querySelector('.virtual-keyboard-container') as HTMLElement;
@@ -27,6 +27,10 @@ export function initVirtualKeyboard() {
         log('Failed to create keyboard element');
         return;
     }
+
+    // Ensure keyboard is hidden by default
+    keyboardElement.classList.remove('visible');
+
     setKeyboardElement(keyboardElement);
 
     // Create toggle button in corner

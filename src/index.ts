@@ -325,6 +325,18 @@ export default async function index(mountElement: HTMLElement) {
                         console.error('[Index] Failed to load faint app from route:', error);
                         showErrorState(mountElement, error, () => index(mountElement));
                     }
+                } else if (path === 'airpad') {
+                    clearLoadingState(mountElement);
+                    setLoadingState(mountElement, 'Loading Airpad...');
+                    try {
+                        const appLoader = await loadSubApp('airpad');
+                        clearLoadingState(mountElement);
+                        await appLoader.mount(mountElement);
+                        console.log('[Index] Airpad loaded from route change');
+                    } catch (error) {
+                        console.error('[Index] Failed to load airpad from route:', error);
+                        showErrorState(mountElement, error, () => index(mountElement));
+                    }
                 }
             }
         };
@@ -387,6 +399,15 @@ export default async function index(mountElement: HTMLElement) {
             const appLoader = await loadSubApp("faint");
             await appLoader.mount(mountElement);
             console.log('[Index] Faint app loaded');
+            return;
+        }
+
+        if (adjustedPathname === "airpad") {
+            console.log('[Index] Direct route: loading airpad');
+            clearLoadingState(mountElement);
+            const appLoader = await loadSubApp("airpad");
+            await appLoader.mount(mountElement);
+            console.log('[Index] Airpad loaded');
             return;
         }
 

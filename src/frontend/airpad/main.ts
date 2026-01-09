@@ -8,13 +8,153 @@ import './main.scss';
 import { registerSW } from 'virtual:pwa-register';
 
 //
-import { log, btnConnect } from './utils/utils';
+import { log, getBtnConnect } from './utils/utils';
 import { initWebSocket } from './network/websocket';
 import { initSpeechRecognition, initAiButton } from './input/speech';
 import { initAirButton } from './ui/air-button';
 import { initRelativeOrientation } from './input/sensor/relative-orientation';
 import { initVirtualKeyboard } from './input/virtual-keyboard';
 import { initClipboardToolbar } from './ui/clipboard-toolbar';
+import { showConfigUI } from './ui/config-ui';
+
+// =========================
+// Mount function for routing system
+// =========================
+
+export default async function mountAirpad(mountElement: HTMLElement): Promise<void> {
+    console.log('[Airpad] Mounting airpad app...');
+
+    // Find or create #app container
+    let appContainer = mountElement ?? document.body.querySelector('#app') ?? document.body as HTMLElement;
+    if (!appContainer) {
+        appContainer = document.createElement('div');
+        appContainer.id = 'app';
+    }
+
+    // Set up complete HTML structure inside the #app container (based on need-to-port-into-ts.html)
+    appContainer.innerHTML = `
+        <div class="container">
+            <header class="hero">
+                <h1>Air Trackpad + AI Assistant</h1>
+                <div class="subtitle">
+                    Подключись к серверу и используй: Air‑кнопку для курсора, AI‑кнопку для голосовых команд.
+                </div>
+
+                <div class="status-bar">
+                    <div class="status-item">
+                        WS:
+                        <span id="wsStatus" class="value ws-status-bad">disconnected</span>
+                    </div>
+                    <div class="status-item">
+                        Air:
+                        <span id="airStatus" class="value">IDLE</span>
+                    </div>
+                    <div class="status-item">
+                        AI:
+                        <span id="aiStatus" class="value">idle</span>
+                    </div>
+                </div>
+
+                <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
+                    class="primary-btn">
+                    Подключить WS
+                </button>
+            </header>
+
+            <div class="stage">
+                <div class="ai-block">
+                    <div contenteditable="false" virtualkeyboardpolicy="manual" id="aiButton" class="big-button ai">
+                        AI
+                    </div>
+                    <div class="label">Голосовой ассистент (удерживай для записи)</div>
+                </div>
+
+                <div class="air-block">
+                    <div contenteditable="false" virtualkeyboardpolicy="manual" id="airButton" class="big-button air">
+                        Air
+                    </div>
+                    <div class="label">Air‑трекбол/курсор и жесты</div>
+                </div>
+
+                <div class="air-block">
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airNeighborButton"
+                        class="neighbor-button">Air</button>
+                </div>
+            </div>
+
+            <div id="voiceText" class="voice-line"></div>
+
+            <div class="hint">
+                Жесты Air‑кнопки:
+                <ul>
+                    <li>Короткий тап — клик.</li>
+                    <li>Удержание &gt; 100ms — режим air‑мыши (движение по наклону).</li>
+                    <li>Свайп вверх/вниз по самой кнопке — скролл.</li>
+                    <li>Свайп влево/вправо — жест (можно повесить действие на сервере).</li>
+                </ul>
+                AI‑кнопка:
+                <ul>
+                    <li>Нажми и держи — идёт распознавание речи.</li>
+                    <li>Отпусти — команда отправится на сервер как <code>voice_command</code>.</li>
+                </ul>
+                Виртуальная клавиатура:
+                <ul>
+                    <li>Нажми кнопку ⌨️ в правом нижнем углу для открытия клавиатуры.</li>
+                    <li>Поддерживает ввод текста, эмодзи и специальных символов.</li>
+                    <li>Использует бинарный формат для быстрой передачи.</li>
+                </ul>
+            </div>
+        </div>
+
+        <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logToggle" class="side-log-toggle"
+            aria-controls="logOverlay" aria-expanded="false">
+            Логи
+        </button>
+
+        <div id="logOverlay" class="log-overlay" aria-hidden="true">
+            <div class="log-panel">
+                <div class="log-overlay-header">
+                    <span>Журнал соединения</span>
+                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logClose"
+                        class="ghost-btn" aria-label="Закрыть логи">Закрыть</button>
+                </div>
+                <div id="logContainer" class="log-container"></div>
+            </div>
+        </div>
+
+        <!-- Bottom clipboard toolbar (phone <-> PC) -->
+        <div class="bottom-toolbar" id="clipboardToolbar" aria-label="Clipboard actions">
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCut"
+                class="toolbar-btn" aria-label="Cut (Ctrl+X)">✂️</button>
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCopy"
+                class="toolbar-btn" aria-label="Copy (Ctrl+C)">📋</button>
+            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnPaste"
+                class="toolbar-btn" aria-label="Paste (Ctrl+V)">📥</button>
+        </div>
+        <div id="clipboardPreview" class="clipboard-preview" aria-live="polite"></div>
+    `;
+
+    // Initialize the airpad functionality
+    await initAirpadApp();
+}
+
+// =========================
+// Internal initialization
+// =========================
+
+async function initAirpadApp(): Promise<void> {
+    function initConfigButton() {
+    const configButton = document.createElement('button');
+    configButton.className = 'toolbar-btn';
+    configButton.textContent = '⚙️';
+    configButton.title = 'Configuration';
+    configButton.addEventListener('click', showConfigUI);
+
+    const bottomToolbar = document.querySelector('.bottom-toolbar');
+    if (bottomToolbar) {
+        bottomToolbar.appendChild(configButton);
+    }
+}
 
 // =========================
 // Init
@@ -52,9 +192,9 @@ function initLogOverlay() {
             closeOverlay();
         }
     });
-}
+    }
 
-requestIdleCallback(async () => {
+    requestIdleCallback(async () => {
     // PWA: register Service Worker (auto-update)
     try {
         registerSW({
@@ -74,16 +214,18 @@ requestIdleCallback(async () => {
     log('Движение мыши основано только на Gyroscope API (повороты телефона).');
 
     initLogOverlay();
-    initWebSocket(btnConnect);
+    initWebSocket(getBtnConnect());
     initSpeechRecognition();
     initAiButton();
     initAirButton();
     initVirtualKeyboard();
     initClipboardToolbar();
+    initConfigButton();
     // Включаем RelativeOrientationSensor как основной источник
     initRelativeOrientation();
     // Остальные можно включить при необходимости
     //initGravitySensor();
     //initGyro();
     //initAccelerometer();
-});
+    });
+}
