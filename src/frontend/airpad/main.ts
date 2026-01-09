@@ -3,8 +3,7 @@
 // =========================
 
 //
-import './main.scss';
-
+import stylesheet from './main.scss?inline';
 import { registerSW } from 'virtual:pwa-register';
 
 //
@@ -16,6 +15,7 @@ import { initRelativeOrientation } from './input/sensor/relative-orientation';
 import { initVirtualKeyboard } from './input/virtual-keyboard';
 import { initClipboardToolbar } from './ui/clipboard-toolbar';
 import { showConfigUI } from './ui/config-ui';
+import { loadAsAdopted } from 'fest/dom';
 
 // =========================
 // Mount function for routing system
@@ -23,6 +23,8 @@ import { showConfigUI } from './ui/config-ui';
 
 export default async function mountAirpad(mountElement: HTMLElement): Promise<void> {
     console.log('[Airpad] Mounting airpad app...');
+
+    loadAsAdopted(stylesheet);
 
     // Find or create #app container
     let appContainer = mountElement ?? document.body.querySelector('#app') ?? document.body as HTMLElement;
