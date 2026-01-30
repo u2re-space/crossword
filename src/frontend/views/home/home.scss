@@ -1,0 +1,116 @@
+/**
+ * Home View Styles
+ */
+
+.view-home {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    block-size: 100%;
+    padding: 2rem;
+    background: var(--view-home-bg, linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%));
+    color: var(--view-fg, var(--color-on-surface, #1a1a1a));
+    overflow-y: auto;
+}
+
+.view-home__content {
+    text-align: center;
+    max-inline-size: 800px;
+}
+
+.view-home__header {
+    margin-block-end: 3rem;
+}
+
+.view-home__title {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #007acc 0%, #0059a6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.view-home__subtitle {
+    margin: 0.5rem 0 0 0;
+    font-size: 1.125rem;
+    color: var(--view-fg);
+    opacity: 0.7;
+}
+
+.view-home__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.view-home__action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid var(--view-border, rgba(0, 0, 0, 0.08));
+    border-radius: 16px;
+    background-color: var(--view-card-bg, #ffffff);
+    color: var(--view-fg);
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    
+    ui-icon {
+        opacity: 0.8;
+        color: var(--color-primary, #007acc);
+    }
+    
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        border-color: var(--color-primary, #007acc);
+        
+        ui-icon {
+            opacity: 1;
+        }
+    }
+    
+    &:focus-visible {
+        outline: 2px solid var(--color-primary, #007acc);
+        outline-offset: 2px;
+    }
+}
+
+.view-home__action-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.view-home__action-desc {
+    font-size: 0.8125rem;
+    opacity: 0.6;
+}
+
+// ============================================================================
+// DARK THEME
+// ============================================================================
+
+[data-theme="dark"] .view-home {
+    --view-home-bg: linear-gradient(135deg, #1a1a1a 0%, #252526 100%);
+    --view-fg: #e0e0e0;
+    --view-border: rgba(255, 255, 255, 0.1);
+    --view-card-bg: #2d2d30;
+    
+    .view-home__title {
+        background: linear-gradient(135deg, #3794ff 0%, #007acc 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    
+    .view-home__action:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+}
