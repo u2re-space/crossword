@@ -1,6 +1,6 @@
 /**
  * Basic Shell
- * 
+ *
  * Classic toolbar-based navigation shell.
  * Features:
  * - Top navigation toolbar with view buttons
@@ -11,7 +11,7 @@
 
 import { BaseShell } from "../base-shell";
 import { H, M } from "fest/lure";
-import { ref, observe, subscribe } from "fest/object";
+import { ref, affected } from "fest/object";
 import { ViewRegistry } from "../registry";
 import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
 
@@ -28,7 +28,7 @@ import "fest/icon";
 export class BasicShell extends BaseShell {
     id: ShellId = "basic";
     name = "Basic";
-    
+
     layout: ShellLayoutConfig = {
         hasSidebar: false,
         hasToolbar: true,
@@ -76,7 +76,7 @@ export class BasicShell extends BaseShell {
 
     private renderNavItems(): HTMLElement {
         const fragment = document.createDocumentFragment() as unknown as HTMLElement;
-        
+
         const mainViews: Array<{ id: ViewId; name: string; icon: string }> = [
             { id: "viewer", name: "Viewer", icon: "eye" },
             { id: "explorer", name: "Explorer", icon: "folder" },
@@ -87,8 +87,8 @@ export class BasicShell extends BaseShell {
 
         for (const item of mainViews) {
             const button = H`
-                <button 
-                    class="shell-basic__nav-btn" 
+                <button
+                    class="shell-basic__nav-btn"
                     data-view="${item.id}"
                     type="button"
                     title="${item.name}"
@@ -97,7 +97,7 @@ export class BasicShell extends BaseShell {
                     <span class="shell-basic__nav-label">${item.name}</span>
                 </button>
             ` as HTMLButtonElement;
-            
+
             fragment.appendChild(button);
         }
 
@@ -120,7 +120,7 @@ export class BasicShell extends BaseShell {
         });
 
         // Update active state on navigation
-        subscribe(this.currentView, (viewId) => {
+        affected(this.currentView, (viewId) => {
             const buttons = navLeft.querySelectorAll("[data-view]");
             for (const btn of buttons) {
                 const isActive = (btn as HTMLElement).dataset.view === viewId;
@@ -135,7 +135,7 @@ export class BasicShell extends BaseShell {
 
     async mount(container: HTMLElement): Promise<void> {
         await super.mount(container);
-        
+
         // Setup navigation
         this.setupHashNavigation();
         this.setupPopstateNavigation();

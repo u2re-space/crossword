@@ -13,9 +13,9 @@ import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shell
 import type { BaseViewOptions, MarkdownContent } from "../types";
 import { createViewState, createLoadingElement, createErrorElement } from "../types";
 
-// Import the md-view web component
-import "../../components/md-view";
-import type { MdViewElement } from "../../components/md-view";
+// Import the md-view web component from fl.ui
+import "fest/fl-ui/services/markdown-view/Markdown";
+import type { MarkdownView as MdViewElement } from "fest/fl-ui/services/markdown-view/Markdown";
 
 // @ts-ignore - SCSS import
 import style from "./viewer.scss?inline";

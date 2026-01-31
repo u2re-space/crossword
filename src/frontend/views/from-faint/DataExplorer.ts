@@ -5,7 +5,7 @@ import { implementDropEvent, implementPasteEvent } from "@rs-core/modules/HookEv
 
 //
 // Import the new file manager components
-import { FileManager } from "../explorer/FileManager";
+import { FileManager } from "../../components/rs-explorer/FileManager";
 
 //
 const makeFragment = (children: HTMLElement[]) => {

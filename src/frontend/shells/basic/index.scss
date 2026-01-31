@@ -1,3 +1,8 @@
+/*
+@use "./fonts/index" as *;
+@use "./design/index" as *;
+*/
+
 /* ==========================================================================
    Main SCSS Entry Point - Modern Atomic Design System
    ========================================================================== */
@@ -62,7 +67,7 @@
 
 /* Base layer - foundational styles */
 @layer base {
-    .basic-app {
+    .basic-shell {
         block-size: 100%;
         display: grid;
         grid-template-rows: [toolbar-row] auto [content-row] minmax(0, 1fr);
