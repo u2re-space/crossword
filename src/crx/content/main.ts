@@ -1,5 +1,5 @@
 import { showToast, initOverlay } from "@rs-frontend/main/overlay";
-import { initToastReceiver } from "@rs-frontend/main/Toast";
+import { initToastReceiver } from "@rs-frontend/components/items/Toast";
 import { initClipboardReceiver } from "@rs-core/clipboard";
 import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-core/document/Conversion";
 import "./rect-selector";

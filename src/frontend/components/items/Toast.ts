@@ -1,69 +1,405 @@
-import { H } from "fest/lure";
+/**
+ * Standalone Toast System
+ * Works independently in any context: PWA, Chrome Extension (content script, popup, service worker), vanilla JS
+ * No dependencies on fest/lure or other framework libraries
+ */
 
-//
-type ToastKind = "info" | "success" | "warning" | "error";
+export type ToastKind = "info" | "success" | "warning" | "error";
+export type ToastPosition = "top" | "bottom" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
-//
-const TOAST_LAYER_ID = "rs-toast-layer";
-const HIDE_TIMEOUT = 3200;
+export interface ToastOptions {
+    message: string;
+    kind?: ToastKind;
+    duration?: number;
+    persistent?: boolean;
+    position?: ToastPosition;
+    onClick?: () => void;
+}
 
-//
-const ensureLayer = () => {
-    let layer = document.getElementById(TOAST_LAYER_ID);
-    if (layer) return layer;
-    layer = H`<div id=${TOAST_LAYER_ID} class="rs-toast-layer" aria-live="polite" aria-atomic="true"></div>` as HTMLElement;
-    document.body.appendChild(layer);
+export interface ToastLayerConfig {
+    containerId?: string;
+    position?: ToastPosition;
+    maxToasts?: number;
+    zIndex?: number;
+}
+
+// Default configuration
+const DEFAULT_CONFIG: Required<ToastLayerConfig> = {
+    containerId: "rs-toast-layer",
+    position: "bottom",
+    maxToasts: 5,
+    zIndex: 2147483647
+};
+
+const DEFAULT_DURATION = 3000;
+const TRANSITION_DURATION = 200;
+
+// Toast CSS styles (inlined for isolation)
+const TOAST_STYLES = `
+.rs-toast-layer {
+    position: fixed;
+    z-index: var(--rs-toast-z, 2147483647);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    gap: 0.5rem;
+    max-block-size: 80dvb;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.rs-toast-layer[data-position="bottom"],
+.rs-toast-layer:not([data-position]) {
+    inset-block-end: 10dvb;
+    inset-inline: 0;
+    justify-content: flex-end;
+}
+
+.rs-toast-layer[data-position="top"] {
+    inset-block-start: 10dvb;
+    inset-inline: 0;
+    justify-content: flex-start;
+}
+
+.rs-toast-layer[data-position="top-left"] {
+    inset-block-start: 10dvb;
+    inset-inline-start: 0;
+    align-items: flex-start;
+}
+
+.rs-toast-layer[data-position="top-right"] {
+    inset-block-start: 10dvb;
+    inset-inline-end: 0;
+    align-items: flex-end;
+}
+
+.rs-toast-layer[data-position="bottom-left"] {
+    inset-block-end: 10dvb;
+    inset-inline-start: 0;
+    align-items: flex-start;
+}
+
+.rs-toast-layer[data-position="bottom-right"] {
+    inset-block-end: 10dvb;
+    inset-inline-end: 0;
+    align-items: flex-end;
+}
+
+.rs-toast {
+    --toast-bg: oklch(from var(--surface-color, #1a1a1a) l c h / 0.85);
+    --toast-text: var(--on-surface-color, #ffffff);
+    --toast-radius: 9999px;
+    --toast-shadow: 0 2px 8px rgba(0,0,0,0.25);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    max-inline-size: min(90vw, 32rem);
+    inline-size: fit-content;
+
+    border-radius: var(--toast-radius);
+    background: var(--toast-bg);
+    box-shadow: var(--toast-shadow);
+    backdrop-filter: blur(12px) saturate(140%);
+    color: var(--toast-text);
+
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+    white-space: nowrap;
+
+    pointer-events: auto;
+    user-select: none;
+    cursor: default;
+
+    opacity: 0;
+    transform: translateY(100%) scale(0.9);
+    transition:
+        opacity 160ms ease-out,
+        transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 100ms ease;
+}
+
+.rs-toast[data-visible] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.rs-toast:active {
+    transform: scale(0.98);
+}
+
+.rs-toast[data-kind="success"] {
+    --toast-bg: oklch(from var(--color-success, #22c55e) l c h / 0.9);
+}
+
+.rs-toast[data-kind="warning"] {
+    --toast-bg: oklch(from var(--color-warning, #f59e0b) l c h / 0.9);
+}
+
+.rs-toast[data-kind="error"] {
+    --toast-bg: oklch(from var(--color-error, #ef4444) l c h / 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rs-toast,
+    .rs-toast[data-visible] {
+        transition-duration: 0ms;
+        transform: none;
+    }
+}
+`;
+
+// Track style injection per document
+const injectedDocs = new WeakSet<Document>();
+
+// Toast layer instances per config
+const toastLayers = new Map<string, HTMLElement>();
+
+/**
+ * Ensure styles are injected into the document
+ */
+const ensureStyles = (doc: Document = document): void => {
+    if (injectedDocs.has(doc)) return;
+
+    const style = doc.createElement("style");
+    style.id = "__rs-toast-styles__";
+    style.textContent = TOAST_STYLES;
+    (doc.head || doc.documentElement).appendChild(style);
+    injectedDocs.add(doc);
+};
+
+/**
+ * Get or create a toast layer container
+ */
+const getToastLayer = (config: Required<ToastLayerConfig>, doc: Document = document): HTMLElement => {
+    const key = `${config.containerId}-${config.position}`;
+
+    if (toastLayers.has(key)) {
+        const existing = toastLayers.get(key)!;
+        if (existing.isConnected) return existing;
+        toastLayers.delete(key);
+    }
+
+    ensureStyles(doc);
+
+    let layer = doc.getElementById(config.containerId);
+    if (!layer) {
+        layer = doc.createElement("div");
+        layer.id = config.containerId;
+        layer.className = "rs-toast-layer";
+        layer.setAttribute("aria-live", "polite");
+        layer.setAttribute("aria-atomic", "true");
+        doc.body.appendChild(layer);
+    }
+
+    layer.setAttribute("data-position", config.position);
+    layer.style.setProperty("--rs-toast-z", String(config.zIndex));
+
+    toastLayers.set(key, layer);
     return layer;
 };
 
-//
-export const closeToastLayer = () => {
-    const layer = document.getElementById(TOAST_LAYER_ID);
-    if (!layer) return;
-    layer.remove();
+/**
+ * Broadcast toast to all clients (for service worker context)
+ */
+const broadcastToast = (options: ToastOptions): void => {
+    try {
+        const channel = new BroadcastChannel("rs-toast");
+        channel.postMessage({ type: "show-toast", options });
+        channel.close();
+    } catch (e) {
+        console.warn("[Toast] Broadcast failed:", e);
+    }
 };
 
-//
-export const showToast = (message: string, kind: ToastKind = "info") => {
-    // isn't DOM-ready yet
-    if (typeof window === "undefined" || typeof document === "undefined") return;
+/**
+ * Create and show a toast notification
+ *
+ * @param options - Toast options object or message string
+ * @returns The created toast element, or null if in service worker context
+ */
+export const showToast = (options: ToastOptions | string): HTMLElement | null => {
+    // Handle string shorthand
+    const opts: ToastOptions = typeof options === "string" ? { message: options } : options;
 
-    //
-    if (!message) return;
-    const layer = ensureLayer();
+    const {
+        message,
+        kind = "info",
+        duration = DEFAULT_DURATION,
+        persistent = false,
+        position = DEFAULT_CONFIG.position,
+        onClick
+    } = opts;
 
-    // improved a11y
-    const role = (kind === "error" || kind === "warning") ? "alert" : "status";
+    // Validate message
+    if (!message) return null;
 
-    const toast = H`<div class="rs-toast" data-kind=${kind} role=${role}>${message}</div>` as HTMLElement;
-    layer.appendChild(toast);
+    // Check for document availability (service worker context)
+    if (typeof document === "undefined") {
+        broadcastToast(opts);
+        return null;
+    }
 
-    requestAnimationFrame(() => toast.setAttribute("data-visible", "true"));
+    // Check for window availability
+    if (typeof window === "undefined") return null;
 
-    //
-    const removeToast = () => {
-        toast.removeEventListener("transitionend", removeToast);
-        toast.remove();
-        if (!layer.childElementCount) layer.remove();
-        if (!document.body.querySelector('.rs-toast-layer')) document.body.removeAttribute('data-toast-open');
+    const config: Required<ToastLayerConfig> = {
+        ...DEFAULT_CONFIG,
+        position
     };
 
-    //
-    const hideTimer = window.setTimeout(() => {
-        toast.removeAttribute("data-visible");
-        toast.addEventListener("transitionend", removeToast, { once: true });
-    }, HIDE_TIMEOUT);
+    const layer = getToastLayer(config);
 
-    //
-    toast.addEventListener("pointerdown", () => {
-        window.clearTimeout(hideTimer);
+    // Limit number of toasts
+    while (layer.children.length >= config.maxToasts) {
+        layer.firstChild?.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement("div");
+    toast.className = "rs-toast";
+    toast.setAttribute("data-kind", kind);
+    toast.setAttribute("role", kind === "error" || kind === "warning" ? "alert" : "status");
+    toast.setAttribute("aria-live", kind === "error" ? "assertive" : "polite");
+    toast.textContent = message;
+
+    layer.appendChild(toast);
+
+    // Trigger enter animation
+    requestAnimationFrame(() => {
+        toast.setAttribute("data-visible", "");
+    });
+
+    let hideTimer: number | null = null;
+
+    const removeToast = () => {
+        if (hideTimer !== null) {
+            window.clearTimeout(hideTimer);
+            hideTimer = null;
+        }
         toast.removeAttribute("data-visible");
-        toast.addEventListener("transitionend", removeToast, { once: true });
+        setTimeout(() => {
+            toast.remove();
+            // Clean up layer if empty
+            if (!layer.childElementCount) {
+                const key = `${config.containerId}-${config.position}`;
+                toastLayers.delete(key);
+            }
+        }, TRANSITION_DURATION);
+    };
+
+    // Auto-remove after duration (unless persistent)
+    if (!persistent) {
+        hideTimer = window.setTimeout(removeToast, duration);
+    }
+
+    // Click handler (dismisses toast)
+    toast.addEventListener("click", () => {
+        onClick?.();
+        removeToast();
+    });
+
+    // Pointer down handler (dismisses toast on tap/click)
+    toast.addEventListener("pointerdown", () => {
+        if (hideTimer !== null) {
+            window.clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+        removeToast();
     }, { once: true });
+
+    return toast;
 };
 
-//
-export const toastSuccess = (message: string) => showToast(message, "success");
-export const toastError = (message: string) => showToast(message, "error");
-export const toastWarning = (message: string) => showToast(message, "warning");
-export const toastInfo = (message: string) => showToast(message, "info");
+/**
+ * Convenience methods for different toast kinds
+ */
+export const showSuccess = (message: string, duration?: number): HTMLElement | null =>
+    showToast({ message, kind: "success", duration });
+
+export const showError = (message: string, duration?: number): HTMLElement | null =>
+    showToast({ message, kind: "error", duration });
+
+export const showWarning = (message: string, duration?: number): HTMLElement | null =>
+    showToast({ message, kind: "warning", duration });
+
+export const showInfo = (message: string, duration?: number): HTMLElement | null =>
+    showToast({ message, kind: "info", duration });
+
+/**
+ * Listen for toast broadcasts (call in main thread contexts)
+ *
+ * @returns Cleanup function to stop listening
+ */
+export const listenForToasts = (): (() => void) => {
+    if (typeof BroadcastChannel === "undefined") return () => {};
+
+    const channel = new BroadcastChannel("rs-toast");
+    const handler = (event: MessageEvent) => {
+        if (event.data?.type === "show-toast" && event.data?.options) {
+            showToast(event.data.options);
+        }
+    };
+    channel.addEventListener("message", handler);
+    return () => {
+        channel.removeEventListener("message", handler);
+        channel.close();
+    };
+};
+
+/**
+ * Clear all toasts from a layer
+ *
+ * @param position - Position of the layer to clear (default: "bottom")
+ */
+export const clearToasts = (position: ToastPosition = DEFAULT_CONFIG.position): void => {
+    const key = `${DEFAULT_CONFIG.containerId}-${position}`;
+    const layer = toastLayers.get(key);
+    if (layer) {
+        layer.innerHTML = "";
+    }
+};
+
+/**
+ * Initialize toast listener for receiving broadcasts
+ * Call this in main thread contexts (content scripts, popup, etc.)
+ *
+ * @returns Cleanup function to stop listening
+ */
+export const initToastReceiver = (): (() => void) => {
+    return listenForToasts();
+};
+
+/**
+ * Close and remove toast layer
+ *
+ * @param position - Position of the layer to close (default: "bottom")
+ */
+export const closeToastLayer = (position: ToastPosition = DEFAULT_CONFIG.position): void => {
+    const key = `${DEFAULT_CONFIG.containerId}-${position}`;
+    const layer = toastLayers.get(key);
+    if (layer) {
+        layer.remove();
+        toastLayers.delete(key);
+    }
+};
+
+// Default export for convenience
+export default {
+    show: showToast,
+    success: showSuccess,
+    error: showError,
+    warning: showWarning,
+    info: showInfo,
+    clear: clearToasts,
+    close: closeToastLayer,
+    listen: listenForToasts,
+    init: initToastReceiver
+};

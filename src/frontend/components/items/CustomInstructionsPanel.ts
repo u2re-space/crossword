@@ -11,7 +11,7 @@ import {
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
 } from "@rs-com/service/CustomInstructions";
-import { toastSuccess, toastError } from "./Toast";
+import { showSuccess, showError } from "./Toast";
 
 export type CustomInstructionsPanelOptions = {
     onUpdate?: () => void;
@@ -119,7 +119,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         state.activeId = instr.id;
                         renderList();
                         updateSelect();
-                        toastSuccess("Instruction activated");
+                        showSuccess("Instruction activated");
                         opts.onUpdate?.();
                     });
                 }
@@ -136,7 +136,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                             if (state.activeId === instr.id) state.activeId = "";
                             renderList();
                             updateSelect();
-                            toastSuccess("Instruction deleted");
+                            showSuccess("Instruction deleted");
                             opts.onUpdate?.();
                         });
                     }
@@ -155,7 +155,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         state.editingId = null;
                         renderList();
                         updateSelect();
-                        toastSuccess("Instruction updated");
+                        showSuccess("Instruction updated");
                         opts.onUpdate?.();
                     });
                 }
@@ -217,7 +217,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
 
             if (!instruction) {
                 instructionInput.focus();
-                toastError("Instruction text is required");
+                showError("Instruction text is required");
                 return;
             }
 
@@ -227,7 +227,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 addFormEl.hidden = true;
                 renderList();
                 updateSelect();
-                toastSuccess("Instruction added");
+                showSuccess("Instruction added");
                 opts.onUpdate?.();
             });
         }
@@ -237,7 +237,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
             const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label));
 
             if (!templatesToAdd.length) {
-                toastError("All templates already added");
+                showError("All templates already added");
                 return;
             }
 
@@ -250,7 +250,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 state.instructions.push(...newInstrs);
                 renderList();
                 updateSelect();
-                toastSuccess(`Added ${newInstrs.length} templates`);
+                showSuccess(`Added ${newInstrs.length} templates`);
                 opts.onUpdate?.();
             });
         }
@@ -262,7 +262,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
             state.activeId = newActiveId;
             renderList();
             if (newActiveId) {
-                toastSuccess("Instruction activated");
+                showSuccess("Instruction activated");
             }
             opts.onUpdate?.();
         });

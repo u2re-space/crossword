@@ -1,6 +1,6 @@
 /**
  * <md-view> Web Component Styles
- * 
+ *
  * Encapsulated styles for the markdown viewer component.
  * Uses CSS custom properties for theming.
  */
@@ -9,13 +9,13 @@
     // ========================================================================
     // CSS CUSTOM PROPERTIES
     // ========================================================================
-    
+
     :host {
         --md-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         --md-font-mono: 'SF Mono', 'Fira Code', 'Consolas', 'Liberation Mono', monospace;
         --md-font-size: 1rem;
         --md-line-height: 1.6;
-        
+
         // Light theme (default)
         --md-bg: #ffffff;
         --md-fg: #1a1a1a;
@@ -26,7 +26,7 @@
         --md-link-hover: #1d4ed8;
         --md-blockquote-border: #d1d5db;
         --md-blockquote-bg: #f9fafb;
-        
+
         display: block;
         contain: layout style;
         font-family: var(--md-font-family);
@@ -69,7 +69,7 @@
     // ========================================================================
     // CONTAINER
     // ========================================================================
-    
+
     .md-view {
         display: flex;
         flex-direction: column;
@@ -81,13 +81,13 @@
     // ========================================================================
     // CONTENT AREA
     // ========================================================================
-    
+
     .md-view__content {
         flex: 1;
         padding: 1rem 1.5rem;
         overflow-x: hidden;
         overflow-y: auto;
-        
+
         // Smooth scrolling
         scroll-behavior: smooth;
         overscroll-behavior: contain;
@@ -96,7 +96,7 @@
     // ========================================================================
     // LOADING STATE
     // ========================================================================
-    
+
     .md-view__loading {
         display: flex;
         flex-direction: column;
@@ -131,7 +131,7 @@
     // ========================================================================
     // ERROR STATE
     // ========================================================================
-    
+
     .md-view__error {
         padding: 1rem;
         color: #dc2626;
@@ -161,7 +161,7 @@
     // ========================================================================
     // MARKDOWN BODY STYLES
     // ========================================================================
-    
+
     .markdown-body {
         // Typography
         h1, h2, h3, h4, h5, h6 {
@@ -170,7 +170,7 @@
             font-weight: 600;
             line-height: 1.25;
             color: var(--md-fg);
-            
+
             &:first-child {
                 margin-block-start: 0;
             }
@@ -197,7 +197,7 @@
         p {
             margin-block-start: 0;
             margin-block-end: 1em;
-            
+
             &:last-child {
                 margin-block-end: 0;
             }
@@ -207,7 +207,7 @@
         a {
             color: var(--md-link);
             text-decoration: none;
-            
+
             &:hover {
                 color: var(--md-link-hover);
                 text-decoration: underline;
@@ -230,7 +230,7 @@
 
         li {
             margin-block-end: 0.25em;
-            
+
             > ul, > ol {
                 margin-block-start: 0.25em;
                 margin-block-end: 0;
@@ -244,7 +244,7 @@
             border-inline-start: 4px solid var(--md-blockquote-border);
             background: var(--md-blockquote-bg);
             color: var(--md-fg-muted);
-            
+
             > :last-child {
                 margin-block-end: 0;
             }
@@ -267,7 +267,7 @@
             background: var(--md-code-bg);
             border-radius: 0.5rem;
             overflow-x: auto;
-            
+
             code {
                 padding: 0;
                 background: transparent;
@@ -345,11 +345,11 @@
     // ========================================================================
     // CODE BLOCK ENHANCEMENTS
     // ========================================================================
-    
+
     .md-view__code-wrapper {
         position: relative;
         margin-block-end: 1em;
-        
+
         pre {
             margin-block-end: 0;
         }
@@ -369,7 +369,7 @@
         cursor: pointer;
         opacity: 0;
         transition: opacity 0.2s ease;
-        
+
         &:hover {
             color: var(--md-fg);
             border-color: var(--md-fg-muted);
@@ -383,7 +383,7 @@
     // ========================================================================
     // RESPONSIVE ADJUSTMENTS
     // ========================================================================
-    
+
     @media (max-width: 640px) {
         .md-view__content {
             padding: 0.75rem 1rem;
@@ -393,7 +393,7 @@
             h1 { font-size: 1.75rem; }
             h2 { font-size: 1.375rem; }
             h3 { font-size: 1.125rem; }
-            
+
             pre {
                 padding: 0.75rem;
                 border-radius: 0.375rem;
@@ -404,7 +404,7 @@
     // ========================================================================
     // PRINT STYLES
     // ========================================================================
-    
+
     @media print {
         :host {
             --md-bg: white;

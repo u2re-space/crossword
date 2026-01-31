@@ -81,7 +81,7 @@ const createPwaAdapter = (): PlatformAdapter => ({
     showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
         // Use PWA toast system
         try {
-            import("../../../frontend/main/Toast").then(({ showToast }) => {
+            import("../../../frontend/components/items/Toast").then(({ showToast }) => {
                 showToast({
                     message,
                     kind: options?.type || 'info',
