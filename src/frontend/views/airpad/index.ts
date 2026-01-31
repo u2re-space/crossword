@@ -78,7 +78,7 @@ export class AirpadView implements View {
 
         try {
             // Dynamic import of airpad main
-            const { default: mountAirpad } = await import("../../airpad/main");
+            const { default: mountAirpad } = await import("./main");
             
             // Clear loading state
             content.innerHTML = "";

@@ -1,4 +1,4 @@
-import frontend from "../../frontend/basic";
+import frontend from "../../frontend/main/frontend-entry";
 
 // Import CRX runtime channel module for inline coding style
 import { createRuntimeChannelModule } from '../shared/runtime';

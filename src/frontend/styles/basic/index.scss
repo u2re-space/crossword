@@ -1,0 +1,292 @@
+/**
+ * Basic Style System
+ *
+ * Minimal styling for CrossWord basic mode.
+ * Uses @use for modern SCSS module imports.
+ */
+
+@use "../scss/normalize";
+@use "../scss/utilities";
+
+// ============================================================================
+// CSS VARIABLES
+// ============================================================================
+
+:root {
+    color-scheme: light dark;
+
+    // Colors - using light-dark() for automatic theme switching
+    --color-bg: light-dark(#ffffff, #1a1a1a);
+    --color-bg-alt: light-dark(#f8f9fa, #2d2d2d);
+    --color-fg: light-dark(#1a1a1a, #f8f9fa);
+    --color-fg-muted: light-dark(#6c757d, #adb5bd);
+    --color-border: light-dark(#dee2e6, #495057);
+    --color-primary: light-dark(#0d6efd, #4dabf7);
+    --color-primary-hover: light-dark(#0b5ed7, #339af0);
+    --color-success: light-dark(#198754, #40c057);
+    --color-warning: light-dark(#ffc107, #fcc419);
+    --color-error: light-dark(#dc3545, #fa5252);
+
+    // Spacing
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+    --space-2xl: 2rem;
+
+    // Typography
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+
+    // Borders
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-full: 9999px;
+
+    // Shadows
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+    // Transitions
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+}
+
+// ============================================================================
+// BASE STYLES
+// ============================================================================
+
+@layer base {
+    html {
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.5;
+    }
+
+    body {
+        background: var(--color-bg);
+        color: var(--color-fg);
+        min-block-size: 100dvh;
+    }
+
+    // Headings
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        line-height: 1.2;
+        margin-block-end: 0.5em;
+    }
+
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.125rem; }
+    h5 { font-size: 1rem; }
+    h6 { font-size: 0.875rem; }
+
+    // Links
+    a {
+        color: var(--color-primary);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+
+        &:hover {
+            color: var(--color-primary-hover);
+        }
+    }
+
+    // Code
+    code, pre {
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+    }
+
+    code {
+        background: var(--color-bg-alt);
+        padding: 0.125em 0.25em;
+        border-radius: var(--radius-sm);
+    }
+
+    pre {
+        background: var(--color-bg-alt);
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+
+        code {
+            background: transparent;
+            padding: 0;
+        }
+    }
+
+    // Lists inside content areas
+    article, .content {
+        ul, ol {
+            margin-block: var(--space-md);
+            padding-inline-start: var(--space-lg);
+        }
+
+        ul { list-style: disc; }
+        ol { list-style: decimal; }
+    }
+
+    // Horizontal rule
+    hr {
+        border: none;
+        border-block-start: 1px solid var(--color-border);
+        margin-block: var(--space-lg);
+    }
+
+    // Blockquote
+    blockquote {
+        border-inline-start: 4px solid var(--color-primary);
+        padding-inline-start: var(--space-lg);
+        margin-inline: 0;
+        color: var(--color-fg-muted);
+        font-style: italic;
+    }
+}
+
+// ============================================================================
+// FORM ELEMENTS
+// ============================================================================
+
+@layer components {
+    // Buttons
+    button,
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-sm);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-lg);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        border-radius: var(--radius-md);
+        background: var(--color-bg-alt);
+        color: var(--color-fg);
+        border: 1px solid var(--color-border);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+
+        &:hover:not(:disabled) {
+            background: var(--color-border);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+
+        &:hover:not(:disabled) {
+            background: var(--color-primary-hover);
+            border-color: var(--color-primary-hover);
+        }
+    }
+
+    // Inputs
+    input,
+    textarea,
+    select {
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+        font-size: var(--font-size-base);
+        background: var(--color-bg);
+        color: var(--color-fg);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        transition: border-color var(--transition-fast);
+
+        &:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+
+        &::placeholder {
+            color: var(--color-fg-muted);
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    textarea {
+        resize: vertical;
+        min-block-size: 4rem;
+    }
+
+    // Checkbox & Radio
+    input[type="checkbox"],
+    input[type="radio"] {
+        inline-size: 1rem;
+        block-size: 1rem;
+        accent-color: var(--color-primary);
+    }
+
+    // Labels
+    label {
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+}
+
+// ============================================================================
+// LAYOUT HELPERS
+// ============================================================================
+
+@layer utilities {
+    // Container
+    .container {
+        inline-size: 100%;
+        max-inline-size: 1200px;
+        margin-inline: auto;
+        padding-inline: var(--space-lg);
+    }
+
+    // Card
+    .card {
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    // Stack (vertical spacing)
+    .stack > * + * {
+        margin-block-start: var(--space-md);
+    }
+
+    .stack-sm > * + * {
+        margin-block-start: var(--space-sm);
+    }
+
+    .stack-lg > * + * {
+        margin-block-start: var(--space-lg);
+    }
+}

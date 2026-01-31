@@ -10,7 +10,7 @@ import type { GPTResponses } from "../model/GPT-Responses";
 //
 import { loadEntitiesSchemaMarkdown } from "@rs-com/template/EntitiesSchema";
 import { fixEntityId } from "@rs-com/template/EntityId";
-import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+import { parseAIResponseSafe } from "@rs-core/document/AIResponseParser";
 
 //
 export const resolveEntity = async (gptResponses: GPTResponses | null = null, entity: any = null) => {

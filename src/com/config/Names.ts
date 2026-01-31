@@ -35,7 +35,18 @@ export const BROADCAST_CHANNELS = {
     FILE_EXPLORER_CHANNEL: 'file-explorer',
     SETTINGS_CHANNEL: 'settings',
     HISTORY_CHANNEL: 'history',
-    PRINT_CHANNEL: 'print'
+    PRINT_CHANNEL: 'print',
+
+    // Service Channels (new architecture)
+    SERVICE_WORKCENTER: 'rs-service-workcenter',
+    SERVICE_SETTINGS: 'rs-service-settings',
+    SERVICE_VIEWER: 'rs-service-viewer',
+    SERVICE_EXPLORER: 'rs-service-explorer',
+    SERVICE_AIRPAD: 'rs-service-airpad',
+    SERVICE_PRINT: 'rs-service-print',
+    SERVICE_HISTORY: 'rs-service-history',
+    SERVICE_EDITOR: 'rs-service-editor',
+    SERVICE_HOME: 'rs-service-home'
 } as const;
 
 // ============================================================================
@@ -63,7 +74,67 @@ export const COMPONENTS = {
     BASIC_EXPLORER: 'basic-explorer',
     BASIC_SETTINGS: 'basic-settings',
     BASIC_HISTORY: 'basic-history',
-    BASIC_PRINT: 'basic-print'
+    BASIC_PRINT: 'basic-print',
+
+    // New architecture views
+    AIRPAD: 'airpad',
+    HOME: 'home',
+    EDITOR: 'editor',
+    VIEWER: 'viewer',
+    EXPLORER: 'explorer',
+    PRINT: 'print'
+} as const;
+
+// ============================================================================
+// SHELL IDENTIFIERS
+// ============================================================================
+
+/**
+ * Shell identifiers for boot/layout selection
+ */
+export const SHELLS = {
+    BASIC: 'basic',
+    FAINT: 'faint',
+    RAW: 'raw'
+} as const;
+
+/**
+ * Style system identifiers
+ */
+export const STYLE_SYSTEMS = {
+    VEELA: 'veela',
+    BASIC: 'basic',
+    RAW: 'raw'
+} as const;
+
+// ============================================================================
+// API ENDPOINTS
+// ============================================================================
+
+/**
+ * API endpoint paths
+ */
+export const API_ENDPOINTS = {
+    // Processing APIs
+    PROCESSING: '/api/processing',
+    ANALYZE: '/api/analyze',
+    TEST: '/api/test',
+    HEALTH: '/health',
+
+    // Asset proxies
+    PHOSPHOR_ICONS: '/api/phosphor-icons',
+    ICON_PROXY: '/api/icon-proxy',
+
+    // Content APIs
+    SHARE_TARGET: '/share-target',
+    SHARE_TARGET_ALT: '/share_target',
+    LAUNCH_QUEUE: '/launch-queue',
+
+    // Internal SW APIs
+    SW_CONTENT: '/sw-content',
+    SW_CONTENT_AVAILABLE: '/sw-content/available',
+    CLIPBOARD_PENDING: '/clipboard/pending',
+    CLIPBOARD_CLEAR: '/clipboard/clear'
 } as const;
 
 // ============================================================================
@@ -285,3 +356,40 @@ export type MessageType = typeof MESSAGE_TYPES[keyof typeof MESSAGE_TYPES];
 export type ContentType = typeof CONTENT_TYPES[keyof typeof CONTENT_TYPES];
 export type ContentContext = typeof CONTENT_CONTEXTS[keyof typeof CONTENT_CONTEXTS];
 export type Destination = typeof DESTINATIONS[keyof typeof DESTINATIONS];
+export type ShellName = typeof SHELLS[keyof typeof SHELLS];
+export type StyleSystemName = typeof STYLE_SYSTEMS[keyof typeof STYLE_SYSTEMS];
+export type ApiEndpoint = typeof API_ENDPOINTS[keyof typeof API_ENDPOINTS];
+
+// ============================================================================
+// SERVICE CHANNEL MAPPING
+// ============================================================================
+
+/**
+ * Map service channel IDs to broadcast channel names
+ */
+export const SERVICE_CHANNEL_MAP: Record<string, string> = {
+    workcenter: BROADCAST_CHANNELS.SERVICE_WORKCENTER,
+    settings: BROADCAST_CHANNELS.SERVICE_SETTINGS,
+    viewer: BROADCAST_CHANNELS.SERVICE_VIEWER,
+    explorer: BROADCAST_CHANNELS.SERVICE_EXPLORER,
+    airpad: BROADCAST_CHANNELS.SERVICE_AIRPAD,
+    print: BROADCAST_CHANNELS.SERVICE_PRINT,
+    history: BROADCAST_CHANNELS.SERVICE_HISTORY,
+    editor: BROADCAST_CHANNELS.SERVICE_EDITOR,
+    home: BROADCAST_CHANNELS.SERVICE_HOME
+} as const;
+
+/**
+ * Map view IDs to route hashes
+ */
+export const VIEW_ROUTE_MAP: Record<string, string> = {
+    workcenter: ROUTE_HASHES.WORKCENTER,
+    settings: ROUTE_HASHES.SETTINGS,
+    viewer: ROUTE_HASHES.MARKDOWN_VIEWER,
+    explorer: ROUTE_HASHES.FILE_EXPLORER,
+    airpad: '#airpad',
+    print: ROUTE_HASHES.PRINT,
+    history: ROUTE_HASHES.HISTORY,
+    editor: ROUTE_HASHES.MARKDOWN_EDITOR,
+    home: '#home'
+} as const;

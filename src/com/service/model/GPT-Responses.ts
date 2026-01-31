@@ -18,7 +18,7 @@ import { JSOX } from "jsox";
 import {
     extractJSONFromAIResponse,
     STRICT_JSON_INSTRUCTIONS
-} from "../../../core/utils/AIResponseParser";
+} from "../../../core/document/AIResponseParser";
 
 const hasFile = () => typeof (globalThis as any).File !== "undefined";
 const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";

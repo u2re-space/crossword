@@ -3,6 +3,7 @@
  * 
  * Shell-agnostic markdown viewer component.
  * Can be used in any shell to display markdown content.
+ * Uses the <md-view> web component for encapsulated rendering.
  */
 
 import { H } from "fest/lure";
@@ -11,6 +12,10 @@ import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions, MarkdownContent } from "../types";
 import { createViewState, createLoadingElement, createErrorElement } from "../types";
+
+// Import the md-view web component
+import "../../components/md-view";
+import type { MdViewElement } from "../../components/md-view";
 
 // @ts-ignore - SCSS import
 import style from "./viewer.scss?inline";
@@ -63,6 +68,7 @@ export class ViewerView implements View {
     private options: ViewerOptions;
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
+    private mdView: MdViewElement | null = null;
     private contentRef = ref("");
     private renderedContentRef = ref<HTMLElement | null>(null);
     private stateManager = createViewState<ViewerState>(STORAGE_KEY);
@@ -94,7 +100,7 @@ export class ViewerView implements View {
         // Load styles
         loadAsAdopted(style);
 
-        // Create main element
+        // Create main element with md-view web component
         this.element = H`
             <div class="view-viewer">
                 <div class="view-viewer__toolbar" data-viewer-toolbar>
@@ -124,20 +130,32 @@ export class ViewerView implements View {
                     </div>
                 </div>
                 <div class="view-viewer__content" data-viewer-content>
-                    ${createLoadingElement("Rendering markdown...")}
+                    <md-view theme="auto"></md-view>
                 </div>
             </div>
         ` as HTMLElement;
 
+        // Get reference to md-view component
+        this.mdView = this.element.querySelector("md-view") as MdViewElement;
+
         // Setup event handlers
         this.setupEventHandlers();
 
-        // Render content
-        this.renderMarkdown();
+        // Set initial content on md-view component
+        if (this.mdView) {
+            this.mdView.setContent(this.contentRef.value);
+            
+            // Listen for md-view events
+            this.mdView.addEventListener("md-link-click", (e) => {
+                // Allow default link behavior, or handle custom navigation
+            });
+        }
 
         // Setup reactive updates
         subscribe(this.contentRef, () => {
-            this.renderMarkdown();
+            if (this.mdView) {
+                this.mdView.setContent(this.contentRef.value);
+            }
             this.saveState();
         });
 
@@ -226,21 +244,9 @@ export class ViewerView implements View {
     }
 
     private async renderMarkdown(): Promise<void> {
-        const contentEl = this.element?.querySelector("[data-viewer-content]");
-        if (!contentEl) return;
-
-        try {
-            // Dynamic import of markdown renderer
-            const { renderMarkdown } = await import("../../shared/markdown-renderer");
-            const rendered = await renderMarkdown(this.contentRef.value);
-            
-            contentEl.innerHTML = "";
-            contentEl.appendChild(rendered);
-            this.renderedContentRef.value = rendered;
-        } catch (error) {
-            console.error("[Viewer] Failed to render markdown:", error);
-            contentEl.innerHTML = "";
-            contentEl.appendChild(createErrorElement("Failed to render markdown", () => this.renderMarkdown()));
+        // Markdown rendering is now handled by the md-view web component
+        if (this.mdView) {
+            await this.mdView.refresh();
         }
     }
 
@@ -301,7 +307,11 @@ export class ViewerView implements View {
 
     private handlePrint(): void {
         this.options.onPrint?.(this.contentRef.value);
-        window.print();
+        if (this.mdView) {
+            this.mdView.print();
+        } else {
+            window.print();
+        }
     }
 
     private handleFileDrop(e: DragEvent): void {

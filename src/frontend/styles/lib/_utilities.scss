@@ -1,0 +1,737 @@
+@use "sass:map";
+@use "./config" as cfg;
+@use "./mixins" as mixins;
+
+// ============================================================================
+// ATOMIC UTILITY CLASSES
+// ============================================================================
+
+@layer utilities {
+    // ============================================================================
+    // SPACING UTILITIES
+    // ============================================================================
+
+    // Margin utilities
+    .m-0 {
+        margin: 0;
+    }
+
+    .m-xs {
+        margin: cfg.config("spacing", "xs");
+    }
+
+    .m-sm {
+        margin: cfg.config("spacing", "sm");
+    }
+
+    .m-md {
+        margin: cfg.config("spacing", "md");
+    }
+
+    .m-lg {
+        margin: cfg.config("spacing", "lg");
+    }
+
+    .m-xl {
+        margin: cfg.config("spacing", "xl");
+    }
+
+    .m-2xl {
+        margin: cfg.config("spacing", "2xl");
+    }
+
+    .m-3xl {
+        margin: cfg.config("spacing", "3xl");
+    }
+
+    // Logical margin utilities
+    .mb-0 {
+        margin-block: 0;
+    }
+
+    .mb-xs {
+        margin-block: cfg.config("spacing", "xs");
+    }
+
+    .mb-sm {
+        margin-block: cfg.config("spacing", "sm");
+    }
+
+    .mb-md {
+        margin-block: cfg.config("spacing", "md");
+    }
+
+    .mb-lg {
+        margin-block: cfg.config("spacing", "lg");
+    }
+
+    .mi-0 {
+        margin-inline: 0;
+    }
+
+    .mi-xs {
+        margin-inline: cfg.config("spacing", "xs");
+    }
+
+    .mi-sm {
+        margin-inline: cfg.config("spacing", "sm");
+    }
+
+    .mi-md {
+        margin-inline: cfg.config("spacing", "md");
+    }
+
+    .mi-lg {
+        margin-inline: cfg.config("spacing", "lg");
+    }
+
+    // Padding utilities
+    .p-0 {
+        padding: 0;
+    }
+
+    .p-xs {
+        padding: cfg.config("spacing", "xs");
+    }
+
+    .p-sm {
+        padding: cfg.config("spacing", "sm");
+    }
+
+    .p-md {
+        padding: cfg.config("spacing", "md");
+    }
+
+    .p-lg {
+        padding: cfg.config("spacing", "lg");
+    }
+
+    .p-xl {
+        padding: cfg.config("spacing", "xl");
+    }
+
+    // Logical padding utilities
+    .pb-0 {
+        padding-block: 0;
+    }
+
+    .pb-xs {
+        padding-block: cfg.config("spacing", "xs");
+    }
+
+    .pb-sm {
+        padding-block: cfg.config("spacing", "sm");
+    }
+
+    .pb-md {
+        padding-block: cfg.config("spacing", "md");
+    }
+
+    .pb-lg {
+        padding-block: cfg.config("spacing", "lg");
+    }
+
+    .pi-0 {
+        padding-inline: 0;
+    }
+
+    .pi-xs {
+        padding-inline: cfg.config("spacing", "xs");
+    }
+
+    .pi-sm {
+        padding-inline: cfg.config("spacing", "sm");
+    }
+
+    .pi-md {
+        padding-inline: cfg.config("spacing", "md");
+    }
+
+    .pi-lg {
+        padding-inline: cfg.config("spacing", "lg");
+    }
+
+    // ============================================================================
+    // TYPOGRAPHY UTILITIES
+    // ============================================================================
+
+    // Font size utilities
+    .text-xs {
+        @include mixins.typography("xs");
+    }
+
+    .text-sm {
+        @include mixins.typography("sm");
+    }
+
+    .text-base {
+        @include mixins.typography("base");
+    }
+
+    .text-lg {
+        @include mixins.typography("lg");
+    }
+
+    .text-xl {
+        @include mixins.typography("xl");
+    }
+
+    .text-2xl {
+        @include mixins.typography("2xl");
+    }
+
+    // Font weight utilities
+    .font-thin {
+        font-weight: cfg.config("typography", "font-weight", "thin");
+    }
+
+    .font-light {
+        font-weight: cfg.config("typography", "font-weight", "light");
+    }
+
+    .font-normal {
+        font-weight: cfg.config("typography", "font-weight", "normal");
+    }
+
+    .font-medium {
+        font-weight: cfg.config("typography", "font-weight", "medium");
+    }
+
+    .font-semibold {
+        font-weight: cfg.config("typography", "font-weight", "semibold");
+    }
+
+    .font-bold {
+        font-weight: cfg.config("typography", "font-weight", "bold");
+    }
+
+    // Text alignment
+    .text-start {
+        text-align: start;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-end {
+        text-align: end;
+    }
+
+    // Text color utilities
+    .text-primary {
+        color: cfg.config("colors", "text-primary");
+    }
+
+    .text-secondary {
+        color: cfg.config("colors", "text-secondary");
+    }
+
+    .text-muted {
+        color: cfg.config("colors", "text-muted");
+    }
+
+    .text-disabled {
+        color: cfg.config("colors", "text-disabled");
+    }
+
+    // ============================================================================
+    // LAYOUT UTILITIES
+    // ============================================================================
+
+    // Display utilities
+    .block {
+        display: block;
+    }
+
+    .inline {
+        display: inline;
+    }
+
+    .inline-block {
+        display: inline-block;
+    }
+
+    .flex {
+        display: flex;
+    }
+
+    .inline-flex {
+        display: inline-flex;
+    }
+
+    .grid {
+        display: grid;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    // Flex utilities
+    .flex-row {
+        flex-direction: row;
+    }
+
+    .flex-col {
+        flex-direction: column;
+    }
+
+    .flex-wrap {
+        flex-wrap: wrap;
+    }
+
+    .flex-nowrap {
+        flex-wrap: nowrap;
+    }
+
+    .items-start {
+        align-items: flex-start;
+    }
+
+    .items-center {
+        align-items: center;
+    }
+
+    .items-end {
+        align-items: flex-end;
+    }
+
+    .items-stretch {
+        align-items: stretch;
+    }
+
+    .justify-start {
+        justify-content: flex-start;
+    }
+
+    .justify-center {
+        justify-content: center;
+    }
+
+    .justify-end {
+        justify-content: flex-end;
+    }
+
+    .justify-between {
+        justify-content: space-between;
+    }
+
+    .justify-around {
+        justify-content: space-around;
+    }
+
+    // Grid utilities
+    .grid-cols-1 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+
+    .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    // Gap utilities
+    .gap-0 {
+        gap: 0;
+    }
+
+    .gap-xs {
+        gap: cfg.config("spacing", "xs");
+    }
+
+    .gap-sm {
+        gap: cfg.config("spacing", "sm");
+    }
+
+    .gap-md {
+        gap: cfg.config("spacing", "md");
+    }
+
+    .gap-lg {
+        gap: cfg.config("spacing", "lg");
+    }
+
+    // ============================================================================
+    // LOGICAL SIZING UTILITIES
+    // ============================================================================
+
+    // Block size utilities (height)
+    .h-auto {
+        block-size: auto;
+    }
+
+    .h-full {
+        block-size: 100%;
+    }
+
+    .h-screen {
+        block-size: 100vh;
+    }
+
+    // Inline size utilities (width)
+    .w-auto {
+        inline-size: auto;
+    }
+
+    .w-full {
+        inline-size: 100%;
+    }
+
+    .w-screen {
+        inline-size: 100vw;
+    }
+
+    // Min/Max logical sizes
+    .min-h-0 {
+        min-block-size: 0;
+    }
+
+    .min-w-0 {
+        min-inline-size: 0;
+    }
+
+    .max-h-full {
+        max-block-size: 100%;
+    }
+
+    .max-w-full {
+        max-inline-size: 100%;
+    }
+
+    // ============================================================================
+    // POSITIONING UTILITIES
+    // ============================================================================
+
+    // Position utilities
+    .static {
+        position: static;
+    }
+
+    .relative {
+        position: relative;
+    }
+
+    .absolute {
+        position: absolute;
+    }
+
+    .fixed {
+        position: fixed;
+    }
+
+    .sticky {
+        position: sticky;
+    }
+
+    // Inset utilities
+    .inset-0 {
+        inset: 0;
+    }
+
+    .inset-xs {
+        inset: cfg.config("spacing", "xs");
+    }
+
+    .inset-sm {
+        inset: cfg.config("spacing", "sm");
+    }
+
+    .inset-md {
+        inset: cfg.config("spacing", "md");
+    }
+
+    // ============================================================================
+    // SURFACE & COLOR UTILITIES
+    // ============================================================================
+
+    // Background utilities
+    .bg-surface {
+        background-color: cfg.config("colors", "surface");
+    }
+
+    .bg-surface-container {
+        background-color: cfg.config("colors", "surface-container");
+    }
+
+    .bg-surface-container-high {
+        background-color: cfg.config("colors", "surface-container-high");
+    }
+
+    .bg-primary {
+        background-color: cfg.config("colors", "primary");
+    }
+
+    .bg-secondary {
+        background-color: cfg.config("colors", "secondary");
+    }
+
+    // Border utilities
+    .border {
+        @include mixins.logical-border(1px, solid, cfg.config("colors", "border"));
+    }
+
+    .border-2 {
+        @include mixins.logical-border(2px, solid, cfg.config("colors", "border"));
+    }
+
+    .border-primary {
+        @include mixins.logical-border(1px, solid, cfg.config("colors", "primary"));
+    }
+
+    .border-secondary {
+        @include mixins.logical-border(1px, solid, cfg.config("colors", "secondary"));
+    }
+
+    // Border radius utilities
+    .rounded-none {
+        border-radius: 0;
+    }
+
+    .rounded-sm {
+        border-radius: cfg.config("shape", "border-radius", "sm");
+    }
+
+    .rounded-md {
+        border-radius: cfg.config("shape", "border-radius", "md");
+    }
+
+    .rounded-lg {
+        border-radius: cfg.config("shape", "border-radius", "lg");
+    }
+
+    .rounded-full {
+        border-radius: cfg.config("shape", "border-radius", "full");
+    }
+
+    // Shadow utilities
+    .shadow-xs {
+        box-shadow: cfg.config("shape", "shadow", "xs");
+    }
+
+    .shadow-sm {
+        box-shadow: cfg.config("shape", "shadow", "sm");
+    }
+
+    .shadow-md {
+        box-shadow: cfg.config("shape", "shadow", "md");
+    }
+
+    .shadow-lg {
+        box-shadow: cfg.config("shape", "shadow", "lg");
+    }
+
+    .shadow-xl {
+        box-shadow: cfg.config("shape", "shadow", "xl");
+    }
+
+    // ============================================================================
+    // INTERACTION UTILITIES
+    // ============================================================================
+
+    // Cursor utilities
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .cursor-default {
+        cursor: default;
+    }
+
+    .cursor-not-allowed {
+        cursor: not-allowed;
+    }
+
+    // User select utilities
+    .select-none {
+        user-select: none;
+    }
+
+    .select-text {
+        user-select: text;
+    }
+
+    .select-all {
+        user-select: all;
+    }
+
+    // ============================================================================
+    // VISIBILITY & ACCESSIBILITY UTILITIES
+    // ============================================================================
+
+    // Visibility utilities
+    .visible {
+        visibility: visible;
+    }
+
+    .invisible {
+        visibility: hidden;
+    }
+
+    .collapse {
+        visibility: collapse;
+    }
+
+    // Opacity utilities
+    .opacity-0 {
+        opacity: 0;
+    }
+
+    .opacity-25 {
+        opacity: 0.25;
+    }
+
+    .opacity-50 {
+        opacity: 0.5;
+    }
+
+    .opacity-75 {
+        opacity: 0.75;
+    }
+
+    .opacity-100 {
+        opacity: 1;
+    }
+
+    // ============================================================================
+    // RESPONSIVE UTILITIES (CONTAINER QUERIES)
+    // ============================================================================
+
+    // Hide/show at different container sizes
+    .hidden\@xs {
+        @include mixins.container-query("xs", "max-width") {
+            display: none;
+        }
+    }
+
+    .hidden\@sm {
+        @include mixins.container-query("sm", "max-width") {
+            display: none;
+        }
+    }
+
+    .hidden\@md {
+        @include mixins.container-query("md", "max-width") {
+            display: none;
+        }
+    }
+
+    .hidden\@lg {
+        @include mixins.container-query("lg", "max-width") {
+            display: none;
+        }
+    }
+
+    .block\@xs {
+        @include mixins.container-query("xs") {
+            display: block;
+        }
+    }
+
+    .block\@sm {
+        @include mixins.container-query("sm") {
+            display: block;
+        }
+    }
+
+    .block\@md {
+        @include mixins.container-query("md") {
+            display: block;
+        }
+    }
+
+    .block\@lg {
+        @include mixins.container-query("lg") {
+            display: block;
+        }
+    }
+
+    // Text size responsive
+    .text-sm\@xs {
+        @include mixins.container-query("xs", "max-width") {
+            @include mixins.typography("sm");
+        }
+    }
+
+    .text-base\@sm {
+        @include mixins.container-query("sm") {
+            @include mixins.typography("base");
+        }
+    }
+
+    // ============================================================================
+    // ICON UTILITIES
+    // ============================================================================
+
+    // Icon size utilities (for ui-icon elements)
+    .icon-xs {
+        --icon-size: 0.75rem;
+    }
+
+    .icon-sm {
+        --icon-size: 0.875rem;
+    }
+
+    .icon-md {
+        --icon-size: 1rem;
+    }
+
+    .icon-lg {
+        --icon-size: 1.25rem;
+    }
+
+    .icon-xl {
+        --icon-size: 1.5rem;
+    }
+
+    // ============================================================================
+    // COMPOUND UTILITIES
+    // ============================================================================
+
+    // Common patterns
+    .center-absolute {
+        @include mixins.center-absolute;
+    }
+
+    .center-flex {
+        @include mixins.center-flex;
+    }
+
+    .interactive {
+        @include mixins.interactive;
+    }
+
+    // Focus utilities
+    .focus-ring {
+        @include mixins.focus-ring;
+    }
+
+    // Text truncation
+    .truncate {
+        @include mixins.truncate(1);
+    }
+
+    .truncate-2 {
+        @include mixins.truncate(2);
+    }
+
+    .truncate-3 {
+        @include mixins.truncate(3);
+    }
+
+    // Aspect ratios
+    .aspect-square {
+        @include mixins.aspect-ratio(1);
+    }
+
+    .aspect-video {
+        @include mixins.aspect-ratio(16 / 9);
+    }
+}

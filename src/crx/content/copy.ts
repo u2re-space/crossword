@@ -4,7 +4,7 @@
  */
 
 import { initClipboardHandler } from "@rs-crx/shared/clipboard-handler";
-import { showToast } from "@rs-frontend/routing/overlay";
+import { showToast } from "@rs-frontend/main/overlay";
 
 // Initialize handler for content script context
 // - No target filter (responds to all COPY_HACK messages)

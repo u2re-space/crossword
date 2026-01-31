@@ -1,5 +1,5 @@
 import { observe } from "fest/object";
-import { checkInTimeRange, getComparableTimeValue, parseDateCorrectly } from "../../core/utils/TimeUtils";
+import { checkInTimeRange, getComparableTimeValue, parseDateCorrectly } from "../../core/document/TimeUtils";
 
 //
 export const TimeState: any = observe<{ currentTime: Date, timestamp: number }>({

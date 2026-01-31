@@ -1,6 +1,6 @@
 /**
  * Editor View
- * 
+ *
  * Shell-agnostic markdown editor component.
  */
 
@@ -48,7 +48,7 @@ export class EditorView implements View {
     private contentRef = ref("");
     private stateManager = createViewState<EditorState>(STORAGE_KEY);
     private textarea: HTMLTextAreaElement | null = null;
-    
+
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
         onUnmount: () => this.saveState(),
@@ -58,7 +58,7 @@ export class EditorView implements View {
     constructor(options: EditorOptions = {}) {
         this.options = options;
         this.shellContext = options.shellContext;
-        
+
         const saved = this.stateManager.load();
         this.contentRef.value = options.initialContent || saved?.content || DEFAULT_CONTENT;
     }
@@ -96,7 +96,7 @@ export class EditorView implements View {
                     </div>
                 </div>
                 <div class="view-editor__content">
-                    <textarea 
+                    <textarea
                         class="view-editor__textarea"
                         placeholder="Start writing markdown..."
                         data-editor-input
@@ -200,7 +200,7 @@ export class EditorView implements View {
     private handleSave(): void {
         const content = this.contentRef.value;
         const filename = this.options.filename || "document.md";
-        
+
         const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -208,7 +208,7 @@ export class EditorView implements View {
         a.download = filename;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 250);
-        
+
         this.options.onSave?.(content);
         this.showMessage(`Saved ${filename}`);
     }

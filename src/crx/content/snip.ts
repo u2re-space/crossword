@@ -1,4 +1,4 @@
-import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/routing/overlay";
+import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/main/overlay";
 
 // Import CRX runtime channel module for inline coding style
 import { createRuntimeChannelModule } from '../shared/runtime';

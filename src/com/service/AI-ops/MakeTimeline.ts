@@ -19,17 +19,17 @@ import { encode } from "@toon-format/toon";
 
 //
 import { GPTResponses } from "../model/GPT-Responses";
-import { readJSONs, readOneMarkDown } from "@rs-core/workers/FileSystem";
+import { readJSONs, readOneMarkDown } from "@rs-core/storage/FileSystem";
 import { realtimeStates } from "../Cache";
 
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-com/template/Entities-v2.md?raw";
 
 //
-import { checkRemainsTime } from "@rs-core/utils/TimeUtils";
+import { checkRemainsTime } from "@rs-core/time";
 import { fixEntityId } from "@rs-com/template/EntityId";
 import { loadSettings } from "@rs-com/config/Settings";
-import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+import { parseAIResponseSafe } from "@rs-core/document/AIResponseParser";
 
 //
 export const TIMELINE_DIR = "/timeline/";

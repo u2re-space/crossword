@@ -1,0 +1,21 @@
+/**
+ * Style Library - Main Entry Point
+ *
+ * Central export for all SCSS library modules.
+ * Use @use "lib" to access all library features.
+ */
+
+// Configuration and tokens
+@forward "./config";
+@forward "./tokens";
+@forward "./props";
+@forward "./typed-properties";
+
+// Mixins
+@forward "./mixins";
+
+// Icons
+@forward "./icons";
+
+// Utility classes (use in components)
+@forward "./utilities";

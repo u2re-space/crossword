@@ -1,6 +1,6 @@
 // PWA clipboard and service worker communication
 import { initPWAClipboard } from "./pwa-copy";
-import { showToast } from "../routing/Toast";
+import { showToast } from "../main/Toast";
 import { ensureServiceWorkerRegistered } from "./sw-url";
 
 // ============================================================================

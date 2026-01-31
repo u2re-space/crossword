@@ -5,7 +5,7 @@
  * used across PWA, CRX, Basic App, WorkCenter, and other components.
  */
 
-import type { PromptTemplate } from '../../frontend/basic/modules/TemplateManager';
+import type { PromptTemplate } from '../../core/modules/TemplateManager';
 
 // ============================================================================
 // AI INSTRUCTIONS - Core AI Capabilities

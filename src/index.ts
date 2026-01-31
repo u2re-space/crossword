@@ -1,7 +1,7 @@
 // Import routing and choice functionality
 import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/pwa/pwa-handling";
-import { loadSubApp } from "./frontend/routing/routing";
-import { ChoiceScreen, type FrontendChoice } from "./frontend/routing/boot-menu";
+import { loadSubAppWithShell as loadSubApp } from "./frontend/main/routing";
+import { ChoiceScreen, type FrontendChoice } from "./frontend/main/boot-menu";
 
 // Import PWA handlers
 import {

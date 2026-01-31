@@ -17,7 +17,7 @@ import {
     type DataKind,
     type DataContext
 } from "../model/GPT-Config";
-import { extractJSONFromAIResponse } from "../../../core/utils/AIResponseParser";
+import { extractJSONFromAIResponse } from "../../../core/document/AIResponseParser";
 import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../InstructionUtils";
 import type { ResponseLanguage } from "../../config/SettingsTypes";
 
@@ -53,7 +53,7 @@ const createPwaAdapter = (): PlatformAdapter => ({
     async copyToClipboard(data: string): Promise<ClipboardResult> {
         try {
             // Import PWA clipboard functionality
-            const { writeText } = await import("../../../frontend/basic/modules/Clipboard");
+            const { writeText } = await import("../../../core/modules/Clipboard");
             return await writeText(data) as ClipboardResult;
         } catch (e) {
             return { ok: false, error: String(e) };
@@ -81,7 +81,7 @@ const createPwaAdapter = (): PlatformAdapter => ({
     showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
         // Use PWA toast system
         try {
-            import("../../../frontend/routing/Toast").then(({ showToast }) => {
+            import("../../../frontend/main/Toast").then(({ showToast }) => {
                 showToast({
                     message,
                     kind: options?.type || 'info',
@@ -98,7 +98,7 @@ const createCrxAdapter = (): PlatformAdapter => ({
     async copyToClipboard(data: string): Promise<ClipboardResult> {
         try {
             // Import CRX clipboard functionality
-            const { requestCopyViaCRX } = await import("../../../frontend/basic/modules/Clipboard");
+            const { requestCopyViaCRX } = await import("../../../core/modules/Clipboard");
             const result = await requestCopyViaCRX(data);
             return { ok: result.ok, data: result.data as string | undefined };
         } catch (e) {
@@ -130,7 +130,7 @@ const createCrxAdapter = (): PlatformAdapter => ({
             }
 
             // CRX has advanced image processing
-            const { encodeWithJSquash, removeAnyPrefix } = await import("../../../core/utils/ImageProcess");
+            const { encodeWithJSquash, removeAnyPrefix } = await import("../../../core/workers/ImageProcess");
 
             // Compress if needed - use standardized size limit
             const { MAX_BASE64_SIZE } = await import("../model/GPT-Responses");

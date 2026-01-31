@@ -1,26 +1,30 @@
 /**
  * Core Utilities Index
- * Standalone utilities with no framework dependencies
+ *
+ * Standalone utilities with no framework dependencies.
+ * These are pure utility functions that can be used anywhere.
  */
 
-// Toast system (re-exported from frontend/shared)
-export * from "@rs-frontend/routing/Toast.js";
-export { default as Toast } from "@rs-frontend/routing/Toast.js";
+// ============================================================================
+// TYPES
+// ============================================================================
 
-// Clipboard API (re-exported from frontend/shared)
-export * from "@rs-frontend/basic/modules/Clipboard.js";
-export { default as Clipboard } from "@rs-frontend/basic/modules/Clipboard.js";
+export * from "./Types";
 
-// Overlay system (re-exported from frontend/shared)
-export * from "@rs-frontend/routing/overlay.js";
+// ============================================================================
+// GENERAL UTILITIES
+// ============================================================================
 
-// BroadcastChannel utilities
-export * from "./Broadcast.ts";
+export * from "./Utils";
 
-// Existing utilities
-export * from "./AIResponseParser.ts";
-export * from "./ImageProcess.ts";
-export * from "./PhoneDub.ts";
-export * from "./PhoneUtils.ts";
-export * from "./TimeUtils.ts";
-export * from "./Types.ts";
+// ============================================================================
+// UI & THEME
+// ============================================================================
+
+export * from "./Theme";
+
+// ============================================================================
+// DEBUG
+// ============================================================================
+
+export * from "./DebugTaskGenerator";

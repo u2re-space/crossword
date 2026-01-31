@@ -2,14 +2,18 @@
  * Explorer View
  * 
  * Shell-agnostic file explorer component.
- * Uses the ui-file-manager web component.
+ * Uses the <rs-explorer> web component for encapsulated rendering.
  */
 
 import { H } from "fest/lure";
 import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
-import { getString, setString } from "../../shared/storage";
+import { getString, setString } from "../../../core/storage";
+
+// Import the rs-explorer web component
+import "../../components/rs-explorer";
+import type { RsExplorerElement, FileItem } from "../../components/rs-explorer";
 
 // @ts-ignore
 import style from "./explorer.scss?inline";
@@ -26,7 +30,7 @@ export class ExplorerView implements View {
     private options: BaseViewOptions;
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
-    private fileManager: HTMLElement | null = null;
+    private explorer: RsExplorerElement | null = null;
     
     lifecycle: ViewLifecycle = {
         onMount: () => this.loadLastPath(),
@@ -46,19 +50,20 @@ export class ExplorerView implements View {
 
         loadAsAdopted(style);
 
-        // Dynamically import the file manager component
-        this.loadFileManager();
-
+        // Create element with rs-explorer web component
         this.element = H`
             <div class="view-explorer">
                 <div class="view-explorer__content" data-explorer-content>
-                    <div class="view-explorer__loading">
-                        <div class="view-explorer__spinner"></div>
-                        <span>Loading Explorer...</span>
-                    </div>
+                    <rs-explorer view-mode="list"></rs-explorer>
                 </div>
             </div>
         ` as HTMLElement;
+
+        // Get reference to rs-explorer component
+        this.explorer = this.element.querySelector("rs-explorer") as RsExplorerElement;
+        
+        // Setup event listeners
+        this.setupExplorerEvents();
 
         return this.element;
     }
@@ -71,49 +76,12 @@ export class ExplorerView implements View {
     // PRIVATE METHODS
     // ========================================================================
 
-    private async loadFileManager(): Promise<void> {
-        try {
-            // Dynamic import of file explorer component
-            await import("../../basic/explorer");
-            
-            // Create file manager element
-            this.fileManager = document.createElement("ui-file-manager") as HTMLElement;
-            
-            // Set initial path
-            const lastPath = getString("rs-explorer-path", "/");
-            (this.fileManager as any).path = lastPath;
-            
-            // Setup event listeners
-            this.setupFileManagerEvents();
-            
-            // Replace loading with file manager
-            const content = this.element?.querySelector("[data-explorer-content]");
-            if (content) {
-                content.replaceChildren(this.fileManager);
-            }
-        } catch (error) {
-            console.error("[Explorer] Failed to load file manager:", error);
-            const content = this.element?.querySelector("[data-explorer-content]");
-            if (content) {
-                content.innerHTML = `
-                    <div class="view-explorer__error">
-                        <p>Failed to load File Explorer</p>
-                        <button type="button" data-action="retry">Try Again</button>
-                    </div>
-                `;
-                content.querySelector("[data-action=retry]")?.addEventListener("click", () => {
-                    this.loadFileManager();
-                });
-            }
-        }
-    }
-
-    private setupFileManagerEvents(): void {
-        if (!this.fileManager) return;
+    private setupExplorerEvents(): void {
+        if (!this.explorer) return;
 
         // Handle file open
-        this.fileManager.addEventListener("open", async (e: Event) => {
-            const detail = (e as CustomEvent).detail;
+        this.explorer.addEventListener("rs-open", async (e: Event) => {
+            const detail = (e as CustomEvent<{ item: FileItem }>).detail;
             const item = detail?.item;
             
             if (item?.kind === "file" && item?.file) {
@@ -137,21 +105,21 @@ export class ExplorerView implements View {
         });
 
         // Handle path changes
-        this.fileManager.addEventListener("navigate", () => {
+        this.explorer.addEventListener("rs-navigate", () => {
             this.saveCurrentPath();
         });
     }
 
     private loadLastPath(): void {
-        if (this.fileManager) {
+        if (this.explorer) {
             const lastPath = getString("rs-explorer-path", "/");
-            (this.fileManager as any).path = lastPath;
+            this.explorer.path = lastPath;
         }
     }
 
     private saveCurrentPath(): void {
-        if (this.fileManager) {
-            const currentPath = (this.fileManager as any).path || "/";
+        if (this.explorer) {
+            const currentPath = this.explorer.path || "/";
             setString("rs-explorer-path", currentPath);
         }
     }
@@ -166,8 +134,8 @@ export class ExplorerView implements View {
 
     async handleMessage(message: unknown): Promise<void> {
         const msg = message as { data?: { path?: string } };
-        if (msg.data?.path && this.fileManager) {
-            (this.fileManager as any).path = msg.data.path;
+        if (msg.data?.path && this.explorer) {
+            this.explorer.navigate(msg.data.path);
         }
     }
 }

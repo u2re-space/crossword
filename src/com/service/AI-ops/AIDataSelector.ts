@@ -8,7 +8,7 @@ import { decode, encode } from "@toon-format/toon";
 import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
 import { type DataFilter } from "../model/GPT-Config";
 import { getRuntimeSettings } from "../../config/RuntimeSettings";
-import { parseAIResponseSafe } from "@rs-core/utils/AIResponseParser";
+import { parseAIResponseSafe } from "@rs-core/document/AIResponseParser";
 import { loadSettings } from "@rs-com/config/Settings";
 
 export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };

@@ -4,8 +4,8 @@
  * Listens for clipboard requests from service worker via BroadcastChannel
  */
 
-import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../basic/modules/Clipboard";
-import { initToastReceiver, showToast } from "../routing/Toast";
+import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../../core";
+import { initToastReceiver, showToast } from "../main/Toast";
 import { unifiedMessaging } from "@rs-com/core/UnifiedMessaging";
 
 // Track initialization
@@ -160,7 +160,7 @@ const checkPendingClipboardOperations = async (): Promise<void> => {
                 if (operation.type === 'ai-result' && operation.data) {
                     console.log('[PWA-Copy] Processing pending AI result:', operation.id);
                     const text = extractRecognizedContent(operation.data);
-                    const { copy } = await import("../basic/modules/Clipboard");
+                    const { copy } = await import("../../core/modules/Clipboard");
                     await copy(text, { showFeedback: true });
 
                     // Also broadcast to work center for visibility
@@ -232,7 +232,7 @@ export const initPWAClipboard = (): (() => void) => {
 
             // Handle direct clipboard copy requests
             if (type === "copy" && data !== undefined) {
-                const { copy } = await import("../basic/modules/Clipboard");
+                const { copy } = await import("../../core/modules/Clipboard");
                 await copy(data, { showFeedback: true, ...options });
             }
 
@@ -243,7 +243,7 @@ export const initPWAClipboard = (): (() => void) => {
                     if (operation.type === 'ai-result' && operation.data) {
                         console.log('[PWA-Copy] Processing broadcasted AI result:', operation.id);
                         const text = typeof operation.data === 'string' ? operation.data : JSON.stringify(operation.data);
-                        const { copy } = await import("../basic/modules/Clipboard");
+                        const { copy } = await import("../../core/modules/Clipboard");
                         await copy(text, { showFeedback: true });
 
                         // Also broadcast to work center for visibility
@@ -295,7 +295,7 @@ export const initPWAClipboard = (): (() => void) => {
 
             // Handle share-target copy request
             if (type === "copy-shared" && data) {
-                const { copy } = await import("../basic/modules/Clipboard");
+                const { copy } = await import("../../core/modules/Clipboard");
                 await copy(data, { showFeedback: true });
             }
 
@@ -309,7 +309,7 @@ export const initPWAClipboard = (): (() => void) => {
                 console.log('[PWA-Copy] AI result from SW:', data);
                 if (data.success && data.data) {
                     const text = extractRecognizedContent(data.data);
-                    const { copy } = await import("../basic/modules/Clipboard");
+                    const { copy } = await import("../../core/modules/Clipboard");
                     await copy(text, { showFeedback: true });
 
                     // Also broadcast to work center for visibility
@@ -330,7 +330,7 @@ export const initPWAClipboard = (): (() => void) => {
                         metadata: { priority: 'high' }
                     });
                 } else {
-                    const { showToast } = await import("../routing/Toast");
+                    const { showToast } = await import("../main/Toast");
                     showToast({ message: data.error || "Processing failed", kind: "error" });
                 }
             }
@@ -374,7 +374,7 @@ export const initPWAClipboard = (): (() => void) => {
                         console.log('[PWA-Copy] Copying result data:', result.data);
                         // Use the extractRecognizedContent function to get the right data
                         const extractedContent = extractRecognizedContent(result.data);
-                        const { copy } = await import("../basic/modules/Clipboard");
+                        const { copy } = await import("../../core/modules/Clipboard");
                         await copy(extractedContent, { showFeedback: true });
 
                         // Also broadcast to work center for visibility

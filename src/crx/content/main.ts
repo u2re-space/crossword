@@ -1,7 +1,7 @@
-import { showToast, initOverlay } from "@rs-frontend/routing/overlay";
-import { initToastReceiver } from "@rs-frontend/routing/Toast";
-import { initClipboardReceiver } from "@rs-frontend/basic/modules/Clipboard";
-import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-frontend/utils/Conversion";
+import { showToast, initOverlay } from "@rs-frontend/main/overlay";
+import { initToastReceiver } from "@rs-frontend/main/Toast";
+import { initClipboardReceiver } from "@rs-core/clipboard";
+import { copyAsHTML, copyAsMathML, copyAsMarkdown, copyAsTeX } from "@rs-core/document/Conversion";
 import "./rect-selector";
 
 // Initialize overlay and broadcast receivers for service worker communication

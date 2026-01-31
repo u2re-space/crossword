@@ -10,7 +10,7 @@ import { ref, subscribe } from "fest/object";
 import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
-import { getItem, setItem, StorageKeys } from "../../shared/storage";
+import { getItem, setItem, StorageKeys } from "../../../core/storage";
 
 // @ts-ignore
 import style from "./settings.scss?inline";

@@ -5,7 +5,7 @@ import { JSOX } from "jsox";
 //
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { DEFAULT_SETTINGS } from "@rs-com/config/SettingsTypes";
-import { writeFileSmart } from "@rs-core/workers/WriteFileSmart-v2";
+import { writeFileSmart } from "@rs-core/storage/WriteFileSmart-v2";
 
 //
 export const SETTINGS_KEY = "rs-settings";

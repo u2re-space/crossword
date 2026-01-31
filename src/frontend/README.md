@@ -7,43 +7,95 @@ The CrossWord frontend uses a **Shell + View** architecture that separates UI la
 - **Flexible layouts**: Users can choose between different UI shells (basic, faint, raw)
 - **Reusable views**: Content components work in any shell
 - **Clean separation**: Layout concerns are isolated from business logic
+- **Unified boot**: Single entry point for application initialization
 
 ## Directory Structure
 
 ```
 frontend/
-├── boot/                    # Application initialization
-│   ├── index.ts            # Boot system, shell loading
-│   └── routing.ts          # URL routing utilities
-├── shells/                  # UI layout shells
+├── index.ts                 # Main entry point - exports all modules
+│
+├── main/                    # 🚀 Boot & Routing (unified)
+│   └── index.ts            # Boot loader, routing, app initialization
+│
+├── shells/                  # 🖼️ UI Layout Shells
 │   ├── types.ts            # Shell/View interfaces
 │   ├── registry.ts         # Shell/View registries
 │   ├── base-shell.ts       # Base shell implementation
 │   ├── basic/              # Basic shell (toolbar nav)
 │   ├── faint/              # Faint shell (tabbed sidebar)
-│   └── raw/                # Raw shell (minimal, no chrome)
-├── views/                   # Content components
-│   ├── types.ts            # View interfaces
-│   ├── viewer/             # Markdown viewer
-│   ├── editor/             # Markdown editor
-│   ├── workcenter/         # AI work center
-│   ├── explorer/           # File explorer
-│   ├── settings/           # Settings panel
+│   └── raw/                # Raw shell (minimal)
+│
+├── views/                   # 📝 Content Components
+│   ├── types.ts            # View base types
+│   ├── index.ts            # View exports
+│   ├── ViewChannelMixin.ts # Service channel mixin
+│   ├── workcenter/         # AI processing view
+│   ├── settings/           # Configuration view
+│   ├── viewer/             # Document viewer
+│   ├── editor/             # Document editor
+│   ├── explorer/           # File browser
 │   ├── history/            # History viewer
-│   ├── airpad/             # Air trackpad
-│   └── home/               # Home/dashboard
-├── shared/                  # Shared utilities
+│   ├── home/               # Dashboard view
+│   ├── print/              # Print-optimized view
+│   └── airpad/             # Remote trackpad view
+│
+├── styles/                  # 🎨 Style Systems
+│   ├── index.ts            # Style loader & config
+│   ├── shared/             # Shared utilities
+│   │   ├── normalize.scss  # CSS reset
+│   │   └── utilities.scss  # Utility classes
+│   └── basic/              # Basic style system
+│       └── index.scss      # Basic styles
+│
+├── shared/                  # 🛠️ Shared Utilities
+│   ├── index.ts            # Combined exports (utils + shared)
 │   ├── markdown-renderer.ts
 │   ├── file-utils.ts
 │   └── storage.ts
-└── [legacy]                 # Original code (being migrated)
-    ├── basic/
-    ├── faint/
-    ├── airpad/
-    └── ...
+│
+├── core/                    # ⚙️ Core Services
+│   └── index.ts            # API, storage, channels
+│
+├── pwa/                     # 📱 PWA Features
+│   └── index.ts            # Service worker, install, etc.
+│
+└── [legacy]                 # 📦 Original code (being migrated)
+    ├── basic/              # Legacy basic implementation
+    ├── faint/              # Legacy faint implementation
+    ├── airpad/             # Legacy airpad (migrated to views/)
+    ├── print/              # Legacy print (migrated to views/)
+    ├── boot/               # Legacy boot (migrated to main/)
+    ├── routing/            # Legacy routing (migrated to main/)
+    ├── utils/              # Legacy utils (merged into shared/)
+    └── scss/               # Legacy scss (migrated to styles/)
 ```
 
-## Shells
+## Module Overview
+
+### 📁 `main/` - Boot & Routing
+
+Unified entry point for application initialization:
+
+```typescript
+import { initializeApp, bootLoader, quickInit } from "./main";
+
+// Full initialization with auto-config
+const shell = await initializeApp(container);
+
+// Or quick initialization
+const shell = await quickInit(container, "basic", "viewer");
+
+// Or manual boot
+const shell = await bootLoader.boot(container, {
+    styleSystem: "veela",
+    shell: "faint",
+    defaultView: "workcenter",
+    rememberChoice: true
+});
+```
+
+### 📁 `shells/` - UI Layout Shells
 
 Shells are **UI layout systems** that provide:
 - Navigation structure (toolbar, sidebar, tabs)
@@ -51,109 +103,160 @@ Shells are **UI layout systems** that provide:
 - Theme/styling application
 - Status messages
 
-### Available Shells
+| Shell | Description | Style System |
+|-------|-------------|--------------|
+| `basic` | Classic toolbar navigation | basic (recommended) |
+| `faint` | Tabbed sidebar interface | veela (recommended) |
+| `raw` | Minimal, no chrome | basic/raw |
 
-| Shell | Description | Features |
-|-------|-------------|----------|
-| `basic` | Classic toolbar navigation | Top nav bar, simple layout |
-| `faint` | Tabbed sidebar interface | Collapsible sidebar, tab management |
-| `raw` | Minimal shell | No chrome, just content |
+### 📁 `views/` - Content Components
 
-### Shell Interface
+Views are **shell-agnostic content components**:
+
+| View | Description | Route |
+|------|-------------|-------|
+| `workcenter` | AI processing hub | `/workcenter` |
+| `settings` | App configuration | `/settings` |
+| `viewer` | Document viewer | `/viewer` |
+| `editor` | Document editor | `/editor` |
+| `explorer` | File browser | `/explorer` |
+| `history` | Operation history | `/history` |
+| `home` | Dashboard | `/` |
+| `print` | Print-optimized | `/print` |
+| `airpad` | Remote trackpad | `/airpad` |
+
+### 📁 `styles/` - Style Systems
+
+Style systems provide theming and visual consistency:
+
+| Style | Description | Shells |
+|-------|-------------|--------|
+| `veela` | Full CSS framework with design tokens | faint |
+| `basic` | Minimal functional styling | basic, raw |
+| `raw` | No framework, browser defaults | raw |
 
 ```typescript
-interface Shell {
-    id: ShellId;
-    name: string;
-    layout: ShellLayoutConfig;
-    
-    mount(container: HTMLElement): Promise<void>;
-    unmount(): void;
-    navigate(viewId: ViewId, params?: Record<string, string>): Promise<void>;
-    loadView(viewId: ViewId): Promise<HTMLElement>;
-    setTheme(theme: ShellTheme): void;
-    getContext(): ShellContext;
-}
+import { loadStyleSystem, STYLE_CONFIGS } from "./styles";
+
+// Load a style system
+await loadStyleSystem("veela");
+
+// Get style configuration
+const config = STYLE_CONFIGS["basic"];
 ```
 
-## Views
+### 📁 `shared/` - Utilities
 
-Views are **content components** that:
-- Render their own UI
-- Are shell-agnostic
-- Can provide an optional toolbar
-- Handle their own state
-
-### Available Views
-
-| View | Description | Icon |
-|------|-------------|------|
-| `viewer` | Markdown viewer | eye |
-| `editor` | Markdown editor | pencil |
-| `workcenter` | AI processing hub | lightning |
-| `explorer` | File browser | folder |
-| `settings` | App configuration | gear |
-| `history` | Operation history | clock |
-| `airpad` | Remote trackpad | hand-pointing |
-| `home` | Dashboard | house |
-
-### View Interface
+Consolidated utilities from former `utils/` and `shared/`:
 
 ```typescript
-interface View {
-    id: ViewId;
-    name: string;
-    icon?: string;
-    
-    render(options?: ViewOptions): HTMLElement;
-    getToolbar?(): HTMLElement | null;
-    lifecycle?: ViewLifecycle;
-    
-    canHandleMessage?(type: string): boolean;
-    handleMessage?(message: unknown): Promise<void>;
-}
+import { 
+    debounce, 
+    throttle, 
+    deepClone,
+    getItem, 
+    setItem,
+    StorageKeys
+} from "./shared";
+
+// Storage helpers
+const theme = getItem(StorageKeys.THEME, "auto");
+setItem(StorageKeys.THEME, "dark");
+
+// Utilities
+const debouncedSave = debounce(save, 300);
 ```
 
-## Boot System
+### 📁 `core/` - Services
 
-The boot system handles:
-
-1. **Registry initialization** - Register all shells and views
-2. **Route parsing** - Determine shell/view from URL
-3. **Shell selection** - User choice or preference
-4. **Shell mounting** - Load and display the shell
-5. **Initial navigation** - Load the first view
-
-### Usage
+Core frontend services:
 
 ```typescript
-import { boot } from "./boot";
+import { 
+    api,
+    IDBStorage,
+    serviceChannels,
+    BROADCAST_CHANNELS
+} from "./core";
 
-// Mount to container
-const shell = await boot({
-    container: document.getElementById("app")!,
-    theme: { id: "auto", name: "Auto", colorScheme: "auto" }
+// API client
+const result = await api.process({
+    content: "Hello world",
+    contentType: "text"
 });
 
-// Shell is now mounted and showing initial view
+// IndexedDB storage
+const storage = new IDBStorage("my-db", "my-store");
+await storage.set("key", { data: "value" });
 ```
 
-### URL Routing
+### 📁 `pwa/` - PWA Features
 
-| URL | Shell | View |
-|-----|-------|------|
-| `/` | default | default |
-| `/basic` | basic | default |
-| `/faint` | faint | default |
-| `/#viewer` | default | viewer |
-| `/basic#workcenter` | basic | workcenter |
-
-## Creating a New Shell
-
-1. Create directory: `shells/myshell/`
-2. Implement shell class extending `BaseShell`:
+Progressive Web App functionality:
 
 ```typescript
+import { initPWA, registerServiceWorker } from "./pwa";
+
+await initPWA();
+```
+
+## Shell/Style Matrix
+
+```
+| Shells/Styles: | Faint | Basic | Raw |
+|----------------|-------|-------|-----|
+| Veela          |  [r]  |  [o]  | [o] |
+| Basic          |  [o]  |  [r]  | [r] |
+
+[r] - recommended, [o] - optional
+```
+
+## Service Channels
+
+Views can communicate with the service worker via channels:
+
+```typescript
+// In a view, use the ViewChannelMixin
+class MyView extends ViewChannelMixin(BaseView) {
+    async doProcessing() {
+        const channel = this.getServiceChannel("workcenter");
+        const result = await channel.processContent(data);
+    }
+}
+```
+
+| Channel | View | Route |
+|---------|------|-------|
+| `sw-workcenter` | WorkCenter | `/workcenter` |
+| `sw-settings` | Settings | `/settings` |
+| `sw-viewer` | Viewer | `/viewer` |
+| `sw-explorer` | Explorer | `/explorer` |
+| `sw-airpad` | Airpad | `/airpad` |
+| `sw-print` | Print | `/print` |
+
+## Quick Start
+
+```typescript
+// 1. Import from frontend
+import { initializeApp, isPWA, getExecutionContext } from "./frontend";
+
+// 2. Check execution context
+console.log("Context:", getExecutionContext()); // "web" | "pwa" | "extension"
+
+// 3. Initialize the app
+const container = document.getElementById("app")!;
+const shell = await initializeApp(container);
+
+// 4. Navigate programmatically
+await shell.navigate("workcenter");
+```
+
+## Creating New Components
+
+### Creating a New Shell
+
+```typescript
+// shells/myshell/index.ts
 import { BaseShell } from "../base-shell";
 
 export class MyShell extends BaseShell {
@@ -171,120 +274,56 @@ export class MyShell extends BaseShell {
     protected createLayout(): HTMLElement {
         // Return shell DOM structure
     }
-    
-    protected getStylesheet(): string | null {
-        return myStyles;
-    }
 }
 
-export function createShell(): MyShell {
-    return new MyShell();
-}
-
-export default createShell;
+export default () => new MyShell();
 ```
 
-3. Register in `registry.ts`:
+### Creating a New View
 
 ```typescript
-ShellRegistry.register({
-    id: "myshell",
-    name: "My Shell",
-    loader: () => import("./myshell")
-});
-```
+// views/myview/index.ts
+import type { View, ShellContext } from "../../shells/types";
+import { ViewChannelMixin } from "../ViewChannelMixin";
 
-## Creating a New View
-
-1. Create directory: `views/myview/`
-2. Implement view class:
-
-```typescript
-import type { View, ViewOptions } from "../../shells/types";
-
-export class MyView implements View {
+class MyViewBase implements View {
     id = "myview" as const;
-    name = "My View";
-    icon = "star";
+    title = "My View";
     
-    render(options?: ViewOptions): HTMLElement {
+    async render(context: ShellContext): Promise<HTMLElement> {
         // Return view DOM
     }
-    
-    getToolbar(): HTMLElement | null {
-        return null; // Optional toolbar
-    }
 }
 
-export function createView(): MyView {
-    return new MyView();
-}
+export class MyView extends ViewChannelMixin(MyViewBase) {}
 
-export default createView;
+export const createMyView = () => new MyView();
+export default createMyView;
 ```
 
-3. Register in `registry.ts`:
+## Migration Notes
+
+Legacy directories are being deprecated:
+
+| Legacy | New Location | Status |
+|--------|--------------|--------|
+| `basic/` | `shells/basic/` | In progress |
+| `faint/` | `shells/faint/` | In progress |
+| `airpad/` | `views/airpad/` | Migrated |
+| `print/` | `views/print/` | Migrated |
+| `boot/` | `main/` | Migrated |
+| `routing/` | `main/` | Migrated |
+| `utils/` | `shared/` | Merged |
+| `scss/` | `styles/` | Migrated |
+
+Use imports from the new locations:
 
 ```typescript
-ViewRegistry.register({
-    id: "myview",
-    name: "My View",
-    icon: "star",
-    loader: () => import("../views/myview")
-});
+// ❌ Old
+import { loadSubApp } from "./routing/routing";
+import { REMOVE_IF_HAS } from "./utils/Utils";
+
+// ✅ New
+import { loadSubApp } from "./main";
+import { REMOVE_IF_HAS } from "./shared";
 ```
-
-## Theme System
-
-Shells support theming via `ShellTheme`:
-
-```typescript
-interface ShellTheme {
-    id: string;
-    name: string;
-    colorScheme: "light" | "dark" | "auto";
-    cssVariables?: Record<string, string>;
-}
-```
-
-Themes are applied to the shell root element as:
-- `data-theme="light|dark"` attribute
-- CSS custom properties from `cssVariables`
-
-## Migration from Legacy
-
-The original `basic/` and `faint/` directories contain the legacy implementations. These are being migrated to the new architecture:
-
-| Legacy | New Location |
-|--------|--------------|
-| `basic/Main.ts` | `shells/basic/` + `views/*` |
-| `basic/viewer/` | `views/viewer/` |
-| `basic/workcenter/` | `views/workcenter/` |
-| `basic/settings/` | `views/settings/` |
-| `faint/layout/` | `shells/faint/` |
-| `faint/views/` | `views/*` |
-| `airpad/` | `views/airpad/` |
-
-## Shell Context
-
-Views receive a `ShellContext` that provides:
-
-```typescript
-interface ShellContext {
-    shellId: ShellId;
-    navigate(viewId: ViewId, params?: Record<string, string>): void;
-    goBack(): void;
-    showMessage(message: string, duration?: number): void;
-    navigationState: ShellNavigationState;
-    theme: ShellTheme;
-    layout: ShellLayoutConfig;
-    getContentContainer(): HTMLElement;
-    setViewToolbar(toolbar: HTMLElement | null): void;
-}
-```
-
-Views use this context to:
-- Navigate to other views
-- Show status messages
-- Access theme information
-- Set their toolbar in the shell

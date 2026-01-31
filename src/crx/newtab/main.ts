@@ -1,4 +1,4 @@
-import frontend from "../../frontend/basic";
+import frontend from "../../frontend/main/frontend-entry";
 import { loadSettings } from "@rs-com/config/Settings";
 
 const mount = document.getElementById("app") as HTMLElement | null;
