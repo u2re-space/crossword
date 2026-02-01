@@ -9,7 +9,7 @@ import {
     deleteInstruction,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
-} from "@rs-com/service/misc/CustomInstructions";
+} from "@rs-com/service/CustomInstructions";
 
 export type CustomInstructionsEditorOptions = {
     onUpdate?: () => void;
@@ -262,4 +262,3 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
 
     return root;
 };
-

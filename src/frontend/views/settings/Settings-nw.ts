@@ -4,7 +4,7 @@ import style from "./Settings.scss?inline";
 import { H } from "fest/lure";
 import { loadSettings, saveSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
-import { createCustomInstructionsEditor } from "./CustomInstructionsEditor";
+import { createCustomInstructionsEditor } from "../../items/CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
 
 export type SettingsViewOptions = {
