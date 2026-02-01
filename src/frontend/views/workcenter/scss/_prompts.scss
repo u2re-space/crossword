@@ -1,23 +1,41 @@
-/* WorkCenter Prompts Styles */
-
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+    0%, 50% {
+        opacity: 1
+    }
+
+    51%, 100% {
+        opacity: 0
+    }
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%, 100% {
+        opacity: 1
+    }
+
+    50% {
+        opacity: 0.7
+    }
 }
 
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+    0%, 50% {
+        opacity: 1
+    }
+
+    51%, 100% {
+        opacity: 0
+    }
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%, 100% {
+        opacity: 1
+    }
+
+    50% {
+        opacity: 0.7
+    }
 }
 
 @layer workcenter {
@@ -29,17 +47,16 @@
         border: none;
         box-shadow: var(--basic-elev-2);
 
-        // Responsive padding
         @container (max-width: 1024px) {
-            padding: var(--space-md, 0.75rem);
+            padding: var(--space-md, 0.75rem)
         }
 
         @container (max-width: 768px) {
-            padding: var(--space-sm, 0.5rem);
+            padding: var(--space-sm, 0.5rem)
         }
 
         @container (max-width: 480px) {
-            padding: var(--space-xs, 0.25rem);
+            padding: var(--space-xs, 0.25rem)
         }
 
         & > :where(.file-input-area) {
@@ -48,7 +65,7 @@
             pointer-events: none;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--basic-motion-normal)
         }
 
         .prompt-controls {
@@ -59,21 +76,19 @@
             place-items: center;
             flex-wrap: wrap;
 
-            // Responsive layout
             @container (max-width: 768px) {
-                gap: var(--space-sm, 0.5rem);
+                gap: var(--space-sm, 0.5rem)
             }
 
             @container (max-width: 480px) {
-                //flex-direction: column;
                 align-items: stretch;
-                gap: var(--space-sm, 0.5rem);
+                gap: var(--space-sm, 0.5rem)
             }
 
             .btn-icon {
                 @container (max-width: 480px) {
                     span {
-                        display: none;
+                        display: none
                     }
                 }
             }
@@ -92,18 +107,17 @@
                 transition: all var(--basic-motion-fast, 140ms ease);
 
                 ui-icon {
-                    transition: color var(--basic-motion-fast, 140ms ease);
+                    transition: color var(--basic-motion-fast, 140ms ease)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     inline-size: 36px;
-                    block-size: 36px;
+                    block-size: 36px
                 }
 
                 @container (max-width: 480px) {
                     inline-size: 32px;
-                    block-size: 32px;
+                    block-size: 32px
                 }
 
                 &:hover {
@@ -111,13 +125,13 @@
                     box-shadow: var(--basic-elev-1);
 
                     ui-icon {
-                        color: var(--basic-primary);
+                        color: var(--basic-primary)
                     }
                 }
 
                 &:focus-visible {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
             }
         }
@@ -136,17 +150,17 @@
         min-height: 36px;
 
         @container (max-width: 768px) {
-            min-height: 40px;
+            min-height: 40px
         }
 
         &:hover {
             background: var(--basic-surface-container-high);
-            border-color: var(--basic-primary);
+            border-color: var(--basic-primary)
         }
 
         &:focus {
             outline: none;
-            border-color: var(--basic-primary);
+            border-color: var(--basic-primary)
         }
     }
 
@@ -163,47 +177,44 @@
         line-height: var(--leading-relaxed);
         resize: vertical;
         box-shadow: var(--basic-elev-0);
-
-        // Simple scrollbar
         scrollbar-width: thin;
         scrollbar-color: var(--basic-outline-variant) transparent;
 
         &::-webkit-scrollbar {
             inline-size: 4px;
-            block-size: 4px;
+            block-size: 4px
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--basic-outline-variant)
         }
 
-        // Responsive adjustments
         @container (max-width: 1024px) {
             padding-inline: var(--space-sm);
             padding-block: var(--space-sm);
-            min-block-size: 100px;
+            min-block-size: 100px
         }
 
         @container (max-width: 768px) {
             padding-inline: var(--space-xs);
             padding-block: var(--space-xs);
-            min-block-size: 80px;
+            min-block-size: 80px
         }
 
         &:hover {
             background: var(--basic-surface-container-low);
-            box-shadow: var(--basic-elev-1);
+            box-shadow: var(--basic-elev-1)
         }
 
         &:focus {
             outline: none;
             background: var(--basic-surface-container-high);
-            box-shadow: var(--basic-focus-ring);
+            box-shadow: var(--basic-focus-ring)
         }
 
         &::placeholder {
             color: var(--basic-on-surface-variant);
-            opacity: 0.8;
+            opacity: 0.8
         }
     }
 
@@ -212,19 +223,17 @@
         flex-direction: column;
         gap: var(--space-xl, 1.25rem);
 
-        // Drop zone functionality
         &[data-dropzone] {
             position: relative;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--basic-motion-normal)
         }
 
-        // Responsive gaps
         @container (max-width: 1024px) {
-            gap: var(--space-lg, 1rem);
+            gap: var(--space-lg, 1rem)
         }
 
         @container (max-width: 768px) {
-            gap: var(--space-md, 0.75rem);
+            gap: var(--space-md, 0.75rem)
         }
 
         .file-input-area {
@@ -242,18 +251,16 @@
             z-index: 10;
             transition: all var(--basic-motion-normal);
 
-            // Responsive padding
             @container (max-width: 1024px) {
                 padding-inline: var(--space-md);
-                padding-block: var(--space-md);
+                padding-block: var(--space-md)
             }
 
             @container (max-width: 768px) {
                 padding-inline: var(--space-sm);
-                padding-block: var(--space-sm);
+                padding-block: var(--space-sm)
             }
 
-            // Overlay styles when visible
             &.drag-over {
                 opacity: 1;
                 visibility: visible;
@@ -262,7 +269,7 @@
 
                 .drop-zone-content {
                     opacity: 1;
-                    visibility: visible;
+                    visibility: visible
                 }
             }
         }
@@ -285,13 +292,12 @@
                 visibility: hidden;
                 transition: all var(--basic-motion-normal);
 
-                // Responsive gaps
                 @container (max-width: 1024px) {
-                    gap: var(--space-md);
+                    gap: var(--space-md)
                 }
 
                 @container (max-width: 768px) {
-                    gap: var(--space-sm);
+                    gap: var(--space-sm)
                 }
 
                 .drop-icon {
@@ -300,12 +306,11 @@
                     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
                     transition: all var(--basic-motion-normal);
 
-                    // Responsive icon size
                     @container (max-width: 1024px) {
                         &[size="4rem"] {
                             --icon-size: 3.5rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
 
@@ -313,7 +318,7 @@
                         &[size="4rem"] {
                             --icon-size: 3rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
 
@@ -321,7 +326,7 @@
                         &[size="4rem"] {
                             --icon-size: 2.5rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
                 }
@@ -334,17 +339,15 @@
                     text-align: center;
                     line-height: var(--leading-tight);
 
-                    // Responsive font size
                     @container (max-width: 1024px) {
-                        font-size: var(--text-lg);
+                        font-size: var(--text-lg)
                     }
 
                     @container (max-width: 768px) {
-                        font-size: var(--text-base);
+                        font-size: var(--text-base)
                     }
 
-                    // Add font-variant-emoji for any remaining emoji
-                    font-variant-emoji: text;
+                    font-variant-emoji: text
                 }
 
                 .drop-hint {
@@ -356,10 +359,9 @@
                     max-width: 280px;
                     line-height: var(--leading-normal);
 
-                    // Responsive adjustments
                     @container (max-width: 768px) {
                         font-size: var(--text-xs);
-                        max-width: 240px;
+                        max-width: 240px
                     }
                 }
             }
@@ -372,7 +374,7 @@
                     font-size: var(--text-sm);
                     color: var(--basic-on-surface-variant);
                     padding: var(--space-lg);
-                    background: var(--basic-surface-container-low);
+                    background: var(--basic-surface-container-low)
                 }
 
                 .file-item {
@@ -388,11 +390,11 @@
 
                     &:hover {
                         background: var(--basic-surface-container-high);
-                        box-shadow: var(--basic-elev-1);
+                        box-shadow: var(--basic-elev-1)
                     }
 
                     &:last-child {
-                        margin-bottom: 0;
+                        margin-bottom: 0
                     }
 
                     .file-info {
@@ -401,9 +403,8 @@
                         align-items: center;
                         gap: var(--space-md);
 
-                        // Responsive gaps
                         @container (max-width: 768px) {
-                            gap: var(--space-sm);
+                            gap: var(--space-sm)
                         }
 
                         .file-icon {
@@ -415,7 +416,6 @@
                             background: var(--basic-surface-container-high);
                             border-radius: var(--basic-radius-sm);
 
-                            // Icon styling
                             ui-icon {
                                 color: var(--basic-primary);
 
@@ -423,15 +423,14 @@
                                     &[size="20"] {
                                         --icon-size: 16px;
                                         inline-size: 20px;
-                                        block-size: 20px;
+                                        block-size: 20px
                                     }
                                 }
                             }
 
-                            // Responsive sizing
                             @container (max-width: 768px) {
                                 inline-size: 28px;
-                                block-size: 28px;
+                                block-size: 28px
                             }
                         }
 
@@ -442,21 +441,19 @@
                             flex: 1;
                             line-height: var(--leading-tight);
 
-                            // Responsive font size
                             @container (max-width: 768px) {
-                                font-size: var(--text-xs);
+                                font-size: var(--text-xs)
                             }
 
-                            // Truncate long filenames
                             overflow: hidden;
                             text-overflow: ellipsis;
-                            white-space: nowrap;
+                            white-space: nowrap
                         }
 
                         .file-size {
                             font-size: var(--text-xs);
                             color: var(--basic-on-surface-variant);
-                            font-weight: var(--font-weight-medium);
+                            font-weight: var(--font-weight-medium)
                         }
                     }
 
@@ -473,7 +470,7 @@
                         font-size: var(--text-sm);
 
                         &:hover {
-                            background: color-mix(in oklab, var(--basic-error) 20%, transparent);
+                            background: color-mix(in oklab, var(--basic-error) 20%, transparent)
                         }
                     }
                 }
@@ -495,7 +492,7 @@
 
             .status-icon {
                 color: var(--basic-success);
-                flex-shrink: 0;
+                flex-shrink: 0
             }
 
             .clear-recognized {
@@ -511,15 +508,13 @@
 
                 &:hover {
                     color: var(--basic-error);
-                    background: color-mix(in oklab, var(--basic-error) 5%, transparent);
+                    background: color-mix(in oklab, var(--basic-error) 5%, transparent)
                 }
             }
         }
-
     }
 
-    .action-section,
-    .prompts-section {
+    .action-section, .prompts-section {
         background: var(--basic-surface-container);
         border-radius: var(--basic-radius-xl, 12px);
         padding: var(--space-xl, 1.25rem);
@@ -562,12 +557,12 @@
 
                 &:hover {
                     background: var(--basic-surface-container-highest);
-                    box-shadow: var(--basic-elev-1);
+                    box-shadow: var(--basic-elev-1)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
                 &.recording {
@@ -579,19 +574,18 @@
                         content: "●";
                         margin-right: var(--space-sm, 0.5rem);
                         color: var(--basic-on-error);
-                        animation: blink 1s infinite;
+                        animation: blink 1s infinite
                     }
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-block-size: 40px;
-                    font-size: var(--text-xs, 0.75rem);
+                    font-size: var(--text-xs, 0.75rem)
                 }
 
                 @container (max-width: 480px) {
                     min-block-size: 36px;
-                    padding: var(--space-sm, 0.5rem);
+                    padding: var(--space-sm, 0.5rem)
                 }
             }
 
@@ -612,18 +606,15 @@
                 border: none;
                 padding: 0.5rem;
 
-                // Hide any text content but keep icon
                 & > :not(ui-icon) {
-                    display: none;
+                    display: none
                 }
 
-                // Style the icon
                 ui-icon {
                     color: var(--basic-on-surface-variant);
-                    transition: all var(--basic-motion-fast, 140ms ease);
+                    transition: all var(--basic-motion-fast, 140ms ease)
                 }
 
-                // Hide the actual checkbox visually
                 input[type="checkbox"] {
                     position: absolute;
                     opacity: 0;
@@ -634,45 +625,39 @@
                     overflow: hidden;
                     clip: rect(0, 0, 0, 0);
                     white-space: nowrap;
-                    border: 0;
+                    border: 0
                 }
 
-                // Active/checked state
-                &:has(input[type="checkbox"]:checked),
-                input[type="checkbox"]:checked ~ & {
+                &:has(input[type="checkbox"]:checked), input[type="checkbox"]:checked ~ & {
                     background: var(--basic-primary);
                     box-shadow: var(--basic-elev-1);
 
                     ui-icon {
-                        color: var(--basic-on-primary);
+                        color: var(--basic-on-primary)
                     }
                 }
 
-                // Hover state
                 &:hover {
                     background: var(--basic-surface-container-high);
                     box-shadow: var(--basic-elev-1);
 
-                    &:has(input[type="checkbox"]:checked),
-                    input[type="checkbox"]:checked ~ & {
-                        background: color-mix(in oklab, var(--basic-primary) 90%, black);
+                    &:has(input[type="checkbox"]:checked), input[type="checkbox"]:checked ~ & {
+                        background: color-mix(in oklab, var(--basic-primary) 90%, black)
                     }
                 }
 
-                // Focus state
                 &:focus-within {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     inline-size: 40px;
                     block-size: 40px;
 
                     ui-icon {
                         &[size="20"] {
-                            --size: 18px;
+                            --size: 18px
                         }
                     }
                 }
@@ -683,7 +668,7 @@
 
                     ui-icon {
                         &[size="20"] {
-                            --size: 16px;
+                            --size: 16px
                         }
                     }
                 }
@@ -712,12 +697,12 @@
                 &:hover {
                     background: color-mix(in oklab, var(--basic-primary) 85%, black);
                     box-shadow: var(--basic-elev-1);
-                    transform: translateY(-1px);
+                    transform: translateY(-1px)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
                 &:disabled {
@@ -725,35 +710,32 @@
                     color: var(--basic-on-surface-variant);
                     cursor: not-allowed;
                     box-shadow: var(--basic-elev-0);
-                    transform: none;
+                    transform: none
                 }
 
-                // Icon styling
                 ui-icon {
                     @container (max-width: 768px) {
                         &[size="20"] {
-                            --icon-size: 16px;
+                            --icon-size: 16px
                         }
                     }
                 }
 
-                // Text styling
                 .btn-text {
                     @container (max-width: 640px) {
-                        display: none;
+                        display: none
                     }
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-block-size: 40px;
-                    padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem);
+                    padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem)
                 }
 
                 @container (max-width: 480px) {
                     min-block-size: 36px;
                     padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-                    font-size: var(--text-xs, 0.75rem);
+                    font-size: var(--text-xs, 0.75rem)
                 }
             }
 
@@ -779,32 +761,28 @@
 
                 &:hover {
                     background: var(--basic-error-container);
-                    color: var(--basic-on-error-container);
+                    color: var(--basic-on-error-container)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-inline-size: 40px;
-                    min-block-size: 40px;
+                    min-block-size: 40px
                 }
 
                 @container (max-width: 480px) {
                     min-inline-size: 36px;
-                    min-block-size: 36px;
+                    min-block-size: 36px
                 }
             }
-
         }
     }
 
     .section-header {
-
-
         .prompt-actions {
             display: flex;
             align-items: center;
@@ -813,7 +791,7 @@
             inline-size: stretch;
             max-inline-size: stretch;
             min-inline-size: max-content;
-            place-items: center;
+            place-items: center
         }
     }
 
@@ -825,17 +803,16 @@
         border: none;
         box-shadow: var(--basic-elev-2);
 
-        // Responsive padding
         @container (max-width: 1024px) {
-            padding: var(--space-md, 0.75rem);
+            padding: var(--space-md, 0.75rem)
         }
 
         @container (max-width: 768px) {
-            padding: var(--space-sm, 0.5rem);
+            padding: var(--space-sm, 0.5rem)
         }
 
         @container (max-width: 480px) {
-            padding: var(--space-xs, 0.25rem);
+            padding: var(--space-xs, 0.25rem)
         }
 
         & > :where(.file-input-area) {
@@ -844,7 +821,7 @@
             pointer-events: none;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--basic-motion-normal)
         }
 
         .prompt-controls {
@@ -855,21 +832,19 @@
             place-items: center;
             flex-wrap: wrap;
 
-            // Responsive layout
             @container (max-width: 768px) {
-                gap: var(--space-sm, 0.5rem);
+                gap: var(--space-sm, 0.5rem)
             }
 
             @container (max-width: 480px) {
-                //flex-direction: column;
                 align-items: stretch;
-                gap: var(--space-sm, 0.5rem);
+                gap: var(--space-sm, 0.5rem)
             }
 
             .btn-icon {
                 @container (max-width: 480px) {
                     span {
-                        display: none;
+                        display: none
                     }
                 }
             }
@@ -888,18 +863,17 @@
                 transition: all var(--basic-motion-fast, 140ms ease);
 
                 ui-icon {
-                    transition: color var(--basic-motion-fast, 140ms ease);
+                    transition: color var(--basic-motion-fast, 140ms ease)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     inline-size: 36px;
-                    block-size: 36px;
+                    block-size: 36px
                 }
 
                 @container (max-width: 480px) {
                     inline-size: 32px;
-                    block-size: 32px;
+                    block-size: 32px
                 }
 
                 &:hover {
@@ -907,13 +881,13 @@
                     box-shadow: var(--basic-elev-1);
 
                     ui-icon {
-                        color: var(--basic-primary);
+                        color: var(--basic-primary)
                     }
                 }
 
                 &:focus-visible {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
             }
         }
@@ -932,17 +906,17 @@
         min-height: 36px;
 
         @container (max-width: 768px) {
-            min-height: 40px;
+            min-height: 40px
         }
 
         &:hover {
             background: var(--basic-surface-container-high);
-            border-color: var(--basic-primary);
+            border-color: var(--basic-primary)
         }
 
         &:focus {
             outline: none;
-            border-color: var(--basic-primary);
+            border-color: var(--basic-primary)
         }
     }
 
@@ -959,47 +933,44 @@
         line-height: var(--leading-relaxed);
         resize: vertical;
         box-shadow: var(--basic-elev-0);
-
-        // Simple scrollbar
         scrollbar-width: thin;
         scrollbar-color: var(--basic-outline-variant) transparent;
 
         &::-webkit-scrollbar {
             inline-size: 4px;
-            block-size: 4px;
+            block-size: 4px
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--basic-outline-variant)
         }
 
-        // Responsive adjustments
         @container (max-width: 1024px) {
             padding-inline: var(--space-sm);
             padding-block: var(--space-sm);
-            min-block-size: 100px;
+            min-block-size: 100px
         }
 
         @container (max-width: 768px) {
             padding-inline: var(--space-xs);
             padding-block: var(--space-xs);
-            min-block-size: 80px;
+            min-block-size: 80px
         }
 
         &:hover {
             background: var(--basic-surface-container-low);
-            box-shadow: var(--basic-elev-1);
+            box-shadow: var(--basic-elev-1)
         }
 
         &:focus {
             outline: none;
             background: var(--basic-surface-container-high);
-            box-shadow: var(--basic-focus-ring);
+            box-shadow: var(--basic-focus-ring)
         }
 
         &::placeholder {
             color: var(--basic-on-surface-variant);
-            opacity: 0.8;
+            opacity: 0.8
         }
     }
 
@@ -1008,19 +979,17 @@
         flex-direction: column;
         gap: var(--space-xl, 1.25rem);
 
-        // Drop zone functionality
         &[data-dropzone] {
             position: relative;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--basic-motion-normal)
         }
 
-        // Responsive gaps
         @container (max-width: 1024px) {
-            gap: var(--space-lg, 1rem);
+            gap: var(--space-lg, 1rem)
         }
 
         @container (max-width: 768px) {
-            gap: var(--space-md, 0.75rem);
+            gap: var(--space-md, 0.75rem)
         }
 
         .file-input-area {
@@ -1038,18 +1007,16 @@
             z-index: 10;
             transition: all var(--basic-motion-normal);
 
-            // Responsive padding
             @container (max-width: 1024px) {
                 padding-inline: var(--space-md);
-                padding-block: var(--space-md);
+                padding-block: var(--space-md)
             }
 
             @container (max-width: 768px) {
                 padding-inline: var(--space-sm);
-                padding-block: var(--space-sm);
+                padding-block: var(--space-sm)
             }
 
-            // Overlay styles when visible
             &.drag-over {
                 opacity: 1;
                 visibility: visible;
@@ -1058,7 +1025,7 @@
 
                 .drop-zone-content {
                     opacity: 1;
-                    visibility: visible;
+                    visibility: visible
                 }
             }
         }
@@ -1081,13 +1048,12 @@
                 visibility: hidden;
                 transition: all var(--basic-motion-normal);
 
-                // Responsive gaps
                 @container (max-width: 1024px) {
-                    gap: var(--space-md);
+                    gap: var(--space-md)
                 }
 
                 @container (max-width: 768px) {
-                    gap: var(--space-sm);
+                    gap: var(--space-sm)
                 }
 
                 .drop-icon {
@@ -1096,12 +1062,11 @@
                     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
                     transition: all var(--basic-motion-normal);
 
-                    // Responsive icon size
                     @container (max-width: 1024px) {
                         &[size="4rem"] {
                             --icon-size: 3.5rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
 
@@ -1109,7 +1074,7 @@
                         &[size="4rem"] {
                             --icon-size: 3rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
 
@@ -1117,7 +1082,7 @@
                         &[size="4rem"] {
                             --icon-size: 2.5rem;
                             inline-size: 4rem;
-                            block-size: 4rem;
+                            block-size: 4rem
                         }
                     }
                 }
@@ -1130,17 +1095,15 @@
                     text-align: center;
                     line-height: var(--leading-tight);
 
-                    // Responsive font size
                     @container (max-width: 1024px) {
-                        font-size: var(--text-lg);
+                        font-size: var(--text-lg)
                     }
 
                     @container (max-width: 768px) {
-                        font-size: var(--text-base);
+                        font-size: var(--text-base)
                     }
 
-                    // Add font-variant-emoji for any remaining emoji
-                    font-variant-emoji: text;
+                    font-variant-emoji: text
                 }
 
                 .drop-hint {
@@ -1152,10 +1115,9 @@
                     max-width: 280px;
                     line-height: var(--leading-normal);
 
-                    // Responsive adjustments
                     @container (max-width: 768px) {
                         font-size: var(--text-xs);
-                        max-width: 240px;
+                        max-width: 240px
                     }
                 }
             }
@@ -1168,7 +1130,7 @@
                     font-size: var(--text-sm);
                     color: var(--basic-on-surface-variant);
                     padding: var(--space-lg);
-                    background: var(--basic-surface-container-low);
+                    background: var(--basic-surface-container-low)
                 }
 
                 .file-item {
@@ -1184,11 +1146,11 @@
 
                     &:hover {
                         background: var(--basic-surface-container-high);
-                        box-shadow: var(--basic-elev-1);
+                        box-shadow: var(--basic-elev-1)
                     }
 
                     &:last-child {
-                        margin-bottom: 0;
+                        margin-bottom: 0
                     }
 
                     .file-info {
@@ -1197,9 +1159,8 @@
                         align-items: center;
                         gap: var(--space-md);
 
-                        // Responsive gaps
                         @container (max-width: 768px) {
-                            gap: var(--space-sm);
+                            gap: var(--space-sm)
                         }
 
                         .file-icon {
@@ -1211,7 +1172,6 @@
                             background: var(--basic-surface-container-high);
                             border-radius: var(--basic-radius-sm);
 
-                            // Icon styling
                             ui-icon {
                                 color: var(--basic-primary);
 
@@ -1219,15 +1179,14 @@
                                     &[size="20"] {
                                         --icon-size: 16px;
                                         inline-size: 20px;
-                                        block-size: 20px;
+                                        block-size: 20px
                                     }
                                 }
                             }
 
-                            // Responsive sizing
                             @container (max-width: 768px) {
                                 inline-size: 28px;
-                                block-size: 28px;
+                                block-size: 28px
                             }
                         }
 
@@ -1238,21 +1197,19 @@
                             flex: 1;
                             line-height: var(--leading-tight);
 
-                            // Responsive font size
                             @container (max-width: 768px) {
-                                font-size: var(--text-xs);
+                                font-size: var(--text-xs)
                             }
 
-                            // Truncate long filenames
                             overflow: hidden;
                             text-overflow: ellipsis;
-                            white-space: nowrap;
+                            white-space: nowrap
                         }
 
                         .file-size {
                             font-size: var(--text-xs);
                             color: var(--basic-on-surface-variant);
-                            font-weight: var(--font-weight-medium);
+                            font-weight: var(--font-weight-medium)
                         }
                     }
 
@@ -1269,7 +1226,7 @@
                         font-size: var(--text-sm);
 
                         &:hover {
-                            background: color-mix(in oklab, var(--basic-error) 20%, transparent);
+                            background: color-mix(in oklab, var(--basic-error) 20%, transparent)
                         }
                     }
                 }
@@ -1291,7 +1248,7 @@
 
             .status-icon {
                 color: var(--basic-success);
-                flex-shrink: 0;
+                flex-shrink: 0
             }
 
             .clear-recognized {
@@ -1307,15 +1264,13 @@
 
                 &:hover {
                     color: var(--basic-error);
-                    background: color-mix(in oklab, var(--basic-error) 5%, transparent);
+                    background: color-mix(in oklab, var(--basic-error) 5%, transparent)
                 }
             }
         }
-
     }
 
-    .action-section,
-    .prompts-section {
+    .action-section, .prompts-section {
         background: var(--basic-surface-container);
         border-radius: var(--basic-radius-xl, 12px);
         padding: var(--space-xl, 1.25rem);
@@ -1358,12 +1313,12 @@
 
                 &:hover {
                     background: var(--basic-surface-container-highest);
-                    box-shadow: var(--basic-elev-1);
+                    box-shadow: var(--basic-elev-1)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
                 &.recording {
@@ -1375,19 +1330,18 @@
                         content: "●";
                         margin-right: var(--space-sm, 0.5rem);
                         color: var(--basic-on-error);
-                        animation: blink 1s infinite;
+                        animation: blink 1s infinite
                     }
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-block-size: 40px;
-                    font-size: var(--text-xs, 0.75rem);
+                    font-size: var(--text-xs, 0.75rem)
                 }
 
                 @container (max-width: 480px) {
                     min-block-size: 36px;
-                    padding: var(--space-sm, 0.5rem);
+                    padding: var(--space-sm, 0.5rem)
                 }
             }
 
@@ -1408,18 +1362,15 @@
                 border: none;
                 padding: 0.5rem;
 
-                // Hide any text content but keep icon
                 & > :not(ui-icon) {
-                    display: none;
+                    display: none
                 }
 
-                // Style the icon
                 ui-icon {
                     color: var(--basic-on-surface-variant);
-                    transition: all var(--basic-motion-fast, 140ms ease);
+                    transition: all var(--basic-motion-fast, 140ms ease)
                 }
 
-                // Hide the actual checkbox visually
                 input[type="checkbox"] {
                     position: absolute;
                     opacity: 0;
@@ -1430,45 +1381,39 @@
                     overflow: hidden;
                     clip: rect(0, 0, 0, 0);
                     white-space: nowrap;
-                    border: 0;
+                    border: 0
                 }
 
-                // Active/checked state
-                &:has(input[type="checkbox"]:checked),
-                input[type="checkbox"]:checked ~ & {
+                &:has(input[type="checkbox"]:checked), input[type="checkbox"]:checked ~ & {
                     background: var(--basic-primary);
                     box-shadow: var(--basic-elev-1);
 
                     ui-icon {
-                        color: var(--basic-on-primary);
+                        color: var(--basic-on-primary)
                     }
                 }
 
-                // Hover state
                 &:hover {
                     background: var(--basic-surface-container-high);
                     box-shadow: var(--basic-elev-1);
 
-                    &:has(input[type="checkbox"]:checked),
-                    input[type="checkbox"]:checked ~ & {
-                        background: color-mix(in oklab, var(--basic-primary) 90%, black);
+                    &:has(input[type="checkbox"]:checked), input[type="checkbox"]:checked ~ & {
+                        background: color-mix(in oklab, var(--basic-primary) 90%, black)
                     }
                 }
 
-                // Focus state
                 &:focus-within {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     inline-size: 40px;
                     block-size: 40px;
 
                     ui-icon {
                         &[size="20"] {
-                            --size: 18px;
+                            --size: 18px
                         }
                     }
                 }
@@ -1479,7 +1424,7 @@
 
                     ui-icon {
                         &[size="20"] {
-                            --size: 16px;
+                            --size: 16px
                         }
                     }
                 }
@@ -1508,12 +1453,12 @@
                 &:hover {
                     background: color-mix(in oklab, var(--basic-primary) 85%, black);
                     box-shadow: var(--basic-elev-1);
-                    transform: translateY(-1px);
+                    transform: translateY(-1px)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
                 &:disabled {
@@ -1521,35 +1466,32 @@
                     color: var(--basic-on-surface-variant);
                     cursor: not-allowed;
                     box-shadow: var(--basic-elev-0);
-                    transform: none;
+                    transform: none
                 }
 
-                // Icon styling
                 ui-icon {
                     @container (max-width: 768px) {
                         &[size="20"] {
-                            --icon-size: 16px;
+                            --icon-size: 16px
                         }
                     }
                 }
 
-                // Text styling
                 .btn-text {
                     @container (max-width: 640px) {
-                        display: none;
+                        display: none
                     }
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-block-size: 40px;
-                    padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem);
+                    padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem)
                 }
 
                 @container (max-width: 480px) {
                     min-block-size: 36px;
                     padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-                    font-size: var(--text-xs, 0.75rem);
+                    font-size: var(--text-xs, 0.75rem)
                 }
             }
 
@@ -1575,32 +1517,28 @@
 
                 &:hover {
                     background: var(--basic-error-container);
-                    color: var(--basic-on-error-container);
+                    color: var(--basic-on-error-container)
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--basic-focus-ring)
                 }
 
-                // Responsive sizing
                 @container (max-width: 768px) {
                     min-inline-size: 40px;
-                    min-block-size: 40px;
+                    min-block-size: 40px
                 }
 
                 @container (max-width: 480px) {
                     min-inline-size: 36px;
-                    min-block-size: 36px;
+                    min-block-size: 36px
                 }
             }
-
         }
     }
 
     .section-header {
-
-
         .prompt-actions {
             display: flex;
             align-items: center;
@@ -1609,7 +1547,7 @@
             inline-size: stretch;
             max-inline-size: stretch;
             min-inline-size: max-content;
-            place-items: center;
+            place-items: center
         }
     }
 }

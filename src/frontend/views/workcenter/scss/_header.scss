@@ -1,5 +1,3 @@
-/* WorkCenter Header Styles */
-
 @layer workcenter {
     .workcenter-header {
         display: flex;
@@ -9,7 +7,6 @@
         border-radius: var(--basic-radius-md);
         background: var(--basic-surface-container-high);
 
-        // Responsive padding
         @container (max-width: 1024px) {
             padding: var(--space-md);
         }
@@ -51,7 +48,6 @@
         background: var(--basic-surface-container-low);
         border-radius: var(--basic-radius-sm);
 
-        // Responsive adjustments
         @container (max-width: 1200px) {
             gap: var(--space-md);
         }
@@ -87,12 +83,11 @@
         gap: var(--space-sm);
         flex: 1;
 
-        // Responsive adjustments for grid layout
         @container (max-width: 900px) {
             flex-direction: column;
             align-items: stretch;
             gap: var(--space-xs);
-            min-width: 0; // Allow shrinking in grid
+            min-width: 0;
         }
 
         @container (max-width: 768px) {
@@ -165,17 +160,12 @@
             outline-offset: 1px;
         }
 
-        // Option styling for better readability
         option {
             background: var(--basic-surface);
             color: var(--basic-on-surface);
         }
     }
-}
 
-/* WorkCenter Header Styles */
-
-@layer workcenter {
     .workcenter-header {
         display: flex;
         align-items: center;
@@ -184,7 +174,6 @@
         border-radius: var(--basic-radius-md);
         background: var(--basic-surface-container-high);
 
-        // Responsive padding
         @container (max-width: 1024px) {
             padding: var(--space-md);
         }
@@ -226,7 +215,6 @@
         background: var(--basic-surface-container-low);
         border-radius: var(--basic-radius-sm);
 
-        // Responsive adjustments
         @container (max-width: 1200px) {
             gap: var(--space-md);
         }
@@ -262,12 +250,11 @@
         gap: var(--space-sm);
         flex: 1;
 
-        // Responsive adjustments for grid layout
         @container (max-width: 900px) {
             flex-direction: column;
             align-items: stretch;
             gap: var(--space-xs);
-            min-width: 0; // Allow shrinking in grid
+            min-width: 0;
         }
 
         @container (max-width: 768px) {
@@ -340,7 +327,6 @@
             outline-offset: 1px;
         }
 
-        // Option styling for better readability
         option {
             background: var(--basic-surface);
             color: var(--basic-on-surface);

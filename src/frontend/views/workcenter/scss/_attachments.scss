@@ -1,5 +1,3 @@
-/* WorkCenter Attachments Styles */
-
 @layer workcenter {
     .file-attachment-area {
         display: flex;
@@ -24,7 +22,6 @@
         overflow: auto;
         cursor: pointer;
 
-        // Drop zone styling
         &[data-dropzone] {
             min-block-size: 200px;
             padding: var(--space-lg);
@@ -36,7 +33,6 @@
                 background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low));
             }
 
-            // Visual feedback when dragging over
             &.drag-over {
                 border-color: var(--basic-primary);
                 background: color-mix(in oklab, var(--basic-primary) 10%, var(--basic-surface-container-low));
@@ -59,7 +55,6 @@
                     z-index: 1;
                 }
 
-                // Style content above the overlay
                 & > * {
                     position: relative;
                     z-index: 2;
@@ -227,7 +222,6 @@
                 font-size: var(--text-xs);
             }
 
-            // Hide when no files
             &:has(.count:empty),
             &:has(.count:not([data-count]):not(:has-text):not([data-count="0"]):not(:has(.count:empty))) {
                 display: none;
@@ -308,11 +302,7 @@
             }
         }
     }
-}
 
-/* WorkCenter Attachments Styles */
-
-@layer workcenter {
     .file-attachment-area {
         display: flex;
         flex-direction: column;
@@ -336,7 +326,6 @@
         overflow: auto;
         cursor: pointer;
 
-        // Drop zone styling
         &[data-dropzone] {
             min-block-size: 200px;
             padding: var(--space-lg);
@@ -348,7 +337,6 @@
                 background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low));
             }
 
-            // Visual feedback when dragging over
             &.drag-over {
                 border-color: var(--basic-primary);
                 background: color-mix(in oklab, var(--basic-primary) 10%, var(--basic-surface-container-low));
@@ -371,7 +359,6 @@
                     z-index: 1;
                 }
 
-                // Style content above the overlay
                 & > * {
                     position: relative;
                     z-index: 2;
@@ -539,7 +526,6 @@
                 font-size: var(--text-xs);
             }
 
-            // Hide when no files
             &:has(.count:empty),
             &:has(.count:not([data-count]):not(:has-text):not([data-count="0"]):not(:has(.count:empty))) {
                 display: none;
