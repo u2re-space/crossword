@@ -1,9 +1,9 @@
 /**
  * Raw Shell
- * 
+ *
  * Minimal shell with no frames, navigation UI, or chrome.
  * Just a content container with theme support.
- * 
+ *
  * Use cases:
  * - Fullscreen views
  * - Print layouts
@@ -11,7 +11,7 @@
  * - Single-component rendering
  */
 
-import { BaseShell } from "../base-shell";
+import { BaseShell } from "../basic/base-shell";
 import { H } from "fest/lure";
 import type { ShellId, ShellLayoutConfig } from "../types";
 
@@ -25,7 +25,7 @@ import style from "./raw.scss?inline";
 export class RawShell extends BaseShell {
     id: ShellId = "raw";
     name = "Raw";
-    
+
     layout: ShellLayoutConfig = {
         hasSidebar: false,
         hasToolbar: false,
@@ -51,7 +51,7 @@ export class RawShell extends BaseShell {
 
     async mount(container: HTMLElement): Promise<void> {
         await super.mount(container);
-        
+
         // Raw shell uses simplified navigation
         this.setupHashNavigation();
         this.setupPopstateNavigation();

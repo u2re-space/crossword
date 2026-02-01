@@ -15,7 +15,7 @@ import type {
     View,
     ViewFactory,
     ShellTheme
-} from "./types";
+} from "./shells/types";
 
 // ============================================================================
 // SHELL REGISTRY
@@ -204,7 +204,7 @@ export function registerDefaultShells(): void {
         id: "raw",
         name: "Raw",
         description: "Minimal shell with no frames or navigation",
-        loader: () => import("./raw/index")
+        loader: () => import("./shells/raw/index")
     });
 
     // Basic shell (simple toolbar-based navigation)
@@ -212,7 +212,7 @@ export function registerDefaultShells(): void {
         id: "basic",
         name: "Basic",
         description: "Classic toolbar-based navigation",
-        loader: () => import("./basic/index")
+        loader: () => import("./shells/basic/index")
     });
 
     // Faint shell (tabbed sidebar navigation)
@@ -220,7 +220,7 @@ export function registerDefaultShells(): void {
         id: "faint",
         name: "Faint",
         description: "Experimental tabbed interface with sidebar",
-        loader: () => import("./faint/index")
+        loader: () => import("./shells/faint/index")
     });
 }
 
@@ -232,56 +232,56 @@ export function registerDefaultViews(): void {
         id: "viewer",
         name: "Viewer",
         icon: "eye",
-        loader: () => import("../views/viewer")
+        loader: () => import("./views/viewer")
     });
 
     ViewRegistry.register({
         id: "workcenter",
         name: "Work Center",
         icon: "lightning",
-        loader: () => import("../views/workcenter")
+        loader: () => import("./views/workcenter")
     });
 
     ViewRegistry.register({
         id: "settings",
         name: "Settings",
         icon: "gear",
-        loader: () => import("../views/settings")
+        loader: () => import("./views/settings")
     });
 
     ViewRegistry.register({
         id: "history",
         name: "History",
         icon: "clock-counter-clockwise",
-        loader: () => import("../views/history")
+        loader: () => import("./views/history")
     });
 
     ViewRegistry.register({
         id: "explorer",
         name: "Explorer",
         icon: "folder",
-        loader: () => import("../views/explorer")
+        loader: () => import("./views/explorer")
     });
 
     ViewRegistry.register({
         id: "airpad",
         name: "Airpad",
         icon: "hand-pointing",
-        loader: () => import("../views/airpad")
+        loader: () => import("./views/airpad")
     });
 
     ViewRegistry.register({
         id: "editor",
         name: "Editor",
         icon: "pencil",
-        loader: () => import("../views/editor")
+        loader: () => import("./views/editor")
     });
 
     ViewRegistry.register({
         id: "home",
         name: "Home",
         icon: "house",
-        loader: () => import("../views/home")
+        loader: () => import("./views/home")
     });
 }
 

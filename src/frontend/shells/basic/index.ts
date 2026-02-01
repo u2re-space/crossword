@@ -9,7 +9,7 @@
  * - NO split view, NO sidebar, NO tabs
  */
 
-import { BaseShell } from "../base-shell";
+import { BaseShell } from "./base-shell";
 import { H } from "fest/lure";
 import { affected } from "fest/object";
 import type { ShellId, ShellLayoutConfig, ViewId } from "../types";

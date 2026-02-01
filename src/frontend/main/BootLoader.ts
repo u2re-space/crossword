@@ -17,7 +17,7 @@
  */
 
 import { loadAsAdopted } from "fest/dom";
-import { ShellRegistry, initializeRegistries } from "../shells/registry";
+import { ShellRegistry, initializeRegistries } from "../registry";
 import type { ShellId, ViewId, Shell, ShellTheme } from "../shells/types";
 import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChannels";
 
