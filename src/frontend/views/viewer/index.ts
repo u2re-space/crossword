@@ -1,13 +1,13 @@
 /**
  * Markdown Viewer View
- * 
+ *
  * Shell-agnostic markdown viewer component.
  * Can be used in any shell to display markdown content.
  * Uses the <md-view> web component for encapsulated rendering.
  */
 
 import { H } from "fest/lure";
-import { ref, subscribe } from "fest/object";
+import { ref, affected } from "fest/object";
 import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions, MarkdownContent } from "../types";
@@ -72,7 +72,7 @@ export class ViewerView implements View {
     private contentRef = ref("");
     private renderedContentRef = ref<HTMLElement | null>(null);
     private stateManager = createViewState<ViewerState>(STORAGE_KEY);
-    
+
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
         onUnmount: () => this.onUnmount(),
@@ -84,7 +84,7 @@ export class ViewerView implements View {
     constructor(options: ViewerOptions = {}) {
         this.options = options;
         this.shellContext = options.shellContext;
-        
+
         // Load initial content
         const savedState = this.stateManager.load();
         this.contentRef.value = options.initialContent || savedState?.content || DEFAULT_CONTENT;
@@ -143,18 +143,18 @@ export class ViewerView implements View {
 
         // Set initial content on md-view component
         if (this.mdView) {
-            this.mdView.setContent(this.contentRef.value);
-            
+            this.mdView?.setContent?.(this.contentRef.value);
+
             // Listen for md-view events
-            this.mdView.addEventListener("md-link-click", (e) => {
+            this.mdView?.addEventListener?.("md-link-click", (e) => {
                 // Allow default link behavior, or handle custom navigation
             });
         }
 
         // Setup reactive updates
-        subscribe(this.contentRef, () => {
+        affected(this.contentRef, () => {
             if (this.mdView) {
-                this.mdView.setContent(this.contentRef.value);
+                this.mdView?.setContent?.(this.contentRef.value);
             }
             this.saveState();
         });
@@ -225,11 +225,11 @@ export class ViewerView implements View {
                 e.preventDefault();
                 (e.currentTarget as HTMLElement).classList.add("dragover");
             });
-            
+
             content.addEventListener("dragleave", () => {
                 (content as HTMLElement).classList.remove("dragover");
             });
-            
+
             content.addEventListener("drop", (e) => {
                 e.preventDefault();
                 (content as HTMLElement).classList.remove("dragover");
@@ -284,17 +284,17 @@ export class ViewerView implements View {
     private handleDownload(): void {
         const content = this.contentRef.value;
         const filename = this.options.filename || `document-${Date.now()}.md`;
-        
+
         const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
         a.click();
-        
+
         setTimeout(() => URL.revokeObjectURL(url), 250);
-        
+
         this.showMessage(`Downloaded ${filename}`);
         this.options.onDownload?.(content, filename);
     }
@@ -318,7 +318,7 @@ export class ViewerView implements View {
         const file = e.dataTransfer?.files?.[0];
         if (file && (file.type.includes("text") || file.name.endsWith(".md"))) {
             file.text().then(content => {
-                this.setContent(content, file.name);
+                this?.setContent?.(content, file.name);
                 this.showMessage(`Loaded ${file.name}`);
             }).catch(() => {
                 this.showMessage("Failed to read dropped file");
@@ -332,7 +332,7 @@ export class ViewerView implements View {
             // Only handle paste if not in an input element
             const target = e.target as HTMLElement;
             if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-                this.setContent(text);
+                this?.setContent?.(text);
                 this.showMessage("Content pasted");
             }
         }
@@ -390,7 +390,7 @@ export class ViewerView implements View {
 
     async handleMessage(message: unknown): Promise<void> {
         const msg = message as { type?: string; data?: { text?: string; content?: string; filename?: string } };
-        
+
         if (msg.data?.text || msg.data?.content) {
             const content = msg.data.text || msg.data.content || "";
             this.setContent(content, msg.data.filename);

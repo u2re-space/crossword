@@ -4,8 +4,8 @@
  * Provides unified interface for AI recognition operations
  */
 
-import { CHANNEL_NAMES, postMessage, affected } from "../../core/workers/Broadcast";
-import { MAX_FILE_SIZE } from "./model/GPT-Responses";
+import { CHANNEL_NAMES, postMessage, affected } from "../../../core/workers/Broadcast";
+import { MAX_FILE_SIZE } from "../model/GPT-Responses";
 import { stringToBlob } from "fest/lure";
 
 export type RecognitionMode = "recognize" | "analyze";
@@ -149,15 +149,15 @@ export const recognize = (
 ): Promise<RecognitionResult> => {
     return new Promise((resolve, reject) => {
         const requestId = requestRecognition(mode, data);
-        let unsubscribe: (() => void) | null = null;
+        let unaffected: (() => void) | null = null;
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
         const cleanup = () => {
-            if (unsubscribe) unsubscribe();
+            if (unaffected) unaffected();
             if (timeoutId) clearTimeout(timeoutId);
         };
 
-        unsubscribe = listenForRecognitionResults((result) => {
+        unaffected = listenForRecognitionResults((result) => {
             if (result.requestId === requestId) {
                 cleanup();
                 resolve(result);

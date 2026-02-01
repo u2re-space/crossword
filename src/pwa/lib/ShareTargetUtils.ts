@@ -7,8 +7,8 @@ import { getRuntimeSettings } from '@rs-com/config/RuntimeSettings';
 import { loadSettings } from '@rs-com/config/Settings';
 import type { AppSettings, CustomInstruction } from '@rs-com/config/SettingsTypes';
 import { DEFAULT_SETTINGS } from '@rs-com/config/SettingsTypes';
-import { executionCore } from '@rs-com/service/ExecutionCore';
-import type { ActionContext, ActionInput } from '@rs-com/service/ActionHistory';
+import { executionCore } from '@rs-com/service/misc/ExecutionCore';
+import type { ActionContext, ActionInput } from '@rs-com/service/misc/ActionHistory';
 
 // ============================================================================
 // TYPES

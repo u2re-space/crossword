@@ -6,7 +6,7 @@
  */
 
 import { H } from "fest/lure";
-import { ref, observe, subscribe } from "fest/object";
+import { ref, observe, affected } from "fest/object";
 import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
@@ -153,12 +153,12 @@ export class WorkCenterView implements View {
         this.updateResultsList();
 
         // Reactive updates
-        subscribe(this.files as any, () => {
+        affected(this.files as any, () => {
             this.updateFilesList();
             this.options.onFilesChange?.(this.files);
         });
 
-        subscribe(this.results as any, () => {
+        affected(this.results as any, () => {
             this.updateResultsList();
         });
 

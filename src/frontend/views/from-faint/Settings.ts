@@ -1,8 +1,8 @@
 import { H } from "fest/lure";
 
 //
-import { toastError, toastSuccess } from "@rs-frontend/components/items/Toast";
-import { createCustomInstructionsPanel } from "@rs-frontend/components/items/CustomInstructionsPanel";
+import { toastError, toastSuccess } from "@rs-frontend/items/Toast";
+import { createCustomInstructionsPanel } from "@rs-frontend/items/CustomInstructionsPanel";
 
 //
 import type { AppSettings, FieldConfig, SectionConfig, SectionKey, MCPConfig, GridShape } from "@rs-com/config/SettingsTypes";

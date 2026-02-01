@@ -1,5 +1,5 @@
-import { processDataWithInstruction } from './AI-ops/RecognizeData';
-import { toBase64 } from './model/GPT-Responses';
+import { processDataWithInstruction } from '../AI-ops/RecognizeData';
+import { toBase64 } from '../model/GPT-Responses';
 import { actionHistory, type ActionEntry, type ActionContext, type ActionInput, type ActionResult } from './ActionHistory';
 
 export interface ExecutionRule {

@@ -6,38 +6,17 @@
  * @deprecated Use UnifiedMessaging from './UnifiedMessaging' instead
  */
 
-import { unifiedMessaging } from './UnifiedMessaging';
-
-// Define interfaces locally since the exports are having runtime issues
-export interface UnifiedMessage {
-    id: string;
-    type: string;
-    source: string;
-    destination?: string;
-    contentType?: string;
-    data: any;
-    metadata?: {
-        timestamp?: number;
-        correlationId?: string;
-        priority?: 'low' | 'normal' | 'high';
-        expiresAt?: number;
-        retryCount?: number;
-        maxRetries?: number;
-        [key: string]: any;
-    };
-}
-
-export interface MessageHandler {
-    canHandle: (message: UnifiedMessage) => boolean;
-    handle: (message: UnifiedMessage) => Promise<void> | void;
-}
+import { unifiedMessaging, type UnifiedMessage, type MessageHandler } from './UnifiedMessaging';
 import { BROADCAST_CHANNELS } from '@rs-com/config/Names';
+
+// Re-export types for backward compatibility
+export type { UnifiedMessage, MessageHandler };
 
 // Legacy interface for backward compatibility
 export interface AppMessage {
     type: string;
-    data: any;
-    metadata?: any;
+    data: unknown;
+    metadata?: unknown;
 }
 
 export interface AppCommunicatorOptions {
@@ -51,12 +30,9 @@ export interface AppCommunicatorOptions {
  * @deprecated Use UnifiedMessaging instead
  */
 class AppCommunicator {
-    private channelName: string;
     private destination: string;
 
     constructor(options: AppCommunicatorOptions) {
-        this.channelName = options.channelName;
-        // Map broadcast channel names to unified messaging destinations
         this.destination = this.mapChannelToDestination(options.channelName);
     }
 
@@ -68,7 +44,7 @@ class AppCommunicator {
             [BROADCAST_CHANNELS.CLIPBOARD]: 'clipboard',
             [BROADCAST_CHANNELS.PRINT_VIEWER]: 'print-viewer'
         };
-        return mapping[channelName] || 'general';
+        return mapping[channelName] ?? 'general';
     }
 
     /**
@@ -76,7 +52,7 @@ class AppCommunicator {
      */
     async sendMessage(
         type: string,
-        data: any,
+        data: unknown,
         options: {
             priority?: 'low' | 'normal' | 'high';
             queueIfUnavailable?: boolean;
@@ -85,14 +61,14 @@ class AppCommunicator {
     ): Promise<boolean> {
         console.warn('[AppCommunicator] Deprecated: Use unifiedMessaging.sendMessage() instead');
 
-        const message: Omit<UnifiedMessage, 'id'> = {
+        const message = {
             type,
             source: 'legacy-app-communicator',
             destination: this.destination,
             data,
             metadata: {
-                priority: options.priority || 'normal',
-                maxRetries: options.maxRetries || 3,
+                priority: options.priority ?? 'normal',
+                maxRetries: options.maxRetries ?? 3,
                 legacy: true
             }
         };
@@ -106,7 +82,6 @@ class AppCommunicator {
     respondToPing(pingId: string): void {
         console.warn('[AppCommunicator] Deprecated: Ping/pong handled automatically by unified messaging');
 
-        // Send pong message through unified messaging
         unifiedMessaging.sendMessage({
             type: 'pong',
             source: this.destination,
@@ -138,7 +113,10 @@ const communicators = new Map<string, AppCommunicator>();
 /**
  * @deprecated Use unifiedMessaging directly instead
  */
-export function getAppCommunicator(channelName: string = APP_CHANNELS.GENERAL, options?: Partial<AppCommunicatorOptions>): AppCommunicator {
+export function getAppCommunicator(
+    channelName: string = APP_CHANNELS.GENERAL,
+    options?: Partial<AppCommunicatorOptions>
+): AppCommunicator {
     console.warn('[getAppCommunicator] Deprecated: Use unifiedMessaging directly instead');
 
     const key = channelName;
@@ -185,4 +163,3 @@ export { AppCommunicator };
 
 // Export unified messaging functions for easy migration
 export { unifiedMessaging };
-// UnifiedMessage and MessageHandler are now defined locally

@@ -6,8 +6,8 @@
     display: flex;
     flex-direction: column;
     block-size: 100%;
-    background-color: var(--view-bg, var(--color-surface, #ffffff));
-    color: var(--view-fg, var(--color-on-surface, #1a1a1a));
+    background-color: var(--view-bg, var(--basic-surface, #ffffff));
+    color: var(--view-fg, var(--basic-on-surface, #1a1a1a));
 }
 
 .view-workcenter__main {
@@ -322,23 +322,24 @@
 }
 
 // ============================================================================
-// DARK THEME
+// DARK THEME - Inherits from shell when inside [data-theme="dark"]
 // ============================================================================
 
-[data-theme="dark"] .view-workcenter {
-    --view-bg: #1e1e1e;
-    --view-fg: #e0e0e0;
-    --view-border: rgba(255, 255, 255, 0.1);
+[data-theme="dark"] .view-workcenter,
+.shell-basic[data-theme="dark"] .view-workcenter {
+    --view-bg: var(--basic-surface, #1e1e1e);
+    --view-fg: var(--basic-on-surface, #e0e0e0);
+    --view-border: var(--basic-outline-variant, rgba(255, 255, 255, 0.1));
     --view-files-bg: rgba(255, 255, 255, 0.02);
     --view-file-bg: rgba(255, 255, 255, 0.05);
-    --view-input-bg: #2d2d30;
+    --view-input-bg: var(--basic-surface-container-high, #2d2d30);
     --view-results-bg: rgba(255, 255, 255, 0.02);
     --view-result-bg: rgba(255, 255, 255, 0.05);
-    
+
     .view-workcenter__btn:hover {
         background-color: rgba(255, 255, 255, 0.08);
     }
-    
+
     .view-workcenter__result-copy:hover {
         background-color: rgba(255, 255, 255, 0.08);
     }

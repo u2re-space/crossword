@@ -6,7 +6,7 @@
  */
 
 import { H } from "fest/lure";
-import { ref, subscribe } from "fest/object";
+import { ref, affected } from "fest/object";
 import { loadAsAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";

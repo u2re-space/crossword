@@ -1,5 +1,5 @@
 import { fixEntityId } from "@rs-com/template/EntityId";
-import { dataCategories } from "@rs-com/service/Cache";
+import { dataCategories } from "@rs-com/service/misc/Cache";
 import { pushMany } from "@rs-com/store/IDBQueue";
 
 //

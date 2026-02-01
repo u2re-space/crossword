@@ -1,6 +1,6 @@
 /**
  * Faint Shell
- * 
+ *
  * Experimental tabbed interface with sidebar navigation.
  * Features:
  * - Collapsible sidebar with icons
@@ -11,10 +11,10 @@
  */
 
 import { BaseShell } from "../base-shell";
-import { H, C } from "fest/lure";
-import { ref, observe, subscribe, propRef } from "fest/object";
+import { H } from "fest/lure";
+import { ref, observe, affected } from "fest/object";
 import { ViewRegistry } from "../registry";
-import type { ShellId, ShellLayoutConfig, ViewId, View } from "../types";
+import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
 
 // @ts-ignore - SCSS import
 import style from "./faint.scss?inline";
@@ -31,7 +31,7 @@ import "fest/fl-ui";
 export class FaintShell extends BaseShell {
     id: ShellId = "faint";
     name = "Faint";
-    
+
     layout: ShellLayoutConfig = {
         hasSidebar: true,
         hasToolbar: true,
@@ -44,9 +44,11 @@ export class FaintShell extends BaseShell {
     private sidebarCollapsed = ref(false);
     private openTabs = observe(new Map<ViewId, { name: string; icon: string }>());
     private activeTab = ref<ViewId>("home");
-    
-    // UI Elements
+
+    // UI Elements (used for future extensions)
+    // @ts-expect-error - kept for future use
     private sidebarElement: HTMLElement | null = null;
+    // @ts-expect-error - kept for future use
     private tabBarElement: HTMLElement | null = null;
 
     protected createLayout(): HTMLElement {
@@ -84,7 +86,7 @@ export class FaintShell extends BaseShell {
         const sidebar = H`
             <aside class="shell-faint__sidebar" data-collapsed="${this.sidebarCollapsed.value}">
                 <div class="shell-faint__sidebar-header">
-                    <button 
+                    <button
                         class="shell-faint__sidebar-toggle"
                         type="button"
                         title="Toggle sidebar"
@@ -95,7 +97,7 @@ export class FaintShell extends BaseShell {
                 </div>
                 <nav class="shell-faint__sidebar-nav" role="navigation">
                     ${mainViews.map(item => H`
-                        <button 
+                        <button
                             class="shell-faint__sidebar-item"
                             data-view="${item.id}"
                             type="button"
@@ -129,12 +131,12 @@ export class FaintShell extends BaseShell {
         });
 
         // Update active state
-        subscribe(this.activeTab, (viewId) => {
+        affected(this.activeTab, (viewId) => {
             const buttons = sidebar.querySelectorAll("[data-view]");
-            for (const btn of buttons) {
+            buttons.forEach(btn => {
                 const isActive = (btn as HTMLElement).dataset.view === viewId;
                 btn.classList.toggle("active", isActive);
-            }
+            });
         });
 
         this.sidebarElement = sidebar;
@@ -156,12 +158,12 @@ export class FaintShell extends BaseShell {
         ` as HTMLElement;
 
         // Re-render tabs when openTabs changes
-        subscribe(this.openTabs as any, () => {
+        affected(this.openTabs as any, () => {
             this.renderTabs(tabBar);
         });
 
         // Also re-render when active tab changes
-        subscribe(this.activeTab, () => {
+        affected(this.activeTab, () => {
             this.renderTabs(tabBar);
         });
 
@@ -192,7 +194,7 @@ export class FaintShell extends BaseShell {
         const isCloseable = viewId !== "home";
 
         const tab = H`
-            <div 
+            <div
                 class="shell-faint__tab ${isActive ? "active" : ""}"
                 data-tab="${viewId}"
                 role="tab"
@@ -201,7 +203,7 @@ export class FaintShell extends BaseShell {
                 <ui-icon icon="${icon}" icon-style="duotone"></ui-icon>
                 <span class="shell-faint__tab-label">${name}</span>
                 ${isCloseable ? H`
-                    <button 
+                    <button
                         class="shell-faint__tab-close"
                         type="button"
                         title="Close tab"
@@ -217,7 +219,7 @@ export class FaintShell extends BaseShell {
         tab.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
             const closeBtn = target.closest("[data-close]");
-            
+
             if (closeBtn) {
                 // Close tab
                 const closeId = (closeBtn as HTMLElement).dataset.close as ViewId;
@@ -313,15 +315,14 @@ export class FaintShell extends BaseShell {
 
     async mount(container: HTMLElement): Promise<void> {
         await super.mount(container);
-        
-        // Setup navigation
-        this.setupHashNavigation();
+
+        // Setup path-based navigation
         this.setupPopstateNavigation();
 
-        // Navigate to home initially
-        const hash = window.location.hash.replace(/^#/, "");
-        if (hash && hash !== "home") {
-            await this.navigate(hash as ViewId);
+        // Navigate based on pathname
+        const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+        if (pathname && pathname !== "home") {
+            await this.navigate(pathname as ViewId);
         } else {
             this.activeTab.value = "home";
         }

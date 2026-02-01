@@ -2,7 +2,7 @@ import { ableToShowImage, encodeWithJSquash, removeAnyPrefix } from "@rs-core/wo
 import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "./RecognizeData";
 import type { RecognizeResult } from "./RecognizeData";
 import { toText } from "@rs-core/modules/Clipboard";
-import { getCustomInstructions } from "@rs-com/service/CustomInstructions";
+import { getCustomInstructions } from "@rs-com/service/misc/CustomInstructions";
 
 // 2MB threshold for compression
 const SIZE_THRESHOLD = 1024 * 1024 * 2;

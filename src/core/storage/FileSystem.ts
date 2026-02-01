@@ -7,7 +7,8 @@ import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
 import { TIMELINE_DIR } from "@rs-com/service/AI-ops/MakeTimeline";
 import { JSOX } from "jsox";
-import { toastError, toastSuccess } from "@rs-frontend/components/items/Toast";
+import { showSuccess } from "@rs-frontend/items/Toast";
+import { showError } from "@rs-frontend/items/Toast";
 
 //
 /*
@@ -393,10 +394,10 @@ controlChannel.addEventListener('message', (event: MessageEvent) => {
     if (!payload || (payload?.type !== 'commit-result' && payload?.type !== 'commit-to-clipboard')) return;
     if (payload?.type === 'commit-result') {
         flushQueueIntoOPFS?.()?.then?.(() => {
-            toastSuccess("Data has been saved to the filesystem.");
+            showSuccess("Data has been saved to the filesystem.");
         })?.catch?.((e) => {
             console.warn("Failed to save data to filesystem.", e, payload);
-            toastError("Failed to save data to filesystem.");
+            showError("Failed to save data to filesystem.");
         });
     } else
         if (payload?.type === 'commit-to-clipboard') {
@@ -405,13 +406,13 @@ controlChannel.addEventListener('message', (event: MessageEvent) => {
                 ?.filter?.((result: any) => (result && typeof result === "string"))?.join?.("\n") || "";
             if (data?.trim?.()) {
                 navigator?.clipboard?.writeText?.(data)?.then?.(() => {
-                    toastSuccess("Data has been copied to clipboard.");
+                    showSuccess("Data has been copied to clipboard.");
                 })?.catch?.((e) => {
                     console.warn("Failed to copy data to clipboard.", e, data);
-                    toastError("Failed to copy data to clipboard. Data is not copied.");
+                    showError("Failed to copy data to clipboard. Data is not copied.");
                 });
             } else
-                { toastError("Failed to copy data to clipboard. Data is empty."); }
+                { showError("Failed to copy data to clipboard. Data is empty."); }
         }
 });
 

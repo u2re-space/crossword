@@ -1,20 +1,28 @@
+/**
+ * Boot Menu
+ * 
+ * Shell selection screen displayed at root (/) route.
+ * User selects a shell (Basic, Faint, etc.) which is saved to preferences.
+ * Then navigates to the default view (/viewer).
+ */
+
 import { H } from "fest/lure";
 import { loadAsAdopted } from "fest/dom";
 //@ts-ignore
 import style from "./boot-menu.scss?inline";
+import type { ShellId } from "../shells/types";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
-export type FrontendChoice = "basic" | "faint" | "print" | "airpad" | "" | "/";
+export type FrontendChoice = ShellId | "airpad" | "";
 
 export type ChoiceScreenOptions = {
     seconds: number;
     defaultChoice: FrontendChoice;
     onChoose: (choice: FrontendChoice, remember: boolean) => void;
     initialRemember?: boolean;
-    tryRoutedPath?: boolean;
 };
 
 export type ChoiceScreenResult = {
@@ -27,46 +35,36 @@ export type ChoiceScreenResult = {
 // ============================================================================
 
 /**
- * Try to navigate to a routed path instead of loading sub-app
+ * Save shell preference to localStorage
  */
-const tryRoutedPath = (choice: FrontendChoice): boolean => {
-    const pathname = (location.pathname || "").replace(/^\//, "").trim().toLowerCase();
-
-    // If we're already on the correct route, no need to navigate
-    if (pathname === choice.toLowerCase()) {
-        return false;
-    }
-
-    // Try to navigate to the routed path
+const saveShellPreference = (shell: ShellId, remember: boolean): void => {
     try {
-        const newPath = `/${choice.toLowerCase()}`;
-        console.log(`[BootMenu] Trying to navigate to routed path: ${newPath}`);
-        window.history.pushState({}, "", newPath);
-
-        // Dispatch a navigation event that the index can handle
-        window.dispatchEvent(new CustomEvent('route-changed', {
-            detail: { path: choice.toLowerCase(), source: 'boot-menu' }
-        }));
-
-        return true;
-    } catch (error) {
-        console.warn(`[BootMenu] Failed to navigate to routed path for ${choice}:`, error);
-        return false;
+        localStorage.setItem("rs-boot-shell", shell);
+        if (remember) {
+            localStorage.setItem("rs-boot-remember", "1");
+        }
+    } catch {
+        // Ignore localStorage errors
     }
 };
 
 /**
- * Save user choice preference to localStorage
+ * Navigate to the default view after shell selection
  */
-const saveChoicePreference = (choice: FrontendChoice, remember: boolean): void => {
-    if (!remember) return;
-
-    try {
-        localStorage.setItem("rs-frontend-choice", choice);
-        localStorage.setItem("rs-frontend-choice-remember", "1");
-    } catch {
-        // Ignore localStorage errors
-    }
+const navigateToDefaultView = (shell: ShellId, remember: boolean): void => {
+    saveShellPreference(shell, remember);
+    
+    // Navigate to /viewer (default view)
+    const defaultView = "viewer";
+    window.history.pushState({ shell, view: defaultView }, "", `/${defaultView}`);
+    
+    // Dispatch route change event
+    window.dispatchEvent(new CustomEvent('route-change', {
+        detail: { view: defaultView, shell }
+    }));
+    
+    // Reload to apply shell
+    window.location.href = `/${defaultView}`;
 };
 
 // ============================================================================
@@ -142,7 +140,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
 /**
  * Create and assemble the main container
  */
-const createContainer = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
+const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
     const container = H`<div class="choice container"></div>` as HTMLElement;
     const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
 
@@ -162,21 +160,23 @@ const createContainer = (opts: ChoiceScreenOptions, elements: ReturnType<typeof 
 /**
  * Set up event handlers for buttons and keyboard navigation
  */
-const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
-    const { bigBasicButton, unstableFaint, airpadButton, buttons, keyboardNavigation, rememberInput } = elements;
+const setupEventHandlers = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
+    const { bigBasicButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput } = elements;
 
-    // Button click handlers
+    // Button click handlers - navigate to default view with selected shell
     const handleChoice = (choice: FrontendChoice) => {
         const remember = Boolean(rememberInput?.checked);
-
-        // Try routed path first if enabled
-        if (opts.tryRoutedPath && tryRoutedPath(choice)) {
-            saveChoicePreference(choice, remember);
+        
+        // For special views like airpad, navigate directly to that view
+        if (choice === "airpad") {
+            saveShellPreference("raw", remember);
+            window.location.href = "/airpad";
             return;
         }
-
-        // Fall back to onChoose callback
-        opts.onChoose(choice, remember);
+        
+        // For shells, save preference and navigate to default view
+        const shell = (choice || "basic") as ShellId;
+        navigateToDefaultView(shell, remember);
     };
 
     bigBasicButton.addEventListener("click", () => handleChoice("basic"));
@@ -204,14 +204,33 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
     });
 };
 
-//
-export default (mountingElement: HTMLElement) => {
-    loadAsAdopted(style)
-    mountingElement.append(ChoiceScreen({
+// ============================================================================
+// Default Export - Mount Boot Menu
+// ============================================================================
+
+export default async (mountingElement: HTMLElement): Promise<void> => {
+    await loadAsAdopted(style);
+    
+    // Check if there's a saved preference - if so, skip boot menu
+    const savedShell = localStorage.getItem("rs-boot-shell") as ShellId | null;
+    const remember = localStorage.getItem("rs-boot-remember") === "1";
+    
+    if (savedShell && remember) {
+        // User has a saved preference, skip boot menu and go to default view
+        navigateToDefaultView(savedShell, true);
+        return;
+    }
+    
+    // Show boot menu for shell selection
+    const { container } = ChoiceScreen({
         seconds: 10,
         defaultChoice: "basic",
-        onChoose: (choice, remember) => {},
-        initialRemember: false,
-        tryRoutedPath: true
-    })?.container);
+        onChoose: (choice, remember) => {
+            const shell = (choice || "basic") as ShellId;
+            navigateToDefaultView(shell, remember);
+        },
+        initialRemember: false
+    });
+    
+    mountingElement.append(container);
 };

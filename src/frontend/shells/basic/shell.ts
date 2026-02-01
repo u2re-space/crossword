@@ -223,7 +223,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     loadAsAdopted(style)
 
     //
-    const root = H`<div class="basic-shell" />` as HTMLElement;
+    const root = H`<div class="shell-basic" />` as HTMLElement;
     mountElement.replaceChildren(root);
 
     // Initialize icon system
@@ -1346,7 +1346,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             });
 
             // Listen for unified messaging system channels
-            const basicAppChannel = new BroadcastChannel('basic-shell');
+            const basicAppChannel = new BroadcastChannel('shell-basic');
             basicAppChannel.addEventListener("message", (event) => {
                 const message = event.data;
                 console.log('[BasicApp] Received message:', message);

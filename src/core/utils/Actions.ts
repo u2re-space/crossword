@@ -3,7 +3,7 @@ import { generateNewPlan } from "@rs-core/workers/AskToPlan";
 import { triggerDebugTaskGeneration } from "@rs-core/utils/DebugTaskGenerator";
 import { makeEntityEdit } from "@rs-frontend/shells/faint/editors/EntityEdit";
 import { downloadByPath, openPickerAndAnalyze, openPickerAndWrite, pasteAndAnalyze, pasteIntoClipboardWithRecognize } from "../storage/FileOps";
-import { toastSuccess, toastError } from "@rs-frontend/components/items/Toast";
+import { showSuccess, showError } from "@rs-frontend/items/Toast";
 import { writeFileSmart } from "@rs-core/storage/WriteFileSmart-v2";
 import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { currentWebDav, loadSettings, saveSettings } from "@rs-com/config/Settings";
@@ -187,7 +187,7 @@ export const clientShare = async (data: any) => {
 Promise.try(async () => {
     // @ts-ignore
     const recognition = typeof SpeechRecognition != "undefined" ? new SpeechRecognition() : null;
-    if (!recognition) { toastError("Speech recognition is not supported by this browser"); return null; }
+    if (!recognition) { showError("Speech recognition is not supported by this browser"); return null; }
 
     //
     let diagnostic = ""; // @ts-ignore
@@ -220,7 +220,7 @@ export const recordSpeechRecognition = async (userInputHoldUntilStop: boolean = 
     // @ts-ignore
     const recognition = typeof SpeechRecognition != "undefined" ? new SpeechRecognition() : null;
     if (!recognition) {
-        toastError("Speech recognition is not supported by this browser");
+        showError("Speech recognition is not supported by this browser");
         return null;
     }
 
@@ -303,7 +303,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             await startListening()?.catch?.(console.warn.bind(console));
         } catch (e) {
             console.warn(e);
-            toastError("Failed to enable Bluetooth acceptance");
+            showError("Failed to enable Bluetooth acceptance");
         }
     }],
 
@@ -311,10 +311,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     ["bluetooth-share-clipboard", async () => {
         try {
             await whenPasteInto()?.catch?.(console.warn.bind(console));
-            toastSuccess("Pasted data into Bluetooth");
+            showSuccess("Pasted data into Bluetooth");
         } catch (e) {
             console.warn(e);
-            toastError("Failed to paste from Bluetooth");
+            showError("Failed to paste from Bluetooth");
         }
     }],
 
@@ -322,9 +322,9 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     ["paste-and-recognize", async (): Promise<boolean> => {
         try {
             const success = await pasteIntoClipboardWithRecognize()?.catch?.(console.warn.bind(console));
-            if (!success) { toastError("Failed to paste for recognition"); return false; }
-            toastSuccess("Pasted data for recognition"); return true;
-        } catch (e) { console.warn(e); toastError("Failed to paste for recognition"); return false; }
+            if (!success) { showError("Failed to paste for recognition"); return false; }
+            showSuccess("Pasted data for recognition"); return true;
+        } catch (e) { console.warn(e); showError("Failed to paste for recognition"); return false; }
     }],
 
     //
@@ -335,7 +335,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         //
         if (!items?.length) {
             fileToShare = await navigator?.clipboard?.readText?.()?.catch?.(console.warn.bind(console)) as string | null;
-            if (!fileToShare) { toastError("Clipboard is empty."); return false; }
+            if (!fileToShare) { showError("Clipboard is empty."); return false; }
         }
 
         //
@@ -355,11 +355,11 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         //
         if (!multipleFiles?.length && !fileToShare) {
             fileToShare = await navigator?.clipboard?.readText?.()?.catch?.(console.warn.bind(console)) as string | null;
-            if (!fileToShare) { toastError("Clipboard is empty."); return false; }
+            if (!fileToShare) { showError("Clipboard is empty."); return false; }
         }
 
         //
-        if (!navigator?.canShare) { toastError("This browser cannot share files via Web Share API."); return false; }
+        if (!navigator?.canShare) { showError("This browser cannot share files via Web Share API."); return false; }
 
         // try smart share by type
         if (multipleFiles?.length && navigator?.canShare?.({ files: multipleFiles as any })) {
@@ -396,10 +396,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             a.download = `crossword-settings-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            toastSuccess("Settings exported");
+            showSuccess("Settings exported");
         } catch (e) {
             console.warn(e);
-            toastError("Failed to export settings");
+            showError("Failed to export settings");
         }
     }],
 
@@ -421,11 +421,11 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
                 if (viewPage && viewPage.reloadSettings) {
                     await viewPage.reloadSettings(json);
                 } else {
-                    toastSuccess("Settings imported (reload required)");
+                    showSuccess("Settings imported (reload required)");
                 }
             } catch (e) {
                 console.warn(e);
-                toastError("Failed to import settings");
+                showError("Failed to import settings");
             }
         };
         input.click();
@@ -438,7 +438,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const href = meta?.href || item?.href || context?.shortcut?.href || context?.href;
 
         //
-        if (!href) { toastError("Link is missing"); return; }
+        if (!href) { showError("Link is missing"); return; }
 
         // TODO: detect origin of the link and open in the same tab if same origin
         const target = isSameOrigin(href) ? "_self" : "_blank";
@@ -446,7 +446,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             window?.open?.(href, target, "noopener,noreferrer");
         } catch (error) {
             console.warn(error);
-            toastError("Unable to open link");
+            showError("Unable to open link");
         }
     }, 100)],
 
@@ -455,15 +455,15 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
         const href = meta?.href || item?.href || context?.shortcut?.href || context?.href;
-        if (!href) { toastError("Nothing to copy"); return; }
+        if (!href) { showError("Nothing to copy"); return; }
 
         //
         try {
             await copyTextToClipboard(href);
-            toastSuccess("Link copied");
+            showSuccess("Link copied");
         } catch (error) {
             console.warn(error);
-            toastError("Failed to copy link");
+            showError("Failed to copy link");
         }
     }],
 
@@ -472,7 +472,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const item = context?.items?.find?.((item) => item?.id === context?.id) || null;
         const snapshot = snapshotSpeedDialItem(item);
         if (!snapshot) {
-            toastError("Nothing to copy");
+            showError("Nothing to copy");
             return;
         }
         if (snapshot.desc && snapshot.desc.meta && snapshot.desc.action && !snapshot.desc.meta.action) {
@@ -480,10 +480,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         }
         try {
             await copyTextToClipboard(JSOX.stringify(snapshot as any) as string);
-            toastSuccess("Shortcut saved to clipboard");
+            showSuccess("Shortcut saved to clipboard");
         } catch (error) {
             console.warn(error);
-            toastError("Failed to copy shortcut");
+            showError("Failed to copy shortcut");
         }
     }],
 
@@ -493,7 +493,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const meta = item?.meta || context?.meta?.get?.(item?.id || context?.id) || null;
         const targetView = meta?.view || (entityDesc as any)?.view || entityDesc?.type;
         if (!targetView) {
-            toastError("No view target");
+            showError("No view target");
             return;
         }
         ensureHashNavigation(targetView, context?.viewMaker, context?.meta);
@@ -504,10 +504,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         openPickerAndWrite(viewer?.path, 'text/markdown,text/plain,.md', true)?.then?.(() => {
-            toastSuccess("Uploaded");
+            showSuccess("Uploaded");
             currentWebDav?.sync?.upload?.();
         }).catch((e) => {
-            toastError("Upload failed");
+            showError("Upload failed");
             console.warn(e);
         });
     }],
@@ -518,9 +518,9 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const viewer = viewPage?.querySelector("ui-file-manager");
         getDirectoryHandle(null, viewer?.path, { create: true })?.then?.(async () => {
             await mountAsRoot("user", true)?.catch?.(console.warn.bind(console));
-            toastSuccess("Mounted");
+            showSuccess("Mounted");
         }).catch((e) => {
-            toastError("Mount failed");
+            showError("Mount failed");
             console.warn(e);
         });
     }],
@@ -529,9 +529,9 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         viewPage = await viewPage;
         const viewer = viewPage?.querySelector("ui-file-manager");
         downloadByPath(viewer?.path)?.then?.(() => {
-            toastSuccess("Downloaded");
+            showSuccess("Downloaded");
         }).catch((e) => {
-            toastError("Download failed");
+            showError("Download failed");
             console.warn(e);
         });
     }],
@@ -541,9 +541,9 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         const viewer = viewPage?.querySelector("ui-file-manager");
         currentWebDav?.sync?.download?.(viewer?.path)?.then?.(() => {
             viewer?.loadPath?.(viewer?.path);
-            toastSuccess("Refreshed");
+            showSuccess("Refreshed");
         }).catch((e) => {
-            toastError("Refresh failed");
+            showError("Refresh failed");
             console.warn(e);
         });
     }],
@@ -555,13 +555,13 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             const results = await triggerDebugTaskGeneration(3); // Generate 3 debug tasks
             //viewPage?.$refresh?.();
             if (results && results.length > 0) {
-                toastSuccess(`Generated ${results.length} debug tasks for testing`);
+                showSuccess(`Generated ${results.length} debug tasks for testing`);
             } else {
-                toastError(`Failed to generate debug tasks`);
+                showError(`Failed to generate debug tasks`);
             }
         } catch (error) {
             console.warn("Debug task generation failed:", error);
-            toastError(`Failed to generate debug tasks`);
+            showError(`Failed to generate debug tasks`);
         }
     }],
 
@@ -576,7 +576,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         viewPage = await viewPage;
         const recognition = await recordSpeechRecognition();
         if (!recognition) {
-            toastError("Failed to record speech recognition");
+            showError("Failed to record speech recognition");
             return;
         }
 
@@ -585,10 +585,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         try { recognition?.stop?.(); } catch (e) { console.warn(e); }
         if (content) {
             const response = await generateNewPlan(content);
-            if (!response) { toastError(`Failed to generate ${entityDesc.label}`); return; }
-            toastSuccess(`Plan generated...`);
+            if (!response) { showError(`Failed to generate ${entityDesc.label}`); return; }
+            showSuccess(`Plan generated...`);
         } else {
-            toastError("No content to generate");
+            showError("No content to generate");
         }
     }],
 
@@ -605,10 +605,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             const response = await generateNewPlan();
             //viewPage?.$refresh?.();
             if (!response) {
-                toastError(`Failed to generate ${entityDesc.label}`);
+                showError(`Failed to generate ${entityDesc.label}`);
                 return;
             };
-            toastSuccess(`Plan generated...`);
+            showSuccess(`Plan generated...`);
         }, 100);
     }],
 
@@ -629,10 +629,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             const path = `${(entityDesc.DIR || "/")}${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""); (result as any).__path = path;
             const file = new File([JSOX.stringify(result as any) as string], `${fname}.json`.trim()?.replace?.(/\/\/+/g, "/")?.replace?.(/\/$/, ""), { type: "application/json" });
             await writeFileSmart(null, path, file, { ensureJson: true, sanitize: true });
-            toastSuccess(`${entityDesc.label} saved`);
+            showSuccess(`${entityDesc.label} saved`);
         } catch (e) {
             console.warn(e);
-            toastError(`Failed to save ${entityDesc.label}`);
+            showError(`Failed to save ${entityDesc.label}`);
         }
     }],
 
@@ -641,10 +641,10 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
         viewPage = await viewPage;
         try {
             await openPickerAndAnalyze(entityDesc.DIR || "/", 'text/markdown,text/plain,.json,image/*', true);
-            toastSuccess(`${entityDesc.label} uploaded`);
+            showSuccess(`${entityDesc.label} uploaded`);
         } catch (e) {
             console.warn(e);
-            toastError(`Failed to upload ${entityDesc.label}`);
+            showError(`Failed to upload ${entityDesc.label}`);
         }
     }],
 
@@ -652,15 +652,15 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
     ["paste-and-analyze", async () => {
         try {
             const success = await pasteAndAnalyze()?.catch?.(console.warn.bind(console));
-            if (!success) { toastError("Failed to paste and recognize"); return false; }
-            toastSuccess("Pasted data for analyze"); return true;
-        } catch (e) { console.warn(e); toastError("Failed to paste and recognize"); }
+            if (!success) { showError("Failed to paste and recognize"); return false; }
+            showSuccess("Pasted data for analyze"); return true;
+        } catch (e) { console.warn(e); showError("Failed to paste and recognize"); }
     }],
 
     //
     ["snip-and-recognize", async () => {
         // TODO! implement chrome functionality here...
-        toastError("Snip and analyze is not implemented yet");
+        showError("Snip and analyze is not implemented yet");
         return false;
     }]
 ]);

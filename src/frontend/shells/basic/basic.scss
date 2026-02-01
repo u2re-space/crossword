@@ -1,6 +1,6 @@
 /**
  * Basic Shell Styles
- * 
+ *
  * Clean, modern toolbar-based layout.
  */
 
@@ -12,7 +12,7 @@
     // Layout tokens
     --shell-nav-height: 56px;
     --shell-padding: 0;
-    
+
     // Colors - Light theme
     --shell-bg: #f8f9fa;
     --shell-fg: #1a1a1a;
@@ -23,7 +23,7 @@
     --shell-btn-active-fg: #007acc;
     --shell-status-bg: rgba(0, 0, 0, 0.85);
     --shell-status-fg: #ffffff;
-    
+
     // Dark theme overrides
     &[data-theme="dark"] {
         --shell-bg: #1e1e1e;
@@ -67,7 +67,8 @@
     background-color: var(--shell-nav-bg);
     border-block-end: 1px solid var(--shell-nav-border);
     flex-shrink: 0;
-    
+    margin: 0px;
+
     // Smooth transitions
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -82,7 +83,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    
+
     // View toolbar content inherits these
     > * {
         display: flex;
@@ -108,28 +109,30 @@
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
-    
+    white-space: nowrap; // Prevent button text wrapping
+
     // Icon styling
     ui-icon {
         font-size: 1.125rem;
         opacity: 0.8;
+        flex-shrink: 0;
     }
-    
+
     // Hover state
     &:hover {
         background-color: var(--shell-btn-hover);
     }
-    
+
     // Active/current state
     &.active {
         background-color: var(--shell-btn-active-bg);
         color: var(--shell-btn-active-fg);
-        
+
         ui-icon {
             opacity: 1;
         }
     }
-    
+
     // Focus visible
     &:focus-visible {
         outline: 2px solid var(--shell-btn-active-fg);
@@ -154,25 +157,32 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    
+    inline-size: stretch;
+    block-size: stretch;
+    max-inline-size: stretch;
+    max-block-size: stretch;
+    min-inline-size: 0;
+    min-block-size: 0;
+    padding: 0px;
+
     // Children should fill content area
-    > * {
+    & > * {
         flex: 1;
         overflow: auto;
     }
-    
+
     // Scrollbar styling
     scrollbar-width: thin;
     scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
-    
+
     &::-webkit-scrollbar {
         inline-size: 8px;
     }
-    
+
     &::-webkit-scrollbar-track {
         background: transparent;
     }
-    
+
     &::-webkit-scrollbar-thumb {
         background-color: rgba(128, 128, 128, 0.4);
         border-radius: 4px;
@@ -189,7 +199,7 @@
     inset-inline-start: 50%;
     transform: translateX(-50%);
     z-index: 9999;
-    
+
     padding: 0.75rem 1.5rem;
     background-color: var(--shell-status-bg);
     color: var(--shell-status-fg);
@@ -197,10 +207,10 @@
     font-size: 0.875rem;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    
+
     // Animation
     animation: shell-basic-status-enter 0.2s ease-out;
-    
+
     &:empty,
     &[hidden] {
         display: none;
@@ -223,13 +233,22 @@
 // ============================================================================
 
 .shell-basic__loading {
-    display: flex;
+    /*display: flex;*/
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    inline-size: stretch;
+    block-size: stretch;
+    max-inline-size: stretch;
+    max-block-size: stretch;
+    min-inline-size: 0;
+    min-block-size: 0;
     gap: 1rem;
     padding: 2rem;
-    
+    position: absolute;
+    inset: -1;
+
     .loading-spinner {
         inline-size: 32px;
         block-size: 32px;
@@ -254,10 +273,10 @@
     .shell-basic {
         --shell-nav-height: 48px;
     }
-    
+
     .shell-basic__nav-btn {
         padding: 0.4rem 0.6rem;
-        
+
         ui-icon {
             font-size: 1.25rem;
         }
@@ -273,7 +292,7 @@
     .shell-basic__status {
         display: none !important;
     }
-    
+
     .shell-basic__content {
         overflow: visible;
     }

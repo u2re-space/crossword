@@ -12,14 +12,13 @@ import type { BaseViewOptions } from "../types";
 import { getString, setString } from "../../../core/storage";
 
 // Import the rs-explorer web component from fl.ui
-import "fest/fl-ui/ui/components/viewers";
-import type { RsExplorerElement, FileItem } from "fest/fl-ui/ui/components/viewers";
+import { FileManager, type FileItem } from "fest/fl-ui";
 
 // Re-export FileManager for backwards compatibility
-export { FileManager, FileManagerContent } from "fest/fl-ui/services/file-manager/FileManager";
+export { FileManager, FileManagerContent } from "fest/fl-ui";
 
 // @ts-ignore
-import style from "./explorer.scss?inline";
+import style from "./index.scss?inline";
 
 // ============================================================================
 // EXPLORER VIEW
@@ -33,7 +32,7 @@ export class ExplorerView implements View {
     private options: BaseViewOptions;
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
-    private explorer: RsExplorerElement | null = null;
+    private explorer: FileManager | null = null;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.loadLastPath(),
@@ -57,13 +56,13 @@ export class ExplorerView implements View {
         this.element = H`
             <div class="view-explorer">
                 <div class="view-explorer__content" data-explorer-content>
-                    <rs-explorer view-mode="list"></rs-explorer>
+                    <ui-file-manager view-mode="list"></ui-file-manager>
                 </div>
             </div>
         ` as HTMLElement;
 
         // Get reference to rs-explorer component
-        this.explorer = this.element.querySelector("rs-explorer") as RsExplorerElement;
+        this.explorer = this.element.querySelector("ui-file-manager") as unknown as FileManager;
 
         // Setup event listeners
         this.setupExplorerEvents();
@@ -81,7 +80,7 @@ export class ExplorerView implements View {
 
     private setupExplorerEvents(): void {
         if (!this.explorer) return;
-        const explorer = this.explorer as RsExplorerElement & HTMLElement;
+        const explorer = this.explorer as unknown as FileManager & HTMLElement;
 
         // Handle file open
         explorer.addEventListener("rs-open", async (e: Event) => {

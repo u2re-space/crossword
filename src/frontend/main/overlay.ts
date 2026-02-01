@@ -4,7 +4,7 @@
  * Provides overlay, selection box, hints, and integrated toast/clipboard
  */
 
-import { showToast as toastShow, initToastReceiver, type ToastOptions } from "../components/items/Toast";
+import { showToast as toastShow, initToastReceiver, type ToastOptions } from "../items/Toast";
 import { initClipboardReceiver } from "../../core/clipboard";
 
 export interface OverlayConfig {

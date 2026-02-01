@@ -18,7 +18,7 @@ import {
     type DataContext
 } from "../model/GPT-Config";
 import { extractJSONFromAIResponse } from "../../../core/document/AIResponseParser";
-import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../InstructionUtils";
+import { buildInstructionPrompt, SVG_GRAPHICS_ADDON } from "../misc/InstructionUtils";
 import type { ResponseLanguage } from "../../config/SettingsTypes";
 
 // ============================================================================
@@ -81,7 +81,7 @@ const createPwaAdapter = (): PlatformAdapter => ({
     showNotification(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }): void {
         // Use PWA toast system
         try {
-            import("../../../frontend/components/items/Toast").then(({ showToast }) => {
+            import("../../../frontend/items/Toast").then(({ showToast }) => {
                 showToast({
                     message,
                     kind: options?.type || 'info',
@@ -305,12 +305,12 @@ export const loadAISettings = async () => {
 export const getActiveCustomInstruction = async (): Promise<string> => {
     try {
         // Try direct import first (works in most contexts)
-        const { getActiveInstructionText } = await import("../CustomInstructions");
+        const { getActiveInstructionText } = await import("../misc/CustomInstructions");
         return await getActiveInstructionText();
     } catch {
         // Fallback for contexts where direct import fails
         try {
-            const { getActiveInstructionText } = await import("../CustomInstructions");
+            const { getActiveInstructionText } = await import("../misc/CustomInstructions");
             return await getActiveInstructionText();
         } catch {
             return "";

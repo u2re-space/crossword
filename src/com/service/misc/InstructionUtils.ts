@@ -3,7 +3,7 @@
  * Pure functions for working with AI instructions (backend-compatible)
  */
 
-import type { CustomInstruction } from "../config/SettingsTypes";
+import type { CustomInstruction } from "../../config/SettingsTypes";
 
 export type { CustomInstruction };
 

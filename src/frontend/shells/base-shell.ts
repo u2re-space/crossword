@@ -1,13 +1,12 @@
 /**
  * Base Shell Implementation
- * 
+ *
  * Provides common functionality for all shells.
  * Concrete shells extend this class and customize the layout.
  */
 
-import { ref, observe } from "fest/object";
-import { H } from "fest/lure";
-import { loadAsAdopted } from "fest/dom";
+import { ref } from "fest/object";
+import { loadInlineStyle, preloadStyle } from "fest/dom";
 import { ViewRegistry } from "./registry";
 import type {
     Shell,
@@ -17,9 +16,11 @@ import type {
     ShellContext,
     ShellLayoutConfig,
     ShellNavigationState,
-    View,
-    ViewOptions
+    View
 } from "./types";
+
+//
+import "fest/fl-ui";
 
 // ============================================================================
 // BASE SHELL IMPLEMENTATION
@@ -34,9 +35,9 @@ export abstract class BaseShell implements Shell {
     abstract name: string;
     abstract layout: ShellLayoutConfig;
 
-    // State
-    theme = ref<ShellTheme>({ id: "auto", name: "Auto", colorScheme: "auto" });
-    currentView = ref<ViewId>("home");
+    // State (using any to work around fest/object type inference issue)
+    theme = ref<ShellTheme>({ id: "auto", name: "Auto", colorScheme: "auto" }) as { value: ShellTheme };
+    currentView = ref<ViewId>("home") as { value: ViewId };
     protected navigationState: ShellNavigationState = {
         currentView: "home",
         viewHistory: []
@@ -85,12 +86,15 @@ export abstract class BaseShell implements Shell {
         // Load stylesheet if provided
         const stylesheet = this.getStylesheet();
         if (stylesheet) {
-            await loadAsAdopted(stylesheet);
+            const styled = await preloadStyle(stylesheet);
+            if (styled) {
+                await loadInlineStyle(stylesheet);
+            }
         }
 
         // Create layout
         this.rootElement = this.createLayout();
-        
+
         // Find containers
         this.contentContainer = this.rootElement.querySelector("[data-shell-content]") || this.rootElement;
         this.toolbarContainer = this.rootElement.querySelector("[data-shell-toolbar]");
@@ -154,11 +158,14 @@ export abstract class BaseShell implements Shell {
         // Update reactive state
         this.currentView.value = viewId;
 
-        // Update URL hash
+        // Update URL pathname (path-based routing, no hash)
         if (typeof window !== "undefined") {
-            const hash = `#${viewId}`;
-            if (window.location.hash !== hash) {
-                window.history.pushState({ viewId, params }, "", hash);
+            const pathname = `/${viewId}`;
+            const search = params ? "?" + new URLSearchParams(params).toString() : "";
+            const newUrl = pathname + search;
+
+            if (window.location.pathname !== pathname) {
+                window.history.pushState({ viewId, params }, "", newUrl);
             }
         }
 
@@ -289,8 +296,8 @@ export abstract class BaseShell implements Shell {
 
         // Set color scheme
         const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-        const resolved = theme.colorScheme === "dark" ? "dark" 
-            : theme.colorScheme === "light" ? "light" 
+        const resolved = theme.colorScheme === "dark" ? "dark"
+            : theme.colorScheme === "light" ? "light"
             : prefersDark ? "dark" : "light";
 
         this.rootElement.dataset.theme = resolved;
@@ -355,28 +362,16 @@ export abstract class BaseShell implements Shell {
     }
 
     // ========================================================================
-    // HASH NAVIGATION
+    // PATH-BASED NAVIGATION
     // ========================================================================
 
     /**
-     * Setup hash-based navigation
+     * Setup path-based navigation (listen to route-change events)
+     * @deprecated Use setupPopstateNavigation instead
      */
     protected setupHashNavigation(): void {
-        if (typeof window === "undefined") return;
-
-        // Listen for hash changes
-        window.addEventListener("hashchange", () => {
-            const hash = window.location.hash.replace(/^#/, "");
-            if (hash && hash !== this.currentView.value) {
-                this.navigate(hash as ViewId);
-            }
-        });
-
-        // Handle initial hash
-        const initialHash = window.location.hash.replace(/^#/, "");
-        if (initialHash) {
-            this.navigate(initialHash as ViewId);
-        }
+        // No-op for backwards compatibility
+        // Path-based routing doesn't use hash changes
     }
 
     /**
@@ -386,7 +381,10 @@ export abstract class BaseShell implements Shell {
         if (typeof window === "undefined") return;
 
         window.addEventListener("popstate", (event) => {
-            const viewId = event.state?.viewId || "home";
+            // Get view from pathname
+            const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+            const viewId = (event.state?.viewId || pathname || "viewer") as ViewId;
+
             if (viewId !== this.currentView.value) {
                 // Navigate without pushing new history
                 this.navigationState.currentView = viewId;
@@ -396,5 +394,18 @@ export abstract class BaseShell implements Shell {
                 }).catch(console.error);
             }
         });
+    }
+
+    /**
+     * Get view ID from current pathname
+     */
+    protected getViewFromPathname(): ViewId | null {
+        if (typeof window === "undefined") return null;
+
+        const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+        if (!pathname || pathname === "/") {
+            return null; // Root route
+        }
+        return pathname as ViewId;
     }
 }

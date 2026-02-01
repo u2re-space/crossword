@@ -11,7 +11,7 @@
 import type { View, ViewLifecycle, ViewOptions, ShellContext } from "../shells/types";
 import { 
     serviceChannels, 
-    subscribeToChannel,
+    affectedToChannel,
     sendToChannel,
     type ServiceChannelId,
     type ChannelMessage 
@@ -74,7 +74,7 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
 ) {
     return class extends ViewClass implements ChannelConnectedView {
         channelId: ServiceChannelId = defaultChannelId;
-        private _channelUnsubscribe: (() => void) | null = null;
+        private _channelUnaffected: (() => void) | null = null;
         private _channelConnected = false;
         private _messageHandlers = new Map<string, Set<ViewMessageHandler>>();
 
@@ -97,7 +97,7 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
             await serviceChannels.initChannel(this.channelId);
 
             // Subscribe to messages
-            this._channelUnsubscribe = subscribeToChannel(
+            this._channelUnaffected = affectedToChannel(
                 this.channelId,
                 (message) => this._handleChannelMessage(message)
             );
@@ -107,9 +107,9 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
         }
 
         disconnectChannel(): void {
-            if (this._channelUnsubscribe) {
-                this._channelUnsubscribe();
-                this._channelUnsubscribe = null;
+            if (this._channelUnaffected) {
+                this._channelUnaffected();
+                this._channelUnaffected = null;
             }
             this._channelConnected = false;
             console.log(`[ViewChannel] ${this.id} disconnected from ${this.channelId}`);

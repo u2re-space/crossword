@@ -1,5 +1,5 @@
-import { executionCore } from "@rs-com/service/ExecutionCore";
-import type { ActionContext, ActionInput } from "@rs-com/service/ActionHistory";
+import { executionCore } from "@rs-com/service/misc/ExecutionCore";
+import type { ActionContext, ActionInput } from "@rs-com/service/misc/ActionHistory";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterUI } from "./WorkCenterUI";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";

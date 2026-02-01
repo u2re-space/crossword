@@ -1,6 +1,6 @@
 /**
  * Shell and View Registry
- * 
+ *
  * Central registry for shell and view components.
  * Supports lazy loading and caching.
  */
@@ -66,7 +66,7 @@ class ShellRegistryClass {
 
         const module = await registration.loader();
         const factory = (module as any).default || (module as any).createShell;
-        
+
         if (typeof factory !== "function") {
             throw new Error(`Invalid shell module: ${id}`);
         }
@@ -153,7 +153,7 @@ class ViewRegistryClass {
 
         const module = await registration.loader();
         const factory: ViewFactory = (module as any).default || (module as any).createView;
-        
+
         if (typeof factory !== "function") {
             throw new Error(`Invalid view module: ${id}`);
         }

@@ -9,8 +9,8 @@
  */
 
 // Re-export viewers from fl.ui
-export { MdViewElement, RsExplorerElement, RsExplorer } from "fest/fl-ui/ui/components/viewers";
-export type { FileItem, ExplorerState } from "fest/fl-ui/ui/components/viewers";
+export { RsExplorerElement } from "fest/fl-ui";
+export type { FileItem, ExplorerState } from "fest/fl-ui";
 
 // Re-export file manager from fl.ui
-export { FileManager, FileManagerContent } from "fest/fl-ui/services/file-manager/FileManager";
+export { FileManager, FileManagerContent } from "fest/fl-ui";

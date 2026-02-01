@@ -1,34 +1,37 @@
 /**
  * Routing System
  *
- * Unified URL-based routing for shells and views.
- * Supports:
- * - Shell routes: /basic, /faint, /raw
- * - View routes: #viewer, #workcenter, etc.
- * - Deep linking: /basic#viewer
- * - Query params: ?content=...
- * - Legacy and modern boot modes
+ * Path-based routing for views (no hash navigation).
+ * 
+ * Routes:
+ * - `/` → Boot menu or default view (shell selection)
+ * - `/viewer` → Viewer
+ * - `/workcenter` → Work Center
+ * - `/settings` → Settings
+ * - `/explorer` → Explorer
+ * - `/history` → History
+ * - `/editor` → Editor
+ * - `/airpad` → Airpad
+ * - `/print` → Print view
+ * 
+ * Shell is configured separately (via preferences), not in URL.
  */
 
 import type { ShellId, ViewId, Shell } from "../shells/types";
 import type { FrontendChoice } from "./boot-menu";
-import { bootLoader, bootBasic, bootFaint, bootRaw, type BootConfig } from "./BootLoader";
+import { bootBasic, bootFaint, bootRaw, type BootConfig } from "./BootLoader";
 
 // ============================================================================
 // ROUTE TYPES
 // ============================================================================
 
 export interface Route {
-    shell?: ShellId;
-    view?: ViewId;
+    view: ViewId;
     params?: Record<string, string>;
-    hash?: string;
 }
 
 export interface RouteConfig {
-    shells: ShellId[];
     views: ViewId[];
-    defaultShell: ShellId;
     defaultView: ViewId;
 }
 
@@ -37,7 +40,7 @@ export type AppLoaderResult = {
     shell?: Shell;
 };
 
-export type RoutingMode = "legacy" | "shell-boot";
+export type RoutingMode = "path-based";
 export type NavigateOptions = { replace?: boolean; state?: unknown };
 export type RouteHandler = (route: Route) => void | Promise<void>;
 
@@ -45,10 +48,21 @@ export type RouteHandler = (route: Route) => void | Promise<void>;
 // ROUTE CONFIG
 // ============================================================================
 
+/** All registered view routes */
+export const VALID_VIEWS: ViewId[] = [
+    "viewer",
+    "editor",
+    "workcenter",
+    "explorer",
+    "airpad",
+    "settings",
+    "history",
+    "home",
+    "print"
+];
+
 const DEFAULT_CONFIG: RouteConfig = {
-    shells: ["basic", "faint", "raw"],
-    views: ["viewer", "editor", "workcenter", "explorer", "airpad", "settings", "history", "home", "print"],
-    defaultShell: "basic",
+    views: VALID_VIEWS,
     defaultView: "viewer"
 };
 
@@ -73,57 +87,45 @@ function normalizePathname(pathname: string): string {
  */
 export function parseCurrentRoute(config = DEFAULT_CONFIG): Route {
     const pathname = normalizePathname(location.pathname);
-    const hash = location.hash.replace(/^#/, "");
     const params = Object.fromEntries(new URLSearchParams(location.search));
 
-    let shell: ShellId | undefined;
-    let remaining = pathname;
-
-    for (const s of config.shells) {
-        if (pathname === s || pathname.startsWith(`${s}/`)) {
-            shell = s;
-            remaining = pathname.slice(s.length).replace(/^\//, "");
-            break;
-        }
+    // Map pathname to view
+    let view: ViewId = config.defaultView;
+    
+    if (pathname && config.views.includes(pathname as ViewId)) {
+        view = pathname as ViewId;
     }
 
-    let view: ViewId | undefined;
-    if (hash && config.views.includes(hash as ViewId)) {
-        view = hash as ViewId;
-    } else if (remaining && config.views.includes(remaining as ViewId)) {
-        view = remaining as ViewId;
-    }
+    return { view, params };
+}
 
-    return { shell, view, params, hash };
+/**
+ * Check if current URL is the root/home
+ */
+export function isRootRoute(): boolean {
+    const pathname = normalizePathname(location.pathname);
+    return pathname === "" || pathname === "/";
 }
 
 /**
  * Build URL from route
  */
-export function buildUrl(route: Route, config = DEFAULT_CONFIG): string {
-    const parts: string[] = [];
-
-    if (route.shell && route.shell !== config.defaultShell) {
-        parts.push(route.shell);
-    }
-
-    let url = "/" + parts.join("/");
-
-    if (route.view) {
-        url += `#${route.view}`;
-    }
+export function buildUrl(route: Route): string {
+    let url = `/${route.view}`;
 
     if (route.params && Object.keys(route.params).length > 0) {
         const search = new URLSearchParams(route.params).toString();
-        const hashIndex = url.indexOf("#");
-        if (hashIndex >= 0) {
-            url = url.slice(0, hashIndex) + "?" + search + url.slice(hashIndex);
-        } else {
-            url += "?" + search;
-        }
+        url += "?" + search;
     }
 
     return url;
+}
+
+/**
+ * Build URL for root
+ */
+export function buildRootUrl(): string {
+    return "/";
 }
 
 // ============================================================================
@@ -131,7 +133,7 @@ export function buildUrl(route: Route, config = DEFAULT_CONFIG): string {
 // ============================================================================
 
 /**
- * Navigate to a route
+ * Navigate to a route (view)
  */
 export function navigate(route: Route, options: NavigateOptions = {}): void {
     const url = buildUrl(route);
@@ -146,18 +148,19 @@ export function navigate(route: Route, options: NavigateOptions = {}): void {
 }
 
 /**
- * Navigate to a view (within current shell)
+ * Navigate to a view
  */
 export function navigateToView(view: ViewId, params?: Record<string, string>): void {
-    const current = parseCurrentRoute();
-    navigate({ ...current, view, params });
+    navigate({ view, params });
 }
 
 /**
- * Navigate to a shell (optionally with a view)
+ * Navigate to root (boot menu / shell selection)
  */
-export function navigateToShell(shell: ShellId, view?: ViewId): void {
-    navigate({ shell, view });
+export function navigateToRoot(): void {
+    const url = buildRootUrl();
+    history.pushState({ view: null }, "", url);
+    window.dispatchEvent(new CustomEvent("route-change", { detail: { view: null } }));
 }
 
 export const goBack = () => history.back();
@@ -168,40 +171,34 @@ export const goForward = () => history.forward();
 // ============================================================================
 
 /**
- * Simple route matcher
+ * Check if a view is valid
  */
-export function matchRoute(
-    route: Route,
-    pattern: { shell?: ShellId; view?: ViewId }
-): boolean {
-    if (pattern.shell && route.shell !== pattern.shell) return false;
-    if (pattern.view && route.view !== pattern.view) return false;
-    return true;
+export function isValidView(view: string): view is ViewId {
+    return VALID_VIEWS.includes(view as ViewId);
 }
 
-// ============================================================================
-// HASH NAVIGATION HELPERS
-// ============================================================================
-
-export function getViewFromHash(): ViewId | null {
-    const hash = location.hash.replace(/^#/, "");
-    return (hash as ViewId) || null;
-}
-
-export function setViewHash(view: ViewId, replace = false): void {
-    const url = `#${view}`;
-    if (replace) {
-        history.replaceState(null, "", url);
-    } else {
-        history.pushState(null, "", url);
+/**
+ * Get view from pathname
+ */
+export function getViewFromPath(): ViewId | null {
+    const pathname = normalizePathname(location.pathname);
+    
+    if (!pathname || pathname === "/" || pathname === "") {
+        return null; // Root route - show boot menu
     }
+    
+    if (isValidView(pathname)) {
+        return pathname;
+    }
+    
+    return null;
 }
 
 // ============================================================================
 // ROUTE LISTENERS
 // ============================================================================
 
-type RouteListener = (route: Route) => void;
+type RouteListener = (route: Route | null) => void;
 const listeners: Set<RouteListener> = new Set();
 
 /**
@@ -217,17 +214,13 @@ export function onRouteChange(listener: RouteListener): () => void {
  */
 export function initRouteListening(): void {
     window.addEventListener("popstate", () => {
-        const route = parseCurrentRoute();
-        listeners.forEach(l => l(route));
+        const view = getViewFromPath();
+        const params = Object.fromEntries(new URLSearchParams(location.search));
+        listeners.forEach(l => l(view ? { view, params } : null));
     });
 
     window.addEventListener("route-change", (e) => {
-        const route = (e as CustomEvent).detail as Route;
-        listeners.forEach(l => l(route));
-    });
-
-    window.addEventListener("hashchange", () => {
-        const route = parseCurrentRoute();
+        const route = (e as CustomEvent).detail as Route | null;
         listeners.forEach(l => l(route));
     });
 }
@@ -237,53 +230,72 @@ export function initRouteListening(): void {
 // ============================================================================
 
 /**
+ * Get saved shell preference
+ */
+export function getSavedShellPreference(): ShellId | null {
+    try {
+        const saved = localStorage.getItem("rs-boot-shell");
+        if (saved === "basic" || saved === "faint" || saved === "raw") {
+            return saved as ShellId;
+        }
+    } catch {
+        // Ignore
+    }
+    return null;
+}
+
+/**
  * Load sub-app using the new shell boot system
  */
 export const loadSubAppWithShell = async (
-    choice?: FrontendChoice,
-    initialView?: string
+    shellId?: ShellId,
+    initialView?: ViewId
 ): Promise<AppLoaderResult> => {
-    console.log('[App] Loading sub-app with shell:', choice);
-    const defaultView = (initialView || "viewer") as ViewId;
+    const shell = shellId || getSavedShellPreference() || "basic";
+    const view = initialView || getViewFromPath() || "viewer";
+    
+    console.log('[App] Loading sub-app with shell:', shell, 'view:', view);
 
     try {
-        switch (choice) {
+        switch (shell) {
             case "faint":
                 return {
                     mount: async (el: HTMLElement) => {
-                        await bootFaint(el, defaultView);
+                        await bootFaint(el, view);
+                    }
+                };
+
+            case "raw":
+                return {
+                    mount: async (el: HTMLElement) => {
+                        await bootRaw(el, view);
                     }
                 };
 
             case "basic":
-                return {
-                    mount: async (el: HTMLElement) => {
-                        await bootBasic(el, defaultView);
-                    }
-                };
-
-            case "print":
-            case "airpad":
-                return {
-                    mount: async (el: HTMLElement) => {
-                        await bootRaw(el, choice as ViewId);
-                    }
-                };
-
-            case "":
-            case "/":
             default:
-                const module = await import("./boot-menu");
                 return {
                     mount: async (el: HTMLElement) => {
-                        await module.default(el);
+                        await bootBasic(el, view);
                     }
                 };
         }
     } catch (error) {
-        console.error('[App] Failed to load sub-app:', choice, error);
+        console.error('[App] Failed to load sub-app:', shell, error);
         throw error;
     }
+};
+
+/**
+ * Load boot menu for shell selection
+ */
+export const loadBootMenu = async (): Promise<AppLoaderResult> => {
+    const module = await import("./boot-menu");
+    return {
+        mount: async (el: HTMLElement) => {
+            await module.default(el);
+        }
+    };
 };
 
 // ============================================================================
@@ -291,101 +303,110 @@ export const loadSubAppWithShell = async (
 // ============================================================================
 
 /**
- * Map pathname to frontend choice
+ * Resolve pathname to view ID (returns null for root)
  */
-export function resolvePathToChoice(pathname: string): FrontendChoice {
+export function resolvePathToView(pathname: string): ViewId | null {
     const normalized = pathname.replace(/^\//, "").toLowerCase().trim();
-    const choices: Record<string, FrontendChoice> = {
-        basic: "basic", faint: "faint", print: "print", airpad: "airpad"
-    };
-    return choices[normalized] || (normalized === "" || normalized === "/" ? "" : "basic");
+    
+    if (!normalized || normalized === "/" || normalized === "") {
+        return null; // Root - boot menu
+    }
+    
+    if (isValidView(normalized)) {
+        return normalized;
+    }
+    
+    return "viewer"; // Default fallback
 }
 
 /**
- * Map pathname to view ID
+ * Create boot config from URL
  */
-export function resolvePathToView(pathname: string): string {
-    const normalized = pathname.replace(/^\//, "").toLowerCase().trim();
-    const viewRoutes: Record<string, string> = {
-        viewer: "viewer", workcenter: "workcenter", settings: "settings",
-        explorer: "explorer", history: "history", editor: "editor",
-        airpad: "airpad", print: "print", home: "home"
-    };
-    return viewRoutes[normalized] || "viewer";
-}
+export function createBootConfigFromUrl(): BootConfig {
+    const view = getViewFromPath() || "viewer";
+    const shell = getSavedShellPreference() || "basic";
+    const params = Object.fromEntries(new URLSearchParams(location.search));
 
-/**
- * Get the appropriate loader based on routing mode
- */
-export function getLoader(mode: RoutingMode = "shell-boot") {
-    return loadSubAppWithShell;
+    let styleSystem: "veela" | "basic" | "raw" = "basic";
+
+    switch (shell) {
+        case "faint":
+            styleSystem = "veela";
+            break;
+        case "raw":
+            styleSystem = "raw";
+            break;
+        default:
+            styleSystem = "basic";
+    }
+
+    return {
+        styleSystem,
+        shell,
+        defaultView: view,
+        channels: [view as any],
+        rememberChoice: !params.shared
+    };
 }
 
 // ============================================================================
-// URL PARAMETER HANDLING
+// URL PARAMETER HANDLING  
 // ============================================================================
 
 /**
  * Parse URL parameters for routing
  */
 export function parseRoutingParams(): {
-    choice: FrontendChoice;
-    view: string;
+    view: ViewId | null;
     params: Record<string, string>;
+    isRoot: boolean;
 } {
-    const pathname = location.pathname || "/";
-    const hash = location.hash.replace(/^#/, "");
-    const searchParams = new URLSearchParams(location.search);
-
+    const view = getViewFromPath();
     const params: Record<string, string> = {};
+    
+    const searchParams = new URLSearchParams(location.search);
     for (const [key, value] of searchParams) {
         params[key] = value;
     }
 
-    const choice = resolvePathToChoice(pathname);
-
-    let view = "viewer";
-    if (hash) {
-        view = hash;
-    } else if (pathname.includes("/")) {
-        const parts = pathname.split("/").filter(Boolean);
-        if (parts.length > 1) {
-            view = parts[1];
-        }
-    }
-
-    return { choice, view, params };
+    return { 
+        view, 
+        params, 
+        isRoot: view === null 
+    };
 }
 
-/**
- * Create boot config from URL/params
- */
-export function createBootConfigFromUrl(): BootConfig {
-    const { choice, view, params } = parseRoutingParams();
+// ============================================================================
+// DEPRECATED - For backwards compatibility during transition
+// ============================================================================
 
-    let styleSystem: "veela" | "basic" | "raw" = "basic";
-    let shell: ShellId = "basic";
+/** @deprecated Use resolvePathToView instead */
+export function resolvePathToChoice(pathname: string): FrontendChoice {
+    const view = resolvePathToView(pathname);
+    if (!view) return ""; // Root
+    return "basic"; // Always use basic shell, view determines what loads
+}
 
-    switch (choice) {
-        case "faint":
-            styleSystem = "veela";
-            shell = "faint";
-            break;
-        case "airpad":
-        case "print":
-            styleSystem = "raw";
-            shell = "raw";
-            break;
-        default:
-            styleSystem = "basic";
-            shell = "basic";
+/** @deprecated Use navigateToView instead */
+export function setViewHash(view: ViewId, replace = false): void {
+    navigateToView(view, replace ? undefined : undefined);
+}
+
+/** @deprecated Use getViewFromPath instead */
+export function getViewFromHash(): ViewId | null {
+    return getViewFromPath();
+}
+
+/** @deprecated Shells are no longer in URL */
+export function navigateToShell(shell: ShellId, view?: ViewId): void {
+    // Save shell preference
+    try {
+        localStorage.setItem("rs-boot-shell", shell);
+    } catch {
+        // Ignore
     }
-
-    return {
-        styleSystem,
-        shell,
-        defaultView: view as ViewId,
-        channels: [view as any],
-        rememberChoice: !params.shared
-    };
+    // Navigate to view
+    if (view) {
+        navigateToView(view);
+    }
 }

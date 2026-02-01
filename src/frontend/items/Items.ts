@@ -6,7 +6,7 @@ import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { cleanToDay, GET_OR_CACHE_BY_NAME, mergeByExists, PUSH_ONCE, REMOVE_IF_HAS } from "@rs-core/utils/Utils";
 import { bindDropToDir } from "@rs-core/storage/FileOps";
-import { registerEntity, unregisterEntity } from "@rs-com/service/EntityRegistry";
+import { registerEntity, unregisterEntity } from "@rs-com/service/misc/EntityRegistry";
 
 // =============================================================================
 // Progressive Loading Configuration

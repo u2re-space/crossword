@@ -5,7 +5,7 @@
  */
 
 import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../../core";
-import { initToastReceiver, showToast } from "../components/items/Toast";
+import { initToastReceiver, showToast } from "../items/Toast";
 import { unifiedMessaging } from "@rs-com/core/UnifiedMessaging";
 
 // Track initialization
@@ -330,7 +330,7 @@ export const initPWAClipboard = (): (() => void) => {
                         metadata: { priority: 'high' }
                     });
                 } else {
-                    const { showToast } = await import("../components/items/Toast");
+                    const { showToast } = await import("../items/Toast");
                     showToast({ message: data.error || "Processing failed", kind: "error" });
                 }
             }

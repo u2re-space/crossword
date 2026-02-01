@@ -1,18 +1,11 @@
 import { openDirectory, H, M } from "fest/lure";
-import { dataCategories } from "@rs-com/service/Cache";
+import { dataCategories } from "@rs-com/service/misc/Cache";
 import { sendToEntityPipeline } from "@rs-core/storage/FileSystem";
 import { implementDropEvent, implementPasteEvent } from "@rs-core/modules/HookEvent";
 
 //
 // Import the new file manager components
-import { FileManager } from "../../components/rs-explorer/FileManager";
-
-//
-const makeFragment = (children: HTMLElement[]) => {
-    const fragment = document.createDocumentFragment();
-    children.forEach(child => fragment.appendChild(child));
-    return fragment;
-}
+import { FileManager } from "fest/fl-ui";
 
 //
 const rowFileMap = new WeakMap<HTMLElement, any>();
@@ -27,7 +20,7 @@ export const DataExplorer = () => {
     });
 
     // make file manager using the full implementation
-    const viewer = new FileManager();
+    const viewer = document.createElement("ui-file-manager") as FileManager & HTMLElement;
     viewer.path = "/user/";
     viewer.setAttribute("sidebar", "auto");
     viewer.style.cssText = "grid-column: 1 / -1; grid-row: 1 / -1;";

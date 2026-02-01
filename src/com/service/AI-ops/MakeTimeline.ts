@@ -20,7 +20,7 @@ import { encode } from "@toon-format/toon";
 //
 import { GPTResponses } from "../model/GPT-Responses";
 import { readJSONs, readOneMarkDown } from "@rs-core/storage/FileSystem";
-import { realtimeStates } from "../Cache";
+import { realtimeStates } from "../misc/Cache";
 
 // @ts-ignore
 import AI_OUTPUT_SCHEMA from "@rs-com/template/Entities-v2.md?raw";

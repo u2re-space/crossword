@@ -7,7 +7,7 @@ import "fest/fl-ui";
 
 //
 import { Sidebar } from "./Sidebar";
-import { MakeCardElement } from "../../../components/items/Cards";
+import { MakeCardElement } from "../../../items/Cards";
 import { initBackNavigation, registerCloseable, historyViewRef, historyState } from "fest/lure";
 import { $byKind, $insideOfDay } from "../../../../core/utils/Utils";
 import { createCtxMenu, SpeedDial } from "../../../views/from-faint/SpeedDial";
@@ -15,7 +15,7 @@ import { ViewPage } from "../../../views/from-faint/Viewer";
 
 // @ts-ignore
 import style from "../scss/index.scss?inline";
-import { makeToolbar } from "../../../components/items/Actions";
+import { makeToolbar } from "../../../items/Actions";
 import { Settings } from "../../../views/from-faint/Settings";
 import { DataExplorer } from "../../../views/from-faint/DataExplorer";
 import { MakeMarkdownView } from "../../../views/from-faint/Markdown";
@@ -65,8 +65,8 @@ const checkIsActive = (registryKey: string, closingView: string) => {
 console.log("[faint] Creating current view reference");
 export const CURRENT_VIEW = historyViewRef(`#${$defaultView}`, { /*ignoreBack: true,*/ withoutHashPrefix: true }) as { value: string };
 console.log("[faint] Current view reference created");
-import { startGeoTracking } from "@rs-com/service/GeoService";
-import { startTimeTracking, requestNotificationPermission } from "@rs-com/service/TimeService";
+import { startGeoTracking } from "@rs-com/service/misc/GeoService";
+import { startTimeTracking, requestNotificationPermission } from "@rs-com/service/misc/TimeService";
 import { initTheme } from "../../../../core/utils/Theme";
 
 //

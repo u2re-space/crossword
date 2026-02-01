@@ -35,27 +35,25 @@ export {
 } from "./BootLoader";
 
 // ============================================================================
-// ROUTING
+// ROUTING (Path-based)
 // ============================================================================
 
 export {
     // Route parsing
     parseCurrentRoute,
     buildUrl,
+    buildRootUrl,
+    isRootRoute,
+    isValidView,
+    getViewFromPath,
+    VALID_VIEWS,
 
     // Navigation
     navigate,
     navigateToView,
-    navigateToShell,
+    navigateToRoot,
     goBack,
     goForward,
-
-    // Route matching
-    matchRoute,
-
-    // Hash helpers
-    getViewFromHash,
-    setViewHash,
 
     // Route listeners
     onRouteChange,
@@ -63,11 +61,17 @@ export {
 
     // Shell loading
     loadSubAppWithShell,
-    resolvePathToChoice,
+    loadBootMenu,
+    getSavedShellPreference,
     resolvePathToView,
-    getLoader,
     parseRoutingParams,
     createBootConfigFromUrl,
+
+    // Deprecated (backwards compatibility)
+    navigateToShell,
+    getViewFromHash,
+    setViewHash,
+    resolvePathToChoice,
 
     // Types
     type Route,
@@ -106,7 +110,7 @@ export {
     type ToastPosition,
     type ToastOptions,
     type ToastLayerConfig
-} from "../components/items/Toast";
+} from "../items/Toast";
 
 // ============================================================================
 // OVERLAY SYSTEM
@@ -144,7 +148,7 @@ export type { BasicAppOptions } from "./frontend-entry";
 // ============================================================================
 
 import { bootLoader, type BootConfig } from "./BootLoader";
-import { parseCurrentRoute, createBootConfigFromUrl, loadSubAppWithShell } from "./routing";
+import { createBootConfigFromUrl, loadSubAppWithShell } from "./routing";
 import type { Shell } from "../shells/types";
 
 /**

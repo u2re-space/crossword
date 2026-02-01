@@ -5,7 +5,7 @@ import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { renderTabName } from "../../../core/utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/storage/FileSystem";
-import { CollectItemsForTabPage, MakeItemBy } from "../../components/items/Items";
+import { CollectItemsForTabPage, MakeItemBy } from "../../items/Items";
 import { orientRef } from "fest/lure";
 
 //

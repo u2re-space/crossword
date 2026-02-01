@@ -2,7 +2,7 @@ import { observe, numberRef, propRef, stringRef, affected } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerAnchorRef } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-core/utils/Actions";
-import { toastSuccess, toastError } from "@rs-frontend/components/items/Toast";
+import { toastSuccess, toastError } from "@rs-frontend/items/Toast";
 import {
     speedDialMeta,
     speedDialItems,

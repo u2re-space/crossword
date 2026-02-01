@@ -136,7 +136,7 @@ const ConnectedMyView = withViewChannel(MyView, "workcenter");
 // - connectChannel(): Promise<void>
 // - disconnectChannel(): void
 // - sendMessage<T>(type, data): Promise<void>
-// - onChannelMessage(type, handler): unsubscribe
+// - onChannelMessage(type, handler): unaffected
 ```
 
 ## API Endpoints

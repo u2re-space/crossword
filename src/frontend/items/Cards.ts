@@ -6,9 +6,9 @@ import { formatAsTime, formatAsDate, parseDateCorrectly } from "@rs-core/time";
 import type { EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-com/template/EntityInterface";
 import { iconsPerAction, labelsPerAction } from "@rs-core/utils/Actions";
-import { GeoState, isNearby } from "@rs-com/service/GeoService";
-import { TimeState, isNow, registerEventForNotification } from "@rs-com/service/TimeService";
-import { findEntities } from "@rs-com/service/EntityRegistry";
+import { GeoState, isNearby } from "@rs-com/service/misc/GeoService";
+import { TimeState, isNow, registerEventForNotification } from "@rs-com/service/misc/TimeService";
+import { findEntities } from "@rs-com/service/misc/EntityRegistry";
 import { writeText } from "@rs-core/modules/Clipboard";
 
 //

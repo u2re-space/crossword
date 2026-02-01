@@ -1,6 +1,6 @@
 /**
- * Uniform Channel Manager for the CrossWord app
- * Manages worker channels with view-specific initialization and queuing
+ * Uniform Channel Manager for CrossWord
+ * Re-exports fest/uniform channel management with app-specific configuration
  */
 
 import {
@@ -9,8 +9,15 @@ import {
     detectExecutionContext,
     supportsDedicatedWorkers
 } from 'fest/uniform';
-import { BROADCAST_CHANNELS, ROUTE_HASHES, COMPONENTS } from '@rs-com/config/Names';
+
 import { globalChannelRegistry, globalChannelHealthMonitor, createDeferred } from 'fest/core';
+
+// Re-export types and functions from fest/uniform
+export { OptimizedWorkerChannel, detectExecutionContext, supportsDedicatedWorkers };
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export interface ViewChannelConfig {
     viewHash: string;
@@ -30,13 +37,17 @@ export interface WorkerConfig {
     };
 }
 
+// ============================================================================
+// UNIFORM CHANNEL MANAGER
+// ============================================================================
+
 export class UniformChannelManager {
     private static instance: UniformChannelManager;
     private channels = new Map<string, OptimizedWorkerChannel>();
     private viewChannels = new Map<string, Set<string>>();
     private initializedViews = new Set<string>();
     private viewReadyPromises = new Map<string, ReturnType<typeof createDeferred>>();
-    private executionContext: 'main' | 'service-worker' | 'chrome-extension' | 'unknown';
+    private executionContext: ReturnType<typeof detectExecutionContext>;
 
     constructor() {
         this.executionContext = detectExecutionContext();
@@ -56,19 +67,17 @@ export class UniformChannelManager {
         const channelNames = new Set<string>();
 
         for (const config of configs) {
-            // Skip workers that are not supported in current context
             if (!this.isWorkerSupported(config)) {
                 console.log(`[UniformChannelManager] Skipping worker '${config.name}' in ${this.executionContext} context`);
                 continue;
             }
 
-            // Create queued channel for this worker
             const channel = createQueuedOptimizedWorkerChannel({
                 name: config.name,
                 script: config.script,
                 options: config.options,
                 context: this.executionContext
-            }, config.protocolOptions, (workerChannel) => {
+            }, config.protocolOptions, () => {
                 console.log(`[UniformChannelManager] Channel '${config.name}' ready for view '${viewHash}' in ${this.executionContext} context`);
             });
 
@@ -79,22 +88,13 @@ export class UniformChannelManager {
         this.viewChannels.set(viewHash, channelNames);
     }
 
-    /**
-     * Check if a worker configuration is supported in the current execution context
-     */
-    private isWorkerSupported(config: WorkerConfig): boolean {
-        // In service worker context, we can only use service worker compatible channels
+    private isWorkerSupported(_config: WorkerConfig): boolean {
         if (this.executionContext === 'service-worker') {
-            // Service workers can handle their own operations and communicate via BroadcastChannel
-            return true; // We'll handle the specifics in the channel creation
+            return true;
         }
-
-        // In chrome extension context, check if dedicated workers are available
         if (this.executionContext === 'chrome-extension') {
             return supportsDedicatedWorkers();
         }
-
-        // In main thread context, dedicated workers are generally available
         return true;
     }
 
@@ -104,7 +104,6 @@ export class UniformChannelManager {
     async initializeViewChannels(viewHash: string): Promise<void> {
         if (this.initializedViews.has(viewHash)) return;
 
-        // Create deferred promise for view readiness
         const deferred = createDeferred<void>();
         this.viewReadyPromises.set(viewHash, deferred);
 
@@ -116,7 +115,6 @@ export class UniformChannelManager {
             return;
         }
 
-        // Initialize all channels for this view
         const initPromises: Promise<void>[] = [];
 
         for (const channelName of channelNames) {
@@ -124,10 +122,7 @@ export class UniformChannelManager {
             const channel = this.channels.get(channelKey);
 
             if (channel) {
-                // Register channel in global registry
                 globalChannelRegistry.register(channelKey, channel);
-
-                // Register health check
                 globalChannelHealthMonitor.registerHealthCheck(
                     channelKey,
                     async () => {
@@ -138,21 +133,17 @@ export class UniformChannelManager {
                             return false;
                         }
                     },
-                    30000 // Check every 30 seconds
+                    30000
                 );
 
-                // The channel will start connecting when first used
-                // We can optionally trigger a ping to start the connection
                 initPromises.push(
                     channel.request('ping', {}).catch(() => {
-                        // Ping might fail if worker doesn't have ping handler, that's ok
                         console.log(`[UniformChannelManager] Channel '${channelName}' queued for view '${viewHash}'`);
                     })
                 );
             }
         }
 
-        // Wait for all channels to be ready (or queued)
         await Promise.allSettled(initPromises);
         this.initializedViews.add(viewHash);
         deferred.resolve();
@@ -162,7 +153,7 @@ export class UniformChannelManager {
      * Get a channel for a specific view and worker
      */
     getChannel(viewHash: string, workerName: string): OptimizedWorkerChannel | null {
-        return this.channels.get(`${viewHash}:${workerName}`) || null;
+        return this.channels.get(`${viewHash}:${workerName}`) ?? null;
     }
 
     /**
@@ -174,7 +165,7 @@ export class UniformChannelManager {
 
         return Array.from(channelNames)
             .map(name => this.channels.get(`${viewHash}:${name}`))
-            .filter((channel): channel is OptimizedWorkerChannel => channel !== null);
+            .filter((channel): channel is OptimizedWorkerChannel => channel != null);
     }
 
     /**
@@ -186,7 +177,6 @@ export class UniformChannelManager {
             channel.close();
         }
 
-        // Remove from maps
         const channelNames = this.viewChannels.get(viewHash);
         if (channelNames) {
             for (const name of channelNames) {
@@ -221,12 +211,12 @@ export class UniformChannelManager {
      * Get channel status for debugging
      */
     getStatus() {
-        const status: Record<string, any> = {};
+        const status: Record<string, unknown> = {};
         const healthStatuses = globalChannelHealthMonitor.getAllHealthStatuses();
 
         for (const [key, channel] of this.channels) {
             status[key] = {
-                queueStatus: (channel as any).getQueueStatus?.() || 'unknown',
+                queueStatus: (channel as unknown as { getQueueStatus?: () => unknown }).getQueueStatus?.() ?? 'unknown',
                 healthy: healthStatuses[key] ?? 'unknown'
             };
         }
@@ -241,31 +231,19 @@ export class UniformChannelManager {
     }
 }
 
-// Pre-configured view channel registrations
+// ============================================================================
+// CONVENIENCE EXPORTS
+// ============================================================================
+
+/**
+ * Pre-configured view channel registrations
+ */
 export const initializeAppChannels = (): void => {
-    const manager = UniformChannelManager.getInstance();
-
-    // Note: OPFS worker is handled by the OPFS.ts module directly
-    // We don't need to register it here as it's managed by the OPFS ensureWorker() function
-    // The UniformChannelManager is for view-specific worker management beyond the core OPFS functionality
-
-    // Register additional workers for other views as needed
-    // Example: AI worker for editor views (commented out until AIWorker is created)
-    /*
-    manager.registerViewChannels(ROUTE_HASHES.EDITOR, [
-        {
-            name: 'ai-worker',
-            script: './AIWorker.uniform.worker.ts', // Would need proper worker file
-            protocolOptions: {
-                timeout: 30000,
-                retries: 3,
-                batching: false, // AI operations might need immediate responses
-                compression: true
-            }
-        }
-    ]);
-    */
+    const _manager = UniformChannelManager.getInstance();
+    // Add app-specific channel registrations here if needed
 };
 
-// Export singleton instance
+/**
+ * Export singleton instance
+ */
 export const channelManager = UniformChannelManager.getInstance();

@@ -7,7 +7,7 @@
         "**/*.tsx",
         "**/*.vue",
         "../../modules/projects/lur.e/src/extension/core/Base64Data.ts"
-    ],
+, "../../modules/projects/uniform.ts/src/newer/misc/AppCommunicator.ts"    ],
     "exclude": [
         "node_modules/**",
         "externals/**",

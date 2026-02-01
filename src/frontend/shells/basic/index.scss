@@ -7,49 +7,11 @@
    Main SCSS Entry Point - Modern Atomic Design System
    ========================================================================== */
 
+@use "basic.scss";
+@use "settings.scss";
+
+
 @layer reset, base, components, settings, layout, utilities;
-
-/* ==========================================================================
-   RESET & NORMALIZE - Cross-browser consistency
-   ========================================================================== */
-@layer reset {
-    @import "../../scss/normalize.scss";
-}
-
-/* ==========================================================================
-   BASE STYLES - Foundation with modern utilities
-   ========================================================================== */
-@layer base {
-    @import "../../scss/lib/_typed-properties.scss";
-}
-
-/* ==========================================================================
-   COMPONENT STYLES - Reusable UI components
-   ========================================================================== */
-@layer components {
-    @import "../../scss/buttons.scss";
-    @import "../../scss/forms.scss";
-    @import "workcenter/workcenter.scss";
-    @import "../../scss/markdown/markdown-render.scss";
-    @import "../../scss/markdown/markdown-viewer.scss";
-    @import "editor/markdown-editor.scss";
-    @import "editor/quill-editor.scss";
-}
-
-@layer settings {
-    @import "settings/Settings.scss";
-}
-
-/* ==========================================================================
-   LAYOUT & UTILITY STYLES - Layout systems and helpers
-   ========================================================================== */
-@layer layout {
-    @import "layout/layout.scss";
-}
-
-@layer utilities {
-    @import "../../scss/utilities.scss";
-}
 
 /* ==========================================================================
    ANIMATIONS - Keyframe definitions
@@ -67,7 +29,7 @@
 
 /* Base layer - foundational styles */
 @layer base {
-    .basic-shell {
+    .shell-basic {
         block-size: 100%;
         display: grid;
         grid-template-rows: [toolbar-row] auto [content-row] minmax(0, 1fr);
@@ -195,7 +157,7 @@
         --leading-relaxed: 1.8;
     }
 
-    .basic-app[data-theme="light"] {
+    .shell-basic[data-theme="light"] {
         color-scheme: light;
         /* Blue-neutral palette - soft blue-gray tones */
         --basic-primary: #5a7fff;
@@ -224,9 +186,22 @@
 
         /* Convenience */
         --basic-border: color-mix(in oklab, var(--basic-outline-variant) 75%, transparent);
+
+        /* View-level properties (for views to use) */
+        --view-bg: var(--basic-surface);
+        --view-fg: var(--basic-on-surface);
+        --view-border: var(--basic-outline-variant);
+        --view-input-bg: #ffffff;
+        --view-files-bg: rgba(0, 0, 0, 0.02);
+        --view-file-bg: rgba(0, 0, 0, 0.03);
+        --view-results-bg: rgba(0, 0, 0, 0.01);
+        --view-result-bg: rgba(0, 0, 0, 0.03);
+        --color-surface: var(--basic-surface);
+        --color-on-surface: var(--basic-on-surface);
+        --color-primary: var(--basic-primary);
     }
 
-    .basic-app[data-theme="dark"] {
+    .shell-basic[data-theme="dark"] {
         color-scheme: dark;
         /* Blue-neutral palette - soft blue-gray tones */
         --basic-primary: #7ca7ff;
@@ -255,6 +230,19 @@
 
         /* Convenience */
         --basic-border: color-mix(in oklab, var(--basic-outline-variant) 70%, transparent);
+
+        /* View-level properties (for views to use) */
+        --view-bg: var(--basic-surface);
+        --view-fg: var(--basic-on-surface);
+        --view-border: var(--basic-outline-variant);
+        --view-input-bg: #2d2d30;
+        --view-files-bg: rgba(255, 255, 255, 0.02);
+        --view-file-bg: rgba(255, 255, 255, 0.05);
+        --view-results-bg: rgba(255, 255, 255, 0.02);
+        --view-result-bg: rgba(255, 255, 255, 0.05);
+        --color-surface: var(--basic-surface);
+        --color-on-surface: var(--basic-on-surface);
+        --color-primary: var(--basic-primary);
     }
 
     // Component loading and error states
@@ -404,11 +392,16 @@
             & > ui-icon {
                 flex-shrink: 0;
                 --icon-size: 1rem;
-                width: var(--icon-size);
-                height: var(--icon-size);
+                inline-size: var(--icon-size);
+                block-size: var(--icon-size);
                 color: var(--basic-on-surface-variant);
                 user-select: none;
                 pointer-events: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 1;
+                visibility: visible;
             }
         }
 
@@ -457,7 +450,31 @@
         };
     }
 
-    // UI essentials
+    // UI essentials - Icon component global styles
+    ui-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--icon-size, 1.25rem);
+        block-size: var(--icon-size, 1.25rem);
+        min-inline-size: var(--icon-size, 1.25rem);
+        min-block-size: var(--icon-size, 1.25rem);
+        color: currentColor;
+        fill: currentColor;
+        flex-shrink: 0;
+        vertical-align: middle;
+        opacity: 1;
+        visibility: visible;
+
+        // Ensure SVG inside icon inherits color
+        svg, img {
+            inline-size: 100%;
+            block-size: 100%;
+            color: inherit;
+            fill: currentColor;
+        }
+    }
+
     .ui-ws-item {
         & {
             cursor: pointer;

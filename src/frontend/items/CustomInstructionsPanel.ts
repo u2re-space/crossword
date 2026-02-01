@@ -10,7 +10,7 @@ import {
     deleteInstruction,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
-} from "@rs-com/service/CustomInstructions";
+} from "@rs-com/service/misc/CustomInstructions";
 import { showSuccess, showError } from "./Toast";
 
 export type CustomInstructionsPanelOptions = {
