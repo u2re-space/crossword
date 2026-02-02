@@ -283,6 +283,13 @@ export function registerDefaultViews(): void {
         icon: "house",
         loader: () => import("./views/home")
     });
+
+    ViewRegistry.register({
+        id: "print",
+        name: "Print",
+        icon: "printer",
+        loader: () => import("./views/print")
+    });
 }
 
 // ============================================================================

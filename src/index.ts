@@ -17,6 +17,7 @@
 
 import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/pwa/pwa-handling";
 import { loadSubAppWithShell, loadBootMenu, getViewFromPath, isRootRoute, VALID_VIEWS } from "./frontend/main/routing";
+import { initializeLayers } from "./frontend/styles/layer-manager";
 import type { ViewId } from "./frontend/shells/types";
 
 // Import PWA handlers
@@ -54,7 +55,10 @@ const getNormalizedPathname = (): string => {
 
 const isExtension = (): boolean => {
     try {
-        return window.location.protocol === "chrome-extension:" || Boolean((chrome as any)?.runtime?.id);
+        return (
+            window.location.protocol === "chrome-extension:" ||
+            (typeof chrome !== "undefined" && Boolean(chrome?.runtime?.id))
+        );
     } catch {
         return false;
     }
@@ -67,23 +71,26 @@ const isPwaDisplayMode = (): boolean => {
 };
 
 /**
- * Check if a path is a valid view route
+ * Check if a path is a valid view route (type guard)
  */
-const isValidViewPath = (path: string): path is ViewId => {
-    return VALID_VIEWS.includes(path as ViewId);
-};
+const isValidViewPath = (path: string): path is ViewId =>
+    (VALID_VIEWS as readonly string[]).includes(path);
+
+/** Valid shell identifiers */
+const VALID_SHELLS = ["basic", "faint", "raw"] as const;
+type ShellPreference = (typeof VALID_SHELLS)[number];
 
 /**
- * Get saved shell preference
+ * Get saved shell preference from localStorage
  */
-const getSavedShell = (): "basic" | "faint" | "raw" | null => {
+const getSavedShell = (): ShellPreference | null => {
     try {
         const saved = localStorage.getItem("rs-boot-shell");
-        if (saved === "basic" || saved === "faint" || saved === "raw") {
-            return saved;
+        if (saved && (VALID_SHELLS as readonly string[]).includes(saved)) {
+            return saved as ShellPreference;
         }
     } catch {
-        // Ignore
+        // localStorage unavailable
     }
     return null;
 };
@@ -208,6 +215,10 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
 // ============================================================================
 
 export default async function index(mountElement: HTMLElement) {
+    // CRITICAL: Initialize CSS layer hierarchy FIRST
+    // This must happen before any styles are loaded
+    initializeLayers();
+    
     console.log('[Index] Starting CrossWord frontend loader');
 
     // Initialize uniform channel manager

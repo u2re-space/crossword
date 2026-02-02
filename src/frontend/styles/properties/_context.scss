@@ -1,0 +1,231 @@
+/**
+ * Context-Based Custom Properties
+ *
+ * Defines CSS variables that change based on shell/view context.
+ * Uses :has() pseudo-class to avoid specificity wars and enable
+ * automatic cascading when DOM state changes.
+ *
+ * Wrapped in @layer to respect cascade layer order.
+ */
+
+@layer layer.shell.common {
+    /**
+     * Shell-agnostic tokens available in all shells
+     * These are inherited by all child elements
+     */
+    :root {
+        /* Layout dimensions */
+        --shell-nav-height-base: 56px;
+        --shell-content-gutter: 1rem;
+        
+        /* Color scheme defaults (light) */
+        --shell-bg: #f8f9fa;
+        --shell-fg: #1a1a1a;
+        --shell-nav-bg: #ffffff;
+        --shell-nav-border: #e0e0e0;
+    }
+
+    /**
+     * Dark mode overrides
+     */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --shell-bg: #1e1e1e;
+            --shell-fg: #e0e0e0;
+            --shell-nav-bg: #252526;
+            --shell-nav-border: #3c3c3c;
+        }
+    }
+
+    /* ===================================================================== */
+    /* SHELL-SPECIFIC CONTEXT SELECTORS                                     */
+    /* ===================================================================== */
+
+    /**
+     * BasicShell Context
+     * Applied when [data-shell="basic"] is present in DOM
+     */
+    :is(html, body):has([data-shell="basic"]) {
+        /* Navigation */
+        --shell-nav-height: var(--shell-nav-height-base);
+        --shell-btn-hover: rgba(0, 0, 0, 0.05);
+        --shell-btn-active-bg: rgba(0, 122, 204, 0.12);
+        --shell-btn-active-fg: #007acc;
+
+        /* Status */
+        --shell-status-bg: rgba(0, 0, 0, 0.85);
+        --shell-status-fg: #ffffff;
+    }
+
+    /* Dark mode for BasicShell */
+    @media (prefers-color-scheme: dark) {
+        :is(html, body):has([data-shell="basic"]) {
+            --shell-btn-hover: rgba(255, 255, 255, 0.08);
+            --shell-btn-active-bg: rgba(0, 122, 204, 0.25);
+            --shell-btn-active-fg: #3794ff;
+            --shell-status-bg: rgba(255, 255, 255, 0.15);
+            --shell-status-fg: #ffffff;
+        }
+    }
+
+    /**
+     * FaintShell Context
+     * Applied when [data-shell="faint"] is present in DOM
+     */
+    :is(html, body):has([data-shell="faint"]) {
+        --shell-nav-height: 40px;
+        --shell-sidebar-width: 256px;
+        --shell-sidebar-collapsed: 48px;
+        --shell-tab-height: 32px;
+
+        /* Faint-specific colors */
+        --faint-nav-bg: #f5f5f5;
+        --faint-nav-border: #d0d0d0;
+        --faint-sidebar-bg: #fafafa;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :is(html, body):has([data-shell="faint"]) {
+            --faint-nav-bg: #2d2d2d;
+            --faint-nav-border: #3c3c3c;
+            --faint-sidebar-bg: #252526;
+        }
+    }
+
+    /**
+     * RawShell Context
+     * Applied when [data-shell="raw"] is present in DOM
+     */
+    :is(html, body):has([data-shell="raw"]) {
+        --shell-nav-height: 0px; /* No navbar in raw */
+        --shell-content-padding: 0;
+    }
+
+    /* ===================================================================== */
+    /* VIEW-SPECIFIC CONTEXT SELECTORS                                      */
+    /* ===================================================================== */
+
+    /**
+     * Workcenter View Context
+     * Applied when [data-view="workcenter"] is detected
+     */
+    :is(html, body):has([data-view="workcenter"]) {
+        --view-layout: "grid";
+        --view-sidebar-visible: true;
+        --view-toolbar-expanded: true;
+        --view-content-max-width: none;
+    }
+
+    /**
+     * Viewer View Context
+     */
+    :is(html, body):has([data-view="viewer"]) {
+        --view-layout: "flex";
+        --view-content-max-width: 900px;
+        --view-font-size-base: 1rem;
+        --view-line-height-base: 1.6;
+    }
+
+    /**
+     * Settings View Context
+     */
+    :is(html, body):has([data-view="settings"]) {
+        --view-layout: "flex";
+        --view-sidebar-visible: true;
+        --view-content-max-width: 1200px;
+    }
+
+    /**
+     * Explorer View Context
+     */
+    :is(html, body):has([data-view="explorer"]) {
+        --view-layout: "flex";
+        --view-sidebar-visible: true;
+    }
+
+    /**
+     * Editor View Context
+     */
+    :is(html, body):has([data-view="editor"]) {
+        --view-layout: "flex";
+        --view-content-max-width: none;
+    }
+
+    /**
+     * History View Context
+     */
+    :is(html, body):has([data-view="history"]) {
+        --view-layout: "flex";
+        --view-content-max-width: 1000px;
+    }
+
+    /**
+     * Airpad View Context
+     */
+    :is(html, body):has([data-view="airpad"]) {
+        --view-layout: "flex";
+        --view-content-max-width: none;
+    }
+
+    /**
+     * Home View Context
+     */
+    :is(html, body):has([data-view="home"]) {
+        --view-layout: "flex";
+        --view-content-max-width: 1200px;
+    }
+
+    /* ===================================================================== */
+    /* COMBINED SHELL+VIEW CONTEXT                                          */
+    /* ===================================================================== */
+
+    /**
+     * Workcenter in BasicShell
+     * Applies only when both shell=basic AND view=workcenter
+     */
+    :is(html, body):has([data-shell="basic"] [data-view="workcenter"]) {
+        --view-sidebar-position: "right";
+        --view-toolbar-alignment: "end";
+    }
+
+    /**
+     * Viewer in FaintShell
+     * Faint shell shows tabbed views, so viewer gets tab styling
+     */
+    :is(html, body):has([data-shell="faint"] [data-view="viewer"]) {
+        --view-tab-active: true;
+        --view-tab-height: var(--shell-tab-height);
+    }
+}
+
+/* ========================================================================= */
+/* THEME OVERRIDES                                                         */
+/* ========================================================================= */
+
+@layer layer.override.theme {
+    /**
+     * High contrast mode support
+     */
+    @media (prefers-contrast: more) {
+        :root {
+            --shell-nav-border: #000;
+            --shell-fg: #000;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            --shell-nav-border: #fff;
+            --shell-fg: #fff;
+        }
+    }
+
+    /**
+     * Reduced motion support
+     */
+    @media (prefers-reduced-motion: reduce) {
+        :root {
+            --transition-fast: 0s;
+            --transition-normal: 0s;
+            --transition-slow: 0s;
+        }
+    }
+}

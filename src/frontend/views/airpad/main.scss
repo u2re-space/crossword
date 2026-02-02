@@ -12,14 +12,14 @@
         font-variant-emoji: text;
     }
 
-    html {
+    html:has(.view-airpad) {
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         user-select: none;
         -webkit-user-select: none;
     }
 
-    body {
+    body:has(.view-airpad) {
         margin: 0;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: var(--surface);
@@ -37,7 +37,7 @@
    ========================================================================== */
 
 @layer theme {
-    :root {
+    :root:has(.view-airpad) {
         /* Material You color system - Enhanced with BeerCSS influences */
         --primary: #0061a4;
         --primary-container: #d1e4ff;

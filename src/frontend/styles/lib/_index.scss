@@ -1,0 +1,20 @@
+/**
+ * SCSS Library Index
+ *
+ * Entry point for all SCSS utilities.
+ * Forwards mixins and functions for external use.
+ *
+ * Usage: @use "lib" as lib;
+ * Then: @include lib.flex-center; or lib.rem(16);
+ *
+ * @module lib
+ */
+
+// Forward mixins with namespace
+@forward "mixins";
+
+// Forward context-based mixins
+@forward "context-mixins";
+
+// Forward functions with namespace
+@forward "functions";

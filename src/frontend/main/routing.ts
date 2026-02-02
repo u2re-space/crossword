@@ -378,35 +378,38 @@ export function parseRoutingParams(): {
 
 // ============================================================================
 // DEPRECATED - For backwards compatibility during transition
+// These functions are kept for legacy code support but should not be used
+// in new code. Use the modern path-based routing functions instead.
 // ============================================================================
 
-/** @deprecated Use resolvePathToView instead */
-export function resolvePathToChoice(pathname: string): FrontendChoice {
+/**
+ * @deprecated Use `resolvePathToView` instead
+ */
+export const resolvePathToChoice = (pathname: string): FrontendChoice => {
     const view = resolvePathToView(pathname);
-    if (!view) return ""; // Root
-    return "basic"; // Always use basic shell, view determines what loads
-}
+    return view ? "basic" : "";
+};
 
-/** @deprecated Use navigateToView instead */
-export function setViewHash(view: ViewId, replace = false): void {
-    navigateToView(view, replace ? undefined : undefined);
-}
+/**
+ * @deprecated Use `navigateToView` instead
+ */
+export const setViewHash = (view: ViewId, _replace = false): void => {
+    navigateToView(view);
+};
 
-/** @deprecated Use getViewFromPath instead */
-export function getViewFromHash(): ViewId | null {
-    return getViewFromPath();
-}
+/**
+ * @deprecated Use `getViewFromPath` instead
+ */
+export const getViewFromHash = (): ViewId | null => getViewFromPath();
 
-/** @deprecated Shells are no longer in URL */
-export function navigateToShell(shell: ShellId, view?: ViewId): void {
-    // Save shell preference
+/**
+ * @deprecated Shells are no longer encoded in URL - use localStorage preference
+ */
+export const navigateToShell = (shell: ShellId, view?: ViewId): void => {
     try {
         localStorage.setItem("rs-boot-shell", shell);
     } catch {
-        // Ignore
+        // Storage unavailable
     }
-    // Navigate to view
-    if (view) {
-        navigateToView(view);
-    }
-}
+    if (view) navigateToView(view);
+};

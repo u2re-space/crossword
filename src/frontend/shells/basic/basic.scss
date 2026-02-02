@@ -1,214 +1,228 @@
-/* Theme-specific customizations (legacy shell style variables) */
+/* Theme-specific customizations with veela-basic compatibility */
 
-.shell-basic[data-theme="dark"] {
-    --shell-bg: #1e1e1e;
-    --shell-fg: #e0e0e0;
-    --shell-nav-bg: #252526;
-    --shell-nav-border: #3c3c3c;
-    --shell-btn-hover: rgba(255, 255, 255, 0.08);
-    --shell-btn-active-bg: rgba(0, 122, 204, 0.25);
-    --shell-btn-active-fg: #3794ff;
-    --shell-status-bg: rgba(255, 255, 255, 0.15);
-    --shell-status-fg: #ffffff;
-}
+@use "../../styles/lib" as lib;
+@use "../../styles/properties/tokens" as tokens;
 
-.shell-basic {
-    --shell-bg: #f8f9fa;
-    --shell-fg: #1a1a1a;
-    --shell-nav-bg: #ffffff;
-    --shell-nav-border: #e0e0e0;
-    --shell-btn-hover: rgba(0, 0, 0, 0.05);
-    --shell-btn-active-bg: rgba(0, 122, 204, 0.12);
-    --shell-btn-active-fg: #007acc;
-    --shell-status-bg: rgba(0, 0, 0, 0.85);
-    --shell-status-fg: #ffffff;
-}
-
-.shell-basic__nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    block-size: var(--shell-nav-height);
-    padding-inline: 0.75rem;
-    background-color: var(--shell-nav-bg);
-    border-block-end: 1px solid var(--shell-nav-border);
-    flex-shrink: 0;
-    margin: 0px;
-    transition:
-        background-color 0.2s ease,
-        border-color 0.2s ease;
-}
-
-.shell-basic__nav-left {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.shell-basic__nav-right > * {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.shell-basic__nav-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.shell-basic__nav-btn ui-icon {
-    font-size: 1.125rem;
-    opacity: 0.8;
-    flex-shrink: 0;
-}
-
-.shell-basic__nav-btn:hover {
-    background-color: var(--shell-btn-hover);
-}
-
-.shell-basic__nav-btn.active ui-icon {
-    opacity: 1;
-}
-
-.shell-basic__nav-btn.active {
-    background-color: var(--shell-btn-active-bg);
-    color: var(--shell-btn-active-fg);
-}
-
-.shell-basic__nav-btn:focus-visible {
-    outline: 2px solid var(--shell-btn-active-fg);
-    outline-offset: 2px;
-}
-
-.shell-basic__nav-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--shell-fg);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background-color 0.15s ease,
-        color 0.15s ease;
-    white-space: nowrap;
-}
-
-.shell-basic__content > * {
-    flex: 1;
-    overflow: auto;
-}
-
-.shell-basic__content {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    inline-size: stretch;
-    block-size: stretch;
-    max-inline-size: stretch;
-    max-block-size: stretch;
-    min-inline-size: 0;
-    min-block-size: 0;
-    padding: 0px;
-}
-
-.shell-basic__content::-webkit-scrollbar {
-    inline-size: 8px;
-}
-
-.shell-basic__content::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.shell-basic__content::-webkit-scrollbar-thumb {
-    background-color: rgba(128, 128, 128, 0.4);
-    border-radius: 4px;
-}
-
-.shell-basic__status:empty,
-.shell-basic__status[hidden] {
-    display: none;
-}
-
-.shell-basic__status {
-    position: fixed;
-    inset-block-end: 1.5rem;
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    padding: 0.75rem 1.5rem;
-    background-color: var(--shell-status-bg);
-    color: var(--shell-status-fg);
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    animation: shell-basic-status-enter 0.2s ease-out;
-}
-
-.shell-basic__loading .loading-spinner {
-    inline-size: 32px;
-    block-size: 32px;
-    border: 3px solid rgba(128, 128, 128, 0.2);
-    border-top-color: var(--shell-btn-active-fg);
-    border-radius: 50%;
-    animation: shell-basic-spin 0.8s linear infinite;
-}
-
-.shell-basic__loading {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    inline-size: stretch;
-    block-size: stretch;
-    max-inline-size: stretch;
-    max-block-size: stretch;
-    min-inline-size: 0;
-    min-block-size: 0;
-    gap: 1rem;
-    padding: 2rem;
-    position: absolute;
-    inset: -1;
-}
-
-@media (max-width: 640px) {
-    .shell-basic__nav-label {
-        display: none;
-    }
-}
-
-@media (max-width: 480px) {
+@layer shell-basic {
+    /* Light theme (default) */
     .shell-basic {
-        --shell-nav-height: 48px;
+        --shell-bg: var(--basic-surface, #f8f9fa);
+        --shell-fg: var(--basic-on-surface, #1a1a1a);
+        --shell-nav-bg: var(--basic-surface-container-high, #ffffff);
+        --shell-nav-border: var(--basic-outline-variant, #e0e0e0);
+        --shell-btn-hover: rgba(0, 0, 0, 0.05);
+        --shell-btn-active-bg: rgba(0, 122, 204, 0.12);
+        --shell-btn-active-fg: var(--basic-primary, #007acc);
+        --shell-status-bg: rgba(0, 0, 0, 0.85);
+        --shell-status-fg: var(--basic-on-primary, #ffffff);
+    }
+
+    /* Dark theme */
+    .shell-basic[data-theme="dark"],
+    :root:has([data-theme="dark"]) .shell-basic {
+        --shell-bg: var(--basic-surface, #1e1e1e);
+        --shell-fg: var(--basic-on-surface, #e0e0e0);
+        --shell-nav-bg: var(--basic-surface-container-high, #252526);
+        --shell-nav-border: var(--basic-outline-variant, #3c3c3c);
+        --shell-btn-hover: rgba(255, 255, 255, 0.08);
+        --shell-btn-active-bg: rgba(0, 122, 204, 0.25);
+        --shell-btn-active-fg: var(--basic-primary, #3794ff);
+        --shell-status-bg: rgba(255, 255, 255, 0.15);
+        --shell-status-fg: var(--basic-on-primary, #ffffff);
+    }
+
+    .shell-basic__nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        block-size: var(--shell-nav-height, var(--basic-spacing-lg, 56px));
+        padding-inline: var(--basic-spacing-sm, 0.75rem);
+        background-color: var(--shell-nav-bg);
+        border-block-end: 1px solid var(--shell-nav-border);
+        flex-shrink: 0;
+        margin: 0;
+        transition:
+            background-color var(--basic-motion-normal, 0.2s ease),
+            border-color var(--basic-motion-normal, 0.2s ease);
+    }
+
+    .shell-basic__nav-left {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .shell-basic__nav-right > * {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .shell-basic__nav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .shell-basic__nav-btn {
-        padding: 0.4rem 0.6rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: var(--basic-spacing-xs, 0.5rem) var(--basic-spacing-sm, 0.75rem);
+        border: none;
+        border-radius: var(--basic-radius-lg, 8px);
+        background: transparent;
+        color: var(--shell-fg);
+        font-size: var(--basic-text-sm, 0.875rem);
+        font-weight: var(--basic-font-weight-medium, 500);
+        cursor: pointer;
+        transition:
+            background-color var(--basic-motion-fast, 0.15s ease),
+            color var(--basic-motion-fast, 0.15s ease);
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--shell-btn-hover);
+        }
+
+        &:active {
+            background-color: var(--shell-btn-active-bg);
+            color: var(--shell-btn-active-fg);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--shell-btn-active-fg);
+            outline-offset: 2px;
+        }
+
+        &.active {
+            background-color: var(--shell-btn-active-bg);
+            color: var(--shell-btn-active-fg);
+
+            ui-icon {
+                opacity: 1;
+            }
+        }
+
+        ui-icon {
+            font-size: 1.125rem;
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
     }
 
-    .shell-basic__nav-btn ui-icon {
-        font-size: 1.25rem;
+    .shell-basic__content > * {
+        flex: 1;
+        overflow: auto;
     }
-}
 
-@screen print {
     .shell-basic__content {
-        overflow: visible;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        padding: 0px;
     }
 
-    .shell-basic__nav,
-    .shell-basic__status {
-        display: none !important;
+    .shell-basic__content::-webkit-scrollbar {
+        inline-size: 8px;
     }
+
+    .shell-basic__content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .shell-basic__content::-webkit-scrollbar-thumb {
+        background-color: rgba(128, 128, 128, 0.4);
+        border-radius: 4px;
+    }
+
+    .shell-basic__status {
+        position: fixed;
+        inset-block-end: 1.5rem;
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        padding: var(--basic-spacing-sm, 0.75rem) var(--basic-spacing-md, 1.5rem);
+        background-color: var(--shell-status-bg);
+        color: var(--shell-status-fg);
+        border-radius: var(--basic-radius-lg, 8px);
+        font-size: var(--basic-text-sm, 0.875rem);
+        font-weight: var(--basic-font-weight-medium, 500);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: shell-basic-status-enter 0.2s ease-out;
+
+        &:empty,
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .shell-basic__loading .loading-spinner {
+        inline-size: 32px;
+        block-size: 32px;
+        border: 3px solid rgba(128, 128, 128, 0.2);
+        border-top-color: var(--shell-btn-active-fg);
+        border-radius: 50%;
+        animation: shell-basic-spin 0.8s linear infinite;
+    }
+
+    .shell-basic__loading {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        gap: 1rem;
+        padding: 2rem;
+        position: absolute;
+        inset: -1;
+    }
+
+    @media (max-width: 640px) {
+        .shell-basic__nav-label {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .shell-basic {
+            --shell-nav-height: 48px;
+        }
+
+        .shell-basic__nav-btn {
+            padding: 0.4rem 0.6rem;
+        }
+
+        .shell-basic__nav-btn ui-icon {
+            font-size: 1.25rem;
+        }
+    }
+
+    @screen print {
+        .shell-basic__content {
+            overflow: visible;
+        }
+
+        .shell-basic__nav,
+        .shell-basic__status {
+            display: none !important;
+        }
+    }
+
 }

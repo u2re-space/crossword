@@ -1,0 +1,223 @@
+/**
+ * SCSS Functions Library
+ *
+ * Utility functions for CrossWord application.
+ * Uses modern @use module system.
+ *
+ * @use pattern: @use "lib/functions" as fn;
+ *
+ * @module lib/functions
+ */
+
+@use "sass:math";
+@use "sass:color";
+@use "sass:string";
+@use "sass:list";
+@use "sass:map";
+
+// ============================================================================
+// UNIT CONVERSION FUNCTIONS
+// ============================================================================
+
+/// Convert px to rem
+/// @param {Number} $px - pixel value
+/// @param {Number} $base - base font size (default 16)
+/// @return {Number} rem value
+@function rem($px, $base: 16) {
+    @if type-of($px) == "number" and unit($px) == "px" {
+        @return math.div($px, $base * 1px) * 1rem;
+    } @else if type-of($px) == "number" and unitless($px) {
+        @return math.div($px, $base) * 1rem;
+    }
+    @return $px;
+}
+
+/// Convert px to em
+/// @param {Number} $px - pixel value
+/// @param {Number} $base - base font size (default 16)
+/// @return {Number} em value
+@function em($px, $base: 16) {
+    @if type-of($px) == "number" and unit($px) == "px" {
+        @return math.div($px, $base * 1px) * 1em;
+    } @else if type-of($px) == "number" and unitless($px) {
+        @return math.div($px, $base) * 1em;
+    }
+    @return $px;
+}
+
+// ============================================================================
+// COLOR FUNCTIONS
+// ============================================================================
+
+/// Adjust color opacity
+/// @param {Color} $color - base color
+/// @param {Number} $opacity - opacity value (0-1)
+/// @return {Color} rgba color
+@function alpha($color, $opacity) {
+    @return color.change($color, $alpha: $opacity);
+}
+
+/// Lighten color by percentage
+/// @param {Color} $color - base color
+/// @param {Number} $amount - percentage to lighten
+/// @return {Color} lightened color
+@function lighten-color($color, $amount) {
+    @return color.scale($color, $lightness: $amount);
+}
+
+/// Darken color by percentage
+/// @param {Color} $color - base color
+/// @param {Number} $amount - percentage to darken
+/// @return {Color} darkened color
+@function darken-color($color, $amount) {
+    @return color.scale($color, $lightness: -$amount);
+}
+
+/// Generate color with contrast for text
+/// @param {Color} $bg - background color
+/// @return {Color} contrasting text color
+@function contrast-text($bg) {
+    $luminance: color.channel($bg, "lightness", $space: hsl);
+    @return if($luminance > 50%, #1a1a1a, #ffffff);
+}
+
+/// Mix two colors
+/// @param {Color} $color1 - first color
+/// @param {Color} $color2 - second color
+/// @param {Number} $weight - weight of first color (0-100%)
+/// @return {Color} mixed color
+@function mix-colors($color1, $color2, $weight: 50%) {
+    @return color.mix($color1, $color2, $weight);
+}
+
+// ============================================================================
+// SPACING FUNCTIONS
+// ============================================================================
+
+/// Generate spacing scale value
+/// @param {Number} $multiplier - scale multiplier
+/// @param {Number} $base - base unit (default 0.25rem)
+/// @return {Number} spacing value
+@function space($multiplier, $base: 0.25rem) {
+    @return $multiplier * $base;
+}
+
+/// Negative spacing
+/// @param {Number} $value - spacing value
+/// @return {Number} negative value
+@function negative($value) {
+    @return -$value;
+}
+
+// ============================================================================
+// Z-INDEX FUNCTIONS
+// ============================================================================
+
+/// Z-index map for consistent stacking
+$-z-layers: (
+    "base": 0,
+    "dropdown": 100,
+    "sticky": 200,
+    "fixed": 300,
+    "modal-backdrop": 400,
+    "modal": 500,
+    "popover": 600,
+    "tooltip": 700,
+    "toast": 800,
+    "max": 9999
+);
+
+/// Get z-index value by layer name
+/// @param {String} $layer - layer name
+/// @return {Number} z-index value
+@function z($layer) {
+    @if map.has-key($-z-layers, $layer) {
+        @return map.get($-z-layers, $layer);
+    }
+    @warn "Unknown z-layer: #{$layer}";
+    @return 0;
+}
+
+// ============================================================================
+// STRING FUNCTIONS
+// ============================================================================
+
+/// Strip unit from number
+/// @param {Number} $value - value with unit
+/// @return {Number} unitless value
+@function strip-unit($value) {
+    @if type-of($value) == "number" and not unitless($value) {
+        @return math.div($value, $value * 0 + 1);
+    }
+    @return $value;
+}
+
+/// Convert string to class selector format
+/// @param {String} $str - input string
+/// @return {String} formatted class name
+@function to-class($str) {
+    @return string.to-lower-case(string.unquote($str));
+}
+
+// ============================================================================
+// LIST/MAP FUNCTIONS
+// ============================================================================
+
+/// Get map value with fallback
+/// @param {Map} $map - source map
+/// @param {String} $key - key to look up
+/// @param {*} $fallback - fallback value
+/// @return {*} value or fallback
+@function get($map, $key, $fallback: null) {
+    @if map.has-key($map, $key) {
+        @return map.get($map, $key);
+    }
+    @return $fallback;
+}
+
+/// Deep get from nested map
+/// @param {Map} $map - source map
+/// @param {List} $keys - list of keys for nested access
+/// @return {*} deeply nested value
+@function deep-get($map, $keys...) {
+    @each $key in $keys {
+        @if type-of($map) != "map" {
+            @return null;
+        }
+        $map: map.get($map, $key);
+    }
+    @return $map;
+}
+
+// ============================================================================
+// MATH FUNCTIONS
+// ============================================================================
+
+/// Clamp value between min and max
+/// @param {Number} $value - value to clamp
+/// @param {Number} $min - minimum
+/// @param {Number} $max - maximum
+/// @return {Number} clamped value
+@function clamp-value($value, $min, $max) {
+    @return math.max($min, math.min($value, $max));
+}
+
+/// Calculate percentage
+/// @param {Number} $part - partial value
+/// @param {Number} $whole - total value
+/// @return {Number} percentage
+@function percentage($part, $whole) {
+    @if $whole == 0 {
+        @return 0%;
+    }
+    @return math.percentage(math.div($part, $whole));
+}
+
+/// Round to decimal places
+/// @param {Number} $value - value to round
+/// @param {Number} $places - decimal places (default 2)
+/// @return {Number} rounded value
+@function round-to($value, $places: 2) {
+    $factor: math.pow(10, $places);
+    @return math.div(math.round($value * $factor), $factor);
+}

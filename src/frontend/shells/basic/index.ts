@@ -24,13 +24,29 @@ import "fest/icon";
 // NAVIGATION ITEMS
 // ============================================================================
 
-const MAIN_NAV_ITEMS: Array<{ id: ViewId; name: string; icon: string }> = [
+/** Navigation item configuration */
+interface NavItem {
+    readonly id: ViewId;
+    readonly name: string;
+    readonly icon: string;
+}
+
+/** Main navigation items shown in the toolbar */
+const MAIN_NAV_ITEMS = [
     { id: "viewer", name: "Viewer", icon: "eye" },
     { id: "explorer", name: "Explorer", icon: "folder" },
     { id: "workcenter", name: "Work Center", icon: "lightning" },
     { id: "settings", name: "Settings", icon: "gear" },
     { id: "history", name: "History", icon: "clock-counter-clockwise" }
-];
+] as const satisfies readonly NavItem[];
+
+/** Set of valid nav view IDs for fast lookup */
+const VALID_NAV_VIEW_IDS = new Set(MAIN_NAV_ITEMS.map(item => item.id));
+
+/** Type guard for valid navigation view IDs */
+function isValidNavViewId(id: string): id is typeof MAIN_NAV_ITEMS[number]["id"] {
+    return VALID_NAV_VIEW_IDS.has(id as ViewId);
+}
 
 // ============================================================================
 // BASIC SHELL IMPLEMENTATION
@@ -105,8 +121,8 @@ export class BasicShell extends BaseShell {
             const button = target.closest("[data-view]") as HTMLButtonElement | null;
             if (!button) return;
 
-            const viewId = button.dataset.view as ViewId;
-            if (viewId) {
+            const viewId = button.dataset.view;
+            if (viewId && isValidNavViewId(viewId)) {
                 this.navigate(viewId);
             }
         });
@@ -147,8 +163,8 @@ export class BasicShell extends BaseShell {
         // Get view from pathname (e.g., /viewer, /settings, /workcenter)
         const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
 
-        if (pathname && MAIN_NAV_ITEMS.some(item => item.id === pathname)) {
-            return pathname as ViewId;
+        if (pathname && isValidNavViewId(pathname)) {
+            return pathname;
         }
 
         // Default to viewer
@@ -160,6 +176,12 @@ export class BasicShell extends BaseShell {
 // FACTORY FUNCTION
 // ============================================================================
 
+/**
+ * Factory function for creating BasicShell instances.
+ * 
+ * Note: The container parameter is required by ShellRegistration interface
+ * but not used here - the shell is mounted later via shell.mount(container).
+ */
 export function createShell(_container: HTMLElement): BasicShell {
     return new BasicShell();
 }

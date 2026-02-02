@@ -1,45 +1,22 @@
-// Keyframes imported from _keyframes.scss - do not redefine here
-@import 'keyframes';
+/**
+ * Workcenter Animations & Modal Styles
+ *
+ * Animation styles and modal components for the workcenter view.
+ * Keyframes are imported via @use from _keyframes.scss.
+ *
+ * @layer workcenter
+ * @module views/workcenter/animations
+ */
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg)
-    }
+// MIGRATION: @import 'keyframes' → @use 'keyframes'
+// Note: Keyframes are CSS at-rules that output directly to CSS.
+// Since @use only makes SCSS variables/mixins/functions available,
+// we use @forward in an index file or include keyframes via build.
+// For now, we use @use to signal the dependency relationship.
+@use "keyframes";
 
-    100% {
-        transform: rotate(360deg)
-    }
-}
-
-@keyframes blink {
-    0%, 50% {
-        opacity: 1
-    }
-
-    51%, 100% {
-        opacity: 0
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1
-    }
-
-    50% {
-        opacity: 0.7
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0
-    }
-
-    to {
-        opacity: 1
-    }
-}
+// Keyframes are already defined in _keyframes.scss
+// REMOVED duplicate definitions (spin, blink, pulse, fadeIn)
 
 @layer workcenter {
     .workcenter-view {

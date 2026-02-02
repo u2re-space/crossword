@@ -1,0 +1,340 @@
+/**
+ * SCSS Mixins Library
+ *
+ * Reusable mixins for CrossWord application.
+ * Uses modern @use module system.
+ *
+ * @use pattern: @use "lib/mixins" as mix;
+ *
+ * @module lib/mixins
+ */
+
+@use "sass:math";
+@use "sass:color";
+@use "sass:list";
+
+// ============================================================================
+// LAYOUT MIXINS
+// ============================================================================
+
+/// Flex container with center alignment
+@mixin flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/// Flex container with space-between
+@mixin flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/// Flex container with column direction
+@mixin flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+/// Absolute positioning to fill parent
+@mixin absolute-fill {
+    position: absolute;
+    inset: 0;
+}
+
+/// Fixed positioning to fill viewport
+@mixin fixed-fill {
+    position: fixed;
+    inset: 0;
+}
+
+/// Stack children with gap
+/// @param {String} $direction - row or column
+/// @param {Length} $gap - gap between items
+@mixin stack($direction: column, $gap: var(--space-md)) {
+    display: flex;
+    flex-direction: $direction;
+    gap: $gap;
+}
+
+// ============================================================================
+// INTERACTION MIXINS
+// ============================================================================
+
+/// Focus ring for keyboard navigation
+/// @param {Color} $color - ring color
+/// @param {Length} $width - ring width
+/// @param {Length} $offset - ring offset
+@mixin focus-ring(
+    $color: var(--color-primary),
+    $width: 2px,
+    $offset: 2px
+) {
+    &:focus-visible {
+        outline: $width solid $color;
+        outline-offset: $offset;
+    }
+}
+
+/// Hover lift effect
+/// @param {Length} $amount - vertical lift amount
+@mixin hover-lift($amount: -2px) {
+    transition: transform var(--transition-normal);
+    
+    &:hover {
+        transform: translateY($amount);
+    }
+}
+
+/// Button reset (remove default browser styles)
+@mixin button-reset {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    
+    &:disabled {
+        cursor: not-allowed;
+    }
+}
+
+/// Interactive element base styles
+@mixin interactive {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    
+    &:disabled,
+    &[aria-disabled="true"] {
+        cursor: not-allowed;
+        opacity: 0.6;
+        pointer-events: none;
+    }
+}
+
+// ============================================================================
+// TYPOGRAPHY MIXINS
+// ============================================================================
+
+/// Truncate text with ellipsis
+@mixin text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/// Clamp text to N lines
+/// @param {Number} $lines - number of lines
+@mixin text-clamp($lines: 2) {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/// Heading styles
+/// @param {Number} $level - heading level (1-6)
+@mixin heading($level: 1) {
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
+    margin-block-start: 0;
+    margin-block-end: 0;
+    
+    @if $level == 1 {
+        font-size: var(--text-3xl);
+    } @else if $level == 2 {
+        font-size: var(--text-2xl);
+    } @else if $level == 3 {
+        font-size: var(--text-xl);
+    } @else if $level == 4 {
+        font-size: var(--text-lg);
+    } @else if $level == 5 {
+        font-size: var(--text-md);
+    } @else {
+        font-size: var(--text-base);
+    }
+}
+
+// ============================================================================
+// SCROLLBAR MIXINS
+// ============================================================================
+
+/// Custom scrollbar styles
+/// @param {Length} $width - scrollbar width
+/// @param {Color} $thumb - thumb color
+/// @param {Color} $track - track color
+@mixin custom-scrollbar(
+    $width: 8px,
+    $thumb: var(--color-border-strong),
+    $track: transparent
+) {
+    scrollbar-width: thin;
+    scrollbar-color: $thumb $track;
+    
+    &::-webkit-scrollbar {
+        inline-size: $width;
+        block-size: $width;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: $track;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background-color: $thumb;
+        border-radius: math.div($width, 2);
+    }
+}
+
+/// Hide scrollbar but keep functionality
+@mixin hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+// ============================================================================
+// RESPONSIVE MIXINS
+// ============================================================================
+
+/// Responsive breakpoint
+/// @param {String} $size - breakpoint name (xs, sm, md, lg, xl, 2xl)
+@mixin breakpoint($size) {
+    @if $size == 'xs' {
+        @media (max-width: 480px) { @content; }
+    } @else if $size == 'sm' {
+        @media (max-width: 640px) { @content; }
+    } @else if $size == 'md' {
+        @media (max-width: 768px) { @content; }
+    } @else if $size == 'lg' {
+        @media (max-width: 1024px) { @content; }
+    } @else if $size == 'xl' {
+        @media (max-width: 1280px) { @content; }
+    } @else if $size == '2xl' {
+        @media (max-width: 1536px) { @content; }
+    } @else {
+        @warn "Unknown breakpoint: #{$size}";
+    }
+}
+
+/// Min-width breakpoint (mobile-first)
+/// @param {String} $size - breakpoint name
+@mixin breakpoint-up($size) {
+    @if $size == 'sm' {
+        @media (min-width: 640px) { @content; }
+    } @else if $size == 'md' {
+        @media (min-width: 768px) { @content; }
+    } @else if $size == 'lg' {
+        @media (min-width: 1024px) { @content; }
+    } @else if $size == 'xl' {
+        @media (min-width: 1280px) { @content; }
+    } @else if $size == '2xl' {
+        @media (min-width: 1536px) { @content; }
+    } @else {
+        @warn "Unknown breakpoint: #{$size}";
+    }
+}
+
+/// Print media query
+@mixin print {
+    @media print { @content; }
+}
+
+/// Reduced motion preference
+@mixin reduced-motion {
+    @media (prefers-reduced-motion: reduce) { @content; }
+}
+
+/// Dark mode preference (system)
+@mixin dark-mode {
+    @media (prefers-color-scheme: dark) { @content; }
+}
+
+// ============================================================================
+// VISUAL MIXINS
+// ============================================================================
+
+/// Card-like container
+@mixin card {
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    padding: var(--card-padding);
+}
+
+/// Overlay backdrop
+/// @param {Color} $bg - backdrop background color
+@mixin overlay($bg: var(--modal-backdrop-bg)) {
+    @include fixed-fill;
+    background-color: $bg;
+    z-index: var(--z-modal-backdrop);
+}
+
+/// Visually hidden but accessible to screen readers
+@mixin visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+// ============================================================================
+// ANIMATION MIXINS
+// ============================================================================
+
+/// Fade in animation
+/// @param {Duration} $duration - animation duration
+@mixin fade-in($duration: var(--transition-normal)) {
+    animation: fade-in $duration ease-out;
+}
+
+/// Slide in from direction
+/// @param {String} $direction - top, right, bottom, left
+/// @param {Length} $distance - slide distance
+/// @param {Duration} $duration - animation duration
+@mixin slide-in(
+    $direction: bottom,
+    $distance: 1rem,
+    $duration: var(--transition-normal)
+) {
+    $x: 0;
+    $y: 0;
+    
+    @if $direction == 'top' {
+        $y: -$distance;
+    } @else if $direction == 'right' {
+        $x: $distance;
+    } @else if $direction == 'bottom' {
+        $y: $distance;
+    } @else if $direction == 'left' {
+        $x: -$distance;
+    }
+    
+    animation: slide-in-#{$direction} $duration ease-out;
+    
+    @at-root {
+        @keyframes slide-in-#{$direction} {
+            from {
+                opacity: 0;
+                transform: translate($x, $y);
+            }
+            to {
+                opacity: 1;
+                transform: translate(0, 0);
+            }
+        }
+    }
+}

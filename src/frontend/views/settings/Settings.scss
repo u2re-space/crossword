@@ -1,413 +1,491 @@
-@layer bs-settings {
+@use "../../styles/lib" as lib;
+@use "../../styles/properties/tokens" as tokens;
 
-    .basic-settings {
-        padding: 14px;
-        display: grid;
-        gap: 14px;
-        block-size: max-content;
-        max-block-size: none;
-    }
+@layer settings {
 
-    .basic-settings h2 {
-        margin: 0;
-        font-size: 18px;
-        letter-spacing: 0.01em;
-    }
-
-    .basic-settings .card {
-        display: grid;
-        gap: 10px;
-    }
-
-    .basic-settings .card h3 {
-        margin: 0;
-        font-size: 14px;
-        opacity: 0.95;
-        letter-spacing: 0.01em;
-    }
-
-    .basic-settings .field {
-        display: grid;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .basic-settings .field > span {
-        opacity: 0.9;
-        color: var(--basic-on-surface-variant);
-    }
-
-    .basic-settings .field.checkbox {
-        grid-auto-flow: column;
-        grid-auto-columns: max-content 1fr;
-        align-items: center;
-    }
-
-    .basic-settings .actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .basic-settings .note {
-        font-size: 12px;
-        opacity: 0.9;
-        color: var(--basic-on-surface-variant);
-    }
-
-    .basic-settings .ext-note {
-        font-size: 12px;
-        opacity: 0.8;
-        color: var(--basic-on-surface-variant);
-    }
-
-    .custom-instructions-editor .ci-header h4 {
-        margin: 0;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--basic-on-surface);
-    }
-
-    .custom-instructions-editor .ci-header .ci-desc {
-        margin: 0;
-        font-size: 11px;
-        opacity: 0.8;
-        color: var(--basic-on-surface-variant);
-    }
-
-    .custom-instructions-editor .ci-header {
-        display: grid;
-        gap: 4px;
-    }
-
-    .custom-instructions-editor .ci-active-select label span {
-        opacity: 0.9;
-        color: var(--basic-on-surface-variant);
-    }
-
-    .custom-instructions-editor .ci-active-select label {
-        display: grid;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .custom-instructions-editor .ci-active-select .ci-select {
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: var(--basic-surface-container-highest);
-        color: var(--basic-on-surface);
-        font-size: 12px;
-        outline: none;
-        cursor: pointer;
-        transition: background-color var(--basic-motion-fast);
-    }
-
-    .custom-instructions-editor .ci-list .ci-empty {
-        padding: 16px;
-        text-align: center;
-        font-size: 12px;
-        opacity: 0.7;
-        color: var(--basic-on-surface-variant);
-        background: var(--basic-surface-container);
-        border-radius: 10px;
-    }
-
-    .custom-instructions-editor .ci-list {
-        display: grid;
-        gap: 8px;
-    }
-
-    .custom-instructions-editor .ci-item.active {
-        background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
-    }
-
-    .custom-instructions-editor .ci-item .ci-item-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    .custom-instructions-editor .ci-item .ci-item-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--basic-on-surface);
-        flex: 1;
-        min-inline-size: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .custom-instructions-editor .ci-item .ci-item-actions {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-        flex-shrink: 0;
-    }
-
-    .custom-instructions-editor .ci-item .ci-badge.active {
-        background: color-mix(in oklab, var(--basic-primary) 20%, transparent);
-        color: var(--basic-primary);
-    }
-
-    .custom-instructions-editor .ci-item .ci-badge {
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 10px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    .custom-instructions-editor .ci-item .ci-item-preview {
-        margin-block-start: 8px;
-        padding: 8px;
-        background: var(--basic-surface-container-highest);
-        border-radius: 8px;
-        font-size: 11px;
-        line-height: 1.5;
-        color: var(--basic-on-surface-variant);
-        word-break: break-word;
-        white-space: pre-wrap;
-    }
-
-    .custom-instructions-editor .ci-item .ci-edit-form {
-        margin-block-start: 10px;
-        display: grid;
-        gap: 8px;
-    }
-
-    .custom-instructions-editor .ci-item {
-        border-radius: 10px;
-        padding: 10px;
-        background: var(--basic-surface-container);
-        transition: background-color var(--basic-motion-fast);
-    }
-
-    .custom-instructions-editor .ci-input::placeholder {
-        color: var(--basic-on-surface-variant);
-        opacity: 0.6;
-    }
-
-    .custom-instructions-editor .ci-input {
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: var(--basic-surface-container-highest);
-        color: var(--basic-on-surface);
-        font-size: 12px;
-        outline: none;
-        transition: background-color var(--basic-motion-fast);
-    }
-
-    .custom-instructions-editor .ci-textarea::placeholder {
-        color: var(--basic-on-surface-variant);
-        opacity: 0.6;
-    }
-
-    .custom-instructions-editor .ci-textarea {
-        padding: 10px;
-        border-radius: 8px;
-        background: var(--basic-surface-container-highest);
-        color: var(--basic-on-surface);
-        font-size: 12px;
-        line-height: 1.5;
-        resize: vertical;
-        min-block-size: 60px;
-        outline: none;
-        font-family: inherit;
-        transition: background-color var(--basic-motion-fast);
-    }
-
-    .custom-instructions-editor .ci-edit-actions,
-    .ci-add-actions {
-        display: flex;
-        gap: 6px;
-        justify-content: flex-end;
-    }
-
-    .custom-instructions-editor .ci-add-form {
-        display: grid;
-        gap: 8px;
-        padding: 12px;
-        border-radius: 10px;
-        background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
-    }
-
-    .custom-instructions-editor .ci-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .custom-instructions-editor .btn.tiny.danger:hover {
-        background: color-mix(in oklab, var(--basic-error, #c62828) 15%, transparent);
-    }
-
-    .custom-instructions-editor .btn.tiny.danger {
-        color: var(--basic-error, #c62828);
-    }
-
-    .custom-instructions-editor .btn.tiny {
-        padding: 4px 8px;
-        font-size: 10px;
-        border-radius: 6px;
-    }
-
-    .custom-instructions-editor .btn.small {
-        padding: 6px 12px;
-        font-size: 11px;
-        border-radius: 8px;
-    }
+    // ========================================================================
+    // CUSTOM INSTRUCTIONS EDITOR — Complex form with list management
+    // ========================================================================
 
     .custom-instructions-editor {
         display: grid;
-        gap: 12px;
+        gap: var(--basic-spacing-md, 12px);
+
+        // Header with title & description
+        .ci-header {
+            display: grid;
+            gap: var(--basic-spacing-xs, 4px);
+
+            h4 {
+                margin: 0;
+                font-size: var(--basic-text-sm, 13px);
+                font-weight: var(--basic-font-weight-semibold, 600);
+                color: var(--basic-on-surface);
+            }
+
+            .ci-desc {
+                margin: 0;
+                font-size: var(--basic-text-xs, 11px);
+                opacity: 0.8;
+                color: var(--basic-on-surface-variant);
+            }
+        }
+
+        // Active selection area
+        .ci-active-select {
+            label {
+                display: grid;
+                gap: var(--basic-spacing-xs, 6px);
+                font-size: var(--basic-text-xs, 12px);
+
+                span {
+                    opacity: 0.9;
+                    color: var(--basic-on-surface-variant);
+                }
+            }
+
+            .ci-select {
+                padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-sm, 10px);
+                border-radius: var(--basic-radius-md, 10px);
+                background: var(--basic-surface-container-highest);
+                color: var(--basic-on-surface);
+                font-size: var(--basic-text-xs, 12px);
+                outline: none;
+                cursor: pointer;
+                transition: background-color var(--basic-motion-fast);
+                border: 1px solid var(--basic-outline-variant);
+            }
+        }
+
+        // Items list container
+        .ci-list {
+            display: grid;
+            gap: var(--basic-spacing-sm, 8px);
+
+            .ci-empty {
+                padding: var(--basic-spacing-md, 16px);
+                text-align: center;
+                font-size: var(--basic-text-xs, 12px);
+                opacity: 0.7;
+                color: var(--basic-on-surface-variant);
+                background: var(--basic-surface-container);
+                border-radius: var(--basic-radius-md, 10px);
+            }
+        }
+
+        // Individual list item
+        .ci-item {
+            border-radius: var(--basic-radius-md, 10px);
+            padding: var(--basic-spacing-sm, 10px);
+            background: var(--basic-surface-container);
+            transition: background-color var(--basic-motion-fast);
+
+            &.active {
+                background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
+            }
+
+            // Item header with title & actions
+            .ci-item-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--basic-spacing-xs, 8px);
+            }
+
+            .ci-item-label {
+                font-size: var(--basic-text-xs, 12px);
+                font-weight: var(--basic-font-weight-medium, 500);
+                color: var(--basic-on-surface);
+                flex: 1;
+                min-inline-size: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .ci-item-actions {
+                display: flex;
+                gap: var(--basic-spacing-xs, 4px);
+                align-items: center;
+                flex-shrink: 0;
+            }
+
+            .ci-badge {
+                padding: 2px 8px;
+                border-radius: var(--basic-radius-sm, 6px);
+                font-size: var(--basic-text-xs, 10px);
+                font-weight: var(--basic-font-weight-medium, 500);
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                background: var(--basic-surface-container-highest);
+                color: var(--basic-on-surface-variant);
+
+                &.active {
+                    background: color-mix(in oklab, var(--basic-primary) 20%, transparent);
+                    color: var(--basic-primary);
+                }
+            }
+
+            // Item preview text
+            .ci-item-preview {
+                margin-block-start: var(--basic-spacing-xs, 8px);
+                padding: var(--basic-spacing-xs, 8px);
+                background: var(--basic-surface-container-highest);
+                border-radius: var(--basic-radius-sm, 8px);
+                font-size: var(--basic-text-xs, 11px);
+                line-height: 1.5;
+                color: var(--basic-on-surface-variant);
+                word-break: break-word;
+                white-space: pre-wrap;
+            }
+
+            // Inline edit form
+            .ci-edit-form {
+                margin-block-start: var(--basic-spacing-sm, 10px);
+                display: grid;
+                gap: var(--basic-spacing-xs, 8px);
+            }
+        }
+
+        // Form inputs
+        .ci-input,
+        .ci-textarea {
+            padding: var(--basic-spacing-xs, 8px 10px);
+            border-radius: var(--basic-radius-sm, 8px);
+            background: var(--basic-surface-container-highest);
+            color: var(--basic-on-surface);
+            font-size: var(--basic-text-xs, 12px);
+            outline: none;
+            border: 1px solid var(--basic-outline-variant);
+            transition: background-color var(--basic-motion-fast);
+            font-family: inherit;
+
+            &::placeholder {
+                color: var(--basic-on-surface-variant);
+                opacity: 0.6;
+            }
+
+            &:focus {
+                border-color: var(--basic-primary);
+                background: var(--basic-surface-container-high);
+            }
+        }
+
+        .ci-textarea {
+            line-height: 1.5;
+            resize: vertical;
+            min-block-size: 60px;
+        }
+
+        // Action buttons
+        .ci-edit-actions,
+        .ci-add-actions {
+            display: flex;
+            gap: var(--basic-spacing-xs, 6px);
+            justify-content: flex-end;
+        }
+
+        // Add new item form
+        .ci-add-form {
+            display: grid;
+            gap: var(--basic-spacing-xs, 8px);
+            padding: var(--basic-spacing-sm, 12px);
+            border-radius: var(--basic-radius-md, 10px);
+            background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
+        }
+
+        .ci-actions {
+            display: flex;
+            gap: var(--basic-spacing-xs, 8px);
+            flex-wrap: wrap;
+        }
+
+        // Button variants
+        .btn {
+            &.tiny {
+                padding: 4px 8px;
+                font-size: var(--basic-text-xs, 10px);
+                border-radius: var(--basic-radius-sm, 6px);
+                background: transparent;
+                border: 1px solid var(--basic-outline-variant);
+                color: var(--basic-on-surface);
+                cursor: pointer;
+                transition: background-color var(--basic-motion-fast);
+
+                &.danger {
+                    color: var(--basic-error, #c62828);
+                    border-color: var(--basic-error, #c62828);
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--basic-error, #c62828) 15%, transparent);
+                    }
+                }
+
+                &:hover {
+                    background: rgba(0, 0, 0, 0.03);
+                }
+            }
+
+            &.small {
+                padding: 6px 12px;
+                font-size: var(--basic-text-xs, 11px);
+                border-radius: var(--basic-radius-sm, 8px);
+                background: transparent;
+                border: 1px solid var(--basic-outline-variant);
+                color: var(--basic-on-surface);
+                cursor: pointer;
+                transition: background-color var(--basic-motion-fast);
+
+                &:hover {
+                    background: rgba(0, 0, 0, 0.03);
+                }
+            }
+        }
     }
 
-    .view-settings {
+    // ========================================================================
+    // MAIN SETTINGS VIEW — Centered container with scrollable content
+    // ========================================================================
+
+    :where(.view-settings, .basic-settings) {
+        place-content: center;
+        place-items: center;
+        text-align: center;
+
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
         block-size: 100%;
-        padding: 1.5rem;
         overflow-y: auto;
         background-color: var(--view-bg, var(--basic-surface, #ffffff));
         color: var(--view-fg, var(--basic-on-surface, #1a1a1a));
+
+        padding: var(--basic-spacing-md, 14px);
+        gap: var(--basic-spacing-md, 14px);
+        max-block-size: none;
+
+        // Ensure form controls are interactive
+        :where(select, input, textarea, option) {
+            pointer-events: auto;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: var(--basic-text-lg, 18px);
+            letter-spacing: -0.01em;
+            font-weight: var(--basic-font-weight-semibold, 600);
+            color: var(--basic-on-surface);
+        }
+
+        // Card container
+        .card {
+            display: grid;
+            gap: var(--basic-spacing-sm, 10px);
+            padding: var(--basic-spacing-sm, 10px);
+            background: var(--basic-surface-container);
+            border-radius: var(--basic-radius-md, 8px);
+
+            h3 {
+                margin: 0;
+                font-size: var(--basic-text-base, 14px);
+                opacity: 0.95;
+                letter-spacing: 0.01em;
+                font-weight: var(--basic-font-weight-medium, 500);
+                color: var(--basic-on-surface);
+            }
+        }
+
+        // Form field
+        .field {
+            display: grid;
+            gap: var(--basic-spacing-xs, 6px);
+            font-size: var(--basic-text-xs, 12px);
+
+            & > span {
+                opacity: 0.9;
+                color: var(--basic-on-surface-variant);
+            }
+
+            &.checkbox {
+                grid-auto-flow: column;
+                grid-auto-columns: max-content 1fr;
+                align-items: center;
+                gap: var(--basic-spacing-sm, 10px);
+            }
+        }
+
+        // Action buttons container
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: var(--basic-spacing-sm, 10px);
+        }
+
+        // Info text
+        .note,
+        .ext-note {
+            font-size: var(--basic-text-xs, 12px);
+            opacity: 0.9;
+            color: var(--basic-on-surface-variant);
+        }
+
+        .ext-note {
+            opacity: 0.8;
+        }
     }
 
-    .view-settings__content {
-        inline-size: 100%;
-        max-inline-size: 600px;
+    .view-settings {
+
+        // Content wrapper with max width
+        &__content {
+            inline-size: 100%;
+            max-inline-size: 600px;
+        }
+
+        // Main title
+        &__title {
+            margin: 0 0 2rem 0;
+            font-size: 1.75rem;
+            font-weight: var(--basic-font-weight-bold, 700);
+        }
+
+        // Section grouping
+        &__section {
+            margin-block-end: 2rem;
+            padding-block-end: 2rem;
+            border-block-end: 1px solid var(--view-border, rgba(0, 0, 0, 0.1));
+            flex-direction: column;
+
+            &:last-of-type {
+                border-block-end: none;
+            }
+
+            h2 {
+                margin: 0 0 1rem 0;
+                font-size: 1.125rem;
+                font-weight: var(--basic-font-weight-semibold, 600);
+                color: var(--view-fg);
+            }
+        }
+
+        // Group of related fields
+        &__group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        // Label wrapper
+        &__label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+
+            > span {
+                font-size: var(--basic-text-sm, 0.875rem);
+                font-weight: var(--basic-font-weight-medium, 500);
+            }
+        }
+
+        // Input & select styling
+        &__input,
+        &__select {
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
+            border-radius: var(--basic-radius-sm, 6px);
+            background-color: var(--view-input-bg, #ffffff);
+            color: var(--view-fg);
+            font-family: inherit;
+            font-size: var(--basic-text-sm, 0.875rem);
+            outline: none;
+            transition: border-color var(--basic-motion-fast);
+
+            &::placeholder {
+                color: var(--view-fg);
+                opacity: 0.4;
+            }
+
+            &:focus {
+                border-color: var(--color-primary, #007acc);
+            }
+        }
+
+        &__select {
+            cursor: pointer;
+        }
+
+        // Checkbox wrapper
+        &__checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            cursor: pointer;
+
+            input[type="checkbox"] {
+                inline-size: 18px;
+                block-size: 18px;
+                accent-color: var(--color-primary, #007acc);
+                cursor: pointer;
+            }
+
+            span {
+                font-size: var(--basic-text-sm, 0.875rem);
+            }
+        }
+
+        // Action buttons container
+        &__actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-block-start: 2rem;
+        }
+
+        // Button base
+        &__btn {
+            padding: 0.625rem 1.25rem;
+            border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
+            border-radius: var(--basic-radius-sm, 6px);
+            background: transparent;
+            color: var(--view-fg);
+            font-size: var(--basic-text-sm, 0.875rem);
+            font-weight: var(--basic-font-weight-medium, 500);
+            cursor: pointer;
+            transition: background-color var(--basic-motion-fast);
+
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+
+            // Primary button variant
+            &--primary {
+                background-color: var(--color-primary, #007acc);
+                border-color: var(--color-primary, #007acc);
+                color: white;
+
+                &:hover {
+                    filter: brightness(1.1);
+                }
+            }
+        }
     }
 
-    .view-settings__title {
-        margin: 0 0 2rem 0;
-        font-size: 1.75rem;
-        font-weight: 700;
-    }
+    // ========================================================================
+    // DARK MODE SUPPORT
+    // ========================================================================
 
-    .view-settings__section:last-of-type {
-        border-block-end: none;
-    }
+    @media (prefers-color-scheme: dark) {
+        [data-theme="dark"] .view-settings,
+        .shell-basic[data-theme="dark"] .view-settings {
+            --view-bg: var(--basic-surface, #1e1e1e);
+            --view-fg: var(--basic-on-surface, #e0e0e0);
+            --view-border: var(--basic-outline-variant, rgba(255, 255, 255, 0.1));
+            --view-input-bg: var(--basic-surface-container-high, #2d2d30);
 
-    .view-settings__section h2 {
-        margin: 0 0 1rem 0;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--view-fg);
-    }
-
-    .view-settings__section {
-        margin-block-end: 2rem;
-        padding-block-end: 2rem;
-        border-block-end: 1px solid var(--view-border, rgba(0, 0, 0, 0.1));
-    }
-
-    .view-settings__group {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .view-settings__label > span {
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    .view-settings__label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.375rem;
-    }
-
-    .view-settings__input,
-    .view-settings__select:focus {
-        outline: none;
-        border-color: var(--color-primary, #007acc);
-    }
-
-    .view-settings__input,
-    .view-settings__select::placeholder {
-        color: var(--view-fg);
-        opacity: 0.4;
-    }
-
-    .view-settings__input,
-    .view-settings__select {
-        padding: 0.625rem 0.75rem;
-        border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
-        border-radius: 6px;
-        background-color: var(--view-input-bg, #ffffff);
-        color: var(--view-fg);
-        font-family: inherit;
-        font-size: 0.875rem;
-    }
-
-    .view-settings__select {
-        cursor: pointer;
-    }
-
-    .view-settings__checkbox input[type="checkbox"] {
-        inline-size: 18px;
-        block-size: 18px;
-        accent-color: var(--color-primary, #007acc);
-        cursor: pointer;
-    }
-
-    .view-settings__checkbox span {
-        font-size: 0.875rem;
-    }
-
-    .view-settings__checkbox {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        cursor: pointer;
-    }
-
-    .view-settings__actions {
-        display: flex;
-        gap: 0.75rem;
-        margin-block-start: 2rem;
-    }
-
-    .view-settings__btn:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-    }
-
-    .view-settings__btn--primary:hover {
-        filter: brightness(1.1);
-    }
-
-    .view-settings__btn--primary {
-        background-color: var(--color-primary, #007acc);
-        border-color: var(--color-primary, #007acc);
-        color: white;
-    }
-
-    .view-settings__btn {
-        padding: 0.625rem 1.25rem;
-        border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
-        border-radius: 6px;
-        background: transparent;
-        color: var(--view-fg);
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.15s ease;
-    }
-
-    [data-theme="dark"] .view-settings,
-    .shell-basic[data-theme="dark"] .view-settings .view-settings__btn:hover {
-        background-color: rgba(255, 255, 255, 0.08);
-    }
-
-    [data-theme="dark"] .view-settings,
-    .shell-basic[data-theme="dark"] .view-settings {
-        --view-bg: var(--basic-surface, #1e1e1e);
-        --view-fg: var(--basic-on-surface, #e0e0e0);
-        --view-border: var(--basic-outline-variant, rgba(255, 255, 255, 0.1));
-        --view-input-bg: var(--basic-surface-container-high, #2d2d30);
+            .view-settings__btn:hover {
+                background-color: rgba(255, 255, 255, 0.08);
+            }
+        }
     }
 
 }

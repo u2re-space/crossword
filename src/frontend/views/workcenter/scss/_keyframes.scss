@@ -1,42 +1,121 @@
-// Canonical animation definitions - sourced from all workcenter views
-// Used throughout: _prompts.scss, _results.scss, _animations.scss
+/**
+ * Workcenter Keyframe Animations
+ *
+ * Canonical animation definitions for workcenter view.
+ * Used by: _prompts.scss, _results.scss, _animations.scss
+ *
+ * Layer: workcenter.keyframes (lowest specificity)
+ *
+ * @module views/workcenter/keyframes
+ */
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg)
+// ============================================================================
+// KEYFRAMES (Within layer for proper ordering)
+// ============================================================================
+
+@layer workcenter.keyframes {
+    // Rotation animation (for spinners)
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
     }
 
-    100% {
-        transform: rotate(360deg)
+    // Blink animation (for status indicators)
+    @keyframes blink {
+        0%, 50% {
+            opacity: 1;
+        }
+        51%, 100% {
+            opacity: 0;
+        }
+    }
+
+    // Pulse animation (for processing states)
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.7;
+        }
+    }
+
+    // Fade in animation (for entry effects)
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    // Slide in from bottom (for modals)
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(1rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    // Scale in (for popups/tooltips)
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
     }
 }
 
-@keyframes blink {
-    0%, 50% {
-        opacity: 1
-    }
+// ============================================================================
+// SCSS MIXINS FOR ANIMATIONS
+// These can be @used by other modules: @use "keyframes" as anim;
+// ============================================================================
 
-    51%, 100% {
-        opacity: 0
-    }
+/// Apply spin animation
+/// @param {Duration} $duration - animation duration (default 1s)
+@mixin spin($duration: 1s) {
+    animation: spin $duration linear infinite;
 }
 
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1
-    }
-
-    50% {
-        opacity: 0.7
-    }
+/// Apply blink animation
+/// @param {Duration} $duration - animation duration (default 1s)
+@mixin blink($duration: 1s) {
+    animation: blink $duration step-end infinite;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0
-    }
+/// Apply pulse animation
+/// @param {Duration} $duration - animation duration (default 2s)
+@mixin pulse($duration: 2s) {
+    animation: pulse $duration ease-in-out infinite;
+}
 
-    to {
-        opacity: 1
-    }
+/// Apply fade in animation
+/// @param {Duration} $duration - animation duration (default 0.3s)
+@mixin fade-in($duration: 0.3s) {
+    animation: fadeIn $duration ease-out;
+}
+
+/// Apply slide in up animation
+/// @param {Duration} $duration - animation duration (default 0.3s)
+@mixin slide-in-up($duration: 0.3s) {
+    animation: slideInUp $duration ease-out;
+}
+
+/// Apply scale in animation
+/// @param {Duration} $duration - animation duration (default 0.2s)
+@mixin scale-in($duration: 0.2s) {
+    animation: scaleIn $duration ease-out;
 }

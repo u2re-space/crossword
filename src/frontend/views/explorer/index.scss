@@ -91,7 +91,7 @@
     // CSS CUSTOM PROPERTIES
     // ========================================================================
 
-    :host {
+    :host:has(.view-explorer) {
         --rs-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         --rs-font-size: 0.875rem;
         --rs-line-height: 1.5;
@@ -126,7 +126,7 @@
 
     // Dark theme
     @media (prefers-color-scheme: dark) {
-        :host {
+        :host:has(.view-explorer) {
             --rs-bg: #1a1a1a;
             --rs-bg-secondary: #1f2937;
             --rs-fg: #f3f4f6;

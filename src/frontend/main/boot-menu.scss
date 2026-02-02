@@ -3,7 +3,7 @@
        CSS Custom Properties - Material You-inspired Design System
        ========================================================================== */
 
-    :root {
+    :root:has(.choice.container) {
         /* Color Palette */
         --choice-bg: #0a0d12;
         --choice-fg: #e8ecf2;

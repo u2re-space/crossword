@@ -1,0 +1,116 @@
+/**
+ * Context-Based Selector Mixins
+ *
+ * Provides convenient mixins for generating :has() selectors
+ * without repeating the selector syntax throughout SCSS files.
+ */
+
+/**
+ * Apply styles when a shell is active
+ * 
+ * @param {String} $shell-id - Shell identifier (basic, faint, raw)
+ * 
+ * @example
+ *   @include for-shell("basic") {
+ *       .my-class { color: blue; }
+ *   }
+ */
+@mixin for-shell($shell-id) {
+    :is(html, body):has([data-shell="#{$shell-id}"]) {
+        @content;
+    }
+}
+
+/**
+ * Apply styles when a view is active
+ * 
+ * @param {String} $view-id - View identifier
+ * 
+ * @example
+ *   @include for-view("workcenter") {
+ *       .toolbar { gap: 1rem; }
+ *   }
+ */
+@mixin for-view($view-id) {
+    :is(html, body):has([data-view="#{$view-id}"]) {
+        @content;
+    }
+}
+
+/**
+ * Apply styles for specific shell + view combination
+ * 
+ * @param {String} $shell-id - Shell identifier
+ * @param {String} $view-id - View identifier
+ * 
+ * @example
+ *   @include for-shell-view("basic", "workcenter") {
+ *       .content { display: grid; }
+ *   }
+ */
+@mixin for-shell-view($shell-id, $view-id) {
+    :is(html, body):has([data-shell="#{$shell-id}"] [data-view="#{$view-id}"]) {
+        @content;
+    }
+}
+
+/**
+ * Apply styles when element has a specific state
+ * Useful for ARIA attributes, data attributes, etc.
+ * 
+ * @param {String} $selector - Attribute selector or pseudo-class
+ * 
+ * @example
+ *   @include when-state("[aria-expanded='true']") {
+ *       .sidebar { inline-size: 300px; }
+ *   }
+ */
+@mixin when-state($selector) {
+    :is(html, body):has(#{$selector}) {
+        @content;
+    }
+}
+
+/**
+ * Low-specificity wrapper for component classes
+ * Ensures easy override by user or state-specific rules
+ * 
+ * @param {String} $selector - Component selector
+ * 
+ * @example
+ *   @include component-styles(".button") {
+ *       padding: 0.5rem;
+ *   }
+ */
+@mixin component-styles($selector) {
+    :where(#{$selector}) {
+        @content;
+    }
+}
+
+/**
+ * Responsive breakpoint for mobile-first design
+ * 
+ * @param {String} $breakpoint - Media query size (sm, md, lg, xl)
+ * 
+ * @example
+ *   @include respond-to("md") {
+ *       .container { max-width: 768px; }
+ *   }
+ */
+@mixin respond-to($breakpoint) {
+    $breakpoints: (
+        "sm": 640px,
+        "md": 768px,
+        "lg": 1024px,
+        "xl": 1280px,
+    );
+
+    @if map-has-key($breakpoints, $breakpoint) {
+        @media (min-width: map-get($breakpoints, $breakpoint)) {
+            @content;
+        }
+    } @else {
+        @warn "Breakpoint '#{$breakpoint}' not found";
+    }
+}

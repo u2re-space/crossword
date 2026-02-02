@@ -95,6 +95,10 @@ export abstract class BaseShell implements Shell {
         // Create layout
         this.rootElement = this.createLayout();
 
+        // CRITICAL: Set data-shell attribute for context-based CSS selectors
+        // This enables :has([data-shell="...""]) selectors to cascade automatically
+        this.rootElement.setAttribute('data-shell', this.id);
+
         // Find containers
         this.contentContainer = this.rootElement.querySelector("[data-shell-content]") || this.rootElement;
         this.toolbarContainer = this.rootElement.querySelector("[data-shell-toolbar]");
@@ -107,7 +111,7 @@ export abstract class BaseShell implements Shell {
         container.replaceChildren(this.rootElement);
         this.mounted = true;
 
-        console.log(`[${this.id}] Shell mounted`);
+        console.log(`[${this.id}] Shell mounted with data-shell="${this.id}"`);
     }
 
     unmount(): void {
