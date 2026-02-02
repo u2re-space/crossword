@@ -187,7 +187,11 @@ export class PrintView implements View {
 // VIEW FACTORY
 // ============================================================================
 
-export function createPrintView(options?: PrintViewOptions): PrintView {
+export function createView(options?: PrintViewOptions): PrintView {
     return new PrintView(options);
 }
 
+/** Alias for createView */
+export const createPrintView = createView;
+
+export default createView;

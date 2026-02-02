@@ -9,16 +9,52 @@
 import { H } from "fest/lure";
 import { ref, affected } from "fest/object";
 import { loadAsAdopted } from "fest/dom";
+import { marked, type MarkedExtension } from "marked";
+import markedKatex from "marked-katex-extension";
+import DOMPurify from "isomorphic-dompurify";
+import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
-import type { BaseViewOptions, MarkdownContent } from "../types";
-import { createViewState, createLoadingElement, createErrorElement } from "../types";
+import type { BaseViewOptions } from "../types";
+import { createViewState } from "../types";
+import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 
 // Import the md-view web component from fl.ui
 import "fest/fl-ui/services/markdown-view/Markdown";
-import type { MarkdownView as MdViewElement } from "fest/fl-ui/services/markdown-view/Markdown";
 
 // @ts-ignore - SCSS import
 import style from "./viewer.scss?inline";
+
+// Configure marked with KaTeX extension for HTML output with proper delimiters
+marked?.use?.(markedKatex({
+    throwOnError: false,
+    nonStandard: true,
+    output: "mathml",
+    strict: false,
+}) as unknown as MarkedExtension,
+{
+    hooks: {
+        preprocess: (markdown: string): string => {
+            if (/\\(.*\\)|\\[.*\\]/.test(markdown)) {
+                const katexNode = document.createElement('div')
+                katexNode.innerHTML = markdown
+                renderMathInElement(katexNode, {
+                    throwOnError: false,
+                    nonStandard: true,
+                    output: "mathml",
+                    strict: false,
+                    delimiters: [
+                        { left: "$$", right: "$$", display: true },
+                        { left: "\\[", right: "\\]", display: true },
+                        { left: "$", right: "$", display: false },
+                        { left: "\\(", right: "\\)", display: false }
+                    ]
+                })
+                return katexNode.innerHTML
+            }
+            return markdown
+        },
+    },
+});
 
 // ============================================================================
 // VIEWER STATE
@@ -68,9 +104,7 @@ export class ViewerView implements View {
     private options: ViewerOptions;
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
-    private mdView: MdViewElement | null = null;
     private contentRef = ref("");
-    private renderedContentRef = ref<HTMLElement | null>(null);
     private stateManager = createViewState<ViewerState>(STORAGE_KEY);
 
     lifecycle: ViewLifecycle = {
@@ -111,50 +145,59 @@ export class ViewerView implements View {
                         </button>
                     </div>
                     <div class="view-viewer__toolbar-right">
-                        <button class="view-viewer__btn" data-action="copy" type="button" title="Copy to clipboard">
+                        <button class="view-viewer__btn" data-action="copy" type="button" title="Copy raw content">
                             <ui-icon icon="copy" icon-style="duotone"></ui-icon>
                             <span>Copy</span>
                         </button>
-                        <button class="view-viewer__btn" data-action="download" type="button" title="Download as file">
+                        <button class="view-viewer__btn" data-action="toggle-raw" type="button" title="Toggle raw/rendered view">
+                            <ui-icon icon="code" icon-style="duotone"></ui-icon>
+                            <span>Raw</span>
+                        </button>
+                        <button class="view-viewer__btn" data-action="copy-rendered" type="button" title="Copy rendered text">
+                            <ui-icon icon="text-t" icon-style="duotone"></ui-icon>
+                            <span>Copy text</span>
+                        </button>
+                        <button class="view-viewer__btn" data-action="download" type="button" title="Download as markdown">
                             <ui-icon icon="download" icon-style="duotone"></ui-icon>
                             <span>Download</span>
+                        </button>
+                        <button class="view-viewer__btn" data-action="export-docx" type="button" title="Export as DOCX">
+                            <ui-icon icon="file-doc" icon-style="duotone"></ui-icon>
+                            <span>DOCX</span>
+                        </button>
+                        <button class="view-viewer__btn" data-action="print" type="button" title="Print content">
+                            <ui-icon icon="printer" icon-style="duotone"></ui-icon>
+                            <span>Print</span>
                         </button>
                         <button class="view-viewer__btn" data-action="attach" type="button" title="Attach to Work Center">
                             <ui-icon icon="lightning" icon-style="duotone"></ui-icon>
                             <span>Attach</span>
                         </button>
-                        <button class="view-viewer__btn" data-action="print" type="button" title="Print">
-                            <ui-icon icon="printer" icon-style="duotone"></ui-icon>
-                            <span>Print</span>
-                        </button>
                     </div>
                 </div>
                 <div class="view-viewer__content" data-viewer-content>
-                    <md-view theme="auto"></md-view>
+                    <div class="markdown-body markdown-viewer-content result-content" data-render-target></div>
+                    <pre class="markdown-viewer-raw" data-raw-target aria-label="Raw content" hidden></pre>
                 </div>
             </div>
         ` as HTMLElement;
 
-        // Get reference to md-view component
-        this.mdView = this.element.querySelector("md-view") as MdViewElement;
+        // Get references to render and raw targets
+        const renderTarget = this.element.querySelector("[data-render-target]") as HTMLElement | null;
+        const rawTarget = this.element.querySelector("[data-raw-target]") as HTMLPreElement | null;
 
         // Setup event handlers
-        this.setupEventHandlers();
+        this.setupEventHandlers(rawTarget || undefined);
 
-        // Set initial content on md-view component
-        if (this.mdView) {
-            this.mdView?.setContent?.(this.contentRef.value);
-
-            // Listen for md-view events
-            this.mdView?.addEventListener?.("md-link-click", (e) => {
-                // Allow default link behavior, or handle custom navigation
-            });
+        // Set initial content
+        if (renderTarget && rawTarget) {
+            this.renderMarkdown(this.contentRef.value, renderTarget, rawTarget);
         }
 
         // Setup reactive updates
         affected(this.contentRef, () => {
-            if (this.mdView) {
-                this.mdView?.setContent?.(this.contentRef.value);
+            if (renderTarget && rawTarget) {
+                this.renderMarkdown(this.contentRef.value, renderTarget, rawTarget);
             }
             this.saveState();
         });
@@ -189,10 +232,69 @@ export class ViewerView implements View {
     // PRIVATE METHODS
     // ========================================================================
 
-    private setupEventHandlers(): void {
+    private renderMarkdown(content: string, renderTarget: HTMLElement, rawTarget: HTMLPreElement): void {
+        if (!renderTarget) return;
+
+        const looksLikeHtmlDocument = (text: string): boolean => {
+            const t = (text || "").trimStart().toLowerCase();
+            if (t.startsWith("<!doctype html")) return true;
+            if (t.startsWith("<html")) return true;
+            if (t.startsWith("<head")) return true;
+            if (t.startsWith("<body")) return true;
+            if (t.startsWith("<?xml") && t.includes("<html")) return true;
+            return false;
+        };
+
+        // Update raw view
+        if (rawTarget) {
+            rawTarget.textContent = content || "";
+        }
+
+        // Auto-switch to raw if it looks like HTML
+        const container = this.element?.querySelector(".view-viewer__content");
+        if (container && looksLikeHtmlDocument(content || "")) {
+            container.toggleAttribute("data-raw", true);
+            if (rawTarget) rawTarget.hidden = false;
+            renderTarget.hidden = true;
+            return;
+        }
+
+        // Render markdown (handle both sync and async parse)
+        try {
+            const parseResult = marked.parse((content || "")?.trim?.() || "");
+
+            // Handle both sync (string) and async (Promise<string>) results
+            const handleParsed = (html: string) => {
+                const sanitized = DOMPurify?.sanitize?.((html || "")?.trim?.() || "") || "";
+                renderTarget.innerHTML = sanitized;
+                console.log('[ViewerView] Markdown rendered successfully');
+            };
+
+            const handleError = (error: unknown) => {
+                console.error('[ViewerView] Error rendering markdown:', error);
+                renderTarget.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
+            };
+
+            if (parseResult instanceof Promise) {
+                parseResult.then(handleParsed).catch(handleError);
+            } else {
+                handleParsed(parseResult as string);
+            }
+        } catch (error) {
+            console.error('[ViewerView] Error rendering markdown:', error);
+            renderTarget.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
+        }
+    }
+
+    private setupEventHandlers(rawElement?: HTMLPreElement): void {
         if (!this.element) return;
 
         const toolbar = this.element.querySelector("[data-viewer-toolbar]");
+        const content = this.element.querySelector("[data-viewer-content]");
+        const renderTarget = this.element.querySelector("[data-render-target]") as HTMLElement | null;
+
+        let showRaw = false;
+
         toolbar?.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
             const button = target.closest("[data-action]") as HTMLButtonElement | null;
@@ -206,20 +308,35 @@ export class ViewerView implements View {
                 case "copy":
                     this.handleCopy();
                     break;
+                case "toggle-raw":
+                    showRaw = !showRaw;
+                    if (renderTarget) renderTarget.hidden = showRaw;
+                    if (rawElement) rawElement.hidden = !showRaw;
+                    content?.toggleAttribute("data-raw", showRaw);
+                    break;
+                case "copy-rendered":
+                    if (renderTarget) {
+                        this.handleCopyRendered(renderTarget);
+                    }
+                    break;
                 case "download":
                     this.handleDownload();
                     break;
-                case "attach":
-                    this.handleAttach();
+                case "export-docx":
+                    void this.handleExportDocx();
                     break;
                 case "print":
-                    this.handlePrint();
+                    if (renderTarget) {
+                        this.handlePrint(renderTarget);
+                    }
+                    break;
+                case "attach":
+                    this.handleAttachToWorkCenter();
                     break;
             }
         });
 
         // Setup drag and drop
-        const content = this.element.querySelector("[data-viewer-content]");
         if (content) {
             content.addEventListener("dragover", (e) => {
                 e.preventDefault();
@@ -243,13 +360,6 @@ export class ViewerView implements View {
         });
     }
 
-    private async renderMarkdown(): Promise<void> {
-        // Markdown rendering is now handled by the md-view web component
-        if (this.mdView) {
-            await this.mdView.refresh();
-        }
-    }
-
     private handleOpen(): void {
         const input = document.createElement("input");
         input.type = "file";
@@ -259,10 +369,10 @@ export class ViewerView implements View {
             if (file) {
                 try {
                     const content = await file.text();
-                    this.setContent(content, file.name);
+                    this.setContent(content);
                     this.showMessage(`Opened ${file.name}`);
                 } catch (error) {
-                    console.error("[Viewer] Failed to read file:", error);
+                    console.error("[ViewerView] Failed to read file:", error);
                     this.showMessage("Failed to read file");
                 }
             }
@@ -273,12 +383,31 @@ export class ViewerView implements View {
     private async handleCopy(): Promise<void> {
         try {
             await navigator.clipboard.writeText(this.contentRef.value);
-            this.showMessage("Copied to clipboard");
+            this.showMessage("Copied raw content to clipboard");
             this.options.onCopy?.(this.contentRef.value);
         } catch (error) {
-            console.error("[Viewer] Failed to copy:", error);
+            console.error("[ViewerView] Failed to copy:", error);
             this.showMessage("Failed to copy to clipboard");
         }
+    }
+
+    private handleCopyRendered(renderTarget: HTMLElement): void {
+        const text = (renderTarget?.innerText || "").trim();
+        if (!text) {
+            this.showMessage("No content to copy");
+            return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+            this.showMessage("Copied rendered text to clipboard");
+        }).catch(() => {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.append(ta);
+            ta.select();
+            document.execCommand("copy");
+            ta.remove();
+            this.showMessage("Copied rendered text to clipboard");
+        });
     }
 
     private handleDownload(): void {
@@ -299,26 +428,53 @@ export class ViewerView implements View {
         this.options.onDownload?.(content, filename);
     }
 
-    private handleAttach(): void {
+    private async handleExportDocx(): Promise<void> {
+        const content = this.contentRef.value;
+        if (!content.trim()) {
+            this.showMessage("No content to export");
+            return;
+        }
+        try {
+            await downloadMarkdownAsDocx(content, {
+                title: this.options.filename || "Markdown Content",
+                filename: `document-${Date.now()}.docx`,
+            });
+            this.showMessage("Exported as DOCX successfully");
+        } catch (error) {
+            console.error("[ViewerView] Failed to export DOCX:", error);
+            this.showMessage("Failed to export as DOCX");
+        }
+    }
+
+    private handlePrint(renderTarget: HTMLElement): void {
+        try {
+            if (renderTarget) {
+                renderTarget.setAttribute('data-print', 'true');
+                window.print();
+                setTimeout(() => {
+                    renderTarget.removeAttribute('data-print');
+                }, 1000);
+            } else {
+                window.print();
+            }
+            this.options.onPrint?.(this.contentRef.value);
+        } catch (error) {
+            console.error("[ViewerView] Error printing content:", error);
+            this.showMessage("Failed to print");
+        }
+    }
+
+    private handleAttachToWorkCenter(): void {
         this.options.onAttachToWorkCenter?.(this.contentRef.value);
         this.shellContext?.navigate("workcenter");
         this.showMessage("Content attached to Work Center");
-    }
-
-    private handlePrint(): void {
-        this.options.onPrint?.(this.contentRef.value);
-        if (this.mdView) {
-            this.mdView.print();
-        } else {
-            window.print();
-        }
     }
 
     private handleFileDrop(e: DragEvent): void {
         const file = e.dataTransfer?.files?.[0];
         if (file && (file.type.includes("text") || file.name.endsWith(".md"))) {
             file.text().then(content => {
-                this?.setContent?.(content, file.name);
+                this.setContent(content);
                 this.showMessage(`Loaded ${file.name}`);
             }).catch(() => {
                 this.showMessage("Failed to read dropped file");
@@ -329,10 +485,9 @@ export class ViewerView implements View {
     private handlePaste(e: ClipboardEvent): void {
         const text = e.clipboardData?.getData("text/plain");
         if (text && text.trim()) {
-            // Only handle paste if not in an input element
             const target = e.target as HTMLElement;
             if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-                this?.setContent?.(text);
+                this.setContent(text);
                 this.showMessage("Content pasted");
             }
         }
@@ -377,7 +532,11 @@ export class ViewerView implements View {
     }
 
     private onRefresh(): void {
-        this.renderMarkdown();
+        const renderTarget = this.element?.querySelector("[data-render-target]") as HTMLElement | null;
+        const rawTarget = this.element?.querySelector("[data-raw-target]") as HTMLPreElement | null;
+        if (renderTarget && rawTarget) {
+            this.renderMarkdown(this.contentRef.value, renderTarget, rawTarget);
+        }
     }
 
     // ========================================================================
@@ -399,6 +558,20 @@ export class ViewerView implements View {
 }
 
 // ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+
+/**
+ * Document type for viewer (content + metadata)
+ */
+export interface ViewerDocument {
+    content: string;
+    filename?: string;
+    mimeType?: string;
+    lastModified?: number;
+}
+
+// ============================================================================
 // FACTORY FUNCTION
 // ============================================================================
 
@@ -408,5 +581,8 @@ export class ViewerView implements View {
 export function createView(options?: ViewerOptions): ViewerView {
     return new ViewerView(options);
 }
+
+/** Alias for createView */
+export const createViewerView = createView;
 
 export default createView;

@@ -96,7 +96,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
     const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
     const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Basic</b> version is the default.</div>` as HTMLElement;
 
-    const countdown = H`<div class="choice-countdown">Auto-starting in <b>${opts.seconds}</b> seconds…</div>` as HTMLElement;
+    const countdown = H`<div class="choice-countdown">Auto-starting in <b data-countdown>${opts.seconds}</b> seconds…</div>` as HTMLElement;
     const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
 
     // Remember checkbox
@@ -112,14 +112,17 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
     const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (unstable)</button>` as HTMLButtonElement;
     const airpadButton = H`<button class="airpad small" type="button">Airpad</button>` as HTMLButtonElement;
 
-    // Keyboard navigation setup
+    // Menu buttons array
     const buttons = [bigBasicButton, unstableFaint, airpadButton];
-    let currentIndex = 0;
 
-    const focusAt = (nextIdx: number) => {
-        const len = buttons.length;
-        currentIndex = ((nextIdx % len) + len) % len;
-        buttons[currentIndex]?.focus?.();
+    // Keyboard navigation state object (mutable reference to persist currentIndex)
+    const keyboardNavigation = {
+        currentIndex: 0,
+        focusAt(nextIdx: number) {
+            const len = buttons.length;
+            this.currentIndex = ((nextIdx % len) + len) % len;
+            buttons[this.currentIndex]?.focus?.();
+        }
     };
 
     return {
@@ -133,7 +136,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
         unstableFaint,
         airpadButton,
         buttons,
-        keyboardNavigation: { focusAt, currentIndex }
+        keyboardNavigation
     };
 };
 
@@ -160,11 +163,27 @@ const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof
 /**
  * Set up event handlers for buttons and keyboard navigation
  */
-const setupEventHandlers = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
-    const { bigBasicButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput } = elements;
+const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
+    const { bigBasicButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput, countdown } = elements;
+
+    // Track if countdown is active (for cancellation on interaction)
+    let countdownActive = true;
+    let countdownTimer: ReturnType<typeof setInterval> | null = null;
+    let remainingSeconds = opts.seconds;
+
+    // Stop the countdown timer
+    const stopCountdown = () => {
+        countdownActive = false;
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+        countdown.hidden = true;
+    };
 
     // Button click handlers - navigate to default view with selected shell
     const handleChoice = (choice: FrontendChoice) => {
+        stopCountdown();
         const remember = Boolean(rememberInput?.checked);
         
         // For special views like airpad, navigate directly to that view
@@ -183,9 +202,29 @@ const setupEventHandlers = (_opts: ChoiceScreenOptions, elements: ReturnType<typ
     unstableFaint.addEventListener("click", () => handleChoice("faint"));
     airpadButton.addEventListener("click", () => handleChoice("airpad"));
 
+    // Start countdown timer
+    const countdownEl = countdown.querySelector("[data-countdown]");
+    if (countdownEl && opts.seconds > 0) {
+        countdownTimer = setInterval(() => {
+            if (!countdownActive) return;
+            
+            remainingSeconds--;
+            countdownEl.textContent = String(remainingSeconds);
+            
+            if (remainingSeconds <= 0) {
+                stopCountdown();
+                // Auto-select default choice (basic)
+                handleChoice(opts.defaultChoice || "basic");
+            }
+        }, 1000);
+    }
+
     // Keyboard navigation
     const container = bigBasicButton.closest('.choice.container') as HTMLElement;
     container.addEventListener("keydown", (e) => {
+        // Any key press cancels countdown
+        stopCountdown();
+
         if (e.key === "ArrowDown") {
             e.preventDefault();
             keyboardNavigation.focusAt(keyboardNavigation.currentIndex + 1);
@@ -202,6 +241,9 @@ const setupEventHandlers = (_opts: ChoiceScreenOptions, elements: ReturnType<typ
             btn?.click?.();
         }
     });
+
+    // Mouse activity also cancels countdown
+    container.addEventListener("mousedown", () => stopCountdown(), { once: true });
 };
 
 // ============================================================================

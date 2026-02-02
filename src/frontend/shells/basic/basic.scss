@@ -6,6 +6,7 @@
 @layer shell-basic {
     /* Light theme (default) */
     .shell-basic {
+        /* CSS Variables for theming */
         --shell-bg: var(--basic-surface, #f8f9fa);
         --shell-fg: var(--basic-on-surface, #1a1a1a);
         --shell-nav-bg: var(--basic-surface-container-high, #ffffff);
@@ -15,6 +16,17 @@
         --shell-btn-active-fg: var(--basic-primary, #007acc);
         --shell-status-bg: rgba(0, 0, 0, 0.85);
         --shell-status-fg: var(--basic-on-primary, #ffffff);
+
+        /* Root layout - fill container and stack nav/content vertically */
+        display: flex;
+        flex-direction: column;
+        inline-size: 100%;
+        block-size: 100%;
+        min-inline-size: 0;
+        min-block-size: 0;
+        overflow: hidden;
+        background-color: var(--shell-bg);
+        color: var(--shell-fg);
     }
 
     /* Dark theme */
@@ -214,7 +226,7 @@
         }
     }
 
-    @screen print {
+    @media print {
         .shell-basic__content {
             overflow: visible;
         }
@@ -225,4 +237,24 @@
         }
     }
 
+    /* Animation keyframes */
+    @keyframes shell-basic-status-enter {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(1rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    @keyframes shell-basic-spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
 }

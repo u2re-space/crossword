@@ -212,8 +212,11 @@ export class HistoryView implements View {
 // FACTORY
 // ============================================================================
 
-export function createView(options?: BaseViewOptions): HistoryView {
+export function createView(options?: HistoryViewOptions): HistoryView {
     return new HistoryView(options);
 }
+
+/** Alias for createView */
+export const createHistoryView = createView;
 
 export default createView;

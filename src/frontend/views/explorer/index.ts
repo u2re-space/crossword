@@ -147,8 +147,11 @@ export class ExplorerView implements View {
 // FACTORY
 // ============================================================================
 
-export function createView(options?: BaseViewOptions): ExplorerView {
+export function createView(options?: ExplorerOptions): ExplorerView {
     return new ExplorerView(options);
 }
+
+/** Alias for createView */
+export const createExplorerView = createView;
 
 export default createView;

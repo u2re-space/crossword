@@ -467,4 +467,7 @@ export function createView(options?: WorkCenterOptions): WorkCenterView {
     return new WorkCenterView(options);
 }
 
+/** Alias for createView */
+export const createWorkCenterView = createView;
+
 export default createView;

@@ -261,4 +261,7 @@ export function createView(options?: EditorOptions): EditorView {
     return new EditorView(options);
 }
 
+/** Alias for createView */
+export const createEditorView = createView;
+
 export default createView;

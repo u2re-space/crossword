@@ -119,8 +119,11 @@ export class AirpadView implements View {
 // FACTORY
 // ============================================================================
 
-export function createView(options?: BaseViewOptions): AirpadView {
+export function createView(options?: AirpadViewOptions): AirpadView {
     return new AirpadView(options);
 }
+
+/** Alias for createView */
+export const createAirpadView = createView;
 
 export default createView;

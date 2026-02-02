@@ -125,11 +125,24 @@ export class HomeView implements View {
 }
 
 // ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+
+/** Options for HomeView */
+export interface HomeViewOptions extends BaseViewOptions {
+    /** Show subtitle */
+    showSubtitle?: boolean;
+}
+
+// ============================================================================
 // FACTORY
 // ============================================================================
 
-export function createView(options?: BaseViewOptions): HomeView {
+export function createView(options?: HomeViewOptions): HomeView {
     return new HomeView(options);
 }
+
+/** Alias for createView */
+export const createHomeView = createView;
 
 export default createView;
