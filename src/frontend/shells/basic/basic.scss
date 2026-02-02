@@ -1,20 +1,4 @@
-@keyframes shell-basic-status-enter {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(0.5rem);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-@keyframes shell-basic-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+/* Theme-specific customizations (legacy shell style variables) */
 
 .shell-basic[data-theme="dark"] {
     --shell-bg: #1e1e1e;
@@ -29,8 +13,6 @@
 }
 
 .shell-basic {
-    --shell-nav-height: 56px;
-    --shell-padding: 0;
     --shell-bg: #f8f9fa;
     --shell-fg: #1a1a1a;
     --shell-nav-bg: #ffffff;
@@ -40,22 +22,6 @@
     --shell-btn-active-fg: #007acc;
     --shell-status-bg: rgba(0, 0, 0, 0.85);
     --shell-status-fg: #ffffff;
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--shell-bg);
-    color: var(--shell-fg);
-    font-family:
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        sans-serif;
-    transition:
-        background-color 0.2s ease,
-        color 0.2s ease;
 }
 
 .shell-basic__nav {

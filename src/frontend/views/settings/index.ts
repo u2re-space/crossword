@@ -1,6 +1,6 @@
 /**
  * Settings View
- * 
+ *
  * Shell-agnostic settings component.
  * Provides application configuration UI.
  */
@@ -13,7 +13,7 @@ import type { BaseViewOptions } from "../types";
 import { getItem, setItem, StorageKeys } from "../../../core/storage";
 
 // @ts-ignore
-import style from "./settings.scss?inline";
+import settingsStyles from "./Settings.scss?inline";
 
 // ============================================================================
 // SETTINGS TYPES
@@ -63,7 +63,7 @@ export class SettingsView implements View {
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
     private settings = ref<AppSettings>(defaultSettings);
-    
+
     lifecycle: ViewLifecycle = {
         onMount: () => this.loadSettings(),
         onUnmount: () => this.saveSettings()
@@ -80,14 +80,14 @@ export class SettingsView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(style);
+        loadAsAdopted(settingsStyles);
         this.loadSettings();
 
         this.element = H`
             <div class="view-settings">
                 <div class="view-settings__content">
                     <h1 class="view-settings__title">Settings</h1>
-                    
+
                     <section class="view-settings__section">
                         <h2>Appearance</h2>
                         <div class="view-settings__group">
@@ -109,15 +109,15 @@ export class SettingsView implements View {
                             </label>
                         </div>
                     </section>
-                    
+
                     <section class="view-settings__section">
                         <h2>AI Configuration</h2>
                         <div class="view-settings__group">
                             <label class="view-settings__label">
                                 <span>API Key</span>
-                                <input 
-                                    type="password" 
-                                    data-setting="ai.apiKey" 
+                                <input
+                                    type="password"
+                                    data-setting="ai.apiKey"
                                     class="view-settings__input"
                                     placeholder="Enter your API key"
                                     value="${this.settings.value.ai.apiKey || ""}"
@@ -125,17 +125,17 @@ export class SettingsView implements View {
                             </label>
                             <label class="view-settings__label">
                                 <span>Model</span>
-                                <input 
-                                    type="text" 
-                                    data-setting="ai.model" 
+                                <input
+                                    type="text"
+                                    data-setting="ai.model"
                                     class="view-settings__input"
                                     placeholder="e.g., gpt-4o-mini"
                                     value="${this.settings.value.ai.model || ""}"
                                 />
                             </label>
                             <label class="view-settings__checkbox">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     data-setting="ai.autoProcess"
                                     ${this.settings.value.ai.autoProcess ? "checked" : ""}
                                 />
@@ -143,21 +143,21 @@ export class SettingsView implements View {
                             </label>
                         </div>
                     </section>
-                    
+
                     <section class="view-settings__section">
                         <h2>General</h2>
                         <div class="view-settings__group">
                             <label class="view-settings__checkbox">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     data-setting="general.autosave"
                                     ${this.settings.value.general.autosave ? "checked" : ""}
                                 />
                                 <span>Auto-save content</span>
                             </label>
                             <label class="view-settings__checkbox">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     data-setting="general.notifications"
                                     ${this.settings.value.general.notifications ? "checked" : ""}
                                 />
@@ -165,7 +165,7 @@ export class SettingsView implements View {
                             </label>
                         </div>
                     </section>
-                    
+
                     <div class="view-settings__actions">
                         <button class="view-settings__btn view-settings__btn--primary" data-action="save" type="button">
                             Save Settings
@@ -200,8 +200,8 @@ export class SettingsView implements View {
             if (!path) return;
 
             const [section, key] = path.split(".") as [keyof AppSettings, string];
-            const value = target.type === "checkbox" 
-                ? (target as HTMLInputElement).checked 
+            const value = target.type === "checkbox"
+                ? (target as HTMLInputElement).checked
                 : target.value;
 
             // Update settings

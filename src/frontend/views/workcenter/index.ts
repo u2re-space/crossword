@@ -1,6 +1,6 @@
 /**
  * Work Center View
- * 
+ *
  * Shell-agnostic AI work center component.
  * Provides file attachment, AI processing, and result management.
  */
@@ -12,8 +12,8 @@ import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shell
 import type { BaseViewOptions } from "../types";
 import { createViewState, createLoadingElement } from "../types";
 
-// @ts-ignore - SCSS import  
-import style from "./workcenter.scss?inline";
+// @ts-ignore - SCSS import
+import workcenterStyles from "./scss/workcenter.scss?inline";
 
 // ============================================================================
 // WORKCENTER STATE
@@ -55,14 +55,14 @@ export class WorkCenterView implements View {
     private options: WorkCenterOptions;
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
-    
+
     private files = observe<File[]>([]);
     private prompt = ref("");
     private results = observe<Array<{ id: string; content: string; timestamp: number; ok: boolean }>>([]);
     private processing = ref(false);
-    
+
     private stateManager = createViewState<Partial<WorkCenterState>>(STORAGE_KEY);
-    
+
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
         onUnmount: () => this.onUnmount(),
@@ -73,7 +73,7 @@ export class WorkCenterView implements View {
     constructor(options: WorkCenterOptions = {}) {
         this.options = options;
         this.shellContext = options.shellContext;
-        
+
         // Load initial state
         if (options.initialFiles) {
             this.files.push(...options.initialFiles);
@@ -89,7 +89,7 @@ export class WorkCenterView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(style);
+        loadAsAdopted(workcenterStyles);
 
         this.element = H`
             <div class="view-workcenter">
@@ -118,13 +118,13 @@ export class WorkCenterView implements View {
                             </div>
                         </div>
                         <div class="view-workcenter__prompt">
-                            <textarea 
+                            <textarea
                                 class="view-workcenter__prompt-input"
                                 placeholder="Enter your prompt or instructions..."
                                 data-prompt-input
                             ></textarea>
-                            <button 
-                                class="view-workcenter__process-btn" 
+                            <button
+                                class="view-workcenter__process-btn"
                                 data-action="process"
                                 type="button"
                             >
@@ -246,7 +246,7 @@ export class WorkCenterView implements View {
         filesZone.addEventListener("drop", (e) => {
             e.preventDefault();
             filesZone.classList.remove("dragover");
-            
+
             const files = Array.from((e as DragEvent).dataTransfer?.files || []);
             if (files.length > 0) {
                 this.addFiles(files);
@@ -287,7 +287,7 @@ export class WorkCenterView implements View {
         try {
             // Dynamic import of AI processing
             const { recognizeByInstructions } = await import("@rs-com/service/AI-ops/RecognizeData");
-            
+
             // Build input from files and prompt
             const input = [
                 {
@@ -297,7 +297,7 @@ export class WorkCenterView implements View {
             ];
 
             const result = await recognizeByInstructions(input, "Process the content and provide a structured response.");
-            
+
             const resultEntry = {
                 id: crypto.randomUUID(),
                 content: result?.data ? String(result.data) : "No result",
@@ -446,7 +446,7 @@ export class WorkCenterView implements View {
 
     async handleMessage(message: unknown): Promise<void> {
         const msg = message as { type?: string; data?: { file?: File; files?: File[]; text?: string } };
-        
+
         if (msg.data?.file) {
             this.addFiles([msg.data.file]);
         }

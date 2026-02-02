@@ -1,50 +1,24 @@
 /**
- * Print View
- * 
+ * Print View — Unified with MarkdownView Component
+ *
  * Shell-agnostic print view for rendering and printing markdown content.
- * This view is optimized for print output with clean typography.
+ * This view leverages the canonical MarkdownView component from fest/fl-ui
+ * for all markdown parsing, caching, sanitization, and styling.
+ *
+ * Features:
+ * - Reuses MarkdownView web component for markdown rendering
+ * - KaTeX math rendering (via MarkdownView)
+ * - DOMPurify sanitization (via MarkdownView)
+ * - OPFS and localStorage caching (via MarkdownView)
+ * - DOCX export support
+ * - Auto-print on load
+ * - Print-optimized styles
  */
 
 import { H } from "fest/lure";
-import type { View, ViewOptions, ShellContext } from "../../shells/types";
-
-// Markdown rendering
-import { marked, type MarkedExtension } from "marked";
-import markedKatex from "marked-katex-extension";
-import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
-import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../../../core/docx-export";
-
-// Configure marked with KaTeX extension
-marked?.use?.(markedKatex({
-    throwOnError: false,
-    nonStandard: true,
-    output: "mathml",
-    strict: false,
-}) as unknown as MarkedExtension,
-    {
-        hooks: {
-            preprocess: (markdown: string): string => {
-                if (/\\(.*\\)|\\[.*\\]/.test(markdown)) {
-                    const katexNode = document.createElement('div')
-                    katexNode.innerHTML = markdown
-                    renderMathInElement(katexNode, {
-                        throwOnError: false,
-                        nonStandard: true,
-                        output: "mathml",
-                        strict: false,
-                        delimiters: [
-                            { left: "$$", right: "$$", display: true },
-                            { left: "\\[", right: "\\]", display: true },
-                            { left: "$", right: "$", display: false },
-                            { left: "\\(", right: "\\)", display: false }
-                        ]
-                    })
-                    return katexNode.innerHTML
-                }
-                return markdown
-            },
-        },
-    });
+import type { View, ViewOptions } from "../../shells/types";
+import { MdViewElement } from "fest/fl-ui/services/markdown-view";
+import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 
 // ============================================================================
 // PRINT VIEW OPTIONS
@@ -71,54 +45,66 @@ export interface PrintViewOptions extends ViewOptions {
 
 export class PrintView implements View {
     readonly id = "print";
-    readonly title = "Print";
-    
+    readonly name = "Print";
+
     private element: HTMLElement | null = null;
     private options: PrintViewOptions;
-    private context: ShellContext | null = null;
+    private mdView: MdViewElement | null = null;
 
     constructor(options: PrintViewOptions = {}) {
-        this.options = options;
+        this.options = {
+            ...options,
+            initialData: options.initialData || options.initialMarkdown
+        };
     }
 
-    async render(context: ShellContext): Promise<HTMLElement> {
-        this.context = context;
+    render(options?: ViewOptions): HTMLElement {
+        // Merge options from constructor and render call
+        const mergedOptions = { ...this.options, ...options };
 
-        // Load styles
-        await this.loadStyles();
+        // Load styles (async, but we'll trigger it without awaiting)
+        this.loadStyles().catch(e => console.warn("[PrintView] Failed to load print styles:", e));
 
         // Get content from options or URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const content = this.options.initialMarkdown ||
+        const content = (mergedOptions as PrintViewOptions).initialMarkdown ||
             urlParams.get('content') ||
             urlParams.get('markdown-content') ||
-            urlParams.get('text') || '';
-        const title = this.options.title || urlParams.get('title') || 'Document';
-        const wantsDocx = this.options.exportFormat === 'docx' || 
-            urlParams.get('export') === 'docx' || 
+            urlParams.get('text') ||
+            (mergedOptions.initialData as string) || '';
+        const title = (mergedOptions as PrintViewOptions).title || urlParams.get('title') || 'Document';
+        const wantsDocx = (mergedOptions as PrintViewOptions).exportFormat === 'docx' ||
+            urlParams.get('export') === 'docx' ||
             urlParams.get('format') === 'docx';
-        const autoPrint = (this.options.autoPrint ?? (urlParams.get('auto-print') !== 'false')) && !wantsDocx;
-        const className = this.options.className || 'print-view';
+        const autoPrint = ((mergedOptions as PrintViewOptions).autoPrint ?? (urlParams.get('auto-print') !== 'false')) && !wantsDocx;
+        const className = (mergedOptions as PrintViewOptions).className || 'print-view';
 
-        // Handle DOCX export
+        // Handle DOCX export (fire and forget)
         if (wantsDocx && content.trim()) {
-            await this.handleDocxExport(content, title);
+            this.handleDocxExport(content, title).catch(e => console.error('[PrintView] DOCX export error:', e));
         }
 
-        // Create print layout
-        const renderedContent = await this.renderMarkdown(content);
-        
+        // Create print layout using MarkdownView web component
+        this.mdView = new MdViewElement() as MdViewElement;
+
         this.element = H`
             <div class="${className}">
-                <div class="print-content markdown-body">
-                    ${renderedContent}
+                <div class="print-content">
+                    ${this.mdView}
                 </div>
             </div>
         ` as HTMLElement;
 
-        // Auto-print if enabled
+        // Set markdown content via the component (async, but non-blocking)
+        if (content.trim()) {
+            (this.mdView as any).setContent?.(content).catch((e: any) => {
+                console.warn('[PrintView] Failed to set markdown content:', e);
+            });
+        }
+
+        // Auto-print if enabled (scheduled for later)
         if (autoPrint && content.trim() && typeof window !== 'undefined' && 'print' in window) {
-            const printDelay = this.options.printDelay || 
+            const printDelay = (mergedOptions as PrintViewOptions).printDelay ||
                 (urlParams.get('print-delay') ? parseInt(urlParams.get('print-delay')!) : 1500);
 
             setTimeout(() => {
@@ -138,21 +124,19 @@ export class PrintView implements View {
 
     private async loadStyles(): Promise<void> {
         try {
-            // Dynamic import of print styles
-            const printStyles = await import("./print.scss?inline");
-            if (printStyles.default) {
-                const { loadAsAdopted } = await import("fest/dom");
-                await loadAsAdopted(printStyles.default);
-            }
+            // Use the styles from MarkdownView component via fest/fl-ui
+            // Print-specific styles can be added via print media queries in CSS
+            // No additional styles needed since MarkdownView handles all rendering
+            console.log("[PrintView] Using MarkdownView component styles");
         } catch (e) {
-            console.warn("[PrintView] Failed to load print styles:", e);
+            console.warn("[PrintView] Error during style setup:", e);
         }
     }
 
     private async handleDocxExport(content: string, title: string): Promise<void> {
         const filename = `${(title || 'document').replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '-').slice(0, 180)}.docx`;
         const looksLikeHtml = content.trim().startsWith('<');
-        
+
         if (looksLikeHtml) {
             await downloadHtmlAsDocx(content, { title, filename });
         } else {
@@ -170,49 +154,6 @@ export class PrintView implements View {
         }
     }
 
-    private async renderMarkdown(content: string): Promise<string> {
-        if (!content.trim()) {
-            return '<div class="no-content"><p>No content to display</p></div>';
-        }
-
-        try {
-            const html = await marked.parse(content, {
-                breaks: true,
-                gfm: true
-            });
-            return html;
-        } catch (error) {
-            console.warn('[PrintView] Marked library error, using basic renderer');
-            return this.basicMarkdownRender(content);
-        }
-    }
-
-    private basicMarkdownRender(content: string): string {
-        return content
-            // Headers
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            // Bold and italic
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            // Code blocks
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-            // Inline code
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // Links
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-            // Lists
-            .replace(/^\* (.*$)/gim, '<li>$1</li>')
-            .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
-            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-            // Line breaks
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br>')
-            // Wrap in paragraphs
-            .replace(/^(.+?)(?=<\/p>|$)/g, '<p>$1</p>');
-    }
-
     getElement(): HTMLElement {
         return this.element || document.createElement('div');
     }
@@ -221,23 +162,25 @@ export class PrintView implements View {
         return null; // Print view has no toolbar
     }
 
-    onMount?(): void {
-        console.log('[PrintView] Mounted');
-    }
+    lifecycle? = {
+        onMount: (): void => {
+            console.log('[PrintView] Mounted');
+        },
 
-    onUnmount?(): void {
-        console.log('[PrintView] Unmounted');
-        this.element = null;
-        this.context = null;
-    }
+        onUnmount: (): void => {
+            console.log('[PrintView] Unmounted');
+            this.element = null;
+            this.mdView = null;
+        },
 
-    onShow?(): void {
-        console.log('[PrintView] Shown');
-    }
+        onShow: (): void => {
+            console.log('[PrintView] Shown');
+        },
 
-    onHide?(): void {
-        console.log('[PrintView] Hidden');
-    }
+        onHide: (): void => {
+            console.log('[PrintView] Hidden');
+        }
+    };
 }
 
 // ============================================================================
@@ -248,20 +191,3 @@ export function createPrintView(options?: PrintViewOptions): PrintView {
     return new PrintView(options);
 }
 
-// ============================================================================
-// LEGACY EXPORT (for backward compatibility)
-// ============================================================================
-
-export default async function printApp(mountElement: HTMLElement, options: PrintViewOptions = {}): Promise<void> {
-    const view = new PrintView(options);
-    const mockContext: ShellContext = {
-        shellId: 'basic',
-        theme: { mode: 'light', fontSize: 'medium' },
-        navigate: async () => {},
-        showMessage: () => {},
-        setTitle: () => {}
-    };
-    
-    const element = await view.render(mockContext);
-    mountElement.appendChild(element);
-}
