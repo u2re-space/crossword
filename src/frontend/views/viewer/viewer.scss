@@ -264,11 +264,6 @@
     }
 
     [data-theme="dark"] .view-viewer {
-        --view-bg: #1e1e1e;
-        --view-fg: #e0e0e0;
-        --view-border: rgba(255, 255, 255, 0.1);
-        --view-toolbar-bg: rgba(255, 255, 255, 0.03);
-
         .view-viewer__btn:hover {
             background-color: rgba(255, 255, 255, 0.08);
         }

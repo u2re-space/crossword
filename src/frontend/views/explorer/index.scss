@@ -80,7 +80,7 @@
     }
 
     [data-theme="dark"] .view-explorer,
-    .shell-basic[data-theme="dark"] .view-explorer {
+    .app-shell[data-theme="dark"] .view-explorer {
         --view-bg: var(--basic-surface, #1e1e1e);
         --view-fg: var(--basic-on-surface, #e0e0e0);
     }

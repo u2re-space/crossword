@@ -36,9 +36,9 @@ export class RawShell extends BaseShell {
 
     protected createLayout(): HTMLElement {
         const root = H`
-            <div class="shell-raw" data-shell="raw">
-                <div class="shell-raw__status" data-shell-status hidden aria-live="polite"></div>
-                <div class="shell-raw__content" data-shell-content></div>
+            <div class="app-shell" data-shell="raw">
+                <div class="app-shell__status" data-shell-status hidden aria-live="polite"></div>
+                <div class="app-shell__content" data-shell-content></div>
             </div>
         ` as HTMLElement;
 

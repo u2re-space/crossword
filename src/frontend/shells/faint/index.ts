@@ -53,18 +53,18 @@ export class FaintShell extends BaseShell {
 
     protected createLayout(): HTMLElement {
         const root = H`
-            <div class="shell-faint" data-shell="faint">
+            <div class="app-shell" data-shell="faint">
                 ${this.createSidebar()}
-                <div class="shell-faint__main">
+                <div class="app-shell__main">
                     ${this.createTabBar()}
-                    <div class="shell-faint__toolbar" data-shell-toolbar>
+                    <div class="app-shell__toolbar" data-shell-toolbar>
                         <!-- View-specific toolbar -->
                     </div>
-                    <main class="shell-faint__content" data-shell-content role="main">
+                    <main class="app-shell__content" data-shell-content role="main">
                         ${this.createHomeView()}
                     </main>
                 </div>
-                <div class="shell-faint__status" data-shell-status hidden aria-live="polite"></div>
+                <div class="app-shell__status" data-shell-status hidden aria-live="polite"></div>
             </div>
         ` as HTMLElement;
 
@@ -84,10 +84,10 @@ export class FaintShell extends BaseShell {
         ];
 
         const sidebar = H`
-            <aside class="shell-faint__sidebar" data-collapsed="${this.sidebarCollapsed.value}">
-                <div class="shell-faint__sidebar-header">
+            <aside class="app-shell__sidebar" data-collapsed="${this.sidebarCollapsed.value}">
+                <div class="app-shell__sidebar-header">
                     <button
-                        class="shell-faint__sidebar-toggle"
+                        class="app-shell__sidebar-toggle"
                         type="button"
                         title="Toggle sidebar"
                         aria-label="Toggle sidebar"
@@ -95,16 +95,16 @@ export class FaintShell extends BaseShell {
                         <ui-icon icon="sidebar" icon-style="duotone"></ui-icon>
                     </button>
                 </div>
-                <nav class="shell-faint__sidebar-nav" role="navigation">
+                <nav class="app-shell__sidebar-nav" role="navigation">
                     ${mainViews.map(item => H`
                         <button
-                            class="shell-faint__sidebar-item"
+                            class="app-shell__sidebar-item"
                             data-view="${item.id}"
                             type="button"
                             title="${item.name}"
                         >
                             <ui-icon icon="${item.icon}" icon-style="duotone"></ui-icon>
-                            <span class="shell-faint__sidebar-label">${item.name}</span>
+                            <span class="app-shell__sidebar-label">${item.name}</span>
                         </button>
                     `)}
                 </nav>
@@ -112,7 +112,7 @@ export class FaintShell extends BaseShell {
         ` as HTMLElement;
 
         // Toggle sidebar
-        const toggleBtn = sidebar.querySelector(".shell-faint__sidebar-toggle");
+        const toggleBtn = sidebar.querySelector(".app-shell__sidebar-toggle");
         toggleBtn?.addEventListener("click", () => {
             this.sidebarCollapsed.value = !this.sidebarCollapsed.value;
             sidebar.dataset.collapsed = String(this.sidebarCollapsed.value);
@@ -145,12 +145,12 @@ export class FaintShell extends BaseShell {
 
     private createTabBar(): HTMLElement {
         const tabBar = H`
-            <div class="shell-faint__tabs" role="tablist">
-                <div class="shell-faint__tabs-list" data-tabs-list>
+            <div class="app-shell__tabs" role="tablist">
+                <div class="app-shell__tabs-list" data-tabs-list>
                     <!-- Tabs render here -->
                 </div>
-                <div class="shell-faint__tabs-actions">
-                    <button class="shell-faint__tabs-add" type="button" title="New tab" aria-label="New tab">
+                <div class="app-shell__tabs-actions">
+                    <button class="app-shell__tabs-add" type="button" title="New tab" aria-label="New tab">
                         <ui-icon icon="plus" icon-style="bold"></ui-icon>
                     </button>
                 </div>
@@ -195,16 +195,16 @@ export class FaintShell extends BaseShell {
 
         const tab = H`
             <div
-                class="shell-faint__tab ${isActive ? "active" : ""}"
+                class="app-shell__tab ${isActive ? "active" : ""}"
                 data-tab="${viewId}"
                 role="tab"
                 aria-selected="${isActive}"
             >
                 <ui-icon icon="${icon}" icon-style="duotone"></ui-icon>
-                <span class="shell-faint__tab-label">${name}</span>
+                <span class="app-shell__tab-label">${name}</span>
                 ${isCloseable ? H`
                     <button
-                        class="shell-faint__tab-close"
+                        class="app-shell__tab-close"
                         type="button"
                         title="Close tab"
                         data-close="${viewId}"
@@ -253,20 +253,20 @@ export class FaintShell extends BaseShell {
     private createHomeView(): HTMLElement {
         // Simple home/speed dial view
         const home = H`
-            <div class="shell-faint__home" data-view-id="home">
-                <div class="shell-faint__home-content">
-                    <h1 class="shell-faint__home-title">CrossWord</h1>
-                    <p class="shell-faint__home-subtitle">Select a view from the sidebar to get started</p>
-                    <div class="shell-faint__home-quick-actions">
-                        <button class="shell-faint__home-action" data-view="viewer" type="button">
+            <div class="app-shell__home" data-view-id="home">
+                <div class="app-shell__home-content">
+                    <h1 class="app-shell__home-title">CrossWord</h1>
+                    <p class="app-shell__home-subtitle">Select a view from the sidebar to get started</p>
+                    <div class="app-shell__home-quick-actions">
+                        <button class="app-shell__home-action" data-view="viewer" type="button">
                             <ui-icon icon="eye" icon-style="duotone" size="32"></ui-icon>
                             <span>Viewer</span>
                         </button>
-                        <button class="shell-faint__home-action" data-view="workcenter" type="button">
+                        <button class="app-shell__home-action" data-view="workcenter" type="button">
                             <ui-icon icon="lightning" icon-style="duotone" size="32"></ui-icon>
                             <span>Work Center</span>
                         </button>
-                        <button class="shell-faint__home-action" data-view="explorer" type="button">
+                        <button class="app-shell__home-action" data-view="explorer" type="button">
                             <ui-icon icon="folder" icon-style="duotone" size="32"></ui-icon>
                             <span>Explorer</span>
                         </button>

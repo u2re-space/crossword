@@ -299,15 +299,15 @@
         transition: background-color 0.15s ease
     }
 
-    [data-theme="dark"] .view-workcenter, .shell-basic[data-theme="dark"] .view-workcenter .view-workcenter__btn:hover {
+    [data-theme="dark"] .view-workcenter, .app-shell[data-theme="dark"] .view-workcenter .view-workcenter__btn:hover {
         background-color: rgba(255, 255, 255, 0.08)
     }
 
-    [data-theme="dark"] .view-workcenter, .shell-basic[data-theme="dark"] .view-workcenter .view-workcenter__result-copy:hover {
+    [data-theme="dark"] .view-workcenter, .app-shell[data-theme="dark"] .view-workcenter .view-workcenter__result-copy:hover {
         background-color: rgba(255, 255, 255, 0.08)
     }
 
-    [data-theme="dark"] .view-workcenter, .shell-basic[data-theme="dark"] .view-workcenter {
+    [data-theme="dark"] .view-workcenter, .app-shell[data-theme="dark"] .view-workcenter {
         --view-bg: var(--basic-surface, #1e1e1e);
         --view-fg: var(--basic-on-surface, #e0e0e0);
         --view-border: var(--basic-outline-variant, rgba(255, 255, 255, 0.1));

@@ -409,7 +409,7 @@
     }
 
     /* Enhanced Dark theme overrides for Quill */
-    .shell-basic[data-theme="dark"] .quill-editor-container {
+    .app-shell[data-theme="dark"] .quill-editor-container {
         .editor-header {
             h3 {
                 color: var(--basic-on-surface);

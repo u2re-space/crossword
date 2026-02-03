@@ -66,22 +66,22 @@ export class BasicShell extends BaseShell {
 
     protected createLayout(): HTMLElement {
         const root = H`
-            <div class="shell-basic" data-shell="basic">
-                <nav class="shell-basic__nav" role="navigation" aria-label="Main navigation">
-                    <div class="shell-basic__nav-left" data-nav-left>
+            <div class="app-shell" data-shell="basic">
+                <nav class="app-shell__nav" role="navigation" aria-label="Main navigation">
+                    <div class="app-shell__nav-left" data-nav-left>
                         ${this.renderNavButtons()}
                     </div>
-                    <div class="shell-basic__nav-right" data-shell-toolbar>
+                    <div class="app-shell__nav-right" data-shell-toolbar>
                         <!-- View-specific toolbar actions go here -->
                     </div>
                 </nav>
-                <main class="shell-basic__content" data-shell-content role="main">
-                    <div class="shell-basic__loading">
+                <main class="app-shell__content" data-shell-content role="main">
+                    <div class="app-shell__loading">
                         <div class="loading-spinner"></div>
                         <span>Loading...</span>
                     </div>
                 </main>
-                <div class="shell-basic__status" data-shell-status hidden aria-live="polite"></div>
+                <div class="app-shell__status" data-shell-status hidden aria-live="polite"></div>
             </div>
         ` as HTMLElement;
 
@@ -95,13 +95,13 @@ export class BasicShell extends BaseShell {
         for (const item of MAIN_NAV_ITEMS) {
             const button = H`
                 <button
-                    class="shell-basic__nav-btn"
+                    class="app-shell__nav-btn"
                     data-view="${item.id}"
                     type="button"
                     title="${item.name}"
                 >
                     <ui-icon icon="${item.icon}" icon-style="duotone"></ui-icon>
-                    <span class="shell-basic__nav-label">${item.name}</span>
+                    <span class="app-shell__nav-label">${item.name}</span>
                 </button>
             ` as HTMLButtonElement;
 

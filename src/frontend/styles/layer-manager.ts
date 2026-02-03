@@ -308,7 +308,7 @@ export function resetLayers(): void {
  * ```scss
  * // In shell SCSS file
  * @layer #{getShellLayer('basic')} {
- *     .shell-basic { ... }
+ *     .app-shell { ... }
  * }
  * ```
  */

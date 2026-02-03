@@ -1,122 +1,126 @@
 /**
  * Raw Shell Styles
- * 
+ *
  * Minimal styling for the raw shell.
  * Just basic layout and theme support.
  */
 
-.shell-raw {
-    // Full viewport coverage
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    
-    // Theme-aware colors
-    background-color: var(--shell-bg, var(--color-surface, #ffffff));
-    color: var(--shell-fg, var(--color-on-surface, #1a1a1a));
-    
-    // Smooth theme transitions
-    transition: background-color 0.2s ease, color 0.2s ease;
-    
-    // Dark theme
-    &[data-theme="dark"] {
-        --shell-bg: #1a1a1a;
-        --shell-fg: #f0f0f0;
-    }
-    
-    // Light theme (explicit)
-    &[data-theme="light"] {
-        --shell-bg: #ffffff;
-        --shell-fg: #1a1a1a;
-    }
-}
+@layer shell.raw {
+    :root:has(.app-shell) {
+        & .app-shell {
+            // Full viewport coverage
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
 
-.shell-raw__content {
-    // Fill available space
-    flex: 1;
-    position: relative;
-    overflow: auto;
-    
-    // Content should fill container
-    display: flex;
-    flex-direction: column;
-    
-    // Allow content to scroll
-    overflow-y: auto;
-    overflow-x: hidden;
-    
-    // Smooth scrolling
-    scroll-behavior: smooth;
-    
-    // Hide scrollbar but keep functionality
-    scrollbar-width: thin;
-    scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
-    
-    &::-webkit-scrollbar {
-        inline-size: 6px;
+            // Theme-aware colors
+            background-color: var(--shell-bg, var(--color-surface, #ffffff));
+            color: var(--shell-fg, var(--color-on-surface, #1a1a1a));
+
+            // Smooth theme transitions
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        // Dark theme
+        &[data-theme="dark"], & [data-theme="dark"] {
+            --shell-bg: #1a1a1a;
+            --shell-fg: #f0f0f0;
+        }
+
+        // Light theme (explicit)
+        &[data-theme="light"], & [data-theme="light"] {
+            --shell-bg: #ffffff;
+            --shell-fg: #1a1a1a;
+        }
     }
-    
-    &::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-        background-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3));
-        border-radius: 3px;
-    }
-    
-    // Direct children fill the container
-    > * {
+
+    .app-shell__content {
+        // Fill available space
         flex: 1;
-    }
-}
+        position: relative;
+        overflow: auto;
 
-.shell-raw__status {
-    // Toast-style status messages
-    position: fixed;
-    inset-block-end: 1rem;
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    
-    // Styling
-    padding: 0.75rem 1.5rem;
-    background-color: var(--shell-status-bg, rgba(0, 0, 0, 0.8));
-    color: var(--shell-status-fg, #ffffff);
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    
-    // Animation
-    animation: shell-status-fade-in 0.2s ease-out;
-    
-    // Hide when empty
-    &:empty,
-    &[hidden] {
-        display: none;
-    }
-}
+        // Content should fill container
+        display: flex;
+        flex-direction: column;
 
-@keyframes shell-status-fade-in {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(1rem);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
+        // Allow content to scroll
+        overflow-y: auto;
+        overflow-x: hidden;
 
-// Print styles
-@media print {
-    .shell-raw {
-        background: white;
-        color: black;
+        // Smooth scrolling
+        scroll-behavior: smooth;
+
+        // Hide scrollbar but keep functionality
+        scrollbar-width: thin;
+        scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
+
+        &::-webkit-scrollbar {
+            inline-size: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3));
+            border-radius: 3px;
+        }
+
+        // Direct children fill the container
+        & > * {
+            flex: 1;
+        }
     }
-    
-    .shell-raw__status {
-        display: none !important;
+
+    .app-shell__status {
+        // Toast-style status messages
+        position: fixed;
+        inset-block-end: 1rem;
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+
+        // Styling
+        padding: 0.75rem 1.5rem;
+        background-color: var(--shell-status-bg, rgba(0, 0, 0, 0.8));
+        color: var(--shell-status-fg, #ffffff);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+        // Animation
+        animation: shell-status-fade-in 0.2s ease-out;
+
+        // Hide when empty
+        &:empty,
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    @keyframes shell-status-fade-in {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(1rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    // Print styles
+    @media print {
+        .app-shell {
+            background: white;
+            color: black;
+        }
+
+        .app-shell__status {
+            display: none !important;
+        }
     }
 }
