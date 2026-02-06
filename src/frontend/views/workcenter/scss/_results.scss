@@ -1,54 +1,46 @@
 @layer workcenter {
     .output-section {
-        flex: 1;
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
         min-block-size: 0;
-        block-size: stretch;
-        max-block-size: stretch;
-        contain: strict;
-        overflow: auto
+        overflow: auto;
     }
 
-    .output-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-sm);
-        padding-bottom: var(--space-sm);
-
-        h3 {
-            margin: 0;
-            font-size: var(--text-lg);
-            font-weight: 600;
-            color: var(--basic-on-surface)
-        }
-    }
+    // Output actions (inside section-header, handled by layout)
+    // output-header wrapper removed — section-header is direct child now
 
     .output-content {
-        flex: 1;
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
-        min-block-size: min(300px, 100%);
-        block-size: stretch;
-        max-block-size: stretch;
+        min-block-size: 6rem;
         position: relative;
-        border-radius: var(--basic-radius-lg);
+        border-radius: var(--basic-radius-md);
         transition: all var(--basic-motion-normal);
-        contain: strict;
         overflow: auto;
 
+        // When content present, grow naturally
+        &:has(.result-content) {
+            min-block-size: 10rem;
+        }
+
         &[data-dropzone] {
-            min-block-size: min(300px, 100%);
-            padding: var(--space-lg);
+            min-block-size: 6rem;
+            padding: var(--space-md);
             background: var(--basic-surface-container-low);
-            border: 2px dashed color-mix(in oklab, var(--basic-outline-variant) 40%, transparent);
+            border: 2px dashed color-mix(in oklab, var(--basic-outline-variant) 30%, transparent);
+
+            // Grow when content present
+            &:has(.result-content) {
+                min-block-size: 10rem;
+                border-style: solid;
+                border-color: var(--basic-outline-variant);
+            }
 
             &:hover {
                 border-color: color-mix(in oklab, var(--basic-primary) 40%, transparent);
-                background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low))
+                background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low));
             }
 
             &.drag-over {
@@ -64,12 +56,12 @@
                     background-size: 20px 20px;
                     border-radius: inherit;
                     pointer-events: none;
-                    z-index: 1
+                    z-index: 1;
                 }
 
                 & > * {
                     position: relative;
-                    z-index: 2
+                    z-index: 2;
                 }
             }
         }
@@ -396,32 +388,41 @@
     }
 
     .history-section {
-        margin-top: var(--space-lg);
-        padding-top: var(--space-lg);
-        border-top: 1px solid var(--basic-outline-variant);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
 
         .result-actions {
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
-            place-items: center;
-            place-content: center;
+            gap: var(--space-xs);
 
             .btn {
                 padding: var(--space-xs) var(--space-sm);
-                font-size: var(--text-sm)
+                font-size: var(--text-xs);
             }
         }
     }
 
     .history-header {
-        margin-bottom: var(--space-md);
+        display: grid;
+        grid-template-columns: 1fr max-content;
+        align-items: center;
+        gap: var(--space-md);
+        padding: var(--space-sm) var(--space-md);
+        background: var(--basic-surface-container-high);
+        border-radius: var(--basic-radius-md);
 
         h4 {
             margin: 0;
             font-size: var(--text-base);
-            font-weight: 600;
-            color: var(--basic-on-surface)
+            font-weight: var(--font-weight-semibold);
+            color: var(--basic-on-surface);
+            letter-spacing: -0.01em;
+
+            @container (max-width: 768px) {
+                font-size: var(--text-sm);
+            }
         }
     }
 

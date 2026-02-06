@@ -21,6 +21,8 @@ import { ShellRegistry, initializeRegistries } from "../registry";
 import type { ShellId, ViewId, Shell, ShellTheme } from "../shells/types";
 import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChannels";
 
+import { loadVeelaVariant } from "fest/veela";
+
 // ============================================================================
 // BOOT TYPES
 // ============================================================================
@@ -221,19 +223,10 @@ export class BootLoader {
         // Load Veela CSS framework if selected
         if (styleSystem === "veela") {
             try {
-                // Dynamic import of Veela CSS
-                const veela = await import("fest/veela");
-                
-                // Initialize Veela with proper config
-                if (typeof (veela as any).initVeela === "function") {
-                    await (veela as any).initVeela();
-                }
-                
                 // Load the main stylesheet using loadCss helper
                 try {
-                    const { loadCss } = await import("fest/veela");
                     // Try loading via fest/veela's loadCss which handles paths correctly
-                    await loadCss(import("fest/veela/index.scss?inline"));
+                    await loadVeelaVariant("core");
                 } catch {
                     console.warn("[BootLoader] Veela stylesheet not found, using fallback");
                 }

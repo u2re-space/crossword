@@ -6,6 +6,7 @@ import type { WorkCenterFileOps } from "./WorkCenterFileOps";
 import type { WorkCenterResults } from "./WorkCenterResults";
 import type { WorkCenterDataProcessing } from "./WorkCenterDataProcessing";
 import type { WorkCenterHistory } from "./WorkCenterHistory";
+import type { WorkCenterTemplates } from "./WorkCenterTemplates";
 import { extractJSONFromAIResponse } from "@rs-core/document/AIResponseParser";
 
 export class WorkCenterActions {
@@ -15,6 +16,7 @@ export class WorkCenterActions {
     private dataProcessing: WorkCenterDataProcessing;
     private results: WorkCenterResults;
     private history: WorkCenterHistory;
+    private templates: WorkCenterTemplates;
 
     constructor(
         dependencies: WorkCenterDependencies,
@@ -22,7 +24,8 @@ export class WorkCenterActions {
         fileOps: WorkCenterFileOps,
         dataProcessing: WorkCenterDataProcessing,
         results: WorkCenterResults,
-        history: WorkCenterHistory
+        history: WorkCenterHistory,
+        templates?: WorkCenterTemplates
     ) {
         this.deps = dependencies;
         this.ui = ui;
@@ -30,6 +33,7 @@ export class WorkCenterActions {
         this.dataProcessing = dataProcessing;
         this.results = results;
         this.history = history;
+        this.templates = templates!;
     }
 
     async executeUnifiedAction(state: WorkCenterState): Promise<void> {
@@ -51,11 +55,21 @@ export class WorkCenterActions {
 
         try {
             // Prepare input for execution core
+            let basePrompt = state.currentPrompt.trim() ||
+                (state.autoAction ? this.getLastSuccessfulPrompt() : "Analyze and process the provided content intelligently");
+
+            // Apply selected custom instruction from settings (if any)
+            if (state.selectedInstruction && this.templates) {
+                const instruction = this.templates.getInstructionById(state.selectedInstruction);
+                if (instruction?.instruction) {
+                    basePrompt = this.templates.buildPromptWithInstruction(basePrompt, instruction);
+                }
+            }
+
             const actionInput: ActionInput = {
                 type: state.recognizedData ? 'text' : (this.fileOps.hasFiles(state) ? 'files' : 'text'),
                 files: this.fileOps.hasFiles(state) ? [...state.files] : undefined,
-                text: state.currentPrompt.trim() ||
-                    (state.autoAction ? this.getLastSuccessfulPrompt() : "Analyze and process the provided content intelligently"),
+                text: basePrompt,
                 recognizedData: state.recognizedData || undefined,
                 // Keep legacy field for backward compatibility
                 recognizedContent: state.recognizedData?.content || undefined

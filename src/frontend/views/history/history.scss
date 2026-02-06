@@ -131,18 +131,4 @@
         }
     }
 
-    [data-theme="dark"] .view-history {
-        --view-bg: #1e1e1e;
-        --view-fg: #e0e0e0;
-        --view-item-bg: rgba(255, 255, 255, 0.03);
-
-        .view-history__action-btn {
-            background-color: rgba(255, 255, 255, 0.08);
-
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.12);
-            }
-        }
-    }
-
 }

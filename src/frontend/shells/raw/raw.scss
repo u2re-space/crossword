@@ -24,14 +24,14 @@
 
         // Dark theme
         &[data-theme="dark"], & [data-theme="dark"] {
-            --shell-bg: #1a1a1a;
-            --shell-fg: #f0f0f0;
+            --shell-bg: var(--basic-surface);
+            --shell-fg: var(--basic-on-surface);
         }
 
         // Light theme (explicit)
         &[data-theme="light"], & [data-theme="light"] {
-            --shell-bg: #ffffff;
-            --shell-fg: #1a1a1a;
+            --shell-bg: var(--basic-surface);
+            --shell-fg: var(--basic-on-surface);
         }
     }
 

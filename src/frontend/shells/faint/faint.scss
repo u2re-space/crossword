@@ -18,31 +18,33 @@
         --shell-toolbar-height: 48px;
 
         // Colors - Light theme
-        --shell-bg: #f5f5f5;
-        --shell-fg: #1a1a1a;
-        --shell-sidebar-bg: #ffffff;
-        --shell-sidebar-border: #e8e8e8;
-        --shell-tabs-bg: #ffffff;
-        --shell-tab-hover: rgba(0, 0, 0, 0.04);
-        --shell-tab-active-bg: #f0f4f8;
-        --shell-tab-active-border: #007acc;
-        --shell-accent: #007acc;
-        --shell-accent-fg: #ffffff;
-        --shell-status-bg: rgba(0, 0, 0, 0.85);
-        --shell-status-fg: #ffffff;
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-sidebar-bg: var(--basic-surface-container-high);
+        --shell-sidebar-border: var(--basic-outline-variant);
+        --shell-tabs-bg: var(--basic-surface-container-high);
+        --shell-tab-hover: var(--basic-surface-container-highest);
+        --shell-tab-active-bg: var(--basic-surface-container-highest);
+        --shell-tab-active-border: var(--basic-primary);
+        --shell-accent: var(--basic-primary);
+        --shell-accent-fg: var(--basic-on-primary);
+        --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
+        --shell-status-fg: var(--basic-on-primary);
 
         // Dark theme
         & [data-theme="dark"], &[data-theme="dark"] {
-            --shell-bg: #1e1e1e;
-            --shell-fg: #e0e0e0;
-            --shell-sidebar-bg: #252526;
-            --shell-sidebar-border: #3c3c3c;
-            --shell-tabs-bg: #2d2d30;
-            --shell-tab-hover: rgba(255, 255, 255, 0.06);
-            --shell-tab-active-bg: #1e1e1e;
-            --shell-tab-active-border: #3794ff;
-            --shell-accent: #3794ff;
-            --shell-status-bg: rgba(255, 255, 255, 0.15);
+            --shell-bg: var(--basic-surface);
+            --shell-fg: var(--basic-on-surface);
+            --shell-sidebar-bg: var(--basic-surface-container-high);
+            --shell-sidebar-border: var(--basic-outline-variant);
+            --shell-tabs-bg: var(--basic-surface-container-high);
+            --shell-tab-hover: var(--basic-surface-container-highest);
+            --shell-tab-active-bg: var(--basic-surface-container-highest);
+            --shell-tab-active-border: var(--basic-primary);
+            --shell-accent: var(--basic-primary);
+            --shell-accent-fg: var(--basic-on-primary);
+            --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
+            --shell-status-fg: var(--basic-on-primary);
         }
     }
 

@@ -2,18 +2,22 @@
     .workcenter-view {
         display: flex;
         flex-direction: column;
-        gap: var(--space-lg);
-        padding: var(--space-lg);
-        overflow: auto;
+        gap: var(--space-md);
+        padding: var(--space-md);
+        overflow-y: auto;
+        overflow-x: hidden;
         background: var(--basic-background);
         color: var(--basic-on-background);
         min-block-size: stretch;
         block-size: stretch;
         max-block-size: stretch;
+        container-type: inline-size;
+        scrollbar-width: thin;
+        scrollbar-color: var(--basic-outline-variant) transparent;
 
         textarea, input, select, button {
             box-sizing: border-box;
-            max-inline-size: stretch
+            max-inline-size: stretch;
         }
 
         button {
@@ -26,44 +30,39 @@
             text-transform: none;
             text-decoration: none;
             text-shadow: none;
-            text-rendering: auto
+            text-rendering: auto;
         }
 
         @container (max-width: 1024px) {
-            padding: var(--space-md);
-            gap: var(--space-md)
+            padding: var(--space-sm);
+            gap: var(--space-sm);
         }
 
         @container (max-width: 768px) {
-            padding: var(--space-sm);
-            gap: var(--space-sm)
-        }
-
-        @container (max-width: 480px) {
             padding: var(--space-xs);
-            gap: var(--space-xs)
+            gap: var(--space-xs);
         }
 
         &::-webkit-scrollbar {
-            inline-size: 4px
+            inline-size: 4px;
         }
 
         &::-webkit-scrollbar-track {
-            background: transparent
+            background: transparent;
         }
 
         &::-webkit-scrollbar-thumb {
             background: var(--basic-outline-variant);
-            border-radius: 2px
+            border-radius: 2px;
         }
 
         &::-webkit-scrollbar-thumb:hover {
-            background: var(--basic-outline)
+            background: var(--basic-outline);
         }
 
         &:focus-visible {
             outline: 2px solid var(--basic-primary);
-            outline-offset: -2px
+            outline-offset: -2px;
         }
     }
 }

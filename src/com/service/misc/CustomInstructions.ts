@@ -28,20 +28,11 @@ export const getActiveInstruction = async (): Promise<CustomInstruction | null> 
         const instructions = settings?.ai?.customInstructions || [];
         const activeId = settings?.ai?.activeInstructionId;
 
-        console.log("[CustomInstructions] getActiveInstruction - activeId:", activeId);
-        console.log("[CustomInstructions] getActiveInstruction - instructions count:", instructions.length);
-
-        if (!activeId) {
-            console.log("[CustomInstructions] No activeInstructionId set");
-            return null;
-        }
+        if (!activeId) return null;
 
         const active = instructions.find(i => i.id === activeId);
-        if (active) {
-            console.log("[CustomInstructions] Found active instruction:", active.label);
-        } else {
-            console.warn("[CustomInstructions] activeInstructionId not found in instructions:", activeId);
-            console.log("[CustomInstructions] Available IDs:", instructions.map(i => i.id));
+        if (!active) {
+            console.warn("[CustomInstructions] activeInstructionId not found:", activeId);
         }
 
         return active || null;
@@ -53,9 +44,7 @@ export const getActiveInstruction = async (): Promise<CustomInstruction | null> 
 
 export const getActiveInstructionText = async (): Promise<string> => {
     const instruction = await getActiveInstruction();
-    const text = instruction?.instruction || "";
-    console.log("[CustomInstructions] getActiveInstructionText:", text ? `"${text.substring(0, 50)}..."` : "(empty)");
-    return text;
+    return instruction?.instruction || "";
 };
 
 export const setActiveInstruction = async (id: string | null): Promise<void> => {
@@ -178,7 +167,7 @@ export const reorderInstructions = async (orderedIds: string[]): Promise<void> =
             const instr = instructions.find(i => i.id === id);
             return instr ? { ...instr, order: index } : null;
         })
-        .filter((i): i is any => i !== null && i !== undefined) as CustomInstruction[];
+        .filter((i): i is CustomInstruction => i !== null && i !== undefined);
 
     const updated: AppSettings = {
         ...settings,

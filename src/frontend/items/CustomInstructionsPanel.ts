@@ -1,7 +1,7 @@
-import { H, M } from "fest/lure";
+import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings, saveSettings } from "@rs-com/config/Settings";
-import type { CustomInstruction, AppSettings } from "@rs-com/config/SettingsTypes";
+import { loadSettings } from "@rs-com/config/Settings";
+import type { CustomInstruction } from "@rs-com/config/SettingsTypes";
 import {
     getCustomInstructions,
     addInstruction,
@@ -121,6 +121,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         updateSelect();
                         showSuccess("Instruction activated");
                         opts.onUpdate?.();
+                    }).catch((e) => {
+                        console.error("[CustomInstructionsPanel] Failed to activate:", e);
+                        showError("Failed to activate instruction");
                     });
                 }
 
@@ -138,6 +141,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                             updateSelect();
                             showSuccess("Instruction deleted");
                             opts.onUpdate?.();
+                        }).catch((e) => {
+                            console.error("[CustomInstructionsPanel] Failed to delete:", e);
+                            showError("Failed to delete instruction");
                         });
                     }
                 }
@@ -157,6 +163,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         updateSelect();
                         showSuccess("Instruction updated");
                         opts.onUpdate?.();
+                    }).catch((e) => {
+                        console.error("[CustomInstructionsPanel] Failed to update:", e);
+                        showError("Failed to update instruction");
                     });
                 }
 
@@ -229,6 +238,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 updateSelect();
                 showSuccess("Instruction added");
                 opts.onUpdate?.();
+            }).catch((e) => {
+                console.error("[CustomInstructionsPanel] Failed to add:", e);
+                showError("Failed to add instruction");
             });
         }
 
@@ -252,6 +264,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 updateSelect();
                 showSuccess(`Added ${newInstrs.length} templates`);
                 opts.onUpdate?.();
+            }).catch((e) => {
+                console.error("[CustomInstructionsPanel] Failed to add templates:", e);
+                showError("Failed to add templates");
             });
         }
     });

@@ -59,6 +59,18 @@ export class WorkCenterInputs {
                       <span class="btn-text">Files</span>
                     </button>
                   </div>
+                  <div class="instruction-selector-row">
+                    <label class="instruction-label">
+                      <ui-icon icon="clipboard-text" size="16" icon-style="duotone"></ui-icon>
+                      <span>Instruction:</span>
+                    </label>
+                    <select class="instruction-select" data-action="select-instruction">
+                      <option value="">None (default)</option>
+                    </select>
+                    <button class="btn btn-icon btn-sm" data-action="refresh-instructions" title="Refresh from Settings">
+                      <ui-icon icon="arrows-clockwise" size="14" icon-style="duotone"></ui-icon>
+                    </button>
+                  </div>
                   <textarea
                     class="prompt-input"
                     placeholder="Describe what you want to do with the content... (or use voice input)"

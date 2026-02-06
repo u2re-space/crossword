@@ -93,11 +93,11 @@
     // Basic shell dark theme context
     :root:has([data-shell="basic"][data-theme="dark"]),
     html:has([data-shell="basic"][data-theme="dark"]) {
-        --shell-bg: #1e1e1e;
-        --shell-fg: #e0e0e0;
-        --shell-nav-bg: #252525;
-        --shell-nav-fg: #e0e0e0;
-        --shell-nav-border: #333333;
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-nav-bg: var(--basic-surface-container-high);
+        --shell-nav-fg: var(--basic-on-surface);
+        --shell-nav-border: var(--basic-outline-variant);
     }
     
     // ==========================================================================
@@ -131,14 +131,14 @@
     // Faint shell dark theme context
     :root:has([data-shell="faint"][data-theme="dark"]),
     html:has([data-shell="faint"][data-theme="dark"]) {
-        --shell-bg: #1e1e1e;
-        --shell-fg: #f0f0f0;
-        --shell-sidebar-bg: #171717;
-        --shell-sidebar-fg: #e0e0e0;
-        --shell-sidebar-border: #2a2a2a;
-        --shell-tabs-bg: #252525;
-        --shell-tab-active-bg: #1e1e1e;
-        --shell-tab-hover-bg: #2a2a2a;
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-sidebar-bg: var(--basic-surface-container-high);
+        --shell-sidebar-fg: var(--basic-on-surface);
+        --shell-sidebar-border: var(--basic-outline-variant);
+        --shell-tabs-bg: var(--basic-surface-container-high);
+        --shell-tab-active-bg: var(--basic-surface-container-highest);
+        --shell-tab-hover-bg: var(--basic-surface-container-highest);
     }
     
     // ==========================================================================

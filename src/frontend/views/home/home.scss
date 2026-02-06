@@ -96,25 +96,4 @@
         opacity: 0.6;
     }
 
-    // ============================================================================
-    // DARK THEME
-    // ============================================================================
-
-    [data-theme="dark"] .view-home {
-        --view-home-bg: linear-gradient(135deg, #1a1a1a 0%, #252526 100%);
-        --view-fg: #e0e0e0;
-        --view-border: rgba(255, 255, 255, 0.1);
-        --view-card-bg: #2d2d30;
-
-        .view-home__title {
-            background: linear-gradient(135deg, #3794ff 0%, #007acc 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-        }
-
-        .view-home__action:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-    }
-
 }

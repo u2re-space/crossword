@@ -84,38 +84,62 @@
 
     .template-editor-modal {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        inset: 0;
+        background: color-mix(in oklab, black 40%, transparent);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1000;
         padding: var(--space-md);
+        backdrop-filter: blur(4px);
+        animation: fadeIn var(--basic-motion-fast, 140ms) ease;
 
         .modal-content {
             background: var(--basic-surface-container-high);
             border-radius: var(--basic-radius-lg);
             box-shadow: var(--basic-elev-4);
             max-block-size: 80vh;
-            max-inline-size: 600px;
+            max-inline-size: 640px;
             inline-size: 100%;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            padding: var(--space-xl, 1.25rem);
+            animation: slideInUp var(--basic-motion-normal, 200ms) ease;
 
             @container (max-width: 768px) {
                 max-block-size: 90vh;
-                max-inline-size: 95vw
+                max-inline-size: 95vw;
+                padding: var(--space-lg, 1rem);
             }
 
-            h3 {
+            .modal-header {
+                display: grid;
+                gap: var(--space-xs, 0.25rem);
+                margin-block-end: var(--space-lg, 1rem);
+
+                h3 {
+                    margin: 0;
+                    font-size: var(--text-lg);
+                    font-weight: var(--font-weight-semibold);
+                    color: var(--basic-on-surface);
+                }
+
+                .modal-desc {
+                    margin: 0;
+                    font-size: var(--text-xs, 0.75rem);
+                    color: var(--basic-on-surface-variant);
+                    opacity: 0.85;
+                    line-height: 1.5;
+                }
+            }
+
+            // Legacy heading without .modal-header wrapper
+            & > h3 {
                 margin: 0 0 var(--space-lg) 0;
                 font-size: var(--text-lg);
                 font-weight: var(--font-weight-semibold);
-                color: var(--basic-on-surface)
+                color: var(--basic-on-surface);
             }
 
             .template-list {
@@ -124,6 +148,8 @@
                 display: flex;
                 flex-direction: column;
                 gap: var(--space-md);
+                scrollbar-width: thin;
+                scrollbar-color: var(--basic-outline-variant) transparent;
 
                 .template-item {
                     display: flex;
@@ -133,6 +159,17 @@
                     background: var(--basic-surface-container);
                     border-radius: var(--basic-radius-md);
                     border: 1px solid var(--basic-outline-variant);
+                    transition: border-color var(--basic-motion-fast, 140ms);
+
+                    &:hover {
+                        border-color: var(--basic-primary);
+                    }
+
+                    .template-item-header {
+                        display: flex;
+                        align-items: center;
+                        gap: var(--space-sm);
+                    }
 
                     input, textarea {
                         padding: var(--space-sm);
@@ -142,37 +179,52 @@
                         color: var(--basic-on-surface);
                         font-family: inherit;
                         font-size: var(--text-sm);
+                        transition: border-color var(--basic-motion-fast, 140ms);
 
                         &:focus {
                             outline: none;
                             border-color: var(--basic-primary);
-                            box-shadow: 0 0 0 2px color-mix(in oklab, var(--basic-primary) 20%, transparent)
+                            box-shadow: 0 0 0 2px color-mix(in oklab, var(--basic-primary) 20%, transparent);
+                        }
+
+                        &::placeholder {
+                            color: var(--basic-on-surface-variant);
+                            opacity: 0.6;
                         }
                     }
 
                     input {
-                        font-weight: var(--font-weight-medium)
+                        font-weight: var(--font-weight-medium);
+                        flex: 1;
                     }
 
                     textarea {
                         resize: vertical;
                         min-block-size: 80px;
-                        font-family: var(--font-family-mono)
+                        font-family: var(--font-family-mono);
+                        line-height: 1.5;
                     }
 
                     .remove-template {
-                        align-self: flex-end;
-                        padding: var(--space-xs) var(--space-sm);
-                        background: var(--basic-error-container);
-                        border: 1px solid var(--basic-error);
+                        flex-shrink: 0;
+                        padding: var(--space-xs);
+                        min-inline-size: 28px;
+                        min-block-size: 28px;
+                        background: transparent;
+                        border: 1px solid var(--basic-outline-variant);
                         border-radius: var(--basic-radius-sm);
-                        color: var(--basic-on-error-container);
+                        color: var(--basic-on-surface-variant);
                         font-size: var(--text-sm);
                         cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all var(--basic-motion-fast, 140ms);
 
                         &:hover {
-                            background: var(--basic-error);
-                            color: var(--basic-on-error)
+                            background: color-mix(in oklab, var(--basic-error) 12%, transparent);
+                            border-color: var(--basic-error);
+                            color: var(--basic-error);
                         }
                     }
                 }
@@ -180,7 +232,8 @@
 
             .modal-actions {
                 display: flex;
-                justify-content: flex-end;
+                flex-wrap: wrap;
+                align-items: center;
                 gap: var(--space-sm);
                 padding-top: var(--space-lg);
                 border-top: 1px solid var(--basic-outline-variant);

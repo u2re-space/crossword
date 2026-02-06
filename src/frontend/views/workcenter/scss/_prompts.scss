@@ -3,23 +3,9 @@
 @layer workcenter {
     .prompt-section {
         position: relative;
-        background: var(--basic-surface-container-high);
         border-radius: var(--basic-radius-md, 6px);
-        padding: var(--space-lg, 1rem);
+        padding: 0;
         border: none;
-        box-shadow: var(--basic-elev-2);
-
-        @container (max-width: 1024px) {
-            padding: var(--space-md, 0.75rem)
-        }
-
-        @container (max-width: 768px) {
-            padding: var(--space-sm, 0.5rem)
-        }
-
-        @container (max-width: 480px) {
-            padding: var(--space-xs, 0.25rem)
-        }
 
         & > :where(.file-input-area) {
             position: absolute;
@@ -126,19 +112,97 @@
         }
     }
 
+    // Instruction selector row — links to CustomInstructions from Settings
+    .instruction-selector-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm, 0.5rem);
+        padding: var(--space-sm, 0.5rem) 0;
+
+        .instruction-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs, 0.25rem);
+            font-size: var(--text-xs, 0.75rem);
+            font-weight: var(--font-weight-medium, 500);
+            color: var(--basic-on-surface-variant);
+            white-space: nowrap;
+            flex-shrink: 0;
+
+            ui-icon {
+                color: var(--basic-primary);
+                opacity: 0.8;
+            }
+        }
+
+        .instruction-select {
+            flex: 1;
+            padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
+            border-radius: var(--basic-radius-sm, 4px);
+            border: 1px solid var(--basic-outline-variant);
+            background: var(--basic-surface);
+            color: var(--basic-on-surface);
+            font-size: var(--text-xs, 0.75rem);
+            font-family: var(--font-family);
+            cursor: pointer;
+            min-height: 30px;
+            transition: border-color var(--basic-motion-fast, 140ms ease);
+
+            &:hover {
+                border-color: var(--basic-primary);
+                background: var(--basic-surface-container-high);
+            }
+
+            &:focus {
+                outline: none;
+                border-color: var(--basic-primary);
+                box-shadow: 0 0 0 2px color-mix(in oklab, var(--basic-primary) 15%, transparent);
+            }
+        }
+
+        .btn-sm {
+            padding: var(--space-xs, 0.25rem);
+            min-inline-size: 28px;
+            min-block-size: 28px;
+            border-radius: var(--basic-radius-sm, 4px);
+            border: 1px solid var(--basic-outline-variant);
+            background: transparent;
+            color: var(--basic-on-surface-variant);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--basic-motion-fast, 140ms ease);
+            flex-shrink: 0;
+
+            &:hover {
+                background: var(--basic-surface-container-high);
+                color: var(--basic-primary);
+                border-color: var(--basic-primary);
+            }
+        }
+
+        @container (max-width: 480px) {
+            flex-wrap: wrap;
+
+            .instruction-label {
+                flex-basis: 100%;
+            }
+        }
+    }
+
     .prompt-input {
         inline-size: stretch;
-        min-block-size: 120px;
-        padding: var(--space-md);
-        border: none;
-        border-radius: var(--basic-radius-sm);
+        min-block-size: 5rem;
+        padding: var(--space-sm) var(--space-md);
+        border: 1px solid var(--basic-outline-variant);
+        border-radius: var(--basic-radius-md);
         background: var(--basic-surface);
         color: var(--basic-on-surface);
         font-family: var(--font-family-system);
         font-size: var(--text-sm);
         line-height: var(--leading-relaxed);
         resize: vertical;
-        box-shadow: var(--basic-elev-0);
         scrollbar-width: thin;
         scrollbar-color: var(--basic-outline-variant) transparent;
 
@@ -152,15 +216,13 @@
         }
 
         @container (max-width: 1024px) {
-            padding-inline: var(--space-sm);
-            padding-block: var(--space-sm);
-            min-block-size: 100px
+            padding: var(--space-sm);
+            min-block-size: 4rem;
         }
 
         @container (max-width: 768px) {
-            padding-inline: var(--space-xs);
-            padding-block: var(--space-xs);
-            min-block-size: 80px
+            padding: var(--space-xs) var(--space-sm);
+            min-block-size: 3.5rem;
         }
 
         &:hover {
@@ -477,14 +539,21 @@
     }
 
     .action-section, .prompts-section {
-        background: var(--basic-surface-container);
-        border-radius: var(--basic-radius-xl, 12px);
-        padding: var(--space-xl, 1.25rem);
-        box-shadow: var(--basic-elev-2);
-        border: none;
+        background: var(--basic-surface-container-low);
+        border-radius: var(--basic-radius-lg, 12px);
+        padding: var(--space-lg, 1rem);
+        border: 1px solid var(--basic-outline-variant);
         place-content: center;
         place-items: center;
         align-items: stretch;
+
+        @container (max-width: 1024px) {
+            padding: var(--space-md, 0.75rem);
+        }
+
+        @container (max-width: 768px) {
+            padding: var(--space-sm, 0.5rem);
+        }
 
         .prompt-actions {
             display: grid;
@@ -748,12 +817,8 @@
         .prompt-actions {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: var(--space-md, 0.75rem);
-            inline-size: stretch;
-            max-inline-size: stretch;
-            min-inline-size: max-content;
-            place-items: center
+            gap: var(--space-xs, 0.25rem);
+            flex-wrap: wrap;
         }
     }
 }

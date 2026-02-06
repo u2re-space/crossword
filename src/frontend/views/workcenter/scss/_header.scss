@@ -3,13 +3,10 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--space-lg);
+        padding: var(--space-sm) var(--space-md);
         border-radius: var(--basic-radius-md);
         background: var(--basic-surface-container-high);
-
-        @container (max-width: 1024px) {
-            padding: var(--space-md);
-        }
+        gap: var(--space-md);
 
         @container (max-width: 768px) {
             padding: var(--space-sm);
@@ -25,17 +22,15 @@
 
         h2 {
             margin: 0;
-            font-size: var(--text-xl);
+            font-size: var(--text-base);
             font-weight: var(--font-weight-bold);
             color: var(--basic-on-surface);
-
-            @container (max-width: 1024px) {
-                font-size: var(--text-lg);
-            }
+            letter-spacing: -0.01em;
+            white-space: nowrap;
 
             @container (max-width: 768px) {
                 text-align: center;
-                font-size: var(--text-base);
+                font-size: var(--text-sm);
             }
         }
     }
@@ -43,14 +38,10 @@
     .control-selectors {
         display: flex;
         align-items: center;
-        gap: var(--space-lg);
-        padding: var(--space-sm);
+        gap: var(--space-md);
+        padding: var(--space-xs) var(--space-sm);
         background: var(--basic-surface-container-low);
         border-radius: var(--basic-radius-sm);
-
-        @container (max-width: 1200px) {
-            gap: var(--space-md);
-        }
 
         @container (max-width: 1024px) {
             gap: var(--space-sm);
@@ -60,12 +51,12 @@
         @container (max-width: 900px) {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: var(--space-md);
+            gap: var(--space-sm);
         }
 
         @container (max-width: 768px) {
             grid-template-columns: 1fr;
-            gap: var(--space-sm);
+            gap: var(--space-xs);
         }
 
         @container (max-width: 480px) {

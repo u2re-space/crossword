@@ -9,7 +9,7 @@ import {
     deleteInstruction,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES
-} from "@rs-com/service/CustomInstructions";
+} from "@rs-com/service/misc/CustomInstructions";
 
 export type CustomInstructionsEditorOptions = {
     onUpdate?: () => void;
@@ -37,7 +37,7 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
     const root = H`<div class="custom-instructions-editor">
         <div class="ci-header">
             <h4>Custom Instructions</h4>
-            <p class="ci-desc">Define custom instructions to apply during "Recognize & Copy" operations.</p>
+            <p class="ci-desc">Define custom instructions for AI operations. These can be activated for "Recognize & Copy" and selected in the Work Center.</p>
         </div>
 
         <div class="ci-active-select">

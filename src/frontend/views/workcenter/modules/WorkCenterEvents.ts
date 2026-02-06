@@ -65,6 +65,9 @@ export class WorkCenterEvents {
         // Template selection
         this.setupTemplateSelection();
 
+        // Instruction selection (from CustomInstructions in Settings)
+        this.setupInstructionSelection();
+
         // Prompt input
         this.setupPromptInput();
 
@@ -180,7 +183,7 @@ export class WorkCenterEvents {
         if (!this.container) return;
 
         const templateSelect = this.container.querySelector('.template-select') as HTMLSelectElement;
-        templateSelect.addEventListener('change', async () => {
+        templateSelect?.addEventListener('change', async () => {
             const selectedPrompt = templateSelect.value;
             this.templates.selectTemplate(this.state, selectedPrompt);
 
@@ -195,6 +198,21 @@ export class WorkCenterEvents {
                     await this.actions.executeUnifiedAction(this.state);
                 }
             }
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
+        });
+    }
+
+    private setupInstructionSelection(): void {
+        if (!this.container) return;
+
+        // Populate the instruction selector from CustomInstructions in settings
+        this.prompts.populateInstructionSelect(this.state);
+
+        const instructionSelect = this.container.querySelector('.instruction-select') as HTMLSelectElement;
+        instructionSelect?.addEventListener('change', async () => {
+            const selectedId = instructionSelect.value;
+            this.prompts.handleInstructionSelection(this.state, selectedId);
             const { WorkCenterStateManager } = await import('./WorkCenterState');
             WorkCenterStateManager.saveState(this.state);
         });
@@ -308,6 +326,9 @@ export class WorkCenterEvents {
             switch (action) {
                 case 'edit-templates':
                     this.templates.showTemplateEditor(this.state, this.container as HTMLElement);
+                    break;
+                case 'refresh-instructions':
+                    await this.prompts.populateInstructionSelect(this.state);
                     break;
                 case 'clear-prompt':
                     this.prompts.clearPrompt(this.state);

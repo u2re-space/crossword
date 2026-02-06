@@ -10,6 +10,7 @@
     .custom-instructions-editor {
         display: grid;
         gap: var(--basic-spacing-md, 12px);
+        text-align: start;
 
         // Header with title & description
         .ci-header {
@@ -28,6 +29,7 @@
                 font-size: var(--basic-text-xs, 11px);
                 opacity: 0.8;
                 color: var(--basic-on-surface-variant);
+                line-height: 1.5;
             }
         }
 
@@ -45,15 +47,21 @@
             }
 
             .ci-select {
+                inline-size: stretch;
                 padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-sm, 10px);
                 border-radius: var(--basic-radius-md, 10px);
                 background: var(--basic-surface-container-highest);
                 color: var(--basic-on-surface);
                 font-size: var(--basic-text-xs, 12px);
+                font-family: inherit;
                 outline: none;
                 cursor: pointer;
                 transition: background-color var(--basic-motion-fast);
                 border: 1px solid var(--basic-outline-variant);
+
+                &:focus {
+                    border-color: var(--basic-primary);
+                }
             }
         }
 
@@ -79,9 +87,11 @@
             padding: var(--basic-spacing-sm, 10px);
             background: var(--basic-surface-container);
             transition: background-color var(--basic-motion-fast);
+            border: 1px solid transparent;
 
             &.active {
                 background: color-mix(in oklab, var(--basic-primary) 8%, var(--basic-surface-container));
+                border-color: color-mix(in oklab, var(--basic-primary) 25%, transparent);
             }
 
             // Item header with title & actions
@@ -150,14 +160,15 @@
         // Form inputs
         .ci-input,
         .ci-textarea {
-            padding: var(--basic-spacing-xs, 8px 10px);
+            inline-size: stretch;
+            padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-sm, 10px);
             border-radius: var(--basic-radius-sm, 8px);
             background: var(--basic-surface-container-highest);
             color: var(--basic-on-surface);
             font-size: var(--basic-text-xs, 12px);
             outline: none;
             border: 1px solid var(--basic-outline-variant);
-            transition: background-color var(--basic-motion-fast);
+            transition: border-color var(--basic-motion-fast);
             font-family: inherit;
 
             &::placeholder {
@@ -192,6 +203,7 @@
             padding: var(--basic-spacing-sm, 12px);
             border-radius: var(--basic-radius-md, 10px);
             background: color-mix(in oklab, var(--basic-surface-container-high) 50%, transparent);
+            border: 1px dashed var(--basic-outline-variant);
         }
 
         .ci-actions {
@@ -210,7 +222,7 @@
                 border: 1px solid var(--basic-outline-variant);
                 color: var(--basic-on-surface);
                 cursor: pointer;
-                transition: background-color var(--basic-motion-fast);
+                transition: all var(--basic-motion-fast);
 
                 &.danger {
                     color: var(--basic-error, #c62828);
@@ -222,7 +234,7 @@
                 }
 
                 &:hover {
-                    background: rgba(0, 0, 0, 0.03);
+                    background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
                 }
             }
 
@@ -234,77 +246,94 @@
                 border: 1px solid var(--basic-outline-variant);
                 color: var(--basic-on-surface);
                 cursor: pointer;
-                transition: background-color var(--basic-motion-fast);
+                transition: all var(--basic-motion-fast);
 
                 &:hover {
-                    background: rgba(0, 0, 0, 0.03);
+                    background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
                 }
             }
         }
     }
 
     // ========================================================================
-    // MAIN SETTINGS VIEW — Centered container with scrollable content
+    // MAIN SETTINGS VIEW — Scrollable, left-aligned, constrained-width
     // ========================================================================
 
     :where(.view-settings, .basic-settings) {
-        place-content: center;
-        place-items: center;
-        text-align: center;
-
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        align-items: center;
+        align-items: stretch;
         block-size: 100%;
         overflow-y: auto;
         background-color: var(--view-bg, var(--basic-surface, #ffffff));
         color: var(--view-fg, var(--basic-on-surface, #1a1a1a));
+        text-align: start;
 
-        padding: var(--basic-spacing-md, 14px);
+        padding: var(--basic-spacing-lg, 20px);
         gap: var(--basic-spacing-md, 14px);
         max-block-size: none;
+
+        scrollbar-width: thin;
+        scrollbar-color: var(--basic-outline-variant) transparent;
+
+        // Constrain content width and center the column
+        max-inline-size: clamp(420px, 100%, 640px);
+        margin-inline: auto;
+        inline-size: 100%;
+
+        @container (max-width: 480px) {
+            padding: var(--basic-spacing-sm, 10px);
+            gap: var(--basic-spacing-sm, 10px);
+        }
 
         // Ensure form controls are interactive
         :where(select, input, textarea, option) {
             pointer-events: auto;
         }
 
+        // ── Page title ──
         h2 {
             margin: 0;
-            font-size: var(--basic-text-lg, 18px);
-            letter-spacing: -0.01em;
-            font-weight: var(--basic-font-weight-semibold, 600);
+            font-size: var(--basic-text-xl, 20px);
+            letter-spacing: -0.02em;
+            font-weight: var(--basic-font-weight-bold, 700);
             color: var(--basic-on-surface);
         }
 
-        // Card container
+        // ── Card section ──
         .card {
             display: grid;
-            gap: var(--basic-spacing-sm, 10px);
-            padding: var(--basic-spacing-sm, 10px);
+            gap: var(--basic-spacing-md, 12px);
+            padding: var(--basic-spacing-md, 16px);
             background: var(--basic-surface-container);
-            border-radius: var(--basic-radius-md, 8px);
+            border-radius: var(--basic-radius-lg, 12px);
+            border: 1px solid var(--basic-outline-variant);
+
+            @container (max-width: 480px) {
+                padding: var(--basic-spacing-sm, 10px);
+                gap: var(--basic-spacing-sm, 10px);
+            }
 
             h3 {
                 margin: 0;
-                font-size: var(--basic-text-base, 14px);
-                opacity: 0.95;
-                letter-spacing: 0.01em;
-                font-weight: var(--basic-font-weight-medium, 500);
+                font-size: var(--basic-text-base, 15px);
+                letter-spacing: -0.01em;
+                font-weight: var(--basic-font-weight-bold, 700);
                 color: var(--basic-on-surface);
             }
         }
 
-        // Form field
+        // ── Form field ──
         .field {
             display: grid;
             gap: var(--basic-spacing-xs, 6px);
             font-size: var(--basic-text-xs, 12px);
 
             & > span {
-                opacity: 0.9;
+                opacity: 0.85;
                 color: var(--basic-on-surface-variant);
+                font-size: var(--basic-text-xs, 12px);
             }
 
             &.checkbox {
@@ -315,14 +344,83 @@
             }
         }
 
-        // Action buttons container
+        // ── Form inputs & selects ──
+        .form-input,
+        .form-select {
+            inline-size: stretch;
+            padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-sm, 12px);
+            border: 1px solid var(--basic-outline-variant);
+            border-radius: var(--basic-radius-md, 10px);
+            background: var(--basic-surface-container-highest);
+            color: var(--basic-on-surface);
+            font-family: inherit;
+            font-size: var(--basic-text-sm, 13px);
+            outline: none;
+            transition: border-color var(--basic-motion-fast);
+
+            &::placeholder {
+                color: var(--basic-on-surface-variant);
+                opacity: 0.5;
+            }
+
+            &:focus {
+                border-color: var(--basic-primary);
+            }
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: auto;
+        }
+
+        // ── Checkbox styling ──
+        .form-checkbox {
+            input[type="checkbox"] {
+                inline-size: 18px;
+                block-size: 18px;
+                accent-color: var(--basic-primary);
+                cursor: pointer;
+                border-radius: var(--basic-radius-xs, 4px);
+            }
+        }
+
+        // ── Action buttons area ──
         .actions {
             display: flex;
             align-items: center;
             gap: var(--basic-spacing-sm, 10px);
+            padding-block-start: var(--basic-spacing-sm, 8px);
         }
 
-        // Info text
+        // ── Primary button ──
+        .btn {
+            padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-lg, 20px);
+            border: 1px solid var(--basic-outline-variant);
+            border-radius: var(--basic-radius-md, 10px);
+            background: transparent;
+            color: var(--basic-on-surface);
+            font-family: inherit;
+            font-size: var(--basic-text-sm, 13px);
+            font-weight: var(--basic-font-weight-medium, 500);
+            cursor: pointer;
+            transition: all var(--basic-motion-fast);
+
+            &:hover {
+                background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
+            }
+
+            &.primary {
+                background: var(--basic-primary);
+                border-color: var(--basic-primary);
+                color: var(--basic-on-primary, #fff);
+
+                &:hover {
+                    filter: brightness(1.1);
+                }
+            }
+        }
+
+        // ── Info text ──
         .note,
         .ext-note {
             font-size: var(--basic-text-xs, 12px);
@@ -332,15 +430,26 @@
 
         .ext-note {
             opacity: 0.8;
+
+            code {
+                padding: 2px 4px;
+                background: var(--basic-surface-container-highest);
+                border-radius: var(--basic-radius-xs, 4px);
+                font-size: var(--basic-text-xs, 11px);
+            }
         }
     }
+
+    // ========================================================================
+    // VIEW-SETTINGS (faint shell BEM variant — keep for compatibility)
+    // ========================================================================
 
     .view-settings {
 
         // Content wrapper with max width
         &__content {
             inline-size: 100%;
-            max-inline-size: 600px;
+            max-inline-size: clamp(600px, 80cqi, 800px);
         }
 
         // Main title
@@ -466,24 +575,6 @@
                 &:hover {
                     filter: brightness(1.1);
                 }
-            }
-        }
-    }
-
-    // ========================================================================
-    // DARK MODE SUPPORT
-    // ========================================================================
-
-    @media (prefers-color-scheme: dark) {
-        [data-theme="dark"] .view-settings,
-        .app-shell[data-theme="dark"] .view-settings {
-            --view-bg: var(--basic-surface, #1e1e1e);
-            --view-fg: var(--basic-on-surface, #e0e0e0);
-            --view-border: var(--basic-outline-variant, rgba(255, 255, 255, 0.1));
-            --view-input-bg: var(--basic-surface-container-high, #2d2d30);
-
-            .view-settings__btn:hover {
-                background-color: rgba(255, 255, 255, 0.08);
             }
         }
     }

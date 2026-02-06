@@ -89,7 +89,7 @@ export class WorkCenterManager {
         this.results = new WorkCenterResults(dependencies, this.dataProcessing);
         this.ui = new WorkCenterUI(dependencies, this.attachments, this.prompts, this.results, this.history);
         this.shareTarget = new WorkCenterShareTarget(dependencies, this.fileOps);
-        this.actions = new WorkCenterActions(dependencies, this.ui, this.fileOps, this.dataProcessing, this.results, this.history);
+        this.actions = new WorkCenterActions(dependencies, this.ui, this.fileOps, this.dataProcessing, this.results, this.history, this.templates);
         this.events = new WorkCenterEvents(
             dependencies,
             this.ui,

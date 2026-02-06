@@ -1,6 +1,7 @@
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterTemplates } from "./WorkCenterTemplates";
 import type { WorkCenterVoice } from "./WorkCenterVoice";
+import type { CustomInstruction } from "@rs-com/config/SettingsTypes";
 
 export class WorkCenterPrompts {
     private container: HTMLElement | null = null;
@@ -36,6 +37,19 @@ export class WorkCenterPrompts {
                 </div>
               </div>
 
+              <div class="instruction-selector-row">
+                <label class="instruction-label">
+                  <ui-icon icon="clipboard-text" size="16" icon-style="duotone"></ui-icon>
+                  <span>Instruction:</span>
+                </label>
+                <select class="instruction-select" data-action="select-instruction">
+                  <option value="">None (default)</option>
+                </select>
+                <button class="btn btn-icon btn-sm" data-action="refresh-instructions" title="Refresh from Settings">
+                  <ui-icon icon="arrows-clockwise" size="14" icon-style="duotone"></ui-icon>
+                </button>
+              </div>
+
               <div class="prompt-input-group">
                 <textarea
                   class="prompt-input"
@@ -63,6 +77,48 @@ export class WorkCenterPrompts {
               </div>
             </div>
         `;
+    }
+
+    /** Populate the instruction selector with custom instructions from settings */
+    async populateInstructionSelect(state: WorkCenterState): Promise<void> {
+        if (!this.container) return;
+        const select = this.container.querySelector('.instruction-select') as HTMLSelectElement;
+        if (!select) return;
+
+        const instructions = await this.templates.loadInstructions();
+        select.innerHTML = '<option value="">None (default)</option>';
+
+        for (const instr of instructions) {
+            const opt = document.createElement('option');
+            opt.value = instr.id;
+            opt.textContent = instr.label;
+            if (instr.id === state.selectedInstruction) opt.selected = true;
+            select.append(opt);
+        }
+    }
+
+    /** Update the instruction selector options (sync, after loadInstructions) */
+    updateInstructionSelect(state: WorkCenterState): void {
+        if (!this.container) return;
+        const select = this.container.querySelector('.instruction-select') as HTMLSelectElement;
+        if (!select) return;
+
+        const instructions = this.templates.getInstructions();
+        select.innerHTML = '<option value="">None (default)</option>';
+
+        for (const instr of instructions) {
+            const opt = document.createElement('option');
+            opt.value = instr.id;
+            opt.textContent = instr.label;
+            if (instr.id === state.selectedInstruction) opt.selected = true;
+            select.append(opt);
+        }
+    }
+
+    /** Get the currently selected instruction object */
+    getSelectedInstruction(state: WorkCenterState): CustomInstruction | null {
+        if (!state.selectedInstruction) return null;
+        return this.templates.getInstructionById(state.selectedInstruction) || null;
     }
 
     // Update prompt input value
@@ -114,12 +170,17 @@ export class WorkCenterPrompts {
     handleTemplateSelection(state: WorkCenterState, selectedPrompt: string): void {
         state.selectedTemplate = selectedPrompt;
 
-        // Always apply the selected template - templates are meant to provide structured prompts
+        // Always apply the selected template - templates provide structured prompts
         // Users can modify them after selection if needed
         if (selectedPrompt) {
             state.currentPrompt = selectedPrompt;
             this.updatePromptInput(state);
         }
+    }
+
+    // Handle instruction selection
+    handleInstructionSelection(state: WorkCenterState, instructionId: string): void {
+        state.selectedInstruction = instructionId;
     }
 
     // Handle auto action toggle

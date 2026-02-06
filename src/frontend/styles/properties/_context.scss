@@ -19,10 +19,10 @@
         --shell-content-gutter: 1rem;
 
         /* Color scheme defaults (light) */
-        --shell-bg: #f8f9fa;
-        --shell-fg: #1a1a1a;
-        --shell-nav-bg: #ffffff;
-        --shell-nav-border: #e0e0e0;
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-nav-bg: var(--basic-surface-container-high);
+        --shell-nav-border: var(--basic-outline-variant);
     }
 
     /**
@@ -30,10 +30,10 @@
      */
     @media (prefers-color-scheme: dark) {
         :root {
-            --shell-bg: #1e1e1e;
-            --shell-fg: #e0e0e0;
-            --shell-nav-bg: #252526;
-            --shell-nav-border: #3c3c3c;
+            --shell-bg: var(--basic-surface);
+            --shell-fg: var(--basic-on-surface);
+            --shell-nav-bg: var(--basic-surface-container-high);
+            --shell-nav-border: var(--basic-outline-variant);
         }
     }
 
@@ -48,23 +48,23 @@
     :is(html, body):has([data-shell="basic"]) {
         /* Navigation */
         --shell-nav-height: var(--shell-nav-height-base);
-        --shell-btn-hover: rgba(0, 0, 0, 0.05);
-        --shell-btn-active-bg: rgba(0, 122, 204, 0.12);
-        --shell-btn-active-fg: #007acc;
+        --shell-btn-hover: var(--basic-surface-container-highest);
+        --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary) 12%, transparent);
+        --shell-btn-active-fg: var(--basic-primary);
 
         /* Status */
-        --shell-status-bg: rgba(0, 0, 0, 0.85);
-        --shell-status-fg: #ffffff;
+        --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
+        --shell-status-fg: var(--basic-on-primary);
     }
 
     /* Dark mode for BasicShell */
     @media (prefers-color-scheme: dark) {
         :is(html, body):has([data-shell="basic"]) {
-            --shell-btn-hover: rgba(255, 255, 255, 0.08);
-            --shell-btn-active-bg: rgba(0, 122, 204, 0.25);
-            --shell-btn-active-fg: #3794ff;
-            --shell-status-bg: rgba(255, 255, 255, 0.15);
-            --shell-status-fg: #ffffff;
+            --shell-btn-hover: var(--basic-surface-container-highest);
+            --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary) 12%, transparent);
+            --shell-btn-active-fg: var(--basic-primary);
+            --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
+            --shell-status-fg: var(--basic-on-primary);
         }
     }
 
@@ -79,16 +79,16 @@
         --shell-tab-height: 32px;
 
         /* Faint-specific colors */
-        --faint-nav-bg: #f5f5f5;
-        --faint-nav-border: #d0d0d0;
-        --faint-sidebar-bg: #fafafa;
+        --faint-nav-bg: var(--basic-surface-container-high);
+        --faint-nav-border: var(--basic-outline-variant);
+        --faint-sidebar-bg: var(--basic-surface-container-high);
     }
 
     @media (prefers-color-scheme: dark) {
         :is(html, body):has([data-shell="faint"]) {
-            --faint-nav-bg: #2d2d2d;
-            --faint-nav-border: #3c3c3c;
-            --faint-sidebar-bg: #252526;
+            --faint-nav-bg: var(--basic-surface-container-high);
+            --faint-nav-border: var(--basic-outline-variant);
+            --faint-sidebar-bg: var(--basic-surface-container-high);
         }
     }
 

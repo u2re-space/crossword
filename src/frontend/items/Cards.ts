@@ -1,4 +1,4 @@
-import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, sanitizeDocSnippet, truncateDocSnippet } from "@rs-core/text";
+import { countLines, cropFirstLetter, MAKE_LABEL, makeObjectEntries, wrapBySpan, sanitizeDocSnippet, truncateDocSnippet, type CardRenderOptions } from "@rs-core/text";
 export type { CardRenderOptions } from "@rs-core/text";
 import { H, M, bindBeh } from "fest/lure";
 import { propRef } from "fest/object";

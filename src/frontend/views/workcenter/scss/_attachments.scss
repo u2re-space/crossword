@@ -8,22 +8,20 @@
     }
 
     .file-drop-zone {
-        flex: 1;
         display: flex;
         flex-direction: column;
+        align-items: center;
+        justify-content: center;
         gap: var(--space-md);
-        min-block-size: max-content;
-        block-size: stretch;
-        max-block-size: none;
+        min-block-size: 8rem;
         position: relative;
         border-radius: var(--basic-radius-lg);
         transition: all var(--basic-motion-normal);
-        contain: strict;
         overflow: auto;
         cursor: pointer;
 
         &[data-dropzone] {
-            min-block-size: 200px;
+            min-block-size: 8rem;
             padding: var(--space-lg);
             background: var(--basic-surface-container-low);
             border: 2px dashed color-mix(in oklab, var(--basic-outline-variant) 40%, transparent);

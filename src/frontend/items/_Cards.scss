@@ -73,6 +73,7 @@
     }
 }
 
+//
 @mixin make-openable($selector: ".card-content") {
     & #{$selector} {
         display: none;

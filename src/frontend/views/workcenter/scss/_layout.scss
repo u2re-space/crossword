@@ -14,18 +14,10 @@
             grid-auto-rows: minmax(0, max-content);
             gap: var(--space-lg);
             block-size: max-content;
-            min-block-size: calc-size(max-content, max(size, 600px));
+            min-block-size: 0;
             max-block-size: none;
             inline-size: stretch;
             max-inline-size: stretch;
-
-            @container (max-width: 1400px) {
-                gap: var(--space-md);
-            }
-
-            @container (max-width: 768px) {
-                gap: var(--space-lg);
-            }
 
             @container (max-width: 1024px) {
                 gap: var(--space-md);
@@ -44,48 +36,52 @@
                 inline-size: stretch;
                 max-inline-size: stretch;
 
+                // Column ordering: prompts first (primary interaction), then results, then attachments
+                &.prompts-column {
+                    order: 1;
+                }
+
+                &.results-column {
+                    order: 2;
+                }
+
                 &.inputs-column,
                 &.attachments-column {
                     order: 3;
                 }
 
-                &.results-column {
-                    order: 1;
-                }
-
-                &.prompts-column {
-                    order: 2;
-                }
-
+                // ── Section header bar ──
                 .section-header {
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: var(--space-md);
-                    background: var(--basic-surface-container-low);
-                    border-radius: var(--basic-radius-sm);
-                    border: 1px solid var(--basic-outline-variant);
                     display: grid;
                     grid-template-columns: minmax(0px, 1fr) minmax(0px, max-content);
                     grid-template-rows: minmax(max-content, 1fr);
+                    align-items: center;
                     gap: var(--space-md, 0.75rem);
-                    place-self: center;
-                    min-inline-size: max-content;
-                    max-inline-size: stretch;
+                    padding: var(--space-sm) var(--space-md);
+                    background: var(--basic-surface-container-high);
+                    border-radius: var(--basic-radius-md);
                     inline-size: stretch;
-                    place-items: center;
-                    place-content: stretch;
+                    max-inline-size: stretch;
+                    min-inline-size: 0;
+
+                    @container (max-width: 768px) {
+                        padding: var(--space-xs) var(--space-sm);
+                        gap: var(--space-sm);
+                    }
+
+                    @container (max-width: 480px) {
+                        grid-template-columns: 1fr;
+                        justify-items: center;
+                    }
 
                     h3 {
                         margin: 0;
-                        font-size: var(--text-lg);
+                        font-size: var(--text-base);
                         font-weight: var(--font-weight-semibold);
                         color: var(--basic-on-surface);
                         text-align: start;
                         justify-self: start;
-
-                        @container (max-width: 1024px) {
-                            font-size: var(--text-base);
-                        }
+                        letter-spacing: -0.01em;
 
                         @container (max-width: 768px) {
                             font-size: var(--text-sm);
@@ -93,35 +89,33 @@
                     }
 
                     .input-actions,
-                    .result-actions {
+                    .result-actions,
+                    .output-actions,
+                    .file-actions,
+                    .prompt-actions {
                         display: flex;
                         align-items: center;
-                        gap: var(--space-sm);
-                        place-items: center;
-                        place-content: center;
+                        gap: var(--space-xs);
+                        flex-wrap: wrap;
 
                         .btn {
                             padding: var(--space-xs) var(--space-sm);
-                            font-size: var(--text-sm);
+                            font-size: var(--text-xs);
                         }
                     }
                 }
 
+                // ── Common section panel ──
                 .attachments-section,
                 .prompts-section,
                 .results-section {
                     display: flex;
                     flex-direction: column;
                     gap: var(--space-md);
-                    flex: 1;
-                    min-block-size: max-content;
-                    min-block-size: calc-size(max-content, max(size, 36rem));
                     background: var(--basic-surface-container-low);
-                    border-radius: var(--basic-radius-md);
+                    border-radius: var(--basic-radius-lg);
                     border: 1px solid var(--basic-outline-variant);
                     padding: var(--space-md);
-                    block-size: max-content;
-                    max-block-size: none;
                     inline-size: stretch;
                     max-inline-size: stretch;
                     box-sizing: border-box;
@@ -136,11 +130,21 @@
                         padding: var(--space-xs);
                         gap: var(--space-xs);
                     }
+                }
 
-                    &.attachments-section,
-                    &.prompts-section {
-                        min-block-size: calc-size(max-content, max(size, 12rem));
-                    }
+                // Results section — compact when empty, grows with content
+                .results-section {
+                    min-block-size: 0;
+                }
+
+                // Prompts section — primary interaction, comfortable sizing
+                .prompts-section {
+                    min-block-size: 0;
+                }
+
+                // Attachments section
+                .attachments-section {
+                    min-block-size: 0;
                 }
             }
         }

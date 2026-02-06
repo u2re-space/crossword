@@ -36,7 +36,7 @@ export const AISection: SectionConfig = {
         {
             key: "custom-instructions",
             label: "Custom Instructions",
-            description: "Define custom instructions for 'Recognize & Copy' operations.",
+            description: "Define custom instructions for AI operations. Instructions are used in 'Recognize & Copy' and can also be applied in Work Center via the instruction selector.",
             collapsible: true,
             startOpen: false,
             fields: []

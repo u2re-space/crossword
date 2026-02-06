@@ -149,29 +149,26 @@ export class WorkCenterResults {
     // Output header rendering (counters and action buttons)
     renderOutputHeader(state: WorkCenterState): string {
         return `
-            <div class="output-header">
-              <div class="section-header">
+            <div class="section-header">
                 <h3>Results & Processing</h3>
                 <div class="output-actions">
                     <button class="btn btn-icon" data-action="view-output" title="View output in Viewer">
-                    <ui-icon icon="eye" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">View</span>
+                        <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
+                        <span class="btn-text">View</span>
                     </button>
                     <button class="btn btn-icon" data-action="copy-results" title="Copy results">
-                    <ui-icon icon="copy" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Copy</span>
+                        <ui-icon icon="copy" size="16" icon-style="duotone"></ui-icon>
+                        <span class="btn-text">Copy</span>
                     </button>
                     <button class="btn btn-icon" data-action="save-to-explorer" title="Save to Explorer">
-                    <ui-icon icon="floppy-disk" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Save</span>
+                        <ui-icon icon="floppy-disk" size="16" icon-style="duotone"></ui-icon>
+                        <span class="btn-text">Save</span>
                     </button>
                     <button class="btn btn-icon" data-action="clear-results" title="Clear results">
-                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Clear</span>
+                        <ui-icon icon="trash" size="16" icon-style="duotone"></ui-icon>
+                        <span class="btn-text">Clear</span>
                     </button>
                 </div>
-              </div>
-
             </div>
             <div class="output-content" data-output data-dropzone></div>
         `;

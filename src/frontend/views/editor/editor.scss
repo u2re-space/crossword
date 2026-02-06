@@ -86,18 +86,6 @@
         }
     }
 
-    [data-theme="dark"] .view-editor {
-        --view-bg: #1e1e1e;
-        --view-fg: #e0e0e0;
-        --view-border: rgba(255, 255, 255, 0.1);
-        --view-toolbar-bg: rgba(255, 255, 255, 0.03);
-        --view-editor-bg: #1a1a1a;
-
-        .view-editor__btn:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-        }
-    }
-
     @media print {
         .view-editor__toolbar {
             display: none;
