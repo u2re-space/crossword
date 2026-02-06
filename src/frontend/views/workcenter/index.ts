@@ -7,7 +7,7 @@
 
 import { H } from "fest/lure";
 import { ref, observe, affected } from "fest/object";
-import { loadAsAdopted } from "fest/dom";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { createViewState, createLoadingElement } from "../types";
@@ -62,6 +62,7 @@ export class WorkCenterView implements View {
     private processing = ref(false);
 
     private stateManager = createViewState<Partial<WorkCenterState>>(STORAGE_KEY);
+    private _sheet: CSSStyleSheet | null = null;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
@@ -89,7 +90,7 @@ export class WorkCenterView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(workcenterStyles);
+        this._sheet = loadAsAdopted(workcenterStyles) as CSSStyleSheet;
 
         this.element = H`
             <div class="view-workcenter">
@@ -422,17 +423,21 @@ export class WorkCenterView implements View {
 
     private onMount(): void {
         console.log("[WorkCenter] Mounted");
+        this._sheet ??= loadAsAdopted(workcenterStyles) as CSSStyleSheet;
     }
 
     private onUnmount(): void {
         console.log("[WorkCenter] Unmounting");
+        removeAdopted(this._sheet!);
     }
 
     private onShow(): void {
+        this._sheet ??= loadAsAdopted(workcenterStyles) as CSSStyleSheet;
         console.log("[WorkCenter] Shown");
     }
 
     private onHide(): void {
+        //removeAdopted(this._sheet);
         console.log("[WorkCenter] Hidden");
     }
 

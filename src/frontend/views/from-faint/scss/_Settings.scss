@@ -1,7 +1,7 @@
 @use "veela-lib" as *;
 
 //
-@layer rs-settings {
+@layer layer.view.settings {
 
     .settings-panel {
         @include panel-base;

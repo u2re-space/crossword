@@ -8,7 +8,7 @@
 
 import { H } from "fest/lure";
 import { ref, affected } from "fest/object";
-import { loadAsAdopted } from "fest/dom";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
@@ -106,6 +106,7 @@ export class ViewerView implements View {
     private element: HTMLElement | null = null;
     private contentRef = ref("");
     private stateManager = createViewState<ViewerState>(STORAGE_KEY);
+    private _sheet: CSSStyleSheet | null = null;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
@@ -131,8 +132,8 @@ export class ViewerView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        // Load styles
-        loadAsAdopted(style);
+        // Load styles (idempotent — returns cached sheet)
+        this._sheet = loadAsAdopted(style) as CSSStyleSheet;
 
         // Create main element with md-view web component
         this.element = H`
@@ -514,21 +515,25 @@ export class ViewerView implements View {
 
     private onMount(): void {
         console.log("[Viewer] Mounted");
+        this._sheet ??= loadAsAdopted(style) as CSSStyleSheet;
     }
 
     private onUnmount(): void {
         console.log("[Viewer] Unmounting");
         this.saveState();
+        removeAdopted(this._sheet!);
         this.element = null;
     }
 
     private onShow(): void {
+        this._sheet ??= loadAsAdopted(style) as CSSStyleSheet;
         console.log("[Viewer] Shown");
     }
 
     private onHide(): void {
-        console.log("[Viewer] Hidden");
+        //removeAdopted(this._sheet);
         this.saveState();
+        console.log("[Viewer] Hidden");
     }
 
     private onRefresh(): void {

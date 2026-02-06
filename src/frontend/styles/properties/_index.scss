@@ -2,23 +2,18 @@
  * Properties Index
  *
  * Entry point for all CSS custom properties modules.
- * Loads tokens in correct layer order.
- *
- * Usage: @use "properties" as props;
  *
  * Layer Order:
- *   1. properties.tokens   - Base design tokens
- *   2. properties.shell    - Shell-specific properties
- *   3. properties.views    - View-specific properties
- *   4. properties.context  - Context-based selectors (:has)
+ *   1. layer.properties.shell  - Shell-specific properties
+ *   2. layer.properties.views  - View-specific properties
+ *   3. layer.shell.common      - Context-based selectors (:has)
  *
  * @module properties
  */
 
 // Forward all property modules
-// Order matters: tokens first, then shell, then views, then context
+// Order matters: shell, then views, then context
 
-@forward "tokens";
 @forward "shell";
 @forward "views";
 @forward "context";

@@ -5,7 +5,7 @@
 @use "../../library/mixins" as ui;
 
 //
-@layer rs-toolbars {
+@layer layer.shell.faint.toolbar {
 
     .toolbar {
         background-color: transparent;

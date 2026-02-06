@@ -1,7 +1,6 @@
 @use "../../styles/lib" as lib;
-@use "../../styles/properties/tokens" as tokens;
 
-@layer settings {
+@layer layer.view.settings {
 
     // ========================================================================
     // CUSTOM INSTRUCTIONS EDITOR — Complex form with list management
@@ -278,7 +277,6 @@
         scrollbar-color: var(--basic-outline-variant) transparent;
 
         // Constrain content width and center the column
-        max-inline-size: clamp(420px, 100%, 640px);
         margin-inline: auto;
         inline-size: 100%;
 
@@ -449,7 +447,6 @@
         // Content wrapper with max width
         &__content {
             inline-size: 100%;
-            max-inline-size: clamp(600px, 80cqi, 800px);
         }
 
         // Main title

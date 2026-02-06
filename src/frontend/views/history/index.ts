@@ -7,7 +7,7 @@
 
 import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadAsAdopted } from "fest/dom";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { getItem, setItem } from "../../../core/storage";
@@ -45,9 +45,13 @@ export class HistoryView implements View {
     private element: HTMLElement | null = null;
     private entries = observe<HistoryEntry[]>([]);
     
+    private _sheet: CSSStyleSheet | null = null;
+
     lifecycle: ViewLifecycle = {
-        onMount: () => this.loadHistory(),
-        onShow: () => this.loadHistory()
+        onMount: () => {this.loadHistory(); this._sheet ??= loadAsAdopted(style) as CSSStyleSheet; },
+        onUnmount: () => { removeAdopted(this._sheet!); },
+        onShow: () => { this._sheet ??= loadAsAdopted(style) as CSSStyleSheet; this.loadHistory(); },
+        //onHide: () => { removeAdopted(this._sheet!); },
     };
 
     constructor(options: BaseViewOptions = {}) {
@@ -61,7 +65,7 @@ export class HistoryView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(style);
+        this._sheet = loadAsAdopted(style) as CSSStyleSheet;
         this.loadHistory();
 
         this.element = H`

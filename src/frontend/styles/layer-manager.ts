@@ -60,158 +60,51 @@ export type ViewId =
  */
 export const LAYER_HIERARCHY: LayerDefinition[] = [
     // === SYSTEM LAYERS (order 0-99) ===
-    {
-        name: 'layer.reset',
-        category: 'system',
-        order: 0,
-        description: 'CSS reset rules'
-    },
-    {
-        name: 'layer.normalize',
-        category: 'system',
-        order: 10,
-        description: 'Normalize browser defaults'
-    },
-    {
-        name: 'layer.tokens',
-        category: 'system',
-        order: 20,
-        description: 'CSS custom properties (variables)'
-    },
+    { name: 'layer.reset',              category: 'system',   order: 0,   description: 'CSS reset rules' },
+    { name: 'layer.normalize',          category: 'system',   order: 10,  description: 'Normalize browser defaults' },
+    { name: 'layer.tokens',             category: 'system',   order: 20,  description: 'CSS custom properties (variables)' },
+    { name: 'layer.properties.shell',   category: 'system',   order: 30,  description: 'Shell context custom properties' },
+    { name: 'layer.properties.views',   category: 'system',   order: 35,  description: 'View context custom properties' },
 
     // === RUNTIME LAYERS (order 100-199) ===
-    {
-        name: 'layer.runtime.base',
-        category: 'runtime',
-        order: 100,
-        description: 'Veela runtime base styles'
-    },
-    {
-        name: 'layer.runtime.components',
-        category: 'runtime',
-        order: 110,
-        description: 'Reusable component styles'
-    },
-    {
-        name: 'layer.runtime.utilities',
-        category: 'runtime',
-        order: 120,
-        description: 'Utility classes'
-    },
-    {
-        name: 'layer.runtime.animations',
-        category: 'runtime',
-        order: 130,
-        description: 'Keyframes and animation definitions'
-    },
+    { name: 'layer.runtime.base',       category: 'runtime',  order: 100, description: 'Veela runtime base styles' },
+    { name: 'layer.runtime.components', category: 'runtime',  order: 110, description: 'Reusable component styles' },
+    { name: 'layer.runtime.forms',      category: 'runtime',  order: 115, description: 'Form element base styles' },
+    { name: 'layer.runtime.utilities',  category: 'runtime',  order: 120, description: 'Utility classes' },
+    { name: 'layer.runtime.animations', category: 'runtime',  order: 130, description: 'Keyframes and animation definitions' },
+    { name: 'layer.boot',              category: 'runtime',  order: 140, description: 'Boot/choice screen styles' },
 
     // === SHELL LAYERS (order 200-299) ===
-    {
-        name: 'layer.shell.common',
-        category: 'shell',
-        order: 200,
-        description: 'Shared shell styles'
-    },
-    {
-        name: 'layer.shell.raw',
-        category: 'shell',
-        order: 210,
-        description: 'Raw shell (minimal)'
-    },
-    {
-        name: 'layer.shell.basic',
-        category: 'shell',
-        order: 220,
-        description: 'Basic shell (toolbar navigation)'
-    },
-    {
-        name: 'layer.shell.faint',
-        category: 'shell',
-        order: 230,
-        description: 'Faint shell (tabbed sidebar)'
-    },
+    { name: 'layer.shell.common',             category: 'shell', order: 200, description: 'Shared shell styles' },
+    { name: 'layer.shell.raw',                category: 'shell', order: 210, description: 'Raw shell (minimal)' },
+    { name: 'layer.shell.basic',              category: 'shell', order: 220, description: 'Basic shell (toolbar navigation)' },
+    { name: 'layer.shell.basic.layout',       category: 'shell', order: 222, description: 'Basic shell layout rules' },
+    { name: 'layer.shell.basic.components',   category: 'shell', order: 224, description: 'Basic shell component styles' },
+    { name: 'layer.shell.faint',              category: 'shell', order: 230, description: 'Faint shell (tabbed sidebar)' },
+    { name: 'layer.shell.faint.layout',       category: 'shell', order: 232, description: 'Faint shell layout' },
+    { name: 'layer.shell.faint.sidebar',      category: 'shell', order: 234, description: 'Faint shell sidebar' },
+    { name: 'layer.shell.faint.toolbar',      category: 'shell', order: 236, description: 'Faint shell toolbar' },
+    { name: 'layer.shell.faint.forms',        category: 'shell', order: 238, description: 'Faint shell form components' },
 
     // === VIEW LAYERS (order 300-399) ===
-    {
-        name: 'layer.view.common',
-        category: 'view',
-        order: 300,
-        description: 'Shared view styles'
-    },
-    {
-        name: 'layer.view.viewer',
-        category: 'view',
-        order: 310,
-        description: 'Markdown viewer'
-    },
-    {
-        name: 'layer.view.workcenter',
-        category: 'view',
-        order: 320,
-        description: 'Work center (AI prompts)'
-    },
-    {
-        name: 'layer.view.settings',
-        category: 'view',
-        order: 330,
-        description: 'Settings view'
-    },
-    {
-        name: 'layer.view.explorer',
-        category: 'view',
-        order: 340,
-        description: 'File explorer'
-    },
-    {
-        name: 'layer.view.history',
-        category: 'view',
-        order: 350,
-        description: 'History view'
-    },
-    {
-        name: 'layer.view.editor',
-        category: 'view',
-        order: 360,
-        description: 'Editor view'
-    },
-    {
-        name: 'layer.view.airpad',
-        category: 'view',
-        order: 370,
-        description: 'Airpad (touch input)'
-    },
-    {
-        name: 'layer.view.home',
-        category: 'view',
-        order: 380,
-        description: 'Home/landing view'
-    },
-    {
-        name: 'layer.view.print',
-        category: 'view',
-        order: 390,
-        description: 'Print view'
-    },
+    { name: 'layer.view.common',              category: 'view', order: 300, description: 'Shared view styles' },
+    { name: 'layer.view.viewer',              category: 'view', order: 310, description: 'Markdown viewer' },
+    { name: 'layer.view.workcenter',          category: 'view', order: 320, description: 'Work center (AI prompts)' },
+    { name: 'layer.view.workcenter.keyframes', category: 'view', order: 322, description: 'Work center animations' },
+    { name: 'layer.view.settings',            category: 'view', order: 330, description: 'Settings view' },
+    { name: 'layer.view.explorer',            category: 'view', order: 340, description: 'File explorer' },
+    { name: 'layer.view.history',             category: 'view', order: 350, description: 'History view' },
+    { name: 'layer.view.editor',              category: 'view', order: 360, description: 'Editor view' },
+    { name: 'layer.view.editor.markdown',     category: 'view', order: 362, description: 'Markdown editor sublayer' },
+    { name: 'layer.view.editor.quill',        category: 'view', order: 364, description: 'Quill editor sublayer' },
+    { name: 'layer.view.airpad',              category: 'view', order: 370, description: 'Airpad (touch input)' },
+    { name: 'layer.view.home',                category: 'view', order: 380, description: 'Home/landing view' },
+    { name: 'layer.view.print',               category: 'view', order: 390, description: 'Print view' },
 
     // === OVERRIDE LAYERS (order 900-999) ===
-    {
-        name: 'layer.override.theme',
-        category: 'override',
-        order: 900,
-        description: 'Theme customizations'
-    },
-    {
-        name: 'layer.override.print',
-        category: 'override',
-        order: 910,
-        description: 'Print media styles'
-    },
-    {
-        name: 'layer.override.a11y',
-        category: 'override',
-        order: 920,
-        description: 'Accessibility enhancements'
-    },
+    { name: 'layer.override.theme',  category: 'override', order: 900, description: 'Theme customizations' },
+    { name: 'layer.override.print',  category: 'override', order: 910, description: 'Print media styles' },
+    { name: 'layer.override.a11y',   category: 'override', order: 920, description: 'Accessibility enhancements' },
 ];
 
 // ============================================================================
@@ -383,27 +276,40 @@ export const LAYERS = {
     RESET: 'layer.reset',
     NORMALIZE: 'layer.normalize',
     TOKENS: 'layer.tokens',
+    PROPERTIES_SHELL: 'layer.properties.shell',
+    PROPERTIES_VIEWS: 'layer.properties.views',
 
     // Runtime
     RUNTIME_BASE: 'layer.runtime.base',
     RUNTIME_COMPONENTS: 'layer.runtime.components',
+    RUNTIME_FORMS: 'layer.runtime.forms',
     RUNTIME_UTILITIES: 'layer.runtime.utilities',
     RUNTIME_ANIMATIONS: 'layer.runtime.animations',
+    BOOT: 'layer.boot',
 
     // Shell
     SHELL_COMMON: 'layer.shell.common',
     SHELL_RAW: 'layer.shell.raw',
     SHELL_BASIC: 'layer.shell.basic',
+    SHELL_BASIC_LAYOUT: 'layer.shell.basic.layout',
+    SHELL_BASIC_COMPONENTS: 'layer.shell.basic.components',
     SHELL_FAINT: 'layer.shell.faint',
+    SHELL_FAINT_LAYOUT: 'layer.shell.faint.layout',
+    SHELL_FAINT_SIDEBAR: 'layer.shell.faint.sidebar',
+    SHELL_FAINT_TOOLBAR: 'layer.shell.faint.toolbar',
+    SHELL_FAINT_FORMS: 'layer.shell.faint.forms',
 
     // View
     VIEW_COMMON: 'layer.view.common',
     VIEW_VIEWER: 'layer.view.viewer',
     VIEW_WORKCENTER: 'layer.view.workcenter',
+    VIEW_WORKCENTER_KEYFRAMES: 'layer.view.workcenter.keyframes',
     VIEW_SETTINGS: 'layer.view.settings',
     VIEW_EXPLORER: 'layer.view.explorer',
     VIEW_HISTORY: 'layer.view.history',
     VIEW_EDITOR: 'layer.view.editor',
+    VIEW_EDITOR_MARKDOWN: 'layer.view.editor.markdown',
+    VIEW_EDITOR_QUILL: 'layer.view.editor.quill',
     VIEW_AIRPAD: 'layer.view.airpad',
     VIEW_HOME: 'layer.view.home',
     VIEW_PRINT: 'layer.view.print',

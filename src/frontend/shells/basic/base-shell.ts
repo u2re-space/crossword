@@ -271,17 +271,19 @@ export abstract class BaseShell implements Shell {
             return;
         }
 
-        // Hide previous view
+        // Hide previous view AND remove data-view to stop :has() matching
         const previousId = this.navigationState.previousView;
         if (previousId && this.loadedViews.has(previousId)) {
             const prev = this.loadedViews.get(previousId)!;
             if (prev.view.lifecycle?.onHide) {
                 prev.view.lifecycle.onHide();
             }
+            prev.element.removeAttribute("data-view");
             prev.element.hidden = true;
         }
 
-        // Show new view
+        // Show new view AND set data-view for :has() context selectors
+        element.setAttribute("data-view", this.currentView.value);
         element.hidden = false;
 
         // Add to content if not already there

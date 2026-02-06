@@ -1,10 +1,12 @@
-@layer reset, theme, layout, components, utilities;
+/* Airpad internal layers are nested inside layer.view.airpad
+   to avoid conflicting with the global layer order.
+   The global ordering is managed by layer-manager.ts. */
 
 /* ==========================================================================
    RESET LAYER - Global resets and base styles
    ========================================================================== */
 
-@layer reset {
+@layer layer.view.airpad {
     *,
     *::before,
     *::after {
@@ -36,7 +38,7 @@
    THEME LAYER - Material You inspired color system and design tokens
    ========================================================================== */
 
-@layer theme {
+@layer layer.view.airpad {
     :root:has(.view-airpad) {
         /* Material You color system - Enhanced with BeerCSS influences */
         --primary: #0061a4;
@@ -155,7 +157,7 @@
    LAYOUT LAYER - Page layout and positioning
    ========================================================================== */
 
-@layer layout {
+@layer layer.view.airpad {
     .container {
         flex: 1;
         display: flex;
@@ -184,7 +186,7 @@
    COMPONENTS LAYER - Material You inspired component styles
    ========================================================================== */
 
-@layer components {
+@layer layer.view.airpad {
 
     /* Primary button - Material Design 3 filled button */
     .primary-btn {
@@ -958,7 +960,7 @@
    UTILITIES LAYER - Utility classes and responsive adjustments
    ========================================================================== */
 
-@layer utilities {
+@layer layer.view.airpad {
 
 .side-log-toggle {
     position: fixed;

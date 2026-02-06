@@ -1,4 +1,4 @@
-@layer layout {
+@layer layer.shell.basic.layout {
     .toolbar {
         display: flex;
         align-items: center;
@@ -1846,7 +1846,7 @@
 }
 
 
-@layer forms {
+@layer layer.runtime.forms {
     .form-group {
         display: flex;
         flex-direction: column;

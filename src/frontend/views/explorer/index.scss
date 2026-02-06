@@ -5,7 +5,7 @@
  * Uses CSS custom properties for theming.
  */
 
-@layer rs-explorer-view {
+@layer layer.view.explorer {
     /**
     * Explorer View Styles
     */
@@ -80,7 +80,7 @@
     }
 }
 
-@layer rs-explorer {
+@layer layer.view.explorer {
     // ========================================================================
     // CSS CUSTOM PROPERTIES
     // ========================================================================

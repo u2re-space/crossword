@@ -1,11 +1,10 @@
 @use "../../styles/lib" as lib;
-@use "../../styles/properties/tokens" as tokens;
 
 @use "./components" as c;
 @use "./keyframes" as kf;
 @use "./layout" as l;
 
-@layer shell.basic {
+@layer layer.shell.basic {
 
     :root:has(.app-shell) {
         color-scheme: light dark;

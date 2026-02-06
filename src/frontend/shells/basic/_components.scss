@@ -1,6 +1,6 @@
 /* _components.scss – Consolidated component definitions (deduplicated) */
 
-@layer base {
+@layer layer.shell.basic.components {
     .component-loading {
         display: flex;
         flex-direction: column;

@@ -6,7 +6,7 @@
  */
 
 import { H } from "fest/lure";
-import { loadAsAdopted } from "fest/dom";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 
@@ -27,9 +27,13 @@ export class AirpadView implements View {
     private element: HTMLElement | null = null;
     private initialized = false;
     
+    private _sheet: CSSStyleSheet | null = null;
+
     lifecycle: ViewLifecycle = {
         onMount: () => this.initAirpad(),
-        onUnmount: () => this.cleanup()
+        onUnmount: () => this.cleanup(),
+        onShow: () => { this._sheet = loadAsAdopted(style) as CSSStyleSheet; },
+        onHide: () => { removeAdopted(this._sheet); },
     };
 
     constructor(options: BaseViewOptions = {}) {
@@ -43,7 +47,7 @@ export class AirpadView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(style);
+        this._sheet = loadAsAdopted(style) as CSSStyleSheet;
 
         this.element = H`
             <div class="view-airpad">

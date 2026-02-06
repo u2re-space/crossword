@@ -317,7 +317,7 @@ $card-variants: (
     );
 }
 
-@layer rs-cards {
+@layer layer.shell.faint {
     @property --card-surface-tone { syntax: "<number>"; inherits: true; initial-value: 0.12; }
     @property --card-surface-tint { syntax: "<number>"; inherits: true; initial-value: -0.08; }
     @property --card-border-alpha { syntax: "<number>"; inherits: true; initial-value: 0.18; }

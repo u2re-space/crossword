@@ -5,7 +5,7 @@
  * Just basic layout and theme support.
  */
 
-@layer shell.raw {
+@layer layer.shell.raw {
     :root:has(.app-shell) {
         & .app-shell {
             // Full viewport coverage

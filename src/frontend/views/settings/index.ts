@@ -7,7 +7,7 @@
 
 import { H } from "fest/lure";
 import { ref, affected } from "fest/object";
-import { loadAsAdopted } from "fest/dom";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { getItem, setItem, StorageKeys } from "../../../core/storage";
@@ -64,9 +64,13 @@ export class SettingsView implements View {
     private element: HTMLElement | null = null;
     private settings = ref<AppSettings>(defaultSettings);
 
+    private _sheet: CSSStyleSheet | null = null;
+
     lifecycle: ViewLifecycle = {
-        onMount: () => this.loadSettings(),
-        onUnmount: () => this.saveSettings()
+        onMount: () => { this.loadSettings() ; this._sheet ??= loadAsAdopted(settingsStyles) as CSSStyleSheet; },
+        onUnmount: () => { this.saveSettings(); removeAdopted(this._sheet!); },
+        onShow: () => { this._sheet ??= loadAsAdopted(settingsStyles) as CSSStyleSheet; },
+        //onHide: () => { removeAdopted(this._sheet!); },
     };
 
     constructor(options: SettingsOptions = {}) {
@@ -80,7 +84,7 @@ export class SettingsView implements View {
             this.shellContext = options.shellContext || this.shellContext;
         }
 
-        loadAsAdopted(settingsStyles);
+        this._sheet = loadAsAdopted(settingsStyles) as CSSStyleSheet;
         this.loadSettings();
 
         this.element = H`
@@ -90,7 +94,7 @@ export class SettingsView implements View {
 
                     <section class="view-settings__section">
                         <h2>Appearance</h2>
-                        <div class="view-settings__group">
+                        <div class="view-settings__group"><form style="display: contents;" onsubmit="return false;">
                             <label class="view-settings__label">
                                 <span>Theme</span>
                                 <select data-setting="appearance.theme" class="view-settings__select">
@@ -107,12 +111,22 @@ export class SettingsView implements View {
                                     <option value="large" ${this.settings.value.appearance.fontSize === "large" ? "selected" : ""}>Large</option>
                                 </select>
                             </label>
-                        </div>
+                        </form></div>
                     </section>
 
                     <section class="view-settings__section">
                         <h2>AI Configuration</h2>
-                        <div class="view-settings__group">
+                        <div class="view-settings__group"><form style="display: contents;" onsubmit="return false;">
+                            <label class="view-settings__label">
+                                <span>Base URL</span>
+                                <input
+                                    type="url"
+                                    data-setting="ai.baseUrl"
+                                    class="view-settings__input"
+                                    placeholder="Enter your base URL"
+                                    value="${this.settings.value.ai?.baseUrl || ""}"
+                                />
+                            </label>
                             <label class="view-settings__label">
                                 <span>API Key</span>
                                 <input
@@ -120,7 +134,7 @@ export class SettingsView implements View {
                                     data-setting="ai.apiKey"
                                     class="view-settings__input"
                                     placeholder="Enter your API key"
-                                    value="${this.settings.value.ai.apiKey || ""}"
+                                    value="${this.settings.value.ai?.apiKey || ""}"
                                 />
                             </label>
                             <label class="view-settings__label">
@@ -141,12 +155,12 @@ export class SettingsView implements View {
                                 />
                                 <span>Auto-process shared content</span>
                             </label>
-                        </div>
+                        </form></div>
                     </section>
 
                     <section class="view-settings__section">
                         <h2>General</h2>
-                        <div class="view-settings__group">
+                        <div class="view-settings__group"><form style="display: contents;" onsubmit="return false;">
                             <label class="view-settings__checkbox">
                                 <input
                                     type="checkbox"
@@ -163,7 +177,7 @@ export class SettingsView implements View {
                                 />
                                 <span>Enable notifications</span>
                             </label>
-                        </div>
+                        </form></div>
                     </section>
 
                     <div class="view-settings__actions">

@@ -13,7 +13,7 @@
 // KEYFRAMES (Within layer for proper ordering)
 // ============================================================================
 
-@layer workcenter.keyframes {
+@layer layer.view.workcenter.keyframes {
     // Rotation animation (for spinners)
     @keyframes spin {
         0% {

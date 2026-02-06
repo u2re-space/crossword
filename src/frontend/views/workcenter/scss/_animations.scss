@@ -18,7 +18,7 @@
 // Keyframes are already defined in _keyframes.scss
 // REMOVED duplicate definitions (spin, blink, pulse, fadeIn)
 
-@layer workcenter {
+@layer layer.view.workcenter {
     .workcenter-view {
         animation: fadeIn 0.3s ease-out
     }

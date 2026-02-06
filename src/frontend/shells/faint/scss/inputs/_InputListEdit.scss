@@ -1,7 +1,7 @@
 @use "veela-lib" as *;
 
 //
-@layer rs-fields-input-list {
+@layer layer.shell.faint.forms {
 
     // Enhanced field list edit with design system integration
     .field-list-edit {
@@ -126,7 +126,7 @@
 }
 
 //
-@layer rs-fields-descriptor {
+@layer layer.shell.faint.forms {
 
     // Enhanced descriptor edit layout
     .descriptor-edit {
