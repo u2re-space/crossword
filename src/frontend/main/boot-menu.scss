@@ -1,46 +1,34 @@
-@layer layer.boot {
-
-    // ==========================================================================
-    // CONTEXT: BOOT VIEW (Loading/Selection Screen)
-    // ==========================================================================
-
+@layer boot.tokens {
     :root:has([data-view="boot"]),
     html:has([data-view="boot"]) {
         --view-padding: var(--space-8);
         --view-content-max-width: 480px;
-
-        // Boot screen tokens
         --view-boot-bg: var(--color-background);
         --view-boot-card-bg: var(--color-surface-elevated);
         --view-boot-card-shadow: var(--shadow-lg);
     }
 
-
-    /* ==========================================================================
-       CSS Custom Properties - Material You-inspired Design System
-       ========================================================================== */
-
     :root:has(.choice.container) {
-        /* Color Palette */
-        --choice-bg: #0a0d12;
-        --choice-fg: #e8ecf2;
-        --choice-card: #1a1f26;
-        --choice-card-hover: #202632;
-        --choice-card-active: #252c36;
-        --choice-muted: rgba(232, 236, 242, 0.68);
-        --choice-focus: rgba(140, 185, 255, 0.24);
-        --choice-primary: #8bb7ff;
-        --choice-primary-fg: #0a0d12;
-        --choice-highlight-bg: #e8ecf2;
-        --choice-highlight-fg: #0a0d12;
+        /* Colors */
+        --choice-bg: light-dark(#f5f7fb, #0a0d12);
+        --choice-fg: light-dark(#1a1f26, #e8ecf2);
+        --choice-card: light-dark(#ffffff, #1a1f26);
+        --choice-card-hover: light-dark(#f2f4f8, #202632);
+        --choice-card-active: light-dark(#e9edf4, #252c36);
+        --choice-muted: light-dark(rgba(26, 31, 38, 0.68), rgba(232, 236, 242, 0.68));
+        --choice-focus: light-dark(rgba(60, 120, 220, 0.24), rgba(140, 185, 255, 0.24));
+        --choice-primary: light-dark(#3c78dc, #8bb7ff);
+        --choice-primary-fg: light-dark(#ffffff, #0a0d12);
+        --choice-highlight-bg: light-dark(#1a1f26, #e8ecf2);
+        --choice-highlight-fg: light-dark(#ffffff, #0a0d12);
 
-        /* Elevation System */
+        /* Elevation */
         --choice-elev-0: none;
         --choice-elev-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
         --choice-elev-2: 0 3px 6px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.24);
         --choice-elev-3: 0 6px 12px rgba(0, 0, 0, 0.36), 0 4px 8px rgba(0, 0, 0, 0.28);
 
-        /* Shape System */
+        /* Shape */
         --choice-radius-xs: 4px;
         --choice-radius-sm: 8px;
         --choice-radius-md: 12px;
@@ -52,67 +40,87 @@
         --choice-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         --choice-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
     }
+}
 
-    /* ==========================================================================
-       Global Styles
-       ========================================================================== */
-
+@layer boot.base {
     :where(html, body):has(.choice.container) {
         block-size: 100%;
         min-block-size: 100%;
+        margin: 0;
+        padding: 0;
+        border: none 0 transparent;
+        outline: none 0 transparent;
         background: var(--choice-bg);
         color: var(--choice-fg);
         font-family: var(--choice-font);
-        margin: 0;
-        padding: 0;
-        border: none 0px transparent;
-        outline: none 0px transparent;
     }
 
     :where(body:has(.choice.container)) {
-        margin: 0;
-        padding: 0;
-        border: none 0px transparent;
-        outline: none 0px transparent;
         display: flex;
         place-content: center;
         place-items: center;
-
-        /* Material You-inspired subtle gradient background */
         background:
-            radial-gradient(ellipse 1200px 800px at 50% 20%, rgba(139, 183, 255, 0.08) 0%, rgba(10, 13, 18, 0.85) 45%, var(--choice-bg) 100%);
-        background-color: var(--choice-bg);
-
-        /* Subtle pattern overlay */
-        background-image:
+            radial-gradient(ellipse 1200px 800px at 50% 20%, rgba(139, 183, 255, 0.08) 0%, rgba(10, 13, 18, 0.85) 45%, var(--choice-bg) 100%),
             radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
             radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.01) 0%, transparent 50%);
+        background-color: var(--choice-bg);
 
-        & > :where(*) {
-            box-sizing: border-box;
-        }
-
+        & > :where(*),
         & :where(*) {
             box-sizing: border-box;
         }
 
-        /* Reset line-height for form and content elements */
-        & :where(button, p, span, a, input, textarea, select, option, optgroup, fieldset, legend, label, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, details, figcaption, figure, footer, header, hgroup, main, menu, nav, section, summary, time, mark, audio, video) {
+        & :where(
+            button,
+            p,
+            span,
+            a,
+            input,
+            textarea,
+            select,
+            option,
+            optgroup,
+            fieldset,
+            legend,
+            label,
+            table,
+            caption,
+            tbody,
+            tfoot,
+            thead,
+            tr,
+            th,
+            td,
+            article,
+            aside,
+            details,
+            figcaption,
+            figure,
+            footer,
+            header,
+            hgroup,
+            main,
+            menu,
+            nav,
+            section,
+            summary,
+            time,
+            mark,
+            audio,
+            video
+        ) {
             line-height: normal;
         }
     }
 
-    /* */
     #app:has(.choice.container) {
         display: flex !important;
         place-content: center !important;
         place-items: center !important;
     }
+}
 
-    /* ==========================================================================
-       Main Container
-       ========================================================================== */
-
+@layer boot.components {
     .choice {
         &.container {
             inline-size: min(640px, 100%);
@@ -120,7 +128,6 @@
             margin-block: 0;
             padding: var(--choice-radius-xl);
             display: grid;
-            inset: auto;
             gap: var(--choice-radius-lg);
             align-content: start;
             justify-items: stretch;
@@ -136,8 +143,8 @@
             transform: none;
             translate: none;
             place-self: center;
+            inset: auto;
 
-            /* Subtle border using tonal elevation */
             &::before {
                 content: '';
                 position: absolute;
@@ -146,9 +153,76 @@
                 box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
                 pointer-events: none;
             }
+
+            button {
+                appearance: none;
+                inline-size: stretch;
+                min-inline-size: fit-content;
+                max-inline-size: none;
+                border: none;
+                border-radius: var(--choice-radius-lg);
+                padding: var(--choice-radius-md) var(--choice-radius-lg);
+                font-size: 15px;
+                font-family: var(--choice-font);
+                font-weight: 500;
+                line-height: 1.4;
+                cursor: pointer;
+                background: rgba(255, 255, 255, 0.02);
+                color: var(--choice-fg);
+                transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+                text-align: center;
+                position: relative;
+                box-shadow: var(--choice-elev-0);
+                min-block-size: max-content;
+                max-block-size: none;
+
+                &:hover {
+                    background: rgba(255, 255, 255, 0.06);
+                    box-shadow: var(--choice-elev-1);
+                    transform: translateY(-1px);
+                }
+
+                &:active {
+                    background: rgba(255, 255, 255, 0.08);
+                    box-shadow: var(--choice-elev-0);
+                    transform: translateY(0);
+                }
+
+                &:focus-visible {
+                    outline: none;
+                    background: rgba(139, 183, 255, 0.12);
+                    color: var(--choice-fg);
+                    box-shadow: var(--choice-elev-1), 0 0 0 3px var(--choice-focus);
+                }
+
+                &.big {
+                    font-size: 16px;
+                    font-weight: 600;
+                    padding: var(--choice-radius-lg) var(--choice-radius-xl);
+                }
+
+                &.recommended {
+                    background: var(--choice-primary);
+                    color: var(--choice-primary-fg);
+                    box-shadow: var(--choice-elev-1);
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--choice-primary) 90%, black);
+                        box-shadow: var(--choice-elev-2);
+                    }
+                }
+
+                &.faint {
+                    opacity: 0.7;
+                    font-weight: 400;
+
+                    &:hover {
+                        opacity: 0.8;
+                    }
+                }
+            }
         }
 
-        /* Component Styles */
         &-header {
             font-size: 20px;
             font-weight: 600;
@@ -231,86 +305,9 @@
             }
         }
     }
+}
 
-    /* ==========================================================================
-       Button Styles
-       ========================================================================== */
-
-    .choice.container {
-        button {
-            appearance: none;
-            inline-size: stretch;
-            min-inline-size: fit-content;
-            max-inline-size: none;
-            border: none;
-            border-radius: var(--choice-radius-lg);
-            padding: var(--choice-radius-md) var(--choice-radius-lg);
-            font-size: 15px;
-            font-family: var(--choice-font);
-            font-weight: 500;
-            line-height: 1.4;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--choice-fg);
-            transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-            text-align: center;
-            position: relative;
-            box-shadow: var(--choice-elev-0);
-            min-block-size: max-content;
-            max-block-size: none;
-
-            &:hover {
-                background: rgba(255, 255, 255, 0.06);
-                box-shadow: var(--choice-elev-1);
-                transform: translateY(-1px);
-            }
-
-            &:active {
-                background: rgba(255, 255, 255, 0.08);
-                box-shadow: var(--choice-elev-0);
-                transform: translateY(0);
-            }
-
-            &:focus-visible {
-                outline: none;
-                background: rgba(139, 183, 255, 0.12);
-                color: var(--choice-fg);
-                box-shadow: var(--choice-elev-1), 0 0 0 3px var(--choice-focus);
-            }
-
-            /* Button Variants */
-            &.big {
-                font-size: 16px;
-                font-weight: 600;
-                padding: var(--choice-radius-lg) var(--choice-radius-xl);
-            }
-
-            &.recommended {
-                background: var(--choice-primary);
-                color: var(--choice-primary-fg);
-                box-shadow: var(--choice-elev-1);
-
-                &:hover {
-                    background: color-mix(in oklab, var(--choice-primary) 90%, black);
-                    box-shadow: var(--choice-elev-2);
-                }
-            }
-
-            &.faint {
-                opacity: 0.7;
-                font-weight: 400;
-
-                &:hover {
-                    opacity: 0.8;
-                }
-            }
-        }
-    }
-
-    /* ==========================================================================
-       Responsive Design - Mobile/Small Screens
-       ========================================================================== */
-
+@layer boot.responsive {
     @container (max-inline-size: 520px) {
         .choice {
             &.container {
@@ -324,9 +321,17 @@
                 inset-inline-start: auto;
                 inset-block-start: auto;
                 transform: none;
+
+                button {
+                    padding: var(--choice-radius-sm) var(--choice-radius-md);
+                    font-size: 14px;
+
+                    &.big {
+                        padding: var(--choice-radius-md) var(--choice-radius-lg);
+                    }
+                }
             }
 
-            /* Responsive Component Adjustments */
             &-header {
                 font-size: 18px;
             }
@@ -348,18 +353,6 @@
             &-reasons {
                 font-size: 13px;
                 padding: var(--choice-radius-xs) var(--choice-radius-sm);
-            }
-        }
-
-        /* Responsive Button Styles */
-        .choice.container {
-            button {
-                padding: var(--choice-radius-sm) var(--choice-radius-md);
-                font-size: 14px;
-
-                &.big {
-                    padding: var(--choice-radius-md) var(--choice-radius-lg);
-                }
             }
         }
     }

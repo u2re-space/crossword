@@ -1,3 +1,23 @@
+@layer layer.shell.basic.animations {
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
 @layer layer.shell.basic.layout {
     .toolbar {
         display: flex;
@@ -13,9 +33,7 @@
         inline-size: stretch;
         contain: strict;
         position: relative;
-        overflow: hidden;
-        overflow-x: auto;
-        overflow-y: hidden;
+        overflow: hidden auto;
         scrollbar-width: none;
         scrollbar-color: transparent;
         -webkit-overflow-scrolling: touch;
@@ -63,7 +81,6 @@
                 transition: all var(--basic-motion-fast);
                 white-space: nowrap;
                 min-block-size: 36px;
-                max-block-size: none;
                 inline-size: max-content;
                 block-size: max-content;
                 min-inline-size: calc-size(fit-content, max(size, 25px) + 0.5rem + var(--icon-size, 1rem));
@@ -123,7 +140,7 @@
                         border-top: 2px solid currentColor;
                         border-radius: 50%;
                         animation: spin 1s linear infinite;
-                        margin-left: var(--space-xs);
+                        margin-inline-start: var(--space-xs);
                     }
                 }
             }
@@ -224,6 +241,13 @@
                 background: var(--basic-outline);
             }
         }
+    }
+
+    .content,
+    .settings-view,
+    .workcenter-view {
+        animation: fadeInUp 0.4s ease-out;
+        block-size: stretch;
     }
 
     .status {
@@ -631,27 +655,34 @@
         box-shadow: var(--basic-elev-3);
     }
 
-    .modal-header {
+    .modal-header,
+    .card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: var(--space-xl);
+        margin-bottom: var(--space-lg);
         padding-bottom: var(--space-md);
     }
 
-    .modal-title {
+    .modal-title,
+    .card-title {
         margin: 0;
-        font-size: var(--text-2xl);
+        font-size: var(--text-xl);
         font-weight: var(--font-weight-semibold);
         color: var(--basic-on-surface);
         letter-spacing: 0.01em;
+    }
+
+    .modal-title {
+        font-size: var(--text-2xl);
     }
 
     .modal-body {
         margin-bottom: var(--space-xl);
     }
 
-    .modal-actions {
+    .modal-actions,
+    .card-actions {
         display: flex;
         gap: var(--space-md);
         justify-content: flex-end;
@@ -665,32 +696,14 @@
         transition: all var(--basic-motion-normal);
     }
 
-    .card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-lg);
-        padding-bottom: var(--space-md);
-    }
-
-    .card-title {
-        margin: 0;
-        font-size: var(--text-xl);
-        font-weight: var(--font-weight-semibold);
-        color: var(--basic-on-surface);
-        letter-spacing: 0.01em;
-    }
-
     .card-content {
         flex: 1;
     }
 
     .card-actions {
-        display: flex;
-        gap: var(--space-sm);
-        justify-content: flex-end;
         margin-top: var(--space-lg);
         padding-top: var(--space-md);
+        gap: var(--space-sm);
     }
 
     .grid {
@@ -840,13 +853,6 @@
 
     .mt-xl {
         margin-top: var(--space-xl);
-    }
-
-    .content,
-    .settings-view,
-    .workcenter-view {
-        animation: fadeInUp 0.4s ease-out;
-        block-size: stretch;
     }
 
     @media (max-width: 1024px) {

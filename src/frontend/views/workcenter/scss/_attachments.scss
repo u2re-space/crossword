@@ -40,13 +40,15 @@
                     content: "";
                     position: absolute;
                     inset: 0;
-                    background: linear-gradient(45deg,
-                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 25%,
-                            transparent 25%,
-                            transparent 50%,
-                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 50%,
-                            color-mix(in oklab, var(--basic-primary) 5%, transparent) 75%,
-                            transparent 75%);
+                    background: linear-gradient(
+                        45deg,
+                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 25%,
+                        transparent 25%,
+                        transparent 50%,
+                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 50%,
+                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 75%,
+                        transparent 75%
+                    );
                     background-size: 20px 20px;
                     border-radius: inherit;
                     pointer-events: none;
@@ -117,7 +119,8 @@
         min-width: 0;
     }
 
-    .file-icon {
+    .file-icon,
+    .file-preview {
         flex-shrink: 0;
     }
 
@@ -126,7 +129,6 @@
         height: 32px;
         object-fit: cover;
         border-radius: var(--basic-radius-sm);
-        flex-shrink: 0;
     }
 
     .file-details {
@@ -170,14 +172,11 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        flex-direction: row;
         gap: var(--space-md, 0.75rem);
-        place-self: center;
+        inline-size: stretch;
         min-inline-size: max-content;
         max-inline-size: stretch;
-        inline-size: stretch;
-        place-items: center;
-        place-content: stretch;
+        place-self: center;
     }
 
     .file-stats {
@@ -190,18 +189,27 @@
         border-radius: var(--basic-radius-sm);
         border: 1px solid var(--basic-outline-variant);
 
-        .file-counter {
+        .file-counter,
+        .data-counter {
             display: inline-flex;
             align-items: center;
             gap: var(--space-xs);
             padding: var(--space-xs) var(--space-sm);
-            background: var(--basic-surface-container-high);
             border-radius: var(--basic-radius-md);
             font-size: var(--text-sm);
             font-weight: var(--font-weight-medium);
+            inline-size: max-content;
+
+            .count {
+                min-inline-size: 1ch;
+                text-align: center;
+            }
+        }
+
+        .file-counter {
+            background: var(--basic-surface-container-high);
             color: var(--basic-on-surface-variant);
             border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 30%, transparent);
-            inline-size: max-content;
             min-inline-size: calc-size(fit-content, max(size, 25px) + 0.5rem + var(--icon-size, 1rem));
 
             ui-icon {
@@ -210,8 +218,6 @@
             }
 
             .count {
-                min-inline-size: 1ch;
-                text-align: center;
                 font-weight: 600;
                 color: var(--basic-primary);
             }
@@ -227,23 +233,10 @@
         }
 
         .data-counter {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-xs);
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--basic-radius-md);
-            font-size: var(--text-sm);
-            font-weight: var(--font-weight-medium);
-            inline-size: max-content;
             min-inline-size: 1.5rem;
 
             ui-icon {
                 font-size: var(--text-sm);
-            }
-
-            .count {
-                min-inline-size: 1ch;
-                text-align: center;
             }
 
             &.recognized {

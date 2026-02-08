@@ -1,70 +1,33 @@
-/**
- * Raw Shell Styles
- *
- * Minimal styling for the raw shell.
- * Just basic layout and theme support.
- */
-
 @layer layer.shell.raw {
     :is(html, body):has([data-shell="raw"]) {
-        --shell-nav-height: 0px;
-        --shell-content-padding: 0;
-
         --shell-nav-height: 0;
+        --shell-content-padding: 0;
         --shell-sidebar-width: 0;
         --shell-status-height: 0;
+
         --shell-bg: light-dark(var(--color-surface), var(--color-surface));
         --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
     }
 
-
     :root:has(.app-shell) {
         & .app-shell {
-            // Full viewport coverage
             position: absolute;
             inset: 0;
             display: flex;
             flex-direction: column;
-
-            // Theme-aware colors
             background-color: var(--shell-bg, var(--color-surface, #ffffff));
             color: var(--shell-fg, var(--color-on-surface, #1a1a1a));
-
-            // Smooth theme transitions
             transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        // Dark theme
-        &[data-theme="dark"], & [data-theme="dark"] {
-            --shell-bg: var(--basic-surface);
-            --shell-fg: var(--basic-on-surface);
-        }
-
-        // Light theme (explicit)
-        &[data-theme="light"], & [data-theme="light"] {
-            --shell-bg: var(--basic-surface);
-            --shell-fg: var(--basic-on-surface);
         }
     }
 
     .app-shell__content {
-        // Fill available space
-        flex: 1;
         position: relative;
-        overflow: auto;
-
-        // Content should fill container
+        flex: 1;
         display: flex;
         flex-direction: column;
-
-        // Allow content to scroll
-        overflow-y: auto;
-        overflow-x: hidden;
-
-        // Smooth scrolling
+        overflow: auto hidden;
         scroll-behavior: smooth;
-
-        // Hide scrollbar but keep functionality
         scrollbar-width: thin;
         scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
 
@@ -81,39 +44,31 @@
             border-radius: 3px;
         }
 
-        // Direct children fill the container
-        & > * {
+        &>* {
             flex: 1;
         }
     }
 
     .app-shell__status {
-        // Toast-style status messages
         position: fixed;
         inset-block-end: 1rem;
         inset-inline-start: 50%;
-        transform: translateX(-50%);
         z-index: 9999;
-
-        // Styling
+        transform: translateX(-50%);
         padding: 0.75rem 1.5rem;
         background-color: var(--shell-status-bg, rgba(0, 0, 0, 0.8));
         color: var(--shell-status-fg, #ffffff);
         border-radius: 8px;
         font-size: 0.875rem;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-        // Animation
         animation: shell-status-fade-in 0.2s ease-out;
 
-        // Hide when empty
         &:empty,
         &[hidden] {
             display: none;
         }
     }
 
-    // Print styles
     @media print {
         .app-shell {
             background: white;

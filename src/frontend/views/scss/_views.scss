@@ -1,56 +1,28 @@
-/**
- * View Custom Properties
- *
- * CSS custom properties specific to view components.
- * Uses :has() selectors for context-aware theming.
- *
- * Layer: properties.views
- *
- * @module properties/views
- */
-
-// ============================================================================
-// LAYER: properties.views
-// ============================================================================
-
 @layer layer.shell.common {
     :root {
         /* Layout */
         --shell-nav-height-base: 56px;
-        --shell-content-gutter: 1rem;
-
-        /* Colors */
-        --shell-bg: light-dark(var(--basic-surface, var(--color-surface)), var(--basic-surface, var(--color-surface)));
-        --shell-fg: light-dark(var(--basic-on-surface, var(--color-on-surface)), var(--basic-on-surface, var(--color-on-surface)));
-        --shell-nav-bg: light-dark(var(--basic-surface-container-high, var(--color-surface-container-high)), var(--basic-surface-container-high, var(--color-surface-container-high)));
-        --shell-nav-border: light-dark(var(--basic-outline-variant, var(--color-outline-variant)), var(--basic-outline-variant, var(--color-outline-variant)));
-    }
-
-    /* Combined shell + view */
-    :is(html, body):has([data-shell="basic"] [data-view="workcenter"]) {
-        --view-sidebar-position: "right";
-        --view-toolbar-alignment: "end";
-    }
-
-    :is(html, body):has([data-shell="faint"] [data-view="viewer"]) {
-        --view-tab-active: true;
-        --view-tab-height: var(--shell-tab-height);
-    }
-
-    :root {
-        /* Layout */
         --shell-nav-height: 48px;
         --shell-sidebar-width: 240px;
         --shell-sidebar-collapsed: 64px;
         --shell-status-height: 24px;
         --shell-toolbar-height: 40px;
         --shell-tab-height: 36px;
+        --shell-content-gutter: 1rem;
+
+        /* View layout */
+        --view-padding: var(--space-4);
+        --view-padding-x: var(--space-6);
+        --view-padding-y: var(--space-4);
+        --view-max-width: 100%;
+        --view-content-max-width: 960px;
 
         /* Colors */
         --shell-bg: light-dark(var(--color-surface), var(--color-surface));
         --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
         --shell-nav-bg: light-dark(var(--color-surface-elevated), var(--color-surface-elevated));
         --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-border: light-dark(var(--basic-outline-variant, var(--color-outline-variant)), var(--basic-outline-variant, var(--color-outline-variant)));
         --shell-sidebar-bg: light-dark(var(--color-surface), var(--color-surface));
         --shell-sidebar-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
         --shell-status-bg: light-dark(var(--color-surface-elevated), var(--color-surface-elevated));
@@ -64,6 +36,43 @@
         --shell-transition: var(--transition-normal) var(--ease-in-out);
     }
 
+    /* Combined shell + view */
+    :is(html, body):has([data-shell="basic"] [data-view="workcenter"]) {
+        --view-sidebar-position: "right";
+        --view-toolbar-alignment: "end";
+    }
+
+    :is(html, body):has([data-shell="faint"] [data-view="viewer"]) {
+        --view-tab-active: true;
+        --view-tab-height: var(--shell-tab-height);
+    }
+
+    /* Context: Debug view */
+    :is(:root, html):has([data-view="debug"]) {
+        --view-padding: var(--space-4);
+        --view-content-max-width: none;
+        --view-debug-font: var(--font-mono);
+        --view-debug-font-size: var(--text-sm);
+        --view-debug-bg: #1a1a2e;
+        --view-debug-fg: #00ff00;
+        --view-debug-border: #333366;
+    }
+
+    /* View + shell combinations */
+    :is(:root, html):has([data-shell="faint"] [data-view="viewer"]) {
+        --view-content-max-width: 720px;
+        --view-padding-x: var(--space-8);
+    }
+
+    :is(:root, html):has([data-shell="basic"] [data-view="viewer"]) {
+        --view-content-max-width: 800px;
+        --view-padding-x: var(--space-6);
+    }
+
+    :is(:root, html):has([data-shell="raw"] [data-view="home"]) {
+        --view-padding: var(--space-4);
+        --view-content-max-width: 100%;
+    }
 
     @media (prefers-contrast: more) {
         :root {
@@ -81,16 +90,29 @@
     }
 
     @media (max-width: 768px) {
+        :root {
+            --view-padding: var(--space-3);
+            --view-padding-x: var(--space-4);
+            --view-padding-y: var(--space-3);
+        }
+
         :is(:root, html):has([data-shell="faint"]) {
             --shell-sidebar-width: 0;
+        }
+
+        :is(:root, html):has([data-shell="basic"]) {
+            --shell-nav-height: 44px;
         }
 
         body:has([data-shell="faint"]) {
             margin-inline-start: 0;
         }
+    }
 
-        :is(:root, html):has([data-shell="basic"]) {
-            --shell-nav-height: 44px;
+    @media (max-width: 480px) {
+        :root {
+            --view-padding: var(--space-2);
+            --view-padding-x: var(--space-3);
         }
     }
 
@@ -108,81 +130,4 @@
             padding: 0;
         }
     }
-
-    // ==========================================================================
-    // VIEW BASE PROPERTIES
-    // ==========================================================================
-
-    :root {
-        // View layout tokens
-        --view-padding: var(--space-4);
-        --view-padding-x: var(--space-6);
-        --view-padding-y: var(--space-4);
-        --view-max-width: 100%;
-        --view-content-max-width: 960px;
-    }
-
-
-    // ==========================================================================
-    // CONTEXT: DEBUG VIEW
-    // ==========================================================================
-
-    :root:has([data-view="debug"]),
-    html:has([data-view="debug"]) {
-        --view-padding: var(--space-4);
-        --view-content-max-width: none;
-
-        // Debug-specific tokens
-        --view-debug-font: var(--font-mono);
-        --view-debug-font-size: var(--text-sm);
-        --view-debug-bg: #1a1a2e;
-        --view-debug-fg: #00ff00;
-        --view-debug-border: #333366;
-    }
-
-    // ==========================================================================
-    // VIEW + SHELL COMBINATIONS
-    // Context-aware styling for specific view/shell pairs
-    // ==========================================================================
-
-    // Viewer in Faint shell: adjust for sidebar
-    :root:has([data-shell="faint"] [data-view="viewer"]),
-    html:has([data-shell="faint"] [data-view="viewer"]) {
-        --view-content-max-width: 720px;
-        --view-padding-x: var(--space-8);
-    }
-
-    // Viewer in Basic shell: center content
-    :root:has([data-shell="basic"] [data-view="viewer"]),
-    html:has([data-shell="basic"] [data-view="viewer"]) {
-        --view-content-max-width: 800px;
-        --view-padding-x: var(--space-6);
-    }
-
-    // Home in Raw shell: maximize space
-    :root:has([data-shell="raw"] [data-view="home"]),
-    html:has([data-shell="raw"] [data-view="home"]) {
-        --view-padding: var(--space-4);
-        --view-content-max-width: 100%;
-    }
-
-    // ==========================================================================
-    // RESPONSIVE ADJUSTMENTS
-    // ==========================================================================
-
-    @media (max-width: 768px) {
-        :root {
-            --view-padding: var(--space-3);
-            --view-padding-x: var(--space-4);
-            --view-padding-y: var(--space-3);
-        }
-    }
-
-    @media (max-width: 480px) {
-        :root {
-            --view-padding: var(--space-2);
-            --view-padding-x: var(--space-3);
-        }
-    }
-
 }

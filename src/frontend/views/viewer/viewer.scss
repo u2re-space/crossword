@@ -1,17 +1,14 @@
 @layer viewer.tokens {
-
     :root:has([data-view="viewer"]),
     html:has([data-view="viewer"]) {
-        --view-layout: "flex";
-        --view-content-max-width: 900px;
-        --view-font-size-base: 1rem;
-        --view-line-height-base: 1.6;
-
         /* layout */
-        --view-padding: var(--space-6);
+        --view-layout: "flex";
         --view-content-max-width: 800px;
+        --view-padding: var(--space-6);
 
         /* typography */
+        --view-font-size-base: 1rem;
+        --view-line-height-base: 1.6;
         --view-prose-font-size: var(--text-base);
         --view-prose-line-height: 1.75;
         --view-prose-heading-margin: var(--space-6);
@@ -91,12 +88,6 @@
             opacity: 0.7;
         }
 
-        span {
-            @media (max-width: 640px) {
-                display: none;
-            }
-        }
-
         &:hover {
             background-color: var(--view-btn-hover-bg);
         }
@@ -104,6 +95,12 @@
         &:focus-visible {
             outline: 2px solid var(--color-primary, #007acc);
             outline-offset: 2px;
+        }
+
+        @media (max-width: 640px) {
+            span {
+                display: none;
+            }
         }
     }
 
@@ -162,7 +159,7 @@
             margin-block: 1em;
             padding-inline-start: 2em;
 
-            li {
+            & > li {
                 margin-block: 0.25em;
             }
         }
@@ -251,6 +248,7 @@
         justify-content: center;
         gap: 1rem;
         padding: 2rem;
+        text-align: center;
     }
 
     .view-loading {
@@ -265,10 +263,6 @@
         border-top-color: var(--color-primary, #007acc);
         border-radius: 50%;
         animation: view-spin 0.8s linear infinite;
-    }
-
-    .view-error {
-        text-align: center;
     }
 
     .view-error__icon {
@@ -305,6 +299,12 @@
 }
 
 @layer viewer.utilities {
+    @keyframes view-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
     @media print {
         .view-viewer__toolbar {
             display: none;
@@ -313,12 +313,6 @@
         .view-viewer__content {
             padding: 0;
             overflow: visible;
-        }
-    }
-
-    @keyframes view-spin {
-        to {
-            transform: rotate(360deg);
         }
     }
 }

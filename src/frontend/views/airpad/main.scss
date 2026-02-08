@@ -7,6 +7,7 @@
    ========================================================================== */
 
 @layer layer.view.airpad {
+
     *,
     *::before,
     *::after {
@@ -684,7 +685,8 @@
     .big-button {
         inline-size: 10rem;
         block-size: 10rem;
-        border-radius: 50%;/*var(--radius-3xl);*/
+        border-radius: 50%;
+        /*var(--radius-3xl);*/
         background: var(--surface-container-high);
         color: var(--on-surface);
         display: inline-flex;
@@ -769,69 +771,69 @@
     }
 
 
-.air-block,
-.ai-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    position: relative;
-}
-
-.air-row {
-    display: flex;
-    align-items: end;
-    flex-direction: row;
-    gap: 0.5rem;
-    position: relative;
-}
-
-.neighbor-button {
-    position: absolute;
-    inset-inline-end: -4.5rem;
-    inset-block-end: -1rem;
-    transform: translate(-50%);
-}
-
-.ai-block {
-    margin-block-end: 0.75rem;
-}
-
-.label {
-    font-size: 1rem;
-    color: #bfc8cc;
-    text-align: center;
-    line-height: 1.4;
-}
-
-.voice-line {
-    inline-size: 100%;
-    max-inline-size: 560px;
-    font-size: 1rem;
-    color: #e0e2e8;
-    margin-block-start: 0.25rem;
-    text-align: center;
-    min-block-size: 18px;
-}
-
-.hint {
-    font-size: 1rem;
-    color: #bfc8cc;
-    margin-block-start: 0.75rem;
-    text-align: center;
-    max-inline-size: 560px;
-    display: flex;
-    flex-direction: column;
-
-    ul {
-        padding-inline-start: 1.25rem;
-        margin: 0.25rem 0 0;
+    .air-block,
+    .ai-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
     }
 
-    li {
+    .air-row {
+        display: flex;
+        align-items: end;
+        flex-direction: row;
+        gap: 0.5rem;
+        position: relative;
+    }
+
+    .neighbor-button {
+        position: absolute;
+        inset-inline-end: -4.5rem;
+        inset-block-end: -1rem;
+        transform: translate(-50%);
+    }
+
+    .ai-block {
+        margin-block-end: 0.75rem;
+    }
+
+    .label {
+        font-size: 1rem;
+        color: #bfc8cc;
+        text-align: center;
+        line-height: 1.4;
+    }
+
+    .voice-line {
+        inline-size: 100%;
+        max-inline-size: 560px;
+        font-size: 1rem;
+        color: #e0e2e8;
         margin-block-start: 0.25rem;
+        text-align: center;
+        min-block-size: 18px;
     }
-}
+
+    .hint {
+        font-size: 1rem;
+        color: #bfc8cc;
+        margin-block-start: 0.75rem;
+        text-align: center;
+        max-inline-size: 560px;
+        display: flex;
+        flex-direction: column;
+
+        ul {
+            padding-inline-start: 1.25rem;
+            margin: 0.25rem 0 0;
+        }
+
+        li {
+            margin-block-start: 0.25rem;
+        }
+    }
 
     /* Stage layout - Material You layout */
     .stage {
@@ -954,391 +956,391 @@
 
 @layer layer.view.airpad {
 
-.side-log-toggle {
-    position: fixed;
-    inset-inline-end: 1rem;
-    inset-block-start: 50%;
-    transform: translateY(-50%);
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    background: #40484c;
-    color: #e0e2e8;
-    border: 1px solid #40484c;
-    border-radius: 1rem;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 12;
-
-    &:active {
-        transform: translateY(-50%) scale(0.98);
-    }
-}
-
-.neighbor-button {
-    inline-size: 60px;
-    block-size: 60px;
-    border-radius: 9999px;
-    background: #40484c;
-    color: #e0e2e8;
-    border: 1px solid #40484c;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
-
-    &:active {
-        transform: scale(0.95);
-        background: #353d41;
-    }
-}
-
-.air-button-container {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-/* Virtual keyboard styles */
-.keyboard-toggle {
-    position: fixed;
-    inset-block-end: 1.25rem;
-    inset-inline-end: 1.25rem;
-    inline-size: 56px;
-    block-size: 56px;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #0061a4, #004d7a);
-    color: white;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    box-shadow: 0 2px 3px 0 rgba(0, 0, 0, 0.30), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-
-    &:active {
-        transform: scale(0.95);
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-    }
-}
-
-.keyboard-toggle-editable {
-    caret-color: transparent;
-    outline: none;
-    color: transparent !important;
-    text-shadow: none !important;
-    overflow: hidden;
-
-    &::before {
-        content: '⌨️';
-        position: absolute;
-        inset-inline-start: 50%;
+    .side-log-toggle {
+        position: fixed;
+        inset-inline-end: 1rem;
         inset-block-start: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        z-index: 2;
-        font-size: 24px;
-        color: white;
-        line-height: 1;
-    }
-
-    &:focus {
-        caret-color: transparent;
-    }
-
-    &:focus::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 9999px;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
-        pointer-events: none;
-        z-index: 1;
-    }
-}
-
-.virtual-keyboard-container {
-    position: fixed;
-    inset: 0;
-    //background: #0f1419;
-    background: transparent;
-    //border-block-start: 1px solid #40484c;
-    //box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    transform: translateY(100%);
-    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    max-block-size: 50vh;
-    display: none;
-    flex-direction: column;
-    pointer-events: none;
-
-    &.visible {
-        transform: translateY(0);
-    }
-}
-
-.keyboard-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    border-block-end: 1px solid #40484c;
-}
-
-.keyboard-close {
-    background: transparent;
-    border: none;
-    color: #bfc8cc;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    line-height: 1;
-
-    &:active {
-        color: #e0e2e8;
-    }
-}
-
-.keyboard-tabs {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.keyboard-tab {
-    padding: 0.5rem 0.75rem;
-    background: #40484c;
-    border: none;
-    border-radius: 0.75rem;
-    color: #bfc8cc;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-
-    &.active {
-        background: #0061a4;
-        color: white;
-    }
-}
-
-.keyboard-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem;
-}
-
-.keyboard-panel {
-    display: none;
-
-    &.active {
-        display: block;
-    }
-}
-
-.keyboard-shift-container {
-    margin-block-end: 0.5rem;
-}
-
-.keyboard-shift {
-    inline-size: 100%;
-    padding: 0.5rem 1rem;
-    background: #40484c;
-    border: 1px solid #40484c;
-    border-radius: 0.75rem;
-    color: #bfc8cc;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-
-    &.active {
-        background: #0061a4;
-        color: white;
-    }
-}
-
-.keyboard-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-block-end: 0.5rem;
-}
-
-.keyboard-row {
-    display: flex;
-    gap: 0.25rem;
-    justify-content: center;
-}
-
-.keyboard-key {
-    flex: 1;
-    min-inline-size: 32px;
-    max-inline-size: 48px;
-    block-size: 44px;
-    background: #40484c;
-    border: 1px solid #40484c;
-    border-radius: 0.75rem;
-    color: #e0e2e8;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    touch-action: manipulation;
-    user-select: none;
-
-    &:active {
-        background: #0061a4;
-        color: white;
-        transform: scale(0.95);
-    }
-
-    &.special {
-        flex: 2;
-        max-inline-size: none;
+        transform: translateY(-50%);
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
-    }
+        background: #40484c;
+        color: #e0e2e8;
+        border: 1px solid #40484c;
+        border-radius: 1rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 12;
 
-    &.space {
-        flex: 4;
-    }
-}
-
-.keyboard-special {
-    display: flex;
-    gap: 0.25rem;
-    margin-block-start: 0.5rem;
-}
-
-.emoji-categories {
-    display: flex;
-    gap: 0.5rem;
-    margin-block-end: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.emoji-category-btn {
-    padding: 0.5rem 0.75rem;
-    background: #40484c;
-    border: none;
-    border-radius: 0.75rem;
-    color: #bfc8cc;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-
-    &.active {
-        background: #0061a4;
-        color: white;
-    }
-}
-
-.emoji-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-    gap: 0.5rem;
-    max-block-size: 200px;
-    overflow-y: auto;
-}
-
-.emoji-key {
-    inline-size: 44px;
-    block-size: 44px;
-    background: #40484c;
-    border: 1px solid #40484c;
-    border-radius: 0.75rem;
-    font-size: 24px;
-    cursor: pointer;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    touch-action: manipulation;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:active {
-        background: #0061a4;
-        transform: scale(0.95);
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 520px) {
-    .big-button {
-        inline-size: 140px;
-        block-size: 140px;
-        border-radius: 9999px;
+        &:active {
+            transform: translateY(-50%) scale(0.98);
+        }
     }
 
     .neighbor-button {
-        inline-size: 50px;
-        block-size: 50px;
+        inline-size: 60px;
+        block-size: 60px;
         border-radius: 9999px;
-        font-size: 0.875rem;
+        background: #40484c;
+        color: #e0e2e8;
+        border: 1px solid #40484c;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+
+        &:active {
+            transform: scale(0.95);
+            background: #353d41;
+        }
     }
 
     .air-button-container {
+        display: flex;
+        align-items: center;
         gap: 0.75rem;
     }
 
-    .stage {
-        gap: 1.5rem;
-    }
-
-    .side-log-toggle {
-        inset-inline-end: 0.75rem;
-    }
-
-    .bottom-toolbar {
-        inset-inline-start: 1rem;
-        inset-block-end: 1rem;
-        gap: 0.5rem;
-    }
-
-    .toolbar-btn {
-        inline-size: 48px;
-        block-size: 48px;
-        border-radius: 1rem;
-        font-size: 20px;
-    }
-
-    .clipboard-preview {
-        inset-block-end: calc(4rem + 1rem);
-    }
-
+    /* Virtual keyboard styles */
     .keyboard-toggle {
-        inline-size: 48px;
-        block-size: 48px;
+        position: fixed;
+        inset-block-end: 1.25rem;
+        inset-inline-end: 1.25rem;
+        inline-size: 56px;
+        block-size: 56px;
         border-radius: 9999px;
-        font-size: 20px;
-        inset-block-end: 1rem;
-        inset-inline-end: 1rem;
+        background: linear-gradient(135deg, #0061a4, #004d7a);
+        color: white;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 2px 3px 0 rgba(0, 0, 0, 0.30), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+
+        &:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        }
+    }
+
+    .keyboard-toggle-editable {
+        caret-color: transparent;
+        outline: none;
+        color: transparent !important;
+        text-shadow: none !important;
+        overflow: hidden;
+
+        &::before {
+            content: '⌨️';
+            position: absolute;
+            inset-inline-start: 50%;
+            inset-block-start: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 2;
+            font-size: 24px;
+            color: white;
+            line-height: 1;
+        }
+
+        &:focus {
+            caret-color: transparent;
+        }
+
+        &:focus::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 9999px;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 1;
+        }
     }
 
     .virtual-keyboard-container {
-        max-block-size: calc(100vh - 4rem);
+        position: fixed;
+        inset: 0;
+        //background: #0f1419;
+        background: transparent;
+        //border-block-start: 1px solid #40484c;
+        //box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        transform: translateY(100%);
+        transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        max-block-size: 50vh;
+        display: none;
+        flex-direction: column;
+        pointer-events: none;
+
+        &.visible {
+            transform: translateY(0);
+        }
+    }
+
+    .keyboard-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        border-block-end: 1px solid #40484c;
+    }
+
+    .keyboard-close {
+        background: transparent;
+        border: none;
+        color: #bfc8cc;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        line-height: 1;
+
+        &:active {
+            color: #e0e2e8;
+        }
+    }
+
+    .keyboard-tabs {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .keyboard-tab {
+        padding: 0.5rem 0.75rem;
+        background: #40484c;
+        border: none;
+        border-radius: 0.75rem;
+        color: #bfc8cc;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.active {
+            background: #0061a4;
+            color: white;
+        }
+    }
+
+    .keyboard-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .keyboard-panel {
+        display: none;
+
+        &.active {
+            display: block;
+        }
+    }
+
+    .keyboard-shift-container {
+        margin-block-end: 0.5rem;
+    }
+
+    .keyboard-shift {
+        inline-size: 100%;
+        padding: 0.5rem 1rem;
+        background: #40484c;
+        border: 1px solid #40484c;
+        border-radius: 0.75rem;
+        color: #bfc8cc;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.active {
+            background: #0061a4;
+            color: white;
+        }
+    }
+
+    .keyboard-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-block-end: 0.5rem;
+    }
+
+    .keyboard-row {
+        display: flex;
+        gap: 0.25rem;
+        justify-content: center;
     }
 
     .keyboard-key {
-        min-inline-size: 28px;
-        max-inline-size: 40px;
-        block-size: 40px;
-        font-size: 0.875rem;
+        flex: 1;
+        min-inline-size: 32px;
+        max-inline-size: 48px;
+        block-size: 44px;
+        background: #40484c;
+        border: 1px solid #40484c;
+        border-radius: 0.75rem;
+        color: #e0e2e8;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        touch-action: manipulation;
+        user-select: none;
+
+        &:active {
+            background: #0061a4;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        &.special {
+            flex: 2;
+            max-inline-size: none;
+            font-size: 0.875rem;
+        }
+
+        &.space {
+            flex: 4;
+        }
+    }
+
+    .keyboard-special {
+        display: flex;
+        gap: 0.25rem;
+        margin-block-start: 0.5rem;
+    }
+
+    .emoji-categories {
+        display: flex;
+        gap: 0.5rem;
+        margin-block-end: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .emoji-category-btn {
+        padding: 0.5rem 0.75rem;
+        background: #40484c;
+        border: none;
+        border-radius: 0.75rem;
+        color: #bfc8cc;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.active {
+            background: #0061a4;
+            color: white;
+        }
+    }
+
+    .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+        gap: 0.5rem;
+        max-block-size: 200px;
+        overflow-y: auto;
     }
 
     .emoji-key {
-        inline-size: 40px;
-        block-size: 40px;
-        font-size: 20px;
+        inline-size: 44px;
+        block-size: 44px;
+        background: #40484c;
+        border: 1px solid #40484c;
+        border-radius: 0.75rem;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        touch-action: manipulation;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:active {
+            background: #0061a4;
+            transform: scale(0.95);
+        }
     }
-}
+
+    /* Responsive adjustments */
+    @media (max-width: 520px) {
+        .big-button {
+            inline-size: 140px;
+            block-size: 140px;
+            border-radius: 9999px;
+        }
+
+        .neighbor-button {
+            inline-size: 50px;
+            block-size: 50px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+        }
+
+        .air-button-container {
+            gap: 0.75rem;
+        }
+
+        .stage {
+            gap: 1.5rem;
+        }
+
+        .side-log-toggle {
+            inset-inline-end: 0.75rem;
+        }
+
+        .bottom-toolbar {
+            inset-inline-start: 1rem;
+            inset-block-end: 1rem;
+            gap: 0.5rem;
+        }
+
+        .toolbar-btn {
+            inline-size: 48px;
+            block-size: 48px;
+            border-radius: 1rem;
+            font-size: 20px;
+        }
+
+        .clipboard-preview {
+            inset-block-end: calc(4rem + 1rem);
+        }
+
+        .keyboard-toggle {
+            inline-size: 48px;
+            block-size: 48px;
+            border-radius: 9999px;
+            font-size: 20px;
+            inset-block-end: 1rem;
+            inset-inline-end: 1rem;
+        }
+
+        .virtual-keyboard-container {
+            max-block-size: calc(100vh - 4rem);
+        }
+
+        .keyboard-key {
+            min-inline-size: 28px;
+            max-inline-size: 40px;
+            block-size: 40px;
+            font-size: 0.875rem;
+        }
+
+        .emoji-key {
+            inline-size: 40px;
+            block-size: 40px;
+            font-size: 20px;
+        }
+    }
 }

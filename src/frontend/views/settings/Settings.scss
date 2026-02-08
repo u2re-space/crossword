@@ -1,12 +1,9 @@
-
-@layer layer.view.settings {
+@layer view.settings {
     :root:has([data-view="settings"]),
     html:has([data-view="settings"]) {
+        /* layout */
         --view-layout: "flex";
         --view-sidebar-visible: true;
-        --view-content-max-width: 1200px;
-
-        /* layout */
         --view-padding: var(--space-6);
         --view-content-max-width: 640px;
         --view-section-gap: var(--space-8);
@@ -56,12 +53,12 @@
     }
 
     .settings-section {
+        position: relative;
+        overflow: hidden;
         background: var(--basic-surface-container-high);
         border-radius: var(--basic-radius-xl);
         padding: var(--space-xl);
         box-shadow: var(--basic-elev-2);
-        position: relative;
-        overflow: hidden;
         transition: all var(--basic-motion-normal);
 
         @container (max-width: 1024px) {
@@ -110,13 +107,13 @@
             padding-bottom: var(--space-md);
 
             h3 {
+                display: flex;
+                align-items: center;
+                gap: var(--space-sm);
                 margin: 0;
                 font-size: var(--text-lg);
                 font-weight: var(--font-weight-semibold);
                 color: var(--basic-on-surface);
-                display: flex;
-                align-items: center;
-                gap: var(--space-sm);
 
                 @container (max-width: 768px) {
                     font-size: var(--text-base);
@@ -187,6 +184,7 @@
             }
 
             .action-btn {
+                min-height: 44px;
                 padding: var(--space-sm) var(--space-xl);
                 border: none;
                 border-radius: var(--basic-radius-lg);
@@ -196,7 +194,6 @@
                 font-weight: var(--font-weight-semibold);
                 cursor: pointer;
                 transition: all var(--basic-motion-fast);
-                min-height: 44px;
 
                 &:hover {
                     background: var(--basic-surface-container-highest);
