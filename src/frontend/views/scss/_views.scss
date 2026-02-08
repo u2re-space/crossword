@@ -1,0 +1,96 @@
+/**
+ * View Custom Properties
+ *
+ * CSS custom properties specific to view components.
+ * Uses :has() selectors for context-aware theming.
+ *
+ * Layer: properties.views
+ *
+ * @module properties/views
+ */
+
+@use "../lib" as lib;
+
+// ============================================================================
+// LAYER: properties.views
+// ============================================================================
+
+@layer layer.properties.views {
+
+    // ==========================================================================
+    // VIEW BASE PROPERTIES
+    // ==========================================================================
+
+    :root {
+        // View layout tokens
+        --view-padding: var(--space-4);
+        --view-padding-x: var(--space-6);
+        --view-padding-y: var(--space-4);
+        --view-max-width: 100%;
+        --view-content-max-width: 960px;
+    }
+
+
+    // ==========================================================================
+    // CONTEXT: DEBUG VIEW
+    // ==========================================================================
+
+    :root:has([data-view="debug"]),
+    html:has([data-view="debug"]) {
+        --view-padding: var(--space-4);
+        --view-content-max-width: none;
+
+        // Debug-specific tokens
+        --view-debug-font: var(--font-mono);
+        --view-debug-font-size: var(--text-sm);
+        --view-debug-bg: #1a1a2e;
+        --view-debug-fg: #00ff00;
+        --view-debug-border: #333366;
+    }
+
+    // ==========================================================================
+    // VIEW + SHELL COMBINATIONS
+    // Context-aware styling for specific view/shell pairs
+    // ==========================================================================
+
+    // Viewer in Faint shell: adjust for sidebar
+    :root:has([data-shell="faint"] [data-view="viewer"]),
+    html:has([data-shell="faint"] [data-view="viewer"]) {
+        --view-content-max-width: 720px;
+        --view-padding-x: var(--space-8);
+    }
+
+    // Viewer in Basic shell: center content
+    :root:has([data-shell="basic"] [data-view="viewer"]),
+    html:has([data-shell="basic"] [data-view="viewer"]) {
+        --view-content-max-width: 800px;
+        --view-padding-x: var(--space-6);
+    }
+
+    // Home in Raw shell: maximize space
+    :root:has([data-shell="raw"] [data-view="home"]),
+    html:has([data-shell="raw"] [data-view="home"]) {
+        --view-padding: var(--space-4);
+        --view-content-max-width: 100%;
+    }
+
+    // ==========================================================================
+    // RESPONSIVE ADJUSTMENTS
+    // ==========================================================================
+
+    @media (max-width: 768px) {
+        :root {
+            --view-padding: var(--space-3);
+            --view-padding-x: var(--space-4);
+            --view-padding-y: var(--space-3);
+        }
+    }
+
+    @media (max-width: 480px) {
+        :root {
+            --view-padding: var(--space-2);
+            --view-padding-x: var(--space-3);
+        }
+    }
+
+}

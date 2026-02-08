@@ -10,8 +10,8 @@
  * - Direct URL loading
  */
 
-import type { BasicAppOptions } from "../shells/basic/shell";
-import { mountBasicApp } from "../shells/basic/shell";
+import type { BasicAppOptions } from "../shells/basic/ts/shell";
+import { mountBasicApp } from "../shells/basic/ts/shell";
 import { loadSettings } from "@rs-com/config/Settings";
 
 /**

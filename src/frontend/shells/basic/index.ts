@@ -9,13 +9,13 @@
  * - NO split view, NO sidebar, NO tabs
  */
 
-import { BaseShell } from "./base-shell";
+import { BaseShell } from "./ts/base-shell";
 import { H } from "fest/lure";
 import { affected } from "fest/object";
 import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
 
 // @ts-ignore - SCSS import
-import style from "./basic.scss?inline";
+import style from "./scss/basic.scss?inline";
 
 // Side effect: register icon component
 import "fest/icon";
@@ -45,7 +45,7 @@ const VALID_NAV_VIEW_IDS = new Set(MAIN_NAV_ITEMS.map(item => item.id));
 
 /** Type guard for valid navigation view IDs */
 function isValidNavViewId(id: string): id is typeof MAIN_NAV_ITEMS[number]["id"] {
-    return VALID_NAV_VIEW_IDS.has(id as ViewId);
+    return VALID_NAV_VIEW_IDS.has(id as any);
 }
 
 // ============================================================================

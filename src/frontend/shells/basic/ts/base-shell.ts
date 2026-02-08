@@ -7,7 +7,7 @@
 
 import { ref } from "fest/object";
 import { loadInlineStyle, preloadStyle } from "fest/dom";
-import { ViewRegistry } from "../../registry";
+import { ViewRegistry } from "../../../registry";
 import type {
     Shell,
     ShellId,
@@ -17,7 +17,7 @@ import type {
     ShellLayoutConfig,
     ShellNavigationState,
     View
-} from "../types";
+} from "../../types";
 
 //
 import "fest/fl-ui";

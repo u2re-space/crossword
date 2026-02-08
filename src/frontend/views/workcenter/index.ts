@@ -287,7 +287,7 @@ export class WorkCenterView implements View {
 
         try {
             // Dynamic import of AI processing
-            const { recognizeByInstructions } = await import("@rs-com/service/AI-ops/RecognizeData");
+            const { recognizeByInstructions } = await import("@rs-com/service/AI-ops/RecognizeData2");
 
             // Build input from files and prompt
             const input = [

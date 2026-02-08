@@ -1,0 +1,267 @@
+@use "./layout" as l;
+
+@layer shell.basic {
+    :root:has(.app-shell) {
+        color-scheme: light dark;
+
+        /* colors */
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-nav-bg: var(--basic-surface-container-high);
+        --shell-nav-border: var(--basic-outline-variant);
+        --shell-btn-hover: var(--basic-surface-container-highest);
+        --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary) 12%, transparent);
+        --shell-btn-active-fg: var(--basic-primary);
+        --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
+        --shell-status-fg: var(--basic-on-primary);
+
+        /* layout */
+        --shell-nav-height: 56px;
+        --shell-padding: 0;
+    }
+
+    :where(.app-shell, .app-shell[data-style="basic"]) {
+        display: grid;
+        grid-template-rows: [toolbar-row] auto [content-row] minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        padding: 0;
+        margin: 0;
+        background: var(--basic-background);
+        background-color: var(--shell-bg);
+        color: var(--shell-fg);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color-scheme: light dark;
+        contain: strict;
+        -webkit-tap-highlight-color: transparent;
+
+        position: absolute;
+        inset: -1;
+        transition: background-color 0.2s ease, color 0.2s ease;
+
+        align-items: center;
+        justify-content: center;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        overflow: hidden;
+
+        .loading-spinner {
+            inline-size: 32px;
+            block-size: 32px;
+            border: 3px solid rgba(128, 128, 128, 0.2);
+            border-top-color: var(--shell-btn-active-fg);
+            border-radius: 50%;
+            animation: app-shell-spin 0.8s linear infinite;
+        }
+
+        &[data-theme="light"] {
+            color-scheme: light;
+        }
+
+        &[data-theme="dark"] {
+            color-scheme: dark;
+        }
+    }
+
+    .app-shell__nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--gap-sm, 0.5rem);
+        block-size: var(--shell-nav-height);
+        padding-inline: var(--space-md, 0.75rem);
+        padding: 0;
+        background-color: var(--shell-nav-bg);
+        border-block-end: 1px solid var(--shell-nav-border);
+        flex-shrink: 0;
+        margin: 0;
+        transition:
+            background-color var(--basic-motion-normal, 0.2s ease),
+            border-color var(--basic-motion-normal, 0.2s ease);
+    }
+
+    .app-shell__nav-left {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-xs, 0.25rem);
+    }
+
+    .app-shell__nav-right {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-sm, 0.5rem);
+
+        & > * {
+            display: flex;
+            align-items: center;
+            gap: var(--gap-xs, 0.25rem);
+        }
+    }
+
+    .app-shell__nav-btn {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-sm, 0.5rem);
+        padding: var(--space-xs, 0.5rem) var(--space-md, 0.75rem);
+        border: none;
+        border-radius: var(--basic-radius-lg, 8px);
+        background: transparent;
+        color: var(--shell-fg);
+        font-size: var(--text-sm, 0.875rem);
+        font-weight: var(--font-weight-medium, 500);
+        cursor: pointer;
+        transition:
+            background-color var(--basic-motion-fast, 0.15s ease),
+            color var(--basic-motion-fast, 0.15s ease);
+        white-space: nowrap;
+        user-select: none;
+
+        ui-icon {
+            font-size: var(--icon-size-lg, 1.125rem);
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
+
+        &:hover {
+            background-color: var(--shell-btn-hover);
+        }
+
+        &:active {
+            background-color: var(--shell-btn-active-bg);
+            color: var(--shell-btn-active-fg);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--shell-btn-active-fg);
+            outline-offset: 2px;
+            box-shadow: var(--basic-focus-ring, none);
+        }
+
+        &.active {
+            background-color: var(--shell-btn-active-bg);
+            color: var(--shell-btn-active-fg);
+
+            ui-icon {
+                opacity: 1;
+            }
+        }
+    }
+
+    .app-shell__content {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        padding: 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+
+        & > * {
+            flex: 1;
+            overflow: auto;
+        }
+
+        &::-webkit-scrollbar {
+            inline-size: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background-color: rgba(128, 128, 128, 0.4);
+            border-radius: 4px;
+        }
+    }
+
+    .app-shell__status {
+        position: fixed;
+        inset-block-end: var(--space-2xl, 1.5rem);
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        padding: var(--space-md, 0.75rem) var(--space-xl, 1.5rem);
+        background-color: var(--shell-status-bg);
+        color: var(--shell-status-fg);
+        border-radius: var(--basic-radius-lg, 8px);
+        font-size: var(--text-sm, 0.875rem);
+        font-weight: var(--font-weight-medium, 500);
+        box-shadow: var(--basic-elev-3, 0 4px 12px rgba(0, 0, 0, 0.15));
+        animation: app-shell-status-enter 0.2s ease-out;
+
+        &:empty,
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .app-shell__loading {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        inline-size: stretch;
+        block-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        gap: var(--space-lg, 1rem);
+        padding: var(--space-2xl, 2rem);
+        position: absolute;
+        inset: -1;
+
+        .loading-spinner {
+            inline-size: 32px;
+            block-size: 32px;
+            border: 3px solid var(--basic-outline-variant);
+            border-top-color: var(--basic-primary);
+            border-radius: 50%;
+            animation: app-shell-spin 0.8s linear infinite;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .app-shell__nav-label {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        :where(.app-shell, .app-shell[data-style="basic"]) {
+            --shell-nav-height: 48px;
+        }
+
+        .app-shell__nav-btn {
+            padding: var(--space-xs, 0.4rem) var(--space-sm, 0.6rem);
+            font-size: var(--text-xs, 0.875rem);
+
+            ui-icon {
+                font-size: var(--icon-size-xl, 1.25rem);
+            }
+        }
+    }
+
+    @media print {
+        .app-shell__content {
+            overflow: visible;
+        }
+
+        .app-shell__nav,
+        .app-shell__status {
+            display: none !important;
+        }
+    }
+}

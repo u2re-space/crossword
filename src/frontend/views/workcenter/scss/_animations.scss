@@ -8,12 +8,57 @@
  * @module views/workcenter/animations
  */
 
-// MIGRATION: @import 'keyframes' → @use 'keyframes'
-// Note: Keyframes are CSS at-rules that output directly to CSS.
-// Since @use only makes SCSS variables/mixins/functions available,
-// we use @forward in an index file or include keyframes via build.
-// For now, we use @use to signal the dependency relationship.
-@use "keyframes";
+/**
+ * Workcenter Keyframe Animations
+ *
+ * Canonical animation definitions for workcenter view.
+ * Used by: _prompts.scss, _results.scss, _animations.scss
+ *
+ * Layer: workcenter.keyframes (lowest specificity)
+ *
+ * @module views/workcenter/keyframes
+ */
+
+// ============================================================================
+// SCSS MIXINS FOR ANIMATIONS
+// These can be @used by other modules: @use "keyframes" as anim;
+// ============================================================================
+
+/// Apply spin animation
+/// @param {Duration} $duration - animation duration (default 1s)
+@mixin spin($duration: 1s) {
+    animation: spin $duration linear infinite;
+}
+
+/// Apply blink animation
+/// @param {Duration} $duration - animation duration (default 1s)
+@mixin blink($duration: 1s) {
+    animation: blink $duration step-end infinite;
+}
+
+/// Apply pulse animation
+/// @param {Duration} $duration - animation duration (default 2s)
+@mixin pulse($duration: 2s) {
+    animation: pulse $duration ease-in-out infinite;
+}
+
+/// Apply fade in animation
+/// @param {Duration} $duration - animation duration (default 0.3s)
+@mixin fade-in($duration: 0.3s) {
+    animation: fadeIn $duration ease-out;
+}
+
+/// Apply slide in up animation
+/// @param {Duration} $duration - animation duration (default 0.3s)
+@mixin slide-in-up($duration: 0.3s) {
+    animation: slideInUp $duration ease-out;
+}
+
+/// Apply scale in animation
+/// @param {Duration} $duration - animation duration (default 0.2s)
+@mixin scale-in($duration: 0.2s) {
+    animation: scaleIn $duration ease-out;
+}
 
 // Keyframes are already defined in _keyframes.scss
 // REMOVED duplicate definitions (spin, blink, pulse, fadeIn)

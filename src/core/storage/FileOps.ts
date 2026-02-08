@@ -1,6 +1,6 @@
 import { getDirectoryHandle, handleIncomingEntries } from "fest/lure";
 import { handleDataTransferFiles, postCommitAnalyze, postCommitRecognize, writeFilesToDir } from "@rs-core/storage/FileSystem";
-import { analyzeRecognizeUnified } from "@rs-com/service/AI-ops/RecognizeData";
+import { analyzeRecognizeUnified } from "@rs-com/service/AI-ops/RecognizeData2";
 import { sanitizeFileName, writeFileSmart } from "@rs-core/storage/WriteFileSmart-v2";
 import { writeText, readText } from "@rs-core/modules/Clipboard";
 

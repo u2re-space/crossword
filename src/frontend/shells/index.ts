@@ -6,8 +6,8 @@
 
 export * from "./types";
 export * from "../registry";
-export * from "./basic/base-shell";
+export * from "./basic/ts/base-shell";
 
 // Default exports for convenience
 export { ShellRegistry, ViewRegistry, getDefaultBootConfig } from "../registry";
-export { BaseShell } from "./basic/base-shell";
+export { BaseShell } from "./basic/ts/base-shell";

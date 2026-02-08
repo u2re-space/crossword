@@ -11,7 +11,7 @@
  * - Single-component rendering
  */
 
-import { BaseShell } from "../basic/base-shell";
+import { BaseShell } from "../basic/ts/base-shell";
 import { H } from "fest/lure";
 import type { ShellId, ShellLayoutConfig } from "../types";
 

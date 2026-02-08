@@ -1,17 +1,233 @@
-@use "../../styles/lib" as lib;
 
 @layer layer.view.settings {
+    :root:has([data-view="settings"]),
+    html:has([data-view="settings"]) {
+        /* layout */
+        --view-padding: var(--space-6);
+        --view-content-max-width: 640px;
+        --view-section-gap: var(--space-8);
+        --view-field-gap: var(--space-4);
 
-    // ========================================================================
-    // CUSTOM INSTRUCTIONS EDITOR — Complex form with list management
-    // ========================================================================
+        /* colors */
+        --view-label-color: var(--color-text-secondary);
+    }
+
+    .settings-view {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xl);
+        max-block-size: 100%;
+        overflow: auto;
+        padding: var(--space-lg);
+        scrollbar-width: thin;
+        scrollbar-color: var(--basic-outline-variant) transparent;
+
+        @container (max-width: 1024px) {
+            gap: var(--space-lg);
+            padding: var(--space-md);
+        }
+
+        @container (max-width: 768px) {
+            gap: var(--space-md);
+            padding: var(--space-sm);
+        }
+
+        @container (max-width: 480px) {
+            gap: var(--space-sm);
+            padding: var(--space-xs);
+        }
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--basic-outline-variant);
+            border-radius: 3px;
+
+            &:hover {
+                background: var(--basic-outline);
+            }
+        }
+    }
+
+    .settings-section {
+        background: var(--basic-surface-container-high);
+        border-radius: var(--basic-radius-xl);
+        padding: var(--space-xl);
+        box-shadow: var(--basic-elev-2);
+        position: relative;
+        overflow: hidden;
+        transition: all var(--basic-motion-normal);
+
+        @container (max-width: 1024px) {
+            padding: var(--space-lg);
+            border-radius: var(--basic-radius-lg);
+        }
+
+        @container (max-width: 768px) {
+            padding: var(--space-md);
+        }
+
+        @container (max-width: 480px) {
+            padding: var(--space-sm);
+            border-radius: var(--basic-radius-md);
+        }
+
+        &:hover {
+            box-shadow: var(--basic-elev-3);
+            transform: translateY(-2px);
+
+            @media (prefers-reduced-motion: reduce) {
+                transform: none;
+            }
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                135deg,
+                color-mix(in oklab, var(--basic-tertiary) 2%, transparent) 0%,
+                transparent 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        & > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .settings-header {
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+
+            h3 {
+                margin: 0;
+                font-size: var(--text-lg);
+                font-weight: var(--font-weight-semibold);
+                color: var(--basic-on-surface);
+                display: flex;
+                align-items: center;
+                gap: var(--space-sm);
+
+                @container (max-width: 768px) {
+                    font-size: var(--text-base);
+                }
+
+                ui-icon {
+                    opacity: 0.7;
+                    margin-inline-end: var(--space-sm);
+                }
+            }
+        }
+
+        .form-group {
+            margin-bottom: var(--space-lg);
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+
+            label {
+                display: block;
+                margin-bottom: var(--space-sm);
+                font-size: var(--text-sm);
+                font-weight: var(--font-weight-medium);
+                color: var(--basic-on-surface);
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+                padding: var(--space-sm) var(--space-md);
+                border: none;
+                border-radius: var(--basic-radius-md);
+                background: var(--basic-surface);
+                color: var(--basic-on-surface);
+                font-size: var(--text-base);
+                font-family: var(--font-family);
+                transition: all var(--basic-motion-fast);
+
+                &:focus {
+                    outline: none;
+                    box-shadow: var(--basic-focus-ring);
+                }
+
+                &::placeholder {
+                    color: var(--basic-on-surface-variant);
+                }
+            }
+
+            textarea {
+                min-height: 100px;
+                resize: vertical;
+                font-family: var(--font-family-mono);
+            }
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: flex-end;
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+
+            @container (max-width: 768px) {
+                flex-direction: column;
+                gap: var(--space-sm);
+            }
+
+            .action-btn {
+                padding: var(--space-sm) var(--space-xl);
+                border: none;
+                border-radius: var(--basic-radius-lg);
+                background: var(--basic-surface-container-high);
+                color: var(--basic-on-surface);
+                font-size: var(--text-sm);
+                font-weight: var(--font-weight-semibold);
+                cursor: pointer;
+                transition: all var(--basic-motion-fast);
+                min-height: 44px;
+
+                &:hover {
+                    background: var(--basic-surface-container-highest);
+                    transform: translateY(-1px);
+                    box-shadow: var(--basic-elev-1);
+                }
+
+                &:active {
+                    transform: translateY(0);
+                    box-shadow: none;
+                }
+
+                &.primary {
+                    background: var(--basic-tertiary);
+                    color: var(--basic-on-tertiary);
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--basic-tertiary) 85%, black);
+                    }
+                }
+            }
+        }
+    }
+
+    .settings-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-lg);
+    }
 
     .custom-instructions-editor {
         display: grid;
         gap: var(--basic-spacing-md, 12px);
         text-align: start;
 
-        // Header with title & description
         .ci-header {
             display: grid;
             gap: var(--basic-spacing-xs, 4px);
@@ -32,7 +248,6 @@
             }
         }
 
-        // Active selection area
         .ci-active-select {
             label {
                 display: grid;
@@ -64,7 +279,6 @@
             }
         }
 
-        // Items list container
         .ci-list {
             display: grid;
             gap: var(--basic-spacing-sm, 8px);
@@ -80,7 +294,6 @@
             }
         }
 
-        // Individual list item
         .ci-item {
             border-radius: var(--basic-radius-md, 10px);
             padding: var(--basic-spacing-sm, 10px);
@@ -93,7 +306,6 @@
                 border-color: color-mix(in oklab, var(--basic-primary) 25%, transparent);
             }
 
-            // Item header with title & actions
             .ci-item-header {
                 display: flex;
                 align-items: center;
@@ -135,7 +347,6 @@
                 }
             }
 
-            // Item preview text
             .ci-item-preview {
                 margin-block-start: var(--basic-spacing-xs, 8px);
                 padding: var(--basic-spacing-xs, 8px);
@@ -148,7 +359,6 @@
                 white-space: pre-wrap;
             }
 
-            // Inline edit form
             .ci-edit-form {
                 margin-block-start: var(--basic-spacing-sm, 10px);
                 display: grid;
@@ -156,7 +366,6 @@
             }
         }
 
-        // Form inputs
         .ci-input,
         .ci-textarea {
             inline-size: stretch;
@@ -187,7 +396,6 @@
             min-block-size: 60px;
         }
 
-        // Action buttons
         .ci-edit-actions,
         .ci-add-actions {
             display: flex;
@@ -195,7 +403,6 @@
             justify-content: flex-end;
         }
 
-        // Add new item form
         .ci-add-form {
             display: grid;
             gap: var(--basic-spacing-xs, 8px);
@@ -211,17 +418,24 @@
             flex-wrap: wrap;
         }
 
-        // Button variants
         .btn {
-            &.tiny {
-                padding: 4px 8px;
-                font-size: var(--basic-text-xs, 10px);
-                border-radius: var(--basic-radius-sm, 6px);
+            &.tiny,
+            &.small {
                 background: transparent;
                 border: 1px solid var(--basic-outline-variant);
                 color: var(--basic-on-surface);
                 cursor: pointer;
                 transition: all var(--basic-motion-fast);
+
+                &:hover {
+                    background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
+                }
+            }
+
+            &.tiny {
+                padding: 4px 8px;
+                font-size: var(--basic-text-xs, 10px);
+                border-radius: var(--basic-radius-sm, 6px);
 
                 &.danger {
                     color: var(--basic-error, #c62828);
@@ -231,32 +445,15 @@
                         background: color-mix(in oklab, var(--basic-error, #c62828) 15%, transparent);
                     }
                 }
-
-                &:hover {
-                    background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
-                }
             }
 
             &.small {
                 padding: 6px 12px;
                 font-size: var(--basic-text-xs, 11px);
                 border-radius: var(--basic-radius-sm, 8px);
-                background: transparent;
-                border: 1px solid var(--basic-outline-variant);
-                color: var(--basic-on-surface);
-                cursor: pointer;
-                transition: all var(--basic-motion-fast);
-
-                &:hover {
-                    background: color-mix(in oklab, var(--basic-on-surface) 5%, transparent);
-                }
             }
         }
     }
-
-    // ========================================================================
-    // MAIN SETTINGS VIEW — Scrollable, left-aligned, constrained-width
-    // ========================================================================
 
     :where(.view-settings, .basic-settings) {
         display: flex;
@@ -268,15 +465,11 @@
         background-color: var(--view-bg, var(--basic-surface, #ffffff));
         color: var(--view-fg, var(--basic-on-surface, #1a1a1a));
         text-align: start;
-
         padding: var(--basic-spacing-lg, 20px);
         gap: var(--basic-spacing-md, 14px);
         max-block-size: none;
-
         scrollbar-width: thin;
         scrollbar-color: var(--basic-outline-variant) transparent;
-
-        // Constrain content width and center the column
         margin-inline: auto;
         inline-size: 100%;
 
@@ -285,12 +478,10 @@
             gap: var(--basic-spacing-sm, 10px);
         }
 
-        // Ensure form controls are interactive
         :where(select, input, textarea, option) {
             pointer-events: auto;
         }
 
-        // ── Page title ──
         h2 {
             margin: 0;
             font-size: var(--basic-text-xl, 20px);
@@ -299,7 +490,6 @@
             color: var(--basic-on-surface);
         }
 
-        // ── Card section ──
         .card {
             display: grid;
             gap: var(--basic-spacing-md, 12px);
@@ -322,7 +512,6 @@
             }
         }
 
-        // ── Form field ──
         .field {
             display: grid;
             gap: var(--basic-spacing-xs, 6px);
@@ -342,7 +531,6 @@
             }
         }
 
-        // ── Form inputs & selects ──
         .form-input,
         .form-select {
             inline-size: stretch;
@@ -371,7 +559,6 @@
             appearance: auto;
         }
 
-        // ── Checkbox styling ──
         .form-checkbox {
             input[type="checkbox"] {
                 inline-size: 18px;
@@ -382,7 +569,6 @@
             }
         }
 
-        // ── Action buttons area ──
         .actions {
             display: flex;
             align-items: center;
@@ -390,7 +576,6 @@
             padding-block-start: var(--basic-spacing-sm, 8px);
         }
 
-        // ── Primary button ──
         .btn {
             padding: var(--basic-spacing-xs, 8px) var(--basic-spacing-lg, 20px);
             border: 1px solid var(--basic-outline-variant);
@@ -418,7 +603,6 @@
             }
         }
 
-        // ── Info text ──
         .note,
         .ext-note {
             font-size: var(--basic-text-xs, 12px);
@@ -438,25 +622,17 @@
         }
     }
 
-    // ========================================================================
-    // VIEW-SETTINGS (faint shell BEM variant — keep for compatibility)
-    // ========================================================================
-
     .view-settings {
-
-        // Content wrapper with max width
         &__content {
             inline-size: 100%;
         }
 
-        // Main title
         &__title {
             margin: 0 0 2rem 0;
             font-size: 1.75rem;
             font-weight: var(--basic-font-weight-bold, 700);
         }
 
-        // Section grouping
         &__section {
             margin-block-end: 2rem;
             padding-block-end: 2rem;
@@ -475,26 +651,23 @@
             }
         }
 
-        // Group of related fields
         &__group {
             display: flex;
             flex-direction: column;
             gap: 1rem;
         }
 
-        // Label wrapper
         &__label {
             display: flex;
             flex-direction: column;
             gap: 0.375rem;
 
-            > span {
+            & > span {
                 font-size: var(--basic-text-sm, 0.875rem);
                 font-weight: var(--basic-font-weight-medium, 500);
             }
         }
 
-        // Input & select styling
         &__input,
         &__select {
             padding: 0.625rem 0.75rem;
@@ -521,7 +694,6 @@
             cursor: pointer;
         }
 
-        // Checkbox wrapper
         &__checkbox {
             display: flex;
             align-items: center;
@@ -540,14 +712,12 @@
             }
         }
 
-        // Action buttons container
         &__actions {
             display: flex;
             gap: 0.75rem;
             margin-block-start: 2rem;
         }
 
-        // Button base
         &__btn {
             padding: 0.625rem 1.25rem;
             border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
@@ -563,7 +733,6 @@
                 background-color: rgba(0, 0, 0, 0.05);
             }
 
-            // Primary button variant
             &--primary {
                 background-color: var(--color-primary, #007acc);
                 border-color: var(--color-primary, #007acc);
@@ -575,5 +744,4 @@
             }
         }
     }
-
 }

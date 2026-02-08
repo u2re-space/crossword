@@ -1,14 +1,47 @@
-/**
- * <rs-explorer> Web Component Styles
- *
- * Encapsulated styles for the file explorer component.
- * Uses CSS custom properties for theming.
- */
+@layer view.explorer {
+    @mixin spinner($size, $border, $accent, $duration: 0.8s) {
+        inline-size: $size;
+        block-size: $size;
+        border: $border solid var(--rs-border, rgba(128, 128, 128, 0.2));
+        border-block-start-color: $accent;
+        border-radius: 50%;
+        animation: rs-spin $duration linear infinite;
+    }
 
-@layer layer.view.explorer {
-    /**
-    * Explorer View Styles
-    */
+    :host:has(.view-explorer) {
+        /* Typography */
+        --rs-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --rs-font-size: 0.875rem;
+        --rs-line-height: 1.5;
+
+        /* Colors */
+        --rs-bg: light-dark(#ffffff, #1a1a1a);
+        --rs-bg-secondary: light-dark(#f9fafb, #1f2937);
+        --rs-fg: light-dark(#1a1a1a, #f3f4f6);
+        --rs-fg-muted: light-dark(#6b7280, #9ca3af);
+        --rs-border: light-dark(#e5e7eb, #374151);
+        --rs-hover-bg: light-dark(#f3f4f6, #374151);
+        --rs-selected-bg: light-dark(#dbeafe, #1e3a5f);
+        --rs-selected-border: light-dark(#3b82f6, #3b82f6);
+        --rs-accent: light-dark(#2563eb, #60a5fa);
+        --rs-accent-hover: light-dark(#1d4ed8, #93c5fd);
+        --rs-icon-folder: light-dark(#f59e0b, #f59e0b);
+        --rs-icon-file: light-dark(#6b7280, #9ca3af);
+
+        /* Layout */
+        display: flex;
+        flex-direction: column;
+        contain: layout style;
+        block-size: 100%;
+        min-block-size: 300px;
+
+        /* Typography usage */
+        font-family: var(--rs-font-family);
+        font-size: var(--rs-font-size);
+        line-height: var(--rs-line-height);
+        color: var(--rs-fg);
+        background: var(--rs-bg);
+    }
 
     .view-explorer {
         display: flex;
@@ -40,16 +73,7 @@
     }
 
     .view-explorer__spinner {
-        inline-size: 32px;
-        block-size: 32px;
-        border: 3px solid rgba(128, 128, 128, 0.2);
-        border-top-color: var(--color-primary, var(--basic-primary, #007acc));
-        border-radius: 50%;
-        animation: explorer-spin 0.8s linear infinite;
-    }
-
-    @keyframes explorer-spin {
-        to { transform: rotate(360deg); }
+        @include spinner(32px, 3px, var(--color-primary, var(--basic-primary, #007acc)));
     }
 
     .view-explorer__error {
@@ -78,65 +102,6 @@
             }
         }
     }
-}
-
-@layer layer.view.explorer {
-    // ========================================================================
-    // CSS CUSTOM PROPERTIES
-    // ========================================================================
-
-    :host:has(.view-explorer) {
-        --rs-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --rs-font-size: 0.875rem;
-        --rs-line-height: 1.5;
-
-        // Light theme (default)
-        --rs-bg: #ffffff;
-        --rs-bg-secondary: #f9fafb;
-        --rs-fg: #1a1a1a;
-        --rs-fg-muted: #6b7280;
-        --rs-border: #e5e7eb;
-        --rs-hover-bg: #f3f4f6;
-        --rs-selected-bg: #dbeafe;
-        --rs-selected-border: #3b82f6;
-        --rs-accent: #2563eb;
-        --rs-accent-hover: #1d4ed8;
-
-        // Icon colors
-        --rs-icon-folder: #f59e0b;
-        --rs-icon-file: #6b7280;
-
-        display: flex;
-        flex-direction: column;
-        contain: layout style;
-        font-family: var(--rs-font-family);
-        font-size: var(--rs-font-size);
-        line-height: var(--rs-line-height);
-        color: var(--rs-fg);
-        background: var(--rs-bg);
-        block-size: 100%;
-        min-block-size: 300px;
-    }
-
-    // Dark theme
-    @media (prefers-color-scheme: dark) {
-        :host:has(.view-explorer) {
-            --rs-bg: #1a1a1a;
-            --rs-bg-secondary: #1f2937;
-            --rs-fg: #f3f4f6;
-            --rs-fg-muted: #9ca3af;
-            --rs-border: #374151;
-            --rs-hover-bg: #374151;
-            --rs-selected-bg: #1e3a5f;
-            --rs-selected-border: #3b82f6;
-            --rs-accent: #60a5fa;
-            --rs-accent-hover: #93c5fd;
-        }
-    }
-
-    // ========================================================================
-    // CONTAINER
-    // ========================================================================
 
     .rs-explorer {
         display: flex;
@@ -148,21 +113,30 @@
         overflow: hidden;
     }
 
-    // ========================================================================
-    // TOOLBAR
-    // ========================================================================
-
-    .rs-explorer__toolbar {
+    .rs-explorer__toolbar,
+    .rs-explorer__status {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.5rem;
         background: var(--rs-bg-secondary);
-        border-block-end: 1px solid var(--rs-border);
         flex-shrink: 0;
     }
 
-    .rs-explorer__nav {
+    .rs-explorer__toolbar {
+        padding: 0.5rem;
+        border-block-end: 1px solid var(--rs-border);
+    }
+
+    .rs-explorer__status {
+        gap: 1rem;
+        padding: 0.375rem 0.75rem;
+        border-block-start: 1px solid var(--rs-border);
+        font-size: 0.75rem;
+        color: var(--rs-fg-muted);
+    }
+
+    .rs-explorer__nav,
+    .rs-explorer__actions {
         display: flex;
         gap: 0.125rem;
     }
@@ -181,15 +155,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
-    .rs-explorer__actions {
-        display: flex;
-        gap: 0.125rem;
-    }
-
-    // ========================================================================
-    // BUTTONS
-    // ========================================================================
 
     .rs-explorer__btn {
         display: inline-flex;
@@ -232,10 +197,6 @@
         }
     }
 
-    // ========================================================================
-    // CONTENT AREA
-    // ========================================================================
-
     .rs-explorer__content {
         flex: 1;
         min-block-size: 0;
@@ -246,60 +207,33 @@
         block-size: 100%;
         overflow-y: auto;
         outline: none;
-
-        // Smooth scrolling
         scroll-behavior: smooth;
         overscroll-behavior: contain;
+
+        &:focus-visible {
+            outline: 2px solid var(--rs-accent);
+            outline-offset: -2px;
+        }
     }
 
-    // ========================================================================
-    // LOADING STATE
-    // ========================================================================
-
-    .rs-explorer__loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        padding: 2rem;
-        color: var(--rs-fg-muted);
-    }
-
-    .rs-explorer__spinner {
-        inline-size: 1.5rem;
-        block-size: 1.5rem;
-        border: 2px solid var(--rs-border);
-        border-block-start-color: var(--rs-accent);
-        border-radius: 50%;
-        animation: rs-spin 0.8s linear infinite;
-    }
-
-    @keyframes rs-spin {
-        to { transform: rotate(360deg); }
-    }
-
-    :host([loading]) .rs-explorer__list > :not(.rs-explorer__loading) {
-        display: none;
-    }
-
-    :host(:not([loading])) .rs-explorer__loading {
-        display: none;
-    }
-
-    // ========================================================================
-    // EMPTY STATE
-    // ========================================================================
-
+    .rs-explorer__loading,
     .rs-explorer__empty {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 0.75rem;
+        color: var(--rs-fg-muted);
+        text-align: center;
+    }
+
+    .rs-explorer__loading {
+        padding: 2rem;
+    }
+
+    .rs-explorer__empty {
         gap: 1rem;
         padding: 3rem 2rem;
-        text-align: center;
-        color: var(--rs-fg-muted);
 
         ui-icon {
             font-size: 3rem;
@@ -311,11 +245,20 @@
         }
     }
 
-    // ========================================================================
-    // LIST ITEMS
-    // ========================================================================
+    .rs-explorer__spinner {
+        @include spinner(1.5rem, 2px, var(--rs-accent));
+    }
+
+    :host([loading]) .rs-explorer__list > :not(.rs-explorer__loading) {
+        display: none;
+    }
+
+    :host(:not([loading])) .rs-explorer__loading {
+        display: none;
+    }
 
     .rs-explorer__item {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -339,6 +282,11 @@
                 inline-size: 3px;
                 background: var(--rs-selected-border);
             }
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--rs-accent);
+            outline-offset: -2px;
         }
     }
 
@@ -381,9 +329,17 @@
         color: var(--rs-fg-muted);
     }
 
-    // ========================================================================
-    // GRID VIEW
-    // ========================================================================
+    .rs-explorer__selected-count:not(:empty)::before {
+        content: "•";
+        margin-inline-end: 1rem;
+    }
+
+    :host(.dragover) {
+        .rs-explorer__content {
+            background: var(--rs-selected-bg);
+            border: 2px dashed var(--rs-selected-border);
+        }
+    }
 
     .rs-explorer[data-view-mode="grid"] {
         .rs-explorer__list {
@@ -409,10 +365,8 @@
             }
         }
 
-        .rs-explorer__item-icon {
-            ui-icon {
-                font-size: 2.5rem;
-            }
+        .rs-explorer__item-icon ui-icon {
+            font-size: 2.5rem;
         }
 
         .rs-explorer__item-info {
@@ -434,42 +388,6 @@
         }
     }
 
-    // ========================================================================
-    // STATUS BAR
-    // ========================================================================
-
-    .rs-explorer__status {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.375rem 0.75rem;
-        background: var(--rs-bg-secondary);
-        border-block-start: 1px solid var(--rs-border);
-        font-size: 0.75rem;
-        color: var(--rs-fg-muted);
-        flex-shrink: 0;
-    }
-
-    .rs-explorer__selected-count:not(:empty)::before {
-        content: "•";
-        margin-inline-end: 1rem;
-    }
-
-    // ========================================================================
-    // DRAG AND DROP
-    // ========================================================================
-
-    :host(.dragover) {
-        .rs-explorer__content {
-            background: var(--rs-selected-bg);
-            border: 2px dashed var(--rs-selected-border);
-        }
-    }
-
-    // ========================================================================
-    // RESPONSIVE
-    // ========================================================================
-
     @media (max-width: 480px) {
         .rs-explorer__toolbar {
             flex-wrap: wrap;
@@ -481,24 +399,14 @@
             padding: 0.25rem 0 0;
         }
 
-        .rs-explorer[data-view-mode="grid"] {
-            .rs-explorer__list {
-                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            }
+        .rs-explorer[data-view-mode="grid"] .rs-explorer__list {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
         }
     }
 
-    // ========================================================================
-    // FOCUS STYLES
-    // ========================================================================
-
-    .rs-explorer__list:focus-visible {
-        outline: 2px solid var(--rs-accent);
-        outline-offset: -2px;
-    }
-
-    .rs-explorer__item:focus-visible {
-        outline: 2px solid var(--rs-accent);
-        outline-offset: -2px;
+    @keyframes rs-spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 }

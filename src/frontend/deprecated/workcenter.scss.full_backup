@@ -2652,44 +2652,12 @@
     }
 }
 
-// ============================================================================
-// ANIMATIONS
-// ============================================================================
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
 
 // Simple fade in
 .workcenter-view {
     animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
 
 // Action History Modal Styles
 .action-history-modal,

@@ -5,7 +5,7 @@
  * for consistent behavior across different entry points and modules.
  */
 
-import type { RecognizeByInstructionsOptions } from '@rs-com/service/AI-ops/RecognizeData';
+import type { RecognizeByInstructionsOptions } from '@rs-com/service/AI-ops/RecognizeData2';
 
 // Import built-in AI instructions and templates
 import {

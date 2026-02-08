@@ -2,7 +2,7 @@ import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection
 
 // Import CRX runtime channel module for inline coding style
 import { createRuntimeChannelModule } from '../shared/runtime';
-import { registerCrxHandler } from "../shared/CrxMessaging";
+import { registerCrxHandler } from "../../com/core/CrxMessaging";
 
 // Check if we're in CRX environment
 const isInCrxEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;

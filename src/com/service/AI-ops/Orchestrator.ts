@@ -22,7 +22,7 @@ import {
     type RecognitionResult,
     type BatchRecognitionResult,
     type RecognizeByInstructionsOptions
-} from "./RecognizeData";
+} from "./RecognizeData2";
 
 import {
     modifyEntityByPrompt,

@@ -1,8 +1,19 @@
-/**
- * Home View Styles
- */
+@layer view.home {
+    :root:has([data-view="home"]),
+    html:has([data-view="home"]) {
+        /* layout */
+        --view-padding: var(--space-8);
+        --view-content-max-width: 1200px;
+        --view-hero-padding: var(--space-16);
+        --view-card-gap: var(--space-6);
 
-@layer layer.view.home {
+        /* colors */
+        --view-home-bg: linear-gradient(135deg, light-dark(#f8f9fa, #1b1f24) 0%, light-dark(#e9ecef, #0f1216) 100%);
+        --view-fg: light-dark(#1a1a1a, #e9ecef);
+        --view-border: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.12));
+        --view-card-bg: light-dark(#ffffff, #1a1f26);
+        --view-primary: light-dark(#007acc, #66b7ff);
+    }
 
     .view-home {
         display: flex;
@@ -10,8 +21,8 @@
         justify-content: center;
         block-size: 100%;
         padding: 2rem;
-        background: var(--view-home-bg, linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%));
-        color: var(--view-fg, var(--color-on-surface, #1a1a1a));
+        background: var(--view-home-bg);
+        color: var(--view-fg);
         overflow-y: auto;
     }
 
@@ -28,14 +39,14 @@
         margin: 0;
         font-size: 3rem;
         font-weight: 800;
-        background: linear-gradient(135deg, #007acc 0%, #0059a6 100%);
+        background: linear-gradient(135deg, var(--view-primary) 0%, light-dark(#0059a6, #3a8ad6) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
 
     .view-home__subtitle {
-        margin: 0.5rem 0 0 0;
+        margin: 0.5rem 0 0;
         font-size: 1.125rem;
         color: var(--view-fg);
         opacity: 0.7;
@@ -45,10 +56,6 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
-
-        @media (max-width: 480px) {
-            grid-template-columns: 1fr;
-        }
     }
 
     .view-home__action {
@@ -57,9 +64,9 @@
         align-items: center;
         gap: 0.75rem;
         padding: 1.5rem;
-        border: 1px solid var(--view-border, rgba(0, 0, 0, 0.08));
+        border: 1px solid var(--view-border);
         border-radius: 16px;
-        background-color: var(--view-card-bg, #ffffff);
+        background-color: var(--view-card-bg);
         color: var(--view-fg);
         text-align: center;
         cursor: pointer;
@@ -67,13 +74,13 @@
 
         ui-icon {
             opacity: 0.8;
-            color: var(--color-primary, #007acc);
+            color: var(--view-primary);
         }
 
         &:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-            border-color: var(--color-primary, #007acc);
+            box-shadow: 0 8px 24px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+            border-color: var(--view-primary);
 
             ui-icon {
                 opacity: 1;
@@ -81,7 +88,7 @@
         }
 
         &:focus-visible {
-            outline: 2px solid var(--color-primary, #007acc);
+            outline: 2px solid var(--view-primary);
             outline-offset: 2px;
         }
     }
@@ -96,4 +103,17 @@
         opacity: 0.6;
     }
 
+    @media (max-width: 768px) {
+        :root:has([data-view="home"]),
+        html:has([data-view="home"]) {
+            --view-hero-padding: var(--space-8);
+            --view-card-gap: var(--space-4);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .view-home__actions {
+            grid-template-columns: 1fr;
+        }
+    }
 }

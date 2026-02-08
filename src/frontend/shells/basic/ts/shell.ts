@@ -1,8 +1,8 @@
 //@ts-ignore
-import style from "./Main.scss?inline";
+import style from "./scss/basic.scss?inline";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData";
+import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData2";
 import { loadSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
@@ -25,6 +25,22 @@ import type { ContentContext, ContentType } from "@rs-com/core/UnifiedAIConfig";
 // Import uniform channel manager
 import { channelManager } from "@rs-com/core/UniformChannelManager";
 import { ROUTE_HASHES } from "@rs-com/config/Names";
+
+
+// Import lazy loading utility
+import { getCachedComponent } from "../../../../core/modules/LazyLoader";
+
+// Import file handling components that are always needed
+import { createFileHandler } from "../../../../core/storage/FileHandling";
+import { getSpeechPrompt } from "../../../../core/modules/VoiceInput";
+import { createTemplateManager } from "../../../../core/modules/TemplateManager";
+import { CHANNELS } from "@rs-frontend/pwa/sw-handling";
+import { loadAsAdopted } from "fest/dom";
+import { dynamicTheme } from "fest/lure";
+import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
+import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
+import { downloadMarkdownAsDocx } from "../../../../core/document/DocxExport";
+
 
 // Service Worker content retrieval utilities
 async function getSWCachedContent(): Promise<any[]> {
@@ -57,20 +73,6 @@ async function getSWCachedContent(): Promise<any[]> {
     }
     return [];
 }
-
-// Import lazy loading utility
-import { getCachedComponent } from "../../../core/modules/LazyLoader";
-
-// Import file handling components that are always needed
-import { createFileHandler } from "../../../core/storage/FileHandling";
-import { getSpeechPrompt } from "../../../core/modules/VoiceInput";
-import { createTemplateManager } from "../../../core/modules/TemplateManager";
-import { CHANNELS } from "@rs-frontend/pwa/sw-handling";
-import { loadAsAdopted } from "fest/dom";
-import { dynamicTheme } from "fest/lure";
-import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
-import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
-import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 
 // ============================================================================
 // UTILITY FUNCTIONS & HELPERS
@@ -1084,7 +1086,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load markdown editor
             const editorModule = await getCachedComponent(
                 'markdown-editor',
-                () => import('../../views/editor/editors/MarkdownEditor'),
+                () => import('../../../views/editor/editors/MarkdownEditor'),
                 { componentName: 'MarkdownEditor' }
             );
 
@@ -1162,7 +1164,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load quill editor
             const editorModule = await getCachedComponent(
                 'quill-editor',
-                () => import('../../views/editor/editors/QuillEditor'),
+                () => import('../../../views/editor/editors/QuillEditor'),
                 { componentName: 'QuillEditor' }
             );
 
@@ -1240,7 +1242,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load history manager
             const historyModule = await getCachedComponent(
                 'history-manager',
-                () => import('../../../core/modules/HistoryManager'),
+                () => import('../../../../core/modules/HistoryManager'),
                 { componentName: 'HistoryManager' }
             );
 
@@ -1257,7 +1259,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     // Lazy load work center if needed
                     getCachedComponent(
                         'workcenter',
-                        () => import('../../views/workcenter/modules/WorkCenter').then(m => m.WorkCenterManager),
+                        () => import('../../../views/workcenter/modules/WorkCenter').then(m => m.WorkCenterManager),
                         { componentName: 'WorkCenter' }
                     ).then(workCenterModule => {
                     if (state.managers.workCenter.instance) {
@@ -1671,7 +1673,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Settings...</span></div>';
 
                 const settingsModule = await loadComponent('settings',
-                    () => import('../../views/settings/Settings'),
+                    () => import('../../../views/settings/Settings'),
                     { componentName: 'Settings', cssPath: '../scss/settings/Settings.scss' }
                 );
 
@@ -1705,7 +1707,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             'file-explorer': async () => {
                 content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading File Explorer...</span></div>';
 
-                await loadComponent('file-explorer', () => import('../../views/explorer'), { componentName: 'FileManager' });
+                await loadComponent('file-explorer', () => import('../../../views/explorer'), { componentName: 'FileManager' });
 
                 const explorerEl = document.createElement('ui-file-manager') as FileManager & HTMLElement;
 
@@ -1904,7 +1906,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
             getCachedComponent(
                 'workcenter',
-                () => import('../../views/workcenter/modules/WorkCenter').then(m => m.WorkCenterManager),
+                () => import('../../../views/workcenter/modules/WorkCenter').then(m => m.WorkCenterManager),
                 { componentName: 'WorkCenter' }
             ).then(workCenterModule => {
                 // Create work center manager if not already created

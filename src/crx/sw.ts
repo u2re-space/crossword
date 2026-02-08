@@ -1,15 +1,15 @@
 import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-ops/MakeTimeline";
 import { COPY_HACK, enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
-import { recognizeImageData } from "./service/RecognizeData";
-import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/RecognizeData";
+import { recognizeImageData } from "../com/service/AI-ops/RecognizeData";
+import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/RecognizeData2";
 import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/misc/CustomInstructions";
 import { loadSettings } from "@rs-com/config/Settings";
 import { executionCore } from "@rs-com/service/misc/ExecutionCore";
 import type { ActionContext, ActionInput } from "@rs-com/service/misc/ActionHistory";
 
 // Import CRX unified messaging
-import { crxMessaging, registerCrxHandler, broadcastToCrxTabs } from "./shared/CrxMessaging";
+import { crxMessaging, registerCrxHandler, broadcastToCrxTabs } from "../com/core/CrxMessaging";
 
 // Check if we're in CRX environment before using CRX messaging
 const isInCrxEnvironment = crxMessaging.isCrxEnvironment();

@@ -1,4 +1,21 @@
 @layer layer.boot {
+
+    // ==========================================================================
+    // CONTEXT: BOOT VIEW (Loading/Selection Screen)
+    // ==========================================================================
+
+    :root:has([data-view="boot"]),
+    html:has([data-view="boot"]) {
+        --view-padding: var(--space-8);
+        --view-content-max-width: 480px;
+
+        // Boot screen tokens
+        --view-boot-bg: var(--color-background);
+        --view-boot-card-bg: var(--color-surface-elevated);
+        --view-boot-card-shadow: var(--shadow-lg);
+    }
+
+
     /* ==========================================================================
        CSS Custom Properties - Material You-inspired Design System
        ========================================================================== */

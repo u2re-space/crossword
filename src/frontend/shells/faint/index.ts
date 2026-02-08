@@ -10,7 +10,7 @@
  * - Theme support with wallpapers
  */
 
-import { BaseShell } from "../basic/base-shell";
+import { BaseShell } from "../basic/ts/base-shell";
 import { H } from "fest/lure";
 import { ref, observe, affected } from "fest/object";
 import { ViewRegistry } from "../../registry";

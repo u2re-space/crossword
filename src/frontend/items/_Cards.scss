@@ -332,28 +332,6 @@ $card-variants: (
     @property --card-swipe-offset { syntax: "<length>"; inherits: true; initial-value: 0px; }
     @property --card-swipe-progress { syntax: "<number>"; inherits: true; initial-value: 0; }
 
-    @keyframes card-pulse {
-        0% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
-        50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-blue) 20%, transparent), var(--card-shadow-base); }
-        100% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-blue) 50%, transparent), var(--card-shadow-base); }
-    }
-
-    @keyframes skeleton-pulse {
-        0%, 100% { opacity: 0.4; }
-        50% { opacity: 0.8; }
-    }
-
-    @keyframes card-hydrate-in {
-        from {
-            opacity: 0;
-            transform: translateY(8px) scale(0.98);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
     .card-wrap {
         // ---------------------------------------------------------------------
         // Box/Layout
