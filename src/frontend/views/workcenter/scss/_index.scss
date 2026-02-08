@@ -9,21 +9,10 @@
  * @module views/workcenter
  */
 
-// ============================================================================
-// LAYER DEFINITION (Must be first for proper cascade)
-// ============================================================================
-
-// Declare the workcenter layer within the views layer hierarchy
-@layer layer.view.workcenter {
-    // Layer content will be populated via @use below
-}
 
 // ============================================================================
 // PARTIALS (Order matters for cascade)
 // ============================================================================
-
-// 1. Keyframes - animation definitions (no layer needed for keyframes)
-@use "keyframes";
 
 // 2. Base - foundational styles
 @use "base";

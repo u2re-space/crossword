@@ -1,4 +1,12 @@
 @layer layer.view.workcenter {
+    /* View contexts */
+    :is(html, body):has([data-view="workcenter"]) {
+        --view-layout: "grid";
+        --view-sidebar-visible: true;
+        --view-toolbar-expanded: true;
+        --view-content-max-width: none;
+    }
+
     .workcenter-view {
         display: flex;
         flex-direction: column;

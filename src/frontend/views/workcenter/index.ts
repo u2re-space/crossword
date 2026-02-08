@@ -13,7 +13,7 @@ import type { BaseViewOptions } from "../types";
 import { createViewState, createLoadingElement } from "../types";
 
 // @ts-ignore - SCSS import
-import workcenterStyles from "./scss/workcenter.scss?inline";
+import workcenterStyles from "./scss/_index.scss?inline";
 
 // ============================================================================
 // WORKCENTER STATE

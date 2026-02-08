@@ -11,7 +11,9 @@
  * - raw: No styling framework (browser defaults)
  */
 
-import { loadAsAdopted } from "fest/dom";
+import loadAdvancedStyles from "fest-src/fest/veela/scss/runtime/advanced";
+import loadBasicStyles from "fest-src/fest/veela/scss/runtime/basic";
+import loadBeerCssStyles from "fest-src/fest/veela/scss/runtime/beercss";
 
 // ============================================================================
 // STYLE TYPES
@@ -39,20 +41,10 @@ export const STYLE_CONFIGS: Record<StyleSystemId, StyleConfig> = {
         variant: "advanced",
         initFn: async () => {
             try {
-                const { loadAdvancedStyles } = await import("fest/veela/runtime/advanced/index");
                 await loadAdvancedStyles();
                 console.log("[Styles] Veela Advanced loaded");
             } catch (e) {
-                console.warn("[Styles] Failed to load Veela Advanced:", e);
-                // Fallback to direct import
-                try {
-                    const styles = await import("fest/veela/src/scss/runtime/advanced/_index.scss?inline");
-                    if (styles.default) {
-                        await loadAsAdopted(styles.default);
-                    }
-                } catch {
-                    console.warn("[Styles] Fallback also failed");
-                }
+
             }
         }
     },
@@ -63,20 +55,11 @@ export const STYLE_CONFIGS: Record<StyleSystemId, StyleConfig> = {
         variant: "basic",
         initFn: async () => {
             try {
-                const { loadBasicStyles } = await import("fest/veela/runtime/basic/index");
                 await loadBasicStyles();
                 console.log("[Styles] Veela Basic loaded");
             } catch (e) {
                 console.warn("[Styles] Failed to load Veela Basic:", e);
                 // Fallback to local basic styles
-                try {
-                    const basicStyle = await import("./basic/index.scss?inline");
-                    if (basicStyle.default) {
-                        await loadAsAdopted(basicStyle.default);
-                    }
-                } catch {
-                    console.warn("[Styles] Basic fallback also failed");
-                }
             }
         }
     },
@@ -87,7 +70,6 @@ export const STYLE_CONFIGS: Record<StyleSystemId, StyleConfig> = {
         variant: "beercss",
         initFn: async () => {
             try {
-                const { loadBeerCssStyles } = await import("fest/veela/runtime/beercss/index");
                 await loadBeerCssStyles();
                 console.log("[Styles] Veela BeerCSS loaded");
             } catch (e) {
@@ -175,16 +157,3 @@ export function getCurrentStyleSystem(): StyleSystemId | null {
 export function isStyleSystemLoaded(styleId: StyleSystemId): boolean {
     return _currentStyle === styleId;
 }
-
-// ============================================================================
-// RE-EXPORTS (for backwards compatibility)
-// ============================================================================
-
-export {
-    loadSharedStyles,
-    loadFormStyles,
-    loadButtonStyles,
-    loadAllStyles
-} from "./scss";
-
-export { loadSharedStyles as default } from "./scss";

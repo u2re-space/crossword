@@ -6,6 +6,18 @@
  */
 
 @layer layer.shell.raw {
+    :is(html, body):has([data-shell="raw"]) {
+        --shell-nav-height: 0px;
+        --shell-content-padding: 0;
+
+        --shell-nav-height: 0;
+        --shell-sidebar-width: 0;
+        --shell-status-height: 0;
+        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+    }
+
+
     :root:has(.app-shell) {
         & .app-shell {
             // Full viewport coverage

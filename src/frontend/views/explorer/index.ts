@@ -37,10 +37,10 @@ export class ExplorerView implements View {
     private _sheet: CSSStyleSheet | null = null;
 
     lifecycle: ViewLifecycle = {
-        onMount: () => this.loadLastPath(),
-        onUnmount: () => this.saveCurrentPath(),
-        onShow: () => { this._sheet = loadAsAdopted(style) as CSSStyleSheet; },
-        onHide: () => { removeAdopted(this._sheet); this.saveCurrentPath(); },
+        onMount: () => { this.loadLastPath(); this._sheet ??= loadAsAdopted(style) as CSSStyleSheet; },
+        onUnmount: () => { removeAdopted(this._sheet); this.saveCurrentPath(); },
+        onShow: () => { this._sheet ??= loadAsAdopted(style) as CSSStyleSheet; },
+        onHide: () => { this.saveCurrentPath(); },
     };
 
     constructor(options: BaseViewOptions = {}) {

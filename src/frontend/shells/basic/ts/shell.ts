@@ -1,18 +1,12 @@
 //@ts-ignore
-import style from "./scss/basic.scss?inline";
+import style from "../scss/basic.scss?inline";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData2";
-import { loadSettings } from "@rs-com/config/Settings";
-import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
 
 // Import unified messaging system
 import {
     unifiedMessaging,
-    sendToWorkCenter,
-    sendToClipboard,
-    navigateToView,
     initializeComponent,
     hasPendingMessages,
     registerComponent,
@@ -21,11 +15,6 @@ import {
 } from "@rs-com/core/UnifiedMessaging";
 import { createMessageWithOverrides } from "@rs-com/core/UnifiedMessaging";
 import type { ContentContext, ContentType } from "@rs-com/core/UnifiedAIConfig";
-
-// Import uniform channel manager
-import { channelManager } from "@rs-com/core/UniformChannelManager";
-import { ROUTE_HASHES } from "@rs-com/config/Names";
-
 
 // Import lazy loading utility
 import { getCachedComponent } from "../../../../core/modules/LazyLoader";
@@ -40,6 +29,9 @@ import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
 import { downloadMarkdownAsDocx } from "../../../../core/document/DocxExport";
+import type { AppSettings } from "@rs-com/config/SettingsTypes";
+import { extractCSS, recognizeByInstructions, solveAndAnswer, writeCode } from "@rs-com/service/AI-ops/RecognizeData";
+import { loadSettings } from "@rs-com/config/Settings";
 
 
 // Service Worker content retrieval utilities

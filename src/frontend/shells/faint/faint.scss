@@ -10,7 +10,47 @@
 
 @layer layer.shell.faint {
 
-    :root:has(.app-shell) {
+
+    :is(:root, html):has([data-shell="faint"][data-theme="dark"]) {
+        --shell-bg: var(--basic-surface);
+        --shell-fg: var(--basic-on-surface);
+        --shell-sidebar-bg: var(--basic-surface-container-high);
+        --shell-sidebar-fg: var(--basic-on-surface);
+        --shell-sidebar-border: var(--basic-outline-variant);
+        --shell-tabs-bg: var(--basic-surface-container-high);
+        --shell-tab-active-bg: var(--basic-surface-container-highest);
+        --shell-tab-hover-bg: var(--basic-surface-container-highest);
+    }
+
+
+    :is(html, body):has([data-shell="faint"]) {
+        /* Layout */
+        --shell-nav-height: 40px;
+        --shell-sidebar-width: 256px;
+        --shell-sidebar-collapsed: 48px;
+        --shell-tab-height: 32px;
+
+        /* Colors */
+        --faint-nav-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
+        --faint-nav-border: light-dark(var(--basic-outline-variant), var(--basic-outline-variant));
+        --faint-sidebar-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
+
+        --shell-nav-height: 0;
+        --shell-sidebar-width: 240px;
+        --shell-tab-height: 36px;
+        --shell-toolbar-height: 40px;
+        --shell-status-height: 24px;
+
+        --shell-sidebar-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-sidebar-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-sidebar-border: light-dark(var(--color-border), var(--color-border));
+
+        --shell-tabs-bg: light-dark(var(--color-surface-elevated), var(--color-surface-elevated));
+        --shell-tab-active-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-tab-hover-bg: light-dark(var(--color-surface-hover), var(--color-surface-hover));
+    }
+
+    :root:has(.app-shell, .app-shell[data-style="faint"]), :where(.app-shell, .app-shell[data-style="faint"]) {
         // Layout tokens
         --shell-sidebar-width: 240px;
         --shell-sidebar-width-collapsed: 56px;

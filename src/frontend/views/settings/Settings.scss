@@ -2,6 +2,10 @@
 @layer layer.view.settings {
     :root:has([data-view="settings"]),
     html:has([data-view="settings"]) {
+        --view-layout: "flex";
+        --view-sidebar-visible: true;
+        --view-content-max-width: 1200px;
+
         /* layout */
         --view-padding: var(--space-6);
         --view-content-max-width: 640px;
@@ -472,6 +476,8 @@
         scrollbar-color: var(--basic-outline-variant) transparent;
         margin-inline: auto;
         inline-size: 100%;
+        place-content: center;
+        place-items: center;
 
         @container (max-width: 480px) {
             padding: var(--basic-spacing-sm, 10px);
@@ -625,6 +631,7 @@
     .view-settings {
         &__content {
             inline-size: 100%;
+            max-inline-size: clamp(640px, 90%, 800px);
         }
 
         &__title {

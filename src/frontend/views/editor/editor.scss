@@ -3,6 +3,11 @@
  */
 
 @layer layer.view.editor {
+    :is(html, body):has([data-view="editor"]) {
+        --view-layout: "flex";
+        --view-content-max-width: none;
+    }
+
     .view-editor {
         display: flex;
         flex-direction: column;

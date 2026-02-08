@@ -1,23 +1,53 @@
 @use "./layout" as l;
 
 @layer shell.basic {
-    :root:has(.app-shell) {
-        color-scheme: light dark;
 
-        /* colors */
+    :is(:root, html):has([data-shell="basic"][data-theme="dark"]) {
         --shell-bg: var(--basic-surface);
         --shell-fg: var(--basic-on-surface);
         --shell-nav-bg: var(--basic-surface-container-high);
+        --shell-nav-fg: var(--basic-on-surface);
         --shell-nav-border: var(--basic-outline-variant);
-        --shell-btn-hover: var(--basic-surface-container-highest);
+    }
+
+
+    :root:has(.app-shell, .app-shell[data-style="basic"]), 
+    :where(.app-shell, .app-shell[data-style="basic"]) 
+    {
+        color-scheme: light dark;
+
+        /* colors */
+        --shell-bg: var(--basic-surface, var(--color-surface));
+        --shell-fg: var(--basic-on-surface, var(--color-on-surface));
+        --shell-nav-bg: var(--basic-surface-container-high, var(--color-surface-container-high));
+        --shell-nav-border: var(--basic-outline-variant, var(--color-outline-variant));
+        --shell-btn-hover: var(--basic-surface-container-highest, var(--color-surface-container-highest));
+        --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary, var(--color-primary)) 12%, transparent);
+        --shell-btn-active-fg: var(--basic-primary, var(--color-primary));
+        --shell-status-bg: color-mix(in oklab, var(--basic-surface, var(--color-surface)) 85%, var(--basic-on-surface, var(--color-on-surface)));
+        --shell-status-fg: var(--basic-on-primary, var(--color-on-primary));
+
+        /* layout */
+        --shell-nav-height: 56px;
+        --shell-padding: 0;
+
+        /* Layout */
+        --shell-nav-height: var(--shell-nav-height-base);
+
+        /* Colors */
+        --shell-btn-hover: light-dark(var(--basic-surface-container-highest), var(--basic-surface-container-highest));
         --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary) 12%, transparent);
         --shell-btn-active-fg: var(--basic-primary);
         --shell-status-bg: color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface));
         --shell-status-fg: var(--basic-on-primary);
 
-        /* layout */
-        --shell-nav-height: 56px;
-        --shell-padding: 0;
+        --shell-nav-height: 48px;
+        --shell-sidebar-width: 0;
+        --shell-status-height: 24px;
+
+        --shell-nav-bg: light-dark(var(--color-surface-elevated), var(--color-surface-elevated));
+        --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-border: light-dark(var(--color-border), var(--color-border));
     }
 
     :where(.app-shell, .app-shell[data-style="basic"]) {
@@ -73,8 +103,8 @@
         justify-content: space-between;
         gap: var(--gap-sm, 0.5rem);
         block-size: var(--shell-nav-height);
-        padding-inline: var(--space-md, 0.75rem);
         padding: 0;
+        padding-inline: var(--space-md, 0.75rem);
         background-color: var(--shell-nav-bg);
         border-block-end: 1px solid var(--shell-nav-border);
         flex-shrink: 0;

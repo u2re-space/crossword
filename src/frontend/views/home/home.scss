@@ -13,6 +13,9 @@
         --view-border: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.12));
         --view-card-bg: light-dark(#ffffff, #1a1f26);
         --view-primary: light-dark(#007acc, #66b7ff);
+
+        --view-layout: "flex";
+        --view-content-max-width: 1200px;
     }
 
     .view-home {

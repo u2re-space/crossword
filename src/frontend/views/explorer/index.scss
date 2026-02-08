@@ -8,6 +8,12 @@
         animation: rs-spin $duration linear infinite;
     }
 
+    :root:has([data-view="explorer"]),
+    html:has([data-view="explorer"]) {
+        --view-layout: "flex";
+        --view-content-max-width: none;
+    }
+
     :host:has(.view-explorer) {
         /* Typography */
         --rs-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -54,6 +60,20 @@
     .view-explorer__content {
         flex: 1;
         overflow: hidden;
+        block-size: stretch;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        max-block-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        outline: none;
+        background: transparent;
+        color: inherit;
 
         ui-file-manager {
             block-size: 100%;

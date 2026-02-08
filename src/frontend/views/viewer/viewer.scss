@@ -1,6 +1,12 @@
 @layer viewer.tokens {
+
     :root:has([data-view="viewer"]),
     html:has([data-view="viewer"]) {
+        --view-layout: "flex";
+        --view-content-max-width: 900px;
+        --view-font-size-base: 1rem;
+        --view-line-height-base: 1.6;
+
         /* layout */
         --view-padding: var(--space-6);
         --view-content-max-width: 800px;

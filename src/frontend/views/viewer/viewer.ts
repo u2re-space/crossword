@@ -3,11 +3,11 @@ import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
-import { downloadMarkdownAsDocx } from "../modules/DocxExport";
-import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
+import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
+import { getWorkCenterComm } from "../../../com/core/AppCommunicator";
 
 // Import component registration system
-import { registerComponent, initializeComponent } from "@rs-com/core/UnifiedMessaging";
+import { registerComponent, initializeComponent } from "../../../com/core/UnifiedMessaging";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({

@@ -20,6 +20,10 @@ import { loadSubAppWithShell, loadBootMenu, getViewFromPath, isRootRoute, VALID_
 import { initializeLayers } from "./frontend/styles/layer-manager";
 import type { ViewId } from "./frontend/shells/types";
 
+import { loadAsAdopted } from "fest/dom";
+import viewStyles from "./frontend/views/scss/_views.scss?inline";
+
+
 // Import PWA handlers
 import {
     ensureAppCss,
@@ -217,8 +221,10 @@ const showErrorState = (mountElement: HTMLElement, error: any, retryFn?: () => v
 export default async function index(mountElement: HTMLElement) {
     // CRITICAL: Initialize CSS layer hierarchy FIRST
     // This must happen before any styles are loaded
-    initializeLayers();
-    
+    await initializeLayers();
+    await loadAsAdopted(viewStyles);
+
+    //
     console.log('[Index] Starting CrossWord frontend loader');
 
     // Initialize uniform channel manager
