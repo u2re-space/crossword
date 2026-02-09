@@ -2,7 +2,7 @@ import { observe, numberRef, propRef, stringRef, affected } from "fest/object";
 import { ctxMenuTrigger, E, H, orientRef, M, Q, provide, registerModal, handleIncomingEntries, pointerAnchorRef } from "fest/lure";
 import { bindInteraction } from "fest/lure";
 import { actionRegistry, iconsPerAction, labelsPerAction } from "@rs-core/utils/Actions";
-import { toastSuccess, toastError } from "@rs-frontend/items/Toast";
+import { showSuccess, showError } from "@rs-frontend/items/Toast";
 import {
     speedDialMeta,
     speedDialItems,
@@ -85,7 +85,7 @@ const bindCell = (el: HTMLElement, args: any) => {
 const runItemAction = (item: SpeedDialItem, actionId?: string, extras: { event?: Event; initiator?: HTMLElement } = {}) => {
     const resolvedAction = resolveItemAction(item, actionId);
     const action = actionRegistry.get(resolvedAction);
-    if (!action) { toastError("Action is unavailable"); return; }
+    if (!action) { showError("Action is unavailable"); return; }
     //const $meta = getSpeedDialMeta(item.id);
     const context = {
         id: item.id,
@@ -98,7 +98,7 @@ const runItemAction = (item: SpeedDialItem, actionId?: string, extras: { event?:
         action(context as any, item, extras?.initiator);
     } catch (error) {
         console.warn(error);
-        toastError("Failed to run action");
+        showError("Failed to run action");
     }
 };
 
@@ -230,10 +230,10 @@ const pickWallpaper = () => {
             const path = `${dir}${file.name}`;
             wallpaperState.src = path;
             persistWallpaper();
-            toastSuccess("Wallpaper updated");
+            showSuccess("Wallpaper updated");
         } catch (e) {
             console.warn(e);
-            toastError("Failed to set wallpaper");
+            showError("Failed to set wallpaper");
         }
     };
     input.click();
@@ -259,7 +259,7 @@ const handleSpeedDialPaste = async (event: ClipboardEvent, suggestedCell?: GridC
         addSpeedDialItem(item);
         persistSpeedDialItems();
         persistSpeedDialMeta();
-        toastSuccess("Shortcut created from clipboard");
+        showSuccess("Shortcut created from clipboard");
         return true;
     } catch (e) {
         console.warn("Failed to paste speed dial item:", e);
@@ -290,7 +290,7 @@ const handleWallpaperDropOrPaste = (event: DragEvent | ClipboardEvent) => {
             if (file.type.startsWith("image/")) {
                 wallpaperState.src = path;
                 persistWallpaper();
-                toastSuccess("Wallpaper updated");
+                showSuccess("Wallpaper updated");
             }
         });
     }
@@ -458,7 +458,7 @@ const openItemEditor = (item?: SpeedDialItem, opts?: { suggestedCell?: GridCell 
         }
         persistSpeedDialItems();
         persistSpeedDialMeta();
-        toastSuccess(isNew ? "Shortcut created" : "Shortcut updated");
+        showSuccess(isNew ? "Shortcut created" : "Shortcut updated");
         closeModal();
     });
 
@@ -474,7 +474,7 @@ const openItemEditor = (item?: SpeedDialItem, opts?: { suggestedCell?: GridCell 
             removeSpeedDialItem(workingItem.id);
             persistSpeedDialItems();
             persistSpeedDialMeta();
-            toastSuccess("Shortcut removed");
+            showSuccess("Shortcut removed");
             closeModal();
         }
     });
@@ -525,7 +525,7 @@ export function createCtxMenu() {
                         removeSpeedDialItem(item.id);
                         persistSpeedDialItems();
                         persistSpeedDialMeta();
-                        toastSuccess("Shortcut removed");
+                        showSuccess("Shortcut removed");
                     } }
                 ]);
                 sections.push([
@@ -561,16 +561,16 @@ export function createCtxMenu() {
                         try {
                             const item = await createSpeedDialItemFromClipboard(context.guessedCell ?? deriveCellFromCoordinate([coordinateRef[0].value, coordinateRef[1].value]));
                             if (!item) {
-                                toastError("Clipboard does not contain a valid URL or shortcut JSON");
+                                showError("Clipboard does not contain a valid URL or shortcut JSON");
                                 return;
                             }
                             addSpeedDialItem(item);
                             persistSpeedDialItems();
                             persistSpeedDialMeta();
-                            toastSuccess("Shortcut created from clipboard");
+                            showSuccess("Shortcut created from clipboard");
                         } catch (e) {
                             console.warn(e);
-                            toastError("Failed to paste shortcut");
+                            showError("Failed to paste shortcut");
                         }
                     }
                 }, {

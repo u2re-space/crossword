@@ -14,7 +14,7 @@
         --shell-btn-hover: light-dark(var(--basic-surface-container-highest, var(--color-surface-container-highest)), var(--basic-surface-container-highest, var(--color-surface-container-highest)));
         --shell-btn-active-bg: color-mix(in oklab, var(--basic-primary, var(--color-primary)) 12%, transparent);
         --shell-btn-active-fg: light-dark(var(--basic-primary, var(--color-primary)), var(--basic-primary, var(--color-primary)));
-        --shell-status-bg: color-mix(in oklab, var(--basic-surface, var(--color-surface)) 85%, var(--basic-on-surface, var(--color-on-surface)));
+        --shell-status-bg: color-mix(in oklab, var(--basic-surface, var(--color-surface, light-dark(#fafbfc, #1e293b))) 20%, var(--basic-on-surface, var(--color-on-surface, light-dark(#000000, #ffffff))));
         --shell-status-fg: light-dark(var(--basic-on-primary, var(--color-on-primary)), var(--basic-on-primary, var(--color-on-primary)));
 
         /* layout */

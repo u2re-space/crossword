@@ -6,6 +6,7 @@ import { loadSettings, saveSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { createCustomInstructionsEditor } from "../../items/CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
+import { createCustomInstructionsPanel } from "@rs-frontend/items/CustomInstructionsPanel";
 
 export type SettingsViewOptions = {
     isExtension: boolean;
@@ -16,6 +17,24 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     loadAsAdopted(style)
     const root = H`<div class="basic-settings">
     <h2>Settings</h2>
+
+    <section class="card">
+      <h3>Appearance</h3>
+      <label class="field">
+        <span>Theme</span>
+        <select class="form-select" data-field="appearance.theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="auto">Auto</option>
+        </select>
+        <span>Font Size</span>
+        <select class="form-select" data-field="appearance.fontSize">
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </select>
+      </label>
+    </section>
 
     <section class="card">
       <h3>AI</h3>
@@ -62,19 +81,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
 
     <section class="card" data-section="instructions">
       <h3>Recognition Instructions</h3>
-      <div data-custom-instructions></div>
-    </section>
-
-    <section class="card">
-      <h3>Appearance</h3>
-      <label class="field">
-        <span>Theme</span>
-        <select class="form-select" data-field="appearance.theme">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="auto">Auto</option>
-        </select>
-      </label>
+      <div data-custom-instructions="editor">
+        ${createCustomInstructionsEditor({ onUpdate: () => setNote("Instructions updated.") })}
+      </div>
     </section>
 
     <section class="card" data-section="extension" hidden>
@@ -170,15 +179,8 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
         root.append(extNote);
     }
 
-    const instructionsContainer = root.querySelector("[data-custom-instructions]") as HTMLElement | null;
-    if (instructionsContainer) {
-        const instructionsEditor = createCustomInstructionsEditor({
-            onUpdate: () => setNote("Instructions updated.")
-        });
-        instructionsContainer.append(instructionsEditor);
-    }
-
     return root;
 };
 
 
+//onThemeChange: (theme) => this.options.onThemeChange?.(theme)

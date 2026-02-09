@@ -21,6 +21,7 @@ import type {
 
 //
 import "fest/fl-ui";
+import { showToast } from "@rs-frontend/items/Toast";
 
 // ============================================================================
 // BASE SHELL IMPLEMENTATION
@@ -337,7 +338,7 @@ export abstract class BaseShell implements Shell {
      * Show a status message
      */
     protected showMessage(message: string, duration = 3000): void {
-        if (!this.statusContainer) {
+        /*if (!this.statusContainer) {
             console.log(`[${this.id}] Status: ${message}`);
             return;
         }
@@ -350,7 +351,9 @@ export abstract class BaseShell implements Shell {
                 this.statusContainer.textContent = "";
                 this.statusContainer.hidden = true;
             }
-        }, duration);
+        }, duration);*/
+
+        showToast({ message, duration, kind: "info" });
     }
 
     /**

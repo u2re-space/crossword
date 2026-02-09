@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 
 //
-import { toastError, toastSuccess } from "@rs-frontend/items/Toast";
+import { showError, showSuccess } from "@rs-frontend/items/Toast";
 import { createCustomInstructionsPanel } from "@rs-frontend/items/CustomInstructionsPanel";
 
 //
@@ -46,10 +46,10 @@ const pickWallpaper = () => {
             const path = `${dir}${file.name}`;
             wallpaperState.src = path;
             persistWallpaper();
-            toastSuccess("Wallpaper updated");
+            showSuccess("Wallpaper updated");
         } catch (e) {
             console.warn(e);
-            toastError("Failed to set wallpaper");
+            showError("Failed to set wallpaper");
         }
     };
     input.click();
@@ -671,7 +671,7 @@ export const Settings = async () => {
         const isCustomSelected = modelSelection === "custom";
 
         if (isCustomSelected && !customIdentifier) {
-            toastError("Enter a custom model identifier before saving.");
+            showError("Enter a custom model identifier before saving.");
             customModelInput?.focus();
             return;
         }
@@ -761,12 +761,12 @@ export const Settings = async () => {
 
             //
             statusText.value = "Saved";
-            toastSuccess("Settings updated");
+            showSuccess("Settings updated");
             syncCustomVisibility();
             setTimeout(() => { statusText.value = ""; }, 1600);
         } catch (e) {
             console.warn(e);
-            toastError("Failed to save settings");
+            showError("Failed to save settings");
             statusText.value = "Error";
             setTimeout(() => { statusText.value = ""; }, 1800);
         }
@@ -785,7 +785,7 @@ export const Settings = async () => {
         applyModelSelection(settings);
         syncCustomVisibility();
         applyTheme(settings);
-        toastSuccess("Settings reloaded");
+        showSuccess("Settings reloaded");
     };
     return container as HTMLElement;
 };

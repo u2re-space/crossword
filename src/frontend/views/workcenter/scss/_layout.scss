@@ -16,12 +16,31 @@
         background-color: var(--view-bg);
         color: var(--view-fg);
 
+        /*
+        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: var(--basic-outline-variant) transparent;
+        */
+
+        &::-webkit-scrollbar {
+            inline-size: 4px;
+        }
+
         &__main {
             display: flex;
             flex: 1;
             gap: 1rem;
             padding: 1rem;
             overflow: hidden;
+            flex-direction: column;
+
+            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--basic-outline-variant) transparent;    
         }
 
         &__input-area,
@@ -39,7 +58,7 @@
 
         &__prompt-input {
             flex: 1;
-            min-block-size: 120px;
+            min-block-size: 200px;
             padding: 0.75rem;
             border: 1px solid var(--view-border);
             border-radius: 8px;
@@ -93,6 +112,20 @@
             min-inline-size: 0;
             padding: 1rem;
             border-radius: 12px;
+            block-size: max-content;
+            max-block-size: none;
+        }
+
+        &__results {
+            max-block-size: 600px;
+
+            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--basic-outline-variant) transparent;
+
+            contain: inline-size layout paint style;
         }
 
         &__files {
@@ -100,8 +133,10 @@
             border: 2px dashed var(--view-border);
             background-color: var(--view-files-bg);
             transition: border-color 0.2s ease, background-color 0.2s ease;
+            cursor: pointer;
+            max-block-size: none;
 
-            &.dragover {
+            &.dragover, &:hover {
                 border-color: var(--view-primary);
                 background-color: rgba(0, 122, 204, 0.05);
             }

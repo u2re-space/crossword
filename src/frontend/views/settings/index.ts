@@ -14,6 +14,7 @@ import { getItem, setItem, StorageKeys } from "../../../core/storage";
 
 // @ts-ignore
 import settingsStyles from "./Settings.scss?inline";
+import { createSettingsView } from "./Settings";
 
 // ============================================================================
 // SETTINGS TYPES
@@ -87,7 +88,7 @@ export class SettingsView implements View {
         this._sheet = loadAsAdopted(settingsStyles) as CSSStyleSheet;
         this.loadSettings();
 
-        this.element = H`
+        /*this.element = H`
             <div class="view-settings">
                 <div class="view-settings__content">
                     <h1 class="view-settings__title">Settings</h1>
@@ -190,7 +191,9 @@ export class SettingsView implements View {
                     </div>
                 </div>
             </div>
-        ` as HTMLElement;
+        ` as HTMLElement;*/
+
+        this.element = createSettingsView({ isExtension: false });
 
         this.setupEventHandlers();
         return this.element;

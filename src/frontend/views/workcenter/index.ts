@@ -14,6 +14,7 @@ import { createViewState, createLoadingElement } from "../types";
 
 // @ts-ignore - SCSS import
 import workcenterStyles from "./scss/_index.scss?inline";
+import { createCustomInstructionsPanel } from "@rs-frontend/items/CustomInstructionsPanel";
 
 // ============================================================================
 // WORKCENTER STATE
@@ -96,26 +97,15 @@ export class WorkCenterView implements View {
             <div class="view-workcenter">
                 <div class="view-workcenter__main">
                     <div class="view-workcenter__input-area">
-                        <div class="view-workcenter__files" data-files-zone>
-                            <div class="view-workcenter__files-header">
-                                <h3>Attachments</h3>
-                                <span class="view-workcenter__file-count" data-file-count>0 files</span>
+                    
+                        <div class="view-workcenter__results" data-results>
+                            <div class="view-workcenter__results-header">
+                                <h3>Results</h3>
                             </div>
-                            <div class="view-workcenter__files-list" data-files-list>
-                                <div class="view-workcenter__files-empty">
-                                    <ui-icon icon="paperclip" icon-style="duotone" size="32"></ui-icon>
-                                    <p>Drop files here or click to attach</p>
+                            <div class="view-workcenter__results-list" data-results-list>
+                                <div class="view-workcenter__results-empty">
+                                    <p>Results will appear here</p>
                                 </div>
-                            </div>
-                            <div class="view-workcenter__files-actions">
-                                <button class="view-workcenter__btn" data-action="add-files" type="button">
-                                    <ui-icon icon="plus" icon-style="bold"></ui-icon>
-                                    <span>Add Files</span>
-                                </button>
-                                <button class="view-workcenter__btn" data-action="clear-files" type="button">
-                                    <ui-icon icon="trash" icon-style="duotone"></ui-icon>
-                                    <span>Clear</span>
-                                </button>
                             </div>
                         </div>
                         <div class="view-workcenter__prompt">
@@ -134,16 +124,26 @@ export class WorkCenterView implements View {
                             </button>
                         </div>
                     </div>
-                    <div class="view-workcenter__results" data-results>
-                        <div class="view-workcenter__results-header">
-                            <h3>Results</h3>
+                    <div class="view-workcenter__files" data-files-zone data-action="add-files">
+                        <div class="view-workcenter__files-header">
+                            <h3>Attachments</h3>
+                            <span class="view-workcenter__file-count" data-file-count>0 files</span>
                         </div>
-                        <div class="view-workcenter__results-list" data-results-list>
-                            <div class="view-workcenter__results-empty">
-                                <p>Results will appear here</p>
+                        <div class="view-workcenter__files-list" data-files-list>
+                            <div class="view-workcenter__files-empty">
+                                <ui-icon icon="paperclip" icon-style="duotone" size="32"></ui-icon>
+                                <p>Drop files here or click to attach</p>
                             </div>
                         </div>
+                        <div class="view-workcenter__files-actions">
+                            <button class="view-workcenter__btn" data-action="clear-files" type="button">
+                                <ui-icon icon="trash" icon-style="duotone"></ui-icon>
+                                <span>Clear</span>
+                            </button>
+                        </div>
                     </div>
+                    ${createCustomInstructionsPanel({ onUpdate: () => this.updateResultsList() })}
+ 
                 </div>
             </div>
         ` as HTMLElement;

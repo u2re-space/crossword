@@ -4,8 +4,8 @@
  * Provides overlay, selection box, hints, and integrated toast/clipboard
  */
 
+import { initClipboardReceiver } from "@rs-core/modules/Clipboard";
 import { showToast as toastShow, initToastReceiver, type ToastOptions } from "../items/Toast";
-import { initClipboardReceiver } from "../../core/clipboard";
 
 export interface OverlayConfig {
     prefix?: string;
