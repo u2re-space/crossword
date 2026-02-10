@@ -13,17 +13,6 @@ import { type DataContext, type DataFilter, type ModificationInstruction } from 
 import { fixEntityId } from "@rs-com/template/EntityId";
 import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
 
-// AI-ops imports
-import {
-    recognizeWithContext,
-    batchRecognize,
-    extractEntities,
-    smartRecognize,
-    type RecognitionResult,
-    type BatchRecognitionResult,
-    type RecognizeByInstructionsOptions
-} from "./RecognizeData2";
-
 import {
     modifyEntityByPrompt,
     modifyEntityByInstructions,
@@ -48,6 +37,7 @@ import {
 
 import { resolveEntity } from "./EntityItemResolve";
 import { loadSettings } from "@rs-com/config/Settings";
+import { batchRecognize, extractEntities, recognizeWithContext, smartRecognize, type BatchRecognitionResult, type RecognitionResult, type RecognizeByInstructionsOptions } from "./ProcessingData";
 
 //
 export type OrchestratorConfig = {

@@ -1,96 +1,74 @@
-/*
- * AI-powered data selection, collection, filtering, and search operations.
- * Provides intelligent querying capabilities beyond simple field matching,
- * supporting semantic search, fuzzy matching, and AI-assisted filtering.
- */
-
 import { decode, encode } from "@toon-format/toon";
-import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
 import { type DataFilter } from "../model/GPT-Config";
-import { getRuntimeSettings } from "../../config/RuntimeSettings";
 import { parseAIResponseSafe } from "@rs-core/document/AIResponseParser";
-import { loadSettings } from "@rs-com/config/Settings";
+import { getGPTInstance } from "../shared/gpt-utils";
+import type { AIConfig } from "../shared/types";
 
-export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
+export type { AIConfig };
 
 export type SearchMode = "exact" | "fuzzy" | "semantic" | "ai";
 export type SortDirection = "asc" | "desc";
 
 export type SearchQuery = {
-    terms: string[];
-    mode?: SearchMode;
-    fields?: string[];
-    boost?: Record<string, number>;
-    minScore?: number;
-}
+	terms: string[];
+	mode?: SearchMode;
+	fields?: string[];
+	boost?: Record<string, number>;
+	minScore?: number;
+};
 
 export type FilterGroup = {
-    logic: "and" | "or";
-    filters: (DataFilter | FilterGroup)[];
-}
+	logic: "and" | "or";
+	filters: (DataFilter | FilterGroup)[];
+};
 
 export type SortCriteria = {
-    field: string;
-    direction: SortDirection;
-    nullsFirst?: boolean;
-}
+	field: string;
+	direction: SortDirection;
+	nullsFirst?: boolean;
+};
 
 export type SelectionOptions = {
-    filters?: DataFilter[];
-    filterGroups?: FilterGroup[];
-    search?: SearchQuery;
-    sort?: SortCriteria[];
-    limit?: number;
-    offset?: number;
-    distinct?: boolean;
-    fields?: string[];
-}
+	filters?: DataFilter[];
+	filterGroups?: FilterGroup[];
+	search?: SearchQuery;
+	sort?: SortCriteria[];
+	limit?: number;
+	offset?: number;
+	distinct?: boolean;
+	fields?: string[];
+};
 
 export type SelectionResult<T = any> = {
-    ok: boolean;
-    items: T[];
-    total: number;
-    stats: SelectionStats;
-    suggestions?: string[];
-    error?: string;
-}
+	ok: boolean;
+	items: T[];
+	total: number;
+	stats: SelectionStats;
+	suggestions?: string[];
+	error?: string;
+};
 
 export type SelectionStats = {
-    totalScanned: number;
-    matchedByFilter: number;
-    matchedBySearch: number;
-    filtered: number;
-    executionTimeMs: number;
-}
+	totalScanned: number;
+	matchedByFilter: number;
+	matchedBySearch: number;
+	filtered: number;
+	executionTimeMs: number;
+};
 
 export type SimilarityResult<T = any> = {
-    item: T;
-    score: number;
-    matchedFields: string[];
-    explanation?: string;
-}
+	item: T;
+	score: number;
+	matchedFields: string[];
+	explanation?: string;
+};
 
 export type GroupedResult<T = any> = {
-    key: any;
-    items: T[];
-    count: number;
-    aggregates?: Record<string, any>;
-}
-
-//
-const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
-    const settings = await loadSettings();
-    const apiKey = config?.apiKey || settings?.ai?.apiKey;
-    if (!apiKey) {
-        console.warn("No API key configured");
-        return null;
-    }
-    return createGPTInstance(
-        apiKey,
-        config?.baseUrl || settings?.ai?.baseUrl,
-        config?.model || settings?.ai?.model
-    );
-}
+	key: any;
+	items: T[];
+	count: number;
+	aggregates?: Record<string, any>;
+};
 
 //
 const applyLocalFilter = (item: any, filter: DataFilter): boolean => {
@@ -583,7 +561,7 @@ Return:
         ).filter((g: T[]) => g.length > 1);
         const duplicateCount = groups.reduce((sum: number, g: T[]) => sum + g.length - 1, 0);
 
-        return { groups: parsed?.data?.duplicate_groups || [], duplicateCount };
+        return { groups, duplicateCount };
 
     } catch (e) {
         console.error("Error in findDuplicates:", e);

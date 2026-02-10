@@ -30,7 +30,7 @@ import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, 
 import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
 import { downloadMarkdownAsDocx } from "../../../../core/document/DocxExport";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
-import { extractCSS, recognizeByInstructions, solveAndAnswer, writeCode } from "@rs-com/service/AI-ops/RecognizeData";
+import { extractCSS, recognizeByInstructions, solveAndAnswer, writeCode } from "@rs-com/service/service/RecognizeData";
 import { loadSettings } from "@rs-com/config/Settings";
 
 

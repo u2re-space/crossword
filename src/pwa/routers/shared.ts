@@ -1,6 +1,6 @@
 
-import { resolveEntity } from "@rs-com/service/AI-ops/EntityItemResolve";
-import { UnifiedAIService, type RecognizeByInstructionsOptions } from "@rs-com/service/AI-ops/RecognizeData2";
+import { resolveEntity } from "@rs-com/service/service/EntityItemResolve";
+import { UnifiedAIService, type RecognizeByInstructionsOptions } from "@rs-com/service/AI-ops/service/RecognizeData2";
 import { getOrDefaultComputedOfDataSourceCache } from "../lib/DataSourceCache";
 import { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import type { AppSettings, CustomInstruction } from "@rs-com/config/SettingsTypes";

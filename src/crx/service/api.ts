@@ -1,6 +1,6 @@
 import { ableToShowImage, encodeWithJSquash, removeAnyPrefix } from "@rs-core/workers/ImageProcess";
-import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "../../com/service/AI-ops/RecognizeData";
-import type { RecognizeResult } from "../../com/service/AI-ops/RecognizeData";
+import { recognizeImageData, solveAndAnswer, writeCode, extractCSS, recognizeByInstructions } from "../../com/service/service/RecognizeData";
+import type { RecognizeResult } from "../../com/service/service/RecognizeData";
 import { toText } from "@rs-core/modules/Clipboard";
 import { getCustomInstructions } from "@rs-com/service/misc/CustomInstructions";
 

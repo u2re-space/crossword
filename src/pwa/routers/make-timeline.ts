@@ -1,7 +1,7 @@
 import { registerRoute } from "workbox-routing";
 import { controlChannel, tryToTimeout } from "./shared";
-import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-ops/MakeTimeline";
-import { queueEntityForWriting, pushToIDBQueue } from "@rs-com/service/AI-ops/ServiceHelper";
+import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/service/MakeTimeline";
+import { queueEntityForWriting, pushToIDBQueue } from "@rs-com/service/service/ServiceHelper";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 
 // IDB utilities for clipboard operations

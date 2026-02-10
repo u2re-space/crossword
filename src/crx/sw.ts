@@ -1,8 +1,8 @@
-import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/AI-ops/MakeTimeline";
+import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/service/MakeTimeline";
 import { COPY_HACK, enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
-import { recognizeImageData } from "../com/service/AI-ops/RecognizeData";
-import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/RecognizeData2";
+import { recognizeImageData } from "../com/service/service/RecognizeData";
+import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/service/RecognizeData2";
 import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/misc/CustomInstructions";
 import { loadSettings } from "@rs-com/config/Settings";
 import { executionCore } from "@rs-com/service/misc/ExecutionCore";

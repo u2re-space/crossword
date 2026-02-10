@@ -1,65 +1,43 @@
-/*
- * AI-powered data modification operations.
- * Provides functionality to modify existing entities via AI prompts,
- * supporting batch operations, smart merging, and conflict resolution.
- */
-
 import { encode } from "@toon-format/toon";
-import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
 import { type ModificationInstruction, buildModificationPrompt } from "../model/GPT-Config";
-import { getRuntimeSettings } from "../../config/RuntimeSettings";
 import { fixEntityId } from "../../template/EntityId";
 import { parseAIResponseSafe } from "@rs-core/document/AIResponseParser";
-import { loadSettings } from "@rs-com/config/Settings";
+import { getGPTInstance } from "../shared/gpt-utils";
+import type { AIConfig } from "../shared/types";
 
-export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
+export type { AIConfig };
 
 export type ModifyEntityOptions = {
-    preserveId?: boolean;
-    preserveType?: boolean;
-    validateSchema?: boolean;
-    mergeArrays?: boolean;
-    deepMerge?: boolean;
-}
+	preserveId?: boolean;
+	preserveType?: boolean;
+	validateSchema?: boolean;
+	mergeArrays?: boolean;
+	deepMerge?: boolean;
+};
 
 export type ModificationResult<T = any> = {
-    ok: boolean;
-    original: T;
-    modified: T | null;
-    changes: ChangeRecord[];
-    errors: string[];
-    warnings: string[];
-}
+	ok: boolean;
+	original: T;
+	modified: T | null;
+	changes: ChangeRecord[];
+	errors: string[];
+	warnings: string[];
+};
 
 export type ChangeRecord = {
-    field: string;
-    oldValue: any;
-    newValue: any;
-    action: "update" | "delete" | "add" | "merge";
-}
+	field: string;
+	oldValue: any;
+	newValue: any;
+	action: "update" | "delete" | "add" | "merge";
+};
 
 export type BatchModificationResult = {
-    ok: boolean;
-    results: ModificationResult[];
-    totalModified: number;
-    totalFailed: number;
-    errors: string[];
-}
-
-//
-const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
-    const settings = await loadSettings();
-    const apiKey = config?.apiKey || settings?.ai?.apiKey;
-    if (!apiKey) {
-        console.warn("No API key configured");
-        return null;
-    }
-    return createGPTInstance(
-        apiKey,
-        config?.baseUrl || settings?.ai?.baseUrl,
-        config?.model || settings?.ai?.model
-    );
-}
+	ok: boolean;
+	results: ModificationResult[];
+	totalModified: number;
+	totalFailed: number;
+	errors: string[];
+};
 
 //
 const diffObjects = (original: any, modified: any, path: string = ""): ChangeRecord[] => {
@@ -418,17 +396,13 @@ export const smartMergeEntities = async (
     return result;
 }
 
-//
 export const undoModification = (
-    entity: any,
-    changes: ChangeRecord[]
+	entity: any,
+	changes: ChangeRecord[],
 ): any => {
-    const reverted = parseAIResponseSafe<any>(JSON.stringify(entity))?.data;
-    if (!reverted?.ok) {
-        return { ok: false, original: entity, modified: null, changes: [], errors: [reverted?.error || "Failed to parse AI response"], warnings: [] };
-    }
+	const reverted = JSON.parse(JSON.stringify(entity));
 
-    for (const change of changes.slice().reverse()) {
+	for (const change of changes.slice().reverse()) {
         const path = change.field.split(".");
         let current = reverted;
 
@@ -517,9 +491,13 @@ Return:
 
         const parsed = parseAIResponseSafe<{ valid: boolean; errors: string[] | string; suggestions: string[]; }>(raw)?.data;
         if (!parsed?.valid) {
-            return { valid: false, errors: Array.isArray(parsed?.errors) ? parsed?.errors : [parsed?.errors || "Unknown error"], suggestions: [] };
+            return {
+                valid: false,
+                errors: Array.isArray(parsed?.errors) ? parsed.errors : [parsed?.errors || "Unknown error"],
+                suggestions: Array.isArray(parsed?.suggestions) ? parsed.suggestions : [],
+            };
         }
-        return { valid: true, errors: [], suggestions: [] };
+        return { valid: true, errors: [], suggestions: Array.isArray(parsed?.suggestions) ? parsed.suggestions : [] };
     } catch (e) {
         console.error("Error in validateModification:", e);
         return { valid: false, errors: [String(e)], suggestions: [] };

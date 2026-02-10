@@ -5,7 +5,7 @@ import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
 import { fixEntityId } from "@rs-com/template/EntityId";
 import { opfsModifyJson } from "./OPFSMod";
 import { writeFileSmart } from "./WriteFileSmart-v2";
-import { TIMELINE_DIR } from "@rs-com/service/AI-ops/MakeTimeline";
+import { TIMELINE_DIR } from "@rs-com/service/service/MakeTimeline";
 import { JSOX } from "jsox";
 import { showSuccess } from "@rs-frontend/items/Toast";
 import { showError } from "@rs-frontend/items/Toast";

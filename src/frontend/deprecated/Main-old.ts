@@ -2,7 +2,7 @@
 import style from "./Main.scss?inline";
 
 import { H } from "fest/lure";
-import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/RecognizeData2";
+import { recognizeByInstructions, solveAndAnswer, writeCode, extractCSS } from "@rs-com/service/AI-ops/service/RecognizeData2";
 import { loadSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { ensureStyleSheet } from "fest/icon";
