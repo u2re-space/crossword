@@ -1,5 +1,5 @@
-import { processDataWithInstruction } from '../service/RecognizeData2';
-import { toBase64 } from '../model/GPT-Responses';
+import { processDataWithInstruction } from '@rs-com/service/service/RecognizeData';
+import { toBase64 } from '@rs-com/service/model/GPT-Responses';
 import { actionHistory, type ActionEntry, type ActionContext, type ActionInput, type ActionResult } from './ActionHistory';
 
 export interface ExecutionRule {

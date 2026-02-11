@@ -9,9 +9,9 @@
         --shell-status-height: 24px;
 
         /* Colors */
-        --faint-nav-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
-        --faint-nav-border: light-dark(var(--basic-outline-variant), var(--basic-outline-variant));
-        --faint-sidebar-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
+        --faint-nav-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
+        --faint-nav-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
+        --faint-sidebar-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
 
         --shell-sidebar-bg: light-dark(var(--color-surface), var(--color-surface));
         --shell-sidebar-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
@@ -31,21 +31,21 @@
         --shell-toolbar-height: 48px;
 
         /* Colors */
-        --shell-bg: light-dark(var(--basic-surface), var(--basic-surface));
-        --shell-fg: light-dark(var(--basic-on-surface), var(--basic-on-surface));
-        --shell-sidebar-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
-        --shell-sidebar-border: light-dark(var(--basic-outline-variant), var(--basic-outline-variant));
-        --shell-tabs-bg: light-dark(var(--basic-surface-container-high), var(--basic-surface-container-high));
-        --shell-tab-hover: light-dark(var(--basic-surface-container-highest), var(--basic-surface-container-highest));
-        --shell-tab-active-bg: light-dark(var(--basic-surface-container-highest), var(--basic-surface-container-highest));
-        --shell-tab-active-border: light-dark(var(--basic-primary), var(--basic-primary));
-        --shell-accent: light-dark(var(--basic-primary), var(--basic-primary));
-        --shell-accent-fg: light-dark(var(--basic-on-primary), var(--basic-on-primary));
+        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-sidebar-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
+        --shell-sidebar-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
+        --shell-tabs-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
+        --shell-tab-hover: light-dark(var(--color-surface-container-highest), var(--color-surface-container-highest));
+        --shell-tab-active-bg: light-dark(var(--color-surface-container-highest), var(--color-surface-container-highest));
+        --shell-tab-active-border: light-dark(var(--color-primary), var(--color-primary));
+        --shell-accent: light-dark(var(--color-primary), var(--color-primary));
+        --shell-accent-fg: light-dark(var(--color-on-primary), var(--color-on-primary));
         --shell-status-bg: light-dark(
-            color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface)),
-            color-mix(in oklab, var(--basic-surface) 85%, var(--basic-on-surface))
+            color-mix(in oklab, var(--color-surface) 85%, var(--color-on-surface)),
+            color-mix(in oklab, var(--color-surface) 85%, var(--color-on-surface))
         );
-        --shell-status-fg: light-dark(var(--basic-on-primary), var(--basic-on-primary));
+        --shell-status-fg: light-dark(var(--color-on-primary), var(--color-on-primary));
     }
 
     .app-shell {

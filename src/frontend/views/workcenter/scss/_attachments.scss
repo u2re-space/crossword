@@ -15,26 +15,26 @@
         gap: var(--space-md);
         min-block-size: 8rem;
         position: relative;
-        border-radius: var(--basic-radius-lg);
-        transition: all var(--basic-motion-normal);
+        border-radius: var(--radius-lg);
+        transition: all var(--motion-normal);
         overflow: auto;
         cursor: pointer;
 
         &[data-dropzone] {
             min-block-size: 8rem;
             padding: var(--space-lg);
-            background: var(--basic-surface-container-low);
-            border: 2px dashed color-mix(in oklab, var(--basic-outline-variant) 40%, transparent);
+            background: var(--color-surface-container-low);
+            border: 2px dashed color-mix(in oklab, var(--color-outline-variant) 40%, transparent);
 
             &:hover {
-                border-color: color-mix(in oklab, var(--basic-primary) 40%, transparent);
-                background: color-mix(in oklab, var(--basic-primary) 5%, var(--basic-surface-container-low));
+                border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+                background: color-mix(in oklab, var(--color-primary) 5%, var(--color-surface-container-low));
             }
 
             &.drag-over {
-                border-color: var(--basic-primary);
-                background: color-mix(in oklab, var(--basic-primary) 10%, var(--basic-surface-container-low));
-                box-shadow: var(--basic-focus-ring);
+                border-color: var(--color-primary);
+                background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
+                box-shadow: var(--focus-ring);
 
                 &::before {
                     content: "";
@@ -42,11 +42,11 @@
                     inset: 0;
                     background: linear-gradient(
                         45deg,
-                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 25%,
+                        color-mix(in oklab, var(--color-primary) 5%, transparent) 25%,
                         transparent 25%,
                         transparent 50%,
-                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 50%,
-                        color-mix(in oklab, var(--basic-primary) 5%, transparent) 75%,
+                        color-mix(in oklab, var(--color-primary) 5%, transparent) 50%,
+                        color-mix(in oklab, var(--color-primary) 5%, transparent) 75%,
                         transparent 75%
                     );
                     background-size: 20px 20px;
@@ -73,19 +73,19 @@
     }
 
     .drop-icon {
-        color: var(--basic-primary);
+        color: var(--color-primary);
         opacity: 0.7;
     }
 
     .drop-text {
         font-size: var(--text-lg);
         font-weight: 500;
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
     }
 
     .drop-hint {
         font-size: var(--text-sm);
-        color: var(--basic-on-surface-variant);
+        color: var(--color-on-surface-variant);
         opacity: 0.8;
     }
 
@@ -101,13 +101,13 @@
         align-items: center;
         gap: var(--space-sm);
         padding: var(--space-sm);
-        border-radius: var(--basic-radius-sm);
-        background: var(--basic-surface-container-high);
-        border: 1px solid var(--basic-outline-variant);
+        border-radius: var(--radius-sm);
+        background: var(--color-surface-container-high);
+        border: 1px solid var(--color-outline-variant);
         margin-bottom: var(--space-xs);
 
         &:hover {
-            background: var(--basic-surface-container-highest);
+            background: var(--color-surface-container-highest);
         }
     }
 
@@ -128,7 +128,7 @@
         width: 32px;
         height: 32px;
         object-fit: cover;
-        border-radius: var(--basic-radius-sm);
+        border-radius: var(--radius-sm);
     }
 
     .file-details {
@@ -139,7 +139,7 @@
     .file-name {
         font-size: var(--text-sm);
         font-weight: 500;
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -148,14 +148,14 @@
     .file-size,
     .file-type {
         font-size: var(--text-xs);
-        color: var(--basic-on-surface-variant);
+        color: var(--color-on-surface-variant);
     }
 
     .remove-btn {
-        background: var(--basic-error-container);
-        color: var(--basic-on-error-container);
+        background: var(--color-error-container);
+        color: var(--color-on-error-container);
         border: none;
-        border-radius: var(--basic-radius-sm);
+        border-radius: var(--radius-sm);
         padding: var(--space-xs);
         cursor: pointer;
         font-size: var(--text-sm);
@@ -163,8 +163,8 @@
         flex-shrink: 0;
 
         &:hover {
-            background: var(--basic-error);
-            color: var(--basic-on-error);
+            background: var(--color-error);
+            color: var(--color-on-error);
         }
     }
 
@@ -185,9 +185,9 @@
         gap: var(--space-sm);
         flex-wrap: wrap;
         padding: var(--space-sm);
-        background: var(--basic-surface-container-high);
-        border-radius: var(--basic-radius-sm);
-        border: 1px solid var(--basic-outline-variant);
+        background: var(--color-surface-container-high);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-outline-variant);
 
         .file-counter,
         .data-counter {
@@ -195,7 +195,7 @@
             align-items: center;
             gap: var(--space-xs);
             padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--basic-radius-md);
+            border-radius: var(--radius-md);
             font-size: var(--text-sm);
             font-weight: var(--font-weight-medium);
             inline-size: max-content;
@@ -207,19 +207,19 @@
         }
 
         .file-counter {
-            background: var(--basic-surface-container-high);
-            color: var(--basic-on-surface-variant);
-            border: 1px solid color-mix(in oklab, var(--basic-outline-variant) 30%, transparent);
+            background: var(--color-surface-container-high);
+            color: var(--color-on-surface-variant);
+            border: 1px solid color-mix(in oklab, var(--color-outline-variant) 30%, transparent);
             min-inline-size: calc-size(fit-content, max(size, 25px) + 0.5rem + var(--icon-size, 1rem));
 
             ui-icon {
-                color: var(--basic-primary);
+                color: var(--color-primary);
                 opacity: 0.8;
             }
 
             .count {
                 font-weight: 600;
-                color: var(--basic-primary);
+                color: var(--color-primary);
             }
 
             .label {
@@ -240,22 +240,22 @@
             }
 
             &.recognized {
-                background: var(--basic-secondary-container);
-                color: var(--basic-on-secondary-container);
-                border: 1px solid var(--basic-secondary);
+                background: var(--color-secondary-container);
+                color: var(--color-on-secondary-container);
+                border: 1px solid var(--color-secondary);
 
                 ui-icon {
-                    color: var(--basic-on-secondary-container);
+                    color: var(--color-on-secondary-container);
                 }
             }
 
             &.processed {
-                background: var(--basic-tertiary-container);
-                color: var(--basic-on-tertiary-container);
-                border: 1px solid var(--basic-tertiary);
+                background: var(--color-tertiary-container);
+                color: var(--color-on-tertiary-container);
+                border: 1px solid var(--color-tertiary);
 
                 ui-icon {
-                    color: var(--basic-on-tertiary-container);
+                    color: var(--color-on-tertiary-container);
                 }
             }
         }
@@ -266,30 +266,30 @@
         align-items: center;
         gap: var(--space-sm);
         padding: var(--space-sm);
-        background: color-mix(in oklab, var(--basic-tertiary) 10%, var(--basic-surface-container-high));
-        border: 1px solid color-mix(in oklab, var(--basic-tertiary) 30%, transparent);
-        border-radius: var(--basic-radius-sm);
+        background: color-mix(in oklab, var(--color-tertiary) 10%, var(--color-surface-container-high));
+        border: 1px solid color-mix(in oklab, var(--color-tertiary) 30%, transparent);
+        border-radius: var(--radius-sm);
         font-size: var(--text-sm);
-        color: var(--basic-on-surface-variant);
+        color: var(--color-on-surface-variant);
 
         .status-icon {
-            color: var(--basic-tertiary);
+            color: var(--color-tertiary);
             flex-shrink: 0;
         }
 
         .clear-recognized {
             margin-left: auto;
-            background: var(--basic-tertiary-container);
-            color: var(--basic-on-tertiary-container);
+            background: var(--color-tertiary-container);
+            color: var(--color-on-tertiary-container);
             border: none;
-            border-radius: var(--basic-radius-sm);
+            border-radius: var(--radius-sm);
             padding: var(--space-xs) var(--space-sm);
             font-size: var(--text-xs);
             cursor: pointer;
 
             &:hover {
-                background: var(--basic-tertiary);
-                color: var(--basic-on-tertiary);
+                background: var(--color-tertiary);
+                color: var(--color-on-tertiary);
             }
         }
     }

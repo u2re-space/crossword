@@ -2,7 +2,7 @@
     @mixin spinner($size, $border, $accent, $duration: 0.8s) {
         inline-size: $size;
         block-size: $size;
-        border: $border solid var(--rs-border, rgba(128, 128, 128, 0.2));
+        border: $border solid var(--view-border, rgba(128, 128, 128, 0.2));
         border-block-start-color: $accent;
         border-radius: 50%;
         animation: rs-spin $duration linear infinite;
@@ -17,23 +17,9 @@
 
         :host:has(.view-explorer) {
             /* Typography */
-            --rs-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --rs-font-size: 0.875rem;
-            --rs-line-height: 1.5;
-
-            /* Colors */
-            --rs-bg: light-dark(#ffffff, #1a1a1a);
-            --rs-bg-secondary: light-dark(#f9fafb, #1f2937);
-            --rs-fg: light-dark(#1a1a1a, #f3f4f6);
-            --rs-fg-muted: light-dark(#6b7280, #9ca3af);
-            --rs-border: light-dark(#e5e7eb, #374151);
-            --rs-hover-bg: light-dark(#f3f4f6, #374151);
-            --rs-selected-bg: light-dark(#dbeafe, #1e3a5f);
-            --rs-selected-border: light-dark(#3b82f6, #3b82f6);
-            --rs-accent: light-dark(#2563eb, #60a5fa);
-            --rs-accent-hover: light-dark(#1d4ed8, #93c5fd);
-            --rs-icon-folder: light-dark(#f59e0b, #f59e0b);
-            --rs-icon-file: light-dark(#6b7280, #9ca3af);
+            --view-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --view-font-size: 0.875rem;
+            --view-line-height: 1.5;
         }
     }
 
@@ -47,19 +33,19 @@
             min-block-size: 300px;
 
             /* Typography usage */
-            font-family: var(--rs-font-family);
-            font-size: var(--rs-font-size);
-            line-height: var(--rs-line-height);
-            color: var(--rs-fg);
-            background: var(--rs-bg);
+            font-family: var(--view-font-family);
+            font-size: var(--view-font-size);
+            line-height: var(--view-line-height);
+            color: var(--view-fg);
+            background: var(--view-bg);
         }
 
         .view-explorer {
             display: flex;
             flex-direction: column;
             block-size: 100%;
-            background-color: var(--view-bg, var(--basic-surface, #ffffff));
-            color: var(--view-fg, var(--basic-on-surface, #1a1a1a));
+            background-color: var(--view-bg, var(--color-surface, #ffffff));
+            color: var(--view-fg, var(--color-on-surface, #1a1a1a));
         }
 
         .view-explorer__content {
@@ -102,20 +88,20 @@
         }
 
         .view-explorer__spinner {
-            @include spinner(32px, 3px, var(--color-primary, var(--basic-primary, #007acc)));
+            @include spinner(32px, 3px, var(--color-primary, var(--color-primary, #007acc)));
         }
 
         .view-explorer__error {
             p {
                 margin: 0;
-                color: var(--basic-error, #d32f2f);
+                color: var(--color-error, #d32f2f);
             }
 
             button {
                 padding: 0.5rem 1rem;
                 border: none;
                 border-radius: 6px;
-                background-color: var(--color-primary, var(--basic-primary, #007acc));
+                background-color: var(--color-primary, var(--color-primary, #007acc));
                 color: white;
                 cursor: pointer;
 
@@ -131,8 +117,8 @@
             display: flex;
             flex-direction: column;
             block-size: 100%;
-            background: var(--rs-bg);
-            border: 1px solid var(--rs-border);
+            background: var(--view-bg);
+            border: 1px solid var(--view-border);
             border-radius: 0.5rem;
             overflow: hidden;
         }
@@ -142,21 +128,21 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: var(--rs-bg-secondary);
+            background: var(--view-bg-secondary);
             flex-shrink: 0;
         }
 
         .rs-explorer__toolbar {
             padding: 0.5rem;
-            border-block-end: 1px solid var(--rs-border);
+            border-block-end: 1px solid var(--view-border);
         }
 
         .rs-explorer__status {
             gap: 1rem;
             padding: 0.375rem 0.75rem;
-            border-block-start: 1px solid var(--rs-border);
+            border-block-start: 1px solid var(--view-border);
             font-size: 0.75rem;
-            color: var(--rs-fg-muted);
+            color: var(--view-fg-muted);
         }
 
         .rs-explorer__nav,
@@ -174,7 +160,7 @@
         .rs-explorer__path {
             display: block;
             font-size: 0.8125rem;
-            color: var(--rs-fg-muted);
+            color: var(--view-fg-muted);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -188,7 +174,7 @@
             padding: 0.375rem;
             font-family: inherit;
             font-size: inherit;
-            color: var(--rs-fg-muted);
+            color: var(--view-fg-muted);
             background: transparent;
             border: none;
             border-radius: 0.25rem;
@@ -196,8 +182,8 @@
             transition: background-color 0.15s ease, color 0.15s ease;
 
             &:hover:not(:disabled) {
-                color: var(--rs-fg);
-                background: var(--rs-hover-bg);
+                color: var(--view-fg);
+                background: var(--view-hover-bg);
             }
 
             &:disabled {
@@ -213,10 +199,10 @@
         .rs-explorer__btn--primary {
             padding: 0.5rem 1rem;
             color: white;
-            background: var(--rs-accent);
+            background: var(--view-accent);
 
             &:hover:not(:disabled) {
-                background: var(--rs-accent-hover);
+                background: var(--view-accent-hover);
                 color: white;
             }
         }
@@ -235,7 +221,7 @@
             overscroll-behavior: contain;
 
             &:focus-visible {
-                outline: 2px solid var(--rs-accent);
+                outline: 2px solid var(--view-accent);
                 outline-offset: -2px;
             }
         }
@@ -247,7 +233,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.75rem;
-            color: var(--rs-fg-muted);
+            color: var(--view-fg-muted);
             text-align: center;
         }
 
@@ -270,7 +256,7 @@
         }
 
         .rs-explorer__spinner {
-            @include spinner(1.5rem, 2px, var(--rs-accent));
+            @include spinner(1.5rem, 2px, var(--view-accent));
         }
 
         .rs-explorer__item {
@@ -284,11 +270,11 @@
             transition: background-color 0.1s ease;
 
             &:hover {
-                background: var(--rs-hover-bg);
+                background: var(--view-hover-bg);
             }
 
             &[aria-selected="true"] {
-                background: var(--rs-selected-bg);
+                background: var(--view-selected-bg);
 
                 &::before {
                     content: "";
@@ -296,12 +282,12 @@
                     inset-inline-start: 0;
                     inset-block: 0;
                     inline-size: 3px;
-                    background: var(--rs-selected-border);
+                    background: var(--view-selected-border);
                 }
             }
 
             &:focus-visible {
-                outline: 2px solid var(--rs-accent);
+                outline: 2px solid var(--view-accent);
                 outline-offset: -2px;
             }
         }
@@ -317,11 +303,11 @@
             }
 
             [data-kind="directory"] & {
-                color: var(--rs-icon-folder);
+                color: var(--view-icon-folder);
             }
 
             [data-kind="file"] & {
-                color: var(--rs-icon-file);
+                color: var(--view-icon-file);
             }
         }
 
@@ -342,7 +328,7 @@
 
         .rs-explorer__item-meta {
             font-size: 0.75rem;
-            color: var(--rs-fg-muted);
+            color: var(--view-fg-muted);
         }
 
         .rs-explorer__selected-count:not(:empty)::before {
@@ -362,8 +348,8 @@
 
         :host(.dragover) {
             .rs-explorer__content {
-                background: var(--rs-selected-bg);
-                border: 2px dashed var(--rs-selected-border);
+                background: var(--view-selected-bg);
+                border: 2px dashed var(--view-selected-border);
             }
         }
 
@@ -383,7 +369,7 @@
                 border: 1px solid transparent;
 
                 &[aria-selected="true"] {
-                    border-color: var(--rs-selected-border);
+                    border-color: var(--view-selected-border);
 
                     &::before {
                         display: none;

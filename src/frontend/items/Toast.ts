@@ -38,7 +38,7 @@ const TRANSITION_DURATION = 200;
 const TOAST_STYLES = `
 .rs-toast-layer {
     position: fixed;
-    z-index: var(--rs-toast-z, 2147483647);
+    z-index: var(--shell-toast-z, 2147483647);
     pointer-events: none;
     display: flex;
     flex-direction: column;
@@ -131,15 +131,15 @@ const TOAST_STYLES = `
 }
 
 .rs-toast[data-kind="success"] {
-    --toast-bg: var(--basic-success, var(--color-success, #22c55e));
+    --toast-bg: var(--color-success, var(--color-success, #22c55e));
 }
 
 .rs-toast[data-kind="warning"] {
-    --toast-bg: var(--basic-warning, var(--color-warning, #f59e0b));
+    --toast-bg: var(--color-warning, var(--color-warning, #f59e0b));
 }
 
 .rs-toast[data-kind="error"] {
-    --toast-bg: var(--basic-error, var(--color-error, #ef4444));
+    --toast-bg: var(--color-error, var(--color-error, #ef4444));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -195,7 +195,7 @@ const getToastLayer = (config: Required<ToastLayerConfig>, doc: Document = docum
     }
 
     layer.setAttribute("data-position", config.position);
-    layer.style.setProperty("--rs-toast-z", String(config.zIndex));
+    layer.style.setProperty("--shell-toast-z", String(config.zIndex));
 
     toastLayers.set(key, layer);
     return layer;

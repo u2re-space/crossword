@@ -14,14 +14,14 @@
         padding: var(--space-md);
         overflow-y: auto;
         overflow-x: hidden;
-        background: var(--basic-background);
-        color: var(--basic-on-background);
+        background: var(--color-background);
+        color: var(--color-on-background);
         min-block-size: stretch;
         block-size: stretch;
         max-block-size: stretch;
         container-type: inline-size;
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         textarea, input, select, button {
             box-sizing: border-box;
@@ -60,16 +60,16 @@
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--color-outline-variant);
             border-radius: 2px;
         }
 
         &::-webkit-scrollbar-thumb:hover {
-            background: var(--basic-outline);
+            background: var(--color-outline);
         }
 
         &:focus-visible {
-            outline: 2px solid var(--basic-primary);
+            outline: 2px solid var(--color-primary);
             outline-offset: -2px;
         }
     }

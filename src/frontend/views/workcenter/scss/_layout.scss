@@ -1,7 +1,7 @@
 @layer layer.view.workcenter {
     .view-workcenter {
-        --view-bg: light-dark(var(--basic-surface, #ffffff), #121212);
-        --view-fg: light-dark(var(--basic-on-surface, #1a1a1a), #f2f2f2);
+        --view-bg: light-dark(var(--color-surface, #ffffff), #121212);
+        --view-fg: light-dark(var(--color-on-surface, #1a1a1a), #f2f2f2);
         --view-border: light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.15));
         --view-files-bg: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.03));
         --view-file-bg: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
@@ -21,7 +21,7 @@
         overflow-y: auto;
         overflow-x: hidden;
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
         */
 
         &::-webkit-scrollbar {
@@ -40,7 +40,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
-            scrollbar-color: var(--basic-outline-variant) transparent;    
+            scrollbar-color: var(--color-outline-variant) transparent;    
         }
 
         &__input-area,
@@ -123,7 +123,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
-            scrollbar-color: var(--basic-outline-variant) transparent;
+            scrollbar-color: var(--color-outline-variant) transparent;
 
             contain: inline-size layout paint style;
         }
@@ -379,8 +379,8 @@
                     align-items: center;
                     gap: var(--space-md, 0.75rem);
                     padding: var(--space-sm) var(--space-md);
-                    background: var(--basic-surface-container-high);
-                    border-radius: var(--basic-radius-md);
+                    background: var(--color-surface-container-high);
+                    border-radius: var(--radius-md);
                     inline-size: stretch;
                     max-inline-size: stretch;
                     min-inline-size: 0;
@@ -399,7 +399,7 @@
                         margin: 0;
                         font-size: var(--text-base);
                         font-weight: var(--font-weight-semibold);
-                        color: var(--basic-on-surface);
+                        color: var(--color-on-surface);
                         text-align: start;
                         justify-self: start;
                         letter-spacing: -0.01em;
@@ -433,9 +433,9 @@
                     flex-direction: column;
                     gap: var(--space-md);
                     min-block-size: 0;
-                    background: var(--basic-surface-container-low);
-                    border-radius: var(--basic-radius-lg);
-                    border: 1px solid var(--basic-outline-variant);
+                    background: var(--color-surface-container-low);
+                    border-radius: var(--radius-lg);
+                    border: 1px solid var(--color-outline-variant);
                     padding: var(--space-md);
                     inline-size: stretch;
                     max-inline-size: stretch;

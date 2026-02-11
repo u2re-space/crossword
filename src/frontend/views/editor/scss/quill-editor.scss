@@ -13,8 +13,8 @@
 
     .quill-wrapper {
         flex: 1;
-        background: var(--basic-surface-container);
-        border-radius: var(--basic-radius-xl);
+        background: var(--color-surface-container);
+        border-radius: var(--radius-xl);
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -28,8 +28,8 @@
 
     .quill-editor .ql-toolbar {
         border: none;
-        background: var(--basic-surface-container-high);
-        border-radius: var(--basic-radius-xl) var(--basic-radius-xl) 0 0;
+        background: var(--color-surface-container-high);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     }
 
     .quill-editor .ql-container {
@@ -42,10 +42,10 @@
     .quill-editor .ql-editor {
         padding: var(--space-lg);
         min-height: 400px;
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
 
         &::before {
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             opacity: 0.7;
             font-style: normal;
         }
@@ -56,54 +56,54 @@
     }
 
     .quill-editor .ql-editor.ql-blank::before {
-        color: var(--basic-on-surface-variant);
+        color: var(--color-on-surface-variant);
         opacity: 0.7;
     }
 
     /* Quill toolbar customization */
     .quill-editor .ql-toolbar .ql-picker-label {
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
     }
 
     .quill-editor .ql-toolbar .ql-stroke {
-        stroke: var(--basic-on-surface-variant);
+        stroke: var(--color-on-surface-variant);
     }
 
     .quill-editor .ql-toolbar .ql-fill {
-        fill: var(--basic-on-surface-variant);
+        fill: var(--color-on-surface-variant);
     }
 
     .quill-editor .ql-toolbar button:hover,
     .quill-editor .ql-toolbar button:focus {
-        color: var(--basic-primary);
+        color: var(--color-primary);
     }
 
     .quill-editor .ql-toolbar button:hover .ql-stroke,
     .quill-editor .ql-toolbar button:focus .ql-stroke {
-        stroke: var(--basic-primary);
+        stroke: var(--color-primary);
     }
 
     .quill-editor .ql-toolbar button:hover .ql-fill,
     .quill-editor .ql-toolbar button:focus .ql-fill {
-        fill: var(--basic-primary);
+        fill: var(--color-primary);
     }
 
     .quill-editor .ql-toolbar button.ql-active,
     .quill-editor .ql-toolbar .ql-picker-label.ql-active,
     .quill-editor .ql-toolbar .ql-picker-item.ql-selected {
-        color: var(--basic-primary);
+        color: var(--color-primary);
     }
 
     .quill-editor .ql-toolbar button.ql-active .ql-stroke,
     .quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke,
     .quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-stroke {
-        stroke: var(--basic-primary);
+        stroke: var(--color-primary);
     }
 
     .quill-editor .ql-toolbar button.ql-active .ql-fill,
     .quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-fill,
     .quill-editor .ql-toolbar .ql-picker-item.ql-selected .ql-fill {
-        fill: var(--basic-primary);
+        fill: var(--color-primary);
     }
 
     /* Custom scrollbar for Quill editor */
@@ -112,17 +112,17 @@
     }
 
     .quill-editor .ql-editor::-webkit-scrollbar-track {
-        background: var(--basic-surface-container);
+        background: var(--color-surface-container);
         border-radius: 4px;
     }
 
     .quill-editor .ql-editor::-webkit-scrollbar-thumb {
-        background: var(--basic-outline);
+        background: var(--color-outline);
         border-radius: 4px;
     }
 
     .quill-editor .ql-editor::-webkit-scrollbar-thumb:hover {
-        background: var(--basic-outline-variant);
+        background: var(--color-outline-variant);
     }
 
     /* Responsive Quill editor */
@@ -143,9 +143,9 @@
 
     /* Enhanced Quill Editor Container Theming */
     .quill-editor-container {
-        background: var(--basic-surface-container);
+        background: var(--color-surface-container);
         padding: var(--space-lg);
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
         position: relative;
 
         // Content positioning
@@ -174,7 +174,7 @@
         // Focus state
         &:focus-within {
             outline: none;
-            box-shadow: var(--basic-focus-ring);
+            box-shadow: var(--focus-ring);
         }
 
         .editor-header {
@@ -201,7 +201,7 @@
                 margin: 0;
                 font-size: var(--text-2xl);
                 font-weight: var(--font-weight-bold);
-                color: var(--basic-on-surface);
+                color: var(--color-on-surface);
                 letter-spacing: -0.025em;
                 line-height: var(--leading-tight);
 
@@ -251,17 +251,17 @@
                     align-items: center;
                     gap: var(--space-xs);
                     padding: var(--space-sm) var(--space-lg);
-                    border-radius: var(--basic-radius-lg);
-                    background: var(--basic-surface-container-high);
-                    color: var(--basic-on-surface);
+                    border-radius: var(--radius-lg);
+                    background: var(--color-surface-container-high);
+                    color: var(--color-on-surface);
                     font-size: var(--text-sm);
                     font-weight: var(--font-weight-medium);
                     cursor: pointer;
-                    transition: all var(--basic-motion-fast);
+                    transition: all var(--motion-fast);
                     position: relative;
                     white-space: nowrap;
                     min-height: 44px;
-                    box-shadow: var(--basic-elev-0);
+                    box-shadow: var(--elev-0);
 
                     @container (max-width: 640px) {
                         padding: var(--space-xs) var(--space-md);
@@ -275,9 +275,9 @@
                     }
 
                     &:hover {
-                        background: var(--basic-surface-container-highest);
+                        background: var(--color-surface-container-highest);
                         transform: translateY(-1px);
-                        box-shadow: var(--basic-elev-1);
+                        box-shadow: var(--elev-1);
                     }
 
                     &:active {
@@ -287,15 +287,15 @@
 
                     &:focus-visible {
                         outline: none;
-                        box-shadow: var(--basic-focus-ring);
+                        box-shadow: var(--focus-ring);
                     }
 
                     &.primary {
-                        background: var(--basic-secondary);
-                        color: var(--basic-on-secondary);
+                        background: var(--color-secondary);
+                        color: var(--color-on-secondary);
 
                         &:hover {
-                            background: color-mix(in oklab, var(--basic-secondary) 85%, black);
+                            background: color-mix(in oklab, var(--color-secondary) 85%, black);
                         }
                     }
 
@@ -309,7 +309,7 @@
 
                         ui-icon {
                             flex-shrink: 0;
-                            transition: color var(--basic-motion-fast);
+                            transition: color var(--motion-fast);
                         }
 
                         .btn-text {
@@ -319,11 +319,11 @@
                         }
 
                         &:hover ui-icon {
-                            color: var(--basic-secondary);
+                            color: var(--color-secondary);
                         }
 
                         &.primary:hover ui-icon {
-                            color: var(--basic-on-secondary);
+                            color: var(--color-on-secondary);
                         }
                     }
 
@@ -371,7 +371,7 @@
                 display: flex;
                 gap: var(--space-lg);
                 font-size: var(--text-sm);
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
 
                 // Responsive layout
                 @container (max-width: 768px) {
@@ -390,7 +390,7 @@
                 gap: var(--space-md);
                 align-items: center;
                 font-size: var(--text-sm);
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
 
                 // Responsive layout
                 @container (max-width: 768px) {
@@ -400,9 +400,9 @@
 
                 .format-indicator {
                     padding: var(--space-xs) var(--space-sm);
-                    border-radius: var(--basic-radius-sm);
+                    border-radius: var(--radius-sm);
                     font-weight: var(--font-weight-semibold);
-                    color: var(--basic-secondary);
+                    color: var(--color-secondary);
                 }
             }
         }
@@ -412,27 +412,27 @@
     .app-shell[data-theme="dark"] .quill-editor-container {
         .editor-header {
             h3 {
-                color: var(--basic-on-surface);
+                color: var(--color-on-surface);
             }
 
             .btn {
-                background: var(--basic-surface-container-low);
-                border-color: var(--basic-outline);
-                color: var(--basic-on-surface);
+                background: var(--color-surface-container-low);
+                border-color: var(--color-outline);
+                color: var(--color-on-surface);
 
                 &:hover {
-                    background: var(--basic-surface-container);
-                    border-color: var(--basic-secondary);
+                    background: var(--color-surface-container);
+                    border-color: var(--color-secondary);
                 }
 
                 &.primary {
-                    background: var(--basic-secondary);
-                    color: var(--basic-on-secondary);
-                    border-color: var(--basic-secondary);
+                    background: var(--color-secondary);
+                    color: var(--color-on-secondary);
+                    border-color: var(--color-secondary);
 
                     &:hover {
-                        background: color-mix(in oklab, var(--basic-secondary) 85%, black);
-                        border-color: color-mix(in oklab, var(--basic-secondary) 85%, black);
+                        background: color-mix(in oklab, var(--color-secondary) 85%, black);
+                        border-color: color-mix(in oklab, var(--color-secondary) 85%, black);
                     }
                 }
             }
@@ -440,59 +440,59 @@
 
         .quill-wrapper {
             .ql-toolbar {
-                background: var(--basic-surface-container-low);
+                background: var(--color-surface-container-low);
 
                 .ql-stroke {
-                    stroke: var(--basic-on-surface);
+                    stroke: var(--color-on-surface);
                 }
 
                 .ql-fill {
-                    fill: var(--basic-on-surface);
+                    fill: var(--color-on-surface);
                 }
 
                 .ql-active {
-                    color: var(--basic-secondary);
-                    background: color-mix(in oklab, var(--basic-secondary) 15%, transparent);
+                    color: var(--color-secondary);
+                    background: color-mix(in oklab, var(--color-secondary) 15%, transparent);
                 }
             }
 
             .ql-container {
-                background: var(--basic-surface-container-low);
+                background: var(--color-surface-container-low);
 
                 .ql-editor {
-                    color: var(--basic-on-surface);
+                    color: var(--color-on-surface);
 
                     &::before {
-                        color: var(--basic-on-surface-variant);
+                        color: var(--color-on-surface-variant);
                     }
 
                     pre {
-                        background: var(--basic-surface-container);
-                        border-color: var(--basic-outline);
-                        color: var(--basic-on-surface);
+                        background: var(--color-surface-container);
+                        border-color: var(--color-outline);
+                        color: var(--color-on-surface);
                     }
 
                     blockquote {
-                        background: var(--basic-surface-container);
-                        color: var(--basic-on-surface);
+                        background: var(--color-surface-container);
+                        color: var(--color-on-surface);
                     }
 
                     table {
-                        border-color: var(--basic-outline);
+                        border-color: var(--color-outline);
 
                         th {
-                            background: var(--basic-surface-container);
+                            background: var(--color-surface-container);
                         }
 
                         th, td {
-                            border-color: var(--basic-outline);
+                            border-color: var(--color-outline);
                         }
                     }
 
                     .ql-syntax {
-                        background: var(--basic-surface-container);
-                        border-color: var(--basic-outline);
-                        color: var(--basic-on-surface);
+                        background: var(--color-surface-container);
+                        border-color: var(--color-outline);
+                        color: var(--color-on-surface);
                     }
                 }
             }
@@ -500,14 +500,14 @@
 
         .editor-footer {
             .editor-stats {
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
             }
 
             .editor-info {
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
 
                 .format-indicator {
-                    background: var(--basic-surface-container-high);
+                    background: var(--color-surface-container-high);
                 }
             }
         }

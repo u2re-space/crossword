@@ -14,7 +14,7 @@
         gap: var(--space-lg);
         padding: var(--space-lg);
         max-block-size: 100%;
-        background: var(--basic-surface-container);
+        background: var(--color-surface-container);
         overflow: hidden;
         position: relative;
 
@@ -36,17 +36,17 @@
 
         // Hover effects
         &:hover {
-            box-shadow: var(--basic-elev-3);
+            box-shadow: var(--elev-3);
         }
 
         // Focus state
         &:focus-within {
-            box-shadow: var(--basic-elev-3);
+            box-shadow: var(--elev-3);
         }
 
         // Custom scrollbar
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         &::-webkit-scrollbar {
             width: 6px;
@@ -54,11 +54,11 @@
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--color-outline-variant);
             border-radius: 3px;
 
             &:hover {
-                background: var(--basic-outline);
+                background: var(--color-outline);
             }
         }
     }
@@ -72,7 +72,7 @@
         align-items: center;
         justify-content: space-between;
         padding: var(--space-lg);
-        background: var(--basic-surface-container-high);
+        background: var(--color-surface-container-high);
         margin-bottom: 0;
 
         @container (max-width: 768px) {
@@ -91,7 +91,7 @@
             margin: 0;
             font-size: var(--text-2xl);
             font-weight: var(--font-weight-bold);
-            color: var(--basic-on-surface);
+            color: var(--color-on-surface);
             letter-spacing: -0.025em;
             line-height: var(--leading-tight);
 
@@ -142,8 +142,8 @@
                 gap: var(--space-xs);
                 padding: var(--space-sm) var(--space-lg);
                 border: none;
-                background: var(--basic-surface-container);
-                color: var(--basic-on-surface);
+                background: var(--color-surface-container);
+                color: var(--color-on-surface);
                 font-size: var(--text-sm);
                 font-weight: var(--font-weight-medium);
                 cursor: pointer;
@@ -163,21 +163,21 @@
                 }
 
                 &:hover {
-                    background: var(--basic-surface-container-high);
-                    box-shadow: var(--basic-elev-1);
+                    background: var(--color-surface-container-high);
+                    box-shadow: var(--elev-1);
                 }
 
                 &:focus-visible {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 &.primary {
-                    background: var(--basic-primary);
-                    color: var(--basic-on-primary);
+                    background: var(--color-primary);
+                    color: var(--color-on-primary);
 
                     &:hover {
-                        background: color-mix(in oklab, var(--basic-primary) 90%, black);
+                        background: color-mix(in oklab, var(--color-primary) 90%, black);
                     }
                 }
 
@@ -191,7 +191,7 @@
 
                     ui-icon {
                         flex-shrink: 0;
-                        transition: color var(--basic-motion-fast);
+                        transition: color var(--motion-fast);
                     }
 
                     .btn-text {
@@ -201,11 +201,11 @@
                     }
 
                     &:hover ui-icon {
-                        color: var(--basic-tertiary);
+                        color: var(--color-tertiary);
                     }
 
                     &.primary:hover ui-icon {
-                        color: var(--basic-on-tertiary);
+                        color: var(--color-on-tertiary);
                     }
                 }
 
@@ -263,11 +263,11 @@
     .editor-panel {
         display: flex;
         flex-direction: column;
-        background: var(--basic-surface);
+        background: var(--color-surface);
         overflow: hidden;
 
         @container (max-width: 768px) {
-            border-radius: var(--basic-radius-md);
+            border-radius: var(--radius-md);
         }
     }
 
@@ -277,7 +277,7 @@
         align-items: center;
         gap: var(--space-sm);
         padding: var(--space-sm) var(--space-md);
-        background: var(--basic-surface-container-high);
+        background: var(--color-surface-container-high);
         overflow-x: auto;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
@@ -317,7 +317,7 @@
         border: none;
         outline: none;
         background: transparent;
-        color: var(--basic-on-surface);
+        color: var(--color-on-surface);
         font-family: var(--font-family-mono);
         font-size: var(--text-base);
         line-height: var(--leading-normal);
@@ -326,30 +326,30 @@
 
         // Custom scrollbar
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         &::-webkit-scrollbar {
             width: 6px;
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--color-outline-variant);
             border-radius: 3px;
 
             &:hover {
-                background: var(--basic-outline);
+                background: var(--color-outline);
             }
         }
 
         // Placeholder styling
         &::placeholder {
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             opacity: 0.7;
         }
 
         // Focus state
         &:focus {
-            background: color-mix(in oklab, var(--basic-primary) 2%, var(--basic-surface));
+            background: color-mix(in oklab, var(--color-primary) 2%, var(--color-surface));
         }
 
         @container (max-width: 1024px) {
@@ -369,7 +369,7 @@
         align-items: center;
         justify-content: space-between;
         padding: var(--space-md) var(--space-lg);
-        background: var(--basic-surface-container-high);
+        background: var(--color-surface-container-high);
         gap: var(--space-md);
 
         @container (max-width: 1024px) {
@@ -388,7 +388,7 @@
             display: flex;
             gap: var(--space-lg);
             font-size: var(--text-sm);
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             font-weight: var(--font-weight-medium);
 
             @container (max-width: 768px) {
@@ -430,7 +430,7 @@
         .editor-mode {
             display: flex;
             gap: var(--space-xs);
-            background: var(--basic-surface-container);
+            background: var(--color-surface-container);
             padding: 2px;
 
             @container (max-width: 768px) {
@@ -445,17 +445,17 @@
                 min-height: 28px;
 
                 &:hover {
-                    background: var(--basic-surface-container-high);
+                    background: var(--color-surface-container-high);
                     transform: none;
                 }
 
                 &.active {
-                    background: var(--basic-primary);
-                    color: var(--basic-on-primary);
+                    background: var(--color-primary);
+                    color: var(--color-on-primary);
                     font-weight: var(--font-weight-semibold);
 
                     &:hover {
-                        background: color-mix(in oklab, var(--basic-primary) 85%, black);
+                        background: color-mix(in oklab, var(--color-primary) 85%, black);
                     }
                 }
             }
@@ -469,17 +469,17 @@
     .preview-panel {
         display: flex;
         flex-direction: column;
-        background: var(--basic-surface);
+        background: var(--color-surface);
         overflow: hidden;
 
         @container (max-width: 768px) {
-            border-radius: var(--basic-radius-md);
+            border-radius: var(--radius-md);
         }
     }
 
     .preview-header {
         padding: var(--space-md) var(--space-lg);
-        background: var(--basic-surface-container-high);
+        background: var(--color-surface-container-high);
 
         @container (max-width: 768px) {
             padding: var(--space-sm) var(--space-md);
@@ -489,7 +489,7 @@
             margin: 0;
             font-size: var(--text-lg);
             font-weight: var(--font-weight-semibold);
-            color: var(--basic-on-surface);
+            color: var(--color-on-surface);
 
             @container (max-width: 768px) {
                 font-size: var(--text-base);
@@ -505,18 +505,18 @@
 
         // Custom scrollbar
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         &::-webkit-scrollbar {
             width: 6px;
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--color-outline-variant);
             border-radius: 3px;
 
             &:hover {
-                background: var(--basic-outline);
+                background: var(--color-outline);
             }
         }
 
@@ -531,30 +531,30 @@
 
     .app-shell[data-theme="dark"] .markdown-editor-container {
         .editor-header {
-            background: var(--basic-surface-container-low);
+            background: var(--color-surface-container-low);
 
             h3 {
-                color: var(--basic-on-surface);
+                color: var(--color-on-surface);
             }
 
             .editor-btn {
-                background: var(--basic-surface-container-low);
-                border-color: var(--basic-outline);
-                color: var(--basic-on-surface);
+                background: var(--color-surface-container-low);
+                border-color: var(--color-outline);
+                color: var(--color-on-surface);
 
                 &:hover {
-                    background: var(--basic-surface-container);
-                    border-color: var(--basic-tertiary);
+                    background: var(--color-surface-container);
+                    border-color: var(--color-tertiary);
                 }
 
                 &.primary {
-                    background: var(--basic-tertiary);
-                    color: var(--basic-on-tertiary);
-                    border-color: var(--basic-tertiary);
+                    background: var(--color-tertiary);
+                    color: var(--color-on-tertiary);
+                    border-color: var(--color-tertiary);
 
                     &:hover {
-                        background: color-mix(in oklab, var(--basic-tertiary) 85%, black);
-                        border-color: color-mix(in oklab, var(--basic-tertiary) 85%, black);
+                        background: color-mix(in oklab, var(--color-tertiary) 85%, black);
+                        border-color: color-mix(in oklab, var(--color-tertiary) 85%, black);
                     }
                 }
             }
@@ -562,43 +562,43 @@
 
         .editor-panel,
         .preview-panel {
-            background: var(--basic-surface-container-low);
+            background: var(--color-surface-container-low);
         }
 
         .editor-toolbar {
-            background: var(--basic-surface-container);
+            background: var(--color-surface-container);
         }
 
         .markdown-textarea {
             background: transparent;
-            color: var(--basic-on-surface);
+            color: var(--color-on-surface);
 
             &:focus {
-                background: color-mix(in oklab, var(--basic-primary) 3%, var(--basic-surface-container-low));
+                background: color-mix(in oklab, var(--color-primary) 3%, var(--color-surface-container-low));
             }
 
             &::placeholder {
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
             }
         }
 
         .editor-footer {
-            background: var(--basic-surface-container);
+            background: var(--color-surface-container);
 
             .editor-stats {
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
             }
 
             .editor-mode {
-                background: var(--basic-surface-container-low);
+                background: var(--color-surface-container-low);
             }
         }
 
         .preview-header {
-            background: var(--basic-surface-container);
+            background: var(--color-surface-container);
 
             h4 {
-                color: var(--basic-on-surface);
+                color: var(--color-on-surface);
             }
         }
     }

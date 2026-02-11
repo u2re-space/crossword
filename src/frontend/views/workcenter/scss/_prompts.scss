@@ -1,7 +1,7 @@
 @layer view.workcenter {
     .prompt-section {
         position: relative;
-        border-radius: var(--basic-radius-md, 6px);
+        border-radius: var(--radius-md, 6px);
         padding: 0;
         border: none;
 
@@ -11,7 +11,7 @@
             pointer-events: none;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--motion-normal);
         }
 
         .prompt-controls {
@@ -33,32 +33,32 @@
             .icon-btn {
                 inline-size: 40px;
                 block-size: 40px;
-                border-radius: var(--basic-radius-sm, 4px);
+                border-radius: var(--radius-sm, 4px);
                 border: none;
-                background: var(--basic-surface-container);
-                color: var(--basic-on-surface);
+                background: var(--color-surface-container);
+                color: var(--color-on-surface);
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all var(--basic-motion-fast, 140ms ease);
+                transition: all var(--motion-fast, 140ms ease);
 
                 ui-icon {
-                    transition: color var(--basic-motion-fast, 140ms ease);
+                    transition: color var(--motion-fast, 140ms ease);
                 }
 
                 &:hover {
-                    background: var(--basic-surface-container-high);
-                    box-shadow: var(--basic-elev-1);
+                    background: var(--color-surface-container-high);
+                    box-shadow: var(--elev-1);
 
                     ui-icon {
-                        color: var(--basic-primary);
+                        color: var(--color-primary);
                     }
                 }
 
                 &:focus-visible {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 @container (max-width: 768px) {
@@ -86,9 +86,9 @@
     .template-select {
         flex: 1;
         padding: var(--space-sm, 0.5rem) var(--space-md, 0.75rem);
-        border-radius: var(--basic-radius-sm, 4px);
-        background: var(--basic-surface);
-        color: var(--basic-on-surface);
+        border-radius: var(--radius-sm, 4px);
+        background: var(--color-surface);
+        color: var(--color-on-surface);
         font-size: var(--text-sm, 0.875rem);
         font-weight: var(--font-weight-medium, 500);
         font-family: var(--font-family);
@@ -96,13 +96,13 @@
         min-height: 36px;
 
         &:hover {
-            background: var(--basic-surface-container-high);
-            border-color: var(--basic-primary);
+            background: var(--color-surface-container-high);
+            border-color: var(--color-primary);
         }
 
         &:focus {
             outline: none;
-            border-color: var(--basic-primary);
+            border-color: var(--color-primary);
         }
 
         @container (max-width: 768px) {
@@ -122,12 +122,12 @@
             gap: var(--space-xs, 0.25rem);
             font-size: var(--text-xs, 0.75rem);
             font-weight: var(--font-weight-medium, 500);
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             white-space: nowrap;
             flex-shrink: 0;
 
             ui-icon {
-                color: var(--basic-primary);
+                color: var(--color-primary);
                 opacity: 0.8;
             }
         }
@@ -135,25 +135,25 @@
         .instruction-select {
             flex: 1;
             padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-            border-radius: var(--basic-radius-sm, 4px);
-            border: 1px solid var(--basic-outline-variant);
-            background: var(--basic-surface);
-            color: var(--basic-on-surface);
+            border-radius: var(--radius-sm, 4px);
+            border: 1px solid var(--color-outline-variant);
+            background: var(--color-surface);
+            color: var(--color-on-surface);
             font-size: var(--text-xs, 0.75rem);
             font-family: var(--font-family);
             cursor: pointer;
             min-height: 30px;
-            transition: border-color var(--basic-motion-fast, 140ms ease);
+            transition: border-color var(--motion-fast, 140ms ease);
 
             &:hover {
-                border-color: var(--basic-primary);
-                background: var(--basic-surface-container-high);
+                border-color: var(--color-primary);
+                background: var(--color-surface-container-high);
             }
 
             &:focus {
                 outline: none;
-                border-color: var(--basic-primary);
-                box-shadow: 0 0 0 2px color-mix(in oklab, var(--basic-primary) 15%, transparent);
+                border-color: var(--color-primary);
+                box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 15%, transparent);
             }
         }
 
@@ -161,21 +161,21 @@
             padding: var(--space-xs, 0.25rem);
             min-inline-size: 28px;
             min-block-size: 28px;
-            border-radius: var(--basic-radius-sm, 4px);
-            border: 1px solid var(--basic-outline-variant);
+            border-radius: var(--radius-sm, 4px);
+            border: 1px solid var(--color-outline-variant);
             background: transparent;
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all var(--basic-motion-fast, 140ms ease);
+            transition: all var(--motion-fast, 140ms ease);
             flex-shrink: 0;
 
             &:hover {
-                background: var(--basic-surface-container-high);
-                color: var(--basic-primary);
-                border-color: var(--basic-primary);
+                background: var(--color-surface-container-high);
+                color: var(--color-primary);
+                border-color: var(--color-primary);
             }
         }
 
@@ -192,19 +192,19 @@
         inline-size: stretch;
         min-block-size: 5rem;
         padding: var(--space-sm) var(--space-md);
-        border: 1px solid var(--basic-outline-variant);
-        border-radius: var(--basic-radius-md);
-        background: var(--basic-surface);
-        color: var(--basic-on-surface);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        color: var(--color-on-surface);
         font-family: var(--font-family-system);
         font-size: var(--text-sm);
         line-height: var(--leading-relaxed);
         resize: vertical;
         scrollbar-width: thin;
-        scrollbar-color: var(--basic-outline-variant) transparent;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         &::placeholder {
-            color: var(--basic-on-surface-variant);
+            color: var(--color-on-surface-variant);
             opacity: 0.8;
         }
 
@@ -214,18 +214,18 @@
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--basic-outline-variant);
+            background: var(--color-outline-variant);
         }
 
         &:hover {
-            background: var(--basic-surface-container-low);
-            box-shadow: var(--basic-elev-1);
+            background: var(--color-surface-container-low);
+            box-shadow: var(--elev-1);
         }
 
         &:focus {
             outline: none;
-            background: var(--basic-surface-container-high);
-            box-shadow: var(--basic-focus-ring);
+            background: var(--color-surface-container-high);
+            box-shadow: var(--focus-ring);
         }
 
         @container (max-width: 1024px) {
@@ -246,7 +246,7 @@
 
         &[data-dropzone] {
             position: relative;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--motion-normal);
         }
 
         .file-input-area {
@@ -256,19 +256,19 @@
             opacity: 0;
             visibility: hidden;
             border: none;
-            border-radius: var(--basic-radius-md);
+            border-radius: var(--radius-md);
             padding-inline: var(--space-lg);
             padding-block: var(--space-lg);
-            background: var(--basic-surface-container-low);
-            box-shadow: var(--basic-elev-1);
+            background: var(--color-surface-container-low);
+            box-shadow: var(--elev-1);
             z-index: 10;
-            transition: all var(--basic-motion-normal);
+            transition: all var(--motion-normal);
 
             &.drag-over {
                 opacity: 1;
                 visibility: visible;
-                background: color-mix(in oklab, var(--basic-primary) 10%, var(--basic-surface-container-low));
-                box-shadow: var(--basic-focus-ring), var(--basic-elev-2);
+                background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
+                box-shadow: var(--focus-ring), var(--elev-2);
 
                 .drop-zone-content {
                     opacity: 1;
@@ -303,13 +303,13 @@
                 gap: var(--space-lg);
                 opacity: 0;
                 visibility: hidden;
-                transition: all var(--basic-motion-normal);
+                transition: all var(--motion-normal);
 
                 .drop-icon {
-                    color: var(--basic-primary);
+                    color: var(--color-primary);
                     opacity: 0.8;
                     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
-                    transition: all var(--basic-motion-normal);
+                    transition: all var(--motion-normal);
 
                     @container (max-width: 1024px) {
                         &[size="4rem"] {
@@ -339,7 +339,7 @@
                 .drop-text {
                     font-size: var(--text-xl);
                     font-weight: var(--font-weight-bold);
-                    color: var(--basic-on-surface);
+                    color: var(--color-on-surface);
                     letter-spacing: -0.01em;
                     text-align: center;
                     line-height: var(--leading-tight);
@@ -356,7 +356,7 @@
 
                 .drop-hint {
                     font-size: var(--text-sm);
-                    color: var(--basic-on-surface-variant);
+                    color: var(--color-on-surface-variant);
                     font-weight: var(--font-weight-medium);
                     opacity: 0.9;
                     text-align: center;
@@ -384,9 +384,9 @@
                 .no-files {
                     text-align: center;
                     font-size: var(--text-sm);
-                    color: var(--basic-on-surface-variant);
+                    color: var(--color-on-surface-variant);
                     padding: var(--space-lg);
-                    background: var(--basic-surface-container-low);
+                    background: var(--color-surface-container-low);
                 }
 
                 .file-item {
@@ -394,15 +394,15 @@
                     align-items: center;
                     gap: var(--space-sm);
                     padding: var(--space-sm) var(--space-md);
-                    border-radius: var(--basic-radius-sm);
-                    background: var(--basic-surface-container);
+                    border-radius: var(--radius-sm);
+                    background: var(--color-surface-container);
                     border: none;
-                    box-shadow: var(--basic-elev-0);
+                    box-shadow: var(--elev-0);
                     margin-bottom: var(--space-xs);
 
                     &:hover {
-                        background: var(--basic-surface-container-high);
-                        box-shadow: var(--basic-elev-1);
+                        background: var(--color-surface-container-high);
+                        box-shadow: var(--elev-1);
                     }
 
                     &:last-child {
@@ -421,11 +421,11 @@
                             display: flex;
                             align-items: center;
                             justify-content: center;
-                            background: var(--basic-surface-container-high);
-                            border-radius: var(--basic-radius-sm);
+                            background: var(--color-surface-container-high);
+                            border-radius: var(--radius-sm);
 
                             ui-icon {
-                                color: var(--basic-primary);
+                                color: var(--color-primary);
 
                                 @container (max-width: 768px) {
                                     &[size="20"] {
@@ -445,7 +445,7 @@
                         .file-name {
                             font-size: var(--text-sm);
                             font-weight: var(--font-weight-semibold);
-                            color: var(--basic-on-surface);
+                            color: var(--color-on-surface);
                             flex: 1;
                             line-height: var(--leading-tight);
                             overflow: hidden;
@@ -459,7 +459,7 @@
 
                         .file-size {
                             font-size: var(--text-xs);
-                            color: var(--basic-on-surface-variant);
+                            color: var(--color-on-surface-variant);
                             font-weight: var(--font-weight-medium);
                         }
 
@@ -473,7 +473,7 @@
                         height: 24px;
                         border: none;
                         background: transparent;
-                        color: var(--basic-error);
+                        color: var(--color-error);
                         cursor: pointer;
                         display: flex;
                         align-items: center;
@@ -481,7 +481,7 @@
                         font-size: var(--text-sm);
 
                         &:hover {
-                            background: color-mix(in oklab, var(--basic-error) 20%, transparent);
+                            background: color-mix(in oklab, var(--color-error) 20%, transparent);
                         }
                     }
                 }
@@ -491,18 +491,18 @@
         .recognized-status {
             margin-top: var(--space-md);
             padding: var(--space-sm) var(--space-md);
-            background: color-mix(in oklab, var(--basic-success) 5%, transparent);
+            background: color-mix(in oklab, var(--color-success) 5%, transparent);
             border: none;
-            border-radius: var(--basic-radius-lg);
-            box-shadow: var(--basic-elev-1);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--elev-1);
             display: flex;
             align-items: center;
             gap: var(--space-sm);
             font-size: var(--text-sm);
-            color: var(--basic-on-surface);
+            color: var(--color-on-surface);
 
             .status-icon {
-                color: var(--basic-success);
+                color: var(--color-success);
                 flex-shrink: 0;
             }
 
@@ -510,16 +510,16 @@
                 margin-left: auto;
                 padding: var(--space-xs) var(--space-sm);
                 border: none;
-                border-radius: var(--basic-radius-full);
+                border-radius: var(--radius-full);
                 background: transparent;
-                color: var(--basic-on-surface-variant);
+                color: var(--color-on-surface-variant);
                 font-size: var(--text-xs);
                 min-height: 28px;
                 box-shadow: none;
 
                 &:hover {
-                    color: var(--basic-error);
-                    background: color-mix(in oklab, var(--basic-error) 5%, transparent);
+                    color: var(--color-error);
+                    background: color-mix(in oklab, var(--color-error) 5%, transparent);
                 }
             }
         }
@@ -535,10 +535,10 @@
 
     .action-section,
     .prompts-section {
-        background: var(--basic-surface-container-low);
-        border-radius: var(--basic-radius-lg, 12px);
+        background: var(--color-surface-container-low);
+        border-radius: var(--radius-lg, 12px);
         padding: var(--space-lg, 1rem);
-        border: 1px solid var(--basic-outline-variant);
+        border: 1px solid var(--color-outline-variant);
         place-content: center;
         place-items: center;
         align-items: stretch;
@@ -560,14 +560,14 @@
                 grid-row: 1;
                 padding: var(--space-lg, 1rem);
                 border: none;
-                border-radius: var(--basic-radius-xl, 12px);
-                background: var(--basic-surface-container-high);
-                color: var(--basic-on-surface);
+                border-radius: var(--radius-xl, 12px);
+                background: var(--color-surface-container-high);
+                color: var(--color-on-surface);
                 font-size: var(--text-sm, 0.875rem);
                 font-weight: var(--font-weight-medium, 500);
                 cursor: pointer;
-                transition: all var(--basic-motion-normal, 160ms ease);
-                box-shadow: var(--basic-elev-0);
+                transition: all var(--motion-normal, 160ms ease);
+                box-shadow: var(--elev-0);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -575,24 +575,24 @@
                 inline-size: stretch;
 
                 &:hover {
-                    background: var(--basic-surface-container-highest);
-                    box-shadow: var(--basic-elev-1);
+                    background: var(--color-surface-container-highest);
+                    box-shadow: var(--elev-1);
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 &.recording {
-                    background: var(--basic-error);
-                    color: var(--basic-on-error);
+                    background: var(--color-error);
+                    color: var(--color-on-error);
                     animation: pulse 1.5s infinite;
 
                     &::before {
                         content: "●";
                         margin-right: var(--space-sm, 0.5rem);
-                        color: var(--basic-on-error);
+                        color: var(--color-on-error);
                         animation: blink 1s infinite;
                     }
                 }
@@ -617,11 +617,11 @@
                 justify-content: center;
                 inline-size: 44px;
                 block-size: 44px;
-                border-radius: var(--basic-radius-lg, 12px);
-                background: var(--basic-surface-container);
+                border-radius: var(--radius-lg, 12px);
+                background: var(--color-surface-container);
                 cursor: pointer;
-                transition: all var(--basic-motion-fast, 140ms ease);
-                box-shadow: var(--basic-elev-0);
+                transition: all var(--motion-fast, 140ms ease);
+                box-shadow: var(--elev-0);
                 border: none;
                 padding: 0.5rem;
 
@@ -630,8 +630,8 @@
                 }
 
                 ui-icon {
-                    color: var(--basic-on-surface-variant);
-                    transition: all var(--basic-motion-fast, 140ms ease);
+                    color: var(--color-on-surface-variant);
+                    transition: all var(--motion-fast, 140ms ease);
                 }
 
                 input[type="checkbox"] {
@@ -649,27 +649,27 @@
 
                 &:has(input[type="checkbox"]:checked),
                 input[type="checkbox"]:checked ~ & {
-                    background: var(--basic-primary);
-                    box-shadow: var(--basic-elev-1);
+                    background: var(--color-primary);
+                    box-shadow: var(--elev-1);
 
                     ui-icon {
-                        color: var(--basic-on-primary);
+                        color: var(--color-on-primary);
                     }
                 }
 
                 &:hover {
-                    background: var(--basic-surface-container-high);
-                    box-shadow: var(--basic-elev-1);
+                    background: var(--color-surface-container-high);
+                    box-shadow: var(--elev-1);
 
                     &:has(input[type="checkbox"]:checked),
                     input[type="checkbox"]:checked ~ & {
-                        background: color-mix(in oklab, var(--basic-primary) 90%, black);
+                        background: color-mix(in oklab, var(--color-primary) 90%, black);
                     }
                 }
 
                 &:focus-within {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 @container (max-width: 768px) {
@@ -700,9 +700,9 @@
                 grid-row: 2;
                 padding: var(--space-md, 0.75rem) var(--space-lg, 1rem);
                 border: none;
-                border-radius: var(--basic-radius-md, 6px);
-                background: var(--basic-primary);
-                color: var(--basic-on-primary);
+                border-radius: var(--radius-md, 6px);
+                background: var(--color-primary);
+                color: var(--color-on-primary);
                 cursor: pointer;
                 font-size: var(--text-sm, 0.875rem);
                 font-weight: var(--font-weight-medium, 500);
@@ -711,26 +711,26 @@
                 justify-content: center;
                 gap: var(--space-xs, 0.25rem);
                 min-block-size: 44px;
-                transition: all var(--basic-motion-normal, 160ms ease);
+                transition: all var(--motion-normal, 160ms ease);
                 inline-size: stretch;
                 max-inline-size: stretch;
 
                 &:hover {
-                    background: color-mix(in oklab, var(--basic-primary) 85%, black);
-                    box-shadow: var(--basic-elev-1);
+                    background: color-mix(in oklab, var(--color-primary) 85%, black);
+                    box-shadow: var(--elev-1);
                     transform: translateY(-1px);
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 &:disabled {
-                    background: var(--basic-surface-container-high);
-                    color: var(--basic-on-surface-variant);
+                    background: var(--color-surface-container-high);
+                    color: var(--color-on-surface-variant);
                     cursor: not-allowed;
-                    box-shadow: var(--basic-elev-0);
+                    box-shadow: var(--elev-0);
                     transform: none;
                 }
 
@@ -765,15 +765,15 @@
                 grid-row: 2;
                 min-inline-size: 44px;
                 min-block-size: 44px;
-                border-radius: var(--basic-radius-md, 6px);
+                border-radius: var(--radius-md, 6px);
                 border: none;
-                background: var(--basic-surface-container);
-                color: var(--basic-on-surface);
+                background: var(--color-surface-container);
+                color: var(--color-on-surface);
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all var(--basic-motion-fast, 140ms ease);
+                transition: all var(--motion-fast, 140ms ease);
                 block-size: stretch;
                 max-block-size: stretch;
                 aspect-ratio: 1 / 1;
@@ -781,13 +781,13 @@
                 max-inline-size: stretch;
 
                 &:hover {
-                    background: var(--basic-error-container);
-                    color: var(--basic-on-error-container);
+                    background: var(--color-error-container);
+                    color: var(--color-on-error-container);
                 }
 
                 &:focus {
                     outline: none;
-                    box-shadow: var(--basic-focus-ring);
+                    box-shadow: var(--focus-ring);
                 }
 
                 @container (max-width: 768px) {
