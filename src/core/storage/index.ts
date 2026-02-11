@@ -33,8 +33,8 @@ export const StorageKeys = {
     WORKCENTER_STATE: "rs-workcenter-state",
     VIEWER_STATE: "rs-viewer-state",
     EDITOR_STATE: "rs-editor-state",
-    EXPLORER_STATE: "rs-explorer-state",
-    EXPLORER_PATH: "rs-explorer-path",
+    EXPLORER_STATE: "view-explorer-state",
+    EXPLORER_PATH: "view-explorer-path",
 
     // Content
     LAST_MARKDOWN: "rs-last-markdown",

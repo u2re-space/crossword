@@ -2,7 +2,7 @@
  * Explorer View
  *
  * Shell-agnostic file explorer component.
- * Uses the <rs-explorer> web component for encapsulated rendering.
+ * Uses the <view-explorer> web component for encapsulated rendering.
  */
 
 import { H } from "fest/lure";
@@ -11,7 +11,7 @@ import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shell
 import type { BaseViewOptions } from "../types";
 import { getString, setString } from "../../../core/storage";
 
-// Import the rs-explorer web component from fl.ui
+// Import the view-explorer web component from fl.ui
 import { FileManager, type FileItem } from "fest/fl-ui";
 
 // Re-export FileManager for backwards compatibility
@@ -56,7 +56,7 @@ export class ExplorerView implements View {
 
         this._sheet = loadAsAdopted(style) as CSSStyleSheet;
 
-        // Create element with rs-explorer web component
+        // Create element with view-explorer web component
         this.element = H`
             <div class="view-explorer">
                 <div class="view-explorer__content" data-explorer-content>
@@ -65,7 +65,7 @@ export class ExplorerView implements View {
             </div>
         ` as HTMLElement;
 
-        // Get reference to rs-explorer component
+        // Get reference to view-explorer component
         this.explorer = this.element.querySelector("ui-file-manager") as unknown as FileManager;
 
         // Setup event listeners
@@ -119,7 +119,7 @@ export class ExplorerView implements View {
 
     private loadLastPath(): void {
         if (this.explorer) {
-            const lastPath = getString("rs-explorer-path", "/");
+            const lastPath = getString("view-explorer-path", "/");
             this.explorer.path = lastPath;
         }
     }
@@ -127,7 +127,7 @@ export class ExplorerView implements View {
     private saveCurrentPath(): void {
         if (this.explorer) {
             const currentPath = this.explorer.path || "/";
-            setString("rs-explorer-path", currentPath);
+            setString("view-explorer-path", currentPath);
         }
     }
 

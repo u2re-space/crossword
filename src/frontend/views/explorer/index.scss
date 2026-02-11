@@ -113,7 +113,7 @@
     }
 
     @layer components {
-        .rs-explorer {
+        .view-explorer {
             display: flex;
             flex-direction: column;
             block-size: 100%;
@@ -123,8 +123,8 @@
             overflow: hidden;
         }
 
-        .rs-explorer__toolbar,
-        .rs-explorer__status {
+        .view-explorer__toolbar,
+        .view-explorer__status {
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -132,12 +132,12 @@
             flex-shrink: 0;
         }
 
-        .rs-explorer__toolbar {
+        .view-explorer__toolbar {
             padding: 0.5rem;
             border-block-end: 1px solid var(--view-border);
         }
 
-        .rs-explorer__status {
+        .view-explorer__status {
             gap: 1rem;
             padding: 0.375rem 0.75rem;
             border-block-start: 1px solid var(--view-border);
@@ -145,19 +145,19 @@
             color: var(--view-fg-muted);
         }
 
-        .rs-explorer__nav,
-        .rs-explorer__actions {
+        .view-explorer__nav,
+        .view-explorer__actions {
             display: flex;
             gap: 0.125rem;
         }
 
-        .rs-explorer__breadcrumb {
+        .view-explorer__breadcrumb {
             flex: 1;
             min-inline-size: 0;
             padding: 0 0.5rem;
         }
 
-        .rs-explorer__path {
+        .view-explorer__path {
             display: block;
             font-size: 0.8125rem;
             color: var(--view-fg-muted);
@@ -166,7 +166,7 @@
             text-overflow: ellipsis;
         }
 
-        .rs-explorer__btn {
+        .view-explorer__btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -196,7 +196,7 @@
             }
         }
 
-        .rs-explorer__btn--primary {
+        .view-explorer__btn--primary {
             padding: 0.5rem 1rem;
             color: white;
             background: var(--view-accent);
@@ -207,13 +207,13 @@
             }
         }
 
-        .rs-explorer__content {
+        .view-explorer__content {
             flex: 1;
             min-block-size: 0;
             overflow: hidden;
         }
 
-        .rs-explorer__list {
+        .view-explorer__list {
             block-size: 100%;
             overflow-y: auto;
             outline: none;
@@ -226,8 +226,8 @@
             }
         }
 
-        .rs-explorer__loading,
-        .rs-explorer__empty {
+        .view-explorer__loading,
+        .view-explorer__empty {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -237,11 +237,11 @@
             text-align: center;
         }
 
-        .rs-explorer__loading {
+        .view-explorer__loading {
             padding: 2rem;
         }
 
-        .rs-explorer__empty {
+        .view-explorer__empty {
             gap: 1rem;
             padding: 3rem 2rem;
 
@@ -255,11 +255,11 @@
             }
         }
 
-        .rs-explorer__spinner {
+        .view-explorer__spinner {
             @include spinner(1.5rem, 2px, var(--view-accent));
         }
 
-        .rs-explorer__item {
+        .view-explorer__item {
             position: relative;
             display: flex;
             align-items: center;
@@ -292,7 +292,7 @@
             }
         }
 
-        .rs-explorer__item-icon {
+        .view-explorer__item-icon {
             flex-shrink: 0;
             display: flex;
             align-items: center;
@@ -311,7 +311,7 @@
             }
         }
 
-        .rs-explorer__item-info {
+        .view-explorer__item-info {
             flex: 1;
             min-inline-size: 0;
             display: flex;
@@ -319,49 +319,49 @@
             gap: 0.125rem;
         }
 
-        .rs-explorer__item-name {
+        .view-explorer__item-name {
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .rs-explorer__item-meta {
+        .view-explorer__item-meta {
             font-size: 0.75rem;
             color: var(--view-fg-muted);
         }
 
-        .rs-explorer__selected-count:not(:empty)::before {
+        .view-explorer__selected-count:not(:empty)::before {
             content: "•";
             margin-inline-end: 1rem;
         }
     }
 
     @layer states {
-        :host([loading]) .rs-explorer__list > :not(.rs-explorer__loading) {
+        :host([loading]) .view-explorer__list > :not(.view-explorer__loading) {
             display: none;
         }
 
-        :host(:not([loading])) .rs-explorer__loading {
+        :host(:not([loading])) .view-explorer__loading {
             display: none;
         }
 
         :host(.dragover) {
-            .rs-explorer__content {
+            .view-explorer__content {
                 background: var(--view-selected-bg);
                 border: 2px dashed var(--view-selected-border);
             }
         }
 
-        .rs-explorer[data-view-mode="grid"] {
-            .rs-explorer__list {
+        .view-explorer[data-view-mode="grid"] {
+            .view-explorer__list {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
                 gap: 0.5rem;
                 padding: 0.75rem;
             }
 
-            .rs-explorer__item {
+            .view-explorer__item {
                 flex-direction: column;
                 padding: 0.75rem;
                 text-align: center;
@@ -377,25 +377,25 @@
                 }
             }
 
-            .rs-explorer__item-icon ui-icon {
+            .view-explorer__item-icon ui-icon {
                 font-size: 2.5rem;
             }
 
-            .rs-explorer__item-info {
+            .view-explorer__item-info {
                 align-items: center;
             }
 
-            .rs-explorer__item-name {
+            .view-explorer__item-name {
                 font-size: 0.8125rem;
                 max-inline-size: 100%;
             }
 
-            .rs-explorer__item-meta {
+            .view-explorer__item-meta {
                 font-size: 0.6875rem;
             }
 
-            .rs-explorer__empty,
-            .rs-explorer__loading {
+            .view-explorer__empty,
+            .view-explorer__loading {
                 grid-column: 1 / -1;
             }
         }
@@ -403,17 +403,17 @@
 
     @layer media {
         @media (max-width: 480px) {
-            .rs-explorer__toolbar {
+            .view-explorer__toolbar {
                 flex-wrap: wrap;
             }
 
-            .rs-explorer__breadcrumb {
+            .view-explorer__breadcrumb {
                 order: 3;
                 inline-size: 100%;
                 padding: 0.25rem 0 0;
             }
 
-            .rs-explorer[data-view-mode="grid"] .rs-explorer__list {
+            .view-explorer[data-view-mode="grid"] .view-explorer__list {
                 grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             }
         }
