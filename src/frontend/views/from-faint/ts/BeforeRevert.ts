@@ -1,11 +1,11 @@
 import { H } from "fest/lure";
-import { implementDropEvent, implementPasteEvent } from "../../../core/modules/HookEvent";
+import { implementDropEvent, implementPasteEvent } from "@rs-core/modules/HookEvent";
 import { observe, ref } from "fest/object";
 import type { ChapterDescriptor, EntityDescriptor } from "@rs-core/utils/Types";
 import type { EntityInterface } from "@rs-com/template/EntityInterface";
-import { renderTabName } from "../../../core/utils/Utils";
+import { renderTabName } from "@rs-core/utils/Utils";
 import { sendToEntityPipeline } from "@rs-core/storage/FileSystem";
-import { CollectItemsForTabPage, MakeItemBy } from "../../items/Items";
+import { CollectItemsForTabPage, MakeItemBy } from "@rs-frontend/items/Items";
 
 // =============================================================================
 // View Page Component
