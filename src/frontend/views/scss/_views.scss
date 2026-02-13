@@ -47,7 +47,7 @@
         --view-transition: var(--transition-normal) var(--ease-in-out);
     }
 
-    :is(html, body):has([data-shell="basic"] [data-view="workcenter"]) {
+    :is(html, body):has([data-shell="minimal"] [data-view="workcenter"]) {
         --view-sidebar-position: "right";
         --view-toolbar-alignment: "end";
     }
@@ -62,7 +62,7 @@
         --view-padding-x: var(--space-8);
     }
 
-    :is(:root, html):has([data-shell="basic"] [data-view="viewer"]) {
+    :is(:root, html):has([data-shell="minimal"] [data-view="viewer"]) {
         --view-content-max-width: 800px;
         --view-padding-x: var(--space-6);
     }
@@ -108,7 +108,7 @@
             --view-sidebar-width: 0;
         }
 
-        :is(:root, html):has([data-shell="basic"]) {
+        :is(:root, html):has([data-shell="minimal"]) {
             --view-nav-height: 44px;
         }
 

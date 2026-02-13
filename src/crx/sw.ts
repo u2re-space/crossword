@@ -274,7 +274,7 @@ class CrxResultPipeline {
                 try {
                     const { unifiedMessaging } = await import("@rs-com/core/UnifiedMessaging");
                     await unifiedMessaging.sendMessage({
-                        id: result.id, type: "content-share", source: "crx-snip", destination: "basic-workcenter",
+                        id: result.id, type: "content-share", source: "crx-snip", destination: "workcenter",
                         contentType: result.type, data: { text: textContent, processed: true, source: result.source, metadata: result.metadata },
                         metadata: { title: `CRX-Snip ${result.type} Result`, timestamp: result.timestamp, source: result.source },
                     });

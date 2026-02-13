@@ -18,7 +18,7 @@ import type { ViewId, Shell } from "../shells/types";
 // ============================================================================
 
 export type CrxAppOptions = {
-    /** View to display - accepts both shell ViewId and legacy BasicView names */
+    /** View to display - accepts both shell ViewId and legacy MinimalView names */
     initialView?: ViewId | "markdown" | "markdown-viewer";
 };
 
@@ -45,7 +45,7 @@ const resolveViewId = (input?: string): ViewId =>
  * Mount the frontend for a Chrome extension page.
  *
  * - Uses the **raw** shell (no toolbar, no tabs).
- * - Loads "basic" style system (shell + view own styles handle the rest).
+ * - Loads "vl-basic" style system (shell + view own styles handle the rest).
  * - No channels or preference persistence (CRX pages are single-purpose).
  *
  * @param mountElement - DOM element to mount into
@@ -59,7 +59,7 @@ export default async function crxFrontend(
     const view = resolveViewId(options.initialView);
 
     return bootLoader.boot(mountElement, {
-        styleSystem: "basic",
+        styleSystem: "vl-basic",
         shell:       "raw",
         defaultView: view,
         channels:    [],

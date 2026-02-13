@@ -347,7 +347,7 @@ export const processShareTargetData = async (shareData: ShareDataInput, skipIfEm
                 await unifiedMessaging.sendMessage({
                     type: 'share-target-result',
                     source: 'share-target',
-                    destination: 'basic-workcenter',
+                    destination: 'workcenter',
                     data: {
                         content: typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2),
                         rawData: result.data,
@@ -424,7 +424,7 @@ export const CHANNELS = {
     SHARE_TARGET: BROADCAST_CHANNELS.SHARE_TARGET,
     TOAST: BROADCAST_CHANNELS.TOAST,
     CLIPBOARD: BROADCAST_CHANNELS.CLIPBOARD,
-    BASIC_APP: BROADCAST_CHANNELS.BASIC_APP,
+    MINIMAL_APP: BROADCAST_CHANNELS.MINIMAL_APP,
     MAIN_APP: BROADCAST_CHANNELS.MAIN_APP,
     FILE_EXPLORER: BROADCAST_CHANNELS.FILE_EXPLORER,
     PRINT_VIEWER: BROADCAST_CHANNELS.PRINT_VIEWER
@@ -894,8 +894,8 @@ export const setupLaunchQueueConsumer = async () => {
                             // Navigate to the app with markdown content
                             // We'll use a special URL parameter to indicate this is a direct markdown view
                             const url = new URL(window.location.href);
-                            // Ensure Basic is used for direct markdown opening (avoid boot menu / other routes)
-                            url.pathname = '/basic';
+                            // Ensure Minimal is used for direct markdown opening (avoid boot menu / other routes)
+                            url.pathname = '/minimal';
                             url.searchParams.set('markdown-content', content);
                             url.searchParams.set('markdown-filename', markdownFile.name);
                             url.hash = ''; // Clear any hash to ensure we load the main app

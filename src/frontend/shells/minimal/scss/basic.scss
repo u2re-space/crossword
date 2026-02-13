@@ -5,7 +5,7 @@
 @layer shell.tokens, shell.base, shell.components, shell.utilities, shell.overrides;
 
 @layer shell.tokens {
-    :where(:root, .app-shell, .app-shell[data-style="basic"]):has(.app-shell, .app-shell[data-style="basic"]) {
+    :where(:root, .app-shell, .app-shell[data-style="minimal"]):has(.app-shell, .app-shell[data-style="minimal"]) {
         color-scheme: light dark;
 
         /* colors */
@@ -31,7 +31,7 @@
         --shell-padding: 0;
     }
 
-    :is(:root, html):has([data-shell="basic"][data-theme="dark"]) {
+    :is(:root, html):has([data-shell="minimal"][data-theme="dark"]) {
         --shell-bg: var(--color-surface);
         --shell-fg: var(--color-on-surface);
         --shell-nav-bg: var(--color-surface-container-high);
@@ -41,7 +41,7 @@
 }
 
 @layer shell.base {
-    :where(.app-shell, .app-shell[data-style="basic"]) {
+    :where(.app-shell, .app-shell[data-style="minimal"]) {
         position: absolute;
         inset: -1;
         display: grid;
@@ -79,7 +79,7 @@
 }
 
 @layer shell.components {
-    :where(.app-shell, .app-shell[data-style="basic"]) {
+    :where(.app-shell, .app-shell[data-style="minimal"]) {
         .loading-spinner {
             inline-size: 32px;
             block-size: 32px;
@@ -286,7 +286,7 @@
     }
 
     @media (max-width: 480px) {
-        :where(.app-shell, .app-shell[data-style="basic"]) {
+        :where(.app-shell, .app-shell[data-style="minimal"]) {
             --shell-nav-height: 48px;
         }
 

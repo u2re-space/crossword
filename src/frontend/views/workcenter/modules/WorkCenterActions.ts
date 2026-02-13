@@ -241,7 +241,7 @@ export class WorkCenterActions {
                 id: crypto.randomUUID(),
                 type: 'content-view',
                 source: 'workcenter',
-                destination: 'basic-viewer',
+                destination: 'viewer',
                 contentType: state.outputFormat === 'markdown' ? 'markdown' : 'text',
                 data: {
                     text: resultContent,
@@ -285,7 +285,7 @@ export class WorkCenterActions {
                 id: crypto.randomUUID(),
                 type: 'content-save',
                 source: 'workcenter',
-                destination: 'basic-explorer',
+                destination: 'explorer',
                 data: {
                     action: 'save',
                     text: resultContent,

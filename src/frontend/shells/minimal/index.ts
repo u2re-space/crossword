@@ -1,5 +1,5 @@
 /**
- * Basic Shell
+ * Minimal Shell
  *
  * Simple toolbar-based single-view shell.
  * Features:
@@ -52,9 +52,9 @@ function isValidNavViewId(id: string): id is typeof MAIN_NAV_ITEMS[number]["id"]
 // BASIC SHELL IMPLEMENTATION
 // ============================================================================
 
-export class BasicShell extends BaseShell {
-    id: ShellId = "basic";
-    name = "Basic";
+export class MinimalShell extends BaseShell {
+    id: ShellId = "minimal";
+    name = "Minimal";
 
     layout: ShellLayoutConfig = {
         hasSidebar: false,
@@ -66,7 +66,7 @@ export class BasicShell extends BaseShell {
 
     protected createLayout(): HTMLElement {
         const root = H`
-            <div class="app-shell" data-shell="basic">
+            <div class="app-shell" data-shell="minimal">
                 <nav class="app-shell__nav" role="navigation" aria-label="Main navigation">
                     <div class="app-shell__nav-left" data-nav-left>
                         ${this.renderNavButtons()}
@@ -177,13 +177,13 @@ export class BasicShell extends BaseShell {
 // ============================================================================
 
 /**
- * Factory function for creating BasicShell instances.
+ * Factory function for creating MinimalShell instances.
  * 
  * Note: The container parameter is required by ShellRegistration interface
  * but not used here - the shell is mounted later via shell.mount(container).
  */
-export function createShell(_container: HTMLElement): BasicShell {
-    return new BasicShell();
+export function createShell(_container: HTMLElement): MinimalShell {
+    return new MinimalShell();
 }
 
 export default createShell;

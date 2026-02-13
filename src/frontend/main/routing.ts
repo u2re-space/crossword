@@ -19,7 +19,7 @@
 
 import type { ShellId, ViewId, Shell } from "../shells/types";
 import type { FrontendChoice } from "./boot-menu";
-import { bootBasic, bootFaint, bootRaw, type BootConfig } from "./BootLoader";
+import { bootMinimal, bootFaint, bootRaw, type BootConfig } from "./BootLoader";
 
 // ============================================================================
 // ROUTE TYPES
@@ -235,7 +235,7 @@ export function initRouteListening(): void {
 export function getSavedShellPreference(): ShellId | null {
     try {
         const saved = localStorage.getItem("rs-boot-shell");
-        if (saved === "basic" || saved === "faint" || saved === "raw") {
+        if (saved === "minimal" || saved === "faint" || saved === "raw") {
             return saved as ShellId;
         }
     } catch {
@@ -251,7 +251,7 @@ export const loadSubAppWithShell = async (
     shellId?: ShellId,
     initialView?: ViewId
 ): Promise<AppLoaderResult> => {
-    const shell = shellId || getSavedShellPreference() || "basic";
+    const shell = shellId || getSavedShellPreference() || "minimal";
     const view = initialView || getViewFromPath() || "viewer";
     
     console.log('[App] Loading sub-app with shell:', shell, 'view:', view);
@@ -272,11 +272,11 @@ export const loadSubAppWithShell = async (
                     }
                 };
 
-            case "basic":
+            case "minimal":
             default:
                 return {
                     mount: async (el: HTMLElement) => {
-                        await bootBasic(el, view);
+                        await bootMinimal(el, view);
                     }
                 };
         }
@@ -324,20 +324,20 @@ export function resolvePathToView(pathname: string): ViewId | null {
  */
 export function createBootConfigFromUrl(): BootConfig {
     const view = getViewFromPath() || "viewer";
-    const shell = getSavedShellPreference() || "basic";
+    const shell = getSavedShellPreference() || "minimal";
     const params = Object.fromEntries(new URLSearchParams(location.search));
 
-    let styleSystem: "veela" | "basic" | "raw" = "basic";
+    let styleSystem: "vl-core" | "vl-basic" | "raw" = "vl-core";
 
     switch (shell) {
         case "faint":
-            styleSystem = "veela";
+            styleSystem = "vl-basic";
             break;
         case "raw":
-            styleSystem = "raw";
+            styleSystem = "vl-core";
             break;
         default:
-            styleSystem = "basic";
+            styleSystem = "vl-basic";
     }
 
     return {
@@ -387,7 +387,7 @@ export function parseRoutingParams(): {
  */
 export const resolvePathToChoice = (pathname: string): FrontendChoice => {
     const view = resolvePathToView(pathname);
-    return view ? "basic" : "";
+    return view ? "minimal" : "";
 };
 
 /**

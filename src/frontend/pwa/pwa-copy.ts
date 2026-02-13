@@ -315,7 +315,7 @@ export const initPWAClipboard = (): (() => void) => {
                     // Also broadcast to work center for visibility
                     await unifiedMessaging.sendMessage({
                         type: 'share-target-result',
-                        destination: 'basic-workcenter',
+                        destination: 'workcenter',
                         data: {
                             content: typeof text === 'string' ? text : JSON.stringify(text),
                             rawData: data.data,
@@ -340,7 +340,7 @@ export const initPWAClipboard = (): (() => void) => {
                 console.log('[PWA-Copy] Share received, broadcasting input to work center:', data);
                 await unifiedMessaging.sendMessage({
                     type: 'share-target-input',
-                    destination: 'basic-workcenter',
+                    destination: 'workcenter',
                     data: {
                         ...data,
                         timestamp: Date.now(),
@@ -380,7 +380,7 @@ export const initPWAClipboard = (): (() => void) => {
                         // Also broadcast to work center for visibility
                         await unifiedMessaging.sendMessage({
                             type: 'share-target-result',
-                            destination: 'basic-workcenter',
+                            destination: 'workcenter',
                             data: {
                                 content: typeof extractedContent === 'string' ? extractedContent : JSON.stringify(extractedContent),
                                 rawData: result.data,

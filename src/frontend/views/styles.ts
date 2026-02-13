@@ -11,21 +11,14 @@
  * - raw: No styling framework (browser defaults)
  */
 
-import loadAdvancedStyles from "fest-src/fest/veela/scss/runtime/advanced";
-import loadBasicStyles from "fest-src/fest/veela/scss/runtime/basic";
-import loadBeerCssStyles from "fest-src/fest/veela/scss/runtime/beercss";
+import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
+import type { StyleSystem } from "@rs-frontend/main";
 
-// ============================================================================
-// STYLE TYPES
-// ============================================================================
-
-export type StyleSystemId = "veela-advanced" | "veela-basic" | "veela-beercss" | "raw";
-
-export interface StyleConfig {
-    id: StyleSystemId;
+interface StyleConfig {
+    id: StyleSystem;
     name: string;
-    description: string;
-    variant: "advanced" | "basic" | "beercss" | null;
+    description?: string;
+    variant?: VeelaVariant;
     initFn?: () => Promise<void>;
 }
 
@@ -33,55 +26,69 @@ export interface StyleConfig {
 // STYLE SYSTEM CONFIGURATIONS
 // ============================================================================
 
-export const STYLE_CONFIGS: Record<StyleSystemId, StyleConfig> = {
-    "veela-advanced": {
-        id: "veela-advanced",
+export const STYLE_CONFIGS: Record<StyleSystem, StyleConfig> = {
+    "vl-advanced": {
+        id: "vl-advanced",
         name: "Veela Advanced",
         description: "Full-featured CSS framework with design tokens and effects",
         variant: "advanced",
         initFn: async () => {
             try {
-                await loadAdvancedStyles();
+                await loadVeelaVariant("advanced");
                 console.log("[Styles] Veela Advanced loaded");
             } catch (e) {
 
             }
         }
     },
-    "veela-basic": {
-        id: "veela-basic",
-        name: "Veela Basic",
+    "vl-basic": {
+        id: "vl-basic",
+        name: "Veela Basic Styles",
         description: "Lightweight minimal styling for basic functionality",
         variant: "basic",
         initFn: async () => {
             try {
-                await loadBasicStyles();
-                console.log("[Styles] Veela Basic loaded");
+                await loadVeelaVariant("basic");
+                console.log("[Styles] Veela Basic Styles loaded");
             } catch (e) {
-                console.warn("[Styles] Failed to load Veela Basic:", e);
+                console.warn("[Styles] Failed to load Veela Basic Styles:", e);
                 // Fallback to local basic styles
             }
         }
     },
-    "veela-beercss": {
-        id: "veela-beercss",
+    "vl-beercss": {
+        id: "vl-beercss",
         name: "Veela BeerCSS",
         description: "Beer CSS compatible styling with Material Design 3",
         variant: "beercss",
         initFn: async () => {
             try {
-                await loadBeerCssStyles();
+                await loadVeelaVariant("beercss");
                 console.log("[Styles] Veela BeerCSS loaded");
             } catch (e) {
                 console.warn("[Styles] Failed to load Veela BeerCSS:", e);
             }
         }
     },
-    raw: {
+    "vl-core": {
+        id: "vl-core",
+        name: "Veela Core",
+        description: "Shared foundation styles for all veela variants",
+        variant: "core",
+        initFn: async () => {
+            try {
+                await loadVeelaVariant("core");
+                console.log("[Styles] Veela Core loaded");
+            } catch (e) {
+                console.warn("[Styles] Failed to load Veela Core:", e);
+            }
+        }
+    },
+    "raw": {
         id: "raw",
         name: "Raw",
         description: "No styling framework, browser defaults",
-        variant: null,
+        variant: "core",
         initFn: async () => {
             console.log("[Styles] Raw mode - no styles loaded");
         }
@@ -89,27 +96,17 @@ export const STYLE_CONFIGS: Record<StyleSystemId, StyleConfig> = {
 };
 
 // ============================================================================
-// LEGACY ALIASES (backwards compatibility)
-// ============================================================================
-
-/** @deprecated Use "veela-advanced" instead */
-export const STYLE_ALIAS_VEELA = "veela-advanced" as const;
-
-/** @deprecated Use "veela-basic" instead */
-export const STYLE_ALIAS_BASIC = "veela-basic" as const;
-
-// ============================================================================
 // STYLE LOADER
 // ============================================================================
 
-let _currentStyle: StyleSystemId | null = null;
+let _currentStyle: StyleSystem | null = null;
 
 /**
  * Load a style system
  *
  * @param styleId - Style system identifier
  */
-export async function loadStyleSystem(styleId: StyleSystemId): Promise<void> {
+export async function loadStyleSystem(styleId: StyleSystem): Promise<void> {
     const config = STYLE_CONFIGS[styleId];
     if (!config) {
         throw new Error(`Unknown style system: ${styleId}`);
@@ -133,7 +130,7 @@ export async function loadStyleSystem(styleId: StyleSystemId): Promise<void> {
 /**
  * Get style system configuration
  */
-export function getStyleConfig(styleId: StyleSystemId): StyleConfig {
+export function getStyleConfig(styleId: StyleSystem): StyleConfig {
     return STYLE_CONFIGS[styleId];
 }
 
@@ -147,13 +144,13 @@ export function listStyleSystems(): StyleConfig[] {
 /**
  * Get the currently loaded style system
  */
-export function getCurrentStyleSystem(): StyleSystemId | null {
-    return _currentStyle;
+export function getCurrentStyleSystem(): StyleConfig | null {
+    return _currentStyle ? STYLE_CONFIGS[_currentStyle] : null;
 }
 
 /**
  * Check if a style system is loaded
  */
-export function isStyleSystemLoaded(styleId: StyleSystemId): boolean {
-    return _currentStyle === styleId;
+export function isStyleSystemLoaded(styleId: StyleSystem): boolean {
+    return _currentStyle ? _currentStyle === styleId : false;
 }

@@ -82,7 +82,7 @@ const safeLocalStorage = {
     }
 };
 
-// showStatusMessage will be defined inside mountBasicApp to access state and renderStatus
+// showStatusMessage will be defined inside mountMinimalApp to access state and renderStatus
 
 /**
  * Unified component loading with error handling
@@ -99,14 +99,14 @@ const loadComponent = async (componentName: string, importFn: () => Promise<any>
 // Module-level variables that don't depend on state
 let workCenterAttachmentInProgress = false;
 
-// renderComponent will be defined inside mountBasicApp
+// renderComponent will be defined inside mountMinimalApp
 
-export type BasicView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
+export type MinimalView = "markdown-viewer" | "markdown-editor" | "rich-editor" | "settings" | "history" | "workcenter" | "file-picker" | "file-explorer";
 
-export type Destination = "basic-viewer" | "markdown-editor" | "rich-editor" | "basic-workcenter" | "basic-explorer";
+export type Destination = "viewer" | "markdown-editor" | "rich-editor" | "workcenter" | "explorer";
 
-export type BasicAppOptions = {
-    initialView?: BasicView;
+export type MinimalAppOptions = {
+    initialView?: MinimalView;
     initialMarkdown?: string;
     /** PWA share-target / launchQueue can inject files to pre-attach in WorkCenter */
     initialFiles?: File[];
@@ -171,13 +171,13 @@ const isLikelyExtension = () => {
 };
 
     // Hash location management
-const getViewFromHash = (): BasicView | null => {
+const getViewFromHash = (): MinimalView | null => {
     if (typeof window === "undefined") return null;
     const hash = window.location.hash;
     return (HASH_VIEW_MAPPING as any)[hash] || null;
 };
 
-const setViewHash = (view: BasicView): void => {
+const setViewHash = (view: MinimalView): void => {
     if (typeof window === "undefined") return;
     const hash = (VIEW_HASH_MAPPING as any)[view];
     if (hash) {
@@ -213,7 +213,7 @@ const readMdFromUrlIfPossible = async (candidate: string): Promise<string | null
 };
 
 //
-export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOptions = {}) => {
+export const mountMinimalApp = (mountElement: HTMLElement, options: MinimalAppOptions = {}) => {
     loadAsAdopted(style)
 
     //
@@ -301,7 +301,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     /**
      * Create unified messaging handler for view switching
      */
-    const createViewHandler = (destination: string, view: BasicView) => ({
+    const createViewHandler = (destination: string, view: MinimalView) => ({
         canHandle: (msg: any) => msg.destination === destination,
         handle: async (msg: any) => {
             state.view = view;
@@ -327,7 +327,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     const handleWorkCenterAttachment = async (msg: any, state: any, setViewHash: any, render: any, showStatusMessage: any, skipRender = false) => {
         // Prevent multiple simultaneous attachments
         if (workCenterAttachmentInProgress) {
-            console.log('[Basic] Work center attachment already in progress, ignoring duplicate request');
+            console.log('[Minimal] Work center attachment already in progress, ignoring duplicate request');
             return;
         }
         workCenterAttachmentInProgress = true;
@@ -353,16 +353,16 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                     const filename = msg.data.filename || `content-${Date.now()}.${msg.contentType === 'markdown' ? 'md' : 'txt'}`;
                     const mimeType = msg.contentType === 'markdown' ? 'text/markdown' : 'text/plain';
                     fileToAttach = new File([textContent], filename, { type: mimeType });
-                    console.log('[Basic] Created file for attachment:', { filename, mimeType, size: textContent.length });
+                    console.log('[Minimal] Created file for attachment:', { filename, mimeType, size: textContent.length });
                 }
             } catch (error) {
-                console.warn('[Basic] Failed to create file from message data:', error);
+                console.warn('[Minimal] Failed to create file from message data:', error);
                 showStatusMessage("Failed to process content");
                 return;
             }
 
             if (!fileToAttach) {
-                console.warn('[Basic] No valid file content found in message');
+                console.warn('[Minimal] No valid file content found in message');
                 return;
             }
 
@@ -416,7 +416,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             }
 
         } catch (error) {
-            console.warn('[Basic] Failed to attach content to workcenter:', error);
+            console.warn('[Minimal] Failed to attach content to workcenter:', error);
             showStatusMessage("Failed to attach content");
         }
     };
@@ -447,7 +447,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
     const state = {
         // Core app state
-        view: defaultView as BasicView,
+        view: defaultView as MinimalView,
         markdown: /*safeJsonParse<string>*/(localStorage.getItem("rs-basic-markdown")/*, DEFAULT_MD*/) ?? options.initialMarkdown ?? DEFAULT_MD,
         editing: false,
         busy: false,
@@ -521,8 +521,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     unifiedMessaging.registerHandler('workcenter', createViewHandler('workcenter', 'workcenter'));
 
     // Handler for basic-viewer (places/renders content in view)
-    unifiedMessaging.registerHandler('basic-viewer', {
-        canHandle: (msg) => msg.destination === 'basic-viewer',
+    unifiedMessaging.registerHandler('viewer', {
+        canHandle: (msg) => msg.destination === 'viewer',
         handle: async (msg) => {
             // Default action: place/render content in view
             if (msg.data?.text || msg.data?.content) {
@@ -548,7 +548,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 try {
                     await instance.handleExternalMessage(msg);
                 } catch (e) {
-                    console.error('[Basic] WorkCenter message handling failed:', e);
+                    console.error('[Minimal] WorkCenter message handling failed:', e);
                 }
                 return;
             }
@@ -556,7 +556,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             try {
                 enqueuePendingMessage('basic-workcenter', msg as any);
             } catch (e) {
-                console.warn('[Basic] Failed to enqueue pending workcenter message:', e);
+                console.warn('[Minimal] Failed to enqueue pending workcenter message:', e);
             }
 
             // Auto-open WorkCenter so queued messages get processed and shown.
@@ -569,8 +569,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
     });
 
     // Handler for basic-explorer destination (saves to OPFS or performs file operations)
-    unifiedMessaging.registerHandler('basic-explorer', {
-        canHandle: (msg) => msg.destination === 'basic-explorer',
+    unifiedMessaging.registerHandler('explorer', {
+        canHandle: (msg) => msg.destination === 'explorer',
         handle: async (msg) => {
             // Ensure explorer view is active
             if (state.view !== 'file-explorer') {
@@ -609,7 +609,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
 
                             // Use the file explorer's upload functionality
                             // This simulates uploading a file to the current directory
-                            console.log(`[Basic] Saving file ${fileToSave.name} to Explorer at: ${path}`);
+                            console.log(`[Minimal] Saving file ${fileToSave.name} to Explorer at: ${path}`);
                             state.message = `Saved ${fileToSave.name} to Explorer`;
                             renderStatus();
                             setTimeout(() => {
@@ -621,7 +621,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         // Navigate to path for viewing
                         if (state.components.explorer.element && path) {
                             state.components.explorer.element.path = path;
-                            console.log(`[Basic] Navigated Explorer to path: ${path}`);
+                            console.log(`[Minimal] Navigated Explorer to path: ${path}`);
                             state.message = `Opened Explorer at ${path}`;
                             renderStatus();
                             setTimeout(() => {
@@ -634,7 +634,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         const targetPath = msg.data.into;
                         if (state.components.explorer.element && targetPath) {
                             state.components.explorer.element.path = targetPath;
-                            console.log(`[Basic] Navigated Explorer to place data at: ${targetPath}`);
+                            console.log(`[Minimal] Navigated Explorer to place data at: ${targetPath}`);
                             state.message = `Explorer ready at ${targetPath}`;
                             renderStatus();
                             setTimeout(() => {
@@ -655,7 +655,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         }
                     }
                 } catch (error) {
-                    console.warn('[Basic] Failed to handle explorer action:', error);
+                    console.warn('[Minimal] Failed to handle explorer action:', error);
                     state.message = "Failed to perform Explorer action";
                     renderStatus();
                     setTimeout(() => {
@@ -1343,7 +1343,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             const basicAppChannel = new BroadcastChannel('app-shell');
             basicAppChannel.addEventListener("message", (event) => {
                 const message = event.data;
-                console.log('[BasicApp] Received message:', message);
+                console.log('[MinimalApp] Received message:', message);
 
                 if (message.type === 'content-view') {
                     // Handle content for viewer
@@ -1665,7 +1665,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Settings...</span></div>';
 
                 const settingsModule = await loadComponent('settings',
-                    () => import('@rs-frontend/views/settings'),
+                    () => import('../../../views/settings'),
                     { componentName: 'Settings' }
                 );
 
@@ -1710,8 +1710,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         await unifiedMessaging.sendMessage({
                             id: crypto.randomUUID(),
                             type: 'content-share',
-                            source: 'basic-explorer',
-                            destination: 'basic-workcenter',
+                            source: 'explorer',
+                            destination: 'workcenter',
                             contentType: 'file',
                             data: { file: item.file, filename: item.name, path: explorerEl.path },
                             metadata: { title: item.name, timestamp: Date.now(), source: 'file-explorer' }
@@ -1727,7 +1727,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         await unifiedMessaging.sendMessage({
                             id: crypto.randomUUID(),
                             type: 'content-share',
-                            source: 'basic-explorer',
+                            source: 'explorer',
                             destination,
                             contentType: isMarkdown ? 'markdown' : 'file',
                             data: { file: item.file, filename: item.name, path: explorerEl.path },
@@ -1742,19 +1742,19 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                         await unifiedMessaging.sendMessage({
                             id: crypto.randomUUID(),
                             type: 'content-share',
-                            source: 'basic-explorer',
-                            destination: 'basic-workcenter',
+                            source: 'explorer',
+                            destination: 'workcenter',
                             contentType: 'file',
                             data: { file: item.file, filename: item.name, path: explorerEl.path },
                             metadata: { title: `Attach ${item.name} to Work Center`, timestamp: Date.now(), source: 'file-explorer' }
                         });
                     } else if (action === 'view' && item?.kind === 'file' && item?.file) {
                         const isMarkdown = fileHandler.isMarkdownFile(item.file);
-                        const destination = isMarkdown ? 'basic-viewer' : 'basic-workcenter';
+                        const destination = isMarkdown ? 'viewer' : 'workcenter';
                         await unifiedMessaging.sendMessage({
                             id: crypto.randomUUID(),
                             type: 'content-share',
-                            source: 'basic-explorer',
+                            source: 'explorer',
                             destination,
                             contentType: isMarkdown ? 'markdown' : 'file',
                             data: { file: item.file, filename: item.name, path: explorerEl.path },
@@ -1764,7 +1764,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 });
 
                 // Register component for catch-up messaging
-                registerComponent('file-explorer', 'basic-explorer');
+                registerComponent('file-explorer', 'explorer');
 
                 // Store reference and initialize with catch-up messaging
                 state.components.explorer.element = explorerEl;
@@ -1985,7 +1985,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             if (!action) return;
 
             // Handle view changes with hash updates
-            let newView: BasicView | null = null;
+            let newView: MinimalView | null = null;
             if (action === "view-markdown-viewer") newView = "markdown-viewer";
             if (action === "view-markdown-editor") newView = "markdown-editor";
             if (action === "view-rich-editor") newView = "rich-editor";
@@ -2066,7 +2066,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                             id: crypto.randomUUID(),
                             type: 'content-save',
                             source: 'main-app',
-                            destination: 'basic-explorer',
+                            destination: 'explorer',
                             data: {
                                 action: 'save',
                                 text: typeof latestResult === 'string' ? latestResult : JSON.stringify(latestResult, null, 2),

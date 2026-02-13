@@ -141,7 +141,7 @@ export {
 // ============================================================================
 
 export { default as frontend, frontend as mountFrontend } from "./frontend-entry";
-export type { BasicAppOptions } from "./frontend-entry";
+export type { MinimalAppOptions } from "./frontend-entry";
 
 // CRX-specific entry (raw shell, no toolbar/tabs)
 export { default as crxFrontend, crxFrontend as mountCrxFrontend } from "./crx-entry";
@@ -205,8 +205,8 @@ export async function initializeApp(
 
     // Merge configs with priority: explicit > URL > saved > defaults
     const finalConfig: BootConfig = {
-        styleSystem: config?.styleSystem ?? urlConfig.styleSystem ?? savedConfig?.styleSystem ?? "basic",
-        shell: config?.shell ?? urlConfig.shell ?? savedConfig?.shell ?? "basic",
+        styleSystem: config?.styleSystem ?? urlConfig.styleSystem ?? savedConfig?.styleSystem ?? "vl-basic",
+        shell: config?.shell ?? urlConfig.shell ?? savedConfig?.shell ?? "minimal",
         defaultView: config?.defaultView ?? urlConfig.defaultView ?? savedConfig?.defaultView ?? "viewer",
         channels: config?.channels ?? ["workcenter", "settings", "viewer"],
         rememberChoice: config?.rememberChoice ?? true,
@@ -233,7 +233,7 @@ export async function initializeLegacy(
  */
 export async function quickInit(
     container: HTMLElement,
-    shell: "basic" | "faint" | "raw" = "basic",
+    shell: "minimal" | "faint" | "raw" = "minimal",
     view: string = "viewer"
 ): Promise<Shell> {
     return initializeApp(container, {

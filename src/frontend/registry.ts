@@ -207,12 +207,12 @@ export function registerDefaultShells(): void {
         loader: () => import("./shells/raw/index")
     });
 
-    // Basic shell (simple toolbar-based navigation)
+    // Minimalshell (simple toolbar-based navigation)
     ShellRegistry.register({
-        id: "basic",
-        name: "Basic",
-        description: "Classic toolbar-based navigation",
-        loader: () => import("./shells/basic/index")
+        id: "minimal",
+        name: "Minimal",
+        description: "Minimal toolbar-based navigation",
+        loader: () => import("./shells/minimal/index")
     });
 
     // Faint shell (tabbed sidebar navigation)
@@ -323,7 +323,7 @@ export const darkTheme: ShellTheme = {
  */
 export function getDefaultBootConfig(): BootConfig {
     return {
-        defaultShell: "basic",
+        defaultShell: "minimal",
         defaultView: "viewer",
         theme: defaultTheme,
         rememberShellChoice: true,

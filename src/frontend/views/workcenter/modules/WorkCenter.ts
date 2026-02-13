@@ -108,7 +108,7 @@ export class WorkCenterManager {
         this.shareTarget.initShareTargetListener(this.state);
 
         // Register component for catch-up messaging
-        registerComponent('workcenter-core', 'basic-workcenter');
+        registerComponent('workcenter-core', 'workcenter');
 
         // Process any queued messages that were sent before work center was available
         this.shareTarget.processQueuedMessages(this.state);

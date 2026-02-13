@@ -1,7 +1,7 @@
 /**
- * Frontend Entry Point (Basic Shell)
+ * Frontend Entry Point (Minimal Shell)
  *
- * Entry point for mounting the Basic frontend application.
+ * Entry point for mounting the Minimal frontend application.
  * Handles URL parameters, share-target data, and auto-processing.
  *
  * Used by:
@@ -11,19 +11,19 @@
  * NOTE: Chrome extension pages use `crx-entry.ts` instead (raw shell, no toolbar).
  */
 
-import type { BasicAppOptions } from "../shells/basic/ts/shell";
-import { mountBasicApp } from "../shells/basic/ts/shell";
+import type { MinimalAppOptions } from "../shells/minimal/ts/shell";
+import { mountMinimalApp } from "../shells/minimal/ts/shell";
 import { loadSettings } from "@rs-com/config/Settings";
 
 /**
- * Mount the Basic frontend application
+ * Mount the Minimal frontend application
  *
  * @param mountElement - DOM element to mount the application into
  * @param options - Optional configuration for the app
  */
 export default async function frontend(
     mountElement: HTMLElement,
-    options: BasicAppOptions = {}
+    options: MinimalAppOptions = {}
 ): Promise<void> {
     // Check for markdown content in URL parameters (from launch queue or direct links)
     const urlParams = new URLSearchParams(window.location.search);
@@ -74,7 +74,7 @@ export default async function frontend(
         window.history.replaceState({}, '', url.pathname + url.hash);
     }
 
-    mountBasicApp(mountElement, options);
+    mountMinimalApp(mountElement, options);
 
     // Optional: auto-run AI recognition and auto-copy result to clipboard (enabled by default).
     // This happens after the app is mounted so toasts/receivers are ready.
@@ -107,4 +107,4 @@ export default async function frontend(
 export { frontend };
 
 // Export types
-export type { BasicAppOptions };
+export type { MinimalAppOptions };

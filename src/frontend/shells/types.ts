@@ -5,7 +5,7 @@
  * They do NOT contain application logic - only layout structure and navigation.
  */
 
-import type { Ref } from "fest/object";
+import type { refType } from "fest/object";
 
 // ============================================================================
 // CORE SHELL TYPES
@@ -14,7 +14,7 @@ import type { Ref } from "fest/object";
 /**
  * Available shell identifiers
  */
-export type ShellId = "basic" | "faint" | "raw";
+export type ShellId = "minimal" | "faint" | "raw";
 
 /**
  * Available view identifiers
@@ -124,10 +124,10 @@ export interface Shell {
     layout: ShellLayoutConfig;
     
     /** Current theme */
-    theme: Ref<ShellTheme>;
+    theme: refType<ShellTheme>;
     
     /** Current view */
-    currentView: Ref<ViewId>;
+    currentView: refType<ViewId>;
     
     /** Mount the shell into a container */
     mount(container: HTMLElement): Promise<void>;

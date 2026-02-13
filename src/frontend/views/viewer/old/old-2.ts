@@ -88,7 +88,7 @@ export class MarkdownViewer {
         this.content = this.options.content || "";
 
         // Register component for catch-up messaging
-        registerComponent('markdown-viewer-instance', 'basic-viewer');
+        registerComponent('markdown-viewer-instance', 'viewer');
 
         // Process any pending messages
         const pendingMessages = initializeComponent('markdown-viewer-instance');

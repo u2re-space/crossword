@@ -381,8 +381,8 @@ export class WorkCenterAttachments {
     private async openMarkdownInViewer(file: File): Promise<void> {
         try {
             const md = await file.text();
-            // Basic edition stores markdown in localStorage + state.markdown.
-            try { localStorage.setItem("rs-basic-markdown", md); } catch { /* ignore */ }
+            // Minimaledition stores markdown in localStorage + state.markdown.
+            try { localStorage.setItem("rs-markdown", md); } catch { /* ignore */ }
             try {
                 if (this.deps?.state) {
                     this.deps.state.markdown = md;

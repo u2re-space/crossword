@@ -4,9 +4,9 @@
  * Unified entry point for the CrossWord frontend application.
  *
  * Subsystems:
- * - shells/  : Layout containers (basic, faint, raw)
+ * - shells/  : Layout containers (minimal, faint, raw)
  * - views/   : Content components (workcenter, settings, viewer, etc.)
- * - styles/  : Style systems (veela, basic, raw)
+ * - styles/  : Style systems (vl-core, vl-basic, vl-advanced, vl-beercss, raw)
  * - shared/  : Shared utilities (clipboard, storage, markdown)
  * - main/    : Boot, routing, and UI utilities
  * - pwa/     : Progressive Web App features
@@ -78,7 +78,7 @@ export type {
     RoutingMode,
     FrontendChoice,
     ExecutionContext,
-    BasicAppOptions
+    MinimalAppOptions
 } from "./main";
 
 // Default boot loader

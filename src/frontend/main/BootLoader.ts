@@ -2,16 +2,16 @@
  * Boot Loader - Shell/Style Initialization System
  * 
  * Manages the boot sequence for the CrossWord application:
- * 1. Load style system (Veela CSS or Basic)
+ * 1. Load style system (Veela CSS or Minimal)
  * 2. Initialize shell (frame/layout/environment)
  * 3. Load view/component/module
  * 4. Connect uniform channels
  * 
  * Shell/Style Matrix:
- * | Shells/Styles: | Faint | Basic | Raw |
+ * | Shells/Styles: | Faint | Minimal | Raw |
  * |----------------|-------|-------|-----|
  * | Veela          |  [r]  |  [o]  | [o] |
- * | Basic          |  [o]  |  [r]  | [r] |
+ * | Minimal        |  [o]  |  [r]  | [r] |
  * 
  * [r] - recommended, [o] - optional
  */
@@ -30,7 +30,7 @@ import { loadVeelaVariant } from "fest/veela";
 /**
  * Style system identifiers
  */
-export type StyleSystem = "veela" | "basic" | "raw";
+export type StyleSystem = "raw" | "vl-core" | "vl-basic" | "vl-advanced" | "vl-beercss";
 
 /**
  * Boot configuration
@@ -79,23 +79,35 @@ const STYLE_CONFIGS: Record<StyleSystem, {
     description: string;
     recommendedShells: ShellId[];
 }> = {
-    veela: {
-        name: "Veela CSS",
-        stylesheets: [],  // Will load from fest/veela
-        description: "Full-featured CSS framework with design tokens",
-        recommendedShells: ["faint"]
-    },
-    basic: {
-        name: "Basic Styles",
-        stylesheets: [],  // Minimal styles
-        description: "Minimal styling for basic functionality",
-        recommendedShells: ["basic", "raw"]
-    },
-    raw: {
+    "raw": {
         name: "Raw (No Framework)",
         stylesheets: [],
         description: "No CSS framework, raw browser defaults",
         recommendedShells: ["raw"]
+    },
+    "vl-core": {
+        name: "Core (Shared Foundation)",
+        stylesheets: [],
+        description: "Shared foundation styles for all veela variants",
+        recommendedShells: ["faint"]
+    },
+    "vl-basic": {
+        name: "Basic Veela Styles",
+        stylesheets: [],
+        description: "Minimal styling for basic functionality",
+        recommendedShells: ["minimal", "raw"]
+    },
+    "vl-advanced": {
+        name: "Advanced (Full-Featured Styling)",
+        stylesheets: [],
+        description: "Full-featured styling with design tokens and effects",
+        recommendedShells: ["faint"]
+    },
+    "vl-beercss": {
+        name: "BeerCSS (Beer CSS Compatible)",
+        stylesheets: [],
+        description: "Beer CSS compatible styling with Material Design 3",
+        recommendedShells: ["faint"]
     }
 };
 
@@ -105,11 +117,13 @@ const STYLE_CONFIGS: Record<StyleSystem, {
 export function getRecommendedStyle(shell: ShellId): StyleSystem {
     switch (shell) {
         case "faint":
-            return "veela";
-        case "basic":
+            return "vl-basic";
+        case "minimal":
+            return "vl-basic";
         case "raw":
+            return "vl-core";
         default:
-            return "basic";
+            return "vl-core";
     }
 }
 
@@ -219,22 +233,24 @@ export class BootLoader {
         console.log(`[BootLoader] Loading style system: ${styleSystem}`);
         
         const config = STYLE_CONFIGS[styleSystem];
-        
+
         // Load Veela CSS framework if selected
-        if (styleSystem === "veela") {
-            try {
-                // Load the main stylesheet using loadCss helper
+        try {
+            // Load the main stylesheet using loadCss helper
+            // Try loading via fest/veela's loadCss which handles paths correctly
+            // Accept only VeelaVariant (type-safe)
+            const veelaVariant = styleSystem.replace("veela-", "").replace("vl-", "");
+            const isValidVariant = veelaVariant in ["core", "basic", "advanced", "beercss"];
+            if (isValidVariant) {
                 try {
-                    // Try loading via fest/veela's loadCss which handles paths correctly
-                    await loadVeelaVariant("core");
+                    await loadVeelaVariant(veelaVariant as "core" | "basic" | "advanced" | "beercss");
                 } catch {
                     console.warn("[BootLoader] Veela stylesheet not found, using fallback");
                 }
-                
-                console.log("[BootLoader] Veela CSS loaded");
-            } catch (error) {
-                console.warn("[BootLoader] Failed to load Veela CSS, using fallback:", error);
             }
+            console.log("[BootLoader] Veela CSS loaded");
+        } catch (error) {
+            console.warn("[BootLoader] Failed to load Veela CSS, using fallback:", error);
         }
         
         // Load any additional stylesheets
@@ -430,7 +446,7 @@ export const bootLoader = BootLoader.getInstance();
  */
 export async function quickBoot(
     container: HTMLElement,
-    shell: ShellId = "basic",
+    shell: ShellId = "minimal",
     view: ViewId = "viewer"
 ): Promise<Shell> {
     return bootLoader.boot(container, {
@@ -450,7 +466,7 @@ export async function bootFaint(
     view: ViewId = "viewer"
 ): Promise<Shell> {
     return bootLoader.boot(container, {
-        styleSystem: "veela",
+        styleSystem: "vl-basic",
         shell: "faint",
         defaultView: view,
         channels: ["workcenter", "settings", "viewer", "explorer"],
@@ -459,15 +475,15 @@ export async function bootFaint(
 }
 
 /**
- * Boot with Basic shell
+ * Boot with Minimal shell
  */
-export async function bootBasic(
+export async function bootMinimal(
     container: HTMLElement,
     view: ViewId = "viewer"
 ): Promise<Shell> {
     return bootLoader.boot(container, {
-        styleSystem: "basic",
-        shell: "basic",
+        styleSystem: "vl-basic",
+        shell: "minimal",
         defaultView: view,
         channels: ["workcenter", "settings", "viewer"],
         rememberChoice: true
@@ -482,7 +498,7 @@ export async function bootRaw(
     view: ViewId = "viewer"
 ): Promise<Shell> {
     return bootLoader.boot(container, {
-        styleSystem: "raw",
+        styleSystem: "vl-core",
         shell: "raw",
         defaultView: view,
         channels: [],

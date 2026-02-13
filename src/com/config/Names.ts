@@ -23,7 +23,7 @@ export const BROADCAST_CHANNELS = {
     GENERAL: 'rs-app-general',
 
     // Unified Messaging Channels
-    BASIC_APP: 'basic-app',
+    MINIMAL_APP: 'minimal-app',
     MAIN_APP: 'main-app',
     FILE_EXPLORER: 'file-explorer',
     PRINT_VIEWER: 'print-viewer',
@@ -299,7 +299,7 @@ export function getChannelForComponent(component: string): string {
         [COMPONENTS.FILE_EXPLORER]: BROADCAST_CHANNELS.FILE_EXPLORER,
         [COMPONENTS.WORKCENTER_CORE]: BROADCAST_CHANNELS.SHARE_TARGET,
         [COMPONENTS.BASIC_WORKCENTER]: BROADCAST_CHANNELS.SHARE_TARGET,
-        'basic-app': BROADCAST_CHANNELS.BASIC_APP,
+        'minimal-app': BROADCAST_CHANNELS.MINIMAL_APP,
         'main-app': BROADCAST_CHANNELS.MAIN_APP
     };
 

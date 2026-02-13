@@ -16,7 +16,7 @@ const mount = document.getElementById("app") as HTMLElement | null;
 const raw = document.getElementById("raw-md") as HTMLPreElement | null;
 
 const LAST_SRC_KEY = "rs-md-viewer-last-src";
-const LAST_MD_KEY = "rs-basic-markdown";
+const LAST_MD_KEY = "rs-markdown";
 
 const loadLastMarkdown = () => {
     try {

@@ -94,7 +94,7 @@ export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
  */
 const createUIElements = (opts: ChoiceScreenOptions) => {
     const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
-    const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Basic</b> version is the default.</div>` as HTMLElement;
+    const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Minimal</b> version is the default.</div>` as HTMLElement;
 
     const countdown = H`<div class="choice-countdown">Auto-starting in <b data-countdown>${opts.seconds}</b> seconds…</div>` as HTMLElement;
     const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
@@ -108,12 +108,12 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
     if (rememberInput) rememberInput.checked = Boolean(opts.initialRemember);
 
     // Menu buttons
-    const bigBasicButton = H`<button class="basic big recommended" type="button">Basic</button>` as HTMLButtonElement;
+    const bigMinimalButton = H`<button class="minimal big recommended" type="button">Minimal</button>` as HTMLButtonElement;
     const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (unstable)</button>` as HTMLButtonElement;
     const airpadButton = H`<button class="airpad small" type="button">Airpad</button>` as HTMLButtonElement;
 
     // Menu buttons array
-    const buttons = [bigBasicButton, unstableFaint, airpadButton];
+    const buttons = [bigMinimalButton, unstableFaint, airpadButton];
 
     // Keyboard navigation state object (mutable reference to persist currentIndex)
     const keyboardNavigation = {
@@ -132,7 +132,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
         hint,
         remember,
         rememberInput,
-        bigBasicButton,
+        bigMinimalButton,
         unstableFaint,
         airpadButton,
         buttons,
@@ -147,7 +147,7 @@ const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof
     const container = H`<div class="choice container"></div>` as HTMLElement;
     const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
 
-    menu.append(elements.bigBasicButton, elements.unstableFaint, elements.airpadButton);
+    menu.append(elements.bigMinimalButton, elements.unstableFaint, elements.airpadButton);
     container.append(
         elements.headerText,
         elements.countdown,
@@ -164,7 +164,7 @@ const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof
  * Set up event handlers for buttons and keyboard navigation
  */
 const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
-    const { bigBasicButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput, countdown } = elements;
+    const { bigMinimalButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput, countdown } = elements;
 
     // Track if countdown is active (for cancellation on interaction)
     let countdownActive = true;
@@ -194,11 +194,11 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
         }
         
         // For shells, save preference and navigate to default view
-        const shell = (choice || "basic") as ShellId;
+        const shell = (choice || "minimal") as ShellId;
         navigateToDefaultView(shell, remember);
     };
 
-    bigBasicButton.addEventListener("click", () => handleChoice("basic"));
+    bigMinimalButton.addEventListener("click", () => handleChoice("minimal"));
     unstableFaint.addEventListener("click", () => handleChoice("faint"));
     airpadButton.addEventListener("click", () => handleChoice("airpad"));
 
@@ -214,13 +214,13 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
             if (remainingSeconds <= 0) {
                 stopCountdown();
                 // Auto-select default choice (basic)
-                handleChoice(opts.defaultChoice || "basic");
+                handleChoice(opts.defaultChoice || "minimal");
             }
         }, 1000);
     }
 
     // Keyboard navigation
-    const container = bigBasicButton.closest('.choice.container') as HTMLElement;
+    const container = bigMinimalButton.closest('.choice.container') as HTMLElement;
     container.addEventListener("keydown", (e) => {
         // Any key press cancels countdown
         stopCountdown();
@@ -266,9 +266,9 @@ export default async (mountingElement: HTMLElement): Promise<void> => {
     // Show boot menu for shell selection
     const { container } = ChoiceScreen({
         seconds: 10,
-        defaultChoice: "basic",
+        defaultChoice: "minimal",
         onChoose: (choice, remember) => {
-            const shell = (choice || "basic") as ShellId;
+            const shell = (choice || "minimal") as ShellId;
             navigateToDefaultView(shell, remember);
         },
         initialRemember: false

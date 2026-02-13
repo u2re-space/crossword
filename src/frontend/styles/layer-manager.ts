@@ -20,7 +20,7 @@
 export type LayerCategory = 'system' | 'runtime' | 'shell' | 'view' | 'override';
 
 export interface LayerDefinition {
-    /** Layer name (e.g., 'layer.shell.basic') */
+    /** Layer name (e.g., 'layer.shell.minimal') */
     name: string;
     /** Layer category for grouping */
     category: LayerCategory;
@@ -30,7 +30,7 @@ export interface LayerDefinition {
     description?: string;
 }
 
-export type ShellId = 'basic' | 'faint' | 'raw';
+export type ShellId = 'minimal' | 'faint' | 'raw';
 
 export type ViewId =
     | 'viewer'
@@ -77,9 +77,9 @@ export const LAYER_HIERARCHY: LayerDefinition[] = [
     // === SHELL LAYERS (order 200-299) ===
     { name: 'layer.shell.common',             category: 'shell', order: 200, description: 'Shared shell styles' },
     { name: 'layer.shell.raw',                category: 'shell', order: 210, description: 'Raw shell (minimal)' },
-    { name: 'layer.shell.basic',              category: 'shell', order: 220, description: 'Basic shell (toolbar navigation)' },
-    { name: 'layer.shell.basic.layout',       category: 'shell', order: 222, description: 'Basic shell layout rules' },
-    { name: 'layer.shell.basic.components',   category: 'shell', order: 224, description: 'Basic shell component styles' },
+    { name: 'layer.shell.minimal',              category: 'shell', order: 220, description: 'Minimal shell (toolbar navigation)' },
+    { name: 'layer.shell.minimal.layout',       category: 'shell', order: 222, description: 'Minimal shell layout rules' },
+    { name: 'layer.shell.minimal.components',   category: 'shell', order: 224, description: 'Minimal shell component styles' },
     { name: 'layer.shell.faint',              category: 'shell', order: 230, description: 'Faint shell (tabbed sidebar)' },
     { name: 'layer.shell.faint.layout',       category: 'shell', order: 232, description: 'Faint shell layout' },
     { name: 'layer.shell.faint.sidebar',      category: 'shell', order: 234, description: 'Faint shell sidebar' },
@@ -136,7 +136,7 @@ let _layerElement: HTMLStyleElement | null = null;
  *     initializeLayers();
  *
  *     // Then load styles
- *     await loadStyleSystem('veela-advanced');
+ *     await loadStyleSystem('vl-advanced');
  *     // ...
  * }
  * ```
@@ -195,12 +195,12 @@ export function resetLayers(): void {
  * Get layer name for a shell
  *
  * @param shellId - Shell identifier
- * @returns Layer name (e.g., 'layer.shell.basic')
+ * @returns Layer name (e.g., 'layer.shell.minimal')
  *
  * @example
  * ```scss
  * // In shell SCSS file
- * @layer #{getShellLayer('basic')} {
+ * @layer #{getShellLayer('minimal')} {
  *     .app-shell { ... }
  * }
  * ```
@@ -290,9 +290,9 @@ export const LAYERS = {
     // Shell
     SHELL_COMMON: 'layer.shell.common',
     SHELL_RAW: 'layer.shell.raw',
-    SHELL_BASIC: 'layer.shell.basic',
-    SHELL_BASIC_LAYOUT: 'layer.shell.basic.layout',
-    SHELL_BASIC_COMPONENTS: 'layer.shell.basic.components',
+    SHELL_MINIMAL: 'layer.shell.minimal',
+    SHELL_MINIMAL_LAYOUT: 'layer.shell.minimal.layout',
+    SHELL_MINIMAL_COMPONENTS: 'layer.shell.minimal.components',
     SHELL_FAINT: 'layer.shell.faint',
     SHELL_FAINT_LAYOUT: 'layer.shell.faint.layout',
     SHELL_FAINT_SIDEBAR: 'layer.shell.faint.sidebar',
