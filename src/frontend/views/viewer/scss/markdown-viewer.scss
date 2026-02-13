@@ -6,7 +6,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
-@layer tokens, base, layout, components, utilities, overrides;
+@layer tokens, base, components, utilities, markdown, overrides;
 
 /* ===========================
    Meta / Mixins
@@ -102,8 +102,9 @@
    Tokens
    =========================== */
 @layer tokens {
-    :root:has(.print-view),
-    .print-view {
+    :root,
+    :host,
+    :scope {
         --print-font-family: "Times New Roman", "Times", "Liberation Serif", "Noto Serif", serif;
         --print-font-family-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         --print-font-mono: "Monaco", "Menlo", "Ubuntu Mono", "Liberation Mono", "Noto Mono", monospace;
@@ -111,6 +112,17 @@
         --print-bg: #ffffff;
         --print-border-color: #d1d5db;
         --print-link-color: #2563eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root,
+        :host,
+        :scope {
+            --print-text-color: #f3f4f6;
+            --print-bg: #111827;
+            --print-border-color: #374151;
+            --print-link-color: #60a5fa;
+        }
     }
 }
 
@@ -136,19 +148,19 @@
 }
 
 @page :first {
-    margin-top: 4cm;
+    margin-top: 2cm;
     margin-bottom: 2.5cm;
     margin-left: 2cm;
     margin-right: 2cm;
 }
 
 @page :left {
-    margin-right: 3cm;
+    margin-right: 2cm;
     margin-left: 2cm;
 }
 
 @page :right {
-    margin-left: 3cm;
+    margin-left: 2cm;
     margin-right: 2cm;
 }
 
@@ -194,14 +206,10 @@
 }
 
 /* ===========================
-   Components
+   Markdown
    =========================== */
-@layer components {
+@layer markdown {
     @include props.markdown-root-props();
-
-    * {
-        box-sizing: border-box;
-    }
 
     :where(body):has(:where(#{tokens.$selectors}):not([hidden])) {
         @include md-vars(auto);
@@ -218,28 +226,61 @@
         color-scheme: inherit;
         -ms-text-size-adjust: 100%;
         -webkit-text-size-adjust: 100%;
+
+        container-type: normal;
+        contain: none;
+        display: block;
+        inline-size: 100%;
+        block-size: fit-content;
+        min-block-size: 100%;
+        max-block-size: none;
+        overflow: hidden;
+        font-size: 1em;
+        text-align: start;
     }
 
     :where(html, body):has(:where(#{tokens.$selectors}):not([hidden])) {
         @include print-sizing;
 
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-        background: var(--print-bg);
-        color: var(--print-text-color);
-        font-family: var(--print-font-family);
-        font-size: 16px;
-        line-height: 1.6;
+        &,
+        * {
+            box-sizing: border-box;
+        }
+
+        & {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-size: 16px;
+            line-height: 1.6;
+
+            background-color: transparent;
+            inline-size: 100%;
+            min-block-size: 100%;
+            block-size: 100%;
+            max-block-size: min(100dvb, 100cqb);
+            display: block;
+            flex-direction: column;
+            content-visibility: visible;
+            overflow: auto;
+            container-type: inline-size;
+            contain: none;
+            padding: 2rem;
+            font-size: 1em;
+            touch-action: manipulation;
+            pointer-events: auto;
+            user-select: text;
+            text-align: start;
+        }
     }
 
-    :where(#{tokens.$selectors}) {
+    :where(#{tokens.$selectors}):not(.katex, .footnote-ref, .footnote-backref) {
         position: relative;
         display: flex;
         flex: 1;
         flex-direction: column;
-        min-height: 100%;
-        max-height: 100%;
+        block-size: stretch;
+        max-block-size: stretch;
         overflow: auto;
         padding: var(--space-2xl) var(--space-xl);
         background: var(--color-surface);
@@ -257,6 +298,15 @@
         -moz-osx-font-smoothing: grayscale;
         scrollbar-width: thin;
         scrollbar-color: var(--color-outline-variant) transparent;
+
+        touch-action: manipulation;
+        pointer-events: auto;
+        text-align: start;
+
+        contain: inline-size layout paint style;
+
+        @include mixins.md-surface-root(start);
+        @include mixins.md-scrollbars();
 
         @container (max-width: 768px) {
             border-radius: var(--radius-lg);
@@ -412,7 +462,7 @@
             margin: var(--space-xl) 0;
             padding: var(--space-lg);
             overflow-x: auto;
-            border: 1px solid var(--color-outline);
+            border: none;
             border-radius: var(--radius-lg);
             background: var(--color-surface-container-high);
             color: var(--color-on-surface);
@@ -448,7 +498,7 @@
 
         code:not(pre code) {
             padding: 0.125rem 0.375rem;
-            border: 1px solid var(--color-outline);
+            border: none;
             border-radius: var(--radius-sm);
             background: var(--color-surface-container-high);
             color: var(--color-on-surface);
@@ -458,25 +508,43 @@
         }
 
         table {
-            width: 100%;
+            display: table;
+            inline-size: stretch;
+            max-inline-size: stretch;
             margin: var(--space-xl) 0;
-            overflow: hidden;
             border-collapse: collapse;
-            border: 1px solid var(--color-outline);
+            border: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
             border-radius: var(--radius-lg);
             font-size: var(--text-sm);
+            contain: inline-size layout paint style;
+            container-type: inline-size;
+            block-size: max-content;
+            max-block-size: max-content;
+            overflow: hidden;
 
             @container (max-width: 768px) {
                 margin: var(--space-lg) 0;
                 font-size: var(--text-xs);
             }
 
+            tr,
+            thead,
+            tbody,
+            tfoot {
+                inline-size: stretch;
+                max-inline-size: stretch;
+                block-size: max-content;
+                max-block-size: max-content;
+            }
+
             th,
             td {
                 padding: var(--space-md) var(--space-lg);
-                border-bottom: 1px solid var(--color-outline);
+                border-bottom: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
                 color: var(--color-on-surface);
                 text-align: left;
+                block-size: max-content;
+                max-block-size: max-content;
 
                 @container (max-width: 768px) {
                     padding: var(--space-sm) var(--space-md);
@@ -504,7 +572,7 @@
             position: relative;
             margin: var(--space-2xl) 0;
             border: none;
-            border-top: 1px solid var(--color-outline);
+            border-top: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
 
             &::before {
                 content: "";
@@ -735,7 +803,7 @@
         }
 
         table {
-            display: block;
+            display: table;
             overflow: auto;
             margin-block-end: 1rem;
             border-spacing: 0;
@@ -743,6 +811,8 @@
             min-inline-size: 0;
             inline-size: fit-content;
             max-inline-size: stretch;
+            contain: inline-size layout paint style;
+            container-type: inline-size;
 
             tbody,
             thead {
@@ -1061,22 +1131,22 @@
         h4,
         h5,
         h6 {
-            color: var(--print-text-color);
             margin-top: 1.5em;
             margin-bottom: 0.5em;
             line-height: 1.2;
             page-break-after: avoid;
+            break-after: avoid;
         }
 
         h1 {
             font-size: 2rem;
-            border-bottom: 2px solid var(--print-border-color);
+            border-bottom: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
             padding-bottom: 0.5rem;
         }
 
         h2 {
             font-size: 1.5rem;
-            border-bottom: 1px solid var(--print-border-color);
+            border-bottom: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
             padding-bottom: 0.25rem;
         }
 
@@ -1164,14 +1234,18 @@
         table {
             @include print-sizing;
 
-            width: 100%;
-            max-width: 100%;
+            display: table;
+            inline-size: stretch;
+            max-inline-size: stretch;
             border-collapse: collapse;
             margin: 1rem 0;
             page-break-inside: avoid;
             table-layout: fixed;
             word-wrap: break-word;
             overflow-wrap: break-word;
+
+            contain: inline-size layout paint style;
+            container-type: inline-size;
         }
 
         th,
@@ -1497,7 +1571,7 @@
             @include print-sizing;
         }
 
-        :where(#{tokens.$selectors}) {
+        :where(#{tokens.$selectors}):not(.katex, .footnote-ref, .footnote-backref) {
             font-family: var(--print-font-family-sans);
             @include print-sizing;
 
@@ -1507,9 +1581,138 @@
             h4,
             h5,
             h6 {
+                margin-block-start: 1.5em;
+                margin-block-end: 0.5em;
+                font-weight: 600;
+                line-height: 1.25;
+
+                &:first-child {
+                    margin-block-start: 0;
+                }
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+                border-block-end: 1px solid var(--view-border);
+                padding-block-end: 0.3em;
+            }
+
+            h3 {
+                font-size: 1.25rem;
+            }
+
+            h4 {
+                font-size: 1rem;
+            }
+
+            p {
+                margin-block: 1em;
+                line-height: 1.6;
+            }
+
+            ul,
+            ol {
+                margin-block: 1em;
+                padding-inline-start: 2em;
+
+                & > li {
+                    margin-block: 0.25em;
+                }
+            }
+
+            code {
+                font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+                font-size: 0.875em;
+                padding: 0.2em 0.4em;
+                background-color: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
+                border-radius: 4px;
+            }
+
+            pre {
+                margin-block: 1em;
+                padding: 1rem;
+                background-color: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
+                border-radius: 8px;
+                overflow-x: auto;
+
+                code {
+                    padding: 0;
+                    background: none;
+                }
+            }
+
+            blockquote {
+                margin-block: 1em;
+                margin-inline: 0;
+                padding-inline-start: 1rem;
+                border-inline-start: 4px solid rgba(0, 122, 204, 0.4);
+                color: var(--view-fg);
+                opacity: 0.8;
+                font-style: italic;
+            }
+
+            table {
+                display: table;
+                inline-size: stretch;
+                max-inline-size: stretch;
+                border-collapse: collapse;
+                margin-block: 1em;
+
+                contain: inline-size layout paint style;
+                container-type: inline-size;
+
+                th,
+                td {
+                    padding: 0.5rem 0.75rem;
+                    border: 1px solid var(--view-border);
+                    text-align: start;
+                }
+
+                th {
+                    background-color: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
+                    font-weight: 600;
+                }
+
+                tr:nth-child(even) {
+                    background-color: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.02));
+                }
+            }
+
+            a {
+                color: var(--view-link-color);
+                text-decoration: none;
+
+                &:hover {
+                    text-decoration: underline;
+                    color: var(--view-link-hover);
+                }
+            }
+
+            img {
+                max-inline-size: 100%;
+                block-size: auto;
+                border-radius: 8px;
+            }
+
+            hr {
+                margin-block: 2em;
+                border: none;
+                border-block-start: 1px solid var(--view-border);
+            }
+
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
                 line-height: 1.2;
-                margin-top: 2em;
-                margin-bottom: 1em;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
                 break-inside: avoid;
                 break-after: avoid;
             }
@@ -1578,14 +1781,19 @@
             }
 
             table {
-                width: 100%;
+                display: table;
+                inline-size: stretch;
+                max-inline-size: stretch;
                 table-layout: auto;
-                overflow-x: auto;
-                display: block;
-                max-inline-size: 100%;
+                overflow: hidden;
                 margin: 1.5em 0;
                 border-collapse: collapse;
                 break-inside: avoid;
+                block-size: max-content;
+                max-block-size: max-content;
+
+                contain: inline-size layout paint style;
+                container-type: inline-size;
                 @include print-sizing;
             }
 
@@ -1640,34 +1848,32 @@
     }
 
     @media print {
-        :root {
-            --print-text-color: #f3f4f6;
-            --print-bg: #111827;
-            --print-border-color: #374151;
-            --print-link-color: #60a5fa;
-        }
 
-        body {
-            background-color: transparent !important;
-            @include print-sizing;
+        :where(:root, html) {
+            container-type: inline-size;
+            contain: inline-size layout paint style;
         }
 
         :where(body, html, :root) {
             background-color: initial !important;
             font-family: var(--print-font-family);
             color: initial;
+            font-variant-emoji: text;
+            margin: 0;
+            padding: 0;
+            border: none;
         }
 
         :where(html, body):has(:where(#{tokens.$selectors}):not([hidden])) {
             @include print-sizing;
 
+            font-variant-emoji: text;
             font-family: var(--print-font-family);
             font-size: 12pt;
             line-height: 1.4;
             color: black;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            font-variant-emoji: text;
             scrollbar-width: none;
             -ms-overflow-style: none;
             margin: 0;
@@ -1681,12 +1887,68 @@
             }
         }
 
-        :where(#{tokens.$selectors}) {
+        body {
+            block-size: max-content !important;
+            max-block-size: max-content !important;
+            contain: inline-size layout paint style;
+            container-type: inline-size;
+            background-color: transparent !important;
+            overflow: visible !important;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            text-align: center;
+            @include print-sizing;
+
+            @media (orientation: landscape) {
+                max-inline-size: 297cm !important;
+                /*
+                transform: scale(297cm / 100cqi) !important;*/
+                scale: #{"calc(100cqi / 297cm)"} !important;
+            }
+
+            @media (orientation: portrait) {
+                max-inline-size: 210cm !important;
+                /*
+                transform: scale(210cm / 100cqi) !important;*/
+                scale: #{"calc(100cqi / 210cm)"} !important;
+            }
+        }
+
+
+        :where(#{tokens.$selectors}):not(.katex, .footnote-ref, .footnote-backref) {
             line-height: var(--leading-relaxed);
             color: var(--color-on-surface);
             background: var(--color-surface-container-low);
+            font-family: var(--print-font-family);
+            font-variant-emoji: text;
+            block-size: max-content !important;
+            max-block-size: max-content !important;
+            contain: inline-size layout paint style;
+            container-type: inline-size;
+            overflow: visible !important;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            margin: 0;
+            padding: 0;
+            border: none;
 
             @include md-vars(dark);
+
+            * {
+                border-color: transparent;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                font-variant-emoji: text;
+            }
+
+            :heading,
+            :where(h1, h2, h3, h4, h5, h6),
+            span,
+            a,
+            p {
+                font-family: var(--print-font-family);
+                font-variant-emoji: text;
+            }
 
             code,
             pre {
@@ -1707,6 +1969,7 @@
                 background: var(--color-surface-container-low);
                 border-color: var(--color-outline);
                 color: var(--color-on-surface);
+                display: none !important;
 
                 &:hover {
                     background: var(--color-surface-container);
@@ -1807,14 +2070,15 @@
                 line-height: var(--leading-normal);
                 color: var(--color-on-surface);
                 background: var(--color-surface-container);
-                border: 1px solid color-mix(in oklab, var(--color-outline-variant) 50%, transparent);
                 border-radius: var(--radius-md);
+                border: none;
 
                 code {
                     background: transparent;
                     padding: 0;
                     font-size: inherit;
                     color: inherit;
+                    border: none;
                 }
             }
 
@@ -1826,6 +2090,7 @@
                 color: var(--color-on-surface-variant);
                 background: var(--color-surface-container-high);
                 border-radius: var(--radius-sm);
+                border: none;
             }
 
             blockquote {
@@ -1843,18 +2108,23 @@
             }
 
             table {
-                width: 100%;
+                display: table;
+                inline-size: stretch;
+                max-inline-size: stretch;
                 margin: var(--space-lg) 0;
                 border-collapse: collapse;
                 background: var(--color-surface-container);
                 border-radius: var(--radius-md);
                 overflow: hidden;
 
+                contain: inline-size layout paint style;
+                container-type: inline-size;
+
                 th,
                 td {
                     padding: var(--space-sm) var(--space-md);
                     text-align: start;
-                    border-bottom: 1px solid color-mix(in oklab, var(--color-outline-variant) 30%, transparent);
+                    border-bottom: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
                 }
 
                 th {
@@ -1875,7 +2145,7 @@
             hr {
                 margin: var(--space-xl) 0;
                 border: none;
-                border-top: 1px solid color-mix(in oklab, var(--color-outline-variant) 50%, transparent);
+                border-top: 0.5px solid color-mix(in oklab, var(--print-border-color) 30%, transparent);
             }
 
             strong,
@@ -1925,6 +2195,7 @@
             h6 {
                 color: black;
                 page-break-after: avoid;
+                break-after: avoid;
             }
 
             p,
@@ -1954,8 +2225,15 @@
             }
 
             table {
+                display: table;
+                inline-size: stretch;
+                max-inline-size: stretch;
                 border: 1px solid #666;
                 page-break-inside: avoid;
+
+                contain: inline-size layout paint style;
+                container-type: inline-size;
+                border-radius: 0.5rem;
 
                 th,
                 td {
@@ -2095,12 +2373,6 @@
                 image-rendering: optimize-contrast;
             }
 
-            * {
-                background-color: transparent !important;
-                box-shadow: none !important;
-                border-color: #666 !important;
-            }
-
             *,
             *::before,
             *::after {
@@ -2198,14 +2470,14 @@
                 margin-bottom: 0.8em;
             }
 
-            h1 {
+            h1:not(:first-of-type) {
                 page-break-before: always;
                 break-before: page;
                 margin-top: 0;
                 margin-bottom: 1.2em;
             }
 
-            h2 {
+            h2:not(:first-of-type) {
                 page-break-before: avoid;
                 break-before: avoid;
                 margin-top: 1.8em;
@@ -2325,7 +2597,7 @@
                 break-after: auto;
             }
 
-            & > h1:not(:first-child) {
+            & > h1:not(:first-of-type) {
                 page-break-before: always;
                 break-before: page;
                 margin-top: 0;
@@ -2459,6 +2731,143 @@
             &:has(+ :where(p, table, hr)) {
                 break-before: recto;
             }
+        }
+    }
+
+    @include mixins.md-children-inherit(":where(#{tokens.$selectors}):not(.katex, .footnote-ref, .footnote-backref) *");
+
+    [data-hidden] :where(#{tokens.$selectors}) {
+        color-scheme: inherit;
+        content-visibility: auto !important;
+    }
+
+    :where([data-hidden], [data-dragging]):where(#{tokens.$selectors}) {
+        content-visibility: auto !important;
+    }
+
+    [data-dragging] :where(#{tokens.$selectors}) {
+        color-scheme: inherit;
+        content-visibility: auto !important;
+
+        :where(*) {
+            content-visibility: auto !important;
+        }
+    }
+
+    .katex,
+    .footnote-ref,
+    .footnote-backref {
+        font-variant-emoji: text;
+        inline-size: fit-content;
+        max-inline-size: stretch;
+        block-size: fit-content;
+        max-block-size: stretch;
+        font-variant-numeric: tabular-nums;
+        font-variant-east-asian: jis78;
+        font-variant-ligatures: common-ligatures;
+        font-variant-caps: small-caps;
+        font-variant-alternates: normal;
+        text-align: start;
+        font-family: var(--font-family-serif, "Times New Roman");
+
+        * {
+            text-align: start;
+            inline-size: fit-content;
+            max-inline-size: stretch;
+            block-size: fit-content;
+            max-block-size: stretch;
+            font-family: var(--font-family-serif, "Times New Roman");
+        }
+
+        span {
+            font-style: italic;
+        }
+    }
+}
+
+
+@layer overrides {
+    @media print {
+        :where(h1:first-child, h2) {
+            break-before: auto;
+        }
+
+        h2:has(+h3) {
+            break-before: recto;
+        }
+
+        h1:not(:first-child) {
+            @include mixins.md-break(recto, auto, auto);
+        }
+
+        *:has(+h1) {
+            break-after: auto;
+        }
+
+        h1 ~ h2:first-of-type {
+            break-before: auto;
+        }
+
+        :where(table) + h2 {
+            break-before: recto;
+        }
+
+        hr:has(+h1, +h2, +h3, +h4, +h5, +h6) {
+            break-after: verso;
+        }
+
+        :where(table, pre, code, p, ul, ol, li) {
+            @include mixins.md-break(auto, avoid-page, auto);
+        }
+
+        :where(hr, p, ol, li, table, blockquote, pre, code, strong) {
+            & + :where(h1, h2, h3, h4, h5, h6) {
+                break-before: recto;
+            }
+
+            &:has(+h1, +h2, +h3, +h4, +h5, +h6) {
+                break-after: auto;
+            }
+
+            &:not(hr):has(+h2) {
+                break-after: recto;
+            }
+
+            &:has(+p, +pre, +code, +ol, +li, +table, +blockquote, +strong) {
+                break-after: avoid-page;
+            }
+
+            & + :where(p, ol, li, table, blockquote, strong) {
+                break-before: avoid-page;
+            }
+
+            & + hr + :where(h1, h2):has(+:where(p, ol, ul, blockquote)) {
+                break-before: recto;
+            }
+        }
+
+        :where(.pb, .np, .pagebreak, .newpage, .page-break, .new-page) {
+            background-color: transparent;
+            page-break-after: always;
+            @include mixins.md-break(auto, auto, page);
+        }
+
+        :where(h1, h2, h3, h4, h5, h6) {
+            &:has(+:where(hr, p, ul, ol, li, table, blockquote, pre, code)) {
+                break-before: auto;
+                break-after: avoid-page;
+            }
+        }
+
+        :where(h1, h2) {
+            &:has(+:where(p, table, hr)) {
+                break-before: recto;
+            }
+        }
+
+        h1:first-of-type {
+            break-before: avoid;
+            page-break-before: avoid;
         }
     }
 }
