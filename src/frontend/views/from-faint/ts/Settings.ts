@@ -60,7 +60,7 @@ export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as Sec
 
 //
 export const Settings = async () => {
-    const container = H`<section id="settings" class="settings-view"></section>`;
+    const container = H`<section id="settings" class="view-settings"></section>`;
 
     //
     const fieldRefs = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();

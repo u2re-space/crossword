@@ -213,7 +213,7 @@
         }
     }
 
-    .settings-view {
+    .view-settings {
         display: flex;
         gap: var(--gap-xl);
         padding: 0px;
@@ -645,7 +645,7 @@
 
 
     @include breakpoint("md") {
-        .settings-view {
+        .view-settings {
             .settings-actions {
                 flex-direction: column-reverse;
                 align-items: stretch;
