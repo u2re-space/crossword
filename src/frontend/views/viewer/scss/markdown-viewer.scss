@@ -6,7 +6,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
-@layer tokens, base, components, utilities, markdown, overrides;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, markdown, essentials, overrides;
 
 /* ===========================
    Meta / Mixins

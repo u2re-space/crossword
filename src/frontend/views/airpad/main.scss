@@ -6,7 +6,7 @@
    RESET LAYER - Global resets and base styles
    ========================================================================== */
 
-@layer layer.view.airpad {
+@layer view.airpad {
 
     *,
     *::before,
@@ -45,7 +45,7 @@
    THEME LAYER - Material You inspired color system and design tokens
    ========================================================================== */
 
-@layer layer.view.airpad {
+@layer view.airpad {
     :root:has(.view-airpad) {
         /* Material You color system - Enhanced with BeerCSS influences */
         --primary: #0061a4;
@@ -164,7 +164,7 @@
    LAYOUT LAYER - Page layout and positioning
    ========================================================================== */
 
-@layer layer.view.airpad {
+@layer view.airpad {
     .container {
         flex: 1;
         display: flex;
@@ -193,7 +193,7 @@
    COMPONENTS LAYER - Material You inspired component styles
    ========================================================================== */
 
-@layer layer.view.airpad {
+@layer view.airpad {
 
     /* Primary button - Material Design 3 filled button */
     .primary-btn {
@@ -954,7 +954,7 @@
    UTILITIES LAYER - Utility classes and responsive adjustments
    ========================================================================== */
 
-@layer layer.view.airpad {
+@layer view.airpad {
 
     .side-log-toggle {
         position: fixed;

@@ -1,7 +1,7 @@
 /* ai-refactor: optimized/refactored at 2026-02-12T23:58:20Z */
 @use "veela-lib" as *;
 
-@layer tokens, components;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, markdown, essentials, overrides;
 
 @layer tokens {
     :root {
@@ -140,7 +140,7 @@
     }
 }
 
-@layer components {
+@layer views {
     .custom-instructions-editor {
         display: grid;
         gap: var(--spacing-md, 12px);

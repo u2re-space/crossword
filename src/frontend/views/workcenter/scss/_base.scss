@@ -1,4 +1,4 @@
-@layer layer.view.workcenter {
+@layer view.workcenter {
     /* View contexts */
     :is(html, body):has([data-view="workcenter"]) {
         --view-layout: "grid";

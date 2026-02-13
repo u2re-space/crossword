@@ -2,7 +2,7 @@
  * Editor View Styles
  */
 
-@layer layer.view.editor {
+@layer view.editor {
     :is(html, body):has([data-view="editor"]) {
         --view-layout: "flex";
         --view-content-max-width: none;

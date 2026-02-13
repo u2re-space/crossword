@@ -1,4 +1,4 @@
-@layer layer.view.workcenter {
+@layer view.workcenter {
     @mixin btn-size($font-size, $py, $px, $min-inline: auto) {
         padding: $py $px;
         font-size: $font-size;
@@ -533,7 +533,7 @@
     }
 }
 
-@layer layer.view.workcenter.animations {
+@layer view.workcenter.animations {
     @keyframes spin {
         to {
             transform: rotate(360deg);

@@ -2,7 +2,7 @@
  * History View Styles
  */
 
-@layer layer.view.history {
+@layer view.history {
 
     :is(html, body):has([data-view="history"]) {
         --view-layout: "flex";
