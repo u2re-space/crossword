@@ -13,15 +13,11 @@
         --shell-nav-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
         --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
         --shell-nav-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
-        --shell-btn-hover: light-dark(var(--color-surface-container-highest), var(--color-surface-container-highest));
-        --shell-btn-active-bg: color-mix(in oklab, var(--color-primary) 12%, transparent);
-        --shell-btn-active-fg: light-dark(var(--color-primary), var(--color-primary));
-        --shell-status-bg: color-mix(
-            in oklab,
-            var(--color-surface, light-dark(#fafbfc, #1e293b)) 20%,
-            var(--color-on-surface, light-dark(#000000, #ffffff))
-        );
-        --shell-status-fg: light-dark(var(--color-on-primary), var(--color-on-primary));
+        --shell-btn-hover: light-dark(var(--color-surface-container, var(--color-surface-container)), var(--color-surface-container, var(--color-surface-container)));
+        --shell-btn-active-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
+        --shell-btn-active-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-status-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
+        --shell-status-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
 
         /* layout */
         --shell-nav-height: var(--shell-nav-height-base, 48px);
@@ -83,7 +79,7 @@
             inline-size: 32px;
             block-size: 32px;
             border: 3px solid rgba(128, 128, 128, 0.2);
-            border-top-color: var(--shell-btn-active-fg);
+            border-block-start-color: var(--shell-btn-active-fg);
             border-radius: 50%;
             animation: app-shell-spin 0.8s linear infinite;
         }
@@ -142,6 +138,10 @@
             color var(--motion-fast, 0.15s ease);
         white-space: nowrap;
         user-select: none;
+        line-height: normal;
+        block-size: max-content;
+        min-block-size: 2.5rem;
+
 
         ui-icon {
             font-size: var(--icon-size-lg, 1.125rem);

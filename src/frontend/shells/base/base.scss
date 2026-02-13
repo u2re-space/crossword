@@ -14,11 +14,11 @@
         --shell-nav-bg: light-dark(var(--color-surface-container-high, var(--color-surface-container-high)), var(--color-surface-container-high, var(--color-surface-container-high)));
         --shell-nav-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
         --shell-nav-border: light-dark(var(--color-outline-variant, var(--color-outline-variant)), var(--color-outline-variant, var(--color-outline-variant)));
-        --shell-btn-hover: light-dark(var(--color-surface-container-highest, var(--color-surface-container-highest)), var(--color-surface-container-highest, var(--color-surface-container-highest)));
-        --shell-btn-active-bg: color-mix(in oklab, var(--color-primary, var(--color-primary)) 12%, transparent);
-        --shell-btn-active-fg: light-dark(var(--color-primary, var(--color-primary)), var(--color-primary, var(--color-primary)));
-        --shell-status-bg: color-mix(in oklab, var(--color-surface, var(--color-surface, light-dark(#fafbfc, #1e293b))) 20%, var(--color-on-surface, var(--color-on-surface, light-dark(#000000, #ffffff))));
-        --shell-status-fg: light-dark(var(--color-on-primary, var(--color-on-primary)), var(--color-on-primary, var(--color-on-primary)));
+        --shell-btn-hover: light-dark(var(--color-surface-container, var(--color-surface-container)), var(--color-surface-container, var(--color-surface-container)));
+        --shell-btn-active-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
+        --shell-btn-active-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
+        --shell-status-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
+        --shell-status-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
 
         /* layout */
         --shell-nav-height: var(--shell-nav-height-base, 48px);
@@ -83,91 +83,6 @@
             border-top-color: var(--shell-btn-active-fg);
             border-radius: 50%;
             animation: app-shell-spin 0.8s linear infinite;
-        }
-    }
-
-    .app-shell__nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
-        gap: var(--gap-sm, 0.5rem);
-        block-size: var(--shell-nav-height);
-        padding: 0 var(--space-md, 0.75rem);
-        margin: 0;
-        background-color: var(--shell-nav-bg);
-        border-block-end: 1px solid var(--shell-nav-border);
-        transition:
-            background-color var(--motion-normal, 0.2s ease),
-            border-color var(--motion-normal, 0.2s ease);
-    }
-
-    .app-shell__nav-left,
-    .app-shell__nav-right {
-        display: flex;
-        align-items: center;
-    }
-
-    .app-shell__nav-left {
-        gap: var(--gap-xs, 0.25rem);
-    }
-
-    .app-shell__nav-right {
-        gap: var(--gap-sm, 0.5rem);
-
-        & > * {
-            display: flex;
-            align-items: center;
-            gap: var(--gap-xs, 0.25rem);
-        }
-    }
-
-    .app-shell__nav-btn {
-        display: flex;
-        align-items: center;
-        gap: var(--gap-sm, 0.5rem);
-        padding: var(--space-xs, 0.5rem) var(--space-md, 0.75rem);
-        border: none;
-        border-radius: var(--radius-lg, 8px);
-        background: transparent;
-        color: var(--shell-fg);
-        font-size: var(--text-sm, 0.875rem);
-        font-weight: var(--font-weight-medium, 500);
-        cursor: pointer;
-        transition:
-            background-color var(--motion-fast, 0.15s ease),
-            color var(--motion-fast, 0.15s ease);
-        white-space: nowrap;
-        user-select: none;
-
-        ui-icon {
-            font-size: var(--icon-size-lg, 1.125rem);
-            opacity: 0.8;
-            flex-shrink: 0;
-        }
-
-        &:hover {
-            background-color: var(--shell-btn-hover);
-        }
-
-        &:active {
-            background-color: var(--shell-btn-active-bg);
-            color: var(--shell-btn-active-fg);
-        }
-
-        &:focus-visible {
-            outline: 2px solid var(--shell-btn-active-fg);
-            outline-offset: 2px;
-            box-shadow: var(--focus-ring, none);
-        }
-
-        &.active {
-            background-color: var(--shell-btn-active-bg);
-            color: var(--shell-btn-active-fg);
-
-            ui-icon {
-                opacity: 1;
-            }
         }
     }
 
@@ -287,24 +202,11 @@
 }
 
 @layer shell.overrides {
-    @media (max-width: 640px) {
-        .app-shell__nav-label {
-            display: none;
-        }
-    }
+    
 
     @media (max-width: 480px) {
         :where(.app-shell, .app-shell[data-style="raw"]) {
             --shell-nav-height: 48px;
-        }
-
-        .app-shell__nav-btn {
-            padding: var(--space-xs, 0.4rem) var(--space-sm, 0.6rem);
-            font-size: var(--text-xs, 0.875rem);
-
-            ui-icon {
-                font-size: var(--icon-size-xl, 1.25rem);
-            }
         }
     }
 
@@ -316,11 +218,6 @@
 
         .app-shell__content {
             overflow: visible;
-        }
-
-        .app-shell__nav,
-        .app-shell__status {
-            display: none !important;
         }
     }
 
