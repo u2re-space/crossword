@@ -80,6 +80,10 @@ export interface ViewerOptions extends BaseViewOptions {
     filename?: string;
     /** Enable editing mode */
     editable?: boolean;
+    /** Enable print view */
+    content?: string;
+    /** Title for display */
+    title?: string;
     /** Callback when content changes */
     onContentChange?: (content: string) => void;
     /** Callback when copy action is triggered */
@@ -90,6 +94,8 @@ export interface ViewerOptions extends BaseViewOptions {
     onAttachToWorkCenter?: (content: string) => void;
     /** Callback to print content */
     onPrint?: (content: string) => void;
+    /** Callback to open file */
+    onOpen?: () => void;
 }
 
 // ============================================================================
@@ -588,6 +594,6 @@ export function createView(options?: ViewerOptions): ViewerView {
 }
 
 /** Alias for createView */
-export const createViewerView = createView;
+export const createMarkdownView = createView;
 
 export default createView;

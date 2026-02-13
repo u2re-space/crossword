@@ -19,7 +19,7 @@
 
 import type { ShellId, ViewId, Shell } from "../shells/types";
 import type { FrontendChoice } from "./boot-menu";
-import { bootMinimal, bootFaint, bootRaw, type BootConfig } from "./BootLoader";
+import { bootMinimal, bootFaint, bootBase, type BootConfig, type StyleSystem } from "./BootLoader";
 
 // ============================================================================
 // ROUTE TYPES
@@ -235,7 +235,7 @@ export function initRouteListening(): void {
 export function getSavedShellPreference(): ShellId | null {
     try {
         const saved = localStorage.getItem("rs-boot-shell");
-        if (saved === "minimal" || saved === "faint" || saved === "raw") {
+        if (saved === "minimal" || saved === "faint" || saved === "base") {
             return saved as ShellId;
         }
     } catch {
@@ -265,10 +265,10 @@ export const loadSubAppWithShell = async (
                     }
                 };
 
-            case "raw":
+            case "base":
                 return {
                     mount: async (el: HTMLElement) => {
-                        await bootRaw(el, view);
+                        await bootBase(el, view);
                     }
                 };
 
@@ -327,13 +327,13 @@ export function createBootConfigFromUrl(): BootConfig {
     const shell = getSavedShellPreference() || "minimal";
     const params = Object.fromEntries(new URLSearchParams(location.search));
 
-    let styleSystem: "vl-core" | "vl-basic" | "raw" = "vl-core";
+    let styleSystem: StyleSystem = "vl-basic";
 
     switch (shell) {
         case "faint":
             styleSystem = "vl-basic";
             break;
-        case "raw":
+        case "base":
             styleSystem = "vl-core";
             break;
         default:

@@ -201,10 +201,10 @@ export const ViewRegistry = new ViewRegistryClass();
 export function registerDefaultShells(): void {
     // Raw shell (minimal, no frames)
     ShellRegistry.register({
-        id: "raw",
-        name: "Raw",
-        description: "Minimal shell with no frames or navigation",
-        loader: () => import("./shells/raw/index")
+        id: "base",
+        name: "Base",
+        description: "Base shell with no frames or navigation",
+        loader: () => import("./shells/base/index")
     });
 
     // Minimalshell (simple toolbar-based navigation)

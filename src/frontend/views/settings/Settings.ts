@@ -6,7 +6,6 @@ import { loadSettings, saveSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { createCustomInstructionsEditor } from "../../items/CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
-import { createCustomInstructionsPanel } from "@rs-frontend/items/CustomInstructionsPanel";
 
 export type SettingsViewOptions = {
     isExtension: boolean;

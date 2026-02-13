@@ -21,7 +21,7 @@ import { initializeLayers } from "./frontend/styles/layer-manager";
 import type { ViewId } from "./frontend/shells/types";
 
 import { loadAsAdopted } from "fest/dom";
-import viewStyles from "./frontend/views/scss/_views.scss?inline";
+import viewStyles from "@rs-frontend/views/scss/_views.scss?inline";
 
 
 // Import PWA handlers
@@ -81,8 +81,8 @@ const isValidViewPath = (path: string): path is ViewId =>
     (VALID_VIEWS as readonly string[]).includes(path);
 
 /** Valid shell identifiers */
-const VALID_SHELLS = ["basic", "faint", "raw"] as const;
-type ShellPreference = (typeof VALID_SHELLS)[number];
+const VALID_SHELLS = ["base", "minimal", "faint"] as const;
+type ShellPreference = (typeof VALID_SHELLS)[number] | "minimal";
 
 /**
  * Get saved shell preference from localStorage
@@ -274,7 +274,7 @@ export default async function index(mountElement: HTMLElement) {
         if (pathname === "share-target" || pathname === "share_target") {
             console.log('[Index] Share target route');
             clearLoadingState(mountElement);
-            const appLoader = await loadSubAppWithShell(getSavedShell() || "basic", "viewer");
+            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", "viewer");
             await appLoader.mount(mountElement);
             return;
         }
@@ -283,7 +283,7 @@ export default async function index(mountElement: HTMLElement) {
         if ((!pathname || pathname === "") && (sharedFlag === "1" || sharedFlag === "true" || markdownContent)) {
             console.log('[Index] Root with share/markdown params');
             clearLoadingState(mountElement);
-            const appLoader = await loadSubAppWithShell(getSavedShell() || "basic", "viewer");
+            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", "viewer");
             await appLoader.mount(mountElement);
             return;
         }
@@ -295,8 +295,8 @@ export default async function index(mountElement: HTMLElement) {
 
             // Special handling for airpad/print (use raw shell)
             const shell = (pathname === "airpad" || pathname === "print")
-                ? "raw"
-                : (getSavedShell() || "basic");
+                ? "base"
+                : (getSavedShell() || "minimal");
 
             const appLoader = await loadSubAppWithShell(shell, pathname);
             await appLoader.mount(mountElement);
@@ -319,7 +319,7 @@ export default async function index(mountElement: HTMLElement) {
             if (isExtension()) {
                 console.log('[Index] Extension mode - loading default view');
                 clearLoadingState(mountElement);
-                const appLoader = await loadSubAppWithShell("basic", "viewer");
+                const appLoader = await loadSubAppWithShell("base", "viewer");
                 await appLoader.mount(mountElement);
                 return;
             }

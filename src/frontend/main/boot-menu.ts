@@ -188,7 +188,7 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
         
         // For special views like airpad, navigate directly to that view
         if (choice === "airpad") {
-            saveShellPreference("raw", remember);
+            saveShellPreference("base", remember);
             window.location.href = "/airpad";
             return;
         }

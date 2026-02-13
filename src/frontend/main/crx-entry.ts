@@ -60,7 +60,7 @@ export default async function crxFrontend(
 
     return bootLoader.boot(mountElement, {
         styleSystem: "vl-basic",
-        shell:       "raw",
+        shell:       "base",
         defaultView: view,
         channels:    [],
         rememberChoice: false,

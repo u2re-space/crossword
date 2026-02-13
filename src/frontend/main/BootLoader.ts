@@ -21,7 +21,7 @@ import { ShellRegistry, initializeRegistries } from "../registry";
 import type { ShellId, ViewId, Shell, ShellTheme } from "../shells/types";
 import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChannels";
 
-import { loadVeelaVariant } from "fest/veela";
+import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
 
 // ============================================================================
 // BOOT TYPES
@@ -83,25 +83,25 @@ const STYLE_CONFIGS: Record<StyleSystem, {
         name: "Raw (No Framework)",
         stylesheets: [],
         description: "No CSS framework, raw browser defaults",
-        recommendedShells: ["raw"]
+        recommendedShells: ["base"]
     },
     "vl-core": {
         name: "Core (Shared Foundation)",
         stylesheets: [],
         description: "Shared foundation styles for all veela variants",
-        recommendedShells: ["faint"]
+        recommendedShells: ["faint", "base"]
     },
     "vl-basic": {
         name: "Basic Veela Styles",
         stylesheets: [],
         description: "Minimal styling for basic functionality",
-        recommendedShells: ["minimal", "raw"]
+        recommendedShells: ["minimal", "base"]
     },
     "vl-advanced": {
         name: "Advanced (Full-Featured Styling)",
         stylesheets: [],
         description: "Full-featured styling with design tokens and effects",
-        recommendedShells: ["faint"]
+        recommendedShells: ["faint", "minimal"]
     },
     "vl-beercss": {
         name: "BeerCSS (Beer CSS Compatible)",
@@ -120,7 +120,7 @@ export function getRecommendedStyle(shell: ShellId): StyleSystem {
             return "vl-basic";
         case "minimal":
             return "vl-basic";
-        case "raw":
+        case "base":
             return "vl-core";
         default:
             return "vl-core";
@@ -232,22 +232,16 @@ export class BootLoader {
         this.setPhase("styles");
         console.log(`[BootLoader] Loading style system: ${styleSystem}`);
         
-        const config = STYLE_CONFIGS[styleSystem];
+        const config = STYLE_CONFIGS[styleSystem] || STYLE_CONFIGS["vl-basic"];
 
         // Load Veela CSS framework if selected
         try {
             // Load the main stylesheet using loadCss helper
             // Try loading via fest/veela's loadCss which handles paths correctly
             // Accept only VeelaVariant (type-safe)
-            const veelaVariant = styleSystem.replace("veela-", "").replace("vl-", "");
-            const isValidVariant = veelaVariant in ["core", "basic", "advanced", "beercss"];
-            if (isValidVariant) {
-                try {
-                    await loadVeelaVariant(veelaVariant as "core" | "basic" | "advanced" | "beercss");
-                } catch {
-                    console.warn("[BootLoader] Veela stylesheet not found, using fallback");
-                }
-            }
+            const veelaVariant = styleSystem?.replace?.("veela-", "")?.replace?.("vl-", "") || "basic";
+            console.log(`[BootLoader] Loading Veela variant: ${veelaVariant}`);
+            await loadVeelaVariant(veelaVariant as VeelaVariant);
             console.log("[BootLoader] Veela CSS loaded");
         } catch (error) {
             console.warn("[BootLoader] Failed to load Veela CSS, using fallback:", error);
@@ -493,13 +487,13 @@ export async function bootMinimal(
 /**
  * Boot with Raw shell (minimal)
  */
-export async function bootRaw(
+export async function bootBase(
     container: HTMLElement,
     view: ViewId = "viewer"
 ): Promise<Shell> {
     return bootLoader.boot(container, {
         styleSystem: "vl-core",
-        shell: "raw",
+        shell: "base",
         defaultView: view,
         channels: [],
         rememberChoice: false

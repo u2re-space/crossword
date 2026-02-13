@@ -1,7 +1,7 @@
 /**
- * Raw Shell
+ * Base Shell
  *
- * Minimal shell with no frames, navigation UI, or chrome.
+ * Base shell with no frames, navigation UI, or chrome.
  * Just a content container with theme support.
  *
  * Use cases:
@@ -11,20 +11,20 @@
  * - Single-component rendering
  */
 
-import { BaseShell } from "../minimal/ts/base-shell";
 import { H } from "fest/lure";
 import type { ShellId, ShellLayoutConfig } from "../types";
 
 // @ts-ignore - SCSS import
-import style from "./scss/raw.scss?inline";
+import style from "./scss/base.scss?inline";
+import { ShellBase } from "../shell";
 
 // ============================================================================
-// RAW SHELL IMPLEMENTATION
+// BASE SHELL IMPLEMENTATION
 // ============================================================================
 
-export class RawShell extends BaseShell {
-    id: ShellId = "raw";
-    name = "Raw";
+export class BaseShell extends ShellBase {
+    id: ShellId = "base";
+    name = "Base";
 
     layout: ShellLayoutConfig = {
         hasSidebar: false,
@@ -36,7 +36,7 @@ export class RawShell extends BaseShell {
 
     protected createLayout(): HTMLElement {
         const root = H`
-            <div class="app-shell" data-shell="raw">
+            <div class="app-shell" data-shell="base">
                 <div class="app-shell__status" data-shell-status hidden aria-live="polite"></div>
                 <div class="app-shell__content" data-shell-content></div>
             </div>
@@ -52,7 +52,7 @@ export class RawShell extends BaseShell {
     async mount(container: HTMLElement): Promise<void> {
         await super.mount(container);
 
-        // Raw shell uses simplified navigation
+        // Base shell uses simplified navigation
         this.setupHashNavigation();
         this.setupPopstateNavigation();
     }
@@ -63,10 +63,10 @@ export class RawShell extends BaseShell {
 // ============================================================================
 
 /**
- * Create a raw shell instance
+ * Create a base shell instance
  */
-export function createShell(_container: HTMLElement): RawShell {
-    return new RawShell();
+export function createShell(_container: HTMLElement): BaseShell {
+    return new BaseShell();
 }
 
 export default createShell;

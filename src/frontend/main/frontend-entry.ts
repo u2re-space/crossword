@@ -11,9 +11,9 @@
  * NOTE: Chrome extension pages use `crx-entry.ts` instead (raw shell, no toolbar).
  */
 
-import type { MinimalAppOptions } from "../shells/minimal/ts/shell";
-import { mountMinimalApp } from "../shells/minimal/ts/shell";
+
 import { loadSettings } from "@rs-com/config/Settings";
+import { mountShellApp, type ShellOptions } from "@rs-frontend/shells";
 
 /**
  * Mount the Minimal frontend application
@@ -23,7 +23,7 @@ import { loadSettings } from "@rs-com/config/Settings";
  */
 export default async function frontend(
     mountElement: HTMLElement,
-    options: MinimalAppOptions = {}
+    options: ShellOptions = {}
 ): Promise<void> {
     // Check for markdown content in URL parameters (from launch queue or direct links)
     const urlParams = new URLSearchParams(window.location.search);
@@ -74,7 +74,7 @@ export default async function frontend(
         window.history.replaceState({}, '', url.pathname + url.hash);
     }
 
-    mountMinimalApp(mountElement, options);
+    mountShellApp(mountElement, options);
 
     // Optional: auto-run AI recognition and auto-copy result to clipboard (enabled by default).
     // This happens after the app is mounted so toasts/receivers are ready.
@@ -107,4 +107,4 @@ export default async function frontend(
 export { frontend };
 
 // Export types
-export type { MinimalAppOptions };
+export type { ShellOptions };

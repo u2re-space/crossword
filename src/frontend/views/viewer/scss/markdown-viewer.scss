@@ -2,7 +2,6 @@
 @use "./lib/mixins" as mixins;
 @use "./lib/tokens" as tokens;
 @use "./lib/config" as config;
-@use "./lib/props";
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
@@ -105,9 +104,9 @@
     :root,
     :host,
     :scope {
-        --print-font-family: "Times New Roman", "Times", "Liberation Serif", "Noto Serif", serif;
-        --print-font-family-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        --print-font-mono: "Monaco", "Menlo", "Ubuntu Mono", "Liberation Mono", "Noto Mono", monospace;
+        --print-font-family: var(--font-family-serif, "Times New Roman", "Times", "Liberation Serif", "Noto Serif", serif);
+        --print-font-family-sans: var(--font-family-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+        --print-font-mono: var(--font-family-mono, "Monaco", "Menlo", "Ubuntu Mono", "Liberation Mono", "Noto Mono", monospace);
         --print-text-color: #1a1a1a;
         --print-bg: #ffffff;
         --print-border-color: #d1d5db;
@@ -209,7 +208,7 @@
    Markdown
    =========================== */
 @layer markdown {
-    @include props.markdown-root-props();
+    @include tokens.markdown-root-props();
 
     :where(body):has(:where(#{tokens.$selectors}):not([hidden])) {
         @include md-vars(auto);
@@ -219,9 +218,6 @@
         margin: 0;
         background-color: transparent;
         color: var(--md-fg-default);
-        font-family: var(--md-font-body);
-        font-size: #{config.md-config("font", "size-base")};
-        line-height: #{config.md-config("layout", "line-height")};
         word-wrap: break-word;
         color-scheme: inherit;
         -ms-text-size-adjust: 100%;
@@ -235,7 +231,6 @@
         min-block-size: 100%;
         max-block-size: none;
         overflow: hidden;
-        font-size: 16px;
         text-align: start;
     }
 
@@ -250,9 +245,7 @@
         & {
             margin: 0;
             padding: 0;
-            min-height: 100vh;
-            font-size: 16px;
-            line-height: 1.6;
+            min-block-size: 100vh;
 
             background-color: transparent;
             inline-size: 100%;
@@ -265,8 +258,6 @@
             overflow: auto;
             container-type: inline-size;
             contain: none;
-            padding: 2rem;
-            font-size: 16px;
             touch-action: manipulation;
             pointer-events: auto;
             user-select: text;
@@ -275,6 +266,11 @@
     }
 
     :where(#{tokens.$selectors}):not(.katex, .footnote-ref, .footnote-backref) {
+        font-family: var(--md-font-body, var(--font-family-system));
+        font-size: #{config.md-config("font", "size-base")};
+        line-height: #{config.md-config("layout", "line-height")};
+        font-weight: #{config.md-config("font", "weight-normal")};
+
         position: relative;
         display: flex;
         flex: 1;
@@ -285,7 +281,6 @@
         padding: var(--space-2xl) var(--space-xl);
         background: var(--color-surface);
         color: var(--color-on-surface);
-        font-family: var(--font-family-system);
         font-size: var(--text-base, 16px);
         font-weight: var(--font-weight-normal);
         line-height: var(--leading-relaxed);
@@ -1424,7 +1419,7 @@
         display: inline-flex;
         align-items: center;
         gap: var(--space-xs);
-        min-height: 44px;
+        min-block-size: 44px;
         padding: var(--space-sm) var(--space-lg);
         border: none;
         border-radius: var(--radius-lg);
@@ -1437,13 +1432,13 @@
         transition: all var(--motion-fast);
 
         @container (max-width: 640px) {
-            min-height: 40px;
+            min-block-size: 40px;
             padding: var(--space-xs) var(--space-md);
             font-size: var(--text-xs);
         }
 
         @container (max-width: 480px) {
-            min-height: 44px;
+            min-block-size: 44px;
             padding: var(--space-sm) var(--space-md);
         }
 
@@ -1548,7 +1543,7 @@
 
     @media screen {
         :where(html, body):has(:where(#{tokens.$selectors}):not([hidden])) {
-            height: 100vh;
+            block-size: 100vh;
             overflow: auto;
             inline-size: 100vw;
             margin: 0;
@@ -1556,7 +1551,7 @@
         }
 
         .print-view {
-            min-height: 100vh;
+            min-block-size: 100vh;
             margin: 0;
             padding: 0;
             @include print-sizing;
@@ -1711,14 +1706,14 @@
             h5,
             h6 {
                 line-height: 1.2;
-                margin-top: 1em;
-                margin-bottom: 0.5em;
+                margin-block-start: 1em;
+                margin-block-end: 0.5em;
                 break-inside: avoid;
                 break-after: avoid;
             }
 
             h1 {
-                margin-top: 0;
+                margin-block-start: 0;
                 font-size: 2.5em;
             }
 
@@ -1731,7 +1726,7 @@
             }
 
             p {
-                margin-bottom: 1.2em;
+                margin-block-end: 1.2em;
                 line-height: 1.7;
                 text-align: justify;
                 hyphens: auto;
@@ -1739,19 +1734,19 @@
 
             ul,
             ol {
-                margin-bottom: 1.2em;
-                padding-left: 2em;
+                margin-block-end: 1.2em;
+                padding-inline-start: 2em;
             }
 
             li {
-                margin-bottom: 0.5em;
+                margin-block-end: 0.5em;
                 line-height: 1.6;
             }
 
             blockquote {
-                margin: 1.5em 0;
+                margin-block: 1.5em;
                 padding: 1em 1.5em;
-                border-left: 4px solid #007acc;
+                border-inline-start: 4px solid #007acc;
                 background: #f8f9fa;
                 font-style: italic;
                 font-family: var(--print-font-family-sans);
@@ -1759,7 +1754,7 @@
             }
 
             pre {
-                margin: 1.5em 0;
+                margin-block: 1.5em;
                 padding: 1.2em;
                 background: #f6f8fa;
                 border-radius: 6px;
@@ -1801,19 +1796,20 @@
             td {
                 padding: 0.75em;
                 border: 1px solid #ddd;
-                text-align: left;
+                text-align: start;
             }
 
             th {
-                background: #f8f9fa;
+                background-color: #f8f9fa;
                 font-weight: 600;
             }
 
             img {
-                max-width: 100%;
-                width: auto;
-                height: auto;
-                margin: 1.5em auto;
+                max-inline-size: 100%;
+                inline-size: auto;
+                block-size: auto;
+                margin-block: 1.5em;
+                margin-inline: auto;
                 display: block;
                 break-inside: avoid;
             }
@@ -1830,19 +1826,20 @@
             }
 
             hr {
-                margin: 2.5em auto;
+                margin-block: 2.5em;
+                margin-inline: auto;
                 border: none;
-                border-top: 1px solid #eee;
+                border-block-start: 1px solid #eee;
                 break-before: avoid;
                 break-after: avoid;
             }
 
             & > *:first-child {
-                margin-top: 0;
+                margin-block-start: 0;
             }
 
             & > *:last-child {
-                margin-bottom: 0;
+                margin-block-end: 0;
             }
         }
     }

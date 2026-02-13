@@ -9,7 +9,6 @@
  * - NO split view, NO sidebar, NO tabs
  */
 
-import { BaseShell } from "./ts/base-shell";
 import { H } from "fest/lure";
 import { affected } from "fest/object";
 import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
@@ -19,6 +18,7 @@ import style from "./scss/basic.scss?inline";
 
 // Side effect: register icon component
 import "fest/icon";
+import { ShellBase } from "../shell";
 
 // ============================================================================
 // NAVIGATION ITEMS
@@ -52,7 +52,7 @@ function isValidNavViewId(id: string): id is typeof MAIN_NAV_ITEMS[number]["id"]
 // BASIC SHELL IMPLEMENTATION
 // ============================================================================
 
-export class MinimalShell extends BaseShell {
+export class MinimalShell extends ShellBase {
     id: ShellId = "minimal";
     name = "Minimal";
 

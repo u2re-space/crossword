@@ -10,7 +10,7 @@
  * - Theme support with wallpapers
  */
 
-import { BaseShell } from "../minimal/ts/base-shell";
+import { ShellBase } from "../shell";
 import { H } from "fest/lure";
 import { ref, observe, affected } from "fest/object";
 import { ViewRegistry } from "@rs-frontend/registry";
@@ -28,7 +28,7 @@ import "fest/fl-ui";
 // FAINT SHELL IMPLEMENTATION
 // ============================================================================
 
-export class FaintShell extends BaseShell {
+export class FaintShell extends ShellBase {
     id: ShellId = "faint";
     name = "Faint";
 

@@ -4,9 +4,9 @@
  * Unified entry point for the CrossWord frontend application.
  *
  * Subsystems:
- * - shells/  : Layout containers (minimal, faint, raw)
+ * - shells/  : Layout containers (minimal, faint, base)
  * - views/   : Content components (workcenter, settings, viewer, etc.)
- * - styles/  : Style systems (vl-core, vl-basic, vl-advanced, vl-beercss, raw)
+ * - styles/  : Style systems (vl-core, vl-basic, vl-advanced, vl-beercss, base)
  * - shared/  : Shared utilities (clipboard, storage, markdown)
  * - main/    : Boot, routing, and UI utilities
  * - pwa/     : Progressive Web App features

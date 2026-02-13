@@ -1,44 +1,21 @@
-/**
- * Base Shell Implementation
- *
- * Provides common functionality for all shells.
- * Concrete shells extend this class and customize the layout.
- */
-
-import { ref } from "fest/object";
-import { loadInlineStyle, preloadStyle } from "fest/dom";
-import { ViewRegistry } from "../../../registry";
-import type {
-    Shell,
-    ShellId,
-    ViewId,
-    ShellTheme,
-    ShellContext,
-    ShellLayoutConfig,
-    ShellNavigationState,
-    View
-} from "../../types";
-
-//
-import "fest/fl-ui";
+import { ref } from "fest-src/fest/object";
+import type { Shell, ShellContext, ShellId, ShellLayoutConfig, ShellNavigationState, ShellTheme, View, ViewId } from "./types";
+import { loadInlineStyle, preloadStyle } from "fest-src/fest/dom";
+import { ViewRegistry } from "@rs-frontend/registry";
 import { showToast } from "@rs-frontend/items/Toast";
-
-// ============================================================================
-// BASE SHELL IMPLEMENTATION
-// ============================================================================
 
 /**
  * Abstract base shell with common functionality
  */
-export abstract class BaseShell implements Shell {
+export abstract class ShellBase implements Shell {
     // Shell properties
     abstract id: ShellId;
     abstract name: string;
     abstract layout: ShellLayoutConfig;
 
     // State (using any to work around fest/object type inference issue)
-    theme = ref<ShellTheme>({ id: "auto", name: "Auto", colorScheme: "auto" }) as { value: ShellTheme };
-    currentView = ref<ViewId>("home") as { value: ViewId };
+    theme = ref<ShellTheme>({ id: "auto", name: "Auto", colorScheme: "auto" });
+    currentView = ref<ViewId>("home");
     protected navigationState: ShellNavigationState = {
         currentView: "home",
         viewHistory: []
@@ -272,18 +249,21 @@ export abstract class BaseShell implements Shell {
             return;
         }
 
-        // Hide previous view AND remove data-view to stop :has() matching
+        // Detach previous view from DOM and keep it cached in loadedViews.
         const previousId = this.navigationState.previousView;
-        if (previousId && this.loadedViews.has(previousId)) {
+        if (previousId && previousId !== this.currentView.value && this.loadedViews.has(previousId)) {
             const prev = this.loadedViews.get(previousId)!;
             if (prev.view.lifecycle?.onHide) {
                 prev.view.lifecycle.onHide();
             }
             prev.element.removeAttribute("data-view");
             prev.element.hidden = true;
+            if (this.contentContainer.contains(prev.element)) {
+                prev.element.remove();
+            }
         }
 
-        // Show new view AND set data-view for :has() context selectors
+        // Show active view and mark it for :has() context selectors.
         element.setAttribute("data-view", this.currentView.value);
         element.hidden = false;
 

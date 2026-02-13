@@ -107,7 +107,7 @@ let _currentStyle: StyleSystem | null = null;
  * @param styleId - Style system identifier
  */
 export async function loadStyleSystem(styleId: StyleSystem): Promise<void> {
-    const config = STYLE_CONFIGS[styleId];
+    const config = STYLE_CONFIGS[styleId] || STYLE_CONFIGS["vl-basic"];
     if (!config) {
         throw new Error(`Unknown style system: ${styleId}`);
     }

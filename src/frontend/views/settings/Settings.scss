@@ -19,7 +19,7 @@
     }
 }
 
-@layer components {
+@layer overrides {
     :where(.view-settings) {
         display: flex;
         flex-direction: column;
