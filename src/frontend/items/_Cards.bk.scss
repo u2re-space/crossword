@@ -1,12 +1,7 @@
-/* ai-refactor: optimized/refactored at 2026-02-13T00:26:37Z */
 @use "sass:list";
 @use "veela-lib" as *;
 @use "../../library/mixins" as ui;
 @use "../../library/tokens" as t;
-
-/* ==========================================================================
-    Mixins
-   ========================================================================== */
 
 @mixin make-wraps {
     @include text-wrap;
@@ -36,16 +31,16 @@
 
     span,
     a {
-        @include make-wraps;
-
-        display: inline-block;
         font-size: var(--font-xs);
-        line-height: 1.6;
+        display: inline-block;
         overflow-wrap: break-word;
         text-overflow: ellipsis;
         inline-size: fit-content;
         max-inline-size: stretch;
         min-inline-size: 0px;
+        line-height: 1.6;
+
+        @include make-wraps;
     }
 
     p {
@@ -74,8 +69,6 @@
     & #{$selector} {
         display: none;
         block-size: 0px;
-        opacity: 0;
-        overflow: hidden;
         interpolate-size: allow-keywords;
         transition:
             block-size var(--duration-normal) var(--ease-out),
@@ -85,6 +78,8 @@
         transition-duration: var(--duration-normal);
         transition-delay: 0s;
         transition-behavior: allow-discrete;
+        opacity: 0;
+        overflow: hidden;
     }
 
     &[data-open] #{$selector}:not(:empty) {
@@ -107,6 +102,19 @@
         }
     }
 }
+
+$card-ambient-default: 0 28px 42px -30px;
+$card-ambient-hover: 0 34px 54px -28px;
+$card-ambient-open: 0 40px 62px -26px;
+
+$card-variants: (
+    "red": "--color-red",
+    "purple": "--color-purple",
+    "green": "--color-green",
+    "blue": "--color-blue",
+    "orange": "--color-orange",
+    "yellow": "--color-yellow"
+);
 
 @mixin card-color($tint) {
     color: color-mix(
@@ -172,8 +180,6 @@
 
 @mixin card-stack($tint, $gap: var(--gap-xs), $clamp: 4) {
     @include card-color($tint);
-    @include ui.text-body("body-small");
-    @include ui.vstack($gap);
 
     opacity: 1;
     grid-column: 1 / -1;
@@ -186,6 +192,9 @@
     padding-block: var(--padding-sm);
     line-height: normal;
     text-align: start;
+
+    @include ui.text-body("body-small");
+    @include ui.vstack($gap);
 
     @if $clamp != null {
         @include text-clamp($clamp);
@@ -216,13 +225,13 @@
 @mixin card-rich-text($tint) {
     @include card-color($tint);
 
-    display: block;
-    gap: var(--gap-xs);
-    margin: 0;
-    padding: 0;
-    list-style: none;
     font-size: 1em;
     font-weight: var(--font-weight-thin);
+    margin: 0;
+    padding: 0;
+    display: block;
+    gap: var(--gap-xs);
+    list-style: none;
     line-height: 1.6;
     text-align: start;
     text-wrap: pretty;
@@ -288,28 +297,7 @@
     );
 }
 
-/* ==========================================================================
-    Tokens
-   ========================================================================== */
-
-$card-ambient-default: 0 28px 42px -30px;
-$card-ambient-hover: 0 34px 54px -28px;
-$card-ambient-open: 0 40px 62px -26px;
-
-$card-variants: (
-    "red": "--color-red",
-    "purple": "--color-purple",
-    "green": "--color-green",
-    "blue": "--color-blue",
-    "orange": "--color-orange",
-    "yellow": "--color-yellow"
-);
-
-/* ==========================================================================
-    Components
-   ========================================================================== */
-
-@layer components {
+@layer layer.shell.faint {
     @property --card-surface-tone { syntax: "<number>"; inherits: true; initial-value: 0.12; }
     @property --card-surface-tint { syntax: "<number>"; inherits: true; initial-value: -0.08; }
     @property --card-border-alpha { syntax: "<number>"; inherits: true; initial-value: 0.18; }
@@ -471,16 +459,15 @@ $card-variants: (
         );
         @include card-sync-vars;
         @include card-shadows(2, 0.08, 0.08, $card-ambient-default);
-        @include solid-colorize("&", ("shade": var(--card-surface-tone, 0), "scope": "selector"));
 
         display: grid;
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto auto;
         grid-auto-flow: row;
-        place-content: start stretch;
-        place-self: center;
         align-items: start;
         justify-items: stretch;
+        place-content: start stretch;
+        place-self: center;
         gap: var(--gap-sm);
         row-gap: var(--gap-md);
         box-sizing: border-box;
@@ -508,6 +495,8 @@ $card-variants: (
         transition-behavior: allow-discrete;
         interpolate-size: allow-keywords;
         line-height: normal;
+
+        @include solid-colorize("&", ("shade": var(--card-surface-tone, 0), "scope": "selector"));
 
         &.is-nearby {
             --card-shadow-outline: 0 0 0 3px var(--color-green);
@@ -549,14 +538,14 @@ $card-variants: (
             transition: none;
         }
 
-        &,
-        & * {
-            touch-action: pan-y;
-        }
-
         * {
             pointer-events: none;
             user-select: none;
+        }
+
+        &,
+        & * {
+            touch-action: pan-y;
         }
 
         span,
@@ -729,15 +718,16 @@ $card-variants: (
             }
 
             & > .action {
-                @include ui.inline-toolbar(var(--gap-xs));
-                @include ui.tonal-surface(surface, var(--surface-opacity-emphasis));
-                @include flex-center;
-
                 order: 2;
                 padding: var(--padding-xs) var(--padding-md);
                 border-radius: var(--radius-sm);
                 cursor: pointer;
                 transition: var(--transition-colors);
+
+                @include ui.inline-toolbar(var(--gap-xs));
+                @include ui.tonal-surface(surface, var(--surface-opacity-emphasis));
+                @include flex-center;
+
                 box-shadow: none;
                 filter: none;
 
@@ -1004,8 +994,7 @@ $card-variants: (
             gap: var(--gap-xs);
             padding: var(--padding-xs) var(--padding-sm);
             border-radius: var(--radius-sm);
-            background: linear-gradient(
-                135deg,
+            background: linear-gradient(135deg,
                 color-mix(in oklch, var(--color-purple) 18%, transparent),
                 color-mix(in oklch, var(--color-blue) 14%, transparent)
             );
@@ -1031,8 +1020,7 @@ $card-variants: (
             }
 
             &:hover {
-                background: linear-gradient(
-                    135deg,
+                background: linear-gradient(135deg,
                     color-mix(in oklch, var(--color-purple) 24%, transparent),
                     color-mix(in oklch, var(--color-blue) 20%, transparent)
                 );
@@ -1360,25 +1348,23 @@ $card-variants: (
             min-inline-size: 0px;
 
             p {
-                @include card-rich-text(var(--text-tint-primary, 92%));
-
                 white-space: pre-line;
                 overflow-wrap: break-word;
                 text-overflow: ellipsis;
                 inline-size: stretch;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
+                @include card-rich-text(var(--text-tint-primary, 92%));
             }
 
             span {
-                @include card-rich-text(var(--text-tint-primary, 92%));
-
                 white-space: normal;
                 overflow-wrap: nowrap;
                 text-overflow: ellipsis;
                 inline-size: fit-content;
                 max-inline-size: stretch;
                 min-inline-size: 0px;
+                @include card-rich-text(var(--text-tint-primary, 92%));
 
                 &:first-of-type {
                     font-weight: var(--font-weight-medium);

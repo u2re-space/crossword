@@ -15,7 +15,7 @@ export type SettingsViewOptions = {
 
 export const createSettingsView = (opts: SettingsViewOptions) => {
     loadAsAdopted(style)
-    const root = H`<div class="basic-settings">
+    const root = H`<div class="view-settings">
     <h2>Settings</h2>
 
     <section class="card">

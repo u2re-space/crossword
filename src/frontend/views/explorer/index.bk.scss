@@ -1,14 +1,13 @@
-/* ai-refactor: optimized/refactored at 2026-02-13T00:23:02Z */
-@mixin spinner($size, $border, $accent, $duration: 0.8s) {
-    inline-size: $size;
-    block-size: $size;
-    border: $border solid var(--view-border, rgba(128, 128, 128, 0.2));
-    border-block-start-color: $accent;
-    border-radius: 50%;
-    animation: rs-spin $duration linear infinite;
-}
+@layer view.explorer {
+    @mixin spinner($size, $border, $accent, $duration: 0.8s) {
+        inline-size: $size;
+        block-size: $size;
+        border: $border solid var(--view-border, rgba(128, 128, 128, 0.2));
+        border-block-start-color: $accent;
+        border-radius: 50%;
+        animation: rs-spin $duration linear infinite;
+    }
 
-@layer view-explorer {
     @layer tokens {
         :root:has([data-view="explorer"]),
         html:has([data-view="explorer"]) {
@@ -17,6 +16,7 @@
         }
 
         :host:has(.view-explorer) {
+            /* Typography */
             --view-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             --view-font-size: 0.875rem;
             --view-line-height: 1.5;
@@ -25,11 +25,14 @@
 
     @layer base {
         :host:has(.view-explorer) {
+            /* Layout */
             display: flex;
             flex-direction: column;
             contain: layout style;
             block-size: 100%;
             min-block-size: 300px;
+
+            /* Typography usage */
             font-family: var(--view-font-family);
             font-size: var(--view-font-size);
             line-height: var(--view-line-height);
@@ -111,6 +114,9 @@
 
     @layer components {
         .view-explorer {
+            display: flex;
+            flex-direction: column;
+            block-size: 100%;
             background: var(--view-bg);
             border: 1px solid var(--view-border);
             border-radius: 0.5rem;
@@ -199,6 +205,12 @@
                 background: var(--view-accent-hover);
                 color: white;
             }
+        }
+
+        .view-explorer__content {
+            flex: 1;
+            min-block-size: 0;
+            overflow: hidden;
         }
 
         .view-explorer__list {

@@ -1,7 +1,9 @@
+/* ai-refactor: optimized/refactored at 2026-02-13T00:25:20Z */
 @use "veela-lib" as *;
 
+@layer tokens, base, layout, components, utilities, overrides;
 
-@layer view.settings {
+@layer tokens {
     :root:has([data-view="settings"]),
     html:has([data-view="settings"]) {
         /* layout */
@@ -15,243 +17,34 @@
         /* colors */
         --view-label-color: var(--color-text-secondary);
     }
+}
 
-    .settings-view {
+@layer components {
+    :where(.view-settings) {
         display: flex;
         flex-direction: column;
-        gap: var(--space-xl);
-        max-block-size: 100%;
-        overflow: auto;
-        padding: var(--space-lg);
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-outline-variant) transparent;
-
-        @container (max-width: 1024px) {
-            gap: var(--space-lg);
-            padding: var(--space-md);
-        }
-
-        @container (max-width: 768px) {
-            gap: var(--space-md);
-            padding: var(--space-sm);
-        }
-
-        @container (max-width: 480px) {
-            gap: var(--space-sm);
-            padding: var(--space-xs);
-        }
-
-        &::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            background: var(--color-outline-variant);
-            border-radius: 3px;
-
-            &:hover {
-                background: var(--color-outline);
-            }
-        }
-    }
-
-    .settings-section {
-        position: relative;
-        overflow: hidden;
-        background: var(--color-surface-container-high);
-        border-radius: var(--radius-xl);
-        padding: var(--space-xl);
-        box-shadow: var(--elev-2);
-        transition: all var(--motion-normal);
-
-        @container (max-width: 1024px) {
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-        }
-
-        @container (max-width: 768px) {
-            padding: var(--space-md);
-        }
-
-        @container (max-width: 480px) {
-            padding: var(--space-sm);
-            border-radius: var(--radius-md);
-        }
-
-        &:hover {
-            box-shadow: var(--elev-3);
-            transform: translateY(-2px);
-
-            @media (prefers-reduced-motion: reduce) {
-                transform: none;
-            }
-        }
-
-        &::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(
-                135deg,
-                color-mix(in oklab, var(--color-tertiary) 2%, transparent) 0%,
-                transparent 100%
-            );
-            border-radius: inherit;
-            pointer-events: none;
-        }
-
-        & > * {
-            position: relative;
-            z-index: 1;
-        }
-
-        .settings-header {
-            margin-bottom: var(--space-lg);
-            padding-bottom: var(--space-md);
-
-            h3 {
-                display: flex;
-                align-items: center;
-                gap: var(--space-sm);
-                margin: 0;
-                font-size: var(--text-lg);
-                font-weight: var(--font-weight-semibold);
-                color: var(--color-on-surface);
-
-                @container (max-width: 768px) {
-                    font-size: var(--text-base);
-                }
-
-                ui-icon {
-                    opacity: 0.7;
-                    margin-inline-end: var(--space-sm);
-                }
-            }
-        }
-
-        .form-group {
-            margin-bottom: var(--space-lg);
-
-            &:last-child {
-                margin-bottom: 0;
-            }
-
-            label {
-                display: block;
-                margin-bottom: var(--space-sm);
-                font-size: var(--text-sm);
-                font-weight: var(--font-weight-medium);
-                color: var(--color-on-surface);
-            }
-
-            input,
-            select,
-            textarea {
-                width: 100%;
-                padding: var(--space-sm) var(--space-md);
-                border: none;
-                border-radius: var(--radius-md);
-                background: var(--color-surface);
-                color: var(--color-on-surface);
-                font-size: var(--text-base);
-                font-family: var(--font-family);
-                transition: all var(--motion-fast);
-
-                &:focus {
-                    outline: none;
-                    box-shadow: var(--focus-ring);
-                }
-
-                &::placeholder {
-                    color: var(--color-on-surface-variant);
-                }
-            }
-
-            textarea {
-                min-height: 100px;
-                resize: vertical;
-                font-family: var(--font-family-mono);
-            }
-        }
-
-        .settings-actions {
-            display: flex;
-            gap: var(--space-md);
-            justify-content: flex-end;
-            margin-top: var(--space-xl);
-            padding-top: var(--space-lg);
-
-            @container (max-width: 768px) {
-                flex-direction: column;
-                gap: var(--space-sm);
-            }
-
-            .action-btn {
-                min-height: 44px;
-                padding: var(--space-sm) var(--space-xl);
-                border: none;
-                border-radius: var(--radius-lg);
-                background: var(--color-surface-container-high);
-                color: var(--color-on-surface);
-                font-size: var(--text-sm);
-                font-weight: var(--font-weight-semibold);
-                cursor: pointer;
-                transition: all var(--motion-fast);
-
-                &:hover {
-                    background: var(--color-surface-container-highest);
-                    transform: translateY(-1px);
-                    box-shadow: var(--elev-1);
-                }
-
-                &:active {
-                    transform: translateY(0);
-                    box-shadow: none;
-                }
-
-                &.primary {
-                    background: var(--color-tertiary);
-                    color: var(--color-on-tertiary);
-
-                    &:hover {
-                        background: color-mix(in oklab, var(--color-tertiary) 85%, black);
-                    }
-                }
-            }
-        }
-    }
-
-    .settings-group {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-lg);
-    }
-
-
-    :where(.view-settings, .basic-settings) {
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: stretch;
+        gap: var(--spacing-md, 14px);
         block-size: 100%;
+        max-block-size: none;
         overflow-y: auto;
+        inline-size: 100%;
+        margin-inline: auto;
+        padding: var(--spacing-lg, 20px);
         background-color: var(--view-bg, var(--color-surface, #ffffff));
         color: var(--view-fg, var(--color-on-surface, #1a1a1a));
         text-align: start;
-        padding: var(--spacing-lg, 20px);
-        gap: var(--spacing-md, 14px);
-        max-block-size: none;
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-outline-variant) transparent;
-        margin-inline: auto;
-        inline-size: 100%;
-        place-content: center;
-        place-items: center;
-        
-        align-items: safe center;
-        justify-items: safe center;
-        align-content: safe center;
-        justify-content: safe center;
+
+        @supports (justify-content: safe center) {
+            justify-content: safe center;
+            align-content: safe center;
+            justify-items: safe center;
+            align-items: safe center;
+        }
+
+        @supports not (justify-content: safe center) {
+            justify-content: flex-start;
+            align-items: stretch;
+        }
 
         @container (max-width: 480px) {
             padding: var(--spacing-sm, 10px);
@@ -265,8 +58,8 @@
         h2 {
             margin: 0;
             font-size: var(--text-xl, 20px);
-            letter-spacing: -0.02em;
             font-weight: var(--font-weight-bold, 700);
+            letter-spacing: -0.02em;
             color: var(--color-on-surface);
         }
 
@@ -275,10 +68,10 @@
             flex-direction: column;
             gap: var(--spacing-md, 12px);
             padding: var(--spacing-md, 16px);
-            background: var(--color-surface-container);
-            border-radius: var(--radius-lg, 12px);
-            border: 1px solid var(--color-outline-variant);
             inline-size: stretch;
+            background: var(--color-surface-container);
+            border: 1px solid var(--color-outline-variant);
+            border-radius: var(--radius-lg, 12px);
 
             @container (max-width: 480px) {
                 padding: var(--spacing-sm, 10px);
@@ -288,8 +81,8 @@
             h3 {
                 margin: 0;
                 font-size: var(--text-base, 15px);
-                letter-spacing: -0.01em;
                 font-weight: var(--font-weight-bold, 700);
+                letter-spacing: -0.01em;
                 color: var(--color-on-surface);
             }
         }
@@ -297,13 +90,13 @@
         .field {
             display: grid;
             gap: var(--spacing-xs, 6px);
-            font-size: var(--text-xs, 12px);
             inline-size: stretch;
+            font-size: var(--text-xs, 12px);
 
             & > span {
-                opacity: 0.85;
-                color: var(--color-on-surface-variant);
                 font-size: var(--text-xs, 12px);
+                color: var(--color-on-surface-variant);
+                opacity: 0.85;
             }
 
             &.checkbox {
@@ -346,9 +139,9 @@
             input[type="checkbox"] {
                 inline-size: 18px;
                 block-size: 18px;
+                border-radius: var(--radius-xs, 4px);
                 accent-color: var(--color-primary);
                 cursor: pointer;
-                border-radius: var(--radius-xs, 4px);
             }
         }
 
@@ -389,8 +182,8 @@
         .note,
         .ext-note {
             font-size: var(--text-xs, 12px);
-            opacity: 0.9;
             color: var(--color-on-surface-variant);
+            opacity: 0.9;
         }
 
         .ext-note {
@@ -406,6 +199,43 @@
     }
 
     .view-settings {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xl);
+        max-block-size: 100%;
+        overflow: auto;
+        padding: var(--space-lg);
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-outline-variant) transparent;
+
+        @container (max-width: 1024px) {
+            gap: var(--space-lg);
+            padding: var(--space-md);
+        }
+
+        @container (max-width: 768px) {
+            gap: var(--space-md);
+            padding: var(--space-sm);
+        }
+
+        @container (max-width: 480px) {
+            gap: var(--space-sm);
+            padding: var(--space-xs);
+        }
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--color-outline-variant);
+            border-radius: 3px;
+
+            &:hover {
+                background: var(--color-outline);
+            }
+        }
+
         &__content {
             inline-size: 100%;
             max-inline-size: clamp(640px, 90%, 800px);
@@ -418,10 +248,11 @@
         }
 
         &__section {
+            display: flex;
+            flex-direction: column;
             margin-block-end: 2rem;
             padding-block-end: 2rem;
             border-block-end: 1px solid var(--view-border, rgba(0, 0, 0, 0.1));
-            flex-direction: column;
 
             &:last-of-type {
                 border-block-end: none;
@@ -524,6 +355,178 @@
 
                 &:hover {
                     filter: brightness(1.1);
+                }
+            }
+        }
+    }
+
+    .settings-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-lg);
+    }
+
+    .settings-section {
+        position: relative;
+        overflow: hidden;
+        padding: var(--space-xl);
+        background: var(--color-surface-container-high);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--elev-2);
+        transition: all var(--motion-normal);
+
+        @container (max-width: 1024px) {
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+        }
+
+        @container (max-width: 768px) {
+            padding: var(--space-md);
+        }
+
+        @container (max-width: 480px) {
+            padding: var(--space-sm);
+            border-radius: var(--radius-md);
+        }
+
+        &:hover {
+            box-shadow: var(--elev-3);
+            transform: translateY(-2px);
+
+            @media (prefers-reduced-motion: reduce) {
+                transform: none;
+            }
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                135deg,
+                color-mix(in oklab, var(--color-tertiary) 2%, transparent) 0%,
+                transparent 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        & > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .settings-header {
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+
+            h3 {
+                display: flex;
+                align-items: center;
+                gap: var(--space-sm);
+                margin: 0;
+                font-size: var(--text-lg);
+                font-weight: var(--font-weight-semibold);
+                color: var(--color-on-surface);
+
+                @container (max-width: 768px) {
+                    font-size: var(--text-base);
+                }
+
+                ui-icon {
+                    margin-inline-end: var(--space-sm);
+                    opacity: 0.7;
+                }
+            }
+        }
+
+        .form-group {
+            margin-bottom: var(--space-lg);
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+
+            label {
+                display: block;
+                margin-bottom: var(--space-sm);
+                font-size: var(--text-sm);
+                font-weight: var(--font-weight-medium);
+                color: var(--color-on-surface);
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+                padding: var(--space-sm) var(--space-md);
+                border: none;
+                border-radius: var(--radius-md);
+                background: var(--color-surface);
+                color: var(--color-on-surface);
+                font-family: var(--font-family);
+                font-size: var(--text-base);
+                transition: all var(--motion-fast);
+
+                &:focus {
+                    outline: none;
+                    box-shadow: var(--focus-ring);
+                }
+
+                &::placeholder {
+                    color: var(--color-on-surface-variant);
+                }
+            }
+
+            textarea {
+                min-height: 100px;
+                resize: vertical;
+                font-family: var(--font-family-mono);
+            }
+        }
+
+        .settings-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+
+            @container (max-width: 768px) {
+                flex-direction: column;
+                gap: var(--space-sm);
+            }
+
+            .action-btn {
+                min-height: 44px;
+                padding: var(--space-sm) var(--space-xl);
+                border: none;
+                border-radius: var(--radius-lg);
+                background: var(--color-surface-container-high);
+                color: var(--color-on-surface);
+                font-size: var(--text-sm);
+                font-weight: var(--font-weight-semibold);
+                cursor: pointer;
+                transition: all var(--motion-fast);
+
+                &:hover {
+                    background: var(--color-surface-container-highest);
+                    transform: translateY(-1px);
+                    box-shadow: var(--elev-1);
+                }
+
+                &:active {
+                    transform: translateY(0);
+                    box-shadow: none;
+                }
+
+                &.primary {
+                    background: var(--color-tertiary);
+                    color: var(--color-on-tertiary);
+
+                    &:hover {
+                        background: color-mix(in oklab, var(--color-tertiary) 85%, black);
+                    }
                 }
             }
         }

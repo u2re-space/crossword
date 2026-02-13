@@ -1,9 +1,11 @@
+/* ai-refactor: optimized/refactored at 2026-02-12T23:58:20Z */
 @use "veela-lib" as *;
 
+@layer tokens, components;
 
-@layer layer.shell.common {
+@layer tokens {
     :root {
-        /* Layout */
+        /* Layout: sizes */
         --view-nav-height-base: 56px;
         --view-nav-height: 48px;
         --view-sidebar-width: 240px;
@@ -13,41 +15,38 @@
         --view-tab-height: 36px;
         --view-content-gutter: 1rem;
 
-        /* View layout */
+        /* Layout: view */
+        --view-max-width: 100%;
+        --view-content-max-width: 960px;
         --view-padding: var(--space-4);
         --view-padding-x: var(--space-6);
         --view-padding-y: var(--space-4);
-        --view-max-width: 100%;
-        --view-content-max-width: 960px;
 
         /* Colors */
-        --view-bg: var(--color-surface);
-        --view-bg-secondary: var(--color-surface-elevated);
-        --view-fg: var(--color-on-surface);
-        --view-fg-muted: var(--color-on-surface-muted);
-        --view-border: var(--color-border);
-        --view-hover-bg: var(--color-surface-hover);
-        --view-selected-bg: var(--color-surface-active);
-        --view-selected-border: var(--color-border-focus);
         --view-accent: var(--color-primary);
         --view-accent-hover: var(--color-primary-hover);
+        --view-bg: var(--color-surface);
+        --view-bg-secondary: var(--color-surface-elevated);
+        --view-border: var(--color-border);
+        --view-border-color: var(--color-border);
+        --view-divider-color: var(--color-border);
+        --view-fg: var(--color-on-surface);
+        --view-fg-muted: var(--color-on-surface-muted);
+        --view-hover-bg: var(--color-surface-hover);
         --view-nav-bg: var(--color-surface-elevated);
-        --view-nav-fg: var(--color-on-surface);
         --view-nav-border: var(--color-outline-variant);
+        --view-nav-fg: var(--color-on-surface);
+        --view-selected-bg: var(--color-surface-active);
+        --view-selected-border: var(--color-border-focus);
         --view-sidebar-bg: var(--color-surface);
         --view-sidebar-fg: var(--color-on-surface);
         --view-status-bg: var(--color-surface-elevated);
         --view-status-fg: var(--color-text-secondary);
 
-        /* Borders */
-        --view-border-color: var(--color-border);
-        --view-divider-color: var(--color-border);
-
         /* Motion */
         --view-transition: var(--transition-normal) var(--ease-in-out);
     }
 
-    /* Combined shell + view */
     :is(html, body):has([data-shell="basic"] [data-view="workcenter"]) {
         --view-sidebar-position: "right";
         --view-toolbar-alignment: "end";
@@ -58,18 +57,6 @@
         --view-tab-height: var(--view-tab-height);
     }
 
-    /* Context: Debug view */
-    :is(:root, html):has([data-view="debug"]) {
-        --view-padding: var(--space-4);
-        --view-content-max-width: none;
-        --view-debug-font: var(--font-mono);
-        --view-debug-font-size: var(--text-sm);
-        --view-debug-bg: #1a1a2e;
-        --view-debug-fg: #00ff00;
-        --view-debug-border: #333366;
-    }
-
-    /* View + shell combinations */
     :is(:root, html):has([data-shell="faint"] [data-view="viewer"]) {
         --view-content-max-width: 720px;
         --view-padding-x: var(--space-8);
@@ -81,14 +68,24 @@
     }
 
     :is(:root, html):has([data-shell="raw"] [data-view="home"]) {
-        --view-padding: var(--space-4);
         --view-content-max-width: 100%;
+        --view-padding: var(--space-4);
+    }
+
+    :is(:root, html):has([data-view="debug"]) {
+        --view-content-max-width: none;
+        --view-debug-bg: #1a1a2e;
+        --view-debug-border: #333366;
+        --view-debug-fg: #00ff00;
+        --view-debug-font: var(--font-mono);
+        --view-debug-font-size: var(--text-sm);
+        --view-padding: var(--space-4);
     }
 
     @media (prefers-contrast: more) {
         :root {
-            --view-nav-border: light-dark(#000000, #ffffff);
             --view-fg: light-dark(#000000, #ffffff);
+            --view-nav-border: light-dark(#000000, #ffffff);
         }
     }
 
@@ -129,11 +126,11 @@
 
     @media print {
         :root {
+            --view-bg: white;
+            --view-fg: black;
             --view-nav-height: 0;
             --view-sidebar-width: 0;
             --view-status-height: 0;
-            --view-bg: white;
-            --view-fg: black;
         }
 
         body:has([data-shell]) {
@@ -141,7 +138,9 @@
             padding: 0;
         }
     }
+}
 
+@layer components {
     .custom-instructions-editor {
         display: grid;
         gap: var(--spacing-md, 12px);
@@ -153,17 +152,17 @@
 
             h4 {
                 margin: 0;
+                color: var(--color-on-surface);
                 font-size: var(--text-sm, 13px);
                 font-weight: var(--font-weight-semibold, 600);
-                color: var(--color-on-surface);
             }
 
             .ci-desc {
                 margin: 0;
-                font-size: var(--text-xs, 11px);
-                opacity: 0.8;
                 color: var(--color-on-surface-variant);
+                font-size: var(--text-xs, 11px);
                 line-height: 1.5;
+                opacity: 0.8;
             }
         }
 
@@ -174,22 +173,22 @@
                 font-size: var(--text-xs, 12px);
 
                 span {
-                    opacity: 0.9;
                     color: var(--color-on-surface-variant);
+                    opacity: 0.9;
                 }
             }
 
             .ci-select {
                 inline-size: stretch;
                 padding: var(--spacing-xs, 8px) var(--spacing-sm, 10px);
+                border: 1px solid var(--color-outline-variant);
                 border-radius: var(--radius-md, 10px);
-                color: var(--color-on-surface);
-                font-size: var(--text-xs, 12px);
-                font-family: inherit;
                 outline: none;
+                color: var(--color-on-surface);
+                font-family: inherit;
+                font-size: var(--text-xs, 12px);
                 cursor: pointer;
                 transition: background-color var(--motion-fast);
-                border: 1px solid var(--color-outline-variant);
 
                 &:focus {
                     border-color: var(--color-primary);
@@ -203,25 +202,25 @@
 
             .ci-empty {
                 padding: var(--spacing-md, 16px);
-                text-align: center;
-                font-size: var(--text-xs, 12px);
-                opacity: 0.7;
-                color: var(--color-on-surface-variant);
-                background: var(--color-surface-container);
                 border-radius: var(--radius-md, 10px);
+                background: var(--color-surface-container);
+                color: var(--color-on-surface-variant);
+                font-size: var(--text-xs, 12px);
+                text-align: center;
+                opacity: 0.7;
             }
         }
 
         .ci-item {
-            border-radius: var(--radius-md, 10px);
             padding: var(--spacing-sm, 10px);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md, 10px);
             background: var(--color-surface-container);
             transition: background-color var(--motion-fast);
-            border: 1px solid transparent;
 
             &.active {
-                background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-container));
                 border-color: color-mix(in oklab, var(--color-primary) 25%, transparent);
+                background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-container));
             }
 
             .ci-item-header {
@@ -232,32 +231,32 @@
             }
 
             .ci-item-label {
-                font-size: var(--text-xs, 12px);
-                font-weight: var(--font-weight-medium, 500);
-                color: var(--color-on-surface);
                 flex: 1;
                 min-inline-size: 0;
                 overflow: hidden;
+                color: var(--color-on-surface);
+                font-size: var(--text-xs, 12px);
+                font-weight: var(--font-weight-medium, 500);
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
 
             .ci-item-actions {
                 display: flex;
-                gap: var(--spacing-xs, 4px);
                 align-items: center;
+                gap: var(--spacing-xs, 4px);
                 flex-shrink: 0;
             }
 
             .ci-badge {
                 padding: 2px 8px;
                 border-radius: var(--radius-sm, 6px);
-                font-size: var(--text-xs, 10px);
-                font-weight: var(--font-weight-medium, 500);
-                text-transform: uppercase;
-                letter-spacing: 0.03em;
                 background: var(--color-surface-container-highest);
                 color: var(--color-on-surface-variant);
+                font-size: var(--text-xs, 10px);
+                font-weight: var(--font-weight-medium, 500);
+                letter-spacing: 0.03em;
+                text-transform: uppercase;
 
                 &.active {
                     background: color-mix(in oklab, var(--color-primary) 20%, transparent);
@@ -268,19 +267,19 @@
             .ci-item-preview {
                 margin-block-start: var(--spacing-xs, 8px);
                 padding: var(--spacing-xs, 8px);
-                background: var(--color-surface-container-highest);
                 border-radius: var(--radius-sm, 8px);
+                background: var(--color-surface-container-highest);
+                color: var(--color-on-surface-variant);
                 font-size: var(--text-xs, 11px);
                 line-height: 1.5;
-                color: var(--color-on-surface-variant);
                 word-break: break-word;
                 white-space: pre-wrap;
             }
 
             .ci-edit-form {
-                margin-block-start: var(--spacing-sm, 10px);
                 display: grid;
                 gap: var(--spacing-xs, 8px);
+                margin-block-start: var(--spacing-sm, 10px);
             }
         }
 
@@ -288,14 +287,14 @@
         .ci-textarea {
             inline-size: stretch;
             padding: var(--spacing-xs, 8px) var(--spacing-sm, 10px);
+            border: 1px solid var(--color-outline-variant);
             border-radius: var(--radius-sm, 8px);
+            outline: none;
             background: var(--color-surface-container-highest);
             color: var(--color-on-surface);
-            font-size: var(--text-xs, 12px);
-            outline: none;
-            border: 1px solid var(--color-outline-variant);
-            transition: border-color var(--motion-fast);
             font-family: inherit;
+            font-size: var(--text-xs, 12px);
+            transition: border-color var(--motion-fast);
 
             &::placeholder {
                 color: var(--color-on-surface-variant);
@@ -309,25 +308,25 @@
         }
 
         .ci-textarea {
+            min-block-size: 60px;
             line-height: 1.5;
             resize: vertical;
-            min-block-size: 60px;
         }
 
         .ci-edit-actions,
         .ci-add-actions {
             display: flex;
-            gap: var(--spacing-xs, 6px);
             justify-content: flex-end;
+            gap: var(--spacing-xs, 6px);
         }
 
         .ci-add-form {
             display: grid;
             gap: var(--spacing-xs, 8px);
             padding: var(--spacing-sm, 12px);
+            border: 1px dashed var(--color-outline-variant);
             border-radius: var(--radius-md, 10px);
             background: color-mix(in oklab, var(--color-surface-container-high) 50%, transparent);
-            border: 1px dashed var(--color-outline-variant);
         }
 
         .ci-actions {
@@ -336,14 +335,13 @@
             flex-wrap: wrap;
             place-content: center;
             place-items: center;
-            
         }
 
         .btn {
             &.tiny,
             &.small {
-                background: transparent;
                 border: 1px solid var(--color-outline-variant);
+                background: transparent;
                 color: var(--color-on-surface);
                 cursor: pointer;
                 transition: all var(--motion-fast);
@@ -355,12 +353,12 @@
 
             &.tiny {
                 padding: 4px 8px;
-                font-size: var(--text-xs, 10px);
                 border-radius: var(--radius-sm, 6px);
+                font-size: var(--text-xs, 10px);
 
                 &.danger {
-                    color: var(--color-error, #c62828);
                     border-color: var(--color-error, #c62828);
+                    color: var(--color-error, #c62828);
 
                     &:hover {
                         background: color-mix(in oklab, var(--color-error, #c62828) 15%, transparent);
@@ -370,13 +368,12 @@
 
             &.small {
                 padding: 6px 12px;
-                font-size: var(--text-xs, 11px);
                 border-radius: var(--radius-sm, 8px);
+                font-size: var(--text-xs, 11px);
             }
         }
     }
 
-    // Custom Instructions Panel
     .custom-instructions-panel {
         display: grid;
         gap: var(--gap-md);
@@ -400,15 +397,15 @@
 
         .cip-empty {
             padding: var(--padding-lg);
-            text-align: center;
-            font-size: var(--font-sm);
-            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
             border-radius: var(--radius-md);
+            color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-muted, 60%), transparent);
+            font-size: var(--font-sm);
+            text-align: center;
         }
 
         .cip-item {
-            border-radius: var(--radius-md);
             padding: var(--padding-md);
+            border-radius: var(--radius-md);
             transition: all var(--transition-colors) ease-in-out;
 
             &.is-active {
@@ -417,54 +414,54 @@
 
             .cip-item-header {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
+                justify-content: space-between;
                 gap: var(--gap-md);
             }
 
             .cip-item-label {
-                font-size: var(--font-sm);
-                font-weight: var(--font-weight-medium);
                 flex: 1;
                 min-inline-size: 0;
                 overflow: hidden;
+                font-size: var(--font-sm);
+                font-weight: var(--font-weight-medium);
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
 
             .cip-item-actions {
                 display: flex;
-                gap: var(--gap-xs);
                 align-items: center;
+                gap: var(--gap-xs);
                 flex-shrink: 0;
             }
 
             .cip-badge {
                 padding: var(--padding-xs) var(--padding-sm);
                 border-radius: var(--radius-full);
-                font-size: var(--font-xs);
-                font-weight: var(--font-weight-medium);
-                text-transform: uppercase;
-                letter-spacing: 0.03em;
                 background-color: var(--primary-opacity-default);
                 color: var(--on-primary, currentColor);
+                font-size: var(--font-xs);
+                font-weight: var(--font-weight-medium);
+                letter-spacing: 0.03em;
+                text-transform: uppercase;
             }
 
             .cip-item-preview {
                 margin-block-start: var(--gap-sm);
                 padding: var(--padding-sm);
                 border-radius: var(--radius-sm);
+                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
                 font-size: var(--font-xs);
                 line-height: 1.5;
-                color: color-mix(in oklch, var(--on-surface, currentColor) var(--text-tint-secondary, 74%), transparent);
                 word-break: break-word;
                 white-space: pre-wrap;
             }
 
             .cip-edit-form {
-                margin-block-start: var(--gap-md);
                 display: grid;
                 gap: var(--gap-sm);
+                margin-block-start: var(--gap-md);
             }
         }
 
@@ -478,16 +475,16 @@
 
         .cip-form-actions {
             display: flex;
-            gap: var(--gap-xs);
             justify-content: flex-end;
+            gap: var(--gap-xs);
         }
 
         .cip-toolbar {
             display: flex;
+            justify-content: center;
             gap: var(--gap-sm);
             padding: var(--padding-sm);
             border-radius: var(--radius-md);
-            justify-content: center;
         }
 
         .cip-input,
@@ -497,8 +494,66 @@
         }
 
         .cip-textarea {
-            resize: vertical;
             min-block-size: 4rem;
+            resize: vertical;
+        }
+    }
+
+    
+    .view-loading,
+    .view-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .view-loading {
+        color: var(--view-fg);
+        opacity: 0.6;
+    }
+
+    .view-loading__spinner {
+        inline-size: 32px;
+        block-size: 32px;
+        border: 3px solid rgba(128, 128, 128, 0.2);
+        border-top-color: var(--color-primary, #007acc);
+        border-radius: 50%;
+        animation: view-spin 0.8s linear infinite;
+    }
+
+    .view-error__icon {
+        font-size: 3rem;
+    }
+
+    .view-error__title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #d32f2f;
+    }
+
+    .view-error__message {
+        margin: 0;
+        color: var(--view-fg);
+        opacity: 0.7;
+    }
+
+    .view-error__retry {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        background-color: var(--color-primary, #007acc);
+        color: #ffffff;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+
+        &:hover {
+            filter: brightness(1.1);
         }
     }
 }
