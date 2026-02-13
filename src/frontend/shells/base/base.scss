@@ -1,6 +1,5 @@
 /* ai-refactor: optimized/refactored at 2026-02-13T00:24:03Z */
-@use "./layout" as l;
-@use "../../../views/scss/_views.scss" as v;
+@use "../../views/scss/_views.scss" as v;
 
 @layer shell.tokens, shell.base, shell.components, shell.utilities, shell.overrides;
 

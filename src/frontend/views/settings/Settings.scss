@@ -1,7 +1,7 @@
 /* ai-refactor: optimized/refactored at 2026-02-13T00:25:20Z */
 @use "veela-lib" as *;
 
-@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, markdown, essentials, overrides;
+@layer tokens, base, layout, components, utilities, overrides;
 
 @layer tokens {
     :root:has([data-view="settings"]),
@@ -19,36 +19,33 @@
     }
 }
 
-@layer overrides {
-    :where(.view-settings) {
+@layer components {
+    .view-settings {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md, 14px);
-        block-size: 100%;
-        max-block-size: none;
-        overflow-y: auto;
+        gap: var(--space-xl);
         inline-size: 100%;
+        block-size: 100%;
+        max-block-size: 100%;
         margin-inline: auto;
-        padding: var(--spacing-lg, 20px);
+        padding: var(--space-lg);
+        overflow: auto;
         background-color: var(--view-bg, var(--color-surface, #ffffff));
         color: var(--view-fg, var(--color-on-surface, #1a1a1a));
         text-align: start;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-outline-variant) transparent;
 
         @supports (justify-content: safe center) {
-            justify-content: safe center;
             align-content: safe center;
-            justify-items: safe center;
             align-items: safe center;
+            justify-content: safe center;
+            justify-items: safe center;
         }
 
         @supports not (justify-content: safe center) {
             justify-content: flex-start;
             align-items: stretch;
-        }
-
-        @container (max-width: 480px) {
-            padding: var(--spacing-sm, 10px);
-            gap: var(--spacing-sm, 10px);
         }
 
         :where(select, input, textarea, option) {
@@ -73,9 +70,9 @@
             border: 1px solid var(--color-outline-variant);
             border-radius: var(--radius-lg, 12px);
 
-            @container (max-width: 480px) {
-                padding: var(--spacing-sm, 10px);
+            @container (max-inline-size: 480px) {
                 gap: var(--spacing-sm, 10px);
+                padding: var(--spacing-sm, 10px);
             }
 
             h3 {
@@ -104,44 +101,6 @@
                 grid-auto-columns: max-content 1fr;
                 align-items: center;
                 gap: var(--spacing-sm, 10px);
-            }
-        }
-
-        .form-input,
-        .form-select {
-            inline-size: stretch;
-            padding: var(--spacing-xs, 8px) var(--spacing-sm, 12px);
-            border: 1px solid var(--color-outline-variant);
-            border-radius: var(--radius-md, 10px);
-            background: var(--color-surface-container-highest);
-            color: var(--color-on-surface);
-            font-family: inherit;
-            font-size: var(--text-sm, 13px);
-            outline: none;
-            transition: border-color var(--motion-fast);
-
-            &::placeholder {
-                color: var(--color-on-surface-variant);
-                opacity: 0.5;
-            }
-
-            &:focus {
-                border-color: var(--color-primary);
-            }
-        }
-
-        .form-select {
-            cursor: pointer;
-            appearance: auto;
-        }
-
-        .form-checkbox {
-            input[type="checkbox"] {
-                inline-size: 18px;
-                block-size: 18px;
-                border-radius: var(--radius-xs, 4px);
-                accent-color: var(--color-primary);
-                cursor: pointer;
             }
         }
 
@@ -196,35 +155,24 @@
                 font-size: var(--text-xs, 11px);
             }
         }
-    }
 
-    .view-settings {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-xl);
-        max-block-size: 100%;
-        overflow: auto;
-        padding: var(--space-lg);
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-outline-variant) transparent;
-
-        @container (max-width: 1024px) {
+        @container (max-inline-size: 1024px) {
             gap: var(--space-lg);
             padding: var(--space-md);
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             gap: var(--space-md);
             padding: var(--space-sm);
         }
 
-        @container (max-width: 480px) {
+        @container (max-inline-size: 480px) {
             gap: var(--space-sm);
             padding: var(--space-xs);
         }
 
         &::-webkit-scrollbar {
-            width: 6px;
+            inline-size: 6px;
         }
 
         &::-webkit-scrollbar-thumb {
@@ -283,50 +231,6 @@
             }
         }
 
-        &__input,
-        &__select {
-            padding: 0.625rem 0.75rem;
-            border: 1px solid var(--view-border, rgba(0, 0, 0, 0.15));
-            border-radius: var(--radius-sm, 6px);
-            background-color: var(--view-input-bg, #ffffff);
-            color: var(--view-fg);
-            font-family: inherit;
-            font-size: var(--text-sm, 0.875rem);
-            outline: none;
-            transition: border-color var(--motion-fast);
-
-            &::placeholder {
-                color: var(--view-fg);
-                opacity: 0.4;
-            }
-
-            &:focus {
-                border-color: var(--color-primary, #007acc);
-            }
-        }
-
-        &__select {
-            cursor: pointer;
-        }
-
-        &__checkbox {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            cursor: pointer;
-
-            input[type="checkbox"] {
-                inline-size: 18px;
-                block-size: 18px;
-                accent-color: var(--color-primary, #007acc);
-                cursor: pointer;
-            }
-
-            span {
-                font-size: var(--text-sm, 0.875rem);
-            }
-        }
-
         &__actions {
             display: flex;
             gap: 0.75rem;
@@ -375,16 +279,16 @@
         box-shadow: var(--elev-2);
         transition: all var(--motion-normal);
 
-        @container (max-width: 1024px) {
+        @container (max-inline-size: 1024px) {
             padding: var(--space-lg);
             border-radius: var(--radius-lg);
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             padding: var(--space-md);
         }
 
-        @container (max-width: 480px) {
+        @container (max-inline-size: 480px) {
             padding: var(--space-sm);
             border-radius: var(--radius-md);
         }
@@ -417,8 +321,8 @@
         }
 
         .settings-header {
-            margin-bottom: var(--space-lg);
-            padding-bottom: var(--space-md);
+            margin-block-end: var(--space-lg);
+            padding-block-end: var(--space-md);
 
             h3 {
                 display: flex;
@@ -429,7 +333,7 @@
                 font-weight: var(--font-weight-semibold);
                 color: var(--color-on-surface);
 
-                @container (max-width: 768px) {
+                @container (max-inline-size: 768px) {
                     font-size: var(--text-base);
                 }
 
@@ -441,45 +345,22 @@
         }
 
         .form-group {
-            margin-bottom: var(--space-lg);
+            margin-block-end: var(--space-lg);
 
             &:last-child {
-                margin-bottom: 0;
+                margin-block-end: 0;
             }
 
             label {
                 display: block;
-                margin-bottom: var(--space-sm);
+                margin-block-end: var(--space-sm);
                 font-size: var(--text-sm);
                 font-weight: var(--font-weight-medium);
                 color: var(--color-on-surface);
             }
 
-            input,
-            select,
             textarea {
-                width: 100%;
-                padding: var(--space-sm) var(--space-md);
-                border: none;
-                border-radius: var(--radius-md);
-                background: var(--color-surface);
-                color: var(--color-on-surface);
-                font-family: var(--font-family);
-                font-size: var(--text-base);
-                transition: all var(--motion-fast);
-
-                &:focus {
-                    outline: none;
-                    box-shadow: var(--focus-ring);
-                }
-
-                &::placeholder {
-                    color: var(--color-on-surface-variant);
-                }
-            }
-
-            textarea {
-                min-height: 100px;
+                min-block-size: 100px;
                 resize: vertical;
                 font-family: var(--font-family-mono);
             }
@@ -489,17 +370,18 @@
             display: flex;
             justify-content: flex-end;
             gap: var(--space-md);
-            margin-top: var(--space-xl);
-            padding-top: var(--space-lg);
+            margin-block-start: var(--space-xl);
+            padding-block-start: var(--space-lg);
 
-            @container (max-width: 768px) {
+            @container (max-inline-size: 768px) {
                 flex-direction: column;
                 gap: var(--space-sm);
             }
 
             .action-btn {
-                min-height: 44px;
-                padding: var(--space-sm) var(--space-xl);
+                min-block-size: 44px;
+                padding-inline: var(--space-sm);
+                padding-block: var(--space-xl);
                 border: none;
                 border-radius: var(--radius-lg);
                 background: var(--color-surface-container-high);
