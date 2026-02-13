@@ -1,341 +1,55 @@
+/**
+ * CrossWord — Chrome Extension Service Worker
+ *
+ * Responsibilities:
+ *  - Context menu setup (copy-as-*, snip modes, markdown viewer, custom instructions)
+ *  - Keyboard command handling (Ctrl+Shift+X/Y)
+ *  - AI recognition message dispatch (gpt:recognize, gpt:solve, gpt:code, gpt:css, gpt:custom, gpt:translate)
+ *  - Markdown URL detection & auto-redirect to viewer
+ *  - CRX result pipeline (clipboard → content-script → popup → workcenter → notification)
+ *  - CRX unified messaging integration
+ *
+ * Heavy capture/AI/clipboard logic is in `./service/api.ts`.
+ */
+
 import { createTimelineGenerator, requestNewTimeline } from "@rs-com/service/service/MakeTimeline";
 import { COPY_HACK, enableCapture } from "./service/api";
 import type { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import { recognizeImageData } from "../com/service/service/RecognizeData";
-import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/AI-ops/service/RecognizeData2";
+import { getGPTInstance, processDataWithInstruction } from "@rs-com/service/service/RecognizeData";
 import { getCustomInstructions, type CustomInstruction } from "@rs-com/service/misc/CustomInstructions";
 import { loadSettings } from "@rs-com/config/Settings";
 import { executionCore } from "@rs-com/service/misc/ExecutionCore";
 import type { ActionContext, ActionInput } from "@rs-com/service/misc/ActionHistory";
-
-// Import CRX unified messaging
 import { crxMessaging, registerCrxHandler, broadcastToCrxTabs } from "../com/core/CrxMessaging";
+import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from "@rs-com/core/BuiltInAI";
 
-// Check if we're in CRX environment before using CRX messaging
+// ---------------------------------------------------------------------------
+// Environment detection
+// ---------------------------------------------------------------------------
+
 const isInCrxEnvironment = crxMessaging.isCrxEnvironment();
 
-// Import built-in AI instructions
-import { CRX_SOLVE_AND_ANSWER_INSTRUCTION, CRX_WRITE_CODE_INSTRUCTION, CRX_EXTRACT_CSS_INSTRUCTION } from '@rs-com/core/BuiltInAI';
+// ---------------------------------------------------------------------------
+// Broadcast helpers
+// ---------------------------------------------------------------------------
 
-// Safe wrapper for loading custom instructions
-const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
-    try {
-        return await getCustomInstructions();
-    } catch (e) {
-        console.warn("Failed to load custom instructions:", e);
-        return [];
-    }
-};
-
-/**
- * Process Chrome extension action through execution core
- */
-const processChromeExtensionAction = async (
-    input: ActionInput,
-    sessionId?: string
-): Promise<{ success: boolean; result?: any; error?: string }> => {
-    try {
-        const context: ActionContext = {
-            source: 'chrome-extension',
-            sessionId: sessionId || `crx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        };
-
-        const result = await executionCore.execute(input, context);
-
-        if (result.type === 'error') {
-            // Extract error message from result content
-            const errorMessage = result.content || result.error || 'Processing failed';
-            return {
-                success: false,
-                error: errorMessage,
-                result  // Include full result for debugging
-            };
-        }
-
-        return {
-            success: true,
-            result
-        };
-    } catch (error) {
-        console.error('[CRX] Execution core processing failed:', error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : String(error)
-        };
-    }
-};
-
-// BroadcastChannel for cross-context communication (share target-like behavior)
 const TOAST_CHANNEL = "rs-toast";
 const AI_RECOGNITION_CHANNEL = "rs-ai-recognition";
-
-// CRX Result Pipeline Channels
 const POPUP_CHANNEL = "rs-popup";
 
-// Broadcast helper for extension contexts
 const broadcast = (channel: string, message: unknown): void => {
-    try {
-        const bc = new BroadcastChannel(channel);
-        bc.postMessage(message);
-        bc.close();
-    } catch (e) {
-        console.warn(`[CRX-SW] Broadcast to ${channel} failed:`, e);
-    }
+    try { const bc = new BroadcastChannel(channel); bc.postMessage(message); bc.close(); }
+    catch { /* ignore */ }
 };
 
-// ============================================================================
-// DIRECT CHROME EXTENSION MESSAGE HANDLING
-// ============================================================================
+const showExtensionToast = (message: string, kind: "info" | "success" | "warning" | "error" = "info"): void =>
+    broadcast(TOAST_CHANNEL, { type: "show-toast", options: { message, kind, duration: 3000 } });
 
-// Add direct message handling for CRX (bypass complex unified messaging for reliability)
-if (isInCrxEnvironment && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        // Handle the snip messages directly
-        if (message && message.type) {
-            if (message.type === 'processCapture') {
-                // Handle the capture request directly using CRX-specific functions
-                const processCapture = async () => {
-                    try {
-                        // Capture the visible tab using the rectangle coordinates
-                        const rect = message.data?.rect;
-                        const captureOptions: { format: "png" | "jpeg"; scale?: number; rect?: typeof rect } = {
-                            format: "png",
-                            scale: 1
-                        };
+// ---------------------------------------------------------------------------
+// Clipboard shortcut
+// ---------------------------------------------------------------------------
 
-                        if (rect?.width > 0 && rect?.height > 0) {
-                            captureOptions.rect = rect;
-                        }
-
-                        // Capture the screenshot
-                        const dataUrl = await new Promise<string>((resolve, reject) => {
-                            chrome.tabs.captureVisibleTab(captureOptions, (url) => {
-                                if (chrome.runtime.lastError) {
-                                    reject(new Error(chrome.runtime.lastError.message));
-                                } else {
-                                    resolve(url);
-                                }
-                            });
-                        });
-
-                        // Convert data URL to blob for processing
-                        const response = await fetch(dataUrl);
-                        const blob = await response.blob();
-
-                        // Use CRX-specific image recognition
-                        const result = await recognizeImageData(blob);
-
-                        sendResponse({
-                            success: true,
-                            result: result
-                        });
-                    } catch (error) {
-                        sendResponse({
-                            success: false,
-                            error: error instanceof Error ? error.message : String(error)
-                        });
-                    }
-                };
-
-                processCapture();
-
-                return true; // Will respond asynchronously
-            } else if (message.type === 'processText') {
-                // Handle text processing directly using CRX-specific functions
-                const processText = async () => {
-                    try {
-                        if (!message.data?.content) {
-                            throw new Error('No text content provided');
-                        }
-
-                        // Use CRX-specific text processing - for now just return the text
-                        // TODO: Add actual text processing logic if needed
-                        const result = {
-                            type: 'text',
-                            content: message.data.content,
-                            processed: true
-                        };
-
-                        sendResponse({
-                            success: true,
-                            result: result
-                        });
-                    } catch (error) {
-                        sendResponse({
-                            success: false,
-                            error: error instanceof Error ? error.message : String(error)
-                        });
-                    }
-                };
-
-                processText();
-
-                return true; // Will respond asynchronously
-            }
-        }
-
-        // For other messages, let other listeners handle them
-        return false;
-    });
-}
-
-// ============================================================================
-// CRX UNIFIED MESSAGING INITIALIZATION
-// ============================================================================
-
-// Only register CRX messaging handlers if in CRX environment
-if (isInCrxEnvironment) {
-    // Register CRX messaging handlers for service worker with enhanced async support
-    registerCrxHandler('processImage', async (data: { imageData: string; mode: string; customInstructionId?: string }) => {
-    console.log('[CRX-SW] Processing image via unified messaging:', data.mode);
-
-    try {
-        // Send acknowledgment immediately for long-running operations
-        if (data.mode === 'recognize' || data.mode === 'solve') {
-            // For long-running AI operations, we can send progress updates
-            setTimeout(() => {
-                crxMessaging.sendRuntimeMessage({
-                    type: 'processingStarted',
-                    data: { operationId: `img_${Date.now()}`, mode: data.mode },
-                    metadata: { progress: 0 }
-                }).catch(console.warn);
-            }, 100);
-        }
-
-        const result = await processChromeExtensionAction({
-            type: 'recognize',
-            data: data.imageData,
-            mode: data.mode,
-            customInstructionId: data.customInstructionId
-        });
-
-        // Send completion notification
-        crxMessaging.sendRuntimeMessage({
-            type: 'processingComplete',
-            data: { operationId: `img_${Date.now()}`, result },
-            metadata: { progress: 100 }
-        }).catch(console.warn);
-
-        return result;
-    } catch (error) {
-        console.error('[CRX-SW] Image processing failed:', error);
-
-        // Send error notification
-        crxMessaging.sendRuntimeMessage({
-            type: 'processingError',
-            data: { operationId: `img_${Date.now()}`, error: error instanceof Error ? error.message : String(error) }
-        }).catch(console.warn);
-
-        throw error;
-    }
-});
-
-registerCrxHandler('processCapture', async (data: any) => {
-    console.log('[CRX-SW] Processing capture via unified messaging:', data);
-
-    try {
-        // Convert legacy capture message to new format
-        const result = await processChromeExtensionAction({
-            type: 'capture',
-            data: data,
-            mode: data.type?.toLowerCase().replace('capture_', '') || 'recognize'
-        });
-
-        return result;
-    } catch (error) {
-        console.error('[CRX-SW] Capture processing failed:', error);
-        throw error;
-    }
-});
-
-registerCrxHandler('processText', async (data: { content: string; contentType: string }) => {
-    console.log('[CRX-SW] Processing text via unified messaging:', data.contentType);
-
-    try {
-        const result = await processChromeExtensionAction({
-            type: 'process',
-            data: data.content,
-            contentType: data.contentType
-        });
-
-        return result;
-    } catch (error) {
-        console.error('[CRX-SW] Text processing failed:', error);
-        throw error;
-    }
-});
-
-// Add new async-aware handlers
-registerCrxHandler('getProcessingStatus', async (data: { operationId: string }) => {
-    // This would check the status of a long-running operation
-    console.log('[CRX-SW] Checking processing status:', data.operationId);
-    return { status: 'completed', operationId: data.operationId };
-});
-
-    registerCrxHandler('cancelProcessing', async (data: { operationId: string }) => {
-        // This would cancel a long-running operation
-        console.log('[CRX-SW] Cancelling processing:', data.operationId);
-        return { cancelled: true, operationId: data.operationId };
-    });
-}
-
-registerCrxHandler('getSettings', async () => {
-    try {
-        const settings = await loadSettings();
-        return settings;
-    } catch (error) {
-        console.error('[CRX-SW] Failed to load settings:', error);
-        throw error;
-    }
-});
-
-registerCrxHandler('updateSettings', async (updates: any) => {
-    try {
-        // Settings are handled via chrome.storage in CRX
-        // This would need to be implemented based on your settings system
-        console.log('[CRX-SW] Settings update requested:', updates);
-        return { success: true };
-    } catch (error) {
-        console.error('[CRX-SW] Failed to update settings:', error);
-        throw error;
-    }
-});
-
-registerCrxHandler('ping', async () => {
-    return { status: 'ok', context: 'service-worker', timestamp: Date.now() };
-});
-
-// Broadcast results to all interested parties
-registerCrxHandler('broadcastResult', async (data: { result: any; type: string }) => {
-    console.log('[CRX-SW] Broadcasting result:', data.type);
-
-    // Broadcast via CRX unified messaging
-    await broadcastToCrxTabs({
-        type: 'ai-result',
-        data: data.result,
-        metadata: { source: 'service-worker' }
-    });
-
-    // Also broadcast via traditional BroadcastChannel for backward compatibility
-    broadcast(AI_RECOGNITION_CHANNEL, {
-        type: data.type,
-        result: data.result,
-        timestamp: Date.now(),
-        source: 'crx-service-worker'
-    });
-
-    return { broadcasted: true };
-});
-
-// Show toast across all contexts
-const showExtensionToast = (message: string, kind: "info" | "success" | "warning" | "error" = "info"): void => {
-    broadcast(TOAST_CHANNEL, {
-        type: "show-toast",
-        options: { message, kind, duration: 3000 }
-    });
-};
-
-// Request clipboard copy across contexts
 const requestClipboardCopy = async (data: unknown, showFeedback = true, tabId?: number): Promise<void> => {
     try {
         let resolvedTabId = tabId;
@@ -343,521 +57,298 @@ const requestClipboardCopy = async (data: unknown, showFeedback = true, tabId?: 
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
             resolvedTabId = tabs?.[0]?.id;
         }
-
         await COPY_HACK(chrome, { ok: true, data: data as any }, resolvedTabId);
-    } catch (e) {
-        console.warn("[CRX-SW] requestClipboardCopy failed:", e);
+    } catch (e) { console.warn("[SW] clipboard copy failed:", e); }
+};
+
+// ---------------------------------------------------------------------------
+// Custom instructions helper
+// ---------------------------------------------------------------------------
+
+const loadCustomInstructions = async (): Promise<CustomInstruction[]> => {
+    try { return await getCustomInstructions(); }
+    catch { return []; }
+};
+
+// ---------------------------------------------------------------------------
+// Execution core wrapper
+// ---------------------------------------------------------------------------
+
+const processChromeExtensionAction = async (
+    input: ActionInput,
+    sessionId?: string,
+): Promise<{ success: boolean; result?: any; error?: string }> => {
+    try {
+        const context: ActionContext = {
+            source: "chrome-extension",
+            sessionId: sessionId || `crx_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        };
+        const result = await executionCore.execute(input, context);
+        if (result.type === "error") {
+            return { success: false, error: result.content || result.error || "Processing failed", result };
+        }
+        return { success: true, result };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 };
 
 // ============================================================================
-// CRX RESULT PIPELINE SYSTEM
-//
-// This system provides a structured way to handle results from CRX operations,
-// routing them to appropriate destinations (clipboard, content scripts, popup, workcenter, notifications)
-//
-// USAGE EXAMPLES:
-//
-// 1. Send text result to clipboard and workcenter:
-//    const resultId = await sendToClipboard("Processed text");
-//    const resultId = await sendToWorkCenter("Processed text");
-//
-// 2. Send image result to multiple destinations:
-//    const result: CrxResult = {
-//        id: crypto.randomUUID(),
-//        type: 'image',
-//        content: imageData,
-//        source: 'crx-snip',
-//        timestamp: Date.now()
-//    };
-//    await crxResultPipeline.enqueueResult(result, [
-//        { type: 'clipboard' },
-//        { type: 'workcenter' },
-//        { type: 'notification' }
-//    ]);
-//
-// 3. Query pipeline status:
-//    chrome.runtime.sendMessage({ type: 'crx-pipeline-status' }, response => {
-//        console.log('Pipeline status:', response.status);
-//    });
-//
-// 4. Get pending results:
-//    chrome.runtime.sendMessage({ type: 'crx-pipeline-pending' }, response => {
-//        console.log('Pending results:', response.pending);
-//    });
-//
+// DIRECT CHROME MESSAGE HANDLING
 // ============================================================================
 
-// Result Pipeline Types
+if (isInCrxEnvironment && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (!message?.type) return false;
+
+        // --- processCapture (direct) ---
+        if (message.type === "processCapture") {
+            (async () => {
+                try {
+                    const rect = message.data?.rect;
+                    const opts: chrome.tabs.CaptureVisibleTabOptions & { rect?: any; scale?: number } = { format: "png", scale: 1 };
+                    if (rect?.width > 0 && rect?.height > 0) opts.rect = rect;
+
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                        chrome.tabs.captureVisibleTab(opts, (url) => {
+                            chrome.runtime.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(url);
+                        });
+                    });
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const result = await recognizeImageData(blob);
+                    sendResponse({ success: true, result });
+                } catch (error) {
+                    sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            })();
+            return true;
+        }
+
+        // --- processText (direct) ---
+        if (message.type === "processText") {
+            sendResponse({ success: true, result: { type: "text", content: message.data?.content, processed: true } });
+            return false;
+        }
+
+        return false;
+    });
+}
+
+// ============================================================================
+// CRX UNIFIED MESSAGING HANDLERS
+// ============================================================================
+
+if (isInCrxEnvironment) {
+    registerCrxHandler("processImage", async (data: { imageData: string; mode: string; customInstructionId?: string }) => {
+        const result = await processChromeExtensionAction({ type: "recognize", data: data.imageData, mode: data.mode, customInstructionId: data.customInstructionId });
+        crxMessaging.sendRuntimeMessage({ type: "processingComplete", data: { result }, metadata: { progress: 100 } }).catch(() => {});
+        return result;
+    });
+
+    registerCrxHandler("processCapture", async (data: any) =>
+        processChromeExtensionAction({ type: "capture", data, mode: data.type?.toLowerCase().replace("capture_", "") || "recognize" })
+    );
+
+    registerCrxHandler("processText", async (data: { content: string; contentType: string }) =>
+        processChromeExtensionAction({ type: "process", data: data.content, contentType: data.contentType })
+    );
+
+    registerCrxHandler("getProcessingStatus", async (data: { operationId: string }) =>
+        ({ status: "completed", operationId: data.operationId })
+    );
+
+    registerCrxHandler("cancelProcessing", async (data: { operationId: string }) =>
+        ({ cancelled: true, operationId: data.operationId })
+    );
+}
+
+registerCrxHandler("getSettings", async () => { try { return await loadSettings(); } catch (e) { throw e; } });
+registerCrxHandler("updateSettings", async (updates: any) => ({ success: true }));
+registerCrxHandler("ping", async () => ({ status: "ok", context: "service-worker", timestamp: Date.now() }));
+
+registerCrxHandler("broadcastResult", async (data: { result: any; type: string }) => {
+    await broadcastToCrxTabs({ type: "ai-result", data: data.result, metadata: { source: "service-worker" } });
+    broadcast(AI_RECOGNITION_CHANNEL, { type: data.type, result: data.result, timestamp: Date.now(), source: "crx-service-worker" });
+    return { broadcasted: true };
+});
+
+// ============================================================================
+// CRX RESULT PIPELINE
+// ============================================================================
+
 interface CrxResult {
     id: string;
-    type: 'text' | 'image' | 'markdown' | 'processed';
+    type: "text" | "image" | "markdown" | "processed";
     content: string | ArrayBuffer;
-    source: 'crx-snip' | 'content-script' | 'ai-processing';
+    source: "crx-snip" | "content-script" | "ai-processing";
     timestamp: number;
     metadata?: Record<string, any>;
+}
+
+interface CrxDestination {
+    type: "clipboard" | "content-script" | "popup" | "workcenter" | "notification";
+    tabId?: number;
+    frameId?: number;
+    options?: Record<string, any>;
 }
 
 interface PendingResult {
     id: string;
     result: CrxResult;
     destinations: CrxDestination[];
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: "pending" | "processing" | "completed" | "failed";
     attempts: number;
     createdAt: number;
     completedAt?: number;
     error?: string;
 }
 
-interface CrxDestination {
-    type: 'clipboard' | 'content-script' | 'popup' | 'workcenter' | 'notification';
-    tabId?: number;
-    frameId?: number;
-    options?: Record<string, any>;
-}
-
-// Result Pipeline Manager
 class CrxResultPipeline {
-    public resultQueue: PendingResult[] = [];
-    public maxQueueSize = 50;
-    public maxRetries = 3;
-    public processingInterval: number | null = null;
+    resultQueue: PendingResult[] = [];
+    private maxQueueSize = 50;
+    private maxRetries = 3;
+    private interval: ReturnType<typeof setInterval> | null = null;
 
-    constructor() {
-        this.startProcessing();
+    constructor() { this.interval = globalThis.setInterval(() => this.processQueue(), 1000); }
+
+    async enqueue(result: CrxResult, destinations: CrxDestination[]): Promise<string> {
+        const pr: PendingResult = { id: crypto.randomUUID(), result, destinations, status: "pending", attempts: 0, createdAt: Date.now() };
+        this.resultQueue.push(pr);
+        if (this.resultQueue.length > this.maxQueueSize) this.resultQueue.shift();
+        return pr.id;
     }
 
-    // Add result to pipeline
-    async enqueueResult(
-        result: CrxResult,
-        destinations: CrxDestination[]
-    ): Promise<string> {
-        const pendingResult: PendingResult = {
-            id: crypto.randomUUID(),
-            result,
-            destinations,
-            status: 'pending',
-            attempts: 0,
-            createdAt: Date.now()
-        };
-
-        this.resultQueue.push(pendingResult);
-
-        // Keep queue size manageable
-        if (this.resultQueue.length > this.maxQueueSize) {
-            this.resultQueue.shift(); // Remove oldest
-        }
-
-        console.log(`[CRX-Pipeline] Enqueued result ${pendingResult.id} for ${destinations.length} destinations`);
-
-        return pendingResult.id;
+    getStatus() {
+        const c = { pending: 0, processing: 0, completed: 0, failed: 0 };
+        for (const r of this.resultQueue) c[r.status]++;
+        return { queueSize: this.resultQueue.length, ...c };
     }
 
-    // Get pending results for a specific destination
-    getPendingForDestination(destinationType: string): PendingResult[] {
-        return this.resultQueue.filter(r =>
-            r.status === 'pending' &&
-            r.destinations.some(d => d.type === destinationType)
-        );
+    getPending(dest?: string) {
+        return this.resultQueue.filter((r) => r.status === "pending" && (!dest || r.destinations.some((d) => d.type === dest)));
     }
 
-    // Process pending results
-    private async processPendingResults(): Promise<void> {
-        const pendingResults = this.resultQueue.filter(r => r.status === 'pending');
+    clearCompleted() {
+        const n = this.resultQueue.filter((r) => r.status === "completed").length;
+        this.resultQueue = this.resultQueue.filter((r) => r.status !== "completed");
+        return n;
+    }
 
-        for (const pending of pendingResults) {
-            try {
-                await this.processResult(pending);
-            } catch (error) {
-                console.warn(`[CRX-Pipeline] Failed to process result ${pending.id}:`, error);
-                pending.status = 'failed';
-                pending.error = error instanceof Error ? error.message : String(error);
+    destroy() { if (this.interval) clearInterval(this.interval); this.interval = null; this.resultQueue = []; }
+
+    // --- internal ---
+
+    private async processQueue() {
+        for (const pr of this.resultQueue.filter((r) => r.status === "pending")) {
+            pr.status = "processing";
+            pr.attempts++;
+            let anyOk = false;
+            for (const dest of pr.destinations) {
+                try { await this.deliver(pr.result, dest); anyOk = true; } catch { /* continue */ }
             }
+            if (anyOk) { pr.status = "completed"; pr.completedAt = Date.now(); }
+            else if (pr.attempts >= this.maxRetries) { pr.status = "failed"; pr.error = "All destinations failed"; }
+            else pr.status = "pending";
         }
     }
 
-    // Process a single result to all its destinations
-    private async processResult(pending: PendingResult): Promise<void> {
-        pending.status = 'processing';
-        pending.attempts++;
+    private async deliver(result: CrxResult, dest: CrxDestination) {
+        const textContent = typeof result.content === "string" ? result.content : `[Binary ${(result.content as ArrayBuffer).byteLength} bytes]`;
 
-        const successDestinations: CrxDestination[] = [];
+        switch (dest.type) {
+            case "clipboard":
+                await requestClipboardCopy(textContent, dest.options?.showFeedback !== false, dest.tabId);
+                break;
 
-        for (const destination of pending.destinations) {
-            try {
-                await this.deliverToDestination(pending.result, destination);
-                successDestinations.push(destination);
-            } catch (error) {
-                console.warn(`[CRX-Pipeline] Failed to deliver to ${destination.type}:`, error);
+            case "content-script": {
+                const msg = { type: "crx-result-delivered", result, destination: dest.type, timestamp: Date.now() };
+                if (dest.tabId) await chrome.tabs.sendMessage(dest.tabId, msg, { frameId: dest.frameId });
+                else await broadcastToCrxTabs(msg as any);
+                break;
             }
-        }
-
-        if (successDestinations.length > 0) {
-            pending.status = 'completed';
-            pending.completedAt = Date.now();
-            console.log(`[CRX-Pipeline] Result ${pending.id} delivered to ${successDestinations.length} destinations`);
-        } else if (pending.attempts >= this.maxRetries) {
-            pending.status = 'failed';
-            pending.error = 'All destinations failed';
-        } else {
-            // Reset to pending for retry
-            pending.status = 'pending';
-        }
-    }
-
-    // Deliver result to specific destination
-    private async deliverToDestination(result: CrxResult, destination: CrxDestination): Promise<void> {
-        switch (destination.type) {
-            case 'clipboard':
-                await this.deliverToClipboard(result, destination);
+            case "popup":
+                broadcast(POPUP_CHANNEL, { type: "crx-result-delivered", result, destination: dest.type, timestamp: Date.now() });
                 break;
-            case 'content-script':
-                await this.deliverToContentScript(result, destination);
+
+            case "workcenter":
+                try {
+                    const { unifiedMessaging } = await import("@rs-com/core/UnifiedMessaging");
+                    await unifiedMessaging.sendMessage({
+                        id: result.id, type: "content-share", source: "crx-snip", destination: "basic-workcenter",
+                        contentType: result.type, data: { text: textContent, processed: true, source: result.source, metadata: result.metadata },
+                        metadata: { title: `CRX-Snip ${result.type} Result`, timestamp: result.timestamp, source: result.source },
+                    });
+                } catch { throw new Error("WorkCenter delivery failed"); }
                 break;
-            case 'popup':
-                await this.deliverToPopup(result, destination);
+
+            case "notification":
+                await chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: `CrossWord ${result.source}`, message: textContent.length > 100 ? textContent.slice(0, 100) + "..." : textContent });
                 break;
-            case 'workcenter':
-                await this.deliverToWorkCenter(result, destination);
-                break;
-            case 'notification':
-                await this.deliverToNotification(result, destination);
-                break;
-            default:
-                throw new Error(`Unknown destination type: ${destination.type}`);
         }
-    }
-
-    // Clipboard delivery
-    private async deliverToClipboard(result: CrxResult, destination: CrxDestination): Promise<void> {
-        let contentToCopy = '';
-
-        if (typeof result.content === 'string') {
-            contentToCopy = result.content;
-        } else if (result.content instanceof ArrayBuffer) {
-            // For images, we might want to copy as data URL or just acknowledge
-            contentToCopy = `[Image processed - ${result.content.byteLength} bytes]`;
-        }
-
-        if (contentToCopy) {
-            // Use the existing clipboard system (content-script/offscreen fallbacks)
-            await requestClipboardCopy(contentToCopy, destination.options?.showFeedback !== false, destination.tabId);
-
-            console.log(`[CRX-Pipeline] Copied ${result.type} result to clipboard`);
-        }
-    }
-
-    // Content script delivery
-    private async deliverToContentScript(result: CrxResult, destination: CrxDestination): Promise<void> {
-        const message = {
-            type: 'crx-result-delivered',
-            result: result,
-            destination: destination.type,
-            timestamp: Date.now()
-        };
-
-        if (destination.tabId) {
-            // Send to specific tab
-            await chrome.tabs.sendMessage(destination.tabId, message, {
-                frameId: destination.frameId
-            });
-        } else {
-            // Broadcast to all tabs via chrome.tabs messaging (BroadcastChannel can't reach content scripts)
-            await broadcastToCrxTabs(message as any);
-        }
-
-        console.log(`[CRX-Pipeline] Delivered result to content script (tab: ${destination.tabId || 'all'})`);
-    }
-
-    // Popup delivery
-    private async deliverToPopup(result: CrxResult, destination: CrxDestination): Promise<void> {
-        broadcast(POPUP_CHANNEL, {
-            type: 'crx-result-delivered',
-            result: result,
-            destination: destination.type,
-            timestamp: Date.now()
-        });
-
-        console.log(`[CRX-Pipeline] Delivered result to popup`);
-    }
-
-    // WorkCenter delivery (via unified messaging)
-    private async deliverToWorkCenter(result: CrxResult, destination: CrxDestination): Promise<void> {
-        try {
-            // Import unified messaging dynamically
-            const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
-
-            await unifiedMessaging.sendMessage({
-                id: result.id,
-                type: 'content-share',
-                source: 'crx-snip',
-                destination: 'basic-workcenter',
-                contentType: result.type,
-                data: {
-                    text: typeof result.content === 'string' ? result.content : undefined,
-                    processed: true,
-                    source: result.source,
-                    metadata: result.metadata
-                },
-                metadata: {
-                    title: `CRX-Snip ${result.type} Result`,
-                    timestamp: result.timestamp,
-                    source: result.source
-                }
-            });
-
-            console.log(`[CRX-Pipeline] Delivered result to WorkCenter via unified messaging`);
-        } catch (error) {
-            console.warn('[CRX-Pipeline] Failed to deliver to WorkCenter:', error);
-            throw error;
-        }
-    }
-
-    // Notification delivery
-    private async deliverToNotification(result: CrxResult, destination: CrxDestination): Promise<void> {
-        const title = `CrossWord ${result.source}`;
-        let message = '';
-
-        if (typeof result.content === 'string') {
-            message = result.content.length > 100
-                ? result.content.substring(0, 100) + '...'
-                : result.content;
-        } else {
-            message = `${result.type} processed successfully`;
-        }
-
-        await chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon.png',
-            title: title,
-            message: message
-        });
-
-        console.log(`[CRX-Pipeline] Showed notification for result`);
-    }
-
-    // Start processing interval
-    private startProcessing(): void {
-        if (this.processingInterval) return;
-
-        this.processingInterval = globalThis.setInterval(() => {
-            this.processPendingResults();
-        }, 1000); // Process every second
-    }
-
-    // Stop processing
-    destroy(): void {
-        if (this.processingInterval) {
-            clearInterval(this.processingInterval);
-            this.processingInterval = null;
-        }
-        this.resultQueue = [];
-    }
-
-    // Get pipeline status
-    getStatus(): {
-        queueSize: number;
-        pendingCount: number;
-        processingCount: number;
-        completedCount: number;
-        failedCount: number;
-    } {
-        const counts = {
-            pending: 0,
-            processing: 0,
-            completed: 0,
-            failed: 0
-        };
-
-        this.resultQueue.forEach(r => {
-            counts[r.status]++;
-        });
-
-        return {
-            queueSize: this.resultQueue.length,
-            pendingCount: counts.pending,
-            processingCount: counts.processing,
-            completedCount: counts.completed,
-            failedCount: counts.failed
-        };
     }
 }
 
-// Global pipeline instance
-const crxResultPipeline = new CrxResultPipeline();
+const pipeline = new CrxResultPipeline();
 
-// Debug function to log pipeline status periodically
-const startPipelineDebugging = () => {
-    globalThis.setInterval(() => {
-        const status = crxResultPipeline.getStatus();
-        if (status.queueSize > 0) {
-            console.log('[CRX-Pipeline] Status:', status);
-        }
-    }, 10000); // Log every 10 seconds if queue has items
-};
+// Cleanup on termination
+self.addEventListener("beforeunload", () => pipeline.destroy());
 
-// Start debugging
-startPipelineDebugging();
+// Pipeline convenience helpers
+const enqueueText = (content: string, destinations: CrxDestination[]) =>
+    pipeline.enqueue({ id: crypto.randomUUID(), type: "text", content, source: "crx-snip", timestamp: Date.now() }, destinations);
 
-// Cleanup on service worker termination
-self.addEventListener('beforeunload', () => {
-    crxResultPipeline.destroy();
-    console.log('[CRX-Pipeline] Service worker terminating, pipeline destroyed');
-});
-
-// Helper functions for common result operations
-const sendToClipboard = (content: string, showFeedback = true): Promise<string> => {
-    const result: CrxResult = {
-        id: crypto.randomUUID(),
-        type: 'text',
-        content: content,
-        source: 'crx-snip',
-        timestamp: Date.now()
-    };
-
-    return crxResultPipeline.enqueueResult(result, [{
-        type: 'clipboard',
-        options: { showFeedback }
-    }]);
-};
-
-const sendToWorkCenter = (content: string | CrxResult): Promise<string> => {
-    const result: CrxResult = typeof content === 'string' ? {
-        id: crypto.randomUUID(),
-        type: 'text',
-        content: content,
-        source: 'crx-snip',
-        timestamp: Date.now()
-    } : content;
-
-    return crxResultPipeline.enqueueResult(result, [{
-        type: 'workcenter'
-    }]);
-};
-
-const sendToContentScript = (result: CrxResult, tabId?: number): Promise<string> => {
-    return crxResultPipeline.enqueueResult(result, [{
-        type: 'content-script',
-        tabId: tabId
-    }]);
-};
-
-const showResultNotification = (result: CrxResult): Promise<string> => {
-    return crxResultPipeline.enqueueResult(result, [{
-        type: 'notification'
-    }]);
-};
-
-// Pipeline management functions
-const getPipelineStatus = () => {
-    return crxResultPipeline.getStatus();
-};
-
-const getPendingResults = (destinationType?: string) => {
-    if (destinationType) {
-        return crxResultPipeline.getPendingForDestination(destinationType);
-    }
-    return crxResultPipeline.resultQueue.filter(r => r.status === 'pending');
-};
-
-const clearCompletedResults = () => {
-    const completedResults = crxResultPipeline.resultQueue.filter(r => r.status === 'completed');
-    crxResultPipeline.resultQueue = crxResultPipeline.resultQueue.filter(r => r.status !== 'completed');
-    return completedResults.length;
-};
-
-// Process CRX-Snip with pipeline integration
 const processCrxSnipWithPipeline = async (
     content: string | ArrayBuffer,
-    contentType: string = 'text',
-    additionalDestinations: CrxDestination[] = []
+    contentType = "text",
+    extraDest: CrxDestination[] = [],
 ): Promise<{ success: boolean; resultId?: string; error?: string }> => {
     try {
-        const isImage = contentType === 'image' || content instanceof ArrayBuffer;
-        console.log('[CRX-SNIP] Processing', isImage ? 'image' : 'text', 'content with pipeline');
-
         let processedContent: string | ArrayBuffer = content;
-        let finalContentType = contentType;
+        let finalType = contentType;
 
-        // If it's image data, process it for recognition
-        if (isImage && content instanceof ArrayBuffer) {
-            try {
-                console.log('[CRX-SNIP] Processing image for recognition...');
-                const blob = new Blob([content], { type: 'image/png' });
-                const recognitionResult = await recognizeImageData(blob);
-                processedContent = recognitionResult.text || '';
-                finalContentType = 'text';
-                console.log('[CRX-SNIP] Image recognition result:', processedContent.substring(0, 100) + '...');
-            } catch (recognitionError) {
-                console.warn('[CRX-SNIP] Image recognition failed:', recognitionError);
-                return { success: false, error: 'Image recognition failed' };
-            }
+        if ((contentType === "image" || content instanceof ArrayBuffer) && content instanceof ArrayBuffer) {
+            const blob = new Blob([content], { type: "image/png" });
+            const rec = await recognizeImageData(blob);
+            processedContent = rec.text || "";
+            finalType = "text";
         }
 
-        // Create AI processing input
         const input: ActionInput = {
-            type: 'process',
-            content: processedContent,
-            contentType: finalContentType as any,
-            metadata: {
-                source: 'crx-snip',
-                timestamp: Date.now(),
-                background: true,
-                originalType: contentType
-            }
+            type: "process", content: processedContent, contentType: finalType as any,
+            metadata: { source: "crx-snip", timestamp: Date.now(), background: true, originalType: contentType },
         };
-
-        // Process through execution core
         const result = await processChromeExtensionAction(input);
 
         if (result.success && result.result) {
-            // Create result object
             const crxResult: CrxResult = {
-                id: crypto.randomUUID(),
-                type: 'processed',
-                content: typeof result.result === 'string' ? result.result : String(result.result),
-                source: 'crx-snip',
-                timestamp: Date.now(),
-                metadata: {
-                    originalContentType: contentType,
-                    processingTime: Date.now() - (input?.metadata?.timestamp ?? 0)
-                }
+                id: crypto.randomUUID(), type: "processed",
+                content: typeof result.result === "string" ? result.result : String(result.result),
+                source: "crx-snip", timestamp: Date.now(),
             };
-
-            // Default destinations based on CRX-Snip rules
             const destinations: CrxDestination[] = [
-                { type: 'clipboard', options: { showFeedback: true } },
-                { type: 'content-script' }, // Show page-level toast notification
-                { type: 'workcenter' },
-                { type: 'notification' }
+                { type: "clipboard", options: { showFeedback: true } },
+                { type: "content-script" },
+                { type: "workcenter" },
+                { type: "notification" },
+                ...extraDest,
             ];
-
-            // Add any additional destinations
-            destinations.push(...additionalDestinations);
-
-            // Enqueue for pipeline processing
-            const resultId = await crxResultPipeline.enqueueResult(crxResult, destinations);
-
+            const resultId = await pipeline.enqueue(crxResult, destinations);
             return { success: true, resultId };
-        } else {
-            return { success: false, error: result.error };
         }
+        return { success: false, error: result.error };
     } catch (error) {
-        console.error('[CRX-SNIP] Pipeline processing error:', error);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 };
 
-// Note: Offscreen document management is handled in crx/service/api.ts
-// via the COPY_HACK function with offscreenFallback option
-
-//
-enableCapture(chrome);
+// ============================================================================
+// MARKDOWN VIEWER SUPPORT
+// ============================================================================
 
 const VIEWER_PAGE = "markdown/viewer.html";
 const VIEWER_ORIGIN = chrome.runtime.getURL("");
 const VIEWER_URL = chrome.runtime.getURL(VIEWER_PAGE);
-const MARKDOWN_EXTENSION_PATTERN = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
+const MARKDOWN_EXT_RE = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
 const MD_VIEW_MENU_ID = "crossword:markdown-view";
 
 const isMarkdownUrl = (candidate?: string | null): candidate is string => {
@@ -866,172 +357,90 @@ const isMarkdownUrl = (candidate?: string | null): candidate is string => {
         const url = new URL(candidate);
         if (url.protocol === "chrome-extension:") return false;
         if (!["http:", "https:", "file:", "ftp:"].includes(url.protocol)) return false;
-        // extension-based detection (fast path)
-        if (MARKDOWN_EXTENSION_PATTERN.test(url.pathname)) return true;
-        // raw hosts: only treat as markdown if path strongly suggests markdown
+        if (MARKDOWN_EXT_RE.test(url.pathname)) return true;
         if (url.hostname === "raw.githubusercontent.com" || url.hostname === "gist.githubusercontent.com") {
-            const path = (url.pathname || "").toLowerCase();
-            if (MARKDOWN_EXTENSION_PATTERN.test(path)) return true;
-            if (/(^|\/)readme(\.md)?($|[?#])/i.test(path)) return true;
+            if (MARKDOWN_EXT_RE.test(url.pathname)) return true;
+            if (/(^|\/)readme(\.md)?($|[?#])/i.test(url.pathname)) return true;
         }
         return false;
-    } catch {
-        return false;
-    }
+    } catch { return false; }
 };
 
-// Detect if text content is markdown format (when not HTML)
 const isMarkdownContent = (text: string): boolean => {
-    if (!text || typeof text !== "string") return false;
-
-    // Skip if it looks like HTML
+    if (!text) return false;
     const trimmed = text.trim();
     if (trimmed.startsWith("<") && trimmed.endsWith(">")) return false;
-    if (/<[a-zA-Z][^>]*>/.test(trimmed)) return false; // Contains HTML tags
+    if (/<[a-zA-Z][^>]*>/.test(trimmed)) return false;
 
-    // Markdown detection patterns with confidence scores
-    const patterns = [
-        { pattern: /^---[\s\S]+?---/, score: 0.9 }, // YAML frontmatter
-        { pattern: /^#{1,6}\s+.+$/m, score: 0.8 }, // Headings
-        { pattern: /^\s*[-*+]\s+\S+/m, score: 0.7 }, // Unordered lists
-        { pattern: /^\s*\d+\.\s+\S+/m, score: 0.7 }, // Ordered lists
-        { pattern: /`{1,3}[^`]*`{1,3}/, score: 0.6 }, // Code blocks/inline code
-        { pattern: /\[([^\]]+)\]\(([^)]+)\)/, score: 0.5 }, // Links
-        { pattern: /!\[([^\]]+)\]\(([^)]+)\)/, score: 0.5 }, // Images
-        { pattern: /\*\*[^*]+\*\*/, score: 0.4 }, // Bold text
-        { pattern: /\*[^*]+\*/, score: 0.3 }, // Italic text
+    let score = 0, hits = 0;
+    const patterns: [RegExp, number][] = [
+        [/^---[\s\S]+?---/, 0.9], [/^#{1,6}\s+.+$/m, 0.8], [/^\s*[-*+]\s+\S+/m, 0.7],
+        [/^\s*\d+\.\s+\S+/m, 0.7], [/`{1,3}[^`]*`{1,3}/, 0.6], [/\[([^\]]+)\]\(([^)]+)\)/, 0.5],
+        [/!\[([^\]]+)\]\(([^)]+)\)/, 0.5], [/\*\*[^*]+\*\*/, 0.4], [/\*[^*]+\*/, 0.3],
     ];
-
-    let totalScore = 0;
-    let patternCount = 0;
-
-    for (const { pattern, score } of patterns) {
-        if (pattern.test(text)) {
-            totalScore += score;
-            patternCount++;
-        }
-    }
-
-    // Require at least 2 patterns and minimum confidence
-    return patternCount >= 2 && totalScore >= 0.8;
-};
-
-const toViewerUrl = (source?: string | null, markdownKey?: string | null) => {
-    if (!source) return VIEWER_URL;
-    const params = new URLSearchParams();
-    params.set("src", source);
-    if (markdownKey) params.set("mdk", markdownKey);
-    return `${VIEWER_URL}?${params.toString()}`;
-};
-
-const openViewer = (source?: string | null, destinationTabId?: number, markdownKey?: string | null) => {
-    const url = toViewerUrl(source ?? undefined, markdownKey);
-    if (typeof destinationTabId === "number") {
-        chrome.tabs.update(destinationTabId, { url })?.catch?.(console.warn.bind(console));
-    } else {
-        chrome.tabs.create({ url })?.catch?.(console.warn.bind(console));
-    }
+    for (const [re, s] of patterns) { if (re.test(text)) { score += s; hits++; } }
+    return hits >= 2 && score >= 0.8;
 };
 
 const normalizeMarkdownSourceUrl = (candidate: string) => {
     try {
         const u = new URL(candidate);
-
-        // GitHub: /{owner}/{repo}/blob/{ref}/{path} -> raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}
         if (u.hostname === "github.com") {
             const parts = u.pathname.split("/").filter(Boolean);
-            const blobIdx = parts.indexOf("blob");
-            if (parts.length >= 5 && blobIdx === 2) {
-                const owner = parts[0];
-                const repo = parts[1];
-                const ref = parts[3];
-                const rest = parts.slice(4).join("/");
-                const raw = new URL(`https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${rest}`);
-                raw.hash = "";
-                raw.search = "";
-                return raw.toString();
+            if (parts.length >= 5 && parts[2] === "blob") {
+                return `https://raw.githubusercontent.com/${parts[0]}/${parts[1]}/${parts[3]}/${parts.slice(4).join("/")}`;
             }
         }
-
-        // GitLab: /{group}/{repo}/-/blob/{ref}/{path} -> /{group}/{repo}/-/raw/{ref}/{path}
         if (u.hostname.endsWith("gitlab.com")) {
             const parts = u.pathname.split("/").filter(Boolean);
-            const dashIdx = parts.indexOf("-");
-            if (dashIdx >= 0 && parts[dashIdx + 1] === "blob") {
-                const base = parts.slice(0, dashIdx).join("/");
-                const ref = parts[dashIdx + 2] || "";
-                const rest = parts.slice(dashIdx + 3).join("/");
-                const raw = new URL(`https://${u.hostname}/${base}/-/raw/${ref}/${rest}`);
-                raw.hash = "";
-                raw.search = "";
-                return raw.toString();
+            const di = parts.indexOf("-");
+            if (di >= 0 && parts[di + 1] === "blob") {
+                return `https://${u.hostname}/${parts.slice(0, di).join("/")}/-/raw/${parts[di + 2] || ""}/${parts.slice(di + 3).join("/")}`;
             }
         }
-
-        // Bitbucket: `?raw=1` works for many src URLs
-        if (u.hostname === "bitbucket.org") {
-            if (!u.searchParams.has("raw")) u.searchParams.set("raw", "1");
-            return u.toString();
-        }
-
+        if (u.hostname === "bitbucket.org") { if (!u.searchParams.has("raw")) u.searchParams.set("raw", "1"); return u.toString(); }
         return u.toString();
-    } catch {
-        return candidate;
-    }
+    } catch { return candidate; }
+};
+
+const toViewerUrl = (source?: string | null, markdownKey?: string | null) => {
+    if (!source) return VIEWER_URL;
+    const p = new URLSearchParams();
+    p.set("src", source);
+    if (markdownKey) p.set("mdk", markdownKey);
+    return `${VIEWER_URL}?${p}`;
+};
+
+const openViewer = (source?: string | null, tabId?: number, markdownKey?: string | null) => {
+    const url = toViewerUrl(source ?? undefined, markdownKey);
+    if (typeof tabId === "number") chrome.tabs.update(tabId, { url })?.catch?.(console.warn);
+    else chrome.tabs.create({ url })?.catch?.(console.warn);
+};
+
+const createSessionKey = () => {
+    try { return `md:${crypto.randomUUID()}`; }
+    catch { return `md:${Date.now()}:${Math.random().toString(16).slice(2)}`; }
+};
+
+const putMarkdownToSession = async (text: string) => {
+    const key = createSessionKey();
+    try { await chrome.storage?.session?.set?.({ [key]: text }); return key; }
+    catch { return null; }
 };
 
 const fetchMarkdownText = async (candidate: string) => {
     const src = normalizeMarkdownSourceUrl(candidate);
     const res = await fetch(src, { credentials: "include", cache: "no-store" });
     const text = await res.text().catch(() => "");
-
-    // Check if the content looks like markdown (when not HTML)
-    if (text && !text.trim().startsWith("<") && isMarkdownContent(text)) {
-        console.log(`[CRX] Detected markdown content from ${src}`);
-    }
-
     return { ok: res.ok, status: res.status, src, text };
 };
 
 const openMarkdownInViewer = async (originalUrl: string, tabId: number) => {
-    // file:// handled via tab text (see onCompleted)
-    if (originalUrl.startsWith("file:")) {
-        openViewer(originalUrl, tabId, null);
-        return;
-    }
-
-    const fetched = await fetchMarkdownText(originalUrl).catch((e) => {
-        console.warn("markdown fetch failed", e);
-        return null;
-    });
-
-    if (!fetched) {
-        openViewer(normalizeMarkdownSourceUrl(originalUrl), tabId, null);
-        return;
-    }
-
+    if (originalUrl.startsWith("file:")) { openViewer(originalUrl, tabId, null); return; }
+    const fetched = await fetchMarkdownText(originalUrl).catch(() => null);
+    if (!fetched) { openViewer(normalizeMarkdownSourceUrl(originalUrl), tabId, null); return; }
     const key = fetched.ok && fetched.text ? await putMarkdownToSession(fetched.text) : null;
-    // pass the resolved src so reload works even for github blob urls
     openViewer(fetched.src, tabId, key);
-};
-
-const createSessionKey = () => {
-    try {
-        return `md:${crypto.randomUUID()}`;
-    } catch {
-        return `md:${Date.now()}:${Math.random().toString(16).slice(2)}`;
-    }
-};
-
-const putMarkdownToSession = async (text: string) => {
-    const key = createSessionKey();
-    try {
-        await chrome.storage?.session?.set?.({ [key]: text });
-        return key;
-    } catch (e) {
-        console.warn("Failed to store markdown in session", e);
-        return null;
-    }
 };
 
 const tryReadMarkdownFromTab = async (tabId: number, url?: string) => {
@@ -1039,105 +448,32 @@ const tryReadMarkdownFromTab = async (tabId: number, url?: string) => {
         const results = await chrome.scripting.executeScript({
             target: { tabId },
             func: (pageUrl: string) => {
-                // Check if this is a GitHub page that renders markdown
-                const isGitHub = pageUrl.includes("github.com");
-
-                if (isGitHub) {
-                    // Try to extract markdown from GitHub's rendered content
-                    const selectors = [
-                        // GitHub README and markdown files
-                        ".markdown-body",
-                        "[data-target='readme-toc.content']",
-                        ".Box-body .markdown-body",
-                        // GitHub issues/PRs
-                        ".js-comment-body .markdown-body",
-                        // GitHub wiki pages
-                        ".wiki-wrapper .markdown-body",
-                        // Fallback to any markdown body
-                        ".markdown-body"
-                    ];
-
-                    for (const selector of selectors) {
-                        const element = document.querySelector(selector);
-                        if (element) {
-                            // Try to get the raw markdown if available (GitHub sometimes provides it)
-                            const rawButton = document.querySelector("a[href*='raw']") as HTMLAnchorElement;
-                            if (rawButton && rawButton.href) {
-                                // Return a special marker to indicate we should fetch the raw version
-                                return `__RAW_URL__${rawButton.href}`;
-                            }
-
-                            // Extract text from the rendered markdown
-                            const text = element.textContent || "";
-                            if (text.trim()) {
-                                return text.trim();
-                            }
-                        }
-                    }
+                if (pageUrl.includes("github.com")) {
+                    const rawBtn = document.querySelector("a[href*='raw']") as HTMLAnchorElement;
+                    if (rawBtn?.href) return `__RAW_URL__${rawBtn.href}`;
+                    const md = document.querySelector(".markdown-body");
+                    if (md?.textContent?.trim()) return md.textContent.trim();
                 }
-
-                // For non-GitHub pages or fallback, try to detect if content is markdown
-                const bodyText = document?.body?.innerText || document?.documentElement?.innerText || "";
-                if (typeof bodyText === "string" && bodyText.trim()) {
-                    // Check if the content looks like markdown
-                    const trimmed = bodyText.trim();
-                    if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
-                        // Looks like HTML, try to extract text content
-                        const tempDiv = document.createElement("div");
-                        tempDiv.innerHTML = trimmed;
-                        return tempDiv.textContent || tempDiv.innerText || trimmed;
-                    }
-                    return trimmed;
-                }
-
-                return "";
+                return document?.body?.innerText?.trim() || "";
             },
-            args: [url || ""]
+            args: [url || ""],
         });
-
-        const value = results?.[0]?.result;
-        if (typeof value === "string") {
-            // Check if we got a raw URL marker
-            if (value.startsWith("__RAW_URL__")) {
-                const rawUrl = value.replace("__RAW_URL__", "");
-                try {
-                    // Fetch the raw markdown content
-                    const response = await fetch(rawUrl);
-                    if (response.ok) {
-                        return await response.text();
-                    }
-                } catch (e) {
-                    console.warn("Failed to fetch raw markdown:", e);
-                }
-                // Fall back to the extracted text if raw fetch fails
-                return "";
-            }
-
-            return value;
+        const val = results?.[0]?.result;
+        if (typeof val === "string" && val.startsWith("__RAW_URL__")) {
+            try { const r = await fetch(val.replace("__RAW_URL__", "")); if (r.ok) return await r.text(); } catch { /* fallback */ }
         }
-        return "";
-    } catch (e) {
-        // Most common for file:// when user didn't enable "Allow access to file URLs".
-        console.warn("Failed to read markdown from tab", tabId, e);
-        return "";
-    }
+        return typeof val === "string" ? val : "";
+    } catch { return ""; }
 };
 
-const CTX_CONTEXTS = [
-    "all",
-    "page",
-    "frame",
-    "selection",
-    "link",
-    "editable",
-    "image",
-    "video",
-    "audio",
-    "action",
-] as const satisfies [`${chrome.contextMenus.ContextType}`, ...`${chrome.contextMenus.ContextType}`[]];
+// ============================================================================
+// CONTEXT MENUS
+// ============================================================================
 
-// Built-in context menu items
-const CTX_ITEMS: Array<{ id: string; title: string }> = [
+const CTX_CONTEXTS = ["all", "page", "frame", "selection", "link", "editable", "image", "video", "audio", "action"] as const satisfies
+    [`${chrome.contextMenus.ContextType}`, ...`${chrome.contextMenus.ContextType}`[]];
+
+const CTX_ITEMS = [
     { id: "copy-as-latex", title: "Copy as LaTeX" },
     { id: "copy-as-mathml", title: "Copy as MathML" },
     { id: "copy-as-markdown", title: "Copy as Markdown" },
@@ -1148,557 +484,59 @@ const CTX_ITEMS: Array<{ id: string; title: string }> = [
     { id: "EXTRACT_CSS", title: "Extract CSS Styles (AI)" },
 ];
 
-// Custom instruction prefix for context menu IDs
-const CUSTOM_INSTRUCTION_PREFIX = "CUSTOM_INSTRUCTION:";
+const CUSTOM_PREFIX = "CUSTOM_INSTRUCTION:";
+let customMenuIds: string[] = [];
 
-// Track custom instruction context menus
-let customInstructionMenuIds: string[] = [];
-
-// Update context menus with custom instructions
 const updateCustomInstructionMenus = async () => {
-    // Remove existing custom instruction menus
-    for (const menuId of customInstructionMenuIds) {
-        try {
-            await chrome.contextMenus.remove(menuId);
-        } catch { /* ignore */ }
-    }
-    customInstructionMenuIds = [];
+    for (const id of customMenuIds) { try { await chrome.contextMenus.remove(id); } catch { /* ignore */ } }
+    customMenuIds = [];
 
-    // Load custom instructions
-    const instructions = await loadCustomInstructions().catch(() => []);
-    const enabled = instructions.filter(i => i.enabled);
+    const enabled = (await loadCustomInstructions().catch(() => [])).filter((i) => i.enabled);
+    if (!enabled.length) return;
 
-    if (enabled.length === 0) return;
-
-    // Create separator before custom instructions
-    const separatorId = "CUSTOM_SEP";
-    try {
-        chrome.contextMenus.create({
-            id: separatorId,
-            type: "separator",
-            contexts: CTX_CONTEXTS,
-        });
-        customInstructionMenuIds.push(separatorId);
-    } catch { /* ignore */ }
-
-    // Create menu items for each custom instruction
-    for (const instruction of enabled) {
-        const menuId = `${CUSTOM_INSTRUCTION_PREFIX}${instruction.id}`;
-        try {
-            chrome.contextMenus.create({
-                id: menuId,
-                title: `🎯 ${instruction.label}`,
-                contexts: CTX_CONTEXTS,
-            });
-            customInstructionMenuIds.push(menuId);
-        } catch (e) {
-            console.warn("[CRX-SW] Failed to create custom instruction menu:", e);
-        }
+    const sepId = "CUSTOM_SEP";
+    try { chrome.contextMenus.create({ id: sepId, type: "separator", contexts: CTX_CONTEXTS }); customMenuIds.push(sepId); } catch { /* */ }
+    for (const inst of enabled) {
+        const id = `${CUSTOM_PREFIX}${inst.id}`;
+        try { chrome.contextMenus.create({ id, title: `🎯 ${inst.label}`, contexts: CTX_CONTEXTS }); customMenuIds.push(id); } catch { /* */ }
     }
 };
 
-// Listen for settings changes to update menus
-chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes["rs-settings"]) {
-        updateCustomInstructionMenus().catch(console.warn);
-    }
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes["rs-settings"]) updateCustomInstructionMenus().catch(() => {});
 });
 
-// Handle messages from Extension UI or Content Scripts
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type === 'MAKE_TIMELINE') {
-        const source = message.source || null;
-        const speechPrompt = message.speechPrompt || null;
-        createTimelineGenerator(source, speechPrompt).then(async (gptResponses) => {
-            sendResponse(await (requestNewTimeline(gptResponses as unknown as GPTResponses) as unknown as Promise<any[]> || []));
-        }).catch((error: Error) => {
-            console.error("Timeline generation failed:", error);
-            sendResponse({ error: error.message });
-        });
-        return true; // Indicates that the response is asynchronous
-    }
+// ============================================================================
+// onInstalled — create context menus
+// ============================================================================
 
-    if (message?.type === "gpt:recognize") {
-        const requestId = message?.requestId || `rec_${Date.now()}`;
-
-        // Broadcast recognition start
-        broadcast(AI_RECOGNITION_CHANNEL, {
-            type: "recognize",
-            requestId,
-            status: "processing"
-        });
-
-        recognizeImageData(message?.input, async (result) => {
-            // keep CrossHelp-compatible shape: res.data.output[...]
-            const response = { ok: result?.ok, data: result?.raw, error: result?.error };
-
-            // Broadcast result for cross-context handling
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                ...response
-            });
-
-            // Auto-copy to clipboard if successful and requested
-            if (result?.ok && result?.raw && message?.autoCopy !== false) {
-                const textResult = typeof result.raw === "string"
-                    ? result.raw
-                    : result.raw?.latex || result.raw?.text || JSON.stringify(result.raw);
-                await requestClipboardCopy(textResult, true);
-            }
-
-            sendResponse(response);
-        })?.catch?.((e) => {
-            const errorResponse = { ok: false, error: String(e) };
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "result",
-                requestId,
-                ...errorResponse
-            });
-            showExtensionToast(`Recognition failed: ${e}`, "error");
-            sendResponse(errorResponse);
-        });
-        return true;
-    }
-
-    // Handle equation solving requests
-    // Handle unified solve/answer requests (equations, questions, quizzes, homework)
-    if (message?.type === "gpt:solve" || message?.type === "gpt:answer" || message?.type === "gpt:solve-answer") {
-        const requestId = message?.requestId || `solve_${Date.now()}`;
-
-        // Broadcast processing start
-        broadcast(AI_RECOGNITION_CHANNEL, {
-            type: "solve-answer",
-            requestId,
-            status: "processing"
-        });
-
-        // Use GPT instance directly like CRX api.ts does
-        (async () => {
-            try {
-                console.log("[CRX-SW] Processing solve/answer request");
-                const gpt = await getGPTInstance();
-                if (!gpt) {
-                    const errorResponse = { ok: false, error: "AI service not available" };
-                    broadcast(AI_RECOGNITION_CHANNEL, {
-                        type: "result",
-                        requestId,
-                        mode: "solve-answer",
-                        ...errorResponse
-                    });
-                    sendResponse(errorResponse);
-                    return;
-                }
-
-                const SOLVE_AND_ANSWER_INSTRUCTION = CRX_SOLVE_AND_ANSWER_INSTRUCTION;
-
-                console.log("[CRX-SW] Setting up GPT for solve/answer");
-                // Create a simple message structure for solve/answer
-                gpt?.getPending?.()?.push?.({
-                    type: "message",
-                    role: "user",
-                    content: [
-                        { type: "input_text", text: SOLVE_AND_ANSWER_INSTRUCTION },
-                        { type: "input_text", text: message?.input || "" }
-                    ]
-                });
-                console.log("[CRX-SW] Calling GPT sendRequest");
-                const rawResponse = await gpt.sendRequest("high", "medium");
-                console.log("[CRX-SW] GPT response:", rawResponse);
-
-                const response = {
-                    ok: !!rawResponse,
-                    data: rawResponse || "",
-                    error: rawResponse ? undefined : "Failed to get response"
-                };
-
-                // Broadcast result
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "solve-answer",
-                    ...response
-                });
-
-                // Auto-copy solution to clipboard if successful
-                if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
-                }
-
-                sendResponse(response);
-            } catch (e) {
-                console.error("[CRX-SW] Solve/answer error:", e);
-                const errorResponse = { ok: false, error: String(e) };
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "solve-answer",
-                    ...errorResponse
-                });
-                showExtensionToast(`Solve/Answer failed: ${e}`, "error");
-                sendResponse(errorResponse);
-            }
-        })();
-    }
-
-    // Handle code writing requests
-    if (message?.type === "gpt:code") {
-        const requestId = message?.requestId || `code_${Date.now()}`;
-
-        broadcast(AI_RECOGNITION_CHANNEL, {
-            type: "code",
-            requestId,
-            status: "processing"
-        });
-
-        // Use GPT instance directly for code generation
-        (async () => {
-            try {
-                console.log("[CRX-SW] Processing code generation request");
-                const gpt = await getGPTInstance();
-                if (!gpt) {
-                    const errorResponse = { ok: false, error: "AI service not available" };
-                    broadcast(AI_RECOGNITION_CHANNEL, {
-                        type: "result",
-                        requestId,
-                        mode: "code",
-                        ...errorResponse
-                    });
-                    sendResponse(errorResponse);
-                    return;
-                }
-
-                const WRITE_CODE_INSTRUCTION = CRX_WRITE_CODE_INSTRUCTION;
-
-                console.log("[CRX-SW] Setting up GPT for code generation");
-                // Create a simple message structure for code generation
-                gpt?.getPending?.()?.push?.({
-                    type: "message",
-                    role: "user",
-                    content: [
-                        { type: "input_text", text: WRITE_CODE_INSTRUCTION },
-                        { type: "input_text", text: message?.input || "" }
-                    ]
-                });
-                console.log("[CRX-SW] Calling GPT sendRequest for code");
-                const rawResponse = await gpt.sendRequest("high", "medium");
-                console.log("[CRX-SW] GPT code response:", rawResponse);
-
-                const response = {
-                    ok: !!rawResponse,
-                    data: rawResponse || "",
-                    error: rawResponse ? undefined : "Failed to generate code"
-                };
-
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "code",
-                    ...response
-                });
-
-                if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
-                }
-
-                sendResponse(response);
-            } catch (e) {
-                console.error("[CRX-SW] Code generation error:", e);
-                const errorResponse = { ok: false, error: String(e) };
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "code",
-                    ...errorResponse
-                });
-                showExtensionToast(`Code generation failed: ${e}`, "error");
-                sendResponse(errorResponse);
-            }
-        })();
-        return true;
-    }
-
-    // Handle CSS extraction requests
-    if (message?.type === "gpt:css") {
-        const requestId = message?.requestId || `css_${Date.now()}`;
-
-        broadcast(AI_RECOGNITION_CHANNEL, {
-            type: "css",
-            requestId,
-            status: "processing"
-        });
-
-        // Use GPT instance directly for CSS extraction
-        (async () => {
-            try {
-                console.log("[CRX-SW] Processing CSS extraction request");
-                const gpt = await getGPTInstance();
-                if (!gpt) {
-                    const errorResponse = { ok: false, error: "AI service not available" };
-                    broadcast(AI_RECOGNITION_CHANNEL, {
-                        type: "result",
-                        requestId,
-                        mode: "css",
-                        ...errorResponse
-                    });
-                    sendResponse(errorResponse);
-                    return;
-                }
-
-                const EXTRACT_CSS_INSTRUCTION = CRX_EXTRACT_CSS_INSTRUCTION;
-
-                console.log("[CRX-SW] Setting up GPT for CSS extraction");
-                // Create a simple message structure for CSS extraction
-                gpt?.getPending?.()?.push?.({
-                    type: "message",
-                    role: "user",
-                    content: [
-                        { type: "input_text", text: EXTRACT_CSS_INSTRUCTION },
-                        { type: "input_text", text: message?.input || "" }
-                    ]
-                });
-                console.log("[CRX-SW] Calling GPT sendRequest for CSS");
-                const rawResponse = await gpt.sendRequest("high", "medium");
-                console.log("[CRX-SW] GPT CSS response:", rawResponse);
-
-                const response = {
-                    ok: !!rawResponse,
-                    data: rawResponse || "",
-                    error: rawResponse ? undefined : "Failed to extract CSS"
-                };
-
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "css",
-                    ...response
-                });
-
-                if (response.ok && response.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(response.data, true, _sender?.tab?.id);
-                }
-
-                sendResponse(response);
-            } catch (e) {
-                console.error("[CRX-SW] CSS extraction error:", e);
-                const errorResponse = { ok: false, error: String(e) };
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "css",
-                    ...errorResponse
-                });
-                showExtensionToast(`CSS extraction failed: ${e}`, "error");
-                sendResponse(errorResponse);
-            }
-        })();
-        return true;
-    }
-
-    // Handle custom instruction requests (user-defined)
-    if (message?.type === "gpt:custom") {
-        const instructionId = message?.instructionId;
-        const customInstruction = message?.instruction;
-        const requestId = message?.requestId || `custom_${Date.now()}`;
-
-        // Get instruction text from ID or use provided text
-        (async () => {
-            let instructionText = customInstruction;
-            let instructionLabel = "Custom";
-
-            if (!instructionText && instructionId) {
-                const instructions = await loadCustomInstructions().catch(() => []);
-                const found = instructions.find(i => i.id === instructionId);
-                if (found) {
-                    instructionText = found.instruction;
-                    instructionLabel = found.label;
-                }
-            }
-
-            if (!instructionText) {
-                const errorResponse = { ok: false, error: "No instruction found" };
-                sendResponse(errorResponse);
-                return;
-            }
-
-            broadcast(AI_RECOGNITION_CHANNEL, {
-                type: "custom",
-                requestId,
-                label: instructionLabel,
-                status: "processing"
-            });
-
-            processDataWithInstruction(message?.input, {
-                instruction: instructionText,
-                outputFormat: 'auto',
-                intermediateRecognition: { enabled: false }
-            }).then(async (result) => {
-                const response = { ok: result?.ok, data: result?.data, error: result?.error };
-
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "custom",
-                    label: instructionLabel,
-                    ...response
-                });
-
-                if (result?.ok && result?.data && message?.autoCopy !== false) {
-                    await requestClipboardCopy(result.data, true, _sender?.tab?.id);
-                }
-
-                sendResponse(response);
-            }).catch((e: any) => {
-                console.error("AI processing error:", e);
-                const errorResponse = { ok: false, error: String(e) };
-                broadcast(AI_RECOGNITION_CHANNEL, {
-                    type: "result",
-                    requestId,
-                    mode: "custom",
-                    label: instructionLabel,
-                    ...errorResponse
-                });
-                showExtensionToast(`${instructionLabel} failed: ${e}`, "error");
-                sendResponse(errorResponse);
-            });
-        })();
-        return true;
-    }
-
-    // Handle translation requests
-    if (message?.type === "gpt:translate") {
-        const inputText = message?.input;
-        const targetLanguage = message?.targetLanguage || "English";
-        const requestId = message?.requestId || `translate_${Date.now()}`;
-
-        if (!inputText?.trim()) {
-            sendResponse({ ok: false, error: "No text to translate" });
-            return true;
-        }
-
-        const translationInstruction = `Translate the following text to ${targetLanguage}.
-Preserve formatting (Markdown, KaTeX math expressions, code blocks, etc.).
-Only translate the natural language text, keep technical notation unchanged.
-Return ONLY the translated text without explanations.`;
-
-        (async () => {
-            try {
-                const settings = await loadSettings();
-                const aiSettings = (await settings)?.ai;
-                const token = aiSettings?.apiKey;
-
-                if (!token) {
-                    sendResponse({ ok: false, error: "No API key configured" });
-                    return;
-                }
-
-                const baseUrl = aiSettings?.baseUrl || "https://api.proxyapi.ru/openai/v1";
-                const model = aiSettings?.model || "gpt-5.2";
-
-                const response = await fetch(`${baseUrl}/responses`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        model,
-                        input: inputText,
-                        instructions: translationInstruction,
-                        reasoning: { effort: "low" },
-                        text: { verbosity: "low" }
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Translation API error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const translatedText = data?.output?.at?.(-1)?.content?.[0]?.text || inputText;
-
-                sendResponse({ ok: true, data: translatedText });
-            } catch (e) {
-                console.error("Translation failed:", e);
-                sendResponse({ ok: false, error: String(e), data: inputText });
-            }
-        })();
-        return true;
-    }
-
-    // Handle share-target-like data from external sources (e.g., context menu shares)
-    if (message?.type === "share-target") {
-        const { title, text, url, files } = message.data || {};
-
-        // Store for client retrieval
-        chrome.storage?.local?.set?.({
-            "rs-share-target-data": {
-                title,
-                text,
-                url,
-                files: files?.map?.((f: File) => f.name) || [],
-                timestamp: Date.now()
-            }
-        }).catch(console.warn.bind(console));
-
-        // Broadcast to clients
-        broadcast("rs-share-target", {
-            type: "share-received",
-            data: { title, text, url, timestamp: Date.now() }
-        });
-
-        showExtensionToast("Content received", "info");
-        sendResponse({ ok: true });
-        return true;
-    }
-});
-
-// Context Menu Setup
 chrome.runtime.onInstalled.addListener(() => {
     for (const item of CTX_ITEMS) {
-        try {
-            chrome.contextMenus.create({
-                id: item.id,
-                title: item.title,
-                visible: true,
-                contexts: CTX_CONTEXTS,
-            });
-        } catch (e) {
-            console.warn(e);
-        }
+        try { chrome.contextMenus.create({ id: item.id, title: item.title, visible: true, contexts: CTX_CONTEXTS }); } catch { /* */ }
     }
-
     try {
         chrome.contextMenus.create({
-            id: MD_VIEW_MENU_ID,
-            title: "Open in Markdown Viewer",
-            contexts: ["link", "page"],
-            targetUrlPatterns: [
-                "*://*/*.md",
-                "*://*/*.markdown",
-                "file://*/*.md",
-                "file://*/*.markdown",
-            ],
+            id: MD_VIEW_MENU_ID, title: "Open in Markdown Viewer", contexts: ["link", "page"],
+            targetUrlPatterns: ["*://*/*.md", "*://*/*.markdown", "file://*/*.md", "file://*/*.markdown"],
         });
-    } catch (e) {
-        console.warn(e);
-    }
+    } catch { /* */ }
 
-    // Load and create custom instruction menus
-    updateCustomInstructionMenus().catch(console.warn);
+    // CRX-Snip context menus
+    try { chrome.contextMenus.create({ id: "crx-snip-text", title: "Process Text with CrossWord (CRX-Snip)", contexts: ["selection"] }); } catch { /* */ }
+    try { chrome.contextMenus.create({ id: "crx-snip-screen", title: "Capture & Process Screen Area (CRX-Snip)", contexts: ["page", "frame", "editable"] }); } catch { /* */ }
+
+    updateCustomInstructionMenus().catch(() => {});
 });
 
-// helper to send message to tab with fallback to active tab
+// ============================================================================
+// Context menu click routing
+// ============================================================================
+
 const sendToTabOrActive = async (tabId: number | undefined, message: unknown) => {
-    if (tabId != null && tabId >= 0) {
-        return chrome.tabs.sendMessage(tabId, message)?.catch?.(console.warn.bind(console));
-    }
-    // fallback: query active tab
+    if (tabId != null && tabId >= 0) return chrome.tabs.sendMessage(tabId, message)?.catch?.(console.warn);
     const tabs = await chrome.tabs.query({ currentWindow: true, active: true })?.catch?.(() => []);
     for (const tab of tabs || []) {
-        if (tab?.id != null && tab.id >= 0) {
-            return chrome.tabs.sendMessage(tab.id, message)?.catch?.(console.warn.bind(console));
-        }
+        if (tab?.id != null && tab.id >= 0) return chrome.tabs.sendMessage(tab.id, message)?.catch?.(console.warn);
     }
 };
 
@@ -1706,576 +544,343 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     const tabId = tab?.id;
     const menuId = String(info.menuItemId);
 
-    if (menuId === "START_SNIP") {
-        sendToTabOrActive(tabId, { type: "START_SNIP" });
+    // Snip / AI modes
+    const snipMap: Record<string, string> = {
+        START_SNIP: "START_SNIP", SOLVE_AND_ANSWER: "SOLVE_AND_ANSWER",
+        WRITE_CODE: "WRITE_CODE", EXTRACT_CSS: "EXTRACT_CSS",
+    };
+    if (menuId in snipMap) { sendToTabOrActive(tabId, { type: snipMap[menuId] }); return; }
+
+    // Custom instructions
+    if (menuId.startsWith(CUSTOM_PREFIX)) {
+        sendToTabOrActive(tabId, { type: "CUSTOM_INSTRUCTION", instructionId: menuId.slice(CUSTOM_PREFIX.length) });
         return;
     }
 
-    if (menuId === "SOLVE_AND_ANSWER") {
-        sendToTabOrActive(tabId, { type: "SOLVE_AND_ANSWER" });
-        return;
-    }
-
-    if (menuId === "WRITE_CODE") {
-        sendToTabOrActive(tabId, { type: "WRITE_CODE" });
-        return;
-    }
-
-    if (menuId === "EXTRACT_CSS") {
-        sendToTabOrActive(tabId, { type: "EXTRACT_CSS" });
-        return;
-    }
-
-    // Handle custom instruction menu items
-    if (menuId.startsWith(CUSTOM_INSTRUCTION_PREFIX)) {
-        const instructionId = menuId.slice(CUSTOM_INSTRUCTION_PREFIX.length);
-        sendToTabOrActive(tabId, { type: "CUSTOM_INSTRUCTION", instructionId });
-        return;
-    }
-
+    // Markdown viewer
     if (menuId === MD_VIEW_MENU_ID) {
         const candidate = (info as any).linkUrl || (info as any).pageUrl;
-        const url = typeof candidate === "string" ? candidate : null;
-        if (url && isMarkdownUrl(url)) {
-            void openMarkdownInViewer(url, tabId ?? 0);
-            return;
-        }
-        openViewer(url, tabId);
+        if (candidate && isMarkdownUrl(candidate)) { void openMarkdownInViewer(candidate, tabId ?? 0); return; }
+        openViewer(candidate, tabId);
         return;
     }
 
+    // CRX-Snip text/screen via context menu
+    if (menuId === "crx-snip-text" && info.selectionText) {
+        processCrxSnipWithPipeline(info.selectionText, "text").then((r) => {
+            chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: r.success ? "Text processed and copied!" : `Failed: ${r.error || "Unknown"}` });
+        });
+        return;
+    }
+    if (menuId === "crx-snip-screen") {
+        (async () => {
+            try {
+                const imageData = await captureScreenArea();
+                if (!imageData) { chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: "Capture cancelled" }); return; }
+                const r = await processCrxSnipWithPipeline(imageData, "image");
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: r.success ? "Captured and processed!" : `Failed: ${r.error || "Unknown"}` });
+            } catch { chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: "Capture failed" }); }
+        })();
+        return;
+    }
+
+    // Copy-as-* and other operations → forward to content script
     sendToTabOrActive(tabId, { type: menuId });
 });
 
+// ============================================================================
+// Keyboard commands
+// ============================================================================
+
+chrome.commands.onCommand.addListener(async (command) => {
+    if (command === "crx-snip-text") {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]?.id) return;
+        try {
+            const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => window.getSelection()?.toString() || "" });
+            const text = results[0]?.result || "";
+            if (text) {
+                const r = await processCrxSnipWithPipeline(text, "text");
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: r.success ? "Text processed!" : `Failed: ${r.error}` });
+            } else {
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: "Select text first, then Ctrl+Shift+X" });
+            }
+        } catch { /* ignore */ }
+    } else if (command === "crx-snip-screen") {
+        try {
+            const imageData = await captureScreenArea();
+            if (imageData) {
+                const r = await processCrxSnipWithPipeline(imageData, "image");
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: r.success ? "Captured and processed!" : `Failed: ${r.error}` });
+            } else {
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: "Capture cancelled" });
+            }
+        } catch { chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord CRX-Snip", message: "Capture failed" }); }
+    }
+});
+
+// ============================================================================
+// Screen capture helper (tab capture + desktop capture fallback)
+// ============================================================================
+
+const captureScreenArea = async (options?: { rect?: { x: number; y: number; width: number; height: number }; scale?: number }): Promise<ArrayBuffer | null> => {
+    try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]?.id) throw new Error("No active tab");
+
+        const opts: chrome.tabs.CaptureVisibleTabOptions & { rect?: any; scale?: number } = { format: "png", quality: 100, scale: options?.scale ?? 1 };
+        if (options?.rect) opts.rect = options.rect;
+
+        const screenshot = await chrome.tabs.captureVisibleTab(tabs[0].windowId, opts);
+        const b64 = screenshot.split(",")[1];
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes.buffer;
+    } catch {
+        // Fallback: desktop capture via offscreen document
+        try {
+            const streamId = await new Promise<string>((resolve, reject) => {
+                chrome.desktopCapture.chooseDesktopMedia(["screen", "window"], { frameRate: 1 }, (id) => id ? resolve(id) : reject(new Error("Cancelled")));
+            });
+
+            const offscreenUrl = chrome.runtime.getURL("offscreen/capture.html");
+            const existing = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT] });
+            if (!existing.length) {
+                await chrome.offscreen.createDocument({ url: offscreenUrl, reasons: [chrome.offscreen.Reason.USER_MEDIA], justification: "Screen capture" });
+            }
+            const response = await chrome.runtime.sendMessage({ type: "capture-desktop", streamId });
+            return response?.success && response?.imageData ? response.imageData : null;
+        } catch { return null; }
+    }
+};
+
+// ============================================================================
+// AI MESSAGE HANDLERS (gpt:recognize, gpt:solve, gpt:code, gpt:css, gpt:custom, gpt:translate)
+// ============================================================================
+
+/** Helper: process with GPT using a built-in instruction */
+const processWithBuiltInInstruction = async (
+    instruction: string,
+    input: any,
+    sender: chrome.runtime.MessageSender,
+    mode: string,
+    sendResponse: (r: any) => void,
+) => {
+    const requestId = `${mode}_${Date.now()}`;
+    broadcast(AI_RECOGNITION_CHANNEL, { type: mode, requestId, status: "processing" });
+
+    try {
+        const gpt = await getGPTInstance();
+        if (!gpt) { const err = { ok: false, error: "AI service not available" }; broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, mode, ...err }); sendResponse(err); return; }
+
+        gpt.getPending?.()?.push?.({ type: "message", role: "user", content: [{ type: "input_text", text: instruction }, { type: "input_text", text: input || "" }] });
+        const rawResponse = await gpt.sendRequest("high", "medium");
+        const response = { ok: !!rawResponse, data: rawResponse || "", error: rawResponse ? undefined : "Failed" };
+
+        broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, mode, ...response });
+        if (response.ok && response.data) await requestClipboardCopy(response.data, true, sender?.tab?.id);
+        sendResponse(response);
+    } catch (e) {
+        const err = { ok: false, error: String(e) };
+        broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, mode, ...err });
+        showExtensionToast(`${mode} failed: ${e}`, "error");
+        sendResponse(err);
+    }
+};
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!message?.type) return false;
+
+    // Timeline
+    if (message.type === "MAKE_TIMELINE") {
+        createTimelineGenerator(message.source || null, message.speechPrompt || null).then(async (gptRes) => {
+            sendResponse(await (requestNewTimeline(gptRes as unknown as GPTResponses) as unknown as Promise<any[]> || []));
+        }).catch((e: Error) => sendResponse({ error: e.message }));
+        return true;
+    }
+
+    // gpt:recognize
+    if (message.type === "gpt:recognize") {
+        const requestId = message.requestId || `rec_${Date.now()}`;
+        broadcast(AI_RECOGNITION_CHANNEL, { type: "recognize", requestId, status: "processing" });
+        recognizeImageData(message.input, async (result) => {
+            const response = { ok: result?.ok, data: result?.raw, error: result?.error };
+            broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, ...response });
+            if (result?.ok && result?.raw && message.autoCopy !== false) {
+                const text = typeof result.raw === "string" ? result.raw : result.raw?.latex || result.raw?.text || JSON.stringify(result.raw);
+                await requestClipboardCopy(text, true);
+            }
+            sendResponse(response);
+        })?.catch?.((e) => {
+            const err = { ok: false, error: String(e) };
+            broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, ...err });
+            showExtensionToast(`Recognition failed: ${e}`, "error");
+            sendResponse(err);
+        });
+        return true;
+    }
+
+    // gpt:solve / gpt:answer / gpt:solve-answer
+    if (message.type === "gpt:solve" || message.type === "gpt:answer" || message.type === "gpt:solve-answer") {
+        processWithBuiltInInstruction(CRX_SOLVE_AND_ANSWER_INSTRUCTION, message.input, sender, "solve-answer", sendResponse);
+        return true;
+    }
+
+    // gpt:code
+    if (message.type === "gpt:code") {
+        processWithBuiltInInstruction(CRX_WRITE_CODE_INSTRUCTION, message.input, sender, "code", sendResponse);
+        return true;
+    }
+
+    // gpt:css
+    if (message.type === "gpt:css") {
+        processWithBuiltInInstruction(CRX_EXTRACT_CSS_INSTRUCTION, message.input, sender, "css", sendResponse);
+        return true;
+    }
+
+    // gpt:custom
+    if (message.type === "gpt:custom") {
+        (async () => {
+            let instructionText = message.instruction;
+            let instructionLabel = "Custom";
+            if (!instructionText && message.instructionId) {
+                const found = (await loadCustomInstructions().catch(() => [])).find((i) => i.id === message.instructionId);
+                if (found) { instructionText = found.instruction; instructionLabel = found.label; }
+            }
+            if (!instructionText) { sendResponse({ ok: false, error: "No instruction found" }); return; }
+
+            const requestId = message.requestId || `custom_${Date.now()}`;
+            broadcast(AI_RECOGNITION_CHANNEL, { type: "custom", requestId, label: instructionLabel, status: "processing" });
+
+            processDataWithInstruction(message.input, { instruction: instructionText, outputFormat: "auto", intermediateRecognition: { enabled: false } })
+                .then(async (result) => {
+                    const response = { ok: result?.ok, data: result?.data, error: result?.error };
+                    broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, mode: "custom", label: instructionLabel, ...response });
+                    if (result?.ok && result?.data && message.autoCopy !== false) await requestClipboardCopy(result.data, true, sender?.tab?.id);
+                    sendResponse(response);
+                }).catch((e: any) => {
+                    const err = { ok: false, error: String(e) };
+                    broadcast(AI_RECOGNITION_CHANNEL, { type: "result", requestId, mode: "custom", label: instructionLabel, ...err });
+                    showExtensionToast(`${instructionLabel} failed: ${e}`, "error");
+                    sendResponse(err);
+                });
+        })();
+        return true;
+    }
+
+    // gpt:translate
+    if (message.type === "gpt:translate") {
+        (async () => {
+            const inputText = message.input;
+            const targetLang = message.targetLanguage || "English";
+            if (!inputText?.trim()) { sendResponse({ ok: false, error: "No text" }); return; }
+
+            const instruction = `Translate the following text to ${targetLang}.\nPreserve formatting (Markdown, KaTeX, code blocks, etc.).\nOnly translate natural language, keep technical notation unchanged.\nReturn ONLY the translated text.`;
+            try {
+                const settings = await loadSettings();
+                const ai = (await settings)?.ai;
+                if (!ai?.apiKey) { sendResponse({ ok: false, error: "No API key configured" }); return; }
+
+                const baseUrl = ai.baseUrl || "https://api.proxyapi.ru/openai/v1";
+                const model = ai.model || "gpt-5.2";
+                const res = await fetch(`${baseUrl}/responses`, {
+                    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${ai.apiKey}` },
+                    body: JSON.stringify({ model, input: inputText, instructions: instruction, reasoning: { effort: "low" }, text: { verbosity: "low" } }),
+                });
+                if (!res.ok) throw new Error(`Translation API: ${res.status}`);
+                const data = await res.json();
+                sendResponse({ ok: true, data: data?.output?.at?.(-1)?.content?.[0]?.text || inputText });
+            } catch (e) { sendResponse({ ok: false, error: String(e), data: inputText }); }
+        })();
+        return true;
+    }
+
+    // share-target
+    if (message.type === "share-target") {
+        const { title, text, url, files } = message.data || {};
+        chrome.storage?.local?.set?.({ "rs-share-target-data": { title, text, url, files: files?.map?.((f: File) => f.name) || [], timestamp: Date.now() } }).catch(() => {});
+        broadcast("rs-share-target", { type: "share-received", data: { title, text, url, timestamp: Date.now() } });
+        showExtensionToast("Content received", "info");
+        sendResponse({ ok: true });
+        return true;
+    }
+
+    return false;
+});
+
+// ============================================================================
+// Markdown auto-detection (webNavigation)
+// ============================================================================
+
 chrome.webNavigation?.onCommitted?.addListener?.((details) => {
-    // Auto-open markdown URLs. The service worker fetches & normalizes to get actual markdown bytes (not HTML).
     if (details.frameId !== 0) return;
     const { tabId, url } = details;
-    if (!isMarkdownUrl(url)) return;
-    if (url.startsWith(VIEWER_ORIGIN)) return;
-    if (url.startsWith("file:")) return; // handled onCompleted (needs tab access)
+    if (!isMarkdownUrl(url) || url.startsWith(VIEWER_ORIGIN) || url.startsWith("file:")) return;
     void openMarkdownInViewer(url, tabId);
 });
 
 chrome.webNavigation?.onCompleted?.addListener?.((details) => {
-    // For file:// markdown files, fetching from an extension page is often blocked.
-    // Read the tab text and pass it via storage.session.
     (async () => {
         if (details.frameId !== 0) return;
         const { tabId, url } = details;
-        if (!isMarkdownUrl(url)) return;
-        if (url.startsWith(VIEWER_ORIGIN)) return;
-        if (!url.startsWith("file:")) return;
-
+        if (!isMarkdownUrl(url) || url.startsWith(VIEWER_ORIGIN) || !url.startsWith("file:")) return;
         const text = await tryReadMarkdownFromTab(tabId, url);
         const key = text ? await putMarkdownToSession(text) : null;
         openViewer(url, tabId, key);
-    })().catch(console.warn.bind(console));
+    })().catch(console.warn);
 });
 
-// Screen capture for CRX-SNIP image processing using chrome.tabCapture
-const captureScreenArea = async (options?: {
-    rect?: { x: number; y: number; width: number; height: number };
-    scale?: number;
-}): Promise<ArrayBuffer | null> => {
-    try {
-        console.log('[CRX-SNIP] Starting screen capture...', options);
+// ============================================================================
+// CRX-Snip and pipeline message handlers
+// ============================================================================
 
-        // Get the active tab
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const activeTab = tabs[0];
-
-        if (!activeTab?.id) {
-            throw new Error('No active tab found');
-        }
-
-        // Capture the visible tab area with optional rect and scale
-        const captureOptions: chrome.tabs.CaptureVisibleTabOptions = {
-            format: 'png',
-            quality: 100
-        };
-
-        // Add rect if provided (for partial screen capture)
-        if (options?.rect) {
-            captureOptions.rect = options.rect;
-        }
-
-        // Add scale if provided (default to 1 to avoid scaling issues)
-        if (options?.scale !== undefined) {
-            captureOptions.scale = options.scale;
-        } else {
-            // Default to scale: 1 to prevent scaling problems
-            captureOptions.scale = 1;
-        }
-
-        const screenshot = await chrome.tabs.captureVisibleTab(
-            activeTab.windowId,
-            captureOptions
-        );
-
-        // Convert base64 data URL to ArrayBuffer
-        const base64Data = screenshot.split(',')[1];
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        const arrayBuffer = bytes.buffer;
-
-        console.log('[CRX-SNIP] Screen capture completed, size:', arrayBuffer.byteLength);
-        return arrayBuffer;
-
-    } catch (error) {
-        console.error('[CRX-SNIP] Screen capture failed:', error);
-
-        // If tab capture fails, try desktop capture as fallback
-        try {
-            console.log('[CRX-SNIP] Trying desktop capture as fallback...');
-
-            const streamId = await new Promise<string>((resolve, reject) => {
-                chrome.desktopCapture.chooseDesktopMedia(
-                    ['screen', 'window'],
-                    { frameRate: 1 }, // Lower frame rate for screenshot
-                    (streamId, options) => {
-                        if (streamId) {
-                            resolve(streamId);
-                        } else {
-                            reject(new Error('Desktop capture cancelled'));
-                        }
-                    }
-                );
-            });
-
-            // For desktop capture, we need an offscreen document to process the stream
-            const offscreenUrl = chrome.runtime.getURL('offscreen/capture.html');
-
-            // Create offscreen document if it doesn't exist
-            const existingContexts = await chrome.runtime.getContexts({
-                contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT]
-            });
-
-            if (existingContexts.length === 0) {
-                await chrome.offscreen.createDocument({
-                    url: offscreenUrl,
-                    reasons: [chrome.offscreen.Reason.USER_MEDIA],
-                    justification: 'Screen capture for CRX-Snip image processing'
-                });
-            }
-
-            // Send message to offscreen document to capture
-            const response = await chrome.runtime.sendMessage({
-                type: 'capture-desktop',
-                streamId: streamId
-            });
-
-            if (response?.success && response?.imageData) {
-                return response.imageData;
-            }
-
-            throw new Error('Offscreen capture failed');
-
-        } catch (fallbackError) {
-            console.error('[CRX-SNIP] Desktop capture fallback failed:', fallbackError);
-            return null;
-        }
-    }
-};
-
-// CRX-SNIP: Background processing without opening PWA
-const processCrxSnip = async (content: string | ArrayBuffer, contentType: string = 'text') => {
-    try {
-        const isImage = contentType === 'image' || content instanceof ArrayBuffer;
-        console.log('[CRX-SNIP] Processing', isImage ? 'image' : 'text', 'content in background');
-
-        let processedContent: string | ArrayBuffer = content;
-        let finalContentType = contentType;
-
-        // If it's image data (ArrayBuffer), we need to process it for recognition
-        if (isImage && content instanceof ArrayBuffer) {
-            try {
-                console.log('[CRX-SNIP] Processing image for recognition...');
-
-                // Convert ArrayBuffer to blob for processing
-                const blob = new Blob([content], { type: 'image/png' });
-
-                // Use the image recognition functionality
-                const recognitionResult = await recognizeImageData(blob);
-                processedContent = recognitionResult.text || '';
-                finalContentType = 'text'; // Recognition output is text
-
-                console.log('[CRX-SNIP] Image recognition result:', processedContent.substring(0, 100) + '...');
-            } catch (recognitionError) {
-                console.warn('[CRX-SNIP] Image recognition failed:', recognitionError);
-                return { success: false, error: 'Image recognition failed' };
-            }
-        }
-
-        // Create the processing input
-        const input: ActionInput = {
-            type: 'process',
-            content: processedContent,
-            contentType: finalContentType as any,
-            metadata: {
-                source: 'crx-snip',
-                timestamp: Date.now(),
-                background: true,
-                originalType: contentType // Keep track of original input type
-            }
-        };
-
-        // Process through execution core
-        const result = await processChromeExtensionAction(input);
-
-        if (result.success && result.result) {
-            // Write result to clipboard if enabled in settings
-            const settings = await loadSettings();
-            const writeToClipboard = settings?.processing?.writeToClipboard ?? true;
-
-            if (writeToClipboard && typeof result.result === 'string') {
-                try {
-                    await navigator.clipboard.writeText(result.result);
-                    console.log('[CRX-SNIP] Result written to clipboard');
-                } catch (clipboardError) {
-                    console.warn('[CRX-SNIP] Failed to write to clipboard:', clipboardError);
-                }
-            }
-
-            // Send to associated destination (workcenter) without opening PWA
-            // This uses the unified messaging system to attach content
-            try {
-                // Import the unified messaging system
-                const { unifiedMessaging } = await import('@rs-com/core/UnifiedMessaging');
-
-                await unifiedMessaging.sendMessage({
-                    id: crypto.randomUUID(),
-                    type: 'content-share',
-                    source: 'crx-snip',
-                    destination: 'basic-workcenter',
-                    contentType: 'text',
-                    data: {
-                        text: result.result,
-                        processed: true,
-                        source: 'crx-snip'
-                    },
-                    metadata: {
-                        title: 'CRX-Snip Result',
-                        timestamp: Date.now(),
-                        source: 'crx-snip'
-                    }
-                });
-
-                console.log('[CRX-SNIP] Result sent to workcenter');
-            } catch (messagingError) {
-                console.warn('[CRX-SNIP] Failed to send to workcenter:', messagingError);
-            }
-
-            return { success: true, result: result.result };
-        } else {
-            console.warn('[CRX-SNIP] Processing failed:', result.error);
-            return { success: false, error: result.error };
-        }
-    } catch (error) {
-        console.error('[CRX-SNIP] Background processing error:', error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
-};
-
-// Context menu for CRX-SNIP processing
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: "crx-snip-text",
-        title: "Process Text with CrossWord (CRX-Snip)",
-        contexts: ["selection"]
-    });
-
-    chrome.contextMenus.create({
-        id: "crx-snip-screen",
-        title: "Capture & Process Screen Area (CRX-Snip)",
-        contexts: ["page", "frame", "editable"]
-    });
-});
-
-// Handle keyboard commands
-chrome.commands.onCommand.addListener(async (command) => {
-    if (command === "crx-snip-text") {
-        // Get the active tab and try to get selected text
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tabs[0]?.id) {
-            try {
-                // Execute script to get selected text
-                const results = await chrome.scripting.executeScript({
-                    target: { tabId: tabs[0].id },
-                    func: () => window.getSelection()?.toString() || ''
-                });
-
-                const selectedText = results[0]?.result || '';
-                if (selectedText) {
-                    console.log('[CRX-SNIP] Text keyboard shortcut triggered with selection:', selectedText.substring(0, 100) + '...');
-
-                    const result = await processCrxSnipWithPipeline(selectedText, 'text');
-
-                    // Show notification
-                    if (result.success) {
-                        chrome.notifications.create({
-                            type: 'basic',
-                            iconUrl: 'icons/icon.png',
-                            title: 'CrossWord CRX-Snip',
-                            message: 'Text processed and copied to clipboard!'
-                        });
-                    } else {
-                        chrome.notifications.create({
-                            type: 'basic',
-                            iconUrl: 'icons/icon.png',
-                            title: 'CrossWord CRX-Snip',
-                            message: `Text processing failed: ${result.error || 'Unknown error'}`
-                        });
-                    }
-                } else {
-                    // No selection, show instruction
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon.png',
-                        title: 'CrossWord CRX-Snip',
-                        message: 'Please select some text first, then use Ctrl+Shift+X'
-                    });
-                }
-            } catch (error) {
-                console.error('[CRX-SNIP] Failed to get selected text:', error);
-            }
-        }
-    } else if (command === "crx-snip-screen") {
-        console.log('[CRX-SNIP] Screen capture keyboard shortcut triggered');
-
-        try {
-            // Capture screen area
-            const imageData = await captureScreenArea();
-
-            if (imageData) {
-                // Process the captured image with CRX-SNIP pipeline
-                const result = await processCrxSnipWithPipeline(imageData, 'image');
-
-                // Show notification
-                if (result.success) {
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon.png',
-                        title: 'CrossWord CRX-Snip',
-                        message: 'Screen area processed and copied to clipboard!'
-                    });
-                } else {
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon.png',
-                        title: 'CrossWord CRX-Snip',
-                        message: `Screen processing failed: ${result.error || 'Unknown error'}`
-                    });
-                }
-            } else {
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon.png',
-                    title: 'CrossWord CRX-Snip',
-                    message: 'Screen capture was cancelled'
-                });
-            }
-        } catch (error) {
-            console.error('[CRX-SNIP] Screen capture processing failed:', error);
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: 'Screen capture processing failed'
-            });
-        }
-    }
-});
-
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "crx-snip-text" && info.selectionText) {
-        console.log('[CRX-SNIP] Context menu triggered with text selection:', info.selectionText.substring(0, 100) + '...');
-
-        // Process the selected text with CRX-SNIP
-        const result = await processCrxSnipWithPipeline(info.selectionText, 'text');
-
-        // Show notification of result
-        if (result.success) {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: 'Text processed and copied to clipboard!'
-            });
-        } else {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: `Text processing failed: ${result.error || 'Unknown error'}`
-            });
-        }
-    } else if (info.menuItemId === "crx-snip-screen") {
-        console.log('[CRX-SNIP] Context menu triggered for screen capture');
-
-        try {
-            // Capture screen area
-            const imageData = await captureScreenArea();
-
-            if (imageData) {
-                // Process the captured image with CRX-SNIP
-                const result = await processCrxSnipWithPipeline(imageData, 'image');
-
-                // Show notification of result
-                if (result.success) {
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon.png',
-                        title: 'CrossWord CRX-Snip',
-                        message: 'Screen area processed and copied to clipboard!'
-                    });
-                } else {
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon.png',
-                        title: 'CrossWord CRX-Snip',
-                        message: `Screen processing failed: ${result.error || 'Unknown error'}`
-                    });
-                }
-            } else {
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon.png',
-                    title: 'CrossWord CRX-Snip',
-                    message: 'Screen capture was cancelled'
-                });
-            }
-        } catch (error) {
-            console.error('[CRX-SNIP] Screen capture processing failed:', error);
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: 'Screen capture processing failed'
-            });
-        }
-    }
-});
-
-// Viewer asks the service worker to fetch markdown with host permissions + URL normalization.
-// Also handles CRX-SNIP processing requests.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
-        // Handle CRX-SNIP processing
+        // CRX-Snip processing
         if (message?.type === "crx-snip") {
-            const content = message?.content;
-            const contentType = typeof message?.contentType === "string" ? message.contentType : "text";
-
-            if (!content) {
-                sendResponse({ success: false, error: "missing content" });
-                return;
-            }
-
-            const result = await processCrxSnipWithPipeline(content, contentType);
-            sendResponse(result);
+            if (!message.content) { sendResponse({ success: false, error: "missing content" }); return; }
+            sendResponse(await processCrxSnipWithPipeline(message.content, message.contentType || "text"));
             return;
         }
 
-        // Handle CRX-SNIP screen capture trigger from popup
+        // Screen capture trigger from popup
         if (message?.type === "crx-snip-screen-capture") {
             try {
-                console.log('[CRX-SNIP] Screen capture triggered from popup');
-
-                // Check if rect coordinates were provided
-                let captureOptions;
-                if (message.rect) {
-                    captureOptions = {
-                        rect: message.rect,
-                        scale: message.scale || 1
-                    };
-                }
-
-                // Capture screen area (with optional rect)
-                const imageData = await captureScreenArea(captureOptions);
-
-                if (imageData) {
-                    // Process the captured image with CRX-SNIP
-                    const result = await processCrxSnipWithPipeline(imageData, 'image');
-
-                    // Send response back (though popup is closed, notifications will show)
-                    sendResponse({ success: result.success, error: result.error });
-                } else {
-                    sendResponse({ success: false, error: "Screen capture cancelled" });
-                }
-            } catch (error) {
-                console.error('[CRX-SNIP] Screen capture from popup failed:', error);
-                sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
-            }
+                const imageData = await captureScreenArea(message.rect ? { rect: message.rect, scale: message.scale || 1 } : undefined);
+                if (imageData) { sendResponse(await processCrxSnipWithPipeline(imageData, "image")); }
+                else sendResponse({ success: false, error: "Capture cancelled" });
+            } catch (e) { sendResponse({ success: false, error: e instanceof Error ? e.message : String(e) }); }
             return;
         }
 
-        // Handle CRX pipeline management queries
-        if (message?.type === "crx-pipeline-status") {
-            const status = getPipelineStatus();
-            sendResponse({ success: true, status });
-            return;
-        }
-
-        if (message?.type === "crx-pipeline-pending") {
-            const destinationType = message?.destinationType;
-            const pending = getPendingResults(destinationType);
-            sendResponse({ success: true, pending });
-            return;
-        }
-
-        if (message?.type === "crx-pipeline-clear-completed") {
-            const clearedCount = clearCompletedResults();
-            sendResponse({ success: true, clearedCount });
-            return;
-        }
+        // Pipeline management
+        if (message?.type === "crx-pipeline-status") { sendResponse({ success: true, status: pipeline.getStatus() }); return; }
+        if (message?.type === "crx-pipeline-pending") { sendResponse({ success: true, pending: pipeline.getPending(message.destinationType) }); return; }
+        if (message?.type === "crx-pipeline-clear-completed") { sendResponse({ success: true, clearedCount: pipeline.clearCompleted() }); return; }
 
         if (message?.type === "crx-result-send-to-destination") {
-            const { resultId, destination } = message;
-            if (!resultId || !destination) {
-                sendResponse({ success: false, error: "Missing resultId or destination" });
-                return;
-            }
-
-            try {
-                // Find the result in the queue
-                const pendingResult = crxResultPipeline.resultQueue.find(r => r.id === resultId);
-                if (!pendingResult) {
-                    sendResponse({ success: false, error: "Result not found" });
-                    return;
-                }
-
-                // Add the new destination
-                pendingResult.destinations.push(destination);
-                if (pendingResult.status === 'completed') {
-                    pendingResult.status = 'pending'; // Re-queue for new destination
-                }
-
-                sendResponse({ success: true, resultId });
-            } catch (error) {
-                sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
-            }
+            const pr = pipeline.resultQueue.find((r) => r.id === message.resultId);
+            if (!pr || !message.destination) { sendResponse({ success: false, error: "Not found" }); return; }
+            pr.destinations.push(message.destination);
+            if (pr.status === "completed") pr.status = "pending";
+            sendResponse({ success: true, resultId: message.resultId });
             return;
         }
 
-        // Handle markdown loading (existing functionality)
+        // Markdown loading
         if (message?.type !== "md:load") return;
-        const src = typeof message?.src === "string" ? message.src : "";
-        if (!src) {
-            sendResponse({ ok: false, error: "missing src" });
-            return;
-        }
+        const src = typeof message.src === "string" ? message.src : "";
+        if (!src) { sendResponse({ ok: false, error: "missing src" }); return; }
         const fetched = await fetchMarkdownText(src);
         const key = fetched.ok && fetched.text ? await putMarkdownToSession(fetched.text) : null;
         sendResponse({ ok: fetched.ok, status: fetched.status, src: fetched.src, key });
-    })().catch((e) => {
-        console.warn(e);
-        sendResponse({ ok: false, error: String(e) });
-    });
+    })().catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
 });
+
+// ============================================================================
+// Enable capture handlers from service/api.ts
+// ============================================================================
+
+enableCapture(chrome);

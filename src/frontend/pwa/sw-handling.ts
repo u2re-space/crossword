@@ -65,12 +65,21 @@ export const ensureAppCss = () => {
 
 let _swRegistration: ServiceWorkerRegistration | null = null;
 let _swInitPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+let _swOptions: { immediate?: boolean, onRegistered?: () => void, onRegisterError?: (error: any) => void } = {
+    immediate: false,
+    onRegistered: () => {
+        console.log('[PWA] Service worker registered successfully');
+    },
+    onRegisterError: (error) => {
+        console.error('[PWA] Service worker registration failed:', error);
+    }
+};
 
 /**
  * Initialize PWA service worker early in the page lifecycle
  * This ensures share target and other PWA features work correctly
  */
-export const initServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+export const initServiceWorker = async (options: { immediate?: boolean, onRegistered?: () => void, onRegisterError?: (error: any) => void } = _swOptions): Promise<ServiceWorkerRegistration | null> => {
     // Return cached promise if already initializing
     if (_swInitPromise) return _swInitPromise;
 

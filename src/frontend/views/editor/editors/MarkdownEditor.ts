@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
-import { MarkdownViewer } from "../../viewer/MarkdownViewer";
+import { ViewerView } from "@rs-frontend/views/viewer";
 import { UIPhosphorIcon } from "fest/icon";
-import { downloadMarkdownAsDocx } from "../../../../core/document/DocxExport";
+import { downloadMarkdownAsDocx } from "@rs-core/document/DocxExport";
 
 export interface MarkdownEditorOptions {
     initialContent?: string;
@@ -220,9 +220,8 @@ export class MarkdownEditor {
         const previewContainer = container.querySelector('.preview-content') as HTMLElement;
 
         // Create preview component using MarkdownViewer
-        this.preview = new MarkdownViewer({
-            showTitle: false,
-            showActions: false
+        this.preview = new ViewerView({
+            initialContent: ""
         });
         const previewElement = this.preview.render();
         previewContainer.append(previewElement);

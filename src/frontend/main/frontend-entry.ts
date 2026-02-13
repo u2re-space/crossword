@@ -1,13 +1,14 @@
 /**
- * Frontend Entry Point
+ * Frontend Entry Point (Basic Shell)
  *
  * Entry point for mounting the Basic frontend application.
  * Handles URL parameters, share-target data, and auto-processing.
  *
  * Used by:
- * - Chrome extension pages (settings, newtab, markdown viewer)
  * - PWA share target handler
  * - Direct URL loading
+ *
+ * NOTE: Chrome extension pages use `crx-entry.ts` instead (raw shell, no toolbar).
  */
 
 import type { BasicAppOptions } from "../shells/basic/ts/shell";

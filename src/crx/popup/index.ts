@@ -1,368 +1,197 @@
+/**
+ * CrossWord — Popup Script
+ *
+ * Manages:
+ *  - Snip & Process actions (Feature #2)
+ *  - Copy-as-* buttons (Feature #3)
+ *  - Markdown Viewer URL opener (Feature #1)
+ *  - Settings (API key, language, translate, SVG)
+ */
+
 import "./index.scss";
+import { createRuntimeChannelModule } from "../shared/runtime";
 
-// Import CRX runtime channel module for inline coding style
-import { createRuntimeChannelModule } from '../shared/runtime';
+// ---------------------------------------------------------------------------
+// CRX environment
+// ---------------------------------------------------------------------------
 
-// Check if we're in CRX environment
-const isInCrxEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+const isInCrx = typeof chrome !== "undefined" && chrome.runtime?.id;
 
-// Create runtime module for inline usage
 let popupModule: any = null;
-const getPopupModule = async () => {
-    if (!popupModule && isInCrxEnvironment) {
-        popupModule = await createRuntimeChannelModule('crx-popup');
-    }
+const getModule = async () => {
+    if (!popupModule && isInCrx) popupModule = await createRuntimeChannelModule("crx-popup");
     return popupModule;
 };
 
-// Settings storage key - must match @rs-core/config/Settings
+// ---------------------------------------------------------------------------
+// Settings persistence
+// ---------------------------------------------------------------------------
+
 const SETTINGS_KEY = "rs-settings";
-
-// Settings shape (partial, for popup use)
 type ResponseLanguage = "en" | "ru" | "auto";
-type PopupSettings = {
-    ai?: {
-        apiKey?: string;
-        baseUrl?: string;
-        model?: string;
-        responseLanguage?: ResponseLanguage;
-        translateResults?: boolean;
-        generateSvgGraphics?: boolean;
-    };
-    [key: string]: unknown;
+type PopupSettings = { ai?: { apiKey?: string; baseUrl?: string; model?: string; responseLanguage?: ResponseLanguage; translateResults?: boolean; generateSvgGraphics?: boolean }; [k: string]: unknown };
+
+const loadSettings = async (): Promise<PopupSettings> => {
+    try { return ((await chrome.storage.local.get([SETTINGS_KEY]))[SETTINGS_KEY] as PopupSettings) || {}; }
+    catch { return {}; }
 };
 
-// Load settings from chrome.storage.local with proper nested structure
-const loadPopupSettings = async (): Promise<PopupSettings> => {
+const saveSettings = async (updates: { ai?: Partial<NonNullable<PopupSettings["ai"]>> }) => {
     try {
-        const result = await chrome.storage.local.get([SETTINGS_KEY]);
-        return (result[SETTINGS_KEY] as PopupSettings) || {};
-    } catch (e) {
-        console.warn("Failed to load settings:", e);
-        return {};
-    }
-};
-
-// Save settings to chrome.storage.local with proper nested structure
-const savePopupSettings = async (updates: { ai?: Partial<PopupSettings["ai"]> }) => {
-    try {
-        const current = await loadPopupSettings();
-        const merged: PopupSettings = {
-            ...current,
-            ai: {
-                ...(current?.ai || {}),
-                ...(updates?.ai || {})
-            }
-        };
-        await chrome.storage.local.set({ [SETTINGS_KEY]: merged });
+        const current = await loadSettings();
+        await chrome.storage.local.set({ [SETTINGS_KEY]: { ...current, ai: { ...(current.ai || {}), ...(updates.ai || {}) } } });
         return true;
-    } catch (e) {
-        console.warn("Failed to save settings:", e);
-        return false;
-    }
+    } catch { return false; }
 };
 
-//
-const implementSettings = () => {
-    const apiKey = document.getElementById('api-key') as HTMLInputElement;
-    const apiUrl = document.getElementById('api-url') as HTMLInputElement;
-    const saveSettingsBtn = document.getElementById('save-settings') as HTMLButtonElement;
-    const showApiKey = document.getElementById('show-api-key') as HTMLInputElement;
-    const responseLanguage = document.getElementById('response-language') as HTMLSelectElement;
-    const translateResults = document.getElementById('translate-results') as HTMLInputElement;
-    const generateSvg = document.getElementById('generate-svg') as HTMLInputElement;
+// ---------------------------------------------------------------------------
+// Helper: send message to active tab content script, then close popup
+// ---------------------------------------------------------------------------
 
-    // Load settings on popup open
-    loadPopupSettings().then((settings) => {
-        if (apiUrl) apiUrl.value = (settings?.ai?.baseUrl || "").trim();
-        if (apiKey) apiKey.value = (settings?.ai?.apiKey || "").trim();
-        if (responseLanguage) responseLanguage.value = settings?.ai?.responseLanguage || "auto";
-        if (translateResults) translateResults.checked = settings?.ai?.translateResults || false;
-        if (generateSvg) generateSvg.checked = settings?.ai?.generateSvgGraphics || false;
+const sendToTab = (type: string, extra?: Record<string, any>) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId != null) chrome.tabs.sendMessage(tabId, { type, ...extra })?.catch?.(console.warn);
+        window?.close?.();
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Feature 2: Snip & Process
+// ---------------------------------------------------------------------------
+
+const initSnipActions = () => {
+    const select = document.getElementById("snip-action-select") as HTMLSelectElement;
+    const btn = document.getElementById("snip-do") as HTMLButtonElement;
+
+    btn?.addEventListener("click", async () => {
+        const action = select?.value;
+        if (!action) return;
+
+        if (action === "CRX_SNIP_TEXT") {
+            // Get selected text and process via SW
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tabs[0]?.id) return;
+            const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => window.getSelection()?.toString() || "" });
+            const text = results[0]?.result || "";
+            if (!text.trim()) { chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord", message: "Select text first!" }); return; }
+
+            try {
+                const module = await getModule();
+                if (!module) throw new Error("Module unavailable");
+                const result = await module.processText(text);
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord", message: result?.ok !== false ? "Text processed!" : `Failed: ${result?.error || "Unknown"}` });
+            } catch (e) {
+                chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord", message: `Failed: ${e instanceof Error ? e.message : String(e)}` });
+            }
+            window?.close?.();
+            return;
+        }
+
+        if (action === "CRX_SNIP_SCREEN") {
+            // Close popup first, then trigger rect selection in content script
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tabs[0]?.id) return;
+            window?.close?.();
+
+            setTimeout(() => {
+                chrome.tabs.sendMessage(tabs[0].id!, { type: "crx-snip-select-rect" }, (response) => {
+                    if (chrome.runtime.lastError || !response?.rect) return;
+                    chrome.runtime.sendMessage({ type: "crx-snip-screen-capture", rect: response.rect, scale: 1 }).catch(console.warn);
+                });
+            }, 100);
+            return;
+        }
+
+        // Regular snip modes → content script
+        sendToTab(action);
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Feature 3: Copy-as-* buttons
+// ---------------------------------------------------------------------------
+
+const initCopyButtons = () => {
+    document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+        btn.addEventListener("click", () => sendToTab(btn.dataset.copy!));
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Feature 1: Markdown Viewer
+// ---------------------------------------------------------------------------
+
+const initMarkdownViewer = () => {
+    const input = document.getElementById("md-url") as HTMLInputElement;
+    const btn = document.getElementById("md-open") as HTMLButtonElement;
+
+    const openUrl = () => {
+        const url = input?.value?.trim();
+        if (!url) return;
+        const viewerUrl = chrome.runtime.getURL("markdown/viewer.html");
+        chrome.tabs.create({ url: `${viewerUrl}?src=${encodeURIComponent(url)}` });
+        window?.close?.();
+    };
+
+    btn?.addEventListener("click", openUrl);
+    input?.addEventListener("keydown", (e) => { if (e.key === "Enter") openUrl(); });
+};
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+const initSettingsUI = () => {
+    const apiKey = document.getElementById("api-key") as HTMLInputElement;
+    const apiUrl = document.getElementById("api-url") as HTMLInputElement;
+    const saveBtn = document.getElementById("save-settings") as HTMLButtonElement;
+    const showKey = document.getElementById("show-api-key") as HTMLInputElement;
+    const langSel = document.getElementById("response-language") as HTMLSelectElement;
+    const translateCb = document.getElementById("translate-results") as HTMLInputElement;
+    const svgCb = document.getElementById("generate-svg") as HTMLInputElement;
+
+    // Load
+    loadSettings().then((s) => {
+        if (apiUrl) apiUrl.value = (s.ai?.baseUrl || "").trim();
+        if (apiKey) apiKey.value = (s.ai?.apiKey || "").trim();
+        if (langSel) langSel.value = s.ai?.responseLanguage || "auto";
+        if (translateCb) translateCb.checked = s.ai?.translateResults || false;
+        if (svgCb) svgCb.checked = s.ai?.generateSvgGraphics || false;
     }).catch(console.warn);
 
-    // Save settings on button click
-    saveSettingsBtn?.addEventListener('click', async () => {
-        const success = await savePopupSettings({
+    // Save
+    saveBtn?.addEventListener("click", async () => {
+        const ok = await saveSettings({
             ai: {
                 apiKey: apiKey?.value?.trim() || "",
                 baseUrl: apiUrl?.value?.trim() || "",
-                responseLanguage: (responseLanguage?.value as ResponseLanguage) || "auto",
-                translateResults: translateResults?.checked || false,
-                generateSvgGraphics: generateSvg?.checked || false
-            }
+                responseLanguage: (langSel?.value as ResponseLanguage) || "auto",
+                translateResults: translateCb?.checked || false,
+                generateSvgGraphics: svgCb?.checked || false,
+            },
         });
-
-        // Visual feedback
-        if (success) {
-            const originalText = saveSettingsBtn.textContent;
-            saveSettingsBtn.textContent = "Saved!";
-            saveSettingsBtn.disabled = true;
-            setTimeout(() => {
-                saveSettingsBtn.textContent = originalText;
-                saveSettingsBtn.disabled = false;
-            }, 1000);
+        if (ok) {
+            const orig = saveBtn.textContent;
+            saveBtn.textContent = "Saved!";
+            saveBtn.disabled = true;
+            setTimeout(() => { saveBtn.textContent = orig; saveBtn.disabled = false; }, 1000);
         }
     });
 
-    // Trim values on change for better UX
-    apiUrl?.addEventListener('change', () => {
-        apiUrl.value = apiUrl.value?.trim() || "";
-    });
-    apiKey?.addEventListener('change', () => {
-        apiKey.value = apiKey.value?.trim() || "";
-    });
+    // Trim on change
+    apiUrl?.addEventListener("change", () => { apiUrl.value = apiUrl.value.trim(); });
+    apiKey?.addEventListener("change", () => { apiKey.value = apiKey.value.trim(); });
 
-    // Toggle API key visibility
-    showApiKey?.addEventListener('click', () => {
-        if (apiKey) {
-            apiKey.type = showApiKey.checked ? "text" : "password";
-        }
-    });
+    // Toggle key visibility
+    showKey?.addEventListener("click", () => { if (apiKey) apiKey.type = showKey.checked ? "text" : "password"; });
 };
 
-// Helper to send snip message and close popup
-const sendSnipMessage = (messageType: string) => {
-    chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0]?.id;
-        if (tabId != null) {
-            chrome.tabs.sendMessage(tabId, { type: messageType })?.catch?.(console.warn);
-        }
-        // Close popup after triggering snip
-        window?.close?.();
-    });
-};
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
 
-//
-const implementActions = () => {
-    const snipActionSelect = document.getElementById('snip-action-select') as HTMLSelectElement;
-    const snipDoButton = document.getElementById('snip-do') as HTMLButtonElement;
-
-    // Unified Snip & Do button handler
-    snipDoButton?.addEventListener('click', async () => {
-        const selectedAction = snipActionSelect?.value;
-
-        if (!selectedAction) {
-            console.warn('[CRX-SNIP] No action selected');
-            return;
-        }
-
-        try {
-            // Handle CRX-Snip actions that need special processing
-            if (selectedAction === 'CRX_SNIP_TEXT') {
-                await handleCrxSnipText();
-            } else if (selectedAction === 'CRX_SNIP_SCREEN') {
-                await handleCrxSnipScreen();
-            } else {
-                // Regular snip actions - send to content script
-                sendSnipMessage(selectedAction);
-            }
-        } catch (error) {
-            console.error('[CRX-SNIP] Failed to execute snip action:', error);
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: `Failed to execute ${selectedAction}`
-            });
-        }
-    });
-
-    // CRX-Snip Text handler
-    const handleCrxSnipText = async () => {
-        // Get the active tab
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const activeTab = tabs[0];
-
-        if (!activeTab?.id) {
-            console.warn('[CRX-SNIP] No active tab found');
-            return;
-        }
-
-        // Get selected text from the active tab
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: activeTab.id },
-            func: () => window.getSelection()?.toString() || ''
-        });
-
-        const selectedText = results[0]?.result || '';
-
-        if (!selectedText.trim()) {
-            // No selection - show notification
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: 'Please select some text first!'
-            });
-            return;
-        }
-
-        // Send to service worker for processing via runtime module
-        if (!isInCrxEnvironment) {
-            console.warn('[Popup] Chrome extension environment not available');
-            return;
-        }
-
-        try {
-            const module = await getPopupModule();
-            if (!module) {
-                throw new Error('Popup runtime module not available');
-            }
-
-            // Inline coding style: await module.processText(text)
-            const result = await module.processText(selectedText);
-
-            if (result && result.ok !== false) {
-                // Handle success
-                console.log('[Popup] Text processed successfully');
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon.png',
-                    title: 'CrossWord CRX-Snip',
-                    message: 'Text processed and copied to clipboard!'
-                });
-            } else {
-                console.error('[Popup] Text processing failed:', result?.error);
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon.png',
-                    title: 'CrossWord CRX-Snip',
-                    message: `Text processing failed: ${result?.error || 'Unknown error'}`
-                });
-            }
-        } catch (error) {
-            console.error('[Popup] Runtime module error:', error);
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon.png',
-                title: 'CrossWord CRX-Snip',
-                message: `Processing failed: ${error instanceof Error ? error.message : String(error)}`
-            });
-        }
-
-        // Close popup
-        window?.close?.();
-    };
-
-    // CRX-Snip Screen handler
-    const handleCrxSnipScreen = async () => {
-        // Get the active tab
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const activeTab = tabs[0];
-
-        if (!activeTab?.id) {
-            console.warn('[CRX-SNIP] No active tab found');
-            return;
-        }
-
-        // Close popup first
-        window?.close?.();
-
-        // Small delay to allow popup to close
-        setTimeout(async () => {
-            try {
-                // Send message to content script to start rectangle selection
-                chrome.tabs.sendMessage(activeTab.id!, {
-                    type: 'crx-snip-select-rect'
-                }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.warn('[CRX-SNIP] Rectangle selection message failed:', chrome.runtime.lastError);
-                        return;
-                    }
-
-                    // Response will contain the selected rectangle
-                    if (response?.rect) {
-                        console.log('[CRX-SNIP] Rectangle selected:', response.rect);
-
-                        // Send message to service worker via runtime module
-                        Promise.try(async () => {
-
-
-                            const module = await getPopupModule();
-                            if (!module) {
-                                throw new Error('Popup runtime module not available');
-                            }
-
-                            // Inline coding style: await module.captureWithRect(mode)
-                            const result = await module.captureWithRect('default');
-
-                            if (!result?.ok) {
-                                chrome.notifications.create({
-                                    type: 'basic',
-                                    iconUrl: 'icons/icon.png',
-                                    title: 'CrossWord CRX-Snip',
-                                    message: `Screen capture failed: ${result?.error || 'Unknown error'}`
-                                });
-                            }
-                        })?.catch?.((error) => {
-                            console.error('[CRX-SNIP] Runtime module screen capture failed:', error);
-                            chrome.notifications.create({
-                                type: 'basic',
-                                iconUrl: 'icons/icon.png',
-                                title: 'CrossWord CRX-Snip',
-                                message: 'Screen capture failed'
-                            });
-                        });
-                    } else {
-                        console.log('[CRX-SNIP] Rectangle selection cancelled');
-                        chrome.notifications.create({
-                            type: 'basic',
-                            iconUrl: 'icons/icon.png',
-                            title: 'CrossWord CRX-Snip',
-                            message: 'Rectangle selection cancelled'
-                        });
-                    }
-                });
-
-            } catch (error) {
-                console.error('[CRX-SNIP] Failed to select rectangle:', error);
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon.png',
-                    title: 'CrossWord CRX-Snip',
-                    message: 'Failed to select rectangle area'
-                });
-            }
-        }, 100);
-    };
-};
-
-// ============================================================================
-// UNIFIED MESSAGING SETUP
-// ============================================================================
-
-// Set up unified messaging handlers if in CRX environment
-if (isInCrxEnvironment) {
-    Promise.try(async () => {
-        const popupChannel = await getPopupModule();
-        if (!popupChannel) {
-            console.error('[Popup] Popup runtime module not available');
-        }
-
-        // Register handlers for async processing updates via unified messaging
-        popupChannel?.request?.('registerHandler', ['processingStarted', async (data: any) => {
-            console.log('[Popup] Processing started:', data);
-            // Could update popup UI to show processing status
-        }]);
-
-        popupChannel?.request?.('registerHandler', ['processingComplete', async (data: any) => {
-            console.log('[Popup] Processing completed:', data);
-            // Could update popup with results or show completion notification
-        }]);
-
-        popupChannel?.request?.('registerHandler', ['processingError', async (data: any) => {
-            console.error('[Popup] Processing error:', data);
-            // Could show error notification in popup
-        }]);
-
-        popupChannel?.request?.('registerHandler', ['processingProgress', async (data: any) => {
-            console.log('[Popup] Processing progress:', data);
-            // Could update progress indicator in popup
-        }]);
-    });
-}
-
-//
-implementSettings();
-implementActions();
+initSnipActions();
+initCopyButtons();
+initMarkdownViewer();
+initSettingsUI();

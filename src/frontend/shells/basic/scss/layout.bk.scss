@@ -1,9 +1,6 @@
 /* ai-refactor: optimized/refactored at 2026-02-13T00:24:39Z */
 @layer tokens, base, layout, components, utilities, overrides;
 
-@layer tokens {
-}
-
 @layer base {
     @keyframes spin {
         to {
@@ -315,13 +312,6 @@
 
     .file-input {
         display: none;
-    }
-
-    @media (max-width: 768px) {
-        .status {
-            padding: var(--space-xs) var(--space-md);
-            font-size: 11px;
-        }
     }
 }
 
@@ -999,6 +989,11 @@
             .btn {
                 justify-content: center;
             }
+        }
+
+        .status {
+            padding: var(--space-xs) var(--space-md);
+            font-size: 11px;
         }
 
         .modal-content {

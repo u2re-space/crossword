@@ -17,18 +17,18 @@ import { createMessageWithOverrides } from "@rs-com/core/UnifiedMessaging";
 import type { ContentContext, ContentType } from "@rs-com/core/UnifiedAIConfig";
 
 // Import lazy loading utility
-import { getCachedComponent } from "../../../../core/modules/LazyLoader";
+import { getCachedComponent } from "@rs-core/modules/LazyLoader";
 
 // Import file handling components that are always needed
-import { createFileHandler } from "../../../../core/storage/FileHandling";
-import { getSpeechPrompt } from "../../../../core/modules/VoiceInput";
-import { createTemplateManager } from "../../../../core/modules/TemplateManager";
+import { createFileHandler } from "@rs-core/storage/FileHandling";
+import { getSpeechPrompt } from "@rs-core/modules/VoiceInput";
+import { createTemplateManager } from "@rs-core/modules/TemplateManager";
 import { CHANNELS } from "@rs-frontend/pwa/sw-handling";
 import { loadAsAdopted } from "fest/dom";
 import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
-import { downloadMarkdownAsDocx } from "../../../../core/document/DocxExport";
+import { downloadMarkdownAsDocx } from "@rs-core/document/DocxExport";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { extractCSS, recognizeByInstructions, solveAndAnswer, writeCode } from "@rs-com/service/service/RecognizeData";
 import { loadSettings } from "@rs-com/config/Settings";
@@ -940,7 +940,7 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
             // Lazy load markdown viewer
             const viewerModule = await getCachedComponent(
                 'markdown-viewer',
-                () => import('../../views/viewer/MarkdownViewer'),
+                () => import('@rs-frontend/views/viewer'),
                 { componentName: 'MarkdownViewer' }
             );
 
@@ -1665,8 +1665,8 @@ export const mountBasicApp = (mountElement: HTMLElement, options: BasicAppOption
                 content.innerHTML = '<div class="component-loading"><div class="loading-spinner"></div><span>Loading Settings...</span></div>';
 
                 const settingsModule = await loadComponent('settings',
-                    () => import('../../../views/settings/Settings'),
-                    { componentName: 'Settings', cssPath: '../scss/settings/Settings.scss' }
+                    () => import('@rs-frontend/views/settings'),
+                    { componentName: 'Settings' }
                 );
 
                 const settingsEl = settingsModule.component.createSettingsView({

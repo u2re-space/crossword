@@ -16,7 +16,7 @@ import { H } from "fest/lure";
 import type { ShellId, ShellLayoutConfig } from "../types";
 
 // @ts-ignore - SCSS import
-import style from "./raw.scss?inline";
+import style from "./scss/raw.scss?inline";
 
 // ============================================================================
 // RAW SHELL IMPLEMENTATION

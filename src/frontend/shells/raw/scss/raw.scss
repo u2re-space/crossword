@@ -5,24 +5,21 @@
 @layer shell.tokens, shell.base, shell.components, shell.utilities, shell.overrides;
 
 @layer shell.tokens {
-    :where(:root, .app-shell, .app-shell[data-style="basic"]):has(.app-shell, .app-shell[data-style="basic"]) {
+    :root:has(.app-shell, .app-shell[data-style="raw"]),
+    :where(.app-shell, .app-shell[data-style="raw"]) {
         color-scheme: light dark;
 
         /* colors */
-        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
-        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
-        --shell-nav-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
-        --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
-        --shell-nav-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
-        --shell-btn-hover: light-dark(var(--color-surface-container-highest), var(--color-surface-container-highest));
-        --shell-btn-active-bg: color-mix(in oklab, var(--color-primary) 12%, transparent);
-        --shell-btn-active-fg: light-dark(var(--color-primary), var(--color-primary));
-        --shell-status-bg: color-mix(
-            in oklab,
-            var(--color-surface, light-dark(#fafbfc, #1e293b)) 20%,
-            var(--color-on-surface, light-dark(#000000, #ffffff))
-        );
-        --shell-status-fg: light-dark(var(--color-on-primary), var(--color-on-primary));
+        --shell-bg: light-dark(var(--color-surface, var(--color-surface)), var(--color-surface, var(--color-surface)));
+        --shell-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
+        --shell-nav-bg: light-dark(var(--color-surface-container-high, var(--color-surface-container-high)), var(--color-surface-container-high, var(--color-surface-container-high)));
+        --shell-nav-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
+        --shell-nav-border: light-dark(var(--color-outline-variant, var(--color-outline-variant)), var(--color-outline-variant, var(--color-outline-variant)));
+        --shell-btn-hover: light-dark(var(--color-surface-container-highest, var(--color-surface-container-highest)), var(--color-surface-container-highest, var(--color-surface-container-highest)));
+        --shell-btn-active-bg: color-mix(in oklab, var(--color-primary, var(--color-primary)) 12%, transparent);
+        --shell-btn-active-fg: light-dark(var(--color-primary, var(--color-primary)), var(--color-primary, var(--color-primary)));
+        --shell-status-bg: color-mix(in oklab, var(--color-surface, var(--color-surface, light-dark(#fafbfc, #1e293b))) 20%, var(--color-on-surface, var(--color-on-surface, light-dark(#000000, #ffffff))));
+        --shell-status-fg: light-dark(var(--color-on-primary, var(--color-on-primary)), var(--color-on-primary, var(--color-on-primary)));
 
         /* layout */
         --shell-nav-height: var(--shell-nav-height-base, 48px);
@@ -31,7 +28,7 @@
         --shell-padding: 0;
     }
 
-    :is(:root, html):has([data-shell="basic"][data-theme="dark"]) {
+    :is(:root, html):has([data-shell="raw"][data-theme="dark"]) {
         --shell-bg: var(--color-surface);
         --shell-fg: var(--color-on-surface);
         --shell-nav-bg: var(--color-surface-container-high);
@@ -41,7 +38,7 @@
 }
 
 @layer shell.base {
-    :where(.app-shell, .app-shell[data-style="basic"]) {
+    :where(.app-shell, .app-shell[data-style="raw"]) {
         position: absolute;
         inset: -1;
         display: grid;
@@ -79,7 +76,7 @@
 }
 
 @layer shell.components {
-    :where(.app-shell, .app-shell[data-style="basic"]) {
+    :where(.app-shell, .app-shell[data-style="raw"]) {
         .loading-spinner {
             inline-size: 32px;
             block-size: 32px;
@@ -276,6 +273,18 @@
             transform: translate(-50%, 0);
         }
     }
+
+    @keyframes shell-status-fade-in {
+        from {
+            opacity: 0;
+            transform: translate(-50%, 0.5rem);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+    }
 }
 
 @layer shell.overrides {
@@ -286,7 +295,7 @@
     }
 
     @media (max-width: 480px) {
-        :where(.app-shell, .app-shell[data-style="basic"]) {
+        :where(.app-shell, .app-shell[data-style="raw"]) {
             --shell-nav-height: 48px;
         }
 
@@ -301,6 +310,11 @@
     }
 
     @media print {
+        .app-shell {
+            background: white;
+            color: black;
+        }
+
         .app-shell__content {
             overflow: visible;
         }
@@ -308,6 +322,76 @@
         .app-shell__nav,
         .app-shell__status {
             display: none !important;
+        }
+    }
+
+    :is(html, body):has([data-shell="raw"]) {
+        --shell-nav-height: 0;
+        --shell-content-padding: 0;
+        --shell-sidebar-width: 0;
+        --shell-status-height: 0;
+
+        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+    }
+
+    :root:has(.app-shell) {
+        & .app-shell {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--shell-bg, var(--color-surface, #ffffff));
+            color: var(--shell-fg, var(--color-on-surface, #1a1a1a));
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+    }
+
+    .app-shell__content {
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: auto hidden;
+        scroll-behavior: smooth;
+        scrollbar-width: thin;
+        scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
+
+        &::-webkit-scrollbar {
+            inline-size: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3));
+            border-radius: 3px;
+        }
+
+        & > * {
+            flex: 1;
+        }
+    }
+
+    .app-shell__status {
+        position: fixed;
+        inset-block-end: 1rem;
+        inset-inline-start: 50%;
+        z-index: 9999;
+        transform: translateX(-50%);
+        padding: 0.75rem 1.5rem;
+        background-color: var(--shell-status-bg, rgba(0, 0, 0, 0.8));
+        color: var(--shell-status-fg, #ffffff);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        animation: shell-status-fade-in 0.2s ease-out;
+
+        &:empty,
+        &[hidden] {
+            display: none;
         }
     }
 }

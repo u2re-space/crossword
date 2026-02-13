@@ -1,4 +1,4 @@
-import frontend from "../../frontend/main/frontend-entry";
+import crxFrontend from "../../frontend/main/crx-entry";
 
 const mount = document.getElementById("app") as HTMLElement | null;
-frontend(mount ?? document.body, { initialView: "settings" });
+crxFrontend(mount ?? document.body, { initialView: "settings" });

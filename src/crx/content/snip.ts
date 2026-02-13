@@ -1,349 +1,212 @@
-import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/main/overlay";
+/**
+ * CrossWord — Snip Module (Content Script)
+ *
+ * Provides the selection overlay + AI capture pipeline.
+ * Modes: recognize | solve | code | css | custom
+ *
+ * Triggered by:
+ *  - Context menu (START_SNIP, SOLVE_AND_ANSWER, WRITE_CODE, EXTRACT_CSS, CUSTOM_INSTRUCTION)
+ *  - Keyboard shortcuts (Ctrl+Shift+X/Y forwarded by SW)
+ */
 
-// Import CRX runtime channel module for inline coding style
-import { createRuntimeChannelModule } from '../shared/runtime';
+import { getBox, getHint, getOverlay, getSizeBadge, hideSelection, showSelection, showToast } from "@rs-frontend/main/overlay";
+import { createRuntimeChannelModule } from "../shared/runtime";
 import { registerCrxHandler } from "../../com/core/CrxMessaging";
 
-// Check if we're in CRX environment
-const isInCrxEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-// Create runtime module for inline usage
+export interface CropArea { x: number; y: number; width: number; height: number }
+export type SnipMode = "recognize" | "solve" | "code" | "css" | "custom";
+
+// ---------------------------------------------------------------------------
+// CRX environment & runtime module
+// ---------------------------------------------------------------------------
+
+const isInCrx = typeof chrome !== "undefined" && chrome.runtime?.id;
+
 let crxModule: any = null;
 const getCrxModule = async () => {
-    if (!crxModule && isInCrxEnvironment) {
-        crxModule = await createRuntimeChannelModule('crx-content-script');
-    }
+    if (!crxModule && isInCrx) crxModule = await createRuntimeChannelModule("crx-content-script");
     return crxModule;
 };
 
-// crop area for screen capture
-export interface cropArea {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+// ---------------------------------------------------------------------------
+// Mode metadata
+// ---------------------------------------------------------------------------
 
-export type SnipMode = "recognize" | "solve" | "code" | "css" | "custom";
-
-let __snipInjected = false;
-let __snipActive = false;
-let __currentMode: SnipMode = "recognize";
-let __customInstructionId: string | null = null;
-let __customInstructionLabel: string | null = null;
-
-// Map mode to message type
-const getModeMessageType = (mode: SnipMode): string => {
-    switch (mode) {
-        case "solve": return "CAPTURE_SOLVE";
-        case "code": return "CAPTURE_CODE";
-        case "css": return "CAPTURE_CSS";
-        case "custom": return "CAPTURE_CUSTOM";
-        default: return "CAPTURE";
-    }
+const MODE_META: Record<SnipMode, { msgType: string; name: string; error: string; hint: string; action: string }> = {
+    recognize: { msgType: "CAPTURE", name: "Recognition", error: "No data recognized", hint: "Select area. Esc — cancel", action: "Recognizing with AI..." },
+    solve:     { msgType: "CAPTURE_SOLVE", name: "Solving/Answering", error: "Could not solve/answer", hint: "Select problem/question. Esc — cancel", action: "Solving / Answering..." },
+    code:      { msgType: "CAPTURE_CODE", name: "Code generation", error: "Could not generate code", hint: "Select code request. Esc — cancel", action: "Generating code..." },
+    css:       { msgType: "CAPTURE_CSS", name: "CSS extraction", error: "Could not extract CSS", hint: "Select UI to extract CSS. Esc — cancel", action: "Extracting CSS styles..." },
+    custom:    { msgType: "CAPTURE_CUSTOM", name: "Custom instruction", error: "Custom instruction failed", hint: "Select area. Esc — cancel", action: "Processing..." },
 };
 
-// Get user-friendly mode name for messages
-const getModeName = (mode: SnipMode): string => {
-    if (mode === "custom" && __customInstructionLabel) {
-        return __customInstructionLabel;
-    }
-    switch (mode) {
-        case "solve": return "Solving/Answering";
-        case "code": return "Code generation";
-        case "css": return "CSS extraction";
-        case "custom": return "Custom instruction";
-        default: return "Recognition";
-    }
-};
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 
-// Get error message for mode
-const getModeErrorMessage = (mode: SnipMode): string => {
-    if (mode === "custom" && __customInstructionLabel) {
-        return `${__customInstructionLabel} failed`;
-    }
-    switch (mode) {
-        case "solve": return "Could not solve/answer";
-        case "code": return "Could not generate code";
-        case "css": return "Could not extract CSS";
-        case "custom": return "Custom instruction failed";
-        default: return "No data recognized";
-    }
-};
+let injected = false;
+let active = false;
+let currentMode: SnipMode = "recognize";
+let customInstructionId: string | null = null;
+let customInstructionLabel: string | null = null;
 
-// use chrome API to capture tab visible area
-// Note: Toast for successful copy is handled by clipboard-handler.ts
-// We only show toasts here for errors/failures
-const captureTab = async (rect?: cropArea, mode: SnipMode = "recognize") => {
-    const messageType = getModeMessageType(mode);
-    const payload: any = { type: messageType, rect };
+// ---------------------------------------------------------------------------
+// Capture helper
+// ---------------------------------------------------------------------------
 
-    // Include custom instruction ID for custom mode
-    if (mode === "custom" && __customInstructionId) {
-        payload.instructionId = __customInstructionId;
-    }
+const captureTab = async (rect?: CropArea, mode: SnipMode = "recognize") => {
+    if (!isInCrx) return Promise.reject(new Error("Not in CRX environment"));
 
-    // Use fest/uniform CRX messaging for reliability
-    if (!isInCrxEnvironment) {
-        console.warn('[Snip] Not in CRX environment');
-        return Promise.reject(new Error('Chrome extension messaging not available'));
-    }
-
-    // Use CRX runtime module for inline coding style
     const module = await getCrxModule();
-    if (!module) {
-        throw new Error('CRX runtime module not available');
-    }
+    if (!module) throw new Error("CRX runtime module not available");
 
-    console.log(`[Snip] Starting capture with rect:`, rect, `mode:`, mode);
+    const meta = MODE_META[mode];
+    const payload: any = { type: meta.msgType, rect };
+    if (mode === "custom" && customInstructionId) payload.instructionId = customInstructionId;
 
-    // First try just capturing screenshot to test if capture works
-    console.log(`[Snip] Testing screenshot capture...`);
-    const screenshot = await module.captureScreenshot(rect);
-    console.log(`[Snip] Screenshot result:`, {
-        ok: screenshot?.ok,
-        hasImageData: !!screenshot?.imageData,
-        imageDataLength: screenshot?.imageData?.length
-    });
-
-    // Inline coding style: await module.capture(rect)
     const result = await module.capture(rect, mode);
 
-    console.log(`[Snip] ${mode} result:`, result);
-
-    // Show toast for errors
     if (!result?.ok) {
-        if (result?.error) {
-            const shortError = result.error.length > 50 ? result.error.slice(0, 50) + "..." : result.error;
-            showToast(shortError);
-            console.error(`[Snip] ${mode} error:`, result.error);
-        } else {
-            showToast(getModeErrorMessage(mode));
-        }
-    } else if (result?.ok && (!result?.data || result.data === '')) {
-        // Success but no data - this indicates the AI didn't find text
-        console.warn(`[Snip] ${mode} succeeded but no text found in image`);
-        showToast(`No text found in selected area`);
+        showToast(result?.error ? (result.error.length > 50 ? result.error.slice(0, 50) + "..." : result.error) : meta.error);
+    } else if (!result.data) {
+        showToast("No text found in selected area");
     }
 
     return result;
 };
 
-// register message listener and export startSnip
-const initSnip = () => {
-    if (__snipInjected) return;
-    __snipInjected = true;
-
-    chrome.runtime.onMessage.addListener((msg) => {
-        if (msg?.type === "START_SNIP") {
-            startSnip("recognize");
-        }
-        if (msg?.type === "SOLVE_AND_ANSWER" || msg?.type === "SOLVE_EQUATION" || msg?.type === "ANSWER_QUESTION") {
-            startSnip("solve");
-        }
-        if (msg?.type === "WRITE_CODE") {
-            startSnip("code");
-        }
-        if (msg?.type === "EXTRACT_CSS") {
-            startSnip("css");
-        }
-        // Handle custom instruction from context menu
-        if (msg?.type === "CUSTOM_INSTRUCTION" && msg?.instructionId) {
-            startSnip("custom", msg.instructionId, msg.label);
-        }
-    });
-};
+// ---------------------------------------------------------------------------
+// Snip activation
+// ---------------------------------------------------------------------------
 
 export function startSnip(mode: SnipMode = "recognize", instructionId?: string, instructionLabel?: string) {
-    if (__snipActive) return;
+    if (active) return;
 
-    __currentMode = mode;
-    __customInstructionId = instructionId || null;
-    __customInstructionLabel = instructionLabel || null;
+    currentMode = mode;
+    customInstructionId = instructionId || null;
+    customInstructionLabel = instructionLabel || null;
 
-    // get DOM elements
     const overlay = getOverlay();
     const box = getBox();
     const hint = getHint();
     const sizeBadge = getSizeBadge();
 
-    if (!overlay || !box) {
-        console.warn("Snip overlay not ready");
-        return;
-    }
+    if (!overlay || !box) { console.warn("[Snip] overlay not ready"); return; }
 
     let startX = 0, startY = 0, currX = 0, currY = 0, dragging = false;
 
-    const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-            e.preventDefault();
-            e.stopPropagation();
-            cleanup();
-        }
-    };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cleanup(); } };
 
     const onMouseDown = (e: MouseEvent) => {
-        if (e.button !== 0 || !__snipActive) return;
-        e.preventDefault();
-        e.stopPropagation();
-
+        if (e.button !== 0 || !active) return;
+        e.preventDefault(); e.stopPropagation();
         dragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        currX = startX;
-        currY = startY;
+        startX = e.clientX; startY = e.clientY; currX = startX; currY = startY;
         updateBox();
-
-        // hide hint when drawing starts
         if (hint) hint.textContent = "";
         if (sizeBadge) sizeBadge.textContent = "";
     };
 
-    const onMouseMove = (e: MouseEvent) => {
-        if (!dragging) return;
-        e.preventDefault();
-        currX = e.clientX;
-        currY = e.clientY;
-        updateBox();
-    };
+    const onMouseMove = (e: MouseEvent) => { if (!dragging) return; e.preventDefault(); currX = e.clientX; currY = e.clientY; updateBox(); };
 
     const onMouseUp = async (e: MouseEvent) => {
         if (!dragging) return;
         e.preventDefault();
         dragging = false;
 
-        const x = Math.min(startX, currX);
-        const y = Math.min(startY, currY);
-        const w = Math.abs(currX - startX);
-        const h = Math.abs(currY - startY);
-
+        const x = Math.min(startX, currX), y = Math.min(startY, currY);
+        const w = Math.abs(currX - startX), h = Math.abs(currY - startY);
         cleanup();
 
-        if (w < 2 || h < 2) {
-            showToast("Selection is too small");
-            return;
-        }
+        if (w < 2 || h < 2) { showToast("Selection is too small"); return; }
 
-        const actionTexts: Record<SnipMode, string> = {
-            recognize: "Recognizing with AI...",
-            solve: "Solving / Answering...",
-            code: "Generating code...",
-            css: "Extracting CSS styles...",
-            custom: __customInstructionLabel ? `${__customInstructionLabel}...` : "Processing..."
-        };
-        showToast(actionTexts[__currentMode] || "Processing...");
+        const meta = MODE_META[currentMode];
+        const actionText = currentMode === "custom" && customInstructionLabel ? `${customInstructionLabel}...` : meta.action;
+        showToast(actionText);
 
         try {
-            const result = await captureTab({ x, y, width: w, height: h }, __currentMode)?.catch?.(err => {
-                console.warn(err);
-                showToast(`${getModeName(__currentMode)} failed`);
-                return null;
-            });
-            // captureTab already shows success/error toast
-            if (!result?.success) {
-                console.warn("Capture result:", typeof result == "string" ? result : JSON.stringify(result));
-            }
-        } catch (err) {
-            console.warn(err);
-            showToast(`${getModeName(__currentMode)} failed`);
-        }
+            const result = await captureTab({ x, y, width: w, height: h }, currentMode).catch(() => null);
+            if (!result?.success) { /* captureTab already shows toast */ }
+        } catch { showToast(`${meta.name} failed`); }
     };
 
-    const onMouseCancel = () => {
-        if (!dragging) return;
-        dragging = false;
-        cleanup();
-    };
+    const onCancel = () => { if (dragging) { dragging = false; cleanup(); } };
 
     function updateBox() {
-        const x = Math.min(startX, currX);
-        const y = Math.min(startY, currY);
-        const w = Math.abs(currX - startX);
-        const h = Math.abs(currY - startY);
-
-        box.style.left = `${x}px`;
-        box.style.top = `${y}px`;
-        box.style.width = `${w}px`;
-        box.style.height = `${h}px`;
-
+        const x = Math.min(startX, currX), y = Math.min(startY, currY);
+        const w = Math.abs(currX - startX), h = Math.abs(currY - startY);
+        box.style.left = `${x}px`; box.style.top = `${y}px`;
+        box.style.width = `${w}px`; box.style.height = `${h}px`;
         if (sizeBadge) {
             sizeBadge.textContent = `${Math.round(w)} × ${Math.round(h)}`;
-            sizeBadge.style.left = `${w}px`;
-            sizeBadge.style.top = `${h}px`;
-
-            if (!sizeBadge.isConnected) {
-                box.appendChild(sizeBadge);
-            }
+            sizeBadge.style.left = `${w}px`; sizeBadge.style.top = `${h}px`;
+            if (!sizeBadge.isConnected) box.appendChild(sizeBadge);
         }
     }
 
     function cleanup() {
-        __snipActive = false;
-        dragging = false;
-
-        // remove all event listeners
+        active = false; dragging = false;
         document.removeEventListener("keydown", onKeyDown, true);
         overlay.removeEventListener("mousedown", onMouseDown);
         overlay.removeEventListener("mousemove", onMouseMove);
         overlay.removeEventListener("mouseup", onMouseUp);
-        document.removeEventListener("mousecancel", onMouseCancel, true);
-
+        document.removeEventListener("mousecancel", onCancel, true);
         hideSelection();
     }
 
-    // add event listeners to overlay (not document) for mouse events
+    // Attach
     document.addEventListener("keydown", onKeyDown, true);
     overlay.addEventListener("mousedown", onMouseDown);
     overlay.addEventListener("mousemove", onMouseMove);
     overlay.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("mousecancel", onMouseCancel, true);
+    document.addEventListener("mousecancel", onCancel, true);
 
-    // activate snip mode
-    __snipActive = true;
+    active = true;
     showSelection();
 
-    const hintTexts: Record<SnipMode, string> = {
-        recognize: "Select area. Esc — cancel",
-        solve: "Select problem/question. Esc — cancel",
-        code: "Select code request. Esc — cancel",
-        css: "Select UI to extract CSS. Esc — cancel",
-        custom: __customInstructionLabel ? `Select for "${__customInstructionLabel}". Esc — cancel` : "Select area. Esc — cancel"
-    };
-    if (hint) hint.textContent = hintTexts[__currentMode] || "Select area. Esc — cancel";
+    const hintText = currentMode === "custom" && customInstructionLabel
+        ? `Select for "${customInstructionLabel}". Esc — cancel`
+        : MODE_META[currentMode].hint;
+    if (hint) hint.textContent = hintText;
     if (sizeBadge) sizeBadge.textContent = "";
 }
 
-// ============================================================================
-// CRX MESSAGING HANDLERS
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Message listener (from SW / context menu)
+// ---------------------------------------------------------------------------
 
-// Only register CRX messaging handlers if in CRX environment
-if (isInCrxEnvironment) {
-    // Register handlers for async processing updates
-    registerCrxHandler('processingStarted', (data) => {
-        console.log('[Snip] Processing started:', data);
-        // Update UI to show processing indicator
-        showToast(`Starting ${getModeName(__currentMode)}...`, 'info');
-    });
+const initSnip = () => {
+    if (injected) return;
+    injected = true;
 
-    registerCrxHandler('processingComplete', (data) => {
-        console.log('[Snip] Processing completed:', data);
-        // Processing completion is handled by the main response handler
+    chrome.runtime.onMessage.addListener((msg) => {
+        if (msg?.type === "START_SNIP") startSnip("recognize");
+        if (msg?.type === "SOLVE_AND_ANSWER" || msg?.type === "SOLVE_EQUATION" || msg?.type === "ANSWER_QUESTION") startSnip("solve");
+        if (msg?.type === "WRITE_CODE") startSnip("code");
+        if (msg?.type === "EXTRACT_CSS") startSnip("css");
+        if (msg?.type === "CUSTOM_INSTRUCTION" && msg?.instructionId) startSnip("custom", msg.instructionId, msg.label);
     });
+};
 
-    registerCrxHandler('processingError', (data) => {
-        console.error('[Snip] Processing error:', data);
-        showToast(`Processing failed: ${data.error}`, 'error');
-    });
+// ---------------------------------------------------------------------------
+// CRX messaging handlers (progress/error feedback)
+// ---------------------------------------------------------------------------
 
-    registerCrxHandler('processingProgress', (data) => {
-        console.log('[Snip] Processing progress:', data);
-        // Could update a progress bar here
-        if (data.progress > 0 && data.progress < 100) {
-            showToast(`${getModeName(__currentMode)}: ${data.progress}%`, 'info');
-        }
+if (isInCrx) {
+    registerCrxHandler("processingStarted", () => showToast(`Starting ${MODE_META[currentMode].name}...`));
+    registerCrxHandler("processingError", (data: any) => showToast(`Processing failed: ${data.error}`, "error"));
+    registerCrxHandler("processingProgress", (data: any) => {
+        if (data.progress > 0 && data.progress < 100) showToast(`${MODE_META[currentMode].name}: ${data.progress}%`);
     });
+    registerCrxHandler("processingComplete", () => { /* handled by main response */ });
 }
 
-// initialize on module load
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+
 initSnip();

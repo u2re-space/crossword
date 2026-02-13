@@ -137,11 +137,15 @@ export {
 } from "./overlay";
 
 // ============================================================================
-// FRONTEND ENTRY POINT
+// FRONTEND ENTRY POINTS
 // ============================================================================
 
 export { default as frontend, frontend as mountFrontend } from "./frontend-entry";
 export type { BasicAppOptions } from "./frontend-entry";
+
+// CRX-specific entry (raw shell, no toolbar/tabs)
+export { default as crxFrontend, crxFrontend as mountCrxFrontend } from "./crx-entry";
+export type { CrxAppOptions } from "./crx-entry";
 
 // ============================================================================
 // APP INITIALIZATION

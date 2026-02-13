@@ -84,8 +84,10 @@ export type {
 // Default boot loader
 export { default as bootLoader } from "./main";
 
-// Frontend entry point (for CRX and direct mounting)
+// Frontend entry points
 export { frontend, mountFrontend } from "./main";
+// CRX-specific entry (raw shell, no toolbar/tabs)
+export { crxFrontend, mountCrxFrontend } from "./main";
 
 // ============================================================================
 // PWA - Progressive Web App features

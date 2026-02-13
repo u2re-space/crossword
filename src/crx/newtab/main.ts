@@ -1,4 +1,4 @@
-import frontend from "../../frontend/main/frontend-entry";
+import crxFrontend from "../../frontend/main/crx-entry";
 import { loadSettings } from "@rs-com/config/Settings";
 
 const mount = document.getElementById("app") as HTMLElement | null;
@@ -14,7 +14,7 @@ const renderDisabled = () => {
     h.textContent = "New Tab Page is disabled";
     h.style.cssText = "font-size:18px;font-weight:700;";
     const p = document.createElement("div");
-    p.textContent = "Enable it in Extension Settings → “Enable New Tab Page (offline Basic)”.";
+    p.textContent = "Enable it in Extension Settings → \"Enable New Tab Page (offline Basic)\".";
     p.style.cssText = "opacity:0.9;line-height:1.4;";
     const btn = document.createElement("button");
     btn.textContent = "Open Extension Settings";
@@ -40,6 +40,7 @@ void loadSettings()
             renderDisabled();
             return;
         }
-        frontend(mount, { initialView: "markdown" });
+        // Raw shell — no toolbar, just the viewer
+        crxFrontend(mount, { initialView: "viewer" });
     })
     .catch(() => renderDisabled());

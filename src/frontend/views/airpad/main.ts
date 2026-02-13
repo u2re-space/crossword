@@ -4,7 +4,7 @@
 
 //
 import stylesheet from './main.scss?inline';
-import { registerSW } from 'virtual:pwa-register';
+import { initServiceWorker } from '@rs-frontend/pwa/sw-handling';
 
 //
 import { log, getBtnConnect } from './utils/utils';
@@ -201,7 +201,7 @@ function initLogOverlay() {
     requestIdleCallback(async () => {
     // PWA: register Service Worker (auto-update)
     try {
-        registerSW({
+        initServiceWorker({
             immediate: true,
             onRegistered() {
                 log('PWA: service worker registered');
