@@ -235,7 +235,7 @@
         min-block-size: 100%;
         max-block-size: none;
         overflow: hidden;
-        font-size: 1em;
+        font-size: 16px;
         text-align: start;
     }
 
@@ -266,7 +266,7 @@
             container-type: inline-size;
             contain: none;
             padding: 2rem;
-            font-size: 1em;
+            font-size: 16px;
             touch-action: manipulation;
             pointer-events: auto;
             user-select: text;
@@ -286,7 +286,7 @@
         background: var(--color-surface);
         color: var(--color-on-surface);
         font-family: var(--font-family-system);
-        font-size: var(--text-base);
+        font-size: var(--text-base, 16px);
         font-weight: var(--font-weight-normal);
         line-height: var(--leading-relaxed);
         box-shadow: var(--elev-1);

@@ -103,7 +103,7 @@
     .view-viewer__content {
         flex: 1;
         overflow-y: auto;
-        padding: 1.5rem 2rem;
+        padding: 0px;
 
         &.dragover {
             background-color: rgba(0, 122, 204, 0.05);
