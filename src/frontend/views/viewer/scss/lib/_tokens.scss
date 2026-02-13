@@ -7,4 +7,5 @@ $blockquote-margin-inline: config.md-config("blockquote", "margin-inline");
 $blockquote-padding-inline: config.md-config("blockquote", "padding-inline");
 $table-padding: config.md-config("table", "cell-padding");
 $img-max-width: config.md-config("media", "img-max-width");
-
+$md-roots: ".markdown-body, #markdown, md-view, #raw-md, .markdown-viewer, .print-view, .markdown-viewer-container .viewer-content .markdown-viewer-content, :host, .markdown-body, #markdown, md-view, #raw-md, .markdown-viewer, .print-view, .markdown-viewer-container .viewer-content .markdown-viewer-content";
+$selectors: $md-roots;

@@ -21,34 +21,36 @@
 }
 
 @mixin print-font-smoothing($mode: auto) {
-    @if $mode == never {
+    @if $mode ==never {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-    } @else {
+    }
+
+    @else {
         -webkit-font-smoothing: auto;
         -moz-osx-font-smoothing: auto;
     }
 }
 
 @mixin print-page-break($before: auto, $after: auto, $inside: auto) {
-    @if $before != auto {
+    @if $before !=auto {
         page-break-before: $before;
         break-before: $before;
     }
 
-    @if $after != auto {
+    @if $after !=auto {
         page-break-after: $after;
         break-after: $after;
     }
 
-    @if $inside != auto {
+    @if $inside !=auto {
         page-break-inside: $inside;
         break-inside: $inside;
     }
 }
 
 @mixin md-vars($mode: auto) {
-    @if $mode == auto {
+    @if $mode ==auto {
         --md-fg-default: #{config.md-light-dark("text")};
         --md-fg-muted: #{config.md-light-dark("text-muted")};
         --md-fg-accent: #{config.md-light-dark("accent")};
@@ -57,7 +59,9 @@
         --md-bg-code: #{config.md-light-dark("code-bg")};
         --md-border-default: #{config.md-light-dark("border")};
         --md-border-subtle: #{config.md-light-dark("border-subtle")};
-    } @else {
+    }
+
+    @else {
         --md-fg-default: #{config.md-color("text", $mode)};
         --md-fg-muted: #{config.md-color("text-muted", $mode)};
         --md-fg-accent: #{config.md-color("accent", $mode)};
@@ -102,6 +106,7 @@
    Tokens
    =========================== */
 @layer tokens {
+
     :root:has(.print-view),
     .print-view {
         --print-font-family: "Times New Roman", "Times", "Liberation Serif", "Noto Serif", serif;
@@ -234,29 +239,35 @@
     }
 
     :where(#{tokens.$selectors}) {
-        position: relative;
         display: flex;
-        flex: 1;
         flex-direction: column;
         min-height: 100%;
         max-height: 100%;
+        overflow: hidden;
+        background: var(--color-surface-container);
+        box-shadow: var(--elev-1);
+        transition: all var(--motion-normal);
+
+        position: relative;
+        flex: 1;
         overflow: auto;
-        padding: var(--space-2xl) var(--space-xl);
         background: var(--color-surface);
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-outline-variant) transparent;
+
+        min-height: 100%;
+        padding: var(--space-2xl) var(--space-xl);
+        overflow-wrap: break-word;
+        word-wrap: break-word;
         color: var(--color-on-surface);
+        line-height: var(--leading-relaxed);
         font-family: var(--font-family-system);
         font-size: var(--text-base);
         font-weight: var(--font-weight-normal);
-        line-height: var(--leading-relaxed);
-        box-shadow: var(--elev-1);
-        transition: all var(--motion-normal);
-        overflow-wrap: break-word;
-        word-wrap: break-word;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-outline-variant) transparent;
+
 
         @container (max-width: 768px) {
             border-radius: var(--radius-lg);
@@ -289,6 +300,7 @@
                 background: var(--color-outline);
             }
         }
+
 
         h1,
         h2,
@@ -671,11 +683,11 @@
         li {
             word-wrap: break-all;
 
-            > p {
+            >p {
                 margin-block-start: 1rem;
             }
 
-            & + li {
+            &+li {
                 margin-block-start: 0.25em;
             }
         }
@@ -1054,6 +1066,7 @@
         .pl-en {
             color: #8250df;
         }
+
 
         h1,
         h2,
@@ -1444,6 +1457,7 @@
             background: color-mix(in oklab, var(--color-primary) 20%, transparent);
             color: var(--color-on-primary);
         }
+
     }
 
     @media (prefers-color-scheme: dark) {
@@ -1629,17 +1643,20 @@
                 break-after: avoid;
             }
 
-            & > *:first-child {
+            &>*:first-child {
                 margin-top: 0;
             }
 
-            & > *:last-child {
+            &>*:last-child {
                 margin-bottom: 0;
             }
         }
     }
 
+
+
     @media print {
+
         :root {
             --print-text-color: #f3f4f6;
             --print-bg: #111827;
@@ -1652,6 +1669,7 @@
             @include print-sizing;
         }
 
+
         :where(body, html, :root) {
             background-color: initial !important;
             font-family: var(--print-font-family);
@@ -1662,9 +1680,8 @@
             @include print-sizing;
 
             font-family: var(--print-font-family);
-            font-size: 12pt;
+            font-size: 16px;
             line-height: 1.4;
-            color: black;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             font-variant-emoji: text;
@@ -1675,13 +1692,23 @@
             border: none;
             box-shadow: none;
             background: white;
+            color: black;
+
+
+            padding: 0;
+            font-size: 12pt;
+            line-height: 1.4;
+            color: black;
+
 
             &::-webkit-scrollbar {
                 display: none;
             }
+
         }
 
         :where(#{tokens.$selectors}) {
+
             line-height: var(--leading-relaxed);
             color: var(--color-on-surface);
             background: var(--color-surface-container-low);
@@ -1697,6 +1724,9 @@
             th {
                 background: #374151;
             }
+
+
+
 
             h3 {
                 color: var(--color-on-surface);
@@ -1913,6 +1943,7 @@
                 }
             }
 
+
             .viewer-header {
                 display: none;
             }
@@ -1991,6 +2022,9 @@
                     background: var(--color-surface);
                 }
             }
+
+
+
 
             .print-view,
             .print-content {
@@ -2315,27 +2349,27 @@
                 overflow-wrap: break-word;
             }
 
-            & > * {
+            &>* {
                 page-break-inside: auto;
                 break-inside: auto;
             }
 
-            & > *:not(h1):not(h2):not(pre):not(table):not(img) {
+            &>*:not(h1):not(h2):not(pre):not(table):not(img) {
                 page-break-after: auto;
                 break-after: auto;
             }
 
-            & > h1:not(:first-child) {
+            &>h1:not(:first-child) {
                 page-break-before: always;
                 break-before: page;
                 margin-top: 0;
             }
 
-            & > *:first-child {
+            &>*:first-child {
                 margin-top: 0;
             }
 
-            & > *:last-child {
+            &>*:last-child {
                 margin-bottom: 0;
             }
 
@@ -2382,7 +2416,9 @@
                 white-space: pre-wrap !important;
                 word-break: break-word !important;
             }
+
         }
+
 
         :where(h1:first-child, h2) {
             break-before: auto;
@@ -2400,11 +2436,11 @@
             break-after: auto;
         }
 
-        h1 ~ h2:first-of-type {
+        h1~h2:first-of-type {
             break-before: auto;
         }
 
-        :where(table) + h2 {
+        :where(table)+h2 {
             break-before: recto;
         }
 
@@ -2417,7 +2453,7 @@
         }
 
         :where(hr, p, ol, li, table, blockquote, pre, code, strong) {
-            & + :where(h1, h2, h3, h4, h5, h6) {
+            &+ :where(h1, h2, h3, h4, h5, h6) {
                 break-before: recto;
             }
 
@@ -2433,11 +2469,11 @@
                 break-after: avoid-page;
             }
 
-            & + :where(p, ol, li, table, blockquote, strong) {
+            &+ :where(p, ol, li, table, blockquote, strong) {
                 break-before: avoid-page;
             }
 
-            & + hr + :where(h1, h2):has(+ :where(p, ol, ul, blockquote)) {
+            &+hr+ :where(h1, h2):has(+ :where(p, ol, ul, blockquote)) {
                 break-before: recto;
             }
         }
@@ -2460,5 +2496,8 @@
                 break-before: recto;
             }
         }
+
     }
+
+
 }

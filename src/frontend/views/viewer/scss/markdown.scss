@@ -8,14 +8,12 @@
  *   @use "./scss/markdown-veela" as veela;
  */
 
-@use "./scss/markdown-render";
-@use "./scss/markdown-print";
+@use "./markdown-viewer";
 @use "./lib/mixins" as mixins;
-
-$selectors: "#markdown, .markdown-body, #raw-md, .markdown-viewer";
+@use "./lib/tokens" as tokens;
 
 @layer markdown-page {
-    :host:has(:where(#{$selectors}):not([hidden])) {
+    :host:has(:where(#{tokens.$selectors}):not([hidden])) {
         &,
         * {
             box-sizing: border-box;

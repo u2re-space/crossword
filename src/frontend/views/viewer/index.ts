@@ -22,7 +22,7 @@ import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 import "fest/fl-ui/services/markdown-view/Markdown";
 
 // @ts-ignore - SCSS import
-import style from "./viewer.scss?inline";
+import style from "./index.scss?inline";
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
