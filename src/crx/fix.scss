@@ -82,3 +82,49 @@
         content-visibility: visible;
     }
 }
+
+@media print {
+
+    :where(body, html, :root)>*:not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown),
+    :where(body, html, :root) :where(#app, #raw-md),
+    :where(body, html, :root) :where(div, span, button, input, header, main, footer):not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown) {
+        display: contents !important;
+    }
+
+    .view-viewer,
+    .view-viewer__content,
+    [data-viewer-content] {
+        display: contents !important;
+    }
+
+    .view-viewer__toolbar, [data-viewer-toolbar] {
+        display: none !important;
+    }
+
+    button,
+    nav {
+        display: none !important;
+    }
+
+    body,
+    html,
+    :root {
+        background-color: initial;
+        color: initial;
+        padding: 0px;
+        margin: 0px;
+    }
+
+    body {
+        overflow: auto;
+    }
+
+    :where(*) {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}

@@ -1,3 +1,7 @@
+@use "../scss/_views.scss";
+@use "./Markdown.scss";
+
+//
 @layer viewer.tokens {
     :root:has([data-view="viewer"]),
     html:has([data-view="viewer"]) {
@@ -29,14 +33,6 @@
 
         /* units */
         --view-code-font-size: 0.9em;
-    }
-
-    @media (max-width: 768px) {
-        :root:has([data-view="viewer"]),
-        html:has([data-view="viewer"]) {
-            --view-padding: var(--space-4);
-            --view-prose-font-size: var(--text-sm);
-        }
     }
 }
 
@@ -115,128 +111,130 @@
             outline-offset: -8px;
         }
 
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6 {
-            margin-block-start: 1.5em;
-            margin-block-end: 0.5em;
-            font-weight: 600;
-            line-height: 1.25;
+        @media screen {
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                margin-block-start: 1.5em;
+                margin-block-end: 0.5em;
+                font-weight: 600;
+                line-height: 1.25;
 
-            &:first-child {
-                margin-block-start: 0;
+                &:first-child {
+                    margin-block-start: 0;
+                }
             }
-        }
 
-        h1 {
-            font-size: 2rem;
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            border-block-end: 1px solid var(--view-border);
-            padding-block-end: 0.3em;
-        }
-
-        h3 {
-            font-size: 1.25rem;
-        }
-
-        h4 {
-            font-size: 1rem;
-        }
-
-        p {
-            margin-block: 1em;
-            line-height: 1.6;
-        }
-
-        ul,
-        ol {
-            margin-block: 1em;
-            padding-inline-start: 2em;
-
-            & > li {
-                margin-block: 0.25em;
+            h1 {
+                font-size: 2rem;
             }
-        }
 
-        code {
-            font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
-            font-size: 0.875em;
-            padding: 0.2em 0.4em;
-            background-color: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
-            border-radius: 4px;
-        }
+            h2 {
+                font-size: 1.5rem;
+                border-block-end: 1px solid var(--view-border);
+                padding-block-end: 0.3em;
+            }
 
-        pre {
-            margin-block: 1em;
-            padding: 1rem;
-            background-color: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
-            border-radius: 8px;
-            overflow-x: auto;
+            h3 {
+                font-size: 1.25rem;
+            }
+
+            h4 {
+                font-size: 1rem;
+            }
+
+            p {
+                margin-block: 1em;
+                line-height: 1.6;
+            }
+
+            ul,
+            ol {
+                margin-block: 1em;
+                padding-inline-start: 2em;
+
+                & > li {
+                    margin-block: 0.25em;
+                }
+            }
 
             code {
-                padding: 0;
-                background: none;
-            }
-        }
-
-        blockquote {
-            margin-block: 1em;
-            margin-inline: 0;
-            padding-inline-start: 1rem;
-            border-inline-start: 4px solid rgba(0, 122, 204, 0.4);
-            color: var(--view-fg);
-            opacity: 0.8;
-            font-style: italic;
-        }
-
-        table {
-            inline-size: 100%;
-            border-collapse: collapse;
-            margin-block: 1em;
-
-            th,
-            td {
-                padding: 0.5rem 0.75rem;
-                border: 1px solid var(--view-border);
-                text-align: start;
+                font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+                font-size: 0.875em;
+                padding: 0.2em 0.4em;
+                background-color: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
+                border-radius: 4px;
             }
 
-            th {
+            pre {
+                margin-block: 1em;
+                padding: 1rem;
                 background-color: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
-                font-weight: 600;
+                border-radius: 8px;
+                overflow-x: auto;
+
+                code {
+                    padding: 0;
+                    background: none;
+                }
             }
 
-            tr:nth-child(even) {
-                background-color: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.02));
+            blockquote {
+                margin-block: 1em;
+                margin-inline: 0;
+                padding-inline-start: 1rem;
+                border-inline-start: 4px solid rgba(0, 122, 204, 0.4);
+                color: var(--view-fg);
+                opacity: 0.8;
+                font-style: italic;
             }
-        }
 
-        a {
-            color: var(--view-link-color);
-            text-decoration: none;
+            table {
+                inline-size: 100%;
+                border-collapse: collapse;
+                margin-block: 1em;
 
-            &:hover {
-                text-decoration: underline;
-                color: var(--view-link-hover);
+                th,
+                td {
+                    padding: 0.5rem 0.75rem;
+                    border: 1px solid var(--view-border);
+                    text-align: start;
+                }
+
+                th {
+                    background-color: light-dark(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.05));
+                    font-weight: 600;
+                }
+
+                tr:nth-child(even) {
+                    background-color: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.02));
+                }
             }
-        }
 
-        img {
-            max-inline-size: 100%;
-            block-size: auto;
-            border-radius: 8px;
-        }
+            a {
+                color: var(--view-link-color);
+                text-decoration: none;
 
-        hr {
-            margin-block: 2em;
-            border: none;
-            border-block-start: 1px solid var(--view-border);
+                &:hover {
+                    text-decoration: underline;
+                    color: var(--view-link-hover);
+                }
+            }
+
+            img {
+                max-inline-size: 100%;
+                block-size: auto;
+                border-radius: 8px;
+            }
+
+            hr {
+                margin-block: 2em;
+                border: none;
+                border-block-start: 1px solid var(--view-border);
+            }
         }
     }
 

@@ -1,7 +1,7 @@
-import frontend from "../../main/frontend-entry";
+import frontend from "@rs-frontend/main/frontend-entry";
 
 // Import CRX runtime channel module for inline coding style
-import { createRuntimeChannelModule } from '../../../crx/shared/runtime';
+import { createRuntimeChannelModule } from '@rs-crx/shared/runtime';
 
 // Create runtime module for inline usage
 let viewerModule: any = null;

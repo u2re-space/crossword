@@ -1,13 +1,28 @@
 import { H } from "fest/lure";
+import { loadAsAdopted } from "fest/dom";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
-import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
-import { getWorkCenterComm } from "../../../com/core/AppCommunicator";
+import { downloadMarkdownAsDocx } from "@rs-core/document/DocxExport";
+import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
 
 // Import component registration system
-import { registerComponent, initializeComponent } from "../../../com/core/UnifiedMessaging";
+import { registerComponent, initializeComponent } from "@rs-com/core/UnifiedMessaging";
+import { UIPhosphorIcon } from "fest/icon";
+console.log(UIPhosphorIcon);
+
+//
+import style from "./viewer.scss?inline";
+
+//
+try {
+    loadAsAdopted(style);
+    console.log("[MarkdownViewer] Style loaded");
+} catch (error) {
+    console.warn("[MarkdownViewer] Failed to load style:", error);
+}
+
 
 // Configure marked with KaTeX extension for HTML output with proper delimiters
 marked?.use?.(markedKatex({
@@ -481,6 +496,7 @@ export class MarkdownViewerElement extends HTMLElement {
 
         const viewerElement = this.viewer.render();
         this.append(viewerElement);
+        this.shadowRoot?.adoptedStyleSheets.push(style as CSSStyleSheet);
 
         console.log('[MarkdownViewerElement] Content created successfully');
     }

@@ -1,46 +1,15 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link href="../fix.scss" rel="stylesheet"/>
-    <title>Markdown Viewer</title>
-    <style>
-        html,
-        body {
-            inline-size: 100%;
-            block-size: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: transparent;
-        }
-        #app {
-            inline-size: 100%;
-            block-size: 100%;
-        }
-
-        #raw-md {
-            box-sizing: border-box;
-            position: absolute;
-            inset: 0;
-            margin: 0;
-            padding: 12px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            color: rgba(255, 255, 255, 0.92);
-            background: rgba(0, 0, 0, 0.35);
-            pointer-events: auto;
-        }
-    </style>
-  </head>
-  <body>
-    <pre id="raw-md"></pre>
-    <div id="app"></div>
-    <script type="module" src="./viewer.ts"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en" data-view="viewer">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="../fix.scss" rel="stylesheet">
+        <title>Markdown Viewer</title>
+        <link href="./viewer.css" rel="stylesheet">
+    </head>
+    <body>
+        <pre id="raw-md"></pre>
+        <div id="app" data-view="viewer"></div>
+        <script type="module" src="./viewer.ts"></script>
+    </body>
 </html>
-
-
