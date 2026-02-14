@@ -6,7 +6,7 @@
  * Uses the <md-view> web component for encapsulated rendering.
  */
 
-import { H } from "fest/lure";
+import { H, normalizeDataAsset, parseDataUrl, isBase64Like } from "fest/lure";
 import { ref, affected } from "fest/object";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
 import DOMPurify from "isomorphic-dompurify";
@@ -126,6 +126,9 @@ export class ViewerView implements View {
     private contentRef = ref("");
     private stateManager = createViewState<ViewerState>(STORAGE_KEY);
     private _sheet: CSSStyleSheet | null = null;
+    private pasteController: AbortController | null = null;
+    private isViewVisible = false;
+    private isPointerInView = false;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
@@ -354,6 +357,14 @@ export class ViewerView implements View {
 
         // Setup drag and drop
         if (content) {
+            content.addEventListener("mouseenter", () => {
+                this.isPointerInView = true;
+            });
+
+            content.addEventListener("mouseleave", () => {
+                this.isPointerInView = false;
+            });
+
             content.addEventListener("dragover", (e) => {
                 e.preventDefault();
                 (e.currentTarget as HTMLElement).classList.add("dragover");
@@ -371,9 +382,11 @@ export class ViewerView implements View {
         }
 
         // Setup paste handling
-        this.element.addEventListener("paste", (e) => {
-            this.handlePaste(e as ClipboardEvent);
-        });
+        this.pasteController?.abort();
+        this.pasteController = new AbortController();
+        document.addEventListener("paste", (e) => {
+            void this.handlePaste(e as ClipboardEvent);
+        }, { signal: this.pasteController.signal });
     }
 
     private handleOpen(): void {
@@ -499,15 +512,107 @@ export class ViewerView implements View {
         }
     }
 
-    private handlePaste(e: ClipboardEvent): void {
-        const text = e.clipboardData?.getData("text/plain");
-        if (text && text.trim()) {
-            const target = e.target as HTMLElement;
-            if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-                this.setContent(text);
-                this.showMessage("Content pasted");
+    private async handlePaste(e: ClipboardEvent): Promise<void> {
+        if (!this.shouldHandlePaste(e)) return;
+        if (!e.clipboardData) return;
+
+        const itemFiles = Array.from(e.clipboardData.items || [])
+            .map((item) => item.kind === "file" && item.getAsFile ? item.getAsFile() : null)
+            .filter((file): file is File => !!file);
+        const files = itemFiles.length > 0 ? itemFiles : Array.from(e.clipboardData.files || []);
+
+        if (files.length > 0) {
+            const textFile = files.find((file) => this.isTextLikeFile(file)) || files[0];
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                if (!this.isTextLikeFile(textFile)) {
+                    this.showMessage(`Unsupported file type for viewer: ${textFile.name || textFile.type || "binary file"}`);
+                    return;
+                }
+                const content = await textFile.text();
+                this.setContent(content, textFile.name);
+                this.showMessage(`Opened ${textFile.name || "pasted document"}`);
+                return;
+            } catch (error) {
+                console.error("[ViewerView] Failed to read pasted file:", error);
+                this.showMessage("Failed to read pasted file");
+                return;
             }
         }
+
+        const text = e.clipboardData.getData("text/plain");
+        if (!text || !text.trim()) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            const raw = text.trim();
+            if (parseDataUrl(raw) || isBase64Like(raw)) {
+                const asset = await normalizeDataAsset(raw, {
+                    namePrefix: "pasted-doc",
+                    uriComponent: true
+                });
+                if (!this.isTextLikeFile(asset.file)) {
+                    this.showMessage("Pasted data is not a text/markdown document");
+                    return;
+                }
+                const content = await asset.file.text();
+                this.setContent(content, asset.file.name);
+                this.showMessage("Opened pasted encoded document");
+                return;
+            }
+
+            this.setContent(raw);
+            this.showMessage("Content pasted");
+        } catch (error) {
+            console.error("[ViewerView] Failed to process pasted data:", error);
+            this.showMessage("Failed to process pasted content");
+        }
+    }
+
+    private isTextLikeFile(file: File): boolean {
+        const name = (file.name || "").toLowerCase();
+        const type = (file.type || "").toLowerCase();
+
+        if (!type || type.startsWith("text/")) return true;
+        if (type.includes("markdown") || type.includes("json") || type.includes("xml")) return true;
+
+        return [
+            ".md",
+            ".markdown",
+            ".txt",
+            ".json",
+            ".xml",
+            ".html",
+            ".htm",
+            ".css",
+            ".js",
+            ".ts",
+            ".tsx",
+            ".yml",
+            ".yaml"
+        ].some((ext) => name.endsWith(ext));
+    }
+
+    private shouldHandlePaste(e: ClipboardEvent): boolean {
+        if (!this.element || !this.isViewVisible) return false;
+        if (document.visibilityState !== "visible") return false;
+        if (this.shellContext?.navigationState?.currentView && this.shellContext.navigationState.currentView !== this.id) return false;
+
+        const target = e.target as HTMLElement | null;
+        if (!target) return false;
+
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+            return false;
+        }
+
+        const hasFocusWithinView = this.element.contains(document.activeElement);
+        const targetInView = this.element.contains(target);
+        const hoverWithinView = this.isPointerInView || this.element.matches(":hover");
+
+        return targetInView || hasFocusWithinView || hoverWithinView;
     }
 
     private saveState(): void {
@@ -532,23 +637,31 @@ export class ViewerView implements View {
     private onMount(): void {
         console.log("[Viewer] Mounted");
         this._sheet ??= loadAsAdopted(style) as CSSStyleSheet;
+        this.isViewVisible = true;
     }
 
     private onUnmount(): void {
         console.log("[Viewer] Unmounting");
         this.saveState();
+        this.isViewVisible = false;
+        this.isPointerInView = false;
+        this.pasteController?.abort();
+        this.pasteController = null;
         removeAdopted(this._sheet!);
         this.element = null;
     }
 
     private onShow(): void {
         this._sheet ??= loadAsAdopted(style) as CSSStyleSheet;
+        this.isViewVisible = true;
         console.log("[Viewer] Shown");
     }
 
     private onHide(): void {
         //removeAdopted(this._sheet);
         this.saveState();
+        this.isViewVisible = false;
+        this.isPointerInView = false;
         console.log("[Viewer] Hidden");
     }
 

@@ -133,28 +133,49 @@ export class WorkCenterEvents {
         this.container.addEventListener('paste', async (e) => {
             if (!e.clipboardData) return;
 
-            const files = Array.from(e.clipboardData.files || []);
             let contentAdded = false;
 
-            // Handle files (existing functionality)
-            if (files.length > 0) {
+            // Handle clipboard file/blob items first (covers copied files/images from OS and apps).
+            const itemFiles: File[] = [];
+            for (const item of Array.from(e.clipboardData.items || [])) {
+                if (item.kind !== 'file' || !item.getAsFile) continue;
+                const file = item.getAsFile();
+                if (file) itemFiles.push(file);
+            }
+
+            if (itemFiles.length > 0) {
                 e.preventDefault();
-                this.fileOps.addFilesFromInput(this.state, files as any);
+                this.fileOps.addFilesFromInput(this.state, itemFiles as any);
                 this.ui.updateFileList(this.state);
                 this.ui.updateFileCounter(this.state);
                 this.deps.onFilesChanged?.();
                 contentAdded = true;
             }
 
-            // Handle text content
-            const textContent = e.clipboardData.getData('text/plain')?.trim();
-            if (textContent && !contentAdded) {
-                e.preventDefault();
-                await this.fileOps.handlePastedContent(this.state, textContent, 'text');
-                contentAdded = true;
+            // Handle clipboardData.files fallback.
+            if (!contentAdded) {
+                const files = Array.from(e.clipboardData.files || []);
+                if (files.length > 0) {
+                    e.preventDefault();
+                    this.fileOps.addFilesFromInput(this.state, files as any);
+                    this.ui.updateFileList(this.state);
+                    this.ui.updateFileCounter(this.state);
+                    this.deps.onFilesChanged?.();
+                    contentAdded = true;
+                }
             }
 
-            // Handle HTML content (extract text if no plain text)
+            // Handle text content only when no files/blobs were found.
+            if (!contentAdded) {
+                const textContent = e.clipboardData.getData('text/plain')?.trim();
+                if (textContent) {
+                    e.preventDefault();
+                    await this.fileOps.handlePastedContent(this.state, textContent, 'text');
+                    contentAdded = true;
+                }
+            }
+
+            // Handle HTML content (extract text if no plain text/files).
             if (!contentAdded) {
                 const htmlContent = e.clipboardData.getData('text/html');
                 if (htmlContent) {
@@ -170,19 +191,9 @@ export class WorkCenterEvents {
                 }
             }
 
-            // Handle images from clipboard (base64 encoded)
-            for (const item of Array.from(e.clipboardData.items || [])) {
-                if (item.type.startsWith('image/') && item.getAsFile) {
-                    const imageFile = item.getAsFile();
-                    if (imageFile) {
-                        e.preventDefault();
-                        this.state.files.push(imageFile);
-                        this.ui.updateFileList(this.state);
-                        this.ui.updateFileCounter(this.state);
-                        contentAdded = true;
-                        break; // Only handle one image
-                    }
-                }
+            if (!contentAdded) {
+                e.preventDefault();
+                this.deps.showMessage?.('Clipboard content detected but no supported payload was extracted');
             }
         });
     }
