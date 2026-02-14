@@ -10,9 +10,18 @@
         block-size: fit-content;
         max-block-size: stretch;
         overflow: hidden;
-        flex-shrink: 0;
+        flex-shrink: 1;
         flex-basis: fit-content;
         flex-grow: 1;
+
+        place-content: center;
+        place-items: center;
+        justify-content: stretch;
+        align-content: stretch;
+
+        & > * {
+            inline-size: stretch;
+        }
     }
 
     .wc-output-content {
@@ -21,11 +30,15 @@
         gap: var(--space-md);
         min-block-size: fit-content;
         max-block-size: stretch;
-        block-size: min(8rem, 100%);
+        block-size: min(10rem, 100%);
         position: relative;
         border-radius: var(--radius-md);
         transition: all var(--motion-normal);
         overflow: auto;
+        block-size: fit-content;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: fit-content;
 
         contain: strict;
         border: 1px solid var(--color-outline-variant);
@@ -82,6 +95,32 @@
         @include wc.wc-btn-size(var(--text-sm), var(--space-xs), var(--space-sm));
     }
 
+    .results-tabs-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+
+        h3 {
+            margin: 0;
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--color-on-surface);
+            white-space: nowrap;
+        }
+    }
+
+    .results-tab-actions {
+        margin-inline-start: var(--space-sm);
+    }
+
+    .wc-output-header {
+        display: flex;
+        justify-content: flex-end;
+        margin-inline-start: auto;
+    }
+
     .step-actions {
         margin-block-start: var(--space-xs);
 
@@ -94,6 +133,11 @@
         display: flex;
         flex-direction: column;
         gap: var(--space-sm);
+        block-size: fit-content;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: fit-content;
+        max-block-size: stretch;
 
         .result-actions .btn {
             @include wc.wc-btn-size(var(--text-xs), var(--space-xs), var(--space-sm), auto);
@@ -304,9 +348,8 @@
     }
 
     .data-pipeline-section {
-        margin-block-start: var(--space-md);
-        padding-block-start: var(--space-md);
-        border-block-start: 1px solid var(--color-outline-variant);
+        min-block-size: 0;
+        block-size: stretch;
     }
 
     .pipeline-header {
@@ -314,14 +357,24 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--space-sm);
-        margin-block-end: var(--space-md);
+        margin-block-end: var(--space-sm);
 
         h3 {
             margin: 0;
-            font-size: var(--text-lg);
+            font-size: var(--text-base);
             font-weight: 600;
             color: var(--color-on-surface);
         }
+    }
+
+    .pipeline-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .pipeline-actions {
+        justify-content: flex-end;
     }
 
     .pipeline-steps {
@@ -524,6 +577,19 @@
     }
 
     @container (max-inline-size: 768px) {
+        .results-tabs-header h3 {
+            display: none;
+        }
+
+        .results-tab-actions {
+            margin-inline-start: 0;
+            inline-size: auto;
+        }
+
+        .results-tab-actions .tab-btn {
+            flex: initial;
+        }
+
         .result-content {
             padding: var(--space-sm);
         }

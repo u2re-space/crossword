@@ -35,18 +35,20 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
     });
 
     const root = H`<div class="custom-instructions-editor">
-        <div class="ci-header">
-            <h4>Custom Instructions</h4>
-            <p class="ci-desc">Define custom instructions for AI operations. These can be activated for "Recognize & Copy" and selected in the Work Center.</p>
-        </div>
+        <div class="ci-row">
+            <div class="ci-header">
+                <h4>Custom Instructions</h4>
+                <p class="ci-desc">Define custom instructions for AI operations. These can be activated for "Recognize & Copy" and selected in the Work Center.</p>
+            </div>
 
-        <div class="ci-active-select">
-            <label>
-                <span>Active instruction:</span>
-                <select class="ci-select" data-action="select-active">
-                    <option value="">None (use default)</option>
-                </select>
-            </label>
+            <div class="ci-active-select">
+                <label>
+                    <span>Active instruction:</span>
+                    <select class="ci-select" data-action="select-active">
+                        <option value="">None (use default)</option>
+                    </select>
+                </label>
+            </div>
         </div>
 
         <div class="ci-list" data-list></div>

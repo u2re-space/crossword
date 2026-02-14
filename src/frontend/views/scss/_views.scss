@@ -263,9 +263,27 @@
             resize: vertical;
         }
 
+        .ci-row {
+            display: flex;
+            flex-direction: row;
+            gap: var(--space-sm, 4px);
+            place-content: center;
+            place-items: center;
+            justify-content: space-between;
+            align-content: stretch;
+            align-items: start;
+        }
+
         .ci-header {
             display: grid;
             gap: var(--spacing-xs, 4px);
+            inline-size: fit-content;
+            flex-shrink: 1;
+            flex-grow: 1;
+            flex-basis: min-content;
+            max-inline-size: max-content;
+            min-inline-size: min-content;
+            block-size: max-content;
 
             h4 {
                 margin: 0;
@@ -284,15 +302,32 @@
         }
 
         .ci-active-select {
+            flex-grow: 0;
+            flex-shrink: 1;
+            min-inline-size: min-content;
+            flex-basis: min-content;
+            inline-size: fit-content;
+            max-inline-size: stretch;
+
             label {
                 display: grid;
                 gap: var(--spacing-xs, 6px);
                 font-size: var(--text-xs, 12px);
+                inline-size: fit-content;
 
                 span {
                     color: var(--color-on-surface-variant);
                     opacity: 0.9;
                 }
+            }
+
+            select {
+                inline-size: calc-size(max-content, clamp(8rem, size, 100%));
+                max-inline-size: stretch;
+                min-inline-size: fit-content;
+                flex-basis: fit-content;
+                flex-grow: 1;
+                flex-shrink: 1;
             }
         }
 

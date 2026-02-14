@@ -1,12 +1,28 @@
 @use "mixins" as wc;
 
 @layer view.workcenter.components {
+    .wc-attachments-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        min-block-size: fit-content;
+        block-size: fit-content;
+        max-block-size: stretch;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: fit-content;
+    }
+
     .file-attachment-area {
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
         flex: 1;
-        min-block-size: 0;
+        min-block-size: fit-content;
+        block-size: stretch;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: fit-content;
     }
 
     .file-drop-zone {
@@ -21,6 +37,10 @@
         transition: all var(--motion-normal);
         overflow: auto;
         cursor: pointer;
+        block-size: stretch;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: fit-content;
 
         &[data-dropzone] {
             min-block-size: 8rem;

@@ -17,13 +17,17 @@
         overflow-x: hidden;
         background: var(--color-background);
         color: var(--color-on-background);
-        min-block-size: 100%;
-        block-size: 100%;
-        max-block-size: none;
-        container-type: inline-size;
+        max-block-size: stretch;
+        block-size: stretch;
+        inline-size: stretch;
+        min-inline-size: 0;
+        min-block-size: 0;
+        max-inline-size: stretch;
+        container-type: size;
         scrollbar-width: thin;
         scrollbar-color: var(--color-outline-variant) transparent;
         animation: workcenter-fade-in-up 0.3s ease-out;
+        contain: strict;
 
         textarea,
         input,

@@ -16,9 +16,20 @@ export type SettingsViewOptions = {
 export const createSettingsView = (opts: SettingsViewOptions) => {
     loadAsAdopted(style)
     const root = H`<div class="view-settings">
-    <h2>Settings</h2>
 
-    <section class="card">
+    <section class="actions">
+      <h2>Settings</h2>
+      <div class="settings-tab-actions" data-settings-tabs data-active-tab="ai">
+        <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="appearance" aria-selected="false">Appearance</button>
+        <button class="settings-tab-btn is-active" type="button" data-action="switch-settings-tab" data-tab="ai" aria-selected="true">AI</button>
+        <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="instructions" aria-selected="false">Instructions</button>
+        <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="extension" aria-selected="false" data-extension-tab hidden>Extension</button>
+      </div>
+      <button class="btn primary" type="button" data-action="save">Save</button>
+      <span class="note" data-note></span>
+    </section>
+
+    <section class="card settings-tab-panel" data-tab-panel="appearance">
       <h3>Appearance</h3>
       <label class="field">
         <span>Theme</span>
@@ -36,7 +47,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       </label>
     </section>
 
-    <section class="card">
+    <section class="card settings-tab-panel is-active" data-tab-panel="ai">
       <h3>AI</h3>
       <label class="field">
         <span>Base URL</span>
@@ -79,24 +90,19 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       </label>
     </section>
 
-    <section class="card" data-section="instructions">
+    <section class="card settings-tab-panel" data-tab-panel="instructions" data-section="instructions">
       <h3>Recognition Instructions</h3>
       <div data-custom-instructions="editor">
         ${createCustomInstructionsEditor({ onUpdate: () => setNote("Instructions updated.") })}
       </div>
     </section>
 
-    <section class="card" data-section="extension" hidden>
+    <section class="card settings-tab-panel" data-tab-panel="extension" data-section="extension" hidden>
       <h3>Extension</h3>
       <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="core.ntpEnabled" />
         <span>Enable New Tab Page (offline Basic)</span>
       </label>
-    </section>
-
-    <section class="actions">
-      <button class="btn primary" type="button" data-action="save">Save</button>
-      <span class="note" data-note></span>
     </section>
   </div>` as HTMLElement;
 
@@ -115,6 +121,29 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const fontSize = field('[data-field="appearance.fontSize"]') as HTMLSelectElement | null;
     const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
     const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
+    const extTab = root.querySelector('[data-extension-tab]') as HTMLButtonElement | null;
+
+    const switchSettingsTab = (tab: string) => {
+        const nextTab = tab || "ai";
+        const tabRoot = root.querySelector('[data-settings-tabs]') as HTMLElement | null;
+        tabRoot?.setAttribute("data-active-tab", nextTab);
+
+        const tabButtons = root.querySelectorAll('[data-action="switch-settings-tab"][data-tab]');
+        for (const tabButton of Array.from(tabButtons)) {
+            const btn = tabButton as HTMLButtonElement;
+            const isActive = btn.getAttribute("data-tab") === nextTab;
+            btn.classList.toggle("is-active", isActive);
+            btn.setAttribute("aria-selected", String(isActive));
+        }
+
+        const panels = root.querySelectorAll('[data-tab-panel]');
+        for (const panel of Array.from(panels)) {
+            const el = panel as HTMLElement;
+            const isActive = el.getAttribute("data-tab-panel") === nextTab;
+            if (el.hidden && isActive) continue;
+            el.classList.toggle("is-active", isActive);
+        }
+    };
 
     const setNote = (t: string) => {
         if (!note) return;
@@ -149,6 +178,12 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
 
     root.addEventListener("click", (e) => {
         const t = e.target as HTMLElement | null;
+        const tabBtn = t?.closest?.('button[data-action="switch-settings-tab"]') as HTMLButtonElement | null;
+        if (tabBtn) {
+            switchSettingsTab(tabBtn.getAttribute("data-tab") || "ai");
+            return;
+        }
+
         const btn = t?.closest?.('button[data-action="save"]') as HTMLButtonElement | null;
         if (!btn) return;
 
@@ -180,6 +215,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
 
     if (opts.isExtension) {
         if (extSection) extSection.hidden = false;
+        if (extTab) extTab.hidden = false;
         const extNote = H`<div class="ext-note">Extension mode: settings are stored in <code>chrome.storage.local</code>.</div>` as HTMLElement;
         root.append(extNote);
     }

@@ -114,26 +114,7 @@ export class WorkCenterUI {
           <!-- Results & Processing Section -->
           <div class="workcenter-block results-block">
             <div class="results-section">
-              <div class="wc-output-section">
-                ${this.results.renderOutputHeader(state)}
-              </div>
-
-              ${this.results.renderDataPipeline(state)}
-
-              <div class="history-section">
-                <div class="history-header">
-                  <h4>Recent Activity</h4>
-                  <div class="result-actions">
-                    <button class="btn btn-icon" data-action="view-action-history" title="View Action History">
-                        <ui-icon icon="history" size="18" icon-style="duotone"></ui-icon>
-                        <span class="btn-text">History</span>
-                    </button>
-                    <button class="btn" data-action="view-full-history">View All History</button>
-                  </div>
-                </div>
-                <div class="recent-history" data-recent-history></div>
-                <div class="action-stats" data-action-stats style="display: none;"></div>
-              </div>
+              ${this.renderResultsTabs(state)}
             </div>
           </div>
 
@@ -165,6 +146,7 @@ export class WorkCenterUI {
         this.attachments.updateFileCounter(state);
         this.prompts.updatePromptFileCount(state);
         this.updateInputTabFileCount(state);
+        this.updateResultsPipelineTabState(state);
         this.history.updateRecentHistory(state);
     }
 
@@ -195,6 +177,7 @@ export class WorkCenterUI {
 
     updateDataPipeline(state: WorkCenterState): void {
         this.results.updateDataPipeline(state);
+        this.updateResultsPipelineTabState(state);
     }
 
     updateDataCounters(state: WorkCenterState): void {
@@ -226,11 +209,12 @@ export class WorkCenterUI {
         return `
             <div class="input-tabs-section" data-input-tabs data-active-tab="${activeTab}">
                 <div class="wc-block-header">
-                    <h3>Work Inputs</h3>
                     <div class="input-tab-actions">
                         <button class="tab-btn ${activeTab === 'prompt' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="prompt" aria-selected="${activeTab === 'prompt'}">Prompt</button>
                         <button class="tab-btn ${activeTab === 'attachments' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="attachments" aria-selected="${activeTab === 'attachments'}">Files (${state.files.length})</button>
                     </div>
+                    <h3>Work Inputs</h3>
+                    <div></div>
                 </div>
                 <div class="input-tab-panels">
                     <section class="tab-panel ${activeTab === 'prompt' ? 'is-active' : ''}" data-tab-panel="prompt">
@@ -244,11 +228,90 @@ export class WorkCenterUI {
         `;
     }
 
+    private renderResultsTabs(state: WorkCenterState): string {
+        const hasPipelineData = Boolean(state.recognizedData || (state.processedData && state.processedData.length > 0));
+        const pipelineCount = (state.recognizedData ? 1 : 0) + (state.processedData?.length || 0);
+        const activeTab = state.activeResultsTab === "pipeline" && !hasPipelineData
+            ? "output"
+            : state.activeResultsTab;
+
+        return `
+            <div class="results-tabs-section" data-results-tabs data-active-tab="${activeTab}">
+                <div class="wc-block-header results-tabs-header">
+                    <div class="results-tab-actions">
+                        <button class="tab-btn ${activeTab === 'output' ? 'is-active' : ''}" data-action="switch-results-tab" data-tab="output" aria-selected="${activeTab === 'output'}">Output</button>
+                        <button class="tab-btn ${activeTab === 'pipeline' ? 'is-active' : ''}" data-action="switch-results-tab" data-tab="pipeline" aria-selected="${activeTab === 'pipeline'}"${hasPipelineData ? '' : ' disabled'}>Pipeline (${pipelineCount})</button>
+                        <button class="tab-btn ${activeTab === 'history' ? 'is-active' : ''}" data-action="switch-results-tab" data-tab="history" aria-selected="${activeTab === 'history'}">History</button>
+                    </div>
+                    <h3>Results & Processing</h3>
+                    ${this.results.renderOutputHeader()}
+                </div>
+                <div class="results-tab-panels">
+                    <section class="results-tab-panel ${activeTab === 'output' ? 'is-active' : ''}" data-results-tab-panel="output">
+                        <div class="wc-output-section">
+                            ${this.results.renderOutputContent()}
+                        </div>
+                    </section>
+                    <section class="results-tab-panel ${activeTab === 'pipeline' ? 'is-active' : ''}" data-results-tab-panel="pipeline">
+                        ${hasPipelineData ? this.results.renderDataPipeline(state) : '<div class="wc-results-empty">No data pipeline yet</div>'}
+                    </section>
+                    <section class="results-tab-panel ${activeTab === 'history' ? 'is-active' : ''}" data-results-tab-panel="history">
+                        <div class="history-section">
+                            <div class="history-header">
+                                <h4>Recent Activity</h4>
+                                <div class="result-actions">
+                                    <button class="btn btn-icon" data-action="view-action-history" title="View Action History">
+                                        <ui-icon icon="history" size="18" icon-style="duotone"></ui-icon>
+                                        <span class="btn-text">History</span>
+                                    </button>
+                                    <button class="btn" data-action="view-full-history">View All History</button>
+                                </div>
+                            </div>
+                            <div class="recent-history" data-recent-history></div>
+                            <div class="action-stats" data-action-stats style="display: none;"></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        `;
+    }
+
     private updateInputTabFileCount(state: WorkCenterState): void {
         if (!this.container) return;
         const filesTabBtn = this.container.querySelector('[data-action="switch-input-tab"][data-tab="attachments"]') as HTMLElement | null;
         if (filesTabBtn) {
             filesTabBtn.textContent = `Files (${state.files.length})`;
+        }
+    }
+
+    private updateResultsPipelineTabState(state: WorkCenterState): void {
+        if (!this.container) return;
+        const hasPipelineData = Boolean(state.recognizedData || (state.processedData && state.processedData.length > 0));
+        const pipelineCount = (state.recognizedData ? 1 : 0) + (state.processedData?.length || 0);
+        const tabsRoot = this.container.querySelector('[data-results-tabs]') as HTMLElement | null;
+        const pipelineTabBtn = this.container.querySelector('[data-action="switch-results-tab"][data-tab="pipeline"]') as HTMLButtonElement | null;
+        if (!tabsRoot || !pipelineTabBtn) return;
+
+        pipelineTabBtn.textContent = `Pipeline (${pipelineCount})`;
+        pipelineTabBtn.disabled = !hasPipelineData;
+
+        const activeTab = tabsRoot.getAttribute('data-active-tab') || 'output';
+        if (!hasPipelineData && activeTab === 'pipeline') {
+            tabsRoot.setAttribute('data-active-tab', 'output');
+            state.activeResultsTab = 'output';
+
+            const outputBtn = this.container.querySelector('[data-action="switch-results-tab"][data-tab="output"]') as HTMLButtonElement | null;
+            if (outputBtn) {
+                outputBtn.classList.add('is-active');
+                outputBtn.setAttribute('aria-selected', 'true');
+            }
+            pipelineTabBtn.classList.remove('is-active');
+            pipelineTabBtn.setAttribute('aria-selected', 'false');
+
+            const outputPanel = this.container.querySelector('[data-results-tab-panel="output"]') as HTMLElement | null;
+            const pipelinePanel = this.container.querySelector('[data-results-tab-panel="pipeline"]') as HTMLElement | null;
+            outputPanel?.classList.add('is-active');
+            pipelinePanel?.classList.remove('is-active');
         }
     }
 }

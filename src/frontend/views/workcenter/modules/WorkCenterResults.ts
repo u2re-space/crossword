@@ -59,15 +59,16 @@ export class WorkCenterResults {
         }
 
         return H`<div class="data-pipeline-section">
-            <div class="pipeline-header">
-              <h3>Data Processing Pipeline</h3>
-              <div class="pipeline-actions">
-                <button class="btn btn-icon" data-action="clear-pipeline" title="Clear all data">
-                  <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
-                </button>
+            <div class="pipeline-content">
+              <div class="pipeline-header">
+                <h3>Data Processing Pipeline</h3>
+                <div class="pipeline-actions">
+                  <button class="btn btn-icon" data-action="clear-pipeline" title="Clear all data">
+                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="pipeline-steps">
+              <div class="pipeline-steps">
               ${state.recognizedData ? H`<div class="pipeline-step recognized-step">
                 <div class="step-header">
                   <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
@@ -98,6 +99,7 @@ export class WorkCenterResults {
                 </div>
               </div>`;
               }) : ''}
+              </div>
             </div>
           </div>`;
     }
@@ -105,28 +107,15 @@ export class WorkCenterResults {
     updateDataPipeline(state: WorkCenterState): void {
         if (!this.container) return;
 
-        const pipelineSection = this.container.querySelector('.data-pipeline-section');
-        if (pipelineSection) {
-            pipelineSection.remove();
-        }
+        const pipelinePanel = this.container.querySelector('[data-results-tab-panel="pipeline"]') as HTMLElement | null;
+        if (!pipelinePanel) return;
 
-        if (state.recognizedData || (state.processedData && state.processedData.length > 0)) {
-            const resultsSection = this.container.querySelector('.results-section') as HTMLElement | null;
-            if (!resultsSection) return;
-
-            const historySection = resultsSection.querySelector('.history-section');
-            const pipelineHTML = this.renderDataPipeline(state);
-            if (typeof pipelineHTML === 'string') {
-                if (historySection) {
-                    historySection.insertAdjacentHTML('beforebegin', pipelineHTML);
-                } else {
-                    resultsSection.insertAdjacentHTML('beforeend', pipelineHTML);
-                }
-            } else if (historySection) {
-                resultsSection.insertBefore(pipelineHTML, historySection);
-            } else {
-                resultsSection.appendChild(pipelineHTML);
-            }
+        const pipelineHTML = this.renderDataPipeline(state);
+        if (typeof pipelineHTML === 'string') {
+            pipelinePanel.innerHTML = `<div class="wc-results-empty">No data pipeline yet</div>`;
+        } else {
+            pipelinePanel.innerHTML = '';
+            pipelinePanel.appendChild(pipelineHTML);
         }
     }
 
@@ -153,11 +142,10 @@ export class WorkCenterResults {
         }
     }
 
-    // Output header rendering (counters and action buttons)
-    renderOutputHeader(state: WorkCenterState): string {
+    // Output actions/header rendering
+    renderOutputHeader(): string {
         return `
-            <div class="wc-block-header">
-                <h3>Results & Processing</h3>
+            <div class="wc-output-header">
                 <div class="wc-output-actions">
                     <button class="btn btn-icon" data-action="view-output" title="View output in Viewer">
                         <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
@@ -177,6 +165,12 @@ export class WorkCenterResults {
                     </button>
                 </div>
             </div>
+        `;
+    }
+
+    // Output content rendering
+    renderOutputContent(): string {
+        return `
             <div class="wc-output-content" data-output> No results yet </div>
         `;
     }

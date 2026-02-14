@@ -48,6 +48,10 @@
             align-items: stretch;
         }
 
+        & {
+            justify-content: start;
+        }
+
         :where(select, input, textarea, option) {
             pointer-events: auto;
         }
@@ -58,6 +62,10 @@
             font-weight: var(--font-weight-bold, 700);
             letter-spacing: -0.02em;
             color: var(--color-on-surface);
+        }
+
+        h3 {
+            text-align: center;
         }
 
         .card {
@@ -113,8 +121,56 @@
         .actions {
             display: flex;
             align-items: center;
-            gap: var(--spacing-sm, 10px);
+            flex-wrap: wrap;
+            gap: var(--space-sm);
             padding-block-start: var(--spacing-sm, 8px);
+            justify-content: flex-start;
+            inline-size: stretch;
+
+            h2 {
+                flex-grow: 0;
+                margin-inline-end: var(--spacing-sm, 10px);
+                padding-inline: 0;
+            }
+        }
+
+        .settings-tab-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-xs);
+            align-items: center;
+            margin-inline-end: auto;
+        }
+
+        .settings-tab-btn {
+            padding: var(--spacing-xs, 8px) var(--spacing-sm, 12px);
+            border: 1px solid var(--color-outline-variant);
+            border-radius: var(--radius-sm, 8px);
+            background: var(--color-surface-container-low);
+            color: var(--color-on-surface-variant);
+            font-size: var(--text-xs, 12px);
+            font-weight: var(--font-weight-medium, 500);
+            cursor: pointer;
+            transition: all var(--motion-fast);
+
+            &:hover {
+                background: var(--color-surface-container);
+                color: var(--color-on-surface);
+            }
+
+            &.is-active {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: var(--color-on-primary);
+            }
+        }
+
+        .settings-tab-panel {
+            display: none;
+
+            &.is-active {
+                display: flex;
+            }
         }
 
         .btn {
@@ -170,6 +226,16 @@
         @container (max-inline-size: 768px) {
             gap: var(--space-md);
             padding: var(--space-sm);
+
+            .actions {
+                h2 {
+                    display: none;
+                }
+
+                .btn.primary {
+                    margin-inline-start: auto;
+                }
+            }
         }
 
         @container (max-inline-size: 480px) {

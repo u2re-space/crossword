@@ -9,8 +9,9 @@
     }
 
     .workcenter-layout {
-        display: flex;
+        display: grid;
         grid-template-columns: minmax(0px, 1fr);
+        grid-auto-rows: minmax(min(8rem, 100%), 1fr);
         grid-auto-flow: row;
         gap: var(--space-md);
         min-block-size: 0;
@@ -74,15 +75,20 @@
         max-block-size: stretch;
     }
 
-    .input-tabs-section {
+    .input-tabs-section,
+    .results-tabs-section {
         block-size: stretch;
         max-block-size: stretch;
         flex-grow: 1;
         flex-shrink: 0;
         flex-basis: fit-content;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
     }
 
-    .input-tab-actions {
+    .input-tab-actions,
+    .results-tab-actions {
         display: flex;
         flex-wrap: wrap;
         gap: var(--space-xs);
@@ -104,7 +110,8 @@
         }
     }
 
-    .input-tab-panels {
+    .input-tab-panels,
+    .results-tab-panels {
         display: flex;
         flex-direction: column;
         min-block-size: 0;
@@ -113,22 +120,46 @@
         flex-basis: fit-content;
         block-size: stretch;
         max-block-size: stretch;
-        min-block-size: min(32rem, 100%);
+        min-block-size: min(12rem, 100%);
+        inline-size: stretch;
+        place-content: center;
+        place-items: center;
+        justify-content: stretch;
+        align-content: stretch;
     }
 
-    .tab-panel {
+    .results-tab-panels {
+        min-block-size: fit-content;
+    }
+
+    .tab-panel,
+    .results-tab-panel {
         display: none;
         min-inline-size: 0;
         min-block-size: 0;
-        block-size: stretch;
+        block-size: fit-content;
         min-block-size: fit-content;
         flex-basis: fit-content;
         flex-grow: 1;
         flex-shrink: 1;
+        inline-size: stretch;
+        max-block-size: stretch;
+
+        place-content: center;
+        place-items: center;
+        justify-content: stretch;
+        align-content: stretch;
 
         &.is-active {
             display: flex;
             flex-direction: column;
+        }
+
+        & > * {
+            inline-size: stretch;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: fit-content;
         }
     }
 

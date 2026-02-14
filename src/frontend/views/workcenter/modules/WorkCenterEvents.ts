@@ -77,6 +77,8 @@ export class WorkCenterEvents {
 
         // Input tabs
         this.setupInputTabs();
+        this.setupResultsTabs();
+        this.setupHeaderControlsOverlay();
 
         // Format selectors
         this.setupFormatSelectors();
@@ -372,6 +374,9 @@ export class WorkCenterEvents {
                 case 'switch-input-tab':
                     this.switchInputTab(String(target.closest('[data-tab]')?.getAttribute('data-tab') || 'prompt'));
                     break;
+                case 'switch-results-tab':
+                    this.switchResultsTab(String(target.closest('[data-tab]')?.getAttribute('data-tab') || 'output'));
+                    break;
                 case 'clear-recognized':
                     const { WorkCenterStateManager: StateManager1 } = await import('./WorkCenterState');
                     StateManager1.clearRecognizedData(this.state);
@@ -430,6 +435,31 @@ export class WorkCenterEvents {
         this.switchInputTab(this.state.activeInputTab || "prompt");
     }
 
+    private setupResultsTabs(): void {
+        if (!this.container) return;
+        this.switchResultsTab(this.state.activeResultsTab || "output");
+    }
+
+    private setupHeaderControlsOverlay(): void {
+        if (!this.container) return;
+        const disclosure = this.container.querySelector('.header-controls-disclosure') as HTMLDetailsElement | null;
+        if (!disclosure) return;
+
+        document.addEventListener('click', (event) => {
+            if (!disclosure.open) return;
+            const target = event.target as Node | null;
+            if (target && !disclosure.contains(target)) {
+                disclosure.open = false;
+            }
+        });
+
+        this.container.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && disclosure.open) {
+                disclosure.open = false;
+            }
+        });
+    }
+
     private switchInputTab(tab: string): void {
         if (!this.container) return;
         if (!["instruction", "prompt", "attachments"].includes(tab)) return;
@@ -449,6 +479,38 @@ export class WorkCenterEvents {
         for (const panel of Array.from(tabPanels)) {
             const el = panel as HTMLElement;
             const isActive = el.getAttribute('data-tab-panel') === tab;
+            el.classList.toggle('is-active', isActive);
+        }
+
+        void import('./WorkCenterState')
+            .then(({ WorkCenterStateManager }) => WorkCenterStateManager.saveState(this.state))
+            .catch(() => {
+                // ignore persistence failures for tab state
+            });
+    }
+
+    private switchResultsTab(tab: string): void {
+        if (!this.container) return;
+        if (!["output", "pipeline", "history"].includes(tab)) return;
+
+        const hasPipelineData = Boolean(this.state.recognizedData || (this.state.processedData && this.state.processedData.length > 0));
+        const nextTab = (tab === "pipeline" && !hasPipelineData) ? "output" : tab;
+
+        this.state.activeResultsTab = nextTab as WorkCenterState["activeResultsTab"];
+        this.container.querySelector('[data-results-tabs]')?.setAttribute('data-active-tab', nextTab);
+
+        const tabButtons = this.container.querySelectorAll('[data-action="switch-results-tab"][data-tab]');
+        for (const tabButton of Array.from(tabButtons)) {
+            const btn = tabButton as HTMLButtonElement;
+            const isActive = btn.getAttribute('data-tab') === nextTab;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-selected', String(isActive));
+        }
+
+        const tabPanels = this.container.querySelectorAll('[data-results-tab-panel]');
+        for (const panel of Array.from(tabPanels)) {
+            const el = panel as HTMLElement;
+            const isActive = el.getAttribute('data-results-tab-panel') === nextTab;
             el.classList.toggle('is-active', isActive);
         }
 
