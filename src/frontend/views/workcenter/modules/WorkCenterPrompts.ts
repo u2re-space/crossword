@@ -19,38 +19,31 @@ export class WorkCenterPrompts {
         this.container = container;
     }
 
-    // Main prompts section rendering
-    renderPromptsSection(state: WorkCenterState): string {
-        return `
-            <div class="prompts-section">
-              <div class="section-header">
-                <h3>Input & Templates</h3>
-                <div class="prompt-actions">
-                  <select class="template-select">
-                    <option value="">Select Template...</option>
-                    ${state.promptTemplates.map(t => `<option value="${t.prompt.replace(/"/g, '&quot;')}" ${state.selectedTemplate === t.prompt ? 'selected' : ''}>${t.name}</option>`).join('')}
-                  </select>
-                  <button class="btn btn-icon" data-action="edit-templates" title="Edit Templates">
-                    <ui-icon icon="gear" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Templates</span>
-                  </button>
-                </div>
-              </div>
 
-              <div class="instruction-selector-row">
-                <label class="instruction-label">
-                  <ui-icon icon="clipboard-text" size="16" icon-style="duotone"></ui-icon>
-                  <span>Instruction:</span>
-                </label>
-                <select class="instruction-select" data-action="select-instruction">
-                  <option value="">None (default)</option>
+
+    renderPromptPanel(state: WorkCenterState): string {
+        return `
+            <div class="prompt-panel">
+              <div class="prompt-controls">
+                <select class="template-select">
+                  <option value="">Select Template...</option>
+                  ${state.promptTemplates.map(t => `<option value="${t.prompt.replace(/"/g, '&quot;')}" ${state.selectedTemplate === t.prompt ? 'selected' : ''}>${t.name}</option>`).join('')}
                 </select>
-                <button class="btn btn-icon btn-sm" data-action="refresh-instructions" title="Refresh from Settings">
-                  <ui-icon icon="arrows-clockwise" size="14" icon-style="duotone"></ui-icon>
+                <button class="btn btn-icon" data-action="edit-templates" title="Edit Templates">
+                  <ui-icon icon="gear" size="18" icon-style="duotone"></ui-icon>
+                  <span class="btn-text">Templates</span>
+                </button>
+                <button class="btn btn-icon prompt-attach-btn" data-action="select-files" title="Attach files">
+                  <ui-icon icon="paperclip" size="18" icon-style="duotone"></ui-icon>
+                  <span class="attach-count" data-prompt-file-count>${state.files.length}</span>
                 </button>
               </div>
 
-              <div class="prompt-input-group">
+              <div class="prompt-input-group" data-prompt-dropzone data-dropzone="">
+                <div class="prompt-input-overlay" data-prompt-drop-hint>
+                  <ui-icon icon="paperclip" size="16" icon-style="duotone"></ui-icon>
+                  <span>Drop files, links or text to attach</span>
+                </div>
                 <textarea
                   class="prompt-input"
                   placeholder="Describe what you want to do with the attached content... (or use voice input)"
@@ -59,6 +52,7 @@ export class WorkCenterPrompts {
               </div>
 
               <div class="prompt-actions">
+                
                 <button class="btn voice-btn ${state.voiceRecording ? 'recording' : ''}" data-action="voice-input">
                   <ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon>
                   ${state.voiceRecording ? 'Recording...' : 'Hold for Voice'}
@@ -79,6 +73,15 @@ export class WorkCenterPrompts {
         `;
     }
 
+    // Backward-compatible section render (unused in tabbed UI)
+    renderPromptsSection(state: WorkCenterState): string {
+        return `
+            <div class="prompts-section">
+              ${this.renderPromptPanel(state)}
+            </div>
+        `;
+    }
+
     /** Populate the instruction selector with custom instructions from settings */
     async populateInstructionSelect(state: WorkCenterState): Promise<void> {
         if (!this.container) return;
@@ -86,14 +89,20 @@ export class WorkCenterPrompts {
         if (!select) return;
 
         const instructions = await this.templates.loadInstructions();
+        const hasStoredSelection = Boolean(state.selectedInstruction) && instructions.some(i => i.id === state.selectedInstruction);
+        const selectedId = hasStoredSelection ? state.selectedInstruction : this.templates.getActiveInstructionId();
         select.innerHTML = '<option value="">None (default)</option>';
 
         for (const instr of instructions) {
             const opt = document.createElement('option');
             opt.value = instr.id;
             opt.textContent = instr.label;
-            if (instr.id === state.selectedInstruction) opt.selected = true;
+            if (instr.id === selectedId) opt.selected = true;
             select.append(opt);
+        }
+
+        if ((!state.selectedInstruction || !hasStoredSelection) && selectedId) {
+            state.selectedInstruction = selectedId;
         }
     }
 
@@ -104,13 +113,15 @@ export class WorkCenterPrompts {
         if (!select) return;
 
         const instructions = this.templates.getInstructions();
+        const hasStoredSelection = Boolean(state.selectedInstruction) && instructions.some(i => i.id === state.selectedInstruction);
+        const selectedId = hasStoredSelection ? state.selectedInstruction : this.templates.getActiveInstructionId();
         select.innerHTML = '<option value="">None (default)</option>';
 
         for (const instr of instructions) {
             const opt = document.createElement('option');
             opt.value = instr.id;
             opt.textContent = instr.label;
-            if (instr.id === state.selectedInstruction) opt.selected = true;
+            if (instr.id === selectedId) opt.selected = true;
             select.append(opt);
         }
     }
@@ -157,6 +168,14 @@ export class WorkCenterPrompts {
         if (voiceBtn) {
             voiceBtn.innerHTML = state.voiceRecording ? '<ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon> Recording...' : '<ui-icon icon="microphone" size="20" icon-style="duotone"></ui-icon> Hold for Voice';
             voiceBtn.classList.toggle('recording', state.voiceRecording);
+        }
+    }
+
+    updatePromptFileCount(state: WorkCenterState): void {
+        if (!this.container) return;
+        const count = this.container.querySelector('[data-prompt-file-count]') as HTMLElement | null;
+        if (count) {
+            count.textContent = String(state.files.length);
         }
     }
 

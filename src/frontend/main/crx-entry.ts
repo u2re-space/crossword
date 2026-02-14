@@ -12,6 +12,8 @@
 
 import { bootLoader } from "./BootLoader";
 import type { ViewId, Shell } from "../shells/types";
+import { ViewRegistry } from "../registry";
+import { initializeLayers } from "../styles/layer-manager";
 
 // ============================================================================
 // TYPES
@@ -20,6 +22,10 @@ import type { ViewId, Shell } from "../shells/types";
 export type CrxAppOptions = {
     /** View to display - accepts both shell ViewId and legacy MinimalView names */
     initialView?: ViewId | "markdown" | "markdown-viewer";
+    /** Optional URL-style params passed to the launched view */
+    viewParams?: Record<string, string>;
+    /** Optional initial payload passed to the launched view */
+    viewPayload?: unknown;
 };
 
 // ============================================================================
@@ -56,15 +62,46 @@ export default async function crxFrontend(
     mountElement: HTMLElement,
     options: CrxAppOptions = {},
 ): Promise<Shell> {
-    const view = resolveViewId(options.initialView);
+    // CRX pages can bypass main index entry, so initialize layers here too.
+    initializeLayers();
 
-    return bootLoader.boot(mountElement, {
+    const view = resolveViewId(options.initialView);
+    const hasViewParams = Boolean(options.viewParams && Object.keys(options.viewParams).length > 0);
+    const hasPayload = options.viewPayload !== undefined && options.viewPayload !== null;
+
+    const shell = await bootLoader.boot(mountElement, {
         styleSystem: "vl-basic",
         shell:       "base",
         defaultView: view,
         channels:    [],
         rememberChoice: false,
     });
+
+    if (hasViewParams) {
+        await shell.navigate(view, options.viewParams);
+    }
+
+    if (hasPayload) {
+        const loadedView = ViewRegistry.getLoaded(view);
+        const asMessageCapable = loadedView as {
+            canHandleMessage?: (messageType: string) => boolean;
+            handleMessage?: (message: unknown) => Promise<void> | void;
+        } | undefined;
+
+        if (asMessageCapable?.canHandleMessage?.("content-load") && asMessageCapable.handleMessage) {
+            await asMessageCapable.handleMessage({
+                type: "content-load",
+                data: options.viewPayload
+            });
+        } else if (asMessageCapable?.handleMessage) {
+            await asMessageCapable.handleMessage({
+                type: "launch",
+                data: options.viewPayload
+            });
+        }
+    }
+
+    return shell;
 }
 
 export { crxFrontend };

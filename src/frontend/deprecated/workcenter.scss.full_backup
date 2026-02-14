@@ -256,6 +256,7 @@
                 background: var(--color-surface-container-low);
                 border-radius: var(--radius-sm);
                 border: 1px solid var(--color-outline-variant);
+                flex-direction: row;
 
                 h3 {
                     margin: 0;

@@ -121,6 +121,7 @@ export type AppSettings = {
     };
     appearance?: {
         theme?: "light" | "dark" | "auto";
+        fontSize?: "small" | "medium" | "large";
         color?: string;
     };
     speech?: {
@@ -180,6 +181,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     },
     appearance: {
         theme: "auto",
+        fontSize: "medium",
         color: ""
     },
     speech: {

@@ -1,0 +1,593 @@
+{
+  "../../../../../../../@crx/manifest": {
+    "file": "modules/crx-manifest.js.js",
+    "name": "crx-manifest.js",
+    "src": "../../../../../../../@crx/manifest",
+    "isEntry": true
+  },
+  "../../../../modules/projects/uniform.ts/src/newer/next/transport/Worker.ts": {
+    "file": "assets/Worker.ts",
+    "src": "../../../../modules/projects/uniform.ts/src/newer/next/transport/Worker.ts"
+  },
+  "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline": {
+    "file": "modules/_index.js",
+    "name": "_index",
+    "src": "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline",
+    "isDynamicEntry": true
+  },
+  "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs": {
+    "file": "modules/showOpenFilePicker.js",
+    "name": "showOpenFilePicker",
+    "src": "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs",
+    "isDynamicEntry": true
+  },
+  "../../../../node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm": {
+    "file": "assets/mozjpeg_dec.wasm",
+    "src": "../../../../node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm"
+  },
+  "../../../../node_modules/@jsquash/jpeg/codec/enc/mozjpeg_enc.wasm": {
+    "file": "assets/mozjpeg_enc.wasm",
+    "src": "../../../../node_modules/@jsquash/jpeg/codec/enc/mozjpeg_enc.wasm"
+  },
+  "../../../../node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm": {
+    "file": "assets/squoosh_png_bg.wasm",
+    "src": "../../../../node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm"
+  },
+  "../../../../node_modules/marked-katex-extension/src/index.js": {
+    "file": "modules/index3.js",
+    "name": "index",
+    "src": "../../../../node_modules/marked-katex-extension/src/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_katex.js"
+    ]
+  },
+  "../../node_modules/marked/lib/marked.esm.js": {
+    "file": "modules/marked.esm.js",
+    "name": "marked.esm",
+    "src": "../../node_modules/marked/lib/marked.esm.js",
+    "isDynamicEntry": true
+  },
+  "../com/service/service/RecognizeData.ts": {
+    "file": "modules/RecognizeData.js",
+    "name": "RecognizeData",
+    "src": "../com/service/service/RecognizeData.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_GPT-Responses.js",
+      "_CustomInstructions.js",
+      "_templates.js",
+      "_Env.js"
+    ],
+    "dynamicImports": [
+      "_CustomInstructions.js"
+    ]
+  },
+  "../core/document/DocxExport.ts": {
+    "file": "modules/DocxExport.js",
+    "name": "DocxExport",
+    "src": "../core/document/DocxExport.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index4.js",
+      "../../node_modules/marked/lib/marked.esm.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js",
+      "_Markdown.js",
+      "_katex.js",
+      "__commonjsHelpers.js",
+      "_Settings.js",
+      "_Env.js"
+    ]
+  },
+  "../frontend/shells/base/index.ts": {
+    "file": "modules/index5.js",
+    "name": "index",
+    "src": "../frontend/shells/base/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_shell.js",
+      "_crx-entry.js",
+      "_UnifiedMessaging.js",
+      "_templates.js",
+      "_Toast.js"
+    ]
+  },
+  "../frontend/shells/faint/index.ts": {
+    "file": "modules/index7.js",
+    "name": "index",
+    "src": "../frontend/shells/faint/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_shell.js",
+      "_Settings.js",
+      "_Env.js",
+      "_crx-entry.js",
+      "_Phosphor.js",
+      "_index8.js",
+      "_Toast.js",
+      "_UnifiedMessaging.js",
+      "_templates.js",
+      "_Markdown.js",
+      "__commonjsHelpers.js",
+      "_katex.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ]
+  },
+  "../frontend/shells/minimal/index.ts": {
+    "file": "modules/index6.js",
+    "name": "index",
+    "src": "../frontend/shells/minimal/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_Phosphor.js",
+      "_shell.js",
+      "_crx-entry.js",
+      "_UnifiedMessaging.js",
+      "_templates.js",
+      "_Toast.js"
+    ]
+  },
+  "../frontend/views/airpad/index.ts": {
+    "file": "modules/index12.js",
+    "name": "index",
+    "src": "../frontend/views/airpad/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js"
+    ],
+    "dynamicImports": [
+      "../frontend/views/airpad/main.ts"
+    ]
+  },
+  "../frontend/views/airpad/main.ts": {
+    "file": "modules/main.js",
+    "name": "main",
+    "src": "../frontend/views/airpad/main.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Env.js",
+      "_Settings.js",
+      "_index4.js",
+      "../../node_modules/marked/lib/marked.esm.js",
+      "_katex.js",
+      "_Conversion.js",
+      "_crx-entry.js",
+      "_MakeTimeline.js",
+      "_Toast.js",
+      "_UnifiedMessaging.js",
+      "__commonjsHelpers.js",
+      "_ImageProcess.js",
+      "_Clipboard.js",
+      "_GPT-Responses.js",
+      "_templates.js"
+    ]
+  },
+  "../frontend/views/editor/index.ts": {
+    "file": "modules/index13.js",
+    "name": "index",
+    "src": "../frontend/views/editor/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_types.js"
+    ]
+  },
+  "../frontend/views/explorer/index.ts": {
+    "file": "modules/index11.js",
+    "name": "index",
+    "src": "../frontend/views/explorer/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_index.js",
+      "_index8.js",
+      "_Phosphor.js",
+      "_crx-entry.js",
+      "_UnifiedMessaging.js",
+      "_templates.js",
+      "_Markdown.js",
+      "__commonjsHelpers.js",
+      "_katex.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ]
+  },
+  "../frontend/views/history/index.ts": {
+    "file": "modules/index10.js",
+    "name": "index",
+    "src": "../frontend/views/history/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_index.js"
+    ]
+  },
+  "../frontend/views/home/index.ts": {
+    "file": "modules/index14.js",
+    "name": "index",
+    "src": "../frontend/views/home/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js"
+    ]
+  },
+  "../frontend/views/print/index.ts": {
+    "file": "modules/index2.js",
+    "name": "index",
+    "src": "../frontend/views/print/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_Markdown.js",
+      "__commonjsHelpers.js",
+      "_katex.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ],
+    "dynamicImports": [
+      "../core/document/DocxExport.ts"
+    ]
+  },
+  "../frontend/views/settings/index.ts": {
+    "file": "modules/index16.js",
+    "name": "index",
+    "src": "../frontend/views/settings/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_crx-entry.js",
+      "_CustomInstructions.js",
+      "_templates.js",
+      "_UnifiedMessaging.js"
+    ]
+  },
+  "../frontend/views/viewer/index.ts": {
+    "file": "modules/index9.js",
+    "name": "index",
+    "src": "../frontend/views/viewer/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_Markdown.js",
+      "_types.js",
+      "__commonjsHelpers.js",
+      "_katex.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ],
+    "dynamicImports": [
+      "../../node_modules/marked/lib/marked.esm.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js",
+      "../core/document/DocxExport.ts"
+    ]
+  },
+  "../frontend/views/workcenter/index.ts": {
+    "file": "modules/index15.js",
+    "name": "index",
+    "src": "../frontend/views/workcenter/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_types.js",
+      "_CustomInstructions.js",
+      "_Toast.js",
+      "_templates.js"
+    ],
+    "dynamicImports": [
+      "../com/service/service/RecognizeData.ts"
+    ]
+  },
+  "_Clipboard.js": {
+    "file": "modules/Clipboard.js",
+    "name": "Clipboard"
+  },
+  "_Conversion.js": {
+    "file": "modules/Conversion.js",
+    "name": "Conversion",
+    "imports": [
+      "_Settings.js",
+      "__commonjsHelpers.js",
+      "_ImageProcess.js",
+      "_Clipboard.js"
+    ],
+    "dynamicImports": [
+      "../../node_modules/marked/lib/marked.esm.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ]
+  },
+  "_CrxMessaging.js": {
+    "file": "modules/CrxMessaging.js",
+    "name": "CrxMessaging",
+    "imports": [
+      "_Env.js",
+      "_Settings.js"
+    ]
+  },
+  "_CustomInstructions.js": {
+    "file": "modules/CustomInstructions.js",
+    "name": "CustomInstructions",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_templates.js"
+    ]
+  },
+  "_Env.js": {
+    "file": "modules/Env.js",
+    "name": "Env",
+    "assets": [
+      "assets/Worker.ts"
+    ]
+  },
+  "_GPT-Responses.js": {
+    "file": "modules/GPT-Responses.js",
+    "name": "GPT-Responses",
+    "imports": [
+      "_Settings.js"
+    ]
+  },
+  "_ImageProcess.js": {
+    "file": "modules/ImageProcess.js",
+    "name": "ImageProcess",
+    "assets": [
+      "assets/mozjpeg_enc.wasm"
+    ]
+  },
+  "_MakeTimeline.js": {
+    "file": "modules/MakeTimeline.js",
+    "name": "MakeTimeline",
+    "imports": [
+      "_GPT-Responses.js",
+      "_Settings.js",
+      "_Env.js",
+      "_Toast.js"
+    ]
+  },
+  "_Markdown.js": {
+    "file": "modules/Markdown.js",
+    "name": "Markdown",
+    "imports": [
+      "__commonjsHelpers.js",
+      "_Settings.js",
+      "_Env.js",
+      "_katex.js",
+      "../../../../node_modules/marked-katex-extension/src/index.js"
+    ]
+  },
+  "_Phosphor.js": {
+    "file": "modules/Phosphor.js",
+    "name": "Phosphor"
+  },
+  "_Settings.js": {
+    "file": "modules/Settings.js",
+    "name": "Settings",
+    "imports": [
+      "_Env.js"
+    ],
+    "dynamicImports": [
+      "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs",
+      "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs"
+    ]
+  },
+  "_Toast.js": {
+    "file": "modules/Toast.js",
+    "name": "Toast"
+  },
+  "_UnifiedMessaging.js": {
+    "file": "modules/UnifiedMessaging.js",
+    "name": "UnifiedMessaging",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Env.js",
+      "_Settings.js",
+      "_templates.js"
+    ]
+  },
+  "__commonjsHelpers.js": {
+    "file": "modules/_commonjsHelpers.js",
+    "name": "_commonjsHelpers"
+  },
+  "_clipboard-handler.js": {
+    "file": "modules/clipboard-handler.js",
+    "name": "clipboard-handler",
+    "imports": [
+      "_Clipboard.js"
+    ]
+  },
+  "_crx-entry.js": {
+    "file": "modules/crx-entry.js",
+    "name": "crx-entry",
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_UnifiedMessaging.js"
+    ],
+    "dynamicImports": [
+      "../frontend/shells/base/index.ts",
+      "../frontend/shells/minimal/index.ts",
+      "../frontend/shells/faint/index.ts",
+      "../frontend/views/viewer/index.ts",
+      "../frontend/views/workcenter/index.ts",
+      "../frontend/views/settings/index.ts",
+      "../frontend/views/history/index.ts",
+      "../frontend/views/explorer/index.ts",
+      "../frontend/views/airpad/index.ts",
+      "../frontend/views/editor/index.ts",
+      "../frontend/views/home/index.ts",
+      "../frontend/views/print/index.ts",
+      "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline"
+    ]
+  },
+  "_index.js": {
+    "file": "modules/index.js",
+    "name": "index"
+  },
+  "_index4.js": {
+    "file": "modules/index4.js",
+    "name": "index"
+  },
+  "_index8.js": {
+    "file": "modules/index8.js",
+    "name": "index",
+    "imports": [
+      "_Settings.js",
+      "_Env.js",
+      "_Phosphor.js",
+      "_crx-entry.js",
+      "_Markdown.js"
+    ]
+  },
+  "_katex.js": {
+    "file": "modules/katex.js",
+    "name": "katex"
+  },
+  "_main.ts-loader.js": {
+    "file": "assets/main.ts-loader.js",
+    "src": "_main.ts-loader.js"
+  },
+  "_runtime.js": {
+    "file": "modules/runtime.js",
+    "name": "runtime",
+    "imports": [
+      "_Env.js"
+    ]
+  },
+  "_shell.js": {
+    "file": "modules/shell.js",
+    "name": "shell",
+    "imports": [
+      "_Env.js",
+      "_Settings.js",
+      "_crx-entry.js",
+      "_Toast.js"
+    ]
+  },
+  "_templates.js": {
+    "file": "modules/templates.js",
+    "name": "templates"
+  },
+  "_types.js": {
+    "file": "modules/types.js",
+    "name": "types"
+  },
+  "content/main.ts": {
+    "file": "app/content.js",
+    "name": "content",
+    "src": "content/main.ts",
+    "isEntry": true,
+    "imports": [
+      "_Clipboard.js",
+      "_Toast.js",
+      "_Conversion.js",
+      "_clipboard-handler.js",
+      "_runtime.js",
+      "_CrxMessaging.js",
+      "_Settings.js",
+      "_Env.js",
+      "__commonjsHelpers.js",
+      "_ImageProcess.js"
+    ]
+  },
+  "markdown/viewer.html": {
+    "file": "app/markdown-viewer.js",
+    "name": "markdown-viewer",
+    "src": "markdown/viewer.html",
+    "isEntry": true,
+    "imports": [
+      "_crx-entry.js",
+      "_Settings.js",
+      "_Env.js",
+      "_UnifiedMessaging.js",
+      "_templates.js"
+    ]
+  },
+  "newtab/index.html": {
+    "file": "app/newtab.js",
+    "name": "newtab",
+    "src": "newtab/index.html",
+    "isEntry": true,
+    "imports": [
+      "_crx-entry.js",
+      "_Settings.js",
+      "_Env.js",
+      "_UnifiedMessaging.js",
+      "_templates.js"
+    ]
+  },
+  "offscreen/capture.html": {
+    "file": "app/offscreen-capture.js",
+    "name": "offscreen-capture",
+    "src": "offscreen/capture.html",
+    "isEntry": true
+  },
+  "offscreen/copy.html": {
+    "file": "app/offscreen-copy.js",
+    "name": "offscreen-copy",
+    "src": "offscreen/copy.html",
+    "isEntry": true,
+    "imports": [
+      "_clipboard-handler.js",
+      "_Clipboard.js"
+    ]
+  },
+  "popup/index.html": {
+    "file": "app/popup.js",
+    "name": "popup",
+    "src": "popup/index.html",
+    "isEntry": true,
+    "imports": [
+      "_runtime.js",
+      "_Env.js"
+    ]
+  },
+  "settings/index.html": {
+    "file": "app/settings.js",
+    "name": "settings",
+    "src": "settings/index.html",
+    "isEntry": true,
+    "imports": [
+      "_crx-entry.js",
+      "_Settings.js",
+      "_Env.js",
+      "_UnifiedMessaging.js",
+      "_templates.js"
+    ]
+  },
+  "style.css": {
+    "file": "assets/style.css",
+    "src": "style.css"
+  },
+  "sw.ts": {
+    "file": "app/background.js",
+    "name": "background",
+    "src": "sw.ts",
+    "isEntry": true,
+    "imports": [
+      "_Settings.js",
+      "_MakeTimeline.js",
+      "_ImageProcess.js",
+      "../com/service/service/RecognizeData.ts",
+      "_Clipboard.js",
+      "_CustomInstructions.js",
+      "_templates.js",
+      "_GPT-Responses.js",
+      "_CrxMessaging.js",
+      "_Env.js",
+      "_Toast.js"
+    ],
+    "dynamicImports": [
+      "_UnifiedMessaging.js"
+    ]
+  }
+}

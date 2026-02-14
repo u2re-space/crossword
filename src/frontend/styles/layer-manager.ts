@@ -60,9 +60,23 @@ export type ViewId =
  */
 export const LAYER_HIERARCHY: LayerDefinition[] = [
     // === SYSTEM LAYERS (order 0-99) ===
+    // Canonical normalize/reset aliases used across runtime variants.
+    { name: 'ux-normalize',             category: 'system',   order: 0,   description: 'Veela normalize layer' },
     { name: 'layer.reset',              category: 'system',   order: 0,   description: 'CSS reset rules' },
     { name: 'layer.normalize',          category: 'system',   order: 10,  description: 'Normalize browser defaults' },
+    { name: 'tokens',                   category: 'system',   order: 20,  description: 'Legacy tokens layer' },
+    { name: 'ux-tokens',                category: 'system',   order: 20,  description: 'Veela token layer' },
     { name: 'layer.tokens',             category: 'system',   order: 20,  description: 'CSS custom properties (variables)' },
+    { name: 'base',                     category: 'system',   order: 30,  description: 'Legacy base layer' },
+    { name: 'ux-base',                  category: 'system',   order: 30,  description: 'Veela base layer' },
+    { name: 'layout',                   category: 'system',   order: 40,  description: 'Legacy layout layer' },
+    { name: 'ux-layout',                category: 'system',   order: 40,  description: 'Veela layout layer' },
+    { name: 'components',               category: 'system',   order: 50,  description: 'Legacy components layer' },
+    { name: 'ux-components',            category: 'system',   order: 50,  description: 'Veela components layer' },
+    { name: 'utilities',                category: 'system',   order: 60,  description: 'Legacy utilities layer' },
+    { name: 'ux-utilities',             category: 'system',   order: 60,  description: 'Veela utilities layer' },
+    { name: 'ux-theme',                 category: 'system',   order: 70,  description: 'Veela theme layer' },
+    { name: 'ux-overrides',             category: 'system',   order: 80,  description: 'Veela overrides layer' },
     { name: 'layer.properties.shell',   category: 'system',   order: 30,  description: 'Shell context custom properties' },
     { name: 'layer.properties.views',   category: 'system',   order: 35,  description: 'View context custom properties' },
 
@@ -72,10 +86,19 @@ export const LAYER_HIERARCHY: LayerDefinition[] = [
     { name: 'layer.runtime.forms',      category: 'runtime',  order: 115, description: 'Form element base styles' },
     { name: 'layer.runtime.utilities',  category: 'runtime',  order: 120, description: 'Utility classes' },
     { name: 'layer.runtime.animations', category: 'runtime',  order: 130, description: 'Keyframes and animation definitions' },
-    { name: 'layer.boot',              category: 'runtime',  order: 140, description: 'Boot/choice screen styles' },
+    { name: 'layer.boot',               category: 'runtime',  order: 140, description: 'Boot/choice screen styles' },
+    { name: 'boot.tokens',              category: 'runtime',  order: 142, description: 'Boot tokens layer' },
+    { name: 'boot.base',                category: 'runtime',  order: 144, description: 'Boot base layer' },
+    { name: 'boot.components',          category: 'runtime',  order: 146, description: 'Boot components layer' },
+    { name: 'boot.responsive',          category: 'runtime',  order: 148, description: 'Boot responsive adjustments' },
 
     // === SHELL LAYERS (order 200-299) ===
     { name: 'layer.shell.common',             category: 'shell', order: 200, description: 'Shared shell styles' },
+    { name: 'shell.tokens',                   category: 'shell', order: 202, description: 'Legacy shell tokens' },
+    { name: 'shell.base',                     category: 'shell', order: 204, description: 'Legacy shell base' },
+    { name: 'shell.components',               category: 'shell', order: 206, description: 'Legacy shell components' },
+    { name: 'shell.utilities',                category: 'shell', order: 208, description: 'Legacy shell utilities' },
+    { name: 'shell.overrides',                category: 'shell', order: 209, description: 'Legacy shell overrides' },
     { name: 'layer.shell.raw',                category: 'shell', order: 210, description: 'Raw shell (minimal)' },
     { name: 'layer.shell.minimal',              category: 'shell', order: 220, description: 'Minimal shell (toolbar navigation)' },
     { name: 'layer.shell.minimal.layout',       category: 'shell', order: 222, description: 'Minimal shell layout rules' },
@@ -91,6 +114,8 @@ export const LAYER_HIERARCHY: LayerDefinition[] = [
     { name: 'layer.view.viewer',              category: 'view', order: 310, description: 'Markdown viewer' },
     { name: 'layer.view.workcenter',          category: 'view', order: 320, description: 'Work center (AI prompts)' },
     { name: 'layer.view.workcenter.keyframes', category: 'view', order: 322, description: 'Work center animations' },
+    { name: 'view.workcenter',                category: 'view', order: 324, description: 'Work center styles (legacy name)' },
+    { name: 'view.workcenter.animations',     category: 'view', order: 326, description: 'Work center animations (legacy name)' },
     { name: 'layer.view.settings',            category: 'view', order: 330, description: 'Settings view' },
     { name: 'layer.view.explorer',            category: 'view', order: 340, description: 'File explorer' },
     { name: 'layer.view.history',             category: 'view', order: 350, description: 'History view' },
@@ -100,6 +125,7 @@ export const LAYER_HIERARCHY: LayerDefinition[] = [
     { name: 'layer.view.airpad',              category: 'view', order: 370, description: 'Airpad (touch input)' },
     { name: 'layer.view.home',                category: 'view', order: 380, description: 'Home/landing view' },
     { name: 'layer.view.print',               category: 'view', order: 390, description: 'Print view' },
+    { name: 'view-explorer',                  category: 'view', order: 392, description: 'Explorer legacy layered scope' },
 
     // === OVERRIDE LAYERS (order 900-999) ===
     { name: 'layer.override.theme',  category: 'override', order: 900, description: 'Theme customizations' },

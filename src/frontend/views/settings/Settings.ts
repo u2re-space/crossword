@@ -4,6 +4,7 @@ import style from "./Settings.scss?inline";
 import { H } from "fest/lure";
 import { loadSettings, saveSettings } from "@rs-com/config/Settings";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
+import { applyTheme } from "@rs-core/utils/Theme";
 import { createCustomInstructionsEditor } from "../../items/CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
 
@@ -111,6 +112,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
     const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
     const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
+    const fontSize = field('[data-field="appearance.fontSize"]') as HTMLSelectElement | null;
     const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
     const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
 
@@ -130,6 +132,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
             if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
             if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
             if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
+            if (fontSize) fontSize.value = (s?.appearance?.fontSize || "medium") as any;
             if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
             opts.onTheme?.((theme?.value as any) || "auto");
         })
@@ -165,9 +168,12 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
                 },
                 appearance: {
                     theme: (theme?.value as any) || "auto",
+                    fontSize: (fontSize?.value as any) || "medium",
                 },
             };
-            await saveSettings(next);
+            const saved = await saveSettings(next);
+            applyTheme(saved);
+            opts.onTheme?.((saved.appearance?.theme as any) || "auto");
             setNote("Saved.");
         })().catch((err) => setNote(String(err)));
     });

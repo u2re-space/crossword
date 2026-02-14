@@ -231,12 +231,12 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         https,
         proxy: {
             // Proxy Phosphor icons to avoid CORS issues
-            '/api/phosphor-icons': {
+            '/assets/icons/phosphor': {
                 target: 'https://cdn.jsdelivr.net',
                 changeOrigin: true,
                 rewrite: (path) => {
-                    // Extract style from path (e.g., /api/phosphor-icons/duotone/copy.svg)
-                    const pathParts = path.replace(/^\/api\/phosphor-icons\//, '').split('/');
+                    // Extract style from path (e.g., /assets/icons/phosphor/duotone/copy.svg)
+                    const pathParts = path.replace(/^\/assets\/icons\/phosphor\//, '').split('/');
                     const style = pathParts[0];
                     const iconName = pathParts[1]?.replace(/\.svg$/, '') || '';
 

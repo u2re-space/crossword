@@ -1,6 +1,6 @@
 @use "veela-lib" as *;
 
-@layer tokens, base, layout, components, utilities, overrides;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, overrides;
 
 @layer tokens {
     :root {
@@ -1423,10 +1423,12 @@
         display: inline-grid;
         padding-inline: var(--space-sm);
         padding-inline-start: var(--space-md);
-        grid-template-columns: [content] minmax(0px, 1fr) [icon] minmax(0px, max-content);
+        grid-template-columns: [content] minmax(max-content, 1fr) [icon] minmax(1.5rem, max-content);
         grid-template-rows: minmax(0px, max-content);
         block-size: max-content;
         justify-items: start;
+        inline-size: max-content;
+        min-inline-size: fit-content;
 
         &::-ms-expand {
             display: none;

@@ -136,13 +136,14 @@ export class ExplorerView implements View {
     }
 
     canHandleMessage(messageType: string): boolean {
-        return ["file-save", "navigate-path"].includes(messageType);
+        return ["file-save", "navigate-path", "content-explorer"].includes(messageType);
     }
 
     async handleMessage(message: unknown): Promise<void> {
-        const msg = message as { data?: { path?: string } };
-        if (msg.data?.path && this.explorer) {
-            this.explorer.navigate(msg.data.path);
+        const msg = message as { data?: { path?: string; into?: string } };
+        const targetPath = msg.data?.path || msg.data?.into;
+        if (targetPath && this.explorer) {
+            this.explorer.navigate(targetPath);
         }
     }
 }

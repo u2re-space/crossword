@@ -9,14 +9,11 @@
 import { H } from "fest/lure";
 import { ref, affected } from "fest/object";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
-import { marked, type MarkedExtension } from "marked";
-import markedKatex from "marked-katex-extension";
 import DOMPurify from "isomorphic-dompurify";
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { createViewState } from "../types";
-import { downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 
 // Import the md-view web component from fl.ui
 import "fest/fl-ui/services/markdown-view/Markdown";
@@ -24,37 +21,53 @@ import "fest/fl-ui/services/markdown-view/Markdown";
 // @ts-ignore - SCSS import
 import style from "./index.scss?inline";
 
-// Configure marked with KaTeX extension for HTML output with proper delimiters
-marked?.use?.(markedKatex({
-    throwOnError: false,
-    nonStandard: true,
-    output: "mathml",
-    strict: false,
-}) as unknown as MarkedExtension,
-{
-    hooks: {
-        preprocess: (markdown: string): string => {
-            if (/\\(.*\\)|\\[.*\\]/.test(markdown)) {
-                const katexNode = document.createElement('div')
-                katexNode.innerHTML = markdown
-                renderMathInElement(katexNode, {
-                    throwOnError: false,
-                    nonStandard: true,
-                    output: "mathml",
-                    strict: false,
-                    delimiters: [
-                        { left: "$$", right: "$$", display: true },
-                        { left: "\\[", right: "\\]", display: true },
-                        { left: "$", right: "$", display: false },
-                        { left: "\\(", right: "\\)", display: false }
-                    ]
-                })
-                return katexNode.innerHTML
+let markedParserPromise: Promise<(markdown: string) => Promise<string>> | null = null;
+
+const getMarkedParser = async (): Promise<(markdown: string) => Promise<string>> => {
+    if (markedParserPromise) return markedParserPromise;
+    markedParserPromise = (async () => {
+        const [{ marked }, { default: markedKatex }] = await Promise.all([
+            import("marked"),
+            import("marked-katex-extension"),
+        ]);
+        marked?.use?.(
+            markedKatex({
+                throwOnError: false,
+                nonStandard: true,
+                output: "mathml",
+                strict: false,
+            }) as any,
+            {
+                hooks: {
+                    preprocess: (markdown: string): string => {
+                        if (/\\(.*\\)|\\[.*\\]/.test(markdown)) {
+                            const katexNode = document.createElement("div");
+                            katexNode.innerHTML = markdown;
+                            renderMathInElement(katexNode, {
+                                throwOnError: false,
+                                nonStandard: true,
+                                output: "mathml",
+                                strict: false,
+                                delimiters: [
+                                    { left: "$$", right: "$$", display: true },
+                                    { left: "\\[", right: "\\]", display: true },
+                                    { left: "$", right: "$", display: false },
+                                    { left: "\\(", right: "\\)", display: false },
+                                ],
+                            });
+                            return katexNode.innerHTML;
+                        }
+                        return markdown;
+                    },
+                },
             }
-            return markdown
-        },
-    },
-});
+        );
+        return async (markdown: string) => {
+            return await marked.parse(markdown ?? "");
+        };
+    })();
+    return markedParserPromise;
+};
 
 // ============================================================================
 // VIEWER STATE
@@ -266,11 +279,8 @@ export class ViewerView implements View {
             return;
         }
 
-        // Render markdown (handle both sync and async parse)
+        // Render markdown via lazy parser.
         try {
-            const parseResult = marked.parse((content || "")?.trim?.() || "");
-
-            // Handle both sync (string) and async (Promise<string>) results
             const handleParsed = (html: string) => {
                 const sanitized = DOMPurify?.sanitize?.((html || "")?.trim?.() || "") || "";
                 renderTarget.innerHTML = sanitized;
@@ -282,11 +292,10 @@ export class ViewerView implements View {
                 renderTarget.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
             };
 
-            if (parseResult instanceof Promise) {
-                parseResult.then(handleParsed).catch(handleError);
-            } else {
-                handleParsed(parseResult as string);
-            }
+            getMarkedParser()
+                .then((parse) => parse((content || "")?.trim?.() || ""))
+                .then(handleParsed)
+                .catch(handleError);
         } catch (error) {
             console.error('[ViewerView] Error rendering markdown:', error);
             renderTarget.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
@@ -442,6 +451,7 @@ export class ViewerView implements View {
             return;
         }
         try {
+            const { downloadMarkdownAsDocx } = await import("../../../core/document/DocxExport");
             await downloadMarkdownAsDocx(content, {
                 title: this.options.filename || "Markdown Content",
                 filename: `document-${Date.now()}.docx`,
@@ -555,14 +565,14 @@ export class ViewerView implements View {
     // ========================================================================
 
     canHandleMessage(messageType: string): boolean {
-        return ["content-view", "content-load", "markdown-content"].includes(messageType);
+        return ["content-view", "content-load", "markdown-content", "content-share", "share-target-input"].includes(messageType);
     }
 
     async handleMessage(message: unknown): Promise<void> {
-        const msg = message as { type?: string; data?: { text?: string; content?: string; filename?: string } };
+        const msg = message as { type?: string; data?: { text?: string; content?: string; filename?: string; url?: string } };
 
-        if (msg.data?.text || msg.data?.content) {
-            const content = msg.data.text || msg.data.content || "";
+        if (msg.data?.text || msg.data?.content || msg.data?.url) {
+            const content = msg.data.text || msg.data.content || msg.data.url || "";
             this.setContent(content, msg.data.filename);
         }
     }

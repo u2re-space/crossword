@@ -175,6 +175,8 @@
     }
 
     .app-shell__content {
+        container-type: size;
+        contain: strict;
         position: relative;
         flex: 1;
         display: flex;
@@ -186,9 +188,23 @@
         min-inline-size: 0;
         min-block-size: 0;
         padding: 0;
-        overflow: hidden;
+        margin: 0;
+        border: none 0px transparent;
+        overflow: auto;
         scrollbar-width: thin;
-        scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+        scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
+        box-sizing: border-box;
+
+        [data-view] {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+            scrollbar-width: thin;
+            inline-size: stretch;
+            block-size: stretch;
+            min-inline-size: 0;
+            min-block-size: fit-content;
+        }
 
         & > * {
             flex: 1;

@@ -1,0 +1,134 @@
+{
+  "manifest_version": 3,
+  "name": "CrossWord",
+  "description": "Snip & Process (AI/OCR), Markdown Viewer, Math/Content Conversion (LaTeX/MathML/HTML/Markdown)",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "CrossWord"
+  },
+  "chrome_url_overrides": {},
+  "options_ui": {
+    "page": "settings/index.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "clipboardRead",
+    "contextMenus",
+    "nativeMessaging",
+    "tabCapture",
+    "downloads",
+    "webNavigation",
+    "offscreen",
+    "notifications",
+    "commands",
+    "desktopCapture"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://u2re.space https://*.u2re.space *;",
+    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' 'wasm-eval' http://**/* https://**/* file://**/*; child-src 'self';"
+  },
+  "host_permissions": [
+    "<all_urls>",
+    "file://**/*",
+    "file:///**/*",
+    "https://u2re.space/*",
+    "https://*.u2re.space/*"
+  ],
+  "content_scripts": [
+    {
+      "js": [
+        "assets/main.ts-loader.js"
+      ],
+      "matches": [
+        "<all_urls>",
+        "file:///**/*",
+        "file://**/*"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "markdown/viewer.html",
+        "offscreen/*",
+        "assets/*"
+      ],
+      "use_dynamic_url": false
+    },
+    {
+      "matches": [
+        "<all_urls>",
+        "file://**/*",
+        "file:///*"
+      ],
+      "resources": [
+        "assets/Worker.ts",
+        "assets/mozjpeg_enc.wasm",
+        "modules/Clipboard.js",
+        "modules/Clipboard.js.map",
+        "modules/Toast.js",
+        "modules/Toast.js.map",
+        "modules/Conversion.js",
+        "modules/Conversion.js.map",
+        "modules/clipboard-handler.js",
+        "modules/clipboard-handler.js.map",
+        "modules/runtime.js",
+        "modules/runtime.js.map",
+        "modules/CrxMessaging.js",
+        "modules/CrxMessaging.js.map",
+        "modules/Settings.js",
+        "modules/Settings.js.map",
+        "modules/Env.js",
+        "modules/Env.js.map",
+        "modules/_commonjsHelpers.js",
+        "modules/_commonjsHelpers.js.map",
+        "modules/ImageProcess.js",
+        "modules/ImageProcess.js.map",
+        "modules/marked.esm.js",
+        "modules/marked.esm.js.map",
+        "modules/index3.js",
+        "modules/index3.js.map",
+        "modules/showOpenFilePicker.js",
+        "modules/showOpenFilePicker.js.map",
+        "modules/katex.js",
+        "modules/katex.js.map",
+        "app/content.js",
+        "app/content.js.map"
+      ],
+      "use_dynamic_url": false
+    }
+  ],
+  "commands": {
+    "crx-snip-text": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Process selected text with CrossWord CRX-Snip"
+    },
+    "crx-snip-screen": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Capture and process screen area with CrossWord CRX-Snip"
+    }
+  },
+  "icons": {
+    "512": "icons/icon.png"
+  }
+}

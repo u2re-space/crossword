@@ -29,6 +29,7 @@ export class WorkCenterAttachments {
                     <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
                     <span class="btn-text">Add Files</span>
                   </button>
+                  <div class="file-list" data-file-list></div>
                   <button class="btn btn-icon" data-action="clear-all-files" title="Clear All Files">
                     <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
                     <span class="btn-text">Clear All</span>
@@ -44,7 +45,6 @@ export class WorkCenterAttachments {
                     <div class="drop-hint" data-drop-hint>Supports: Images, Documents, Text files, PDFs, URLs, Base64 data</div>
                   </div>
                 </div>
-                <div class="file-list" data-file-list></div>
                 ${this.renderRecognizedStatus(state)}
               </div>
 

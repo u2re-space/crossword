@@ -84,6 +84,11 @@ const isValidViewPath = (path: string): path is ViewId =>
 const VALID_SHELLS = ["base", "minimal", "faint"] as const;
 type ShellPreference = (typeof VALID_SHELLS)[number] | "minimal";
 
+const normalizeShellPreference = (shell: ShellPreference | null): "base" | "minimal" => {
+    if (shell === "base") return "base";
+    return "minimal";
+};
+
 /**
  * Get saved shell preference from localStorage
  */
@@ -91,7 +96,11 @@ const getSavedShell = (): ShellPreference | null => {
     try {
         const saved = localStorage.getItem("rs-boot-shell");
         if (saved && (VALID_SHELLS as readonly string[]).includes(saved)) {
-            return saved as ShellPreference;
+            const normalized = normalizeShellPreference(saved as ShellPreference);
+            if (normalized !== saved) {
+                localStorage.setItem("rs-boot-shell", normalized);
+            }
+            return normalized;
         }
     } catch {
         // localStorage unavailable

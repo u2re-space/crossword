@@ -30,6 +30,10 @@ export type ChoiceScreenResult = {
     countdownEl: HTMLElement;
 };
 
+const normalizeShellChoice = (shell: ShellId): ShellId => {
+    return shell === "faint" ? "minimal" : shell;
+};
+
 // ============================================================================
 // Utility Functions
 // ============================================================================
@@ -38,8 +42,9 @@ export type ChoiceScreenResult = {
  * Save shell preference to localStorage
  */
 const saveShellPreference = (shell: ShellId, remember: boolean): void => {
+    const normalizedShell = normalizeShellChoice(shell);
     try {
-        localStorage.setItem("rs-boot-shell", shell);
+        localStorage.setItem("rs-boot-shell", normalizedShell);
         if (remember) {
             localStorage.setItem("rs-boot-remember", "1");
         }
@@ -52,15 +57,16 @@ const saveShellPreference = (shell: ShellId, remember: boolean): void => {
  * Navigate to the default view after shell selection
  */
 const navigateToDefaultView = (shell: ShellId, remember: boolean): void => {
-    saveShellPreference(shell, remember);
+    const normalizedShell = normalizeShellChoice(shell);
+    saveShellPreference(normalizedShell, remember);
     
     // Navigate to /viewer (default view)
     const defaultView = "viewer";
-    window.history.pushState({ shell, view: defaultView }, "", `/${defaultView}`);
+    window.history.pushState({ shell: normalizedShell, view: defaultView }, "", `/${defaultView}`);
     
     // Dispatch route change event
     window.dispatchEvent(new CustomEvent('route-change', {
-        detail: { view: defaultView, shell }
+        detail: { view: defaultView, shell: normalizedShell }
     }));
     
     // Reload to apply shell
@@ -109,7 +115,7 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
 
     // Menu buttons
     const bigMinimalButton = H`<button class="minimal big recommended" type="button">Minimal</button>` as HTMLButtonElement;
-    const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (unstable)</button>` as HTMLButtonElement;
+    const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (temporarily unavailable)</button>` as HTMLButtonElement;
     const airpadButton = H`<button class="airpad small" type="button">Airpad</button>` as HTMLButtonElement;
 
     // Menu buttons array
@@ -199,7 +205,7 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
     };
 
     bigMinimalButton.addEventListener("click", () => handleChoice("minimal"));
-    unstableFaint.addEventListener("click", () => handleChoice("faint"));
+    unstableFaint.addEventListener("click", () => handleChoice("minimal"));
     airpadButton.addEventListener("click", () => handleChoice("airpad"));
 
     // Start countdown timer
@@ -254,7 +260,8 @@ export default async (mountingElement: HTMLElement): Promise<void> => {
     await loadAsAdopted(style);
     
     // Check if there's a saved preference - if so, skip boot menu
-    const savedShell = localStorage.getItem("rs-boot-shell") as ShellId | null;
+    const rawSavedShell = localStorage.getItem("rs-boot-shell") as ShellId | null;
+    const savedShell = rawSavedShell ? normalizeShellChoice(rawSavedShell) : null;
     const remember = localStorage.getItem("rs-boot-remember") === "1";
     
     if (savedShell && remember) {

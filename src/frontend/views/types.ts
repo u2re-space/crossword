@@ -38,6 +38,27 @@ export interface FileContent {
     path?: string;
 }
 
+export type ViewReceiveSource = "share-target" | "launch-queue" | "pending" | "clipboard";
+
+export interface ViewReceiveHint {
+    destination?: string;
+    action?: "open" | "attach" | "save" | "process";
+    filename?: string;
+    contentType?: string;
+}
+
+export interface ViewReceivePayload {
+    source: ViewReceiveSource;
+    route: string;
+    title?: string;
+    text?: string;
+    url?: string;
+    files?: File[];
+    pending?: boolean;
+    hint?: ViewReceiveHint;
+    metadata?: Record<string, unknown>;
+}
+
 /**
  * View state persistence
  */

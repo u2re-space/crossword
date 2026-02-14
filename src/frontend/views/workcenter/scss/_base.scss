@@ -16,16 +16,16 @@
         overflow-x: hidden;
         background: var(--color-background);
         color: var(--color-on-background);
-        min-block-size: stretch;
-        block-size: stretch;
-        max-block-size: stretch;
+        min-block-size: 100%;
+        block-size: 100%;
+        max-block-size: none;
         container-type: inline-size;
         scrollbar-width: thin;
         scrollbar-color: var(--color-outline-variant) transparent;
 
         textarea, input, select, button {
             box-sizing: border-box;
-            max-inline-size: stretch;
+            max-inline-size: 100%;
         }
 
         button {
@@ -41,12 +41,16 @@
             text-rendering: auto;
         }
 
-        @container (max-width: 1024px) {
+        h3 {
+            padding: var(--space-sm);
+        }
+
+        @container (max-inline-size: 1024px) {
             padding: var(--space-sm);
             gap: var(--space-sm);
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             padding: var(--space-xs);
             gap: var(--space-xs);
         }

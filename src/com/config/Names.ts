@@ -122,7 +122,7 @@ export const API_ENDPOINTS = {
     HEALTH: '/health',
 
     // Asset proxies
-    PHOSPHOR_ICONS: '/api/phosphor-icons',
+    PHOSPHOR_ICONS: '/assets/icons/phosphor',
     ICON_PROXY: '/api/icon-proxy',
 
     // Content APIs

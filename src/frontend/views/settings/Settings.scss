@@ -1,7 +1,7 @@
 /* ai-refactor: optimized/refactored at 2026-02-13T00:25:20Z */
 @use "veela-lib" as *;
 
-@layer tokens, base, layout, components, utilities, overrides;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, overrides;
 
 @layer tokens {
     :root:has([data-view="settings"]),
@@ -82,13 +82,19 @@
                 letter-spacing: -0.01em;
                 color: var(--color-on-surface);
             }
+
+            .form-select {
+                inline-size: stretch;
+            }
         }
 
         .field {
             display: grid;
+            grid-auto-flow: row;
             gap: var(--spacing-xs, 6px);
             inline-size: stretch;
             font-size: var(--text-xs, 12px);
+            flex-direction: column;
 
             & > span {
                 font-size: var(--text-xs, 12px);

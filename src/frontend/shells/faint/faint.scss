@@ -287,6 +287,7 @@
     }
 
     .app-shell__content {
+        container-type: size;
         flex: 1;
         position: relative;
         overflow: hidden;

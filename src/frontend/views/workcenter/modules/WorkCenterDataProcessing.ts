@@ -166,6 +166,10 @@ export class WorkCenterDataProcessing {
 
         // Render based on format
         switch (format) {
+            case 'code':
+                return this.renderAsCode(normalizedData);
+            case 'raw':
+                return this.renderAsRaw(result?.rawData || result);
             case 'html':
                 return this.renderAsHTML(normalizedData);
             case 'text':
@@ -296,6 +300,27 @@ export class WorkCenterDataProcessing {
         return `<pre class="text-result">${this.escapeHtml(renderedContent)}</pre>`;
     }
 
+    private renderAsRaw(data: any): string {
+        let rawText = '';
+        if (typeof data === 'string') {
+            rawText = data;
+        } else {
+            try {
+                rawText = JSON.stringify(data, null, 2);
+            } catch {
+                rawText = String(data ?? '');
+            }
+        }
+        return `<pre class="raw-result">${this.escapeHtml(rawText)}</pre>`;
+    }
+
+    private renderAsCode(data: any): string {
+        const content = this.extractContentItems(data).join('\n\n').trim() || this.extractTextContent(data);
+        const code = this.extractLikelyCode(content);
+        const language = this.detectCodeLanguage(content);
+        return `<pre class="code-result"><code data-lang="${this.escapeHtml(language)}">${this.escapeHtml(code)}</code></pre>`;
+    }
+
     private renderAsMarkdown(data: any): string {
         const content = this.extractContentItems(data);
         const renderedContent = content.map(item => this.renderContentItem(item, 'markdown')).join('\n\n');
@@ -416,6 +441,24 @@ export class WorkCenterDataProcessing {
             .trim();
     }
 
+    private extractLikelyCode(content: string): string {
+        const fenced = content.match(/```[\t ]*([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
+        if (fenced?.[2]) {
+            return fenced[2].trim();
+        }
+        return content;
+    }
+
+    private detectCodeLanguage(content: string): string {
+        const fencedLanguage = content.match(/```[\t ]*([a-zA-Z0-9_-]+)?\n/)?.[1];
+        if (fencedLanguage) return fencedLanguage.toLowerCase();
+        if (/\b(interface|type|const|let|=>|import\s+type)\b/.test(content)) return 'typescript';
+        if (/\b(function|const|let|var|import|export)\b/.test(content)) return 'javascript';
+        if (/\b(def |import |from |class )/.test(content)) return 'python';
+        if (/\b<[^>]+>/.test(content)) return 'html';
+        return 'text';
+    }
+
     private extractTextContent(data: any): string {
         // Handle null/undefined
         if (data == null) return '';
@@ -517,6 +560,10 @@ export class WorkCenterDataProcessing {
             const normalizedData = this.normalizeResultData(result);
             const contentItems = this.extractContentItems(normalizedData);
             textToCopy = contentItems.join('\n\n');
+        }
+        else if ((format === 'raw' || format === 'code') && result) {
+            const rawData = result?.rawData || result;
+            textToCopy = typeof rawData === 'string' ? rawData : JSON.stringify(rawData, null, 2);
         }
         // For text format or fallback, use rendered content
         else {

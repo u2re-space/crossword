@@ -70,9 +70,13 @@ export class WorkCenterEvents {
 
         // Prompt input
         this.setupPromptInput();
+        this.setupPromptDropzone();
 
         // Voice input
         this.setupVoiceInput();
+
+        // Input tabs
+        this.setupInputTabs();
 
         // Format selectors
         this.setupFormatSelectors();
@@ -90,7 +94,7 @@ export class WorkCenterEvents {
     private setupFileSelection(): void {
         if (!this.container) return;
 
-        const fileSelectBtn = this.container.querySelector('[data-action="select-files"]') as HTMLButtonElement;
+        const fileSelectBtns = Array.from(this.container.querySelectorAll('[data-action="select-files"]')) as HTMLButtonElement[];
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.multiple = true;
@@ -98,7 +102,9 @@ export class WorkCenterEvents {
         fileInput.style.display = 'none';
         this.container.append(fileInput);
 
-        fileSelectBtn.addEventListener('click', () => fileInput.click());
+        for (const btn of fileSelectBtns) {
+            btn.addEventListener('click', () => fileInput.click());
+        }
         fileInput.addEventListener('change', async (e) => {
             const files = Array.from((e.target as HTMLInputElement).files || []);
             this.fileOps.addFilesFromInput(this.state, files as any);
@@ -207,12 +213,16 @@ export class WorkCenterEvents {
         if (!this.container) return;
 
         // Populate the instruction selector from CustomInstructions in settings
-        this.prompts.populateInstructionSelect(this.state);
+        void this.prompts.populateInstructionSelect(this.state).then(async () => {
+            const { WorkCenterStateManager } = await import('./WorkCenterState');
+            WorkCenterStateManager.saveState(this.state);
+        });
 
         const instructionSelect = this.container.querySelector('.instruction-select') as HTMLSelectElement;
         instructionSelect?.addEventListener('change', async () => {
             const selectedId = instructionSelect.value;
             this.prompts.handleInstructionSelection(this.state, selectedId);
+            await this.templates.setActiveInstruction(selectedId || null);
             const { WorkCenterStateManager } = await import('./WorkCenterState');
             WorkCenterStateManager.saveState(this.state);
         });
@@ -260,7 +270,7 @@ export class WorkCenterEvents {
         // Format selector
         const formatSelect = this.container.querySelector('.format-select') as HTMLSelectElement;
         formatSelect.addEventListener('change', async () => {
-            const newFormat = formatSelect.value as "auto" | "markdown" | "json" | "text" | "html";
+            const newFormat = formatSelect.value as "auto" | "markdown" | "json" | "text" | "raw" | "html" | "code";
             this.state.outputFormat = newFormat;
             const { WorkCenterStateManager } = await import('./WorkCenterState');
             WorkCenterStateManager.saveState(this.state);
@@ -329,6 +339,7 @@ export class WorkCenterEvents {
                     break;
                 case 'refresh-instructions':
                     await this.prompts.populateInstructionSelect(this.state);
+                    this.prompts.updateInstructionSelect(this.state);
                     break;
                 case 'clear-prompt':
                     this.prompts.clearPrompt(this.state);
@@ -345,6 +356,9 @@ export class WorkCenterEvents {
                 case 'clear-results':
                     this.actions.clearResults(this.state);
                     break;
+                case 'clear-all-files':
+                    this.attachments.clearAllFiles(this.state);
+                    break;
                 case 'view-full-history':
                     this.deps.state.view = 'history';
                     this.deps.render();
@@ -354,6 +368,9 @@ export class WorkCenterEvents {
                     break;
                 case 'execute':
                     await this.actions.executeUnifiedAction(this.state);
+                    break;
+                case 'switch-input-tab':
+                    this.switchInputTab(String(target.closest('[data-tab]')?.getAttribute('data-tab') || 'prompt'));
                     break;
                 case 'clear-recognized':
                     const { WorkCenterStateManager: StateManager1 } = await import('./WorkCenterState');
@@ -403,6 +420,122 @@ export class WorkCenterEvents {
                     const formattedResult = dataProcessing.formatResult({ content: step.content }, this.state.outputFormat);
                     outputContent.innerHTML = `<div class="result-content">${formattedResult}</div>`;
                     this.state.lastRawResult = { data: step.content };
+                }
+            }
+        });
+    }
+
+    private setupInputTabs(): void {
+        if (!this.container) return;
+        this.switchInputTab(this.state.activeInputTab || "prompt");
+    }
+
+    private switchInputTab(tab: string): void {
+        if (!this.container) return;
+        if (!["instruction", "prompt", "attachments"].includes(tab)) return;
+
+        this.state.activeInputTab = tab as WorkCenterState["activeInputTab"];
+        this.container.querySelector('[data-input-tabs]')?.setAttribute('data-active-tab', tab);
+
+        const tabButtons = this.container.querySelectorAll('[data-action="switch-input-tab"][data-tab]');
+        for (const tabButton of Array.from(tabButtons)) {
+            const btn = tabButton as HTMLButtonElement;
+            const isActive = btn.getAttribute('data-tab') === tab;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-selected', String(isActive));
+        }
+
+        const tabPanels = this.container.querySelectorAll('[data-tab-panel]');
+        for (const panel of Array.from(tabPanels)) {
+            const el = panel as HTMLElement;
+            const isActive = el.getAttribute('data-tab-panel') === tab;
+            el.classList.toggle('is-active', isActive);
+        }
+
+        void import('./WorkCenterState')
+            .then(({ WorkCenterStateManager }) => WorkCenterStateManager.saveState(this.state))
+            .catch(() => {
+                // ignore persistence failures for tab state
+            });
+    }
+
+    private setupPromptDropzone(): void {
+        if (!this.container) return;
+        const promptDropzone = this.container.querySelector('[data-prompt-dropzone]') as HTMLElement | null;
+        if (!promptDropzone) return;
+
+        const overlay = this.container.querySelector('[data-prompt-drop-hint]') as HTMLElement | null;
+
+        promptDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            promptDropzone.classList.add('drag-over');
+            overlay?.classList.add('visible');
+        });
+
+        promptDropzone.addEventListener('dragleave', (e) => {
+            const rect = promptDropzone.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                promptDropzone.classList.remove('drag-over');
+                overlay?.classList.remove('visible');
+            }
+        });
+
+        promptDropzone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            promptDropzone.classList.remove('drag-over');
+            overlay?.classList.remove('visible');
+
+            const dt = e.dataTransfer;
+            if (!dt) return;
+
+            const files = Array.from(dt.files || []);
+            if (files.length > 0) {
+                this.fileOps.addFilesFromInput(this.state, files as any);
+                this.ui.updateFileList(this.state);
+                this.ui.updateFileCounter(this.state);
+                this.deps.onFilesChanged?.();
+                return;
+            }
+
+            if (dt.types.includes('text/plain')) {
+                const text = dt.getData('text/plain')?.trim();
+                if (text) {
+                    await this.fileOps.handleDroppedContent(this.state, text, 'text');
+                    this.ui.updateFileList(this.state);
+                    this.ui.updateFileCounter(this.state);
+                    this.deps.onFilesChanged?.();
+                    return;
+                }
+            }
+
+            if (dt.types.includes('text/uri-list')) {
+                const uriList = dt.getData('text/uri-list');
+                const urls = uriList.split('\n').filter((url) => url.trim() && !url.startsWith('#'));
+                const firstUrl = urls[0]?.trim();
+                if (firstUrl) {
+                    await this.fileOps.handleDroppedContent(this.state, firstUrl, 'url');
+                    this.ui.updateFileList(this.state);
+                    this.ui.updateFileCounter(this.state);
+                    this.deps.onFilesChanged?.();
+                    return;
+                }
+            }
+
+            if (dt.types.includes('text/html')) {
+                const html = dt.getData('text/html');
+                if (html) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html;
+                    const extracted = (temp.textContent || temp.innerText || '').trim();
+                    if (extracted) {
+                        await this.fileOps.handleDroppedContent(this.state, extracted, 'html');
+                        this.ui.updateFileList(this.state);
+                        this.ui.updateFileCounter(this.state);
+                        this.deps.onFilesChanged?.();
+                        return;
+                    }
                 }
             }
         });

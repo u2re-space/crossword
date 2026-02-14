@@ -16,6 +16,7 @@ import type {
     ViewFactory,
     ShellTheme
 } from "./shells/types";
+import { bindViewReceiveChannel } from "./views/ViewChannelMixin";
 
 // ============================================================================
 // SHELL REGISTRY
@@ -114,6 +115,7 @@ export const ShellRegistry = new ShellRegistryClass();
 class ViewRegistryClass {
     private views = new Map<ViewId, ViewRegistration>();
     private loadedViews = new Map<ViewId, View>();
+    private viewReceiveCleanup = new Map<ViewId, () => void>();
 
     /**
      * Register a view
@@ -159,7 +161,18 @@ class ViewRegistryClass {
         }
 
         const view = await factory(options);
+
+        const previousCleanup = this.viewReceiveCleanup.get(id);
+        if (previousCleanup) {
+            previousCleanup();
+            this.viewReceiveCleanup.delete(id);
+        }
+
         this.loadedViews.set(id, view);
+        this.viewReceiveCleanup.set(id, bindViewReceiveChannel(view, {
+            destination: String(id),
+            componentId: `view:${id}`
+        }));
         return view;
     }
 
@@ -170,6 +183,11 @@ class ViewRegistryClass {
         const view = this.loadedViews.get(id);
         if (view?.lifecycle?.onUnmount) {
             view.lifecycle.onUnmount();
+        }
+        const receiveCleanup = this.viewReceiveCleanup.get(id);
+        if (receiveCleanup) {
+            receiveCleanup();
+            this.viewReceiveCleanup.delete(id);
         }
         this.loadedViews.delete(id);
     }

@@ -51,7 +51,6 @@ import { loadAsAdopted } from "fest/dom";
 import { dynamicTheme } from "fest/lure";
 import { clearIconCaches, clearIconCache, testIconRacing, reinitializeRegistry, debugIconSystem } from "fest/icon";
 import type { FileManager } from "fest/fl-ui/services/file-manager/FileManager";
-import { downloadMarkdownAsDocx } from "@rs-core/document/DocxExport";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 import { extractCSS, recognizeByInstructions, solveAndAnswer, writeCode } from "@rs-com/service/service/RecognizeData";
 import { loadSettings } from "@rs-com/config/Settings";
@@ -2028,6 +2027,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
             if (action === "export-docx") {
                 const md = state.markdown || "";
                 if (md.trim()) {
+                    const { downloadMarkdownAsDocx } = await import("@rs-core/document/DocxExport");
                     await downloadMarkdownAsDocx(md, {
                         title: "CrossWord",
                         filename: `crossword-${Date.now()}.docx`,

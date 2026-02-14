@@ -6,11 +6,10 @@
  */
 
 import { H } from "fest/lure";
-import { ref, affected } from "fest/object";
+import { ref } from "fest/object";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
-import { getItem, setItem, StorageKeys } from "../../../core/storage";
 
 // @ts-ignore
 import settingsStyles from "./Settings.scss?inline";
@@ -68,8 +67,8 @@ export class SettingsView implements View {
     private _sheet: CSSStyleSheet | null = null;
 
     lifecycle: ViewLifecycle = {
-        onMount: () => { this.loadSettings() ; this._sheet ??= loadAsAdopted(settingsStyles) as CSSStyleSheet; },
-        onUnmount: () => { this.saveSettings(); removeAdopted(this._sheet!); },
+        onMount: () => { this._sheet ??= loadAsAdopted(settingsStyles) as CSSStyleSheet; },
+        onUnmount: () => { removeAdopted(this._sheet!); },
         onShow: () => { this._sheet ??= loadAsAdopted(settingsStyles) as CSSStyleSheet; },
         //onHide: () => { removeAdopted(this._sheet!); },
     };
@@ -193,9 +192,15 @@ export class SettingsView implements View {
             </div>
         ` as HTMLElement;*/
 
-        this.element = createSettingsView({ isExtension: false });
+        this.element = createSettingsView({
+            isExtension: false,
+            onTheme: (theme) => {
+                const nextTheme = theme as "auto" | "light" | "dark";
+                this.applyShellTheme(nextTheme);
+                this.options.onThemeChange?.(nextTheme);
+            }
+        });
 
-        this.setupEventHandlers();
         return this.element;
     }
 
@@ -208,52 +213,15 @@ export class SettingsView implements View {
     // ========================================================================
 
     private setupEventHandlers(): void {
-        if (!this.element) return;
-
-        // Handle input changes
-        this.element.addEventListener("change", (e) => {
-            const target = e.target as HTMLInputElement | HTMLSelectElement;
-            const path = target.dataset.setting;
-            if (!path) return;
-
-            const [section, key] = path.split(".") as [keyof AppSettings, string];
-            const value = target.type === "checkbox"
-                ? (target as HTMLInputElement).checked
-                : target.value;
-
-            // Update settings
-            (this.settings.value[section] as any)[key] = value;
-
-            // Special handling for theme
-            if (path === "appearance.theme") {
-                this.options.onThemeChange?.(value as "auto" | "light" | "dark");
-            }
-        });
-
-        // Handle actions
-        this.element.addEventListener("click", (e) => {
-            const target = e.target as HTMLElement;
-            const button = target.closest("[data-action]") as HTMLButtonElement | null;
-            if (!button) return;
-
-            const action = button.dataset.action;
-            if (action === "save") {
-                this.saveSettings();
-                this.showMessage("Settings saved");
-            } else if (action === "reset") {
-                this.resetSettings();
-                this.showMessage("Settings reset to defaults");
-            }
-        });
+        // Legacy handlers are intentionally disabled.
+        // createSettingsView() owns field bindings and persistence using unified config storage.
     }
 
     private loadSettings(): void {
-        const saved = getItem<AppSettings>(StorageKeys.SETTINGS, defaultSettings);
-        this.settings.value = { ...defaultSettings, ...saved };
+        this.settings.value = { ...defaultSettings };
     }
 
     private saveSettings(): void {
-        setItem(StorageKeys.SETTINGS, this.settings.value);
         this.options.onSettingsChange?.(this.settings.value);
     }
 
@@ -282,6 +250,16 @@ export class SettingsView implements View {
 
     private showMessage(message: string): void {
         this.shellContext?.showMessage(message);
+    }
+
+    private applyShellTheme(theme: "auto" | "light" | "dark"): void {
+        const root = this.element?.closest("[data-shell]") as HTMLElement | null;
+        if (!root) return;
+        const resolved = theme === "auto"
+            ? (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light")
+            : theme;
+        root.dataset.theme = resolved;
+        root.style.colorScheme = resolved;
     }
 
     canHandleMessage(messageType: string): boolean {

@@ -43,13 +43,19 @@ export class WorkCenterUI {
         const container = H`<div class="workcenter-view">
       <div class="workcenter-header">
         <h2>AI Work Center</h2>
-        <div class="control-selectors">
+        <details class="header-controls-disclosure" open>
+          <summary class="header-controls-summary">
+            <span>AI Work Center</span>
+          </summary>
+          <div class="control-selectors">
           <div class="format-selector">
             <label>Output Format:</label>
             <select class="format-select">
               <option value="auto" ${state.outputFormat === 'auto' ? 'selected' : ''}>Auto</option>
               <option value="markdown" ${state.outputFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
               <option value="json" ${state.outputFormat === 'json' ? 'selected' : ''}>JSON</option>
+              <option value="code" ${state.outputFormat === 'code' ? 'selected' : ''}>Code</option>
+              <option value="raw" ${state.outputFormat === 'raw' ? 'selected' : ''}>Raw Text</option>
               <option value="text" ${state.outputFormat === 'text' ? 'selected' : ''}>Plain Text</option>
               <option value="html" ${state.outputFormat === 'html' ? 'selected' : ''}>HTML</option>
             </select>
@@ -98,8 +104,9 @@ export class WorkCenterUI {
               <option value="scss" ${state.processingFormat === 'scss' ? 'selected' : ''}>SCSS</option>
             </select>
           </div>
-      </div>
           </div>
+        </details>
+      </div>
 
       <div class="workcenter-content">
         <div class="workcenter-layout">
@@ -132,12 +139,7 @@ export class WorkCenterUI {
 
           <!-- Input Prompts Section -->
           <div class="workcenter-column prompts-column">
-            ${this.prompts.renderPromptsSection(state)}
-          </div>
-
-          <!-- File Attachments Section -->
-          <div class="workcenter-column attachments-column">
-            ${this.attachments.renderAttachmentsSection(state)}
+            ${this.renderInputTabs(state)}
           </div>
         </div>
       </div>
@@ -161,15 +163,21 @@ export class WorkCenterUI {
         // Initialize file list and counters
         this.attachments.updateFileList(state);
         this.attachments.updateFileCounter(state);
+        this.prompts.updatePromptFileCount(state);
+        this.updateInputTabFileCount(state);
         this.history.updateRecentHistory(state);
     }
 
     updateFileCounter(state: WorkCenterState): void {
         this.attachments.updateFileCounter(state);
+        this.prompts.updatePromptFileCount(state);
+        this.updateInputTabFileCount(state);
     }
 
     updateFileList(state: WorkCenterState): void {
         this.attachments.updateFileList(state);
+        this.prompts.updatePromptFileCount(state);
+        this.updateInputTabFileCount(state);
     }
 
     updatePromptInput(state: WorkCenterState): void {
@@ -211,5 +219,36 @@ export class WorkCenterUI {
 
     revokeAllPreviewUrls(state: WorkCenterState): void {
         this.attachments.revokeAllPreviewUrls(state);
+    }
+
+    private renderInputTabs(state: WorkCenterState): string {
+        const activeTab = state.activeInputTab || "prompt";
+        return `
+            <div class="input-tabs-section" data-input-tabs data-active-tab="${activeTab}">
+                <div class="section-header">
+                    <h3>Work Inputs</h3>
+                    <div class="input-tab-actions">
+                        <button class="tab-btn ${activeTab === 'prompt' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="prompt" aria-selected="${activeTab === 'prompt'}">Prompt</button>
+                        <button class="tab-btn ${activeTab === 'attachments' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="attachments" aria-selected="${activeTab === 'attachments'}">Files (${state.files.length})</button>
+                    </div>
+                </div>
+                <div class="input-tab-panels">
+                    <section class="tab-panel ${activeTab === 'prompt' ? 'is-active' : ''}" data-tab-panel="prompt">
+                        ${this.prompts.renderPromptPanel(state)}
+                    </section>
+                    <section class="tab-panel ${activeTab === 'attachments' ? 'is-active' : ''}" data-tab-panel="attachments">
+                        ${this.attachments.renderAttachmentsSection(state)}
+                    </section>
+                </div>
+            </div>
+        `;
+    }
+
+    private updateInputTabFileCount(state: WorkCenterState): void {
+        if (!this.container) return;
+        const filesTabBtn = this.container.querySelector('[data-action="switch-input-tab"][data-tab="attachments"]') as HTMLElement | null;
+        if (filesTabBtn) {
+            filesTabBtn.textContent = `Files (${state.files.length})`;
+        }
     }
 }

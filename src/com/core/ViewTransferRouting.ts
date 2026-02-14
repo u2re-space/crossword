@@ -1,0 +1,136 @@
+import { sendMessage, type UnifiedMessage } from "@rs-com/core/UnifiedMessaging";
+
+export type ViewTransferSource = "share-target" | "launch-queue" | "pending" | "clipboard";
+
+export type ViewTransferDestination =
+    | "viewer"
+    | "workcenter"
+    | "explorer"
+    | "editor"
+    | "history"
+    | "settings"
+    | "home"
+    | "airpad"
+    | "print";
+
+export type ViewTransferActionHint = "open" | "attach" | "save" | "process";
+
+export interface ViewTransferHint {
+    destination?: ViewTransferDestination;
+    action?: ViewTransferActionHint;
+    contentType?: string;
+    filename?: string;
+}
+
+export interface ViewTransferPayload {
+    source: ViewTransferSource;
+    route: "share-target" | "launch-queue" | "clipboard";
+    title?: string;
+    text?: string;
+    url?: string;
+    files?: File[];
+    pending?: boolean;
+    hint?: ViewTransferHint;
+    metadata?: Record<string, unknown>;
+}
+
+export interface ViewTransferResolved {
+    destination: ViewTransferDestination;
+    routePath: `/${ViewTransferDestination}`;
+    messageType: string;
+    contentType: string;
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+}
+
+const getContentType = (payload: ViewTransferPayload): string => {
+    if (payload.hint?.contentType) return String(payload.hint.contentType);
+    const files = Array.isArray(payload.files) ? payload.files : [];
+    const text = String(payload.text || "").trim();
+    const url = String(payload.url || "").trim();
+
+    if (files.length > 0) {
+        const file = files[0];
+        const name = String(file?.name || "").toLowerCase();
+        const mime = String(file?.type || "").toLowerCase();
+        if (mime.startsWith("image/")) return "image";
+        if (mime === "text/markdown" || name.endsWith(".md") || name.endsWith(".markdown")) return "markdown";
+        if (mime.startsWith("text/")) return "text";
+        return "file";
+    }
+
+    if (url) return "url";
+    if (text) return "text";
+    return "other";
+};
+
+const pickDestination = (payload: ViewTransferPayload, contentType: string): ViewTransferDestination => {
+    if (payload.hint?.destination) return payload.hint.destination;
+    if (payload.hint?.action === "save") return "explorer";
+    if (payload.hint?.action === "process" || payload.hint?.action === "attach") return "workcenter";
+    if (payload.hint?.action === "open") return "viewer";
+
+    if (contentType === "markdown" || contentType === "text") return "viewer";
+    if (contentType === "url") return "workcenter";
+    if (contentType === "image" || contentType === "file") return "workcenter";
+    return "workcenter";
+};
+
+const toMessageType = (destination: ViewTransferDestination, hint?: ViewTransferHint): string => {
+    if (destination === "viewer") return hint?.action === "open" ? "content-load" : "content-view";
+    if (destination === "explorer") return "file-save";
+    if (destination === "workcenter") return "content-attach";
+    if (destination === "editor") return "content-load";
+    return "content-share";
+};
+
+export const resolveViewTransfer = (payload: ViewTransferPayload): ViewTransferResolved => {
+    const contentType = getContentType(payload);
+    const destination = pickDestination(payload, contentType);
+    const messageType = toMessageType(destination, payload.hint);
+    const files = Array.isArray(payload.files) ? payload.files : [];
+
+    const data: Record<string, unknown> = {
+        title: payload.title,
+        text: payload.text,
+        content: payload.text,
+        url: payload.url,
+        files,
+        filename: payload.hint?.filename || files[0]?.name,
+        source: payload.source,
+        route: payload.route,
+        hint: payload.hint
+    };
+
+    return {
+        destination,
+        routePath: `/${destination}`,
+        messageType,
+        contentType,
+        data,
+        metadata: {
+            source: payload.source,
+            route: payload.route,
+            pending: Boolean(payload.pending),
+            hint: payload.hint,
+            ...(payload.metadata || {})
+        }
+    };
+};
+
+export const dispatchViewTransfer = async (
+    payload: ViewTransferPayload
+): Promise<{ delivered: boolean; resolved: ViewTransferResolved }> => {
+    const resolved = resolveViewTransfer(payload);
+    const message: Omit<UnifiedMessage, "id" | "source"> & { source?: string } = {
+        type: resolved.messageType,
+        destination: resolved.destination,
+        contentType: resolved.contentType,
+        data: resolved.data,
+        metadata: resolved.metadata,
+        source: `view-transfer:${payload.source}`
+    };
+
+    const delivered = await sendMessage(message);
+    return { delivered, resolved };
+};

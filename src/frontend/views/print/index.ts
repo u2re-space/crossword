@@ -18,7 +18,6 @@
 import { H } from "fest/lure";
 import type { View, ViewOptions } from "../../shells/types";
 import { MdViewElement } from "fest/fl-ui/services/markdown-view";
-import { downloadHtmlAsDocx, downloadMarkdownAsDocx } from "../../../core/document/DocxExport";
 
 // ============================================================================
 // PRINT VIEW OPTIONS
@@ -134,6 +133,7 @@ export class PrintView implements View {
     }
 
     private async handleDocxExport(content: string, title: string): Promise<void> {
+        const { downloadHtmlAsDocx, downloadMarkdownAsDocx } = await import("../../../core/document/DocxExport");
         const filename = `${(title || 'document').replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '-').slice(0, 180)}.docx`;
         const looksLikeHtml = content.trim().startsWith('<');
 

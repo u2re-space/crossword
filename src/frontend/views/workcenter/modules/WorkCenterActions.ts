@@ -58,10 +58,16 @@ export class WorkCenterActions {
             let basePrompt = state.currentPrompt.trim() ||
                 (state.autoAction ? this.getLastSuccessfulPrompt() : "Analyze and process the provided content intelligently");
 
-            // Apply selected custom instruction from settings (if any)
-            if (state.selectedInstruction && this.templates) {
-                const instruction = this.templates.getInstructionById(state.selectedInstruction);
+            // Apply selected or active custom instruction from settings (if any)
+            if (this.templates) {
+                let instruction = this.templates.resolveInstruction(state.selectedInstruction);
+                if (!instruction && !state.selectedInstruction) {
+                    instruction = await this.templates.getActiveInstruction();
+                }
                 if (instruction?.instruction) {
+                    if (!state.selectedInstruction) {
+                        state.selectedInstruction = instruction.id;
+                    }
                     basePrompt = this.templates.buildPromptWithInstruction(basePrompt, instruction);
                 }
             }
@@ -144,7 +150,7 @@ export class WorkCenterActions {
 
             // Format and display result
             const formattedResult = this.dataProcessing.formatResult(result.rawData || result, state.outputFormat);
-            const outputContent = document.querySelector('[data-output]') as HTMLElement;
+            const outputContent = this.ui.getContainer()?.querySelector('[data-output]') as HTMLElement | null;
             if (outputContent) {
                 outputContent.innerHTML = `<div class="result-content">${formattedResult}</div>`;
             }
@@ -245,7 +251,7 @@ export class WorkCenterActions {
                 contentType: state.outputFormat === 'markdown' ? 'markdown' : 'text',
                 data: {
                     text: resultContent,
-                    filename: `workcenter-output-${Date.now()}.${state.outputFormat === 'markdown' ? 'md' : (state.outputFormat === 'json' ? 'json' : 'txt')}`
+                    filename: `workcenter-output-${Date.now()}.${state.outputFormat === 'markdown' ? 'md' : (state.outputFormat === 'json' ? 'json' : (state.outputFormat === 'html' ? 'html' : (state.outputFormat === 'code' ? 'ts' : 'txt')))}`
                 },
                 metadata: {
                     title: 'Work Center Output',
@@ -289,7 +295,7 @@ export class WorkCenterActions {
                 data: {
                     action: 'save',
                     text: resultContent,
-                    filename: `workcenter-result-${Date.now()}.${state.outputFormat === 'json' ? 'json' : 'txt'}`,
+                    filename: `workcenter-result-${Date.now()}.${state.outputFormat === 'json' ? 'json' : (state.outputFormat === 'html' ? 'html' : (state.outputFormat === 'code' ? 'ts' : 'txt'))}`,
                     path: '/workcenter-results/'
                 },
                 metadata: {

@@ -18,10 +18,15 @@
 
 import { loadAsAdopted } from "fest/dom";
 import { ShellRegistry, initializeRegistries } from "../registry";
+import { defaultTheme, darkTheme, lightTheme } from "../registry";
 import type { ShellId, ViewId, Shell, ShellTheme } from "../shells/types";
 import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChannels";
+import { loadSettings } from "@rs-com/config/Settings";
+import { applyTheme as applyAppTheme } from "@rs-core/utils/Theme";
+import type { AppSettings } from "@rs-com/config/SettingsTypes";
 
 import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
+import { initializeLayers } from "../styles/layer-manager";
 
 // ============================================================================
 // BOOT TYPES
@@ -65,6 +70,10 @@ export interface BootState {
  * Boot phase handler
  */
 export type BootPhaseHandler = (state: BootState) => void | Promise<void>;
+
+const normalizeShellId = (shell: ShellId): ShellId => {
+    return shell === "faint" ? "minimal" : shell;
+};
 
 // ============================================================================
 // STYLE SYSTEM CONFIGURATION
@@ -182,6 +191,16 @@ export class BootLoader {
         console.log("[BootLoader] Starting boot sequence:", config);
         
         try {
+            // Establish canonical cascade layer order before any stylesheet loads.
+            initializeLayers();
+
+            // Phase 0: Load persisted settings early (theme/font-size/etc.)
+            const persistedSettings = await loadSettings().catch((error) => {
+                console.warn("[BootLoader] Failed to load settings:", error);
+                return null;
+            });
+            const persistedTheme = this.resolveThemeFromSettings(persistedSettings);
+
             // Phase 1: Load Style System
             await this.loadStyles(config.styleSystem);
             
@@ -189,12 +208,15 @@ export class BootLoader {
             const shell = await this.loadShell(config.shell, container);
             
             // Phase 3: Apply Theme
-            if (config.theme) {
-                shell.setTheme(config.theme);
-            }
+            shell.setTheme(config.theme || persistedTheme);
             
             // Phase 4: Mount Shell
             await shell.mount(container);
+
+            // Phase 4.5: Apply document-level theme/settings
+            if (persistedSettings) {
+                applyAppTheme(persistedSettings);
+            }
             
             // Phase 5: Initialize Channels
             if (config.channels && config.channels.length > 0) {
@@ -223,6 +245,13 @@ export class BootLoader {
             });
             throw error;
         }
+    }
+
+    private resolveThemeFromSettings(settings: AppSettings | null | undefined): ShellTheme {
+        const theme = settings?.appearance?.theme || "auto";
+        if (theme === "dark") return darkTheme;
+        if (theme === "light") return lightTheme;
+        return defaultTheme;
     }
 
     /**
@@ -265,14 +294,18 @@ export class BootLoader {
      */
     private async loadShell(shellId: ShellId, container: HTMLElement): Promise<Shell> {
         this.setPhase("shell");
-        console.log(`[BootLoader] Loading shell: ${shellId}`);
+        const normalizedShell = normalizeShellId(shellId);
+        if (normalizedShell !== shellId) {
+            console.warn(`[BootLoader] Shell "${shellId}" is temporarily disabled, redirecting to "${normalizedShell}"`);
+        }
+        console.log(`[BootLoader] Loading shell: ${normalizedShell}`);
         
-        const shell = await ShellRegistry.load(shellId, container);
+        const shell = await ShellRegistry.load(normalizedShell, container);
         
         this.shellInstance = shell;
-        this.updateState({ shell: shellId });
+        this.updateState({ shell: normalizedShell });
         
-        console.log(`[BootLoader] Shell ${shellId} loaded`);
+        console.log(`[BootLoader] Shell ${normalizedShell} loaded`);
         return shell;
     }
 
@@ -384,8 +417,9 @@ export class BootLoader {
      */
     private savePreferences(config: BootConfig): void {
         try {
+            const normalizedShell = normalizeShellId(config.shell);
             localStorage.setItem("rs-boot-style", config.styleSystem);
-            localStorage.setItem("rs-boot-shell", config.shell);
+            localStorage.setItem("rs-boot-shell", normalizedShell);
             localStorage.setItem("rs-boot-view", config.defaultView);
             localStorage.setItem("rs-boot-remember", "1");
         } catch (error) {
@@ -400,10 +434,11 @@ export class BootLoader {
         try {
             const remember = localStorage.getItem("rs-boot-remember");
             if (remember !== "1") return null;
+            const shell = normalizeShellId((localStorage.getItem("rs-boot-shell") as ShellId) || "minimal");
             
             return {
                 styleSystem: (localStorage.getItem("rs-boot-style") as StyleSystem) || undefined,
-                shell: (localStorage.getItem("rs-boot-shell") as ShellId) || undefined,
+                shell,
                 defaultView: (localStorage.getItem("rs-boot-view") as ViewId) || undefined
             };
         } catch {
@@ -459,13 +494,7 @@ export async function bootFaint(
     container: HTMLElement,
     view: ViewId = "viewer"
 ): Promise<Shell> {
-    return bootLoader.boot(container, {
-        styleSystem: "vl-basic",
-        shell: "faint",
-        defaultView: view,
-        channels: ["workcenter", "settings", "viewer", "explorer"],
-        rememberChoice: true
-    });
+    return bootMinimal(container, view);
 }
 
 /**

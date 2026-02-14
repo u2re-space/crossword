@@ -50,7 +50,7 @@ export const API_PATHS = {
     ANALYZE: "/api/analyze",
     HEALTH: "/api/health",
     TEST: "/api/test",
-    PHOSPHOR_ICONS: "/api/phosphor-icons"
+    PHOSPHOR_ICONS: "/assets/icons/phosphor"
 } as const;
 
 export type ApiPath = typeof API_PATHS[keyof typeof API_PATHS];

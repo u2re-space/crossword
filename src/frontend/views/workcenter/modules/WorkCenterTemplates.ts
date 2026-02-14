@@ -2,7 +2,7 @@ import { H } from "fest/lure";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import {
     getCustomInstructions,
-    getActiveInstruction,
+    getInstructionRegistry,
     setActiveInstruction,
     DEFAULT_INSTRUCTION_TEMPLATES,
     buildInstructionPrompt
@@ -14,6 +14,7 @@ export class WorkCenterTemplates {
 
     /** Cached custom instructions from settings */
     private cachedInstructions: CustomInstruction[] = [];
+    private cachedActiveInstructionId = "";
 
     constructor(dependencies: WorkCenterDependencies) {
         this.deps = dependencies;
@@ -26,7 +27,9 @@ export class WorkCenterTemplates {
     /** Load custom instructions from app settings */
     async loadInstructions(): Promise<CustomInstruction[]> {
         try {
-            this.cachedInstructions = await getCustomInstructions();
+            const snapshot = await getInstructionRegistry();
+            this.cachedInstructions = snapshot.instructions;
+            this.cachedActiveInstructionId = snapshot.activeId;
             return this.cachedInstructions;
         } catch (e) {
             console.warn("[WorkCenterTemplates] Failed to load custom instructions:", e);
@@ -39,14 +42,27 @@ export class WorkCenterTemplates {
         return this.cachedInstructions;
     }
 
+    /** Get cached active instruction id from settings */
+    getActiveInstructionId(): string {
+        return this.cachedActiveInstructionId;
+    }
+
     /** Get the currently active instruction from settings */
     async getActiveInstruction(): Promise<CustomInstruction | null> {
-        return getActiveInstruction();
+        if (this.cachedActiveInstructionId) {
+            const cached = this.getInstructionById(this.cachedActiveInstructionId);
+            if (cached) return cached;
+        }
+        const snapshot = await getInstructionRegistry();
+        this.cachedInstructions = snapshot.instructions;
+        this.cachedActiveInstructionId = snapshot.activeId;
+        return snapshot.activeInstruction;
     }
 
     /** Set a specific instruction as active in settings */
     async setActiveInstruction(id: string | null): Promise<void> {
         await setActiveInstruction(id);
+        this.cachedActiveInstructionId = id || "";
     }
 
     /** Build a combined prompt with the selected custom instruction */
@@ -60,9 +76,41 @@ export class WorkCenterTemplates {
         return this.cachedInstructions.find(i => i.id === id);
     }
 
+    /** Resolve selected instruction, fallback to active settings instruction */
+    resolveInstruction(selectedId: string): CustomInstruction | null {
+        if (selectedId) {
+            const selected = this.getInstructionById(selectedId);
+            if (selected) return selected;
+        }
+        if (!this.cachedActiveInstructionId) return null;
+        return this.getInstructionById(this.cachedActiveInstructionId) || null;
+    }
+
     /** Get default instruction templates (for seeding) */
     getDefaultTemplates(): Omit<CustomInstruction, "id">[] {
         return DEFAULT_INSTRUCTION_TEMPLATES;
+    }
+
+    renderInstructionPanel(state: WorkCenterState): string {
+        return `
+            <div class="instruction-panel">
+              <div class="instruction-selector-row wide">
+                <label class="instruction-label">
+                  <ui-icon icon="clipboard-text" size="16" icon-style="duotone"></ui-icon>
+                  <span>Instruction:</span>
+                </label>
+                <select class="instruction-select" data-action="select-instruction">
+                  <option value="">None (default)</option>
+                </select>
+                <button class="btn btn-icon btn-sm" data-action="refresh-instructions" title="Refresh from Settings">
+                  <ui-icon icon="arrows-clockwise" size="14" icon-style="duotone"></ui-icon>
+                </button>
+              </div>
+              <div class="instruction-help">
+                Active instruction from Settings is appended to your prompt.
+              </div>
+            </div>
+        `;
     }
 
     // ────────────────────────────────────────
@@ -76,6 +124,7 @@ export class WorkCenterTemplates {
             <h3>Prompt Templates</h3>
             <p class="modal-desc">Manage prompt templates used in Work Center. These define what action to perform on the content.</p>
         </div>
+        ${this.renderInstructionPanel(state)}
         <div class="template-list">
           ${state.promptTemplates.map((template, index) =>
             H`<div class="template-item" data-index="${index}">
@@ -90,17 +139,20 @@ export class WorkCenterTemplates {
         )}
         </div>
         <div class="modal-actions">
-          <button class="btn" data-action="add-template">
-            <ui-icon icon="plus" size="14"></ui-icon>
-            <span>Add Template</span>
-          </button>
-          <button class="btn" data-action="import-instructions" title="Import from Custom Instructions (Settings)">
-            <ui-icon icon="download" size="14"></ui-icon>
-            <span>Import from Settings</span>
-          </button>
-          <div style="flex:1"></div>
-          <button class="btn primary" data-action="save-templates">Save</button>
-          <button class="btn" data-action="close-editor">Close</button>
+          <div class="modal-actions-group modal-actions-group-start">
+            <button class="btn" data-action="add-template">
+              <ui-icon icon="plus" size="14"></ui-icon>
+              <span>Add Template</span>
+            </button>
+            <button class="btn" data-action="import-instructions" title="Import from Custom Instructions (Settings)">
+              <ui-icon icon="download" size="14"></ui-icon>
+              <span>Import from Settings</span>
+            </button>
+          </div>
+          <div class="modal-actions-group modal-actions-group-end">
+            <button class="btn primary" data-action="save-templates">Save</button>
+            <button class="btn" data-action="close-editor">Close</button>
+          </div>
         </div>
       </div>
     </div>` as HTMLElement;

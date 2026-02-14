@@ -1,8 +1,8 @@
 import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings } from "@rs-com/config/Settings";
 import type { CustomInstruction } from "@rs-com/config/SettingsTypes";
 import {
+    getInstructionRegistry,
     addInstruction,
     addInstructions,
     updateInstruction,
@@ -114,12 +114,9 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
                 const action = target.closest("[data-action]")?.getAttribute("data-action");
 
                 if (action === "activate") {
-                    void setActiveInstruction(instr.id).then(() => {
-                        state.activeId = instr.id;
-                        renderList();
-                        updateSelect();
-                        opts.onUpdate?.();
-                    });
+                    void setActiveInstruction(instr.id)
+                        .then(loadData)
+                        .then(() => opts.onUpdate?.());
                 }
 
                 if (action === "edit") {
@@ -129,13 +126,9 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
 
                 if (action === "delete") {
                     if (confirm(`Delete "${instr.label}"?`)) {
-                        void deleteInstruction(instr.id).then(() => {
-                            state.instructions = state.instructions.filter(i => i.id !== instr.id);
-                            if (state.activeId === instr.id) state.activeId = "";
-                            renderList();
-                            updateSelect();
-                            opts.onUpdate?.();
-                        });
+                        void deleteInstruction(instr.id)
+                            .then(loadData)
+                            .then(() => opts.onUpdate?.());
                     }
                 }
 
@@ -147,13 +140,9 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
                         label: labelEl.value.trim() || instr.label,
                         instruction: instrEl.value.trim()
                     }).then(() => {
-                        instr.label = labelEl.value.trim() || instr.label;
-                        instr.instruction = instrEl.value.trim();
                         state.editingId = null;
-                        renderList();
-                        updateSelect();
-                        opts.onUpdate?.();
-                    });
+                        return loadData();
+                    }).then(() => opts.onUpdate?.());
                 }
 
                 if (action === "cancel-edit") {
@@ -183,9 +172,9 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
     };
 
     const loadData = async () => {
-        const settings = await loadSettings();
-        state.instructions = settings?.ai?.customInstructions || [];
-        state.activeId = settings?.ai?.activeInstructionId || "";
+        const snapshot = await getInstructionRegistry();
+        state.instructions = snapshot.instructions;
+        state.activeId = snapshot.activeId;
         renderList();
         updateSelect();
     };
@@ -217,18 +206,16 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
             }
 
             void addInstruction(label || "Custom", instruction).then((newInstr) => {
-                state.instructions.push(newInstr);
+                if (!newInstr) return;
                 state.isAdding = false;
                 addFormEl.hidden = true;
-                renderList();
-                updateSelect();
-                opts.onUpdate?.();
-            });
+                return loadData();
+            }).then(() => opts.onUpdate?.());
         }
 
         if (action === "add-templates") {
-            const existingLabels = new Set(state.instructions.map(i => i.label));
-            const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label));
+            const existingLabels = new Set(state.instructions.map(i => i.label.trim().toLowerCase()));
+            const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label.trim().toLowerCase()));
 
             if (!templatesToAdd.length) {
                 alert("All templates are already added.");
@@ -240,22 +227,15 @@ export const createCustomInstructionsEditor = (opts: CustomInstructionsEditorOpt
                 label: t.label,
                 instruction: t.instruction,
                 enabled: t.enabled
-            }))).then((newInstrs) => {
-                state.instructions.push(...newInstrs);
-                renderList();
-                updateSelect();
-                opts.onUpdate?.();
-            });
+            }))).then(loadData).then(() => opts.onUpdate?.());
         }
     });
 
     selectEl.addEventListener("change", () => {
         const newActiveId = selectEl.value || "";
-        void setActiveInstruction(newActiveId || null).then(() => {
-            state.activeId = newActiveId;
-            renderList();
-            opts.onUpdate?.();
-        });
+        void setActiveInstruction(newActiveId || null)
+            .then(loadData)
+            .then(() => opts.onUpdate?.());
     });
 
     void loadData();

@@ -1,5 +1,6 @@
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import { ROUTE_HASHES } from '@rs-com/config/Names';
+import { normalizeDataAsset, parseDataUrl, isBase64Like } from 'fest/lure';
 
 export class WorkCenterFileOps {
     private deps: WorkCenterDependencies;
@@ -104,59 +105,27 @@ export class WorkCenterFileOps {
     }
 
     private isBase64Data(content: string): boolean {
-        // Check for data URL format: data:[<mime type>][;charset=<charset>][;base64],<encoded data>
-        if (content.startsWith('data:')) {
-            return true;
-        }
-
-        // Check for plain base64 (contains only base64 characters and is reasonably long)
-        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-        return content.length > 20 && base64Regex.test(content.replace(/\s/g, ''));
+        const raw = (content || '').trim();
+        return !!parseDataUrl(raw) || isBase64Like(raw);
     }
 
     private async handleBase64Content(state: WorkCenterState, content: string): Promise<void> {
         try {
-            let mimeType = 'application/octet-stream';
-            let filename = 'pasted-data.bin';
-            let base64Data = content;
-
-            // Handle data URLs
-            if (content.startsWith('data:')) {
-                const dataUrlMatch = content.match(/^data:([^;]+);base64,/);
-                if (dataUrlMatch) {
-                    mimeType = dataUrlMatch[1];
-                    base64Data = content.split(',')[1];
-
-                    // Generate appropriate filename based on MIME type
-                    if (mimeType.startsWith('image/')) {
-                        filename = `pasted-image.${mimeType.split('/')[1]}`;
-                    } else if (mimeType.startsWith('text/')) {
-                        filename = `pasted-text.${mimeType.split('/')[1]}`;
-                    } else {
-                        filename = `pasted-data.${mimeType.split('/')[1] || 'bin'}`;
-                    }
-                }
-            }
-
-            // Decode base64
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-
-            const blob = new Blob([bytes], { type: mimeType });
-            const file = new File([blob], filename, { type: mimeType });
-            state.files.push(file);
-
-            this.deps.showMessage?.('Base64 content decoded and added to work center');
+            const asset = await normalizeDataAsset(content, {
+                namePrefix: 'pasted-data',
+                uriComponent: true
+            });
+            state.files.push(asset.file);
+            this.deps.showMessage?.('Encoded content decoded and added to work center');
 
         } catch (error) {
             console.error('[WorkCenter] Failed to decode base64 content:', error);
             // Fallback: treat as regular text
-            const textBlob = new Blob([content], { type: 'text/plain' });
-            const textFile = new File([textBlob], 'pasted-base64.txt', { type: 'text/plain' });
-            state.files.push(textFile);
+            const fallbackAsset = await normalizeDataAsset(content, {
+                namePrefix: 'pasted-text',
+                mimeType: 'text/plain;charset=utf-8'
+            });
+            state.files.push(fallbackAsset.file);
 
             this.deps.showMessage?.('Base64 content added as text to work center');
         }
@@ -296,16 +265,20 @@ export class WorkCenterFileOps {
     }
 
     private async handleTextContent(state: WorkCenterState, content: string, sourceType: string): Promise<void> {
-        const textBlob = new Blob([content], { type: 'text/plain' });
-        const textFile = new File([textBlob], `shared-text-${Date.now()}.txt`, { type: 'text/plain' });
-        state.files.push(textFile);
+        const asset = await normalizeDataAsset(content, {
+            namePrefix: sourceType === 'html' ? 'shared-html' : 'shared-text',
+            mimeType: sourceType === 'html' ? 'text/html' : 'text/plain;charset=utf-8'
+        });
+        state.files.push(asset.file);
         this.deps.showMessage?.('Text content added to work center');
     }
 
     private async handleUrlContent(state: WorkCenterState, content: string): Promise<void> {
-        const urlBlob = new Blob([content], { type: 'text/plain' });
-        const urlFile = new File([urlBlob], `shared-url-${Date.now()}.txt`, { type: 'text/plain' });
-        state.files.push(urlFile);
+        const asset = await normalizeDataAsset(content, {
+            namePrefix: 'shared-url',
+            uriComponent: true
+        });
+        state.files.push(asset.file);
         this.deps.showMessage?.('URL added to work center');
     }
 
@@ -314,9 +287,12 @@ export class WorkCenterFileOps {
             await this.handleBase64Content(state, content);
         } else {
             // Handle as regular image file
-            const imageBlob = new Blob([content], { type: sourceType === 'image' ? 'image/png' : 'text/plain' });
-            const imageFile = new File([imageBlob], `shared-image-${Date.now()}.png`, { type: 'image/png' });
-            state.files.push(imageFile);
+            const asset = await normalizeDataAsset(content, {
+                namePrefix: 'shared-image',
+                mimeType: sourceType === 'image' ? 'image/png' : 'text/plain;charset=utf-8',
+                uriComponent: true
+            });
+            state.files.push(asset.file);
             this.deps.showMessage?.('Image content added to work center');
         }
     }
@@ -324,9 +300,11 @@ export class WorkCenterFileOps {
     private async handleDefaultPaste(state: WorkCenterState, content: string, sourceType: string): Promise<void> {
         // Check if content is a URL
         if (this.isValidUrl(content)) {
-            const urlBlob = new Blob([content], { type: 'text/plain' });
-            const urlFile = new File([urlBlob], 'pasted-url.txt', { type: 'text/plain' });
-            state.files.push(urlFile);
+            const asset = await normalizeDataAsset(content, {
+                namePrefix: 'pasted-url',
+                uriComponent: true
+            });
+            state.files.push(asset.file);
             this.deps.showMessage?.('URL added to work center');
         }
         // Check if content is base64 encoded data
@@ -335,9 +313,11 @@ export class WorkCenterFileOps {
         }
         // Regular text content
         else {
-            const textBlob = new Blob([content], { type: 'text/plain' });
-            const textFile = new File([textBlob], `pasted-${sourceType}.txt`, { type: 'text/plain' });
-            state.files.push(textFile);
+            const asset = await normalizeDataAsset(content, {
+                namePrefix: `pasted-${sourceType || 'text'}`,
+                mimeType: sourceType === 'html' ? 'text/html' : 'text/plain;charset=utf-8'
+            });
+            state.files.push(asset.file);
             this.deps.showMessage?.(`${sourceType === 'html' ? 'HTML' : 'Text'} content added to work center`);
         }
     }

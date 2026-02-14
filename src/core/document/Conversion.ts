@@ -1,9 +1,7 @@
 import TurndownService from 'turndown';
-import markedKatex from "marked-katex-extension";
 import temml from "temml";
 
 //
-import { marked, type MarkedExtension } from 'marked';
 import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFromTextSelection } from './DocTools';
 import { MathMLToLaTeX } from 'mathml-to-latex';
 import { deAlphaChannel } from '@rs-core/workers/ImageProcess';
@@ -65,15 +63,27 @@ const applyTranslation = async (content: string): Promise<string> => {
 //
 const turndownService = new TurndownService();
 
-//
-try {
-    marked?.use?.(markedKatex?.({
-        throwOnError: false,
-        nonStandard: true
-    }) as MarkedExtension);
-} catch (e) {
-    console.warn(e);
-}
+let markedParserPromise: Promise<(input: string) => Promise<string>> | null = null;
+
+const getMarkedParser = async (): Promise<(input: string) => Promise<string>> => {
+    if (markedParserPromise) return markedParserPromise;
+    markedParserPromise = (async () => {
+        const [{ marked }, { default: markedKatex }] = await Promise.all([
+            import("marked"),
+            import("marked-katex-extension"),
+        ]);
+        marked?.use?.(
+            markedKatex?.({
+                throwOnError: false,
+                nonStandard: true,
+            }) as any
+        );
+        return async (input: string) => {
+            return await marked.parse(input);
+        };
+    })();
+    return markedParserPromise;
+};
 
 // convert markdown text to html
 export const convertToHtml = async (input: string): Promise<string> => { // convert markdown text to html
@@ -83,8 +93,8 @@ export const convertToHtml = async (input: string): Promise<string> => { // conv
         return input;
     }
     try {
-        // marked is synchronous, but we keep async for compatibility
-        input = escapeML(await marked.parse(input) || "") || input;
+        const parse = await getMarkedParser();
+        input = escapeML(await parse(input) || "") || input;
     } catch (e) {
         input = "";
         console.warn(e);

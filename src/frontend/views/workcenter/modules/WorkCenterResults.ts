@@ -111,14 +111,21 @@ export class WorkCenterResults {
         }
 
         if (state.recognizedData || (state.processedData && state.processedData.length > 0)) {
-            const mainPanel = this.container.querySelector('.main-panel');
-            if (mainPanel) {
-                const pipelineHTML = this.renderDataPipeline(state);
-                if (typeof pipelineHTML === 'string') {
-                    mainPanel.insertAdjacentHTML('afterbegin', pipelineHTML);
+            const resultsSection = this.container.querySelector('.results-section') as HTMLElement | null;
+            if (!resultsSection) return;
+
+            const historySection = resultsSection.querySelector('.history-section');
+            const pipelineHTML = this.renderDataPipeline(state);
+            if (typeof pipelineHTML === 'string') {
+                if (historySection) {
+                    historySection.insertAdjacentHTML('beforebegin', pipelineHTML);
                 } else {
-                    mainPanel.insertBefore(pipelineHTML, mainPanel.firstChild);
+                    resultsSection.insertAdjacentHTML('beforeend', pipelineHTML);
                 }
+            } else if (historySection) {
+                resultsSection.insertBefore(pipelineHTML, historySection);
+            } else {
+                resultsSection.appendChild(pipelineHTML);
             }
         }
     }
@@ -170,7 +177,7 @@ export class WorkCenterResults {
                     </button>
                 </div>
             </div>
-            <div class="output-content" data-output data-dropzone></div>
+            <div class="output-content" data-output> No results yet </div>
         `;
     }
 

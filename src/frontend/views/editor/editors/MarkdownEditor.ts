@@ -1,7 +1,6 @@
 import { H } from "fest/lure";
 import { ViewerView } from "@rs-frontend/views/viewer";
 import { UIPhosphorIcon } from "fest/icon";
-import { downloadMarkdownAsDocx } from "@rs-core/document/DocxExport";
 
 export interface MarkdownEditorOptions {
     initialContent?: string;
@@ -157,6 +156,7 @@ export class MarkdownEditor {
     async exportDocx(): Promise<void> {
         const content = this.getContent();
         if (!content.trim()) return;
+        const { downloadMarkdownAsDocx } = await import("@rs-core/document/DocxExport");
         await downloadMarkdownAsDocx(content, {
             title: "Markdown Editor Content",
             filename: `markdown-editor-${new Date().toISOString().split('T')[0]}.docx`,

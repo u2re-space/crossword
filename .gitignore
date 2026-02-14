@@ -168,6 +168,15 @@ https/*
 ./dist
 ./dist/
 ./dist/*
+./dist-pwa
+./dist-pwa/
+./dist-pwa/*
+./dist-crx
+./dist-crx/
+./dist-crx/*
+./dist-modules
+./dist-modules/
+./dist-modules/*
 ./build
 ./build/
 ./build/*

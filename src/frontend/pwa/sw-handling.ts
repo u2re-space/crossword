@@ -2,6 +2,7 @@
 import { initPWAClipboard } from "./pwa-copy";
 import { showToast } from "../items/Toast";
 import { ensureServiceWorkerRegistered } from "./sw-url";
+import { dispatchViewTransfer, type ViewTransferHint } from "@rs-com/core/ViewTransferRouting";
 
 // ============================================================================
 // CSS INJECTION
@@ -189,6 +190,44 @@ interface ShareDataInput {
     results?: any[];
     source?: string;
 }
+
+const routeToTransferView = async (
+    shareData: ShareDataInput,
+    source: "share-target" | "launch-queue" | "pending",
+    hint?: ViewTransferHint,
+    pending = false
+): Promise<boolean> => {
+    const files = Array.isArray(shareData.files)
+        ? shareData.files.filter((file): file is File => file instanceof File)
+        : [];
+
+    const { delivered, resolved } = await dispatchViewTransfer({
+        source,
+        route: source === "launch-queue" ? "launch-queue" : "share-target",
+        title: shareData.title,
+        text: shareData.text,
+        url: shareData.url || shareData.sharedUrl,
+        files,
+        hint,
+        pending,
+        metadata: {
+            timestamp: shareData.timestamp || Date.now(),
+            fileCount: shareData.fileCount ?? files.length,
+            imageCount: shareData.imageCount ?? files.filter((f) => f.type.startsWith("image/")).length
+        }
+    });
+
+    const currentPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+    if (currentPath !== resolved.routePath) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.pathname = resolved.routePath;
+        nextUrl.search = "";
+        nextUrl.hash = "";
+        window.location.href = nextUrl.toString();
+    }
+
+    return delivered;
+};
 
 /**
  * Extract processable content from share data
@@ -656,7 +695,10 @@ export const handleShareTarget = () => {
 
         if (content || type === 'file') {
             console.log("[ShareTarget] Processing from URL params");
-            processShareTargetData(shareFromParams, true);
+            routeToTransferView(shareFromParams, "share-target").catch((error) => {
+                console.warn("[ShareTarget] Route transfer failed, falling back to processing:", error);
+                processShareTargetData(shareFromParams, true);
+            });
             return; // Don't also check cache
         } else {
             console.log("[ShareTarget] No processable content in URL params, checking cache");
@@ -670,7 +712,10 @@ export const handleShareTarget = () => {
                 .then(async (data: ShareDataInput | undefined) => {
                     if (data) {
                         console.log("[ShareTarget] Retrieved cached data:", data);
-                        await processShareTargetData(data, true);
+                        const delivered = await routeToTransferView(data, "share-target", undefined, true);
+                        if (!delivered) {
+                            await processShareTargetData(data, true);
+                        }
                     } else {
                         console.log("[ShareTarget] No cached share data found");
                     }
@@ -693,7 +738,9 @@ export const handleShareTarget = () => {
             sessionStorage.removeItem("rs-pending-share");
             const shareData = JSON.parse(pendingData) as ShareDataInput;
             console.log("[ShareTarget] Found pending share in sessionStorage:", shareData);
-            processShareTargetData(shareData, true);
+            routeToTransferView(shareData, "pending", undefined, true).catch((error) => {
+                console.warn("[ShareTarget] Pending transfer routing failed:", error);
+            });
         }
     } catch (e) {
         // Ignore sessionStorage errors
@@ -726,7 +773,10 @@ export const handleShareTarget = () => {
                 } else if (msgData.text || msgData.url || msgData.title) {
                     // We have text content to potentially process
                     console.log("[ShareTarget] Processing broadcasted share data");
-                    await processShareTargetData(msgData, true);
+                    const delivered = await routeToTransferView(msgData, "share-target", undefined, true);
+                    if (!delivered) {
+                        await processShareTargetData(msgData, true);
+                    }
                 }
             } else if (msgType === "ai-result") {
                 console.log("[ShareTarget] AI result broadcast received (handled by PWA clipboard)");
@@ -884,35 +934,9 @@ export const setupLaunchQueueConsumer = async () => {
                         source: shareData.source
                     });
 
-                    // Handle markdown files specially - open them directly in viewer
-                    if (hasMarkdownFile && files.length === 1) {
-                        const markdownFile = files[0];
-                        try {
-                            const content = await markdownFile.text();
-                            console.log('[LaunchQueue] Opening markdown file directly:', markdownFile.name);
-
-                            // Navigate to the app with markdown content
-                            // We'll use a special URL parameter to indicate this is a direct markdown view
-                            const url = new URL(window.location.href);
-                            // Ensure Minimal is used for direct markdown opening (avoid boot menu / other routes)
-                            url.pathname = '/minimal';
-                            url.searchParams.set('markdown-content', content);
-                            url.searchParams.set('markdown-filename', markdownFile.name);
-                            url.hash = ''; // Clear any hash to ensure we load the main app
-
-                            // Navigate to the main app with markdown parameters
-                            window.location.href = url.toString();
-                            return;
-
-                        } catch (error) {
-                            console.warn('[LaunchQueue] Failed to read markdown file:', error);
-                            showToast({
-                                message: `Failed to open markdown file: ${markdownFile.name}`,
-                                kind: 'error'
-                            });
-                            return;
-                        }
-                    }
+                    const hint: ViewTransferHint | undefined = (hasMarkdownFile && files.length === 1)
+                        ? { destination: "viewer", action: "open", filename: files[0]?.name }
+                        : undefined;
 
                     // Show immediate feedback that files were received
                     showToast({
@@ -920,38 +944,35 @@ export const setupLaunchQueueConsumer = async () => {
                         kind: 'info'
                     });
 
-                    // For file opener: prefer attachment preview in Basic (WorkCenter) over auto AI processing.
-                    const stored = await storeShareTargetPayloadToCache({
-                        files,
-                        meta: { timestamp: Date.now(), source: 'launch-queue' }
-                    });
-                    if (stored) {
-                        const url = new URL(window.location.href);
-                        url.pathname = '/share-target';
-                        url.searchParams.set('shared', '1');
-                        url.hash = '';
-                        window.location.href = url.toString();
-                        return;
-                    }
-
-                    // Fallback: keep old behavior if caching fails.
                     try {
-                        const success = await processShareTargetData(shareData, false);
-                        if (!success) {
+                        const delivered = await routeToTransferView(shareData, "launch-queue", hint, true);
+                        if (!delivered) {
                             console.warn('[LaunchQueue] Share target processing returned false');
                             showToast({
-                                message: `Received ${files.length} file(s) but processing failed`,
+                                message: `Received ${files.length} file(s); delivery is pending`,
                                 kind: 'warning'
                             });
                         } else {
-                            console.log('[LaunchQueue] Share target processing completed successfully');
+                            console.log('[LaunchQueue] Transfer routed successfully');
                         }
                     } catch (error) {
-                        console.error('[LaunchQueue] Failed to process files:', error);
-                        showToast({
-                            message: `Failed to process ${files.length} launched file(s)`,
-                            kind: 'error'
+                        console.error('[LaunchQueue] Failed to route launch queue files:', error);
+                        const stored = await storeShareTargetPayloadToCache({
+                            files,
+                            meta: { timestamp: Date.now(), source: 'launch-queue' }
                         });
+                        if (stored) {
+                            const url = new URL(window.location.href);
+                            url.pathname = '/share-target';
+                            url.searchParams.set('shared', '1');
+                            url.hash = '';
+                            window.location.href = url.toString();
+                        } else {
+                            showToast({
+                                message: `Failed to process ${files.length} launched file(s)`,
+                                kind: 'error'
+                            });
+                        }
                     }
                 }
 

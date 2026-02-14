@@ -99,6 +99,10 @@ export function registerHandler(destination: string, handler: MessageHandler): v
     unifiedMessaging.registerHandler(destination, handler);
 }
 
+export function unregisterHandler(destination: string, handler: MessageHandler): void {
+    unifiedMessaging.unregisterHandler(destination, handler);
+}
+
 /**
  * Get a worker channel from the app manager
  */

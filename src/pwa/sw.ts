@@ -1256,11 +1256,11 @@ registerRoute(
 
 // Phosphor Icons Proxy (for PWA offline support)
 registerRoute(
-    ({ url }) => url?.pathname?.startsWith?.('/api/phosphor-icons/'),
+    ({ url }) => url?.pathname?.startsWith?.('/assets/icons/phosphor/'),
     async ({ url, request }) => {
         try {
             // Convert proxy path to actual CDN URL
-            const pathParts = url.pathname.replace('/api/phosphor-icons/', '').split('/');
+            const pathParts = url.pathname.replace('/assets/icons/phosphor/', '').split('/');
             const iconStyle = pathParts[0];
             let iconFile = pathParts.slice(1).join('/');
 

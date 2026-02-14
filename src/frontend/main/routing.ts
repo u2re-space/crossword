@@ -19,7 +19,7 @@
 
 import type { ShellId, ViewId, Shell } from "../shells/types";
 import type { FrontendChoice } from "./boot-menu";
-import { bootMinimal, bootFaint, bootBase, type BootConfig, type StyleSystem } from "./BootLoader";
+import { bootMinimal, bootBase, type BootConfig, type StyleSystem } from "./BootLoader";
 
 // ============================================================================
 // ROUTE TYPES
@@ -43,6 +43,16 @@ export type AppLoaderResult = {
 export type RoutingMode = "path-based";
 export type NavigateOptions = { replace?: boolean; state?: unknown };
 export type RouteHandler = (route: Route) => void | Promise<void>;
+
+const normalizeShellPreference = (shell: ShellId | null | undefined): ShellId => {
+    if (shell === "faint") {
+        return "minimal";
+    }
+    if (shell === "base" || shell === "minimal") {
+        return shell;
+    }
+    return "minimal";
+};
 
 // ============================================================================
 // ROUTE CONFIG
@@ -236,7 +246,11 @@ export function getSavedShellPreference(): ShellId | null {
     try {
         const saved = localStorage.getItem("rs-boot-shell");
         if (saved === "minimal" || saved === "faint" || saved === "base") {
-            return saved as ShellId;
+            const normalized = normalizeShellPreference(saved as ShellId);
+            if (normalized !== saved) {
+                localStorage.setItem("rs-boot-shell", normalized);
+            }
+            return normalized;
         }
     } catch {
         // Ignore
@@ -251,7 +265,7 @@ export const loadSubAppWithShell = async (
     shellId?: ShellId,
     initialView?: ViewId
 ): Promise<AppLoaderResult> => {
-    const shell = shellId || getSavedShellPreference() || "minimal";
+    const shell = normalizeShellPreference(shellId || getSavedShellPreference() || "minimal");
     const view = initialView || getViewFromPath() || "viewer";
     
     console.log('[App] Loading sub-app with shell:', shell, 'view:', view);
@@ -261,7 +275,7 @@ export const loadSubAppWithShell = async (
             case "faint":
                 return {
                     mount: async (el: HTMLElement) => {
-                        await bootFaint(el, view);
+                        await bootMinimal(el, view);
                     }
                 };
 
@@ -324,7 +338,7 @@ export function resolvePathToView(pathname: string): ViewId | null {
  */
 export function createBootConfigFromUrl(): BootConfig {
     const view = getViewFromPath() || "viewer";
-    const shell = getSavedShellPreference() || "minimal";
+    const shell = normalizeShellPreference(getSavedShellPreference() || "minimal");
     const params = Object.fromEntries(new URLSearchParams(location.search));
 
     let styleSystem: StyleSystem = "vl-basic";
@@ -407,7 +421,7 @@ export const getViewFromHash = (): ViewId | null => getViewFromPath();
  */
 export const navigateToShell = (shell: ShellId, view?: ViewId): void => {
     try {
-        localStorage.setItem("rs-boot-shell", shell);
+        localStorage.setItem("rs-boot-shell", normalizeShellPreference(shell));
     } catch {
         // Storage unavailable
     }

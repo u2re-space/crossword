@@ -44,6 +44,16 @@ export const AdditionalSection: SectionConfig = {
                         { value: "#d946ef", label: "Fuchsia", color: "#d946ef" },
                         { value: "#ec4899", label: "Pink", color: "#ec4899" }
                     ]
+                },
+                {
+                    path: "appearance.fontSize",
+                    label: "Font Size",
+                    type: "select",
+                    options: [
+                        { value: "small", label: "Small" },
+                        { value: "medium", label: "Medium" },
+                        { value: "large", label: "Large" }
+                    ]
                 }
             ]
         },

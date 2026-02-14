@@ -27,7 +27,7 @@
         --shell-padding: 0;
     }
 
-    :is(:root, html):has([data-shell="raw"][data-theme="dark"]) {
+    :is(:root, html):has([data-shell="base"][data-theme="dark"]) {
         --shell-bg: var(--color-surface);
         --shell-fg: var(--color-on-surface);
         --shell-nav-bg: var(--color-surface-container-high);
@@ -101,6 +101,7 @@
         overflow: hidden;
         scrollbar-width: thin;
         scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+        container-type: size;
 
         & > * {
             flex: 1;
@@ -221,7 +222,7 @@
         }
     }
 
-    :is(html, body):has([data-shell="raw"]) {
+    :is(html, body):has([data-shell="base"]) {
         --shell-nav-height: 0;
         --shell-content-padding: 0;
         --shell-sidebar-width: 0;
@@ -252,6 +253,7 @@
         scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--shell-scrollbar, rgba(128, 128, 128, 0.3)) transparent;
+        container-type: size;
 
         &::-webkit-scrollbar {
             inline-size: 6px;

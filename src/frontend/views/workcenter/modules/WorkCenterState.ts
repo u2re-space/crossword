@@ -4,7 +4,8 @@ export interface WorkCenterState {
     currentPrompt: string;
     autoAction: boolean;
     selectedInstruction: string;
-    outputFormat: "auto" | "markdown" | "json" | "text" | "html";
+    outputFormat: "auto" | "markdown" | "json" | "text" | "raw" | "html" | "code";
+    activeInputTab: "instruction" | "prompt" | "attachments";
     selectedLanguage: "auto" | "en" | "ru"; // Language selection for AI responses
     selectedTemplate: string; // Store the selected template prompt
     recognitionFormat: "auto" | "markdown" | "html" | "text" | "json" | "most-suitable" | "most-optimized" | "most-legibility"; // Preferred recognition format
@@ -55,6 +56,7 @@ export class WorkCenterStateManager {
             autoAction: false,
             selectedInstruction: "",
             outputFormat: "auto",
+            activeInputTab: "prompt",
             selectedLanguage: "auto",
             selectedTemplate: "",
             recognitionFormat: "auto",
@@ -76,6 +78,7 @@ export class WorkCenterStateManager {
                 autoAction: state.autoAction,
                 selectedInstruction: state.selectedInstruction,
                 outputFormat: state.outputFormat,
+                activeInputTab: state.activeInputTab,
                 selectedLanguage: state.selectedLanguage,
                 selectedTemplate: state.selectedTemplate,
                 recognitionFormat: state.recognitionFormat,
@@ -112,6 +115,7 @@ export class WorkCenterStateManager {
                     autoAction: parsed.autoAction || false,
                     selectedInstruction: parsed.selectedInstruction || "",
                     outputFormat: parsed.outputFormat || "auto",
+                    activeInputTab: parsed.activeInputTab || "prompt",
                     selectedLanguage: parsed.selectedLanguage || "auto",
                     selectedTemplate: parsed.selectedTemplate || "",
                     recognitionFormat: parsed.recognitionFormat || "auto",

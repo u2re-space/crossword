@@ -214,13 +214,41 @@
 
             .modal-actions {
                 display: flex;
-                flex-wrap: wrap;
                 align-items: center;
+                justify-content: space-between;
                 gap: var(--space-sm);
                 padding-top: var(--space-lg);
                 border-top: 1px solid var(--color-outline-variant);
+                block-size: max-content;
+                max-block-size: stretch;
+
+                .modal-actions-group {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--space-sm);
+                    max-block-size: stretch;
+                    block-size: max-content;
+                }
+
+                .modal-actions-group-start {
+                    flex: 1 1 320px;
+                    max-block-size: max-content;
+                    block-size: max-content;
+                }
+
+                .modal-actions-group-end {
+                    justify-content: flex-end;
+                }
 
                 .btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: var(--space-xs, 0.25rem);
+                    min-block-size: 2.25rem;
+                    line-height: 1;
+                    white-space: nowrap;
                     padding: var(--space-sm) var(--space-lg);
                     border-radius: var(--radius-md);
                     font-size: var(--text-sm);
@@ -246,6 +274,19 @@
                         &:hover {
                             background: var(--color-surface-container-high);
                         }
+                    }
+                }
+
+                @container (max-width: 560px) {
+                    flex-direction: column;
+                    align-items: stretch;
+
+                    .modal-actions-group {
+                        inline-size: 100%;
+                    }
+
+                    .btn {
+                        flex: 1 1 calc(50% - var(--space-sm));
                     }
                 }
             }

@@ -17,25 +17,52 @@ export { buildInstructionPrompt, DEFAULT_INSTRUCTION_TEMPLATES };
 
 const generateId = generateInstructionId;
 
-export const getCustomInstructions = async (): Promise<CustomInstruction[]> => {
+export type InstructionRegistrySnapshot = {
+    instructions: CustomInstruction[];
+    activeId: string;
+    activeInstruction: CustomInstruction | null;
+};
+
+const byOrderAndLabel = (a: CustomInstruction, b: CustomInstruction): number => {
+    const ao = Number.isFinite(a.order as number) ? (a.order as number) : Number.MAX_SAFE_INTEGER;
+    const bo = Number.isFinite(b.order as number) ? (b.order as number) : Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) return ao - bo;
+    return (a.label || "").localeCompare(b.label || "");
+};
+
+const normalizeInstructions = (items: CustomInstruction[] | undefined | null): CustomInstruction[] =>
+    [...(items || [])].sort(byOrderAndLabel);
+
+const pickActiveInstruction = (instructions: CustomInstruction[], activeId?: string): CustomInstruction | null => {
+    if (!activeId) return null;
+    return instructions.find(i => i.id === activeId) || null;
+};
+
+export const getInstructionRegistry = async (): Promise<InstructionRegistrySnapshot> => {
     const settings = await loadSettings();
-    return settings?.ai?.customInstructions || [];
+    const instructions = normalizeInstructions(settings?.ai?.customInstructions);
+    const activeInstruction = pickActiveInstruction(instructions, settings?.ai?.activeInstructionId);
+
+    return {
+        instructions,
+        activeId: activeInstruction?.id || "",
+        activeInstruction
+    };
+};
+
+export const getCustomInstructions = async (): Promise<CustomInstruction[]> => {
+    const snapshot = await getInstructionRegistry();
+    return snapshot.instructions;
 };
 
 export const getActiveInstruction = async (): Promise<CustomInstruction | null> => {
     try {
-        const settings = await loadSettings();
-        const instructions = settings?.ai?.customInstructions || [];
-        const activeId = settings?.ai?.activeInstructionId;
-
-        if (!activeId) return null;
-
-        const active = instructions.find(i => i.id === activeId);
-        if (!active) {
-            console.warn("[CustomInstructions] activeInstructionId not found:", activeId);
+        const snapshot = await getInstructionRegistry();
+        if (!snapshot.activeId) return null;
+        if (!snapshot.activeInstruction) {
+            console.warn("[CustomInstructions] activeInstructionId not found:", snapshot.activeId);
         }
-
-        return active || null;
+        return snapshot.activeInstruction;
     } catch (e) {
         console.error("[CustomInstructions] Error in getActiveInstruction:", e);
         return null;

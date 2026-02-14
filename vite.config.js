@@ -78,6 +78,7 @@ const createCrxConfig = () => {
 
     //
     const crxOutput = objectAssign({}, baseOutput, {
+        dir: resolve(__dirname, "./dist-crx"),
         entryFileNames: "app/[name].js",
         chunkFileNames: "modules/[name].js",
         assetFileNames: "assets/[name][extname]",
@@ -92,6 +93,7 @@ const createCrxConfig = () => {
         plugins: [...basePlugins, crxPlugin],
         build: {
             ...(baseConfig?.build ?? {}),
+            outDir: resolve(__dirname, "./dist-crx"),
             lib: undefined,
             // Disable modulePreload for CRX - causes broken imports with __vitePreload
             modulePreload: false,

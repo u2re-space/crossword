@@ -1,9 +1,8 @@
 import { H } from "fest/lure";
 import { observe } from "fest/object";
-import { loadSettings } from "@rs-com/config/Settings";
 import type { CustomInstruction } from "@rs-com/config/SettingsTypes";
 import {
-    getCustomInstructions,
+    getInstructionRegistry,
     addInstruction,
     addInstructions,
     updateInstruction,
@@ -116,9 +115,8 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
 
                 if (action === "activate") {
                     void setActiveInstruction(instr.id).then(() => {
-                        state.activeId = instr.id;
-                        renderList();
-                        updateSelect();
+                        return loadData();
+                    }).then(() => {
                         showSuccess("Instruction activated");
                         opts.onUpdate?.();
                     }).catch((e) => {
@@ -135,10 +133,8 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 if (action === "delete") {
                     if (confirm(`Delete "${instr.label}"?`)) {
                         void deleteInstruction(instr.id).then(() => {
-                            state.instructions = state.instructions.filter(i => i.id !== instr.id);
-                            if (state.activeId === instr.id) state.activeId = "";
-                            renderList();
-                            updateSelect();
+                            return loadData();
+                        }).then(() => {
                             showSuccess("Instruction deleted");
                             opts.onUpdate?.();
                         }).catch((e) => {
@@ -156,11 +152,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                         label: labelEl.value.trim() || instr.label,
                         instruction: instrEl.value.trim()
                     }).then(() => {
-                        instr.label = labelEl.value.trim() || instr.label;
-                        instr.instruction = instrEl.value.trim();
                         state.editingId = null;
-                        renderList();
-                        updateSelect();
+                        return loadData();
+                    }).then(() => {
                         showSuccess("Instruction updated");
                         opts.onUpdate?.();
                     }).catch((e) => {
@@ -196,9 +190,9 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
     };
 
     const loadData = async () => {
-        const settings = await loadSettings();
-        state.instructions = settings?.ai?.customInstructions || [];
-        state.activeId = settings?.ai?.activeInstructionId || "";
+        const snapshot = await getInstructionRegistry();
+        state.instructions = snapshot.instructions;
+        state.activeId = snapshot.activeId;
         renderList();
         updateSelect();
     };
@@ -231,11 +225,11 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
             }
 
             void addInstruction(label || "Custom", instruction).then((newInstr) => {
-                state.instructions.push(newInstr);
+                if (!newInstr) return;
                 state.isAdding = false;
                 addFormEl.hidden = true;
-                renderList();
-                updateSelect();
+                return loadData();
+            }).then(() => {
                 showSuccess("Instruction added");
                 opts.onUpdate?.();
             }).catch((e) => {
@@ -245,8 +239,8 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
         }
 
         if (action === "add-templates") {
-            const existingLabels = new Set(state.instructions.map(i => i.label));
-            const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label));
+            const existingLabels = new Set(state.instructions.map(i => i.label.trim().toLowerCase()));
+            const templatesToAdd = DEFAULT_INSTRUCTION_TEMPLATES.filter(t => !existingLabels.has(t.label.trim().toLowerCase()));
 
             if (!templatesToAdd.length) {
                 showError("All templates already added");
@@ -259,10 +253,10 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
                 instruction: t.instruction,
                 enabled: t.enabled
             }))).then((newInstrs) => {
-                state.instructions.push(...newInstrs);
-                renderList();
-                updateSelect();
-                showSuccess(`Added ${newInstrs.length} templates`);
+                const count = newInstrs?.length || 0;
+                return loadData().then(() => count);
+            }).then((count) => {
+                showSuccess(`Added ${count} templates`);
                 opts.onUpdate?.();
             }).catch((e) => {
                 console.error("[CustomInstructionsPanel] Failed to add templates:", e);
@@ -273,9 +267,7 @@ export const createCustomInstructionsPanel = (opts: CustomInstructionsPanelOptio
 
     selectEl.addEventListener("change", () => {
         const newActiveId = selectEl.value || "";
-        void setActiveInstruction(newActiveId || null).then(() => {
-            state.activeId = newActiveId;
-            renderList();
+        void setActiveInstruction(newActiveId || null).then(loadData).then(() => {
             if (newActiveId) {
                 showSuccess("Instruction activated");
             }

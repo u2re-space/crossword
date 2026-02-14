@@ -9,6 +9,7 @@ import type { AppSettings, CustomInstruction } from '@rs-com/config/SettingsType
 import { DEFAULT_SETTINGS } from '@rs-com/config/SettingsTypes';
 import { executionCore } from '@rs-com/service/misc/ExecutionCore';
 import type { ActionContext, ActionInput } from '@rs-com/service/misc/ActionHistory';
+import { normalizeDataAsset, parseDataUrl, isBase64Like } from 'fest/lure';
 
 // ============================================================================
 // TYPES
@@ -124,7 +125,7 @@ const isValidFile = (value: unknown): value is File =>
  * Check if string is a valid base64 data URL
  */
 const isBase64DataUrl = (value: string): boolean =>
-    value.startsWith('data:') && value.includes('base64,');
+    !!parseDataUrl(value)?.isBase64;
 
 /**
  * Check if string is a URI component that could be decoded
@@ -138,54 +139,34 @@ const isUriComponent = (value: string): boolean => {
     }
 };
 
-/**
- * Convert base64 data URL to File
- */
-const base64DataUrlToFile = (dataUrl: string, filename: string = 'base64-data.bin'): File | null => {
+const canParseUrl = (value: string): boolean => {
     try {
-        const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-        if (!matches) return null;
-
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-
-        // Decode base64
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        // Generate filename based on MIME type if not provided
-        let finalFilename = filename;
-        if (filename === 'base64-data.bin' && mimeType) {
-            const extension = mimeType.split('/')[1] || 'bin';
-            finalFilename = `base64-data.${extension}`;
-        }
-
-        return new File([bytes], finalFilename, { type: mimeType });
-    } catch (error) {
-        console.warn('[ShareTarget] Failed to convert base64 data URL to file:', error);
-        return null;
+        if (typeof URL === 'undefined') return false;
+        if (typeof (URL as any).canParse === 'function') return (URL as any).canParse(value);
+        new URL(value);
+        return true;
+    } catch {
+        return false;
     }
 };
 
-/**
- * Convert URI component string to File (if it's base64 encoded)
- */
-const uriComponentToFile = (uriComponent: string, filename: string = 'uri-data.bin'): File | null => {
+const shouldConvertStringToFile = (value: string): boolean => {
+    if (isBase64DataUrl(value) || isBase64Like(value) || canParseUrl(value)) return true;
+    if (!isUriComponent(value)) return false;
+    const decoded = decodeURIComponent(value);
+    return isBase64DataUrl(decoded) || isBase64Like(decoded) || canParseUrl(decoded);
+};
+
+const convertStringToFile = async (value: string, fieldName: string): Promise<File | null> => {
     try {
-        const decoded = decodeURIComponent(uriComponent);
-
-        // Check if decoded string is a base64 data URL
-        if (isBase64DataUrl(decoded)) {
-            return base64DataUrlToFile(decoded, filename);
-        }
-
-        // If it's just text, create a text file
-        return new File([decoded], filename, { type: 'text/plain' });
+        if (!shouldConvertStringToFile(value)) return null;
+        const asset = await normalizeDataAsset(value, {
+            namePrefix: `${fieldName || 'shared'}-asset`,
+            uriComponent: true
+        });
+        return asset.file;
     } catch (error) {
-        console.warn('[ShareTarget] Failed to convert URI component to file:', error);
+        console.warn('[ShareTarget] Failed to convert string data to file:', error);
         return null;
     }
 };
@@ -193,7 +174,7 @@ const uriComponentToFile = (uriComponent: string, filename: string = 'uri-data.b
 /**
  * Collect and deduplicate files from FormData (including base64 and URI component support)
  */
-export const collectFilesFromFormData = (formData: FormData): File[] => {
+export const collectFilesFromFormData = async (formData: FormData): Promise<File[]> => {
     const seenFiles = new Set<string>();
     const files: File[] = [];
 
@@ -211,14 +192,7 @@ export const collectFilesFromFormData = (formData: FormData): File[] => {
             if (isValidFile(value)) {
                 addFile(value);
             } else if (typeof value === 'string') {
-                // Try to convert string to file (base64 or URI component)
-                let convertedFile: File | null = null;
-
-                if (isBase64DataUrl(value)) {
-                    convertedFile = base64DataUrlToFile(value, `${fieldName}-data`);
-                } else if (isUriComponent(value)) {
-                    convertedFile = uriComponentToFile(value, `${fieldName}-data.txt`);
-                }
+                const convertedFile = await convertStringToFile(value, fieldName);
 
                 if (convertedFile) {
                     console.log('[ShareTarget] Converted string data to file:', fieldName, convertedFile.name);
@@ -234,14 +208,7 @@ export const collectFilesFromFormData = (formData: FormData): File[] => {
         if (isValidFile(value)) {
             addFile(value);
         } else if (typeof value === 'string') {
-            // Try to convert string to file (base64 or URI component)
-            let convertedFile: File | null = null;
-
-            if (isBase64DataUrl(value)) {
-                convertedFile = base64DataUrlToFile(value, `${fieldName}-data`);
-            } else if (isUriComponent(value)) {
-                convertedFile = uriComponentToFile(value, `${fieldName}-data.txt`);
-            }
+            const convertedFile = await convertStringToFile(value, fieldName);
 
             if (convertedFile) {
                 console.log('[ShareTarget] Converted string data to file from field:', fieldName, convertedFile.name);
@@ -347,7 +314,7 @@ export const extractTextContent = async (
  * Build complete share data object
  */
 export const buildShareData = async (formData: FormData): Promise<ShareData> => {
-    const files = collectFilesFromFormData(formData);
+    const files = await collectFilesFromFormData(formData);
     const { imageFiles, textFiles, otherFiles } = categorizeFiles(files);
     const { title, text, url } = await extractTextContent(formData, textFiles);
 
