@@ -17,8 +17,8 @@
  */
 
 import { loadAsAdopted } from "fest/dom";
-import { ShellRegistry, initializeRegistries } from "../registry";
-import { defaultTheme, darkTheme, lightTheme } from "../registry";
+import { ShellRegistry, initializeRegistries } from "../shared/registry";
+import { defaultTheme, darkTheme, lightTheme } from "../shared/registry";
 import type { ShellId, ViewId, Shell, ShellTheme } from "../shells/types";
 import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChannels";
 import { loadSettings } from "@rs-com/config/Settings";
@@ -26,7 +26,7 @@ import { applyTheme as applyAppTheme } from "@rs-core/utils/Theme";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
 
 import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
-import { initializeLayers } from "../styles/layer-manager";
+import { initializeLayers } from "../shared/layer-manager";
 
 // ============================================================================
 // BOOT TYPES

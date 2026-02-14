@@ -1,24 +1,28 @@
 import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
+import { fetchCachedShareFiles } from "@rs-com/core/ShareTargetGateway";
+import { normalizeDataAsset } from "fest/lure";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";
 
 export class WorkCenterShareTarget {
     private deps: WorkCenterDependencies;
-    private fileOps: WorkCenterFileOps;
+    private _fileOps: WorkCenterFileOps;
     private workCenterComm = getWorkCenterComm();
 
     constructor(dependencies: WorkCenterDependencies, fileOps: WorkCenterFileOps) {
         this.deps = dependencies;
-        this.fileOps = fileOps;
+        this._fileOps = fileOps;
+        // Keep a stable constructor contract while migration is in progress.
+        void this._fileOps;
     }
 
-    initShareTargetListener(state: WorkCenterState): void {
+    initShareTargetListener(_state: WorkCenterState): void {
         // The WorkCenterCommunicator handles the BroadcastChannel setup
         // We just need to set up our message processing
         console.log('[WorkCenter] Share target result listener initialized via WorkCenterComm');
     }
 
-    async processQueuedMessages(state: WorkCenterState): Promise<void> {
+    async processQueuedMessages(_state: WorkCenterState): Promise<void> {
         try {
             // The WorkCenterCommunicator will automatically process queued messages
             // when it detects the work center is available
@@ -121,35 +125,11 @@ export class WorkCenterShareTarget {
             // Handle base64 encoded data
             if (inputData.base64Data && typeof inputData.base64Data === 'string') {
                 try {
-                    // Try to decode base64 data
-                    const binaryString = atob(inputData.base64Data.split(',')[1] || inputData.base64Data);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-
-                    let mimeType = 'application/octet-stream';
-                    let filename = 'shared-data.bin';
-
-                    // Try to determine MIME type and filename from data URL
-                    if (inputData.base64Data.startsWith('data:')) {
-                        const dataUrlMatch = inputData.base64Data.match(/^data:([^;]+);base64,/);
-                        if (dataUrlMatch) {
-                            mimeType = dataUrlMatch[1];
-                            // Generate filename based on MIME type
-                            if (mimeType.startsWith('image/')) {
-                                filename = `shared-image.${mimeType.split('/')[1]}`;
-                            } else if (mimeType.startsWith('text/')) {
-                                filename = `shared-text.${mimeType.split('/')[1]}`;
-                            } else {
-                                filename = `shared-data.${mimeType.split('/')[1] || 'bin'}`;
-                            }
-                        }
-                    }
-
-                    const base64Blob = new Blob([bytes], { type: mimeType });
-                    const base64File = new File([base64Blob], filename, { type: mimeType });
-                    state.files.push(base64File);
+                    const asset = await normalizeDataAsset(inputData.base64Data, {
+                        namePrefix: "shared",
+                        uriComponent: true
+                    });
+                    state.files.push(asset.file);
                     filesAdded++;
                 } catch (error) {
                     console.warn('[WorkCenter] Failed to decode base64 data:', error);
@@ -291,39 +271,14 @@ export class WorkCenterShareTarget {
 
     private async retrieveCachedFiles(state: WorkCenterState, cacheKey: string): Promise<void> {
         try {
-            // Try to fetch cached file manifest from service worker
-            const response = await fetch(`/share-target-files?cacheKey=${encodeURIComponent(cacheKey || 'latest')}`);
-            if (!response.ok) return;
-
-            const fileManifest = await response.json();
-
-            if (fileManifest.files && Array.isArray(fileManifest.files)) {
-                console.log('[WorkCenter] Retrieved cached files:', fileManifest.files.length);
-
-                for (const fileMeta of fileManifest.files) {
-                    try {
-                        // Fetch the actual file data from cache
-                        // Manifest keys already include the full cache path (e.g. "/share-target-file/<ts>-<i>")
-                        const fileUrl = typeof fileMeta.key === "string" ? fileMeta.key : "";
-                        if (!fileUrl) continue;
-                        const fileResponse = await fetch(fileUrl);
-                        if (fileResponse.ok) {
-                            const fileBlob = await fileResponse.blob();
-                            const file = new File([fileBlob], fileMeta.name, { type: fileMeta.type });
-
-                            console.log('[WorkCenter] Adding cached file:', fileMeta.name);
-                            state.files.push(file);
-                        }
-                    } catch (error) {
-                        console.warn('[WorkCenter] Failed to retrieve cached file:', fileMeta.name, error);
-                    }
+            const files = await fetchCachedShareFiles(cacheKey || "latest");
+            if (files.length > 0) {
+                for (const file of files) {
+                    console.log("[WorkCenter] Adding cached file:", file.name);
+                    state.files.push(file);
                 }
-
-                // Notify about file changes
-                if (fileManifest.files.length > 0) {
-                    this.deps.onFilesChanged?.();
-                    this.deps.showMessage?.(`Added ${fileManifest.files.length} cached file(s) from share-target`);
-                }
+                this.deps.onFilesChanged?.();
+                this.deps.showMessage?.(`Added ${files.length} cached file(s) from share-target`);
             }
         } catch (error) {
             console.warn('[WorkCenter] Failed to retrieve cached files:', error);

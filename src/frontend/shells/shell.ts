@@ -1,8 +1,15 @@
-import { ref } from "fest-src/fest/object";
+import { ref } from "fest/object";
 import type { Shell, ShellContext, ShellId, ShellLayoutConfig, ShellNavigationState, ShellTheme, View, ViewId } from "./types";
-import { loadInlineStyle, preloadStyle } from "fest-src/fest/dom";
-import { ViewRegistry } from "@rs-frontend/registry";
+import { loadInlineStyle, preloadStyle } from "fest/dom";
+import { ViewRegistry } from "../shared/registry";
 import { showToast } from "@rs-frontend/items/Toast";
+
+//
+import "fest/fl-ui";
+
+//@ts-ignore
+import style from "../shared/_views.scss?inline";
+
 
 /**
  * Abstract base shell with common functionality
@@ -398,3 +405,4 @@ export abstract class ShellBase implements Shell {
         return pathname as ViewId;
     }
 }
+

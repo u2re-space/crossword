@@ -13,7 +13,7 @@
 import { ShellBase } from "../shell";
 import { H } from "fest/lure";
 import { ref, observe, affected } from "fest/object";
-import { ViewRegistry } from "@rs-frontend/registry";
+import { ViewRegistry } from "../../shared/registry";
 import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
 
 // @ts-ignore - SCSS import

@@ -13,7 +13,13 @@
 
 
 import { loadSettings } from "@rs-com/config/Settings";
-import { mountShellApp, type ShellOptions } from "@rs-frontend/shells";
+import { mountShellApp, type ShellOptions } from "../shared/channel-unknown";
+
+/**
+ * @deprecated Legacy compatibility options for old shell-based entry.
+ * Prefer `loadSubAppWithShell` + routing/BootLoader pipeline.
+ */
+export type MinimalAppOptions = ShellOptions;
 
 /**
  * Mount the Minimal frontend application

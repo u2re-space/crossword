@@ -1,14 +1,16 @@
-/**
- * View Channel Mixin
- * 
- * Provides uniform channel connectivity for views.
- * Views can use this mixin to:
- * - Connect to service worker channels
- * - Send/receive messages through broadcast channels
- * - Handle share target and launch queue data
- */
 
-import type { View, ViewLifecycle, ViewOptions, ShellContext } from "../shells/types";
+import type {
+    View,
+    ViewLifecycle,
+    ViewOptions
+} from "../shells/types";
+import type {
+    ChannelConnectedView,
+    ViewMessageHandler,
+    ChannelViewOptions,
+    ShareTargetHandler,
+    ShareTargetData
+} from "./registry";
 import { 
     serviceChannels, 
     affectedToChannel,
@@ -22,50 +24,10 @@ import {
     unregisterHandler,
     registerComponent,
     initializeComponent,
-    type UnifiedMessage,
-    type MessageHandler
+    type UnifiedMessage
 } from "@rs-com/core/UnifiedMessaging";
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-/**
- * Message handler function type
- */
-export type ViewMessageHandler<T = unknown> = (message: ChannelMessage<T>) => void | Promise<void>;
-
-/**
- * Channel-connected view interface
- */
-export interface ChannelConnectedView extends View {
-    /** Channel ID for this view */
-    channelId: ServiceChannelId;
-    /** Connect to the service channel */
-    connectChannel(): Promise<void>;
-    /** Disconnect from the service channel */
-    disconnectChannel(): void;
-    /** Send a message through the channel */
-    sendMessage<T>(type: string, data: T): Promise<void>;
-    /** Check if connected */
-    isChannelConnected(): boolean;
-}
-
-/**
- * Options for channel-connected views
- */
-export interface ChannelViewOptions extends ViewOptions {
-    /** Channel ID to connect to */
-    channelId?: ServiceChannelId;
-    /** Auto-connect on mount */
-    autoConnect?: boolean;
-    /** Message handlers */
-    messageHandlers?: Map<string, ViewMessageHandler>;
-}
-
-// ============================================================================
-// VIEW CHANNEL MIXIN
-// ============================================================================
+import { fetchSwCachedEntries } from "@rs-com/core/ShareTargetGateway";
+import { inferViewDestination, mapUnifiedMessageToView } from "./view-message-routing";
 
 /**
  * Creates a channel-connected view by mixing channel functionality into an existing view.
@@ -82,9 +44,9 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
 ) {
     return class extends ViewClass implements ChannelConnectedView {
         channelId: ServiceChannelId = defaultChannelId;
-        private _channelUnaffected: (() => void) | null = null;
-        private _channelConnected = false;
-        private _messageHandlers = new Map<string, Set<ViewMessageHandler>>();
+        _channelUnaffected: (() => void) | null = null;
+        _channelConnected = false;
+        _messageHandlers = new Map<string, Set<ViewMessageHandler>>();
 
         constructor(...args: any[]) {
             super(...args);
@@ -151,7 +113,7 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
         /**
          * Handle incoming channel message
          */
-        private _handleChannelMessage(message: ChannelMessage): void {
+        _handleChannelMessage(message: ChannelMessage): void {
             // Call type-specific handlers
             const handlers = this._messageHandlers.get(message.type);
             if (handlers) {
@@ -193,32 +155,6 @@ export function withViewChannel<T extends new (...args: any[]) => View>(
     };
 }
 
-// ============================================================================
-// SHARE TARGET HANDLER MIXIN
-// ============================================================================
-
-/**
- * Share target handler interface
- */
-export interface ShareTargetHandler {
-    /** Handle incoming share target data */
-    handleShareTarget(data: ShareTargetData): Promise<void>;
-    /** Check if view can handle share target */
-    canHandleShareTarget(data: ShareTargetData): boolean;
-}
-
-/**
- * Share target data structure
- */
-export interface ShareTargetData {
-    title?: string;
-    text?: string;
-    url?: string;
-    files?: File[];
-    timestamp: number;
-    source: "share-target" | "launch-queue" | "clipboard";
-}
-
 /**
  * Mixin for views that can handle share targets
  */
@@ -226,7 +162,7 @@ export function withShareTargetHandler<T extends new (...args: any[]) => View>(
     ViewClass: T
 ) {
     return class extends ViewClass implements ShareTargetHandler {
-        private _shareTargetChannel: BroadcastChannel | null = null;
+        _shareTargetChannel: BroadcastChannel | null = null;
 
         constructor(...args: any[]) {
             super(...args);
@@ -244,7 +180,7 @@ export function withShareTargetHandler<T extends new (...args: any[]) => View>(
             }
         }
 
-        canHandleShareTarget(data: ShareTargetData): boolean {
+        canHandleShareTarget(_data: ShareTargetData): boolean {
             // Default: can handle if view has handleMessage method
             return typeof (this as any).handleMessage === "function";
         }
@@ -252,7 +188,7 @@ export function withShareTargetHandler<T extends new (...args: any[]) => View>(
         /**
          * Start listening for share target broadcasts
          */
-        protected startShareTargetListener(): void {
+        startShareTargetListener(): void {
             if (this._shareTargetChannel) return;
 
             this._shareTargetChannel = new BroadcastChannel(BROADCAST_CHANNELS.SHARE_TARGET);
@@ -268,7 +204,7 @@ export function withShareTargetHandler<T extends new (...args: any[]) => View>(
         /**
          * Stop listening for share target broadcasts
          */
-        protected stopShareTargetListener(): void {
+        stopShareTargetListener(): void {
             if (this._shareTargetChannel) {
                 this._shareTargetChannel.close();
                 this._shareTargetChannel = null;
@@ -327,27 +263,20 @@ export async function checkAndDeliverShareData(
     }
 
     try {
-        // Check for cached content from SW
-        const response = await fetch("/sw-content/available");
-        const { cacheKeys } = await response.json();
-        
-        if (cacheKeys && cacheKeys.length > 0) {
-            const latest = cacheKeys[cacheKeys.length - 1];
-            if (latest.context === "share-target") {
-                // Fetch the cached content
-                const contentResponse = await fetch(`/sw-content/${latest.key}`);
-                const { content } = await contentResponse.json();
-                
-                const shareData: ShareTargetData = {
-                    ...content,
-                    timestamp: Date.now(),
-                    source: "share-target"
-                };
+        const cacheEntries = await fetchSwCachedEntries();
+        const latestShare = [...cacheEntries].reverse().find((entry) => entry.context === "share-target");
+        const rawContent = latestShare?.content;
 
-                if (view.canHandleShareTarget(shareData)) {
-                    await view.handleShareTarget(shareData);
-                    return true;
-                }
+        if (rawContent && typeof rawContent === "object") {
+            const shareData: ShareTargetData = {
+                ...(rawContent as Record<string, unknown>),
+                timestamp: Date.now(),
+                source: "share-target"
+            } as ShareTargetData;
+
+            if (view.canHandleShareTarget(shareData)) {
+                await view.handleShareTarget(shareData);
+                return true;
             }
         }
     } catch (error) {
@@ -370,52 +299,6 @@ export interface ViewReceiveBindingOptions {
     componentId?: string;
 }
 
-const VIEW_MESSAGE_FALLBACKS: Record<string, string[]> = {
-    viewer: ["content-view", "content-load", "markdown-content"],
-    workcenter: ["content-attach", "file-attach", "share-target-input", "content-share"],
-    explorer: ["file-save", "navigate-path", "content-explorer"],
-    editor: ["content-load", "content-edit"],
-    settings: ["settings-update"],
-    history: ["history-update"],
-    home: ["home-update"],
-    airpad: ["content-load"],
-    print: ["content-view"]
-};
-
-const inferDestination = (viewId: string): string => {
-    if (viewId === "viewer") return "viewer";
-    if (viewId === "workcenter") return "workcenter";
-    if (viewId === "explorer") return "explorer";
-    if (viewId === "editor") return "editor";
-    if (viewId === "settings") return "settings";
-    if (viewId === "history") return "history";
-    if (viewId === "print") return "print";
-    if (viewId === "airpad") return "airpad";
-    return viewId || "viewer";
-};
-
-const selectMessageTypeForView = (view: View, incomingType: string): string | null => {
-    const checks = [incomingType, ...(VIEW_MESSAGE_FALLBACKS[view.id] || [])];
-    for (const type of checks) {
-        if (!type) continue;
-        if (!view.canHandleMessage || view.canHandleMessage(type)) {
-            return type;
-        }
-    }
-    return null;
-};
-
-const toViewMessage = (view: View, message: UnifiedMessage): { type: string; data: unknown; metadata?: unknown } | null => {
-    const selectedType = selectMessageTypeForView(view, message.type);
-    if (!selectedType) return null;
-
-    return {
-        type: selectedType,
-        data: message.data,
-        metadata: message.metadata
-    };
-};
-
 export function bindViewReceiveChannel(
     view: View,
     options: ViewReceiveBindingOptions = {}
@@ -424,20 +307,20 @@ export function bindViewReceiveChannel(
         return () => { };
     }
 
-    const destination = options.destination || inferDestination(String(view.id || ""));
+    const destination = options.destination || inferViewDestination(String(view.id || ""));
     const componentId = options.componentId || `view:${view.id}`;
 
-    const handler: MessageHandler = {
+    const handler = {
         canHandle: (message) => message.destination === destination,
         handle: async (message) => {
-            const mapped = toViewMessage(view, message as UnifiedMessage);
+            const mapped = mapUnifiedMessageToView(view, message as UnifiedMessage);
             if (!mapped) return;
             await view.handleMessage?.(mapped);
         }
     };
 
     registerComponent(componentId, destination);
-    registerHandler(destination, handler);
+    registerHandler(destination, handler as any);
 
     const pending = initializeComponent(componentId);
     if (pending.length > 0) {
@@ -447,6 +330,6 @@ export function bindViewReceiveChannel(
     }
 
     return () => {
-        unregisterHandler(destination, handler);
+        unregisterHandler(destination, handler as any);
     };
 }

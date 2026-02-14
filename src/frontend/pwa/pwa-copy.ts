@@ -5,12 +5,21 @@
  */
 
 import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../../core";
-import { initToastReceiver, showToast } from "../items/Toast";
+import { initToastReceiver } from "../items/Toast";
 import { unifiedMessaging } from "@rs-com/core/UnifiedMessaging";
 
 // Track initialization
 let _pwaClipboardInitialized = false;
 let _cleanupFns: (() => void)[] = [];
+
+const sendShareTargetResultToWorkcenter = async (data: Record<string, unknown>, priority: "high" | "normal" = "high"): Promise<void> => {
+    await unifiedMessaging.sendMessage({
+        type: "share-target-result",
+        destination: "workcenter",
+        data,
+        metadata: { priority }
+    });
+};
 
 // Helper function to extract recognized content from AI responses
 const tryParseJSON = (data: unknown): unknown => {
@@ -163,28 +172,18 @@ const checkPendingClipboardOperations = async (): Promise<void> => {
                     const { copy } = await import("../../core/modules/Clipboard");
                     await copy(text, { showFeedback: true });
 
-                    // Also broadcast to work center for visibility
-                    try {
-                        const workCenterChannel = new BroadcastChannel("rs-workcenter");
-                        workCenterChannel.postMessage({
-                            type: 'share-target-result',
-                            data: {
-                                content: typeof text === 'string' ? text : JSON.stringify(text),
-                                rawData: operation.data,
-                                timestamp: Date.now(),
-                                source: 'share-target',
-                                action: 'AI Processing (Pending)',
-                                metadata: {
-                                    operationId: operation.id,
-                                    fromPendingQueue: true
-                                }
-                            }
-                        });
-                        workCenterChannel.close();
-                        console.log('[PWA-Copy] Broadcasted pending share target result to work center');
-                    } catch (error) {
-                        console.warn('[PWA-Copy] Failed to broadcast pending result to work center:', error);
-                    }
+                    await sendShareTargetResultToWorkcenter({
+                        content: typeof text === "string" ? text : JSON.stringify(text),
+                        rawData: operation.data,
+                        timestamp: Date.now(),
+                        source: "share-target",
+                        action: "AI Processing (Pending)",
+                        metadata: {
+                            operationId: operation.id,
+                            fromPendingQueue: true
+                        }
+                    });
+                    console.log("[PWA-Copy] Delivered pending share target result to work center");
 
                     // Remove the processed operation from the queue
                     try {
@@ -246,28 +245,18 @@ export const initPWAClipboard = (): (() => void) => {
                         const { copy } = await import("../../core/modules/Clipboard");
                         await copy(text, { showFeedback: true });
 
-                        // Also broadcast to work center for visibility
-                        try {
-                            const workCenterChannel = new BroadcastChannel("rs-workcenter");
-                            workCenterChannel.postMessage({
-                                type: 'share-target-result',
-                                data: {
-                                    content: text,
-                                    rawData: operation.data,
-                                    timestamp: Date.now(),
-                                    source: 'share-target',
-                                    action: 'AI Processing (Broadcasted)',
-                                    metadata: {
-                                        operationId: operation.id,
-                                        fromBroadcast: true
-                                    }
-                                }
-                            });
-                            workCenterChannel.close();
-                            console.log('[PWA-Copy] Broadcasted broadcasted share target result to work center');
-                        } catch (error) {
-                            console.warn('[PWA-Copy] Failed to broadcast broadcasted result to work center:', error);
-                        }
+                        await sendShareTargetResultToWorkcenter({
+                            content: text,
+                            rawData: operation.data,
+                            timestamp: Date.now(),
+                            source: "share-target",
+                            action: "AI Processing (Broadcasted)",
+                            metadata: {
+                                operationId: operation.id,
+                                fromBroadcast: true
+                            }
+                        });
+                        console.log("[PWA-Copy] Delivered broadcasted share target result to work center");
 
                         // Remove the processed operation from the queue
                         try {

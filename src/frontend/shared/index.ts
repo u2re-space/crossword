@@ -1,10 +1,15 @@
 /**
- * CrossWord Styles Module
+ * CrossWord Shared Frontend Module
  *
- * Centralized style management for the CrossWord application.
+ * Shared registries, channel helpers, and layer/style utilities.
  *
- * @module styles
+ * @module frontend/shared
  */
+
+// Registries and channel helpers
+export * from "./registry";
+export * from "./channel-mixin";
+export * from "./view-message-routing";
 
 // Layer management
 export {

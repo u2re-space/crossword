@@ -29,7 +29,7 @@ frontend/
 ├── views/                   # 📝 Content Components
 │   ├── types.ts            # View base types
 │   ├── index.ts            # View exports
-│   ├── ViewChannelMixin.ts # Service channel mixin
+│   ├── ../shared/channel-mixin.ts # Service channel mixin
 │   ├── workcenter/         # AI processing view
 │   ├── settings/           # Configuration view
 │   ├── viewer/             # Document viewer
@@ -216,8 +216,8 @@ await initPWA();
 Views can communicate with the service worker via channels:
 
 ```typescript
-// In a view, use the ViewChannelMixin
-class MyView extends ViewChannelMixin(BaseView) {
+// In a view, use the channel mixin from shared
+class MyView extends withViewChannel(BaseView, "workcenter") {
     async doProcessing() {
         const channel = this.getServiceChannel("workcenter");
         const result = await channel.processContent(data);
@@ -284,7 +284,7 @@ export default () => new MyShell();
 ```typescript
 // views/myview/index.ts
 import type { View, ShellContext } from "../../shells/types";
-import { ViewChannelMixin } from "../ViewChannelMixin";
+import { withViewChannel } from "../shared/channel-mixin";
 
 class MyViewBase implements View {
     id = "myview" as const;
@@ -295,7 +295,7 @@ class MyViewBase implements View {
     }
 }
 
-export class MyView extends ViewChannelMixin(MyViewBase) {}
+export class MyView extends withViewChannel(MyViewBase, "workcenter") {}
 
 export const createMyView = () => new MyView();
 export default createMyView;

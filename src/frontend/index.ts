@@ -52,11 +52,11 @@ export type {
 // STYLES - Style systems
 // ============================================================================
 
-export * from "./views/styles";
+export * from "./shared/styles";
 export type {
     StyleSystemId,
     StyleConfig
-} from "./views/styles";
+} from "./shared/styles";
 
 // ============================================================================
 // SHARED - Utilities

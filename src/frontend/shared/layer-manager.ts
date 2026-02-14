@@ -13,6 +13,8 @@
  * @module layer-manager
  */
 
+import type { ShellId, ViewId } from "../shells/types";
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -30,18 +32,7 @@ export interface LayerDefinition {
     description?: string;
 }
 
-export type ShellId = 'minimal' | 'faint' | 'raw';
-
-export type ViewId =
-    | 'viewer'
-    | 'workcenter'
-    | 'settings'
-    | 'explorer'
-    | 'history'
-    | 'editor'
-    | 'airpad'
-    | 'home'
-    | 'print';
+export type { ShellId, ViewId };
 
 // ============================================================================
 // LAYER HIERARCHY DEFINITION
@@ -155,7 +146,7 @@ let _layerElement: HTMLStyleElement | null = null;
  * @example
  * ```ts
  * // In application entry point
- * import { initializeLayers } from './styles/layer-manager';
+ * import { initializeLayers } from './shared/layer-manager';
  *
  * async function main() {
  *     // Initialize layers FIRST

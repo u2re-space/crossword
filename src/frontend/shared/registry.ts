@@ -14,9 +14,27 @@ import type {
     Shell,
     View,
     ViewFactory,
-    ShellTheme
-} from "./shells/types";
-import { bindViewReceiveChannel } from "./views/ViewChannelMixin";
+    ShellTheme,
+    ViewLifecycle,
+    ViewOptions
+} from "../shells/types";
+import { 
+    serviceChannels, 
+    affectedToChannel,
+    sendToChannel,
+    type ServiceChannelId,
+    type ChannelMessage 
+} from "@rs-com/core/ServiceChannels";
+import { BROADCAST_CHANNELS, MESSAGE_TYPES } from "@rs-com/config/Names";
+import {
+    registerHandler,
+    unregisterHandler,
+    registerComponent,
+    initializeComponent,
+    type UnifiedMessage
+} from "@rs-com/core/UnifiedMessaging";
+import { bindViewReceiveChannel } from "./channel-mixin";
+
 
 // ============================================================================
 // SHELL REGISTRY
@@ -222,7 +240,7 @@ export function registerDefaultShells(): void {
         id: "base",
         name: "Base",
         description: "Base shell with no frames or navigation",
-        loader: () => import("./shells/base/index")
+        loader: () => import("../shells/base/index")
     });
 
     // Minimalshell (simple toolbar-based navigation)
@@ -230,7 +248,7 @@ export function registerDefaultShells(): void {
         id: "minimal",
         name: "Minimal",
         description: "Minimal toolbar-based navigation",
-        loader: () => import("./shells/minimal/index")
+        loader: () => import("../shells/minimal/index")
     });
 
     // Faint shell (tabbed sidebar navigation)
@@ -238,7 +256,7 @@ export function registerDefaultShells(): void {
         id: "faint",
         name: "Faint",
         description: "Experimental tabbed interface with sidebar",
-        loader: () => import("./shells/faint/index")
+        loader: () => import("../shells/faint/index")
     });
 }
 
@@ -250,63 +268,63 @@ export function registerDefaultViews(): void {
         id: "viewer",
         name: "Viewer",
         icon: "eye",
-        loader: () => import("./views/viewer")
+        loader: () => import("../views/viewer")
     });
 
     ViewRegistry.register({
         id: "workcenter",
         name: "Work Center",
         icon: "lightning",
-        loader: () => import("./views/workcenter")
+        loader: () => import("../views/workcenter")
     });
 
     ViewRegistry.register({
         id: "settings",
         name: "Settings",
         icon: "gear",
-        loader: () => import("./views/settings")
+        loader: () => import("../views/settings")
     });
 
     ViewRegistry.register({
         id: "history",
         name: "History",
         icon: "clock-counter-clockwise",
-        loader: () => import("./views/history")
+        loader: () => import("../views/history")
     });
 
     ViewRegistry.register({
         id: "explorer",
         name: "Explorer",
         icon: "folder",
-        loader: () => import("./views/explorer")
+        loader: () => import("../views/explorer")
     });
 
     ViewRegistry.register({
         id: "airpad",
         name: "Airpad",
         icon: "hand-pointing",
-        loader: () => import("./views/airpad")
+        loader: () => import("../views/airpad")
     });
 
     ViewRegistry.register({
         id: "editor",
         name: "Editor",
         icon: "pencil",
-        loader: () => import("./views/editor")
+        loader: () => import("../views/editor")
     });
 
     ViewRegistry.register({
         id: "home",
         name: "Home",
         icon: "house",
-        loader: () => import("./views/home")
+        loader: () => import("../views/home")
     });
 
     ViewRegistry.register({
         id: "print",
         name: "Print",
         icon: "printer",
-        loader: () => import("./views/print")
+        loader: () => import("../views/print")
     });
 }
 
@@ -356,4 +374,68 @@ export function getDefaultBootConfig(): BootConfig {
 export function initializeRegistries(): void {
     registerDefaultShells();
     registerDefaultViews();
+}
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+/**
+ * Message handler function type
+ */
+export type ViewMessageHandler<T = unknown> = (message: ChannelMessage<T>) => void | Promise<void>;
+
+/**
+ * Channel-connected view interface
+ */
+export interface ChannelConnectedView extends View {
+    /** Channel ID for this view */
+    channelId: ServiceChannelId;
+    /** Connect to the service channel */
+    connectChannel(): Promise<void>;
+    /** Disconnect from the service channel */
+    disconnectChannel(): void;
+    /** Send a message through the channel */
+    sendMessage<T>(type: string, data: T): Promise<void>;
+    /** Check if connected */
+    isChannelConnected(): boolean;
+}
+
+/**
+ * Options for channel-connected views
+ */
+export interface ChannelViewOptions extends ViewOptions {
+    /** Channel ID to connect to */
+    channelId?: ServiceChannelId;
+    /** Auto-connect on mount */
+    autoConnect?: boolean;
+    /** Message handlers */
+    messageHandlers?: Map<string, ViewMessageHandler>;
+}
+
+
+// ============================================================================
+// SHARE TARGET HANDLER MIXIN
+// ============================================================================
+
+/**
+ * Share target handler interface
+ */
+export interface ShareTargetHandler {
+    /** Handle incoming share target data */
+    handleShareTarget(data: ShareTargetData): Promise<void>;
+    /** Check if view can handle share target */
+    canHandleShareTarget(data: ShareTargetData): boolean;
+}
+
+/**
+ * Share target data structure
+ */
+export interface ShareTargetData {
+    title?: string;
+    text?: string;
+    url?: string;
+    files?: File[];
+    timestamp: number;
+    source: "share-target" | "launch-queue" | "clipboard";
 }

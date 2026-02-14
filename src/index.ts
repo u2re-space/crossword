@@ -17,7 +17,7 @@
 
 import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/pwa/pwa-handling";
 import { loadSubAppWithShell, loadBootMenu, getViewFromPath, isRootRoute, VALID_VIEWS } from "./frontend/main/routing";
-import { initializeLayers } from "./frontend/styles/layer-manager";
+import { initializeLayers } from "./frontend/shared/layer-manager";
 import type { ViewId } from "./frontend/shells/types";
 
 import { loadAsAdopted } from "fest/dom";

@@ -14,7 +14,9 @@
 import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
 import type { StyleSystem } from "@rs-frontend/main";
 
-interface StyleConfig {
+export type StyleSystemId = StyleSystem;
+
+export interface StyleConfig {
     id: StyleSystem;
     name: string;
     description?: string;

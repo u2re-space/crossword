@@ -12,8 +12,8 @@
 
 import { bootLoader } from "./BootLoader";
 import type { ViewId, Shell } from "../shells/types";
-import { ViewRegistry } from "../registry";
-import { initializeLayers } from "../styles/layer-manager";
+import { ViewRegistry } from "../shared/registry";
+import { initializeLayers } from "../shared/layer-manager";
 
 // ============================================================================
 // TYPES
