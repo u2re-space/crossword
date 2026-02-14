@@ -376,7 +376,7 @@ export class WorkCenterEvents {
                     const { WorkCenterStateManager: StateManager1 } = await import('./WorkCenterState');
                     StateManager1.clearRecognizedData(this.state);
                     // Update the UI to remove the recognized status and pipeline
-                    const statusElement = this.container?.querySelector('.recognized-status');
+                    const statusElement = this.container?.querySelector('.wc-recognized-status');
                     if (statusElement) {
                         statusElement.remove();
                     }
@@ -392,7 +392,7 @@ export class WorkCenterEvents {
                     this.ui.updateFileCounter(this.state);
                     this.deps.onFilesChanged?.();
                     // Update UI
-                    const statusEl = this.container?.querySelector('.recognized-status');
+                    const statusEl = this.container?.querySelector('.wc-recognized-status');
                     if (statusEl) {
                         statusEl.remove();
                     }

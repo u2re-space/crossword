@@ -43,7 +43,7 @@ export class WorkCenterUI {
         const container = H`<div class="workcenter-view">
       <div class="workcenter-header">
         <h2>AI Work Center</h2>
-        <details class="header-controls-disclosure" open>
+        <details class="header-controls-disclosure">
           <summary class="header-controls-summary">
             <span>AI Work Center</span>
           </summary>
@@ -112,9 +112,9 @@ export class WorkCenterUI {
         <div class="workcenter-layout">
 
           <!-- Results & Processing Section -->
-          <div class="workcenter-column results-column">
+          <div class="workcenter-block results-block">
             <div class="results-section">
-              <div class="output-section">
+              <div class="wc-output-section">
                 ${this.results.renderOutputHeader(state)}
               </div>
 
@@ -138,7 +138,7 @@ export class WorkCenterUI {
           </div>
 
           <!-- Input Prompts Section -->
-          <div class="workcenter-column prompts-column">
+          <div class="workcenter-block prompts-block">
             ${this.renderInputTabs(state)}
           </div>
         </div>
@@ -225,7 +225,7 @@ export class WorkCenterUI {
         const activeTab = state.activeInputTab || "prompt";
         return `
             <div class="input-tabs-section" data-input-tabs data-active-tab="${activeTab}">
-                <div class="section-header">
+                <div class="wc-block-header">
                     <h3>Work Inputs</h3>
                     <div class="input-tab-actions">
                         <button class="tab-btn ${activeTab === 'prompt' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="prompt" aria-selected="${activeTab === 'prompt'}">Prompt</button>

@@ -21,9 +21,8 @@ export class WorkCenterAttachments {
     // Main attachments section rendering
     renderAttachmentsSection(state: WorkCenterState): string {
         return `
-            <div class="attachments-section">
-              <div class="section-header">
-                <h3>File Attachments</h3>
+            <div class="wc-attachments-section">
+              <div class="wc-block-header">
                 <div class="file-actions">
                   <button class="btn btn-icon" data-action="select-files" title="Choose Files">
                     <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
@@ -75,7 +74,7 @@ export class WorkCenterAttachments {
         if (!state.recognizedData) return '';
 
         return `
-            <div class="recognized-status">
+            <div class="wc-recognized-status">
               <ui-icon icon="check-circle" size="16" icon-style="duotone" class="status-icon"></ui-icon>
               <span>Content recognized - ready for processing</span>
               <button class="btn small clear-recognized" data-action="clear-recognized">Clear</button>
@@ -92,7 +91,7 @@ export class WorkCenterAttachments {
         fileList.innerHTML = '';
 
         if (state.files.length === 0) {
-            fileList.innerHTML = '<div class="no-files">No files attached</div>';
+            fileList.innerHTML = '<div class="wc-attachments-empty">No files attached</div>';
             return;
         }
 

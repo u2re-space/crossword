@@ -29,7 +29,7 @@ export class WorkCenterHistory {
         );
 
         if (recentItems.length === 0) {
-            historyContainer.innerHTML = '<div class="no-history">No recent activity</div>';
+            historyContainer.innerHTML = '<div class="wc-history-empty">No recent activity</div>';
             return;
         }
 
@@ -133,7 +133,7 @@ export class WorkCenterHistory {
         </div>
 
         <div class="action-history-list">
-          ${actionEntries.length === 0 ? H`<div class="no-history">No actions found</div>` :
+          ${actionEntries.length === 0 ? H`<div class="wc-history-empty">No actions found</div>` :
             actionEntries.map(entry => H`<div class="action-history-item ${entry.status}">
               <div class="action-header">
                 <div class="action-meta">

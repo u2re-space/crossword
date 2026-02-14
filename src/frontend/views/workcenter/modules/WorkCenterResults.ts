@@ -22,7 +22,7 @@ export class WorkCenterResults {
         if (!this.container) return;
         const outputContent = this.container.querySelector('[data-output]') as HTMLElement;
         if (outputContent) {
-            outputContent.innerHTML = `<div class="processing">${message}</div>`;
+            outputContent.innerHTML = `<div class="wc-loading">${message}</div>`;
         }
     }
 
@@ -48,7 +48,7 @@ export class WorkCenterResults {
         if (!this.container) return;
         const outputContent = this.container.querySelector('[data-output]') as HTMLElement;
         if (outputContent) {
-            outputContent.innerHTML = '<div class="empty-results">Results cleared</div>';
+            outputContent.innerHTML = '<div class="wc-results-empty">Results cleared</div>';
         }
     }
 
@@ -134,13 +134,13 @@ export class WorkCenterResults {
     updateRecognizedStatus(state: WorkCenterState): void {
         if (!this.container) return;
 
-        const statusElement = this.container.querySelector('.recognized-status') as HTMLElement;
+        const statusElement = this.container.querySelector('.wc-recognized-status') as HTMLElement;
         if (state.recognizedData) {
             if (!statusElement) {
                 // Add recognized status if it doesn't exist
-                const fileInputArea = this.container.querySelector('.file-input-area');
+                const fileInputArea = this.container.querySelector('.wc-file-drop-overlay');
                 if (fileInputArea) {
-                    const newStatus = H`<div class="recognized-status">
+                    const newStatus = H`<div class="wc-recognized-status">
                         <ui-icon icon="check-circle" size="16" icon-style="duotone" class="status-icon"></ui-icon>
                         <span>Content recognized - ready for actions</span>
                         <button class="btn small clear-recognized" data-action="clear-recognized">Clear</button>
@@ -156,9 +156,9 @@ export class WorkCenterResults {
     // Output header rendering (counters and action buttons)
     renderOutputHeader(state: WorkCenterState): string {
         return `
-            <div class="section-header">
+            <div class="wc-block-header">
                 <h3>Results & Processing</h3>
-                <div class="output-actions">
+                <div class="wc-output-actions">
                     <button class="btn btn-icon" data-action="view-output" title="View output in Viewer">
                         <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
                         <span class="btn-text">View</span>
@@ -177,7 +177,7 @@ export class WorkCenterResults {
                     </button>
                 </div>
             </div>
-            <div class="output-content" data-output> No results yet </div>
+            <div class="wc-output-content" data-output> No results yet </div>
         `;
     }
 

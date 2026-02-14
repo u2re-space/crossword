@@ -1,16 +1,13 @@
-@layer view.workcenter {
-    @mixin btn-size($font-size, $py, $px, $min-inline: auto) {
-        padding: $py $px;
-        font-size: $font-size;
-        min-inline-size: $min-inline;
-    }
+@use "mixins" as wc;
 
-    .output-section {
+@layer view.workcenter.components {
+
+    .wc-output-section {
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
         min-block-size: fit-content;
-        block-size: stretch;
+        block-size: fit-content;
         max-block-size: stretch;
         overflow: hidden;
         flex-shrink: 0;
@@ -18,13 +15,13 @@
         flex-grow: 1;
     }
 
-    .output-content {
+    .wc-output-content {
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
-        min-block-size: calc-size(stretch, min(size, 12rem));
+        min-block-size: fit-content;
         max-block-size: stretch;
-        block-size: stretch;
+        block-size: min(8rem, 100%);
         position: relative;
         border-radius: var(--radius-md);
         transition: all var(--motion-normal);
@@ -66,34 +63,12 @@
                 background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
                 box-shadow: var(--focus-ring);
 
-                &::before {
-                    content: "";
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(
-                        45deg,
-                        color-mix(in oklab, var(--color-primary) 5%, transparent) 25%,
-                        transparent 25%,
-                        transparent 50%,
-                        color-mix(in oklab, var(--color-primary) 5%, transparent) 50%,
-                        color-mix(in oklab, var(--color-primary) 5%, transparent) 75%,
-                        transparent 75%
-                    );
-                    background-size: 20px 20px;
-                    border-radius: inherit;
-                    pointer-events: none;
-                    z-index: 1;
-                }
-
-                & > * {
-                    position: relative;
-                    z-index: 2;
-                }
+                @include wc.wc-dropzone-stripe-overlay;
             }
         }
     }
 
-    .output-actions,
+    .wc-output-actions,
     .pipeline-actions,
     .step-actions,
     .history-section .result-actions {
@@ -102,16 +77,16 @@
         gap: var(--space-xs);
     }
 
-    .output-actions .btn,
+    .wc-output-actions .btn,
     .pipeline-actions .btn {
-        @include btn-size(var(--text-sm), var(--space-xs), var(--space-sm));
+        @include wc.wc-btn-size(var(--text-sm), var(--space-xs), var(--space-sm));
     }
 
     .step-actions {
-        margin-top: var(--space-xs);
+        margin-block-start: var(--space-xs);
 
         .btn {
-            @include btn-size(var(--text-xs), var(--space-xs), var(--space-sm), auto);
+            @include wc.wc-btn-size(var(--text-xs), var(--space-xs), var(--space-sm), auto);
         }
     }
 
@@ -121,7 +96,7 @@
         gap: var(--space-sm);
 
         .result-actions .btn {
-            @include btn-size(var(--text-xs), var(--space-xs), var(--space-sm), auto);
+            @include wc.wc-btn-size(var(--text-xs), var(--space-xs), var(--space-sm), auto);
         }
     }
 
@@ -175,7 +150,7 @@
         }
 
         table {
-            width: 100%;
+            inline-size: 100%;
             border-collapse: collapse;
             margin: var(--space-md) 0;
             background: var(--color-surface-container-high);
@@ -186,12 +161,12 @@
             th,
             td {
                 padding: var(--space-sm);
-                text-align: left;
-                border-bottom: 1px solid var(--color-outline);
-                border-right: 1px solid var(--color-outline);
+                text-align: start;
+                border-block-end: 1px solid var(--color-outline);
+                border-inline-end: 1px solid var(--color-outline);
 
                 &:last-child {
-                    border-right: none;
+                    border-inline-end: none;
                 }
             }
 
@@ -202,13 +177,13 @@
             }
 
             tr:last-child td {
-                border-bottom: none;
+                border-block-end: none;
             }
         }
 
         ul,
         ol {
-            padding-left: var(--space-lg);
+            padding-inline-start: var(--space-lg);
             margin: var(--space-sm) 0;
 
             li {
@@ -220,7 +195,7 @@
         blockquote {
             margin: var(--space-md) 0;
             padding: var(--space-sm) var(--space-md);
-            border-left: 4px solid var(--color-primary);
+            border-inline-start: 4px solid var(--color-primary);
             background: color-mix(in oklab, var(--color-primary) 5%, var(--color-surface-container-low));
             border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
             color: var(--color-on-surface-variant);
@@ -243,8 +218,8 @@
         }
 
         img {
-            max-width: 100%;
-            height: auto;
+            max-inline-size: 100%;
+            block-size: auto;
             border-radius: var(--radius-sm);
             margin: var(--space-sm) 0;
         }
@@ -260,7 +235,7 @@
             color: var(--color-on-surface);
 
             &:first-child {
-                margin-top: 0;
+                margin-block-start: 0;
             }
         }
 
@@ -298,17 +273,17 @@
             margin: var(--space-sm) 0;
 
             &:first-child {
-                margin-top: 0;
+                margin-block-start: 0;
             }
 
             &:last-child {
-                margin-bottom: 0;
+                margin-block-end: 0;
             }
         }
 
         hr {
             border: none;
-            border-top: 1px solid var(--color-outline);
+            border-block-start: 1px solid var(--color-outline);
             margin: var(--space-lg) 0;
         }
     }
@@ -329,9 +304,9 @@
     }
 
     .data-pipeline-section {
-        margin-top: var(--space-md);
-        padding-top: var(--space-md);
-        border-top: 1px solid var(--color-outline-variant);
+        margin-block-start: var(--space-md);
+        padding-block-start: var(--space-md);
+        border-block-start: 1px solid var(--color-outline-variant);
     }
 
     .pipeline-header {
@@ -339,7 +314,7 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--space-sm);
-        margin-bottom: var(--space-md);
+        margin-block-end: var(--space-md);
 
         h3 {
             margin: 0;
@@ -371,13 +346,13 @@
         }
 
         &.recognized-step {
-            border-color: var(--color-tertiary);
-            background: color-mix(in oklab, var(--color-tertiary) 5%, var(--color-surface-container-high));
+            border-color: var(--color-secondary);
+            background: color-mix(in oklab, var(--color-secondary) 5%, var(--color-surface-container-high));
         }
 
         &.processed-step {
-            border-color: var(--color-secondary);
-            background: color-mix(in oklab, var(--color-secondary) 5%, var(--color-surface-container-high));
+            border-color: var(--color-tertiary);
+            background: color-mix(in oklab, var(--color-tertiary) 5%, var(--color-surface-container-high));
         }
     }
 
@@ -408,8 +383,8 @@
     }
 
     .step-content {
-        padding-left: var(--space-lg);
-        border-left: 2px solid var(--color-outline);
+        padding-inline-start: var(--space-lg);
+        border-inline-start: 2px solid var(--color-outline);
     }
 
     .step-preview {
@@ -470,7 +445,7 @@
         align-items: center;
         gap: var(--space-sm);
         flex: 1;
-        min-width: 0;
+        min-inline-size: 0;
     }
 
     .history-status {
@@ -502,7 +477,7 @@
         color: var(--color-on-surface-variant);
     }
 
-    .processing {
+    .wc-loading {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -513,12 +488,12 @@
 
         &::before {
             content: "";
-            width: 20px;
-            height: 20px;
+            inline-size: 20px;
+            block-size: 20px;
             border: 2px solid var(--color-primary);
-            border-top-color: transparent;
+            border-block-start-color: transparent;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: workcenter-spin 1s linear infinite;
         }
     }
 
@@ -531,9 +506,9 @@
         font-size: var(--text-sm);
     }
 
-    .empty-results,
-    .no-files,
-    .no-history {
+    .wc-results-empty,
+    .wc-attachments-empty,
+    .wc-history-empty {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -543,12 +518,12 @@
         font-style: italic;
     }
 
-    .empty-results {
+    .wc-results-empty {
         padding: var(--space-xl);
         font-size: var(--text-base);
     }
 
-    @container (max-width: 768px) {
+    @container (max-inline-size: 768px) {
         .result-content {
             padding: var(--space-sm);
         }
@@ -561,14 +536,6 @@
 
         .history-header h4 {
             font-size: var(--text-sm);
-        }
-    }
-}
-
-@layer view.workcenter.animations {
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
         }
     }
 }

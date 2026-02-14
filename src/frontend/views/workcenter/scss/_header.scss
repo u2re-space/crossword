@@ -1,34 +1,41 @@
-@layer view.workcenter {
+@layer view.workcenter.components {
     .workcenter-header {
-        display: flex;
-        align-items: center;
+        display: grid;
+        gap: var(--space-sm);
+        padding: var(--space-xs) var(--space-md);
+        background: var(--color-surface-container-low);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: var(--radius-lg);
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 2;
+        grid-template-columns: [logo] minmax(0, max-content) [controls] minmax(0, 1fr);
+        place-content: center;
+        place-items: center;
+
         justify-content: space-between;
-        gap: var(--space-md);
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-md);
-        background: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
 
         h2 {
             margin: 0;
             font-size: var(--text-base);
             font-weight: var(--font-weight-bold);
-            color: light-dark(var(--color-on-surface), var(--color-on-surface));
+            color: var(--color-on-surface);
             letter-spacing: -0.01em;
             white-space: nowrap;
+            grid-column: logo;
         }
 
-        @container (max-width: 768px) {
-            flex-direction: column;
-            align-items: stretch;
+        @container (max-inline-size: 768px) {
             gap: var(--space-sm);
             padding: var(--space-sm);
+            grid-template-columns: [controls] minmax(0, 1fr);
 
             h2 {
                 display: none;
             }
         }
 
-        @container (max-width: 480px) {
+        @container (max-inline-size: 480px) {
             gap: var(--space-xs);
             padding: var(--space-xs);
         }
@@ -39,11 +46,9 @@
         margin: 0;
         padding: 0;
         border: 0;
-        inline-size: auto;
-
-        @container (max-width: 768px) {
-            inline-size: 100%;
-        }
+        inline-size: stretch;
+        max-inline-size: stretch;
+        grid-column: controls;
     }
 
     .header-controls-summary {
@@ -53,8 +58,8 @@
         gap: var(--space-sm);
         padding: var(--space-sm) var(--space-sm);
         border-radius: var(--radius-sm);
-        background: light-dark(var(--color-surface-container-low), var(--color-surface-container-low));
-        color: light-dark(var(--color-on-surface), var(--color-on-surface));
+        background: var(--color-surface-container-low);
+        color: var(--color-on-surface);
         font-size: var(--text-base);
         font-weight: var(--font-weight-bold);
         letter-spacing: -0.01em;
@@ -76,7 +81,7 @@
             transition: transform 180ms ease;
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             display: flex;
         }
     }
@@ -85,9 +90,14 @@
         transform: rotate(180deg);
     }
 
-    @container (min-width: 769px) {
+    @container (min-inline-size: 769px) {
         .header-controls-disclosure {
-            inline-size: auto;
+            display: contents;
+
+            &::details-content {
+                inline-size: stretch;
+                display: contents;
+            }
         }
 
         .header-controls-summary {
@@ -100,7 +110,7 @@
     }
 
     .header-controls-disclosure:not([open]) > .control-selectors {
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             display: none;
         }
     }
@@ -122,144 +132,96 @@
 
     .control-selectors {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0px, 1fr));
-        grid-template-rows: repeat(1, minmax(0px, max-content));
-        grid-auto-flow: column;
-        place-content: center;
-        place-items: center;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: var(--space-md);
-        inline-size: calc-size(max-content, min(size, min(100%, 48rem)));
-        max-inline-size: stretch;
-        min-inline-size: fit-content;
-        align-items: center;
-        gap: var(--space-md);
-        padding: var(--space-xs) var(--space-sm);
-        background: light-dark(var(--color-surface-container-low), var(--color-surface-container-low));
+        align-items: start;
+        max-inline-size: min(min(100%, 64rem), round(up, 100%, 32rem));
+        padding: 0px;
+        background: var(--color-surface-container-low);
         border-radius: var(--radius-sm);
-        flex-direction: row;
-        min-block-size: fit-content;
-        block-size: max-content;
-        max-block-size: max-content;
-        flex-wrap: wrap;
+        inline-size: stretch;
+        justify-self: end;
 
-        @container (max-width: 1024px) {
+        @container (max-inline-size: 1024px) {
             gap: var(--space-sm);
             padding: var(--space-xs);
-            grid-template-columns: repeat(2, minmax(0px, 1fr));
-            grid-template-rows: repeat(2, minmax(0px, max-content));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             inline-size: stretch;
         }
 
-        @container (max-width: 900px) {
-            display: grid;
+        @container (max-inline-size: 900px) {
             gap: var(--space-sm);
-            grid-template-columns: repeat(2, minmax(0px, 1fr));
-            grid-template-rows: repeat(2, minmax(0px, max-content));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             inline-size: stretch;
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             gap: var(--space-xs);
-            grid-template-columns: repeat(1, minmax(0px, 1fr));
-            grid-template-rows: repeat(4, minmax(0px, max-content));
+            grid-template-columns: minmax(0, 1fr);
             inline-size: stretch;
         }
 
-        @container (max-width: 480px) {
+        @container (max-inline-size: 480px) {
             gap: var(--space-xs);
             padding: var(--space-xs);
-            grid-template-columns: repeat(1, minmax(0px, 1fr));
-            grid-template-rows: repeat(4, minmax(0px, max-content));
+            grid-template-columns: minmax(0, 1fr);
             inline-size: stretch;
-        }
-
-        & > * {
-            flex-direction: row;
         }
     }
 
-    .format-select,
-    .language-select,
-    .recognition-select,
-    .processing-select {
+    .format-selector,
+    .language-selector,
+    .recognition-selector,
+    .processing-selector {
         display: grid;
-        align-items: center;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 8rem);
         gap: var(--space-sm);
-        flex: 1;
-        place-content: center;
-        place-items: center;
-        justify-items: start;
-
-        max-inline-size: stretch;
         inline-size: stretch;
         min-inline-size: fit-content;
+        max-inline-size: stretch;
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-sm);
-        background: light-dark(var(--color-surface), var(--color-surface));
-        color: light-dark(var(--color-on-surface), var(--color-on-surface));
+        background: var(--color-surface);
+        color: var(--color-on-surface);
         font-size: var(--text-sm);
         font-weight: var(--font-weight-medium);
         font-family: var(--font-family);
-        cursor: pointer;
+        place-content: center;
+        place-items: center;
+        overflow: hidden;
 
-        &:hover {
-            background: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
-            border-color: light-dark(var(--color-primary), var(--color-primary));
-        }
-
-        &:focus {
-            outline: none;
-            border-color: light-dark(var(--color-primary), var(--color-primary));
-        }
-
-        &:focus-visible {
-            outline: 2px solid light-dark(var(--color-primary), var(--color-primary));
-            outline-offset: 1px;
-        }
-
-        option {
-            background: light-dark(var(--color-surface), var(--color-surface));
-            color: light-dark(var(--color-on-surface), var(--color-on-surface));
-        }
-
-        @container (max-width: 900px) {
-            min-width: 70px;
-            font-size: var(--text-xs);
-            padding: var(--space-xs);
-            flex-direction: column;
-            align-items: stretch;
-            gap: var(--space-xs);
-            min-width: 0;
-
-            label {
-                font-size: var(--text-xs);
-                justify-content: flex-start;
-            }
-        }
-
-        @container (max-width: 768px) {
-            flex-direction: row;
-            gap: var(--space-sm);
-        }
-
-        @container (max-width: 640px) {
-            min-width: 60px;
-            flex-direction: column;
-            gap: var(--space-xs);
+        select {
+            inline-size: 100%;
+            min-block-size: 2.25rem;
+            padding: var(--space-sm);
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         label {
-            display: flex;
-            place-content: center;
-            place-items: center;
-            justify-content: center;
-            flex-direction: row;
-            font-size: var(--text-sm);
-            font-weight: var(--font-weight-medium);
-            color: light-dark(var(--color-on-surface), var(--color-on-surface));
+            font-size: var(--text-xs);
+            color: var(--color-on-surface-variant);
             white-space: nowrap;
-            flex-shrink: 0;
+            flex-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-inline-size: stretch;
         }
 
+        @container (max-inline-size: 900px) {
+            font-size: var(--text-xs);
+            padding: var(--space-xs);
+            gap: var(--space-xs);
+        }
+
+        @container (max-inline-size: 768px) {
+            gap: var(--space-sm);
+        }
+
+        @container (max-inline-size: 640px) {
+            gap: var(--space-xs);
+        }
     }
 }

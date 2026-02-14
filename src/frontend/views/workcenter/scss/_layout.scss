@@ -1,106 +1,4 @@
-@layer view.workcenter {
-    .workcenter-view {
-        min-block-size: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-    }
-
-    .workcenter-header {
-        display: grid;
-        gap: var(--space-sm);
-        padding: var(--space-md);
-        background: var(--color-surface-container-low);
-        border: 1px solid var(--color-outline-variant);
-        border-radius: var(--radius-lg);
-        position: sticky;
-        inset-block-start: 0;
-        z-index: 2;
-
-        h2 {
-            margin: 0;
-            font-size: var(--text-lg);
-            line-height: 1.3;
-        }
-    }
-
-    .control-selectors {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-        grid-auto-rows: max-content;
-        grid-auto-flow: column;
-        place-content: center;
-        place-items: center;
-        gap: var(--space-md);
-        max-inline-size: stretch;
-        block-size: max-content;
-
-        & > * {
-            flex-direction: row;
-        }
-    }
-
-    .format-selector,
-    .language-selector,
-    .recognition-selector,
-    .processing-selector {
-        display: grid;
-        gap: var(--space-xs);
-        grid-auto-flow: column;
-        grid-template-columns: minmax(0px, 1fr) minmax(0px, 8rem);
-        place-content: center;
-        place-items: center;
-        place-self: stretch;
-        inline-size: stretch;
-        max-inline-size: stretch;
-        min-inline-size: fit-content;
-        justify-content: space-between;
-
-        label {
-            font-size: var(--text-xs);
-            color: var(--color-on-surface-variant);
-            text-wrap: nowrap;
-            flex-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-inline-size: stretch;
-            min-inline-size: fit-content;
-            text-align: start;
-            place-self: stretch;
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            text-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            place-content: center;
-            place-items: center;
-            justify-content: start;
-            padding: var(--space-xs) var(--space-sm);
-
-            @container (min-inline-size: 480px) {
-                justify-content: end;
-            }
-        }
-
-        select {
-            min-inline-size: fit-content;
-            inline-size: stretch;
-            block-size: max-content;
-            min-block-size: 2rem;
-            max-block-size: 2.5rem;
-            padding: var(--space-sm);
-            text-wrap: nowrap;
-            flex-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-inline-size: stretch;
-            grid-auto-flow: column;
-        }
-    }
+@layer view.workcenter.layout {
 
     .workcenter-content {
         flex: 1;
@@ -125,7 +23,7 @@
         }
     }
 
-    .workcenter-column {
+    .workcenter-block {
         min-block-size: fit-content;
         max-block-size: stretch;
         block-size: stretch;
@@ -133,34 +31,34 @@
         flex-direction: column;
         gap: var(--space-md);
         flex-shrink: 1;
-        flex-grow: 0;
+        flex-grow: 1;
         flex-basis: fit-content;
     }
 
-    .prompts-column,
+    .prompts-block,
     .input-tabs-section {
         grid-row: 2;
         order: 2;
     }
 
-    .results-column,
+    .results-block,
     .results-section {
         flex-basis: fit-content;
         grid-row: 1;
         order: 1;
         block-size: stretch;
         max-block-size: stretch;
-        min-block-size: fit-content;
         flex-basis: fit-content;
         flex-grow: 1;
-        flex-shrink: 0;
+        flex-shrink: 1;
         overflow: hidden;
     }
 
-    .results-column {
+    .results-block {
         flex-grow: 1;
-        flex-shrink: 0;
+        flex-shrink: 1;
         flex-basis: fit-content;
+        min-block-size: calc-size(fit-content, max(size, min(100%, 16rem)));
     }
 
     .input-tabs-section,
@@ -211,9 +109,11 @@
         flex-direction: column;
         min-block-size: 0;
         flex-grow: 1;
+        flex-shrink: 1;
         flex-basis: fit-content;
         block-size: stretch;
         max-block-size: stretch;
+        min-block-size: min(32rem, 100%);
     }
 
     .tab-panel {
@@ -227,7 +127,8 @@
         flex-shrink: 1;
 
         &.is-active {
-            display: block;
+            display: flex;
+            flex-direction: column;
         }
     }
 
@@ -238,28 +139,13 @@
             align-items: start;
         }
 
-        .results-column {
+        .results-block {
             order: 1;
         }
 
-        .prompts-column {
+        .prompts-block {
             order: 2;
         }
     }
 
-    @container (max-inline-size: 980px) {
-        .control-selectors {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-    }
-
-    @container (max-inline-size: 560px) {
-        .workcenter-header {
-            padding: var(--space-sm);
-        }
-
-        .control-selectors {
-            grid-template-columns: minmax(0, 1fr);
-        }
-    }
 }

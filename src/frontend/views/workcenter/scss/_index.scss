@@ -14,6 +14,10 @@
 // PARTIALS (Order matters for cascade)
 // ============================================================================
 
+// 1. Utilities - shared keyframes and mixins
+@use "keyframes";
+@use "mixins";
+
 // 2. Base - foundational styles
 @use "base";
 
@@ -34,6 +38,8 @@
 
 // 8. Animations - animation classes and modal styles
 @use "animations";
+
+@layer view.workcenter.tokens, view.workcenter.base, view.workcenter.layout, view.workcenter.components, view.workcenter.utilities, view.workcenter.overrides;
 
 // Note: The main workcenter.scss file contains the core view styles
 // and is imported separately at the view level.

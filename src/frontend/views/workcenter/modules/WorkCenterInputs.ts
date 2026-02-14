@@ -32,7 +32,7 @@ export class WorkCenterInputs {
     renderInputSection(state: WorkCenterState): string {
         return `
             <div class="prompt-section">
-              <div class="file-input-area">
+              <div class="wc-file-drop-overlay">
                   <div class="file-drop-zone">
                       <div class="drop-zone-content">
                       <ui-icon icon="folder" size="4rem" icon-style="duotone" class="drop-icon"></ui-icon>
@@ -106,7 +106,7 @@ export class WorkCenterInputs {
         if (!state.recognizedData) return '';
 
         return `
-            <div class="recognized-status">
+            <div class="wc-recognized-status">
               <ui-icon icon="check-circle" size="16" icon-style="duotone" class="status-icon"></ui-icon>
               <span>Content recognized - ready for actions</span>
               <button class="btn small clear-recognized" data-action="clear-recognized">Clear</button>
@@ -123,7 +123,7 @@ export class WorkCenterInputs {
         fileList.innerHTML = '';
 
         if (state.files.length === 0) {
-            fileList.innerHTML = '<div class="no-files">No files selected</div>';
+            fileList.innerHTML = '<div class="wc-attachments-empty">No files selected</div>';
             return;
         }
 
