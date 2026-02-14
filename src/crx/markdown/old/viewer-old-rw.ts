@@ -105,10 +105,10 @@ const buildToolbar = (): HTMLElement => {
     actions.append(
         mkBtn("Raw", "Toggle raw markdown", toggleRaw),
         mkBtn("Copy", "Copy markdown to clipboard", copyMarkdown),
-        mkBtn("Print", "Print rendered view", () => window.print()),
+        mkBtn("Print", "Print rendered view", () => globalThis?.print?.()),
         mkBtn("Reload", "Reload from source", reloadFromSource),
         mkBtn("DOCX", "Download as DOCX", downloadAsDocx),
-        mkBtn("Close", "Close the viewer", () => window.close()),
+        mkBtn("Close", "Close the viewer", () => globalThis?.close?.()),
     );
 
     bar.append(titleSpan, actions);

@@ -597,7 +597,7 @@ chrome.commands.onCommand.addListener(async (command) => {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tabs[0]?.id) return;
         try {
-            const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => window.getSelection()?.toString() || "" });
+            const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => (typeof window != "undefined" ? window : globalThis)?.getSelection()?.toString() || "" });
             const text = results[0]?.result || "";
             if (text) {
                 const r = await processCrxSnipWithPipeline(text, "text");
@@ -640,7 +640,7 @@ const captureScreenArea = async (options?: { rect?: { x: number; y: number; widt
     } catch {
         // Fallback: desktop capture via offscreen document
         try {
-            const streamId = await new Promise<string>((resolve, reject) => {
+            const streamId = await new Promise<string>((resolve: (id: string) => void, reject: (error: Error) => void) => {
                 chrome.desktopCapture.chooseDesktopMedia(["screen", "window"], { frameRate: 1 }, (id) => id ? resolve(id) : reject(new Error("Cancelled")));
             });
 

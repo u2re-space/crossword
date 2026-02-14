@@ -477,7 +477,7 @@ export class WorkCenterAttachments {
         const hintElement = this.container.querySelector('[data-drop-hint]') as HTMLElement;
         if (!hintElement) return;
 
-        const currentHash = window.location.hash;
+        const currentHash = globalThis?.location?.hash;
 
         switch (currentHash) {
             case ROUTE_HASHES.SHARE_TARGET_TEXT:

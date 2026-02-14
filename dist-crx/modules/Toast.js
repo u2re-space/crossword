@@ -1,3 +1,6 @@
+import { scheduleFrame } from './Runtime2.js';
+
+"use strict";
 const DEFAULT_CONFIG = {
   containerId: "rs-toast-layer",
   position: "bottom",
@@ -78,7 +81,9 @@ const TOAST_STYLES = `
     font-weight: var(--toast-font-weight, 500);
     letter-spacing: 0.01em;
     line-height: 1.4;
-    white-space: nowrap;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 
     pointer-events: auto;
     user-select: none;
@@ -177,7 +182,6 @@ const showToast = (options) => {
     broadcastToast(opts);
     return null;
   }
-  if (typeof window === "undefined") return null;
   const config = {
     ...DEFAULT_CONFIG,
     position
@@ -193,13 +197,13 @@ const showToast = (options) => {
   toast.setAttribute("aria-live", kind === "error" ? "assertive" : "polite");
   toast.textContent = message;
   layer.appendChild(toast);
-  requestAnimationFrame(() => {
+  scheduleFrame(() => {
     toast.setAttribute("data-visible", "");
   });
   let hideTimer = null;
   const removeToast = () => {
     if (hideTimer !== null) {
-      window.clearTimeout(hideTimer);
+      globalThis.clearTimeout(hideTimer);
       hideTimer = null;
     }
     toast.removeAttribute("data-visible");
@@ -212,7 +216,7 @@ const showToast = (options) => {
     }, TRANSITION_DURATION);
   };
   if (!persistent) {
-    hideTimer = window.setTimeout(removeToast, duration);
+    hideTimer = globalThis.setTimeout(removeToast, duration);
   }
   toast.addEventListener("click", () => {
     onClick?.();
@@ -220,7 +224,7 @@ const showToast = (options) => {
   });
   toast.addEventListener("pointerdown", () => {
     if (hideTimer !== null) {
-      window.clearTimeout(hideTimer);
+      globalThis.clearTimeout(hideTimer);
       hideTimer = null;
     }
     removeToast();
@@ -229,6 +233,8 @@ const showToast = (options) => {
 };
 const showSuccess = (message, duration) => showToast({ message, kind: "success", duration });
 const showError = (message, duration) => showToast({ message, kind: "error", duration });
+const showWarning = (message, duration) => showToast({ message, kind: "warning", duration });
+const showInfo = (message, duration) => showToast({ message, kind: "info", duration });
 const listenForToasts = () => {
   if (typeof BroadcastChannel === "undefined") return () => {
   };
@@ -244,9 +250,35 @@ const listenForToasts = () => {
     channel.close();
   };
 };
+const clearToasts = (position = DEFAULT_CONFIG.position) => {
+  const key = `${DEFAULT_CONFIG.containerId}-${position}`;
+  const layer = toastLayers.get(key);
+  if (layer) {
+    layer.innerHTML = "";
+  }
+};
 const initToastReceiver = () => {
   return listenForToasts();
 };
+const closeToastLayer = (position = DEFAULT_CONFIG.position) => {
+  const key = `${DEFAULT_CONFIG.containerId}-${position}`;
+  const layer = toastLayers.get(key);
+  if (layer) {
+    layer.remove();
+    toastLayers.delete(key);
+  }
+};
+const Toast = {
+  show: showToast,
+  success: showSuccess,
+  error: showError,
+  warning: showWarning,
+  info: showInfo,
+  clear: clearToasts,
+  close: closeToastLayer,
+  listen: listenForToasts,
+  init: initToastReceiver
+};
 
-export { initToastReceiver, showError, showSuccess, showToast };
+export { clearToasts, closeToastLayer, Toast as default, initToastReceiver, listenForToasts, showError, showInfo, showSuccess, showToast, showWarning };
 //# sourceMappingURL=Toast.js.map

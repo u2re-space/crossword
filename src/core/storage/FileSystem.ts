@@ -9,6 +9,7 @@ import { TIMELINE_DIR } from "@rs-com/service/service/MakeTimeline";
 import { JSOX } from "jsox";
 import { showSuccess } from "@rs-frontend/items/Toast";
 import { showError } from "@rs-frontend/items/Toast";
+import { canParseURL } from "@rs-core/utils/Runtime";
 
 //
 /*
@@ -201,7 +202,7 @@ export const handleDataByType = async (item: File | string | Blob, handler: (pay
             const file = await stringToFile(item, "clipboard-image", { mimeType, uriComponent: true });
             return handler({ url: item, file } as any);
         } else
-            if (URL.canParse(item?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) { return handler({ url: item } as any); }
+            if (canParseURL(item)) { return handler({ url: item } as any); }
     } else
         if (item instanceof File || item instanceof Blob) {
             return handler({ file: item } as any);
@@ -329,7 +330,7 @@ export const normalizePayload = async (payload: shareTargetFormData): Promise<sh
 //
 const writeTextDependsByPossibleType = async (payload: string | null | undefined, entityType: string) => {
     if (!payload) return;
-    if (URL.canParse(payload?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) payload = (await fetch(payload).then(res => res.text())?.catch?.(console.warn.bind(console))) || "";
+    if (canParseURL(payload || "")) payload = (await fetch(payload).then(res => res.text())?.catch?.(console.warn.bind(console))) || "";
     if (!payload) return;
 
     //

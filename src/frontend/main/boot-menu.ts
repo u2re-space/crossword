@@ -62,15 +62,15 @@ const navigateToDefaultView = (shell: ShellId, remember: boolean): void => {
     
     // Navigate to /viewer (default view)
     const defaultView = "viewer";
-    window.history.pushState({ shell: normalizedShell, view: defaultView }, "", `/${defaultView}`);
+    globalThis?.history?.pushState?.({ shell: normalizedShell, view: defaultView }, "", `/${defaultView}`);
     
     // Dispatch route change event
-    window.dispatchEvent(new CustomEvent('route-change', {
+    globalThis?.dispatchEvent?.(new CustomEvent('route-change', {
         detail: { view: defaultView, shell: normalizedShell }
     }));
     
     // Reload to apply shell
-    window.location.href = `/${defaultView}`;
+    globalThis.location.href = `/${defaultView}`;
 };
 
 // ============================================================================
@@ -195,7 +195,7 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
         // For special views like airpad, navigate directly to that view
         if (choice === "airpad") {
             saveShellPreference("base", remember);
-            window.location.href = "/airpad";
+            globalThis.location.href = "/airpad";
             return;
         }
         

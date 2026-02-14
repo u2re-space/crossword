@@ -20,7 +20,7 @@ export const ensureAppCss = () => {
     const viteEnv = (import.meta as any)?.env;
     if (viteEnv?.DEV) return;
     if (typeof window === "undefined") return;
-    if (window.location.protocol === "chrome-extension:") return;
+    if (globalThis?.location?.protocol === "chrome-extension:") return;
 
     const id = "rs-crossword-css";
     if (document.getElementById(id)) return;
@@ -92,8 +92,8 @@ export const initServiceWorker = async (_options: { immediate?: boolean, onRegis
 
     _swInitPromise = (async () => {
         // Skip in extension context
-        if (typeof window === 'undefined') return null;
-        if (window.location.protocol === 'chrome-extension:') return null;
+        if (typeof globalThis === 'undefined') return null;
+        if (globalThis?.location?.protocol === 'chrome-extension:') return null;
         if (!('serviceWorker' in navigator)) {
             console.warn('[PWA] Service workers not supported');
             return null;
@@ -223,13 +223,13 @@ const routeToTransferView = async (
         }
     });
 
-    const currentPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+    const currentPath = (globalThis?.location?.pathname || "").replace(/\/+$/, "") || "/";
     if (currentPath !== resolved.routePath) {
-        const nextUrl = new URL(window.location.href);
+        const nextUrl = new URL(globalThis?.location?.href);
         nextUrl.pathname = resolved.routePath;
         nextUrl.search = "";
         nextUrl.hash = "";
-        window.location.href = nextUrl.toString();
+        globalThis.location.href = nextUrl.toString();
     }
 
     return delivered;
@@ -551,7 +551,7 @@ const tryServerSideProcessing = async (shareData: ShareDataInput): Promise<boole
  * Handle share target data from various sources
  */
 export const handleShareTarget = () => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(globalThis?.location?.search);
     const shared = params.get("shared");
 
     // Handle URL params from server-side share handler
@@ -576,9 +576,9 @@ export const handleShareTarget = () => {
         });
 
         // Clean up URL
-        const cleanUrl = new URL(window.location.href);
+        const cleanUrl = new URL(globalThis?.location?.href);
         ['shared', 'action', 'title', 'text', 'url', 'sharedUrl'].forEach(p => cleanUrl.searchParams.delete(p));
-        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.hash);
+        globalThis?.history?.replaceState?.({}, "", cleanUrl.pathname + cleanUrl.hash);
 
         // Check if we have content from params
         const { content, type } = extractShareContent(shareFromParams);
@@ -596,7 +596,7 @@ export const handleShareTarget = () => {
         }
 
         // No content in params, try cache
-        if ('caches' in window) {
+        if ('caches' in globalThis) {
             caches.open("share-target-data")
                 .then(cache => cache?.match?.("/share-target-data"))
                 .then(response => response?.json?.())
@@ -617,9 +617,9 @@ export const handleShareTarget = () => {
         // Test mode - just show confirmation
         showToast({ message: "Share target route working", kind: "info" });
 
-        const cleanUrl = new URL(window.location.href);
+        const cleanUrl = new URL(globalThis?.location?.href);
         cleanUrl.searchParams.delete("shared");
-        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.hash);
+        globalThis?.history?.replaceState?.({}, "", cleanUrl.pathname + cleanUrl.hash);
     }
 
     // Check for pending share data from sessionStorage (server-side handler fallback)
@@ -705,14 +705,14 @@ declare global {
  * This handles direct file launches when the PWA is opened with files
  */
 export const setupLaunchQueueConsumer = async () => {
-    if (!('launchQueue' in window)) {
+    if (!('launchQueue' in globalThis)) {
         console.log('[LaunchQueue] launchQueue API not available');
         return;
     }
 
     try {
         // Set up the consumer for launch queue
-        window.launchQueue!.setConsumer((launchParams: LaunchParams) => {
+        globalThis?.launchQueue?.setConsumer?.((launchParams: LaunchParams) => {
             console.log('[LaunchQueue] Launch params received:', launchParams);
             const $files = [...launchParams.files];
 
@@ -853,11 +853,11 @@ export const setupLaunchQueueConsumer = async () => {
                             meta: { timestamp: Date.now(), source: 'launch-queue' }
                         });
                         if (stored) {
-                            const url = new URL(window.location.href);
+                            const url = new URL(globalThis?.location?.href);
                             url.pathname = '/share-target';
                             url.searchParams.set('shared', '1');
                             url.hash = '';
-                            window.location.href = url.toString();
+                            globalThis.location.href = url.toString();
                         } else {
                             showToast({
                                 message: `Failed to process ${files.length} launched file(s)`,
@@ -891,19 +891,19 @@ export const setupLaunchQueueConsumer = async () => {
  */
 export const checkPendingShareData = async () => {
     try {
-        const pendingData = sessionStorage.getItem("rs-pending-share");
+        const pendingData = globalThis?.sessionStorage?.getItem?.("rs-pending-share");
         if (!pendingData) return null;
 
         // Clear immediately to prevent duplicate processing
-        sessionStorage.removeItem("rs-pending-share");
+        globalThis?.sessionStorage?.removeItem?.("rs-pending-share");
 
         const shareData = JSON.parse(pendingData);
         console.log("[ShareTarget] Found pending share data:", shareData);
 
         // Store in cache for the normal share target flow to pick up
         if ('caches' in window) {
-            const cache = await caches.open('share-target-data');
-            await cache.put('/share-target-data', new Response(JSON.stringify({
+            const cache = await globalThis?.caches?.open?.('share-target-data');
+            await cache?.put?.('/share-target-data', new Response(JSON.stringify({
                 ...shareData,
                 files: [],
                 timestamp: shareData.timestamp || Date.now()

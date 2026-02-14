@@ -208,11 +208,11 @@ function airOnDown(e: PointerEvent) {
 
     const holdDelay = pendingDragOnHold ? DRAG_HOLD_DELAY : HOLD_DELAY;
 
-    airMoveTimer = window.setTimeout(() => {
+    airMoveTimer = globalThis?.setTimeout?.(() => {
         if (airState === 'WAIT_TAP_OR_HOLD') {
             enterAirMove(pendingDragOnHold);
         }
-    }, holdDelay) as unknown as number;
+    }, holdDelay) as any;
 }
 
 function airOnUp(e: PointerEvent | null) {
@@ -425,12 +425,12 @@ function initNeighborButton() {
         neighborButton.classList.add('active');
 
         // Таймер для активации middle-scroll режима
-        neighborHoldTimer = window.setTimeout(() => {
+        neighborHoldTimer = globalThis?.setTimeout?.(() => {
             neighborHoldTimer = null;
             if (neighborState === 'WAIT_TAP_OR_HOLD') {
                 enterMiddleScrollMode();
             }
-        }, NEIGHBOR_HOLD_DELAY) as unknown as number;
+        }, NEIGHBOR_HOLD_DELAY) as any;
     });
 
     neighborButton.addEventListener('pointermove', (e) => {

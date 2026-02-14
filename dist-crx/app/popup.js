@@ -1,6 +1,9 @@
 import { createRuntimeChannelModule } from '../modules/runtime.js';
-import '../modules/Env.js';
+import '../modules/index.js';
 
+const index_html_htmlProxy_inlineCss_styleAttr_index_0 = '';
+
+"use strict";
 const isInCrx = typeof chrome !== "undefined" && chrome.runtime?.id;
 let popupModule = null;
 const getModule = async () => {
@@ -28,7 +31,7 @@ const sendToTab = (type, extra) => {
   chrome.tabs.query({ active: true, lastFocusedWindow: true, currentWindow: true }, (tabs) => {
     const tabId = tabs[0]?.id;
     if (tabId != null) chrome.tabs.sendMessage(tabId, { type, ...extra })?.catch?.(console.warn);
-    window?.close?.();
+    globalThis?.close?.();
   });
 };
 const initSnipActions = () => {
@@ -40,7 +43,7 @@ const initSnipActions = () => {
     if (action === "CRX_SNIP_TEXT") {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0]?.id) return;
-      const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => window.getSelection()?.toString() || "" });
+      const results = await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, func: () => (typeof window != "undefined" ? window : globalThis)?.getSelection()?.toString() || "" });
       const text = results[0]?.result || "";
       if (!text.trim()) {
         chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord", message: "Select text first!" });
@@ -54,13 +57,13 @@ const initSnipActions = () => {
       } catch (e) {
         chrome.notifications.create({ type: "basic", iconUrl: "icons/icon.png", title: "CrossWord", message: `Failed: ${e instanceof Error ? e.message : String(e)}` });
       }
-      window?.close?.();
+      globalThis?.close?.();
       return;
     }
     if (action === "CRX_SNIP_SCREEN") {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0]?.id) return;
-      window?.close?.();
+      globalThis?.close?.();
       setTimeout(() => {
         chrome.tabs.sendMessage(tabs[0].id, { type: "crx-snip-select-rect" }, (response) => {
           if (chrome.runtime.lastError || !response?.rect) return;
@@ -85,7 +88,7 @@ const initMarkdownViewer = () => {
     if (!url) return;
     const viewerUrl = chrome.runtime.getURL("markdown/viewer.html");
     chrome.tabs.create({ url: `${viewerUrl}?src=${encodeURIComponent(url)}` });
-    window?.close?.();
+    globalThis?.close?.();
   };
   btn?.addEventListener("click", openUrl);
   input?.addEventListener("keydown", (e) => {

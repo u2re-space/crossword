@@ -29,7 +29,7 @@ export class WorkCenterVoice {
     stopVoiceRecording(state: WorkCenterState): void {
         state.voiceRecording = false;
         if (this.voiceTimeout) {
-            clearTimeout(this.voiceTimeout);
+            globalThis?.clearTimeout?.(this.voiceTimeout);
             this.voiceTimeout = null;
         }
     }
@@ -41,19 +41,19 @@ export class WorkCenterVoice {
     setVoiceTimeout(callback: () => void, delay: number = 30000): void {
         // Clear existing timeout
         if (this.voiceTimeout) {
-            clearTimeout(this.voiceTimeout);
+            globalThis?.clearTimeout?.(this.voiceTimeout);
         }
 
         // Set new timeout (30 seconds default)
-        this.voiceTimeout = window.setTimeout(() => {
+        this.voiceTimeout = globalThis?.setTimeout?.(() => {
             callback();
             this.voiceTimeout = null;
-        }, delay);
+        }, delay) as any;
     }
 
     clearVoiceTimeout(): void {
         if (this.voiceTimeout) {
-            clearTimeout(this.voiceTimeout);
+            globalThis?.clearTimeout?.(this.voiceTimeout);
             this.voiceTimeout = null;
         }
     }

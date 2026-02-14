@@ -1,20 +1,18 @@
-import { removeAdopted, loadAsAdopted, H, __vitePreload } from './Settings.js';
-import './Env.js';
+import { removeAdopted, loadAsAdopted, H } from './Settings.js';
+import './index.js';
 
-const style = "@layer view.airpad{.view-airpad{background-color:var(--view-bg,var(--color-surface,#0a0a0a));block-size:100%;color:var(--view-fg,var(--color-on-surface,#fff));display:flex;flex-direction:column}.view-airpad__content{flex:1;overflow:auto}.view-airpad__content>*{block-size:100%}.view-airpad__loading{align-items:center;block-size:100%;color:var(--view-fg);display:flex;flex-direction:column;gap:1rem;justify-content:center;opacity:.6}.view-airpad__spinner{animation:airpad-spin .8s linear infinite;block-size:32px;border:3px solid #fff3;border-radius:50%;border-top:3px solid var(--color-primary,#3794ff);inline-size:32px}.view-airpad__error{align-items:center;block-size:100%;display:flex;flex-direction:column;gap:1rem;justify-content:center;padding:2rem;text-align:center}.view-airpad__error p{margin:0}.view-airpad__error p:first-child{color:#f55;font-size:1.125rem;font-weight:600}.view-airpad__error button{background-color:var(--color-primary,#3794ff);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:.5rem 1rem}.view-airpad__error button:hover{filter:brightness(1.1)}.view-airpad__error-detail{font-size:.875rem;max-inline-size:400px;opacity:.6}}";
+const style = "@layer view.home{:root:has([data-view=home]),html:has([data-view=home]){--view-home-bg:linear-gradient(135deg,light-dark(#f8f9fa,#1b1f24),light-dark(#e9ecef,#0f1216));--view-fg:light-dark(#1a1a1a,#e9ecef);--view-border:light-dark(#00000014,#ffffff1f);--view-card-bg:light-dark(#fff,#1a1f26);--view-primary:light-dark(#007acc,#66b7ff);--view-layout:\"flex\";--view-padding:var(--space-8);--view-content-max-width:1200px;--view-hero-padding:var(--space-16);--view-card-gap:var(--space-6)}.view-home{align-items:center;background:var(--view-home-bg);block-size:100%;color:var(--view-fg);display:flex;justify-content:center;overflow-y:auto;padding:2rem}.view-home__content{max-inline-size:800px;text-align:center}.view-home__header{margin-block-end:3rem}.view-home__title{background:linear-gradient(135deg,var(--view-primary) 0,light-dark(#0059a6,#3a8ad6) 100%);-webkit-background-clip:text;font-size:3rem;font-weight:800;margin:0;-webkit-text-fill-color:#0000;background-clip:text}.view-home__subtitle{color:var(--view-fg);font-size:1.125rem;margin:.5rem 0 0;opacity:.7}.view-home__actions{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.view-home__action{align-items:center;background-color:var(--view-card-bg);border:1px solid var(--view-border);border-radius:16px;color:var(--view-fg);cursor:pointer;display:flex;flex-direction:column;gap:.75rem;padding:1.5rem;text-align:center;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}.view-home__action ui-icon{color:var(--view-primary);opacity:.8}.view-home__action:hover{border-color:var(--view-primary);box-shadow:0 8px 24px light-dark(#0000001a,#0006);transform:translateY(-4px)}.view-home__action:hover ui-icon{opacity:1}.view-home__action:focus-visible{outline:2px solid var(--view-primary);outline-offset:2px}.view-home__action-title{font-size:1rem;font-weight:600}.view-home__action-desc{font-size:.8125rem;opacity:.6}@media (max-width:768px){:root:has([data-view=home]),html:has([data-view=home]){--view-hero-padding:var(--space-8);--view-card-gap:var(--space-4)}}@media (max-width:480px){.view-home__actions{grid-template-columns:1fr}}}";
 
-class AirpadView {
-  id = "airpad";
-  name = "Airpad";
-  icon = "hand-pointing";
+"use strict";
+class HomeView {
+  id = "home";
+  name = "Home";
+  icon = "house";
   options;
   shellContext;
   element = null;
-  initialized = false;
   _sheet = null;
   lifecycle = {
-    onMount: () => this.initAirpad(),
-    onUnmount: () => this.cleanup(),
     onShow: () => {
       this._sheet = loadAsAdopted(style);
     },
@@ -33,16 +31,54 @@ class AirpadView {
     }
     this._sheet = loadAsAdopted(style);
     this.element = H`
-            <div class="view-airpad">
-                <div class="view-airpad__content" data-airpad-content>
-                    <div class="view-airpad__loading">
-                        <div class="view-airpad__spinner"></div>
-                        <span>Loading Airpad...</span>
+            <div class="view-home">
+                <div class="view-home__content">
+                    <div class="view-home__header">
+                        <h1 class="view-home__title">CrossWord</h1>
+                        <p class="view-home__subtitle">Markdown viewer, editor, and AI assistant</p>
+                    </div>
+                    
+                    <div class="view-home__actions">
+                        <button class="view-home__action" data-view="viewer" type="button">
+                            <ui-icon icon="eye" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Viewer</span>
+                            <span class="view-home__action-desc">View markdown documents</span>
+                        </button>
+                        
+                        <button class="view-home__action" data-view="editor" type="button">
+                            <ui-icon icon="pencil" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Editor</span>
+                            <span class="view-home__action-desc">Write and edit markdown</span>
+                        </button>
+                        
+                        <button class="view-home__action" data-view="workcenter" type="button">
+                            <ui-icon icon="lightning" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Work Center</span>
+                            <span class="view-home__action-desc">AI-powered processing</span>
+                        </button>
+                        
+                        <button class="view-home__action" data-view="explorer" type="button">
+                            <ui-icon icon="folder" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Explorer</span>
+                            <span class="view-home__action-desc">Browse local files</span>
+                        </button>
+                        
+                        <button class="view-home__action" data-view="airpad" type="button">
+                            <ui-icon icon="hand-pointing" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Airpad</span>
+                            <span class="view-home__action-desc">Remote trackpad control</span>
+                        </button>
+                        
+                        <button class="view-home__action" data-view="settings" type="button">
+                            <ui-icon icon="gear" icon-style="duotone" size="32"></ui-icon>
+                            <span class="view-home__action-title">Settings</span>
+                            <span class="view-home__action-desc">Configure the app</span>
+                        </button>
                     </div>
                 </div>
             </div>
         `;
-    this.initAirpad();
+    this.setupEventHandlers();
     return this.element;
   }
   getToolbar() {
@@ -51,32 +87,17 @@ class AirpadView {
   // ========================================================================
   // PRIVATE METHODS
   // ========================================================================
-  async initAirpad() {
-    if (this.initialized) return;
-    const content = this.element?.querySelector("[data-airpad-content]");
-    if (!content) return;
-    try {
-      const { default: mountAirpad } = await __vitePreload(async () => { const { default: mountAirpad } = await import('./main.js');return { default: mountAirpad }},true              ?[]:void 0,import.meta.url);
-      content.innerHTML = "";
-      await mountAirpad(content);
-      this.initialized = true;
-    } catch (error) {
-      console.error("[Airpad] Failed to initialize:", error);
-      content.innerHTML = `
-                <div class="view-airpad__error">
-                    <p>Failed to load Airpad</p>
-                    <p class="view-airpad__error-detail">${String(error)}</p>
-                    <button type="button" data-action="retry">Try Again</button>
-                </div>
-            `;
-      content.querySelector("[data-action=retry]")?.addEventListener("click", () => {
-        this.initialized = false;
-        this.initAirpad();
-      });
-    }
-  }
-  cleanup() {
-    this.initialized = false;
+  setupEventHandlers() {
+    if (!this.element) return;
+    this.element.addEventListener("click", (e) => {
+      const target = e.target;
+      const button = target.closest("[data-view]");
+      if (!button) return;
+      const viewId = button.dataset.view;
+      if (viewId) {
+        this.shellContext?.navigate(viewId);
+      }
+    });
   }
   canHandleMessage() {
     return false;
@@ -85,9 +106,9 @@ class AirpadView {
   }
 }
 function createView(options) {
-  return new AirpadView(options);
+  return new HomeView(options);
 }
-const createAirpadView = createView;
+const createHomeView = createView;
 
-export { AirpadView, createAirpadView, createView, createView as default };
+export { HomeView, createHomeView, createView, createView as default };
 //# sourceMappingURL=index12.js.map

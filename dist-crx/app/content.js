@@ -4,11 +4,13 @@ import { copyAsTeX, copyAsMathML, copyAsMarkdown, copyAsHTML } from '../modules/
 import { initClipboardHandler } from '../modules/clipboard-handler.js';
 import { createRuntimeChannelModule } from '../modules/runtime.js';
 import { registerCrxHandler } from '../modules/CrxMessaging.js';
-import '../modules/Settings.js';
-import '../modules/Env.js';
+import '../modules/Runtime2.js';
+import '../modules/index.js';
 import '../modules/_commonjsHelpers.js';
 import '../modules/ImageProcess.js';
+import '../modules/Settings.js';
 
+"use strict";
 const DEFAULT_CONFIG = {
   prefix: "sel-dom",
   zIndex: 2147483647
@@ -240,6 +242,7 @@ const getOverlay = (config) => getOverlayElements(config).overlay;
 const getBox = (config) => getOverlayElements(config).box;
 const getHint = (config) => getOverlayElements(config).hint;
 const getSizeBadge = (config) => getOverlayElements(config).sizeBadge;
+const getToast = (config) => getOverlayElements(config).toast;
 const showToast = (text, config) => {
   if (typeof text === "object") {
     showToast$1(text);
@@ -298,6 +301,26 @@ const hideSelection = (config) => {
     sizeBadge2.textContent = "";
   }
 };
+const updateBox = (x, y, width, height, config) => {
+  const elements = getOverlayElements(config);
+  const { box: box2, sizeBadge: sizeBadge2 } = elements;
+  if (!box2) return;
+  box2.style.left = `${x}px`;
+  box2.style.top = `${y}px`;
+  box2.style.width = `${width}px`;
+  box2.style.height = `${height}px`;
+  if (sizeBadge2) {
+    sizeBadge2.textContent = `${Math.round(width)} × ${Math.round(height)}`;
+    sizeBadge2.style.left = `${width}px`;
+    sizeBadge2.style.top = `${height}px`;
+  }
+};
+const setHint = (text, config) => {
+  const elements = getOverlayElements(config);
+  if (elements.hint) {
+    elements.hint.textContent = text;
+  }
+};
 const initOverlay = (config) => {
   if (typeof document === "undefined") {
     return { overlay: null, box: null, hint: null, sizeBadge: null, toast: null };
@@ -311,7 +334,7 @@ const initOverlay = (config) => {
   }
   return getOverlayElements(config);
 };
-new Proxy({}, {
+const overlay = new Proxy({}, {
   get: (_, prop) => getOverlay()?.[prop],
   set: (_, prop, value) => {
     const o = getOverlay();
@@ -319,7 +342,7 @@ new Proxy({}, {
     return true;
   }
 });
-new Proxy({}, {
+const box = new Proxy({}, {
   get: (_, prop) => getBox()?.[prop],
   set: (_, prop, value) => {
     const b = getBox();
@@ -327,7 +350,7 @@ new Proxy({}, {
     return true;
   }
 });
-new Proxy({}, {
+const hint = new Proxy({}, {
   get: (_, prop) => getHint()?.[prop],
   set: (_, prop, value) => {
     const h = getHint();
@@ -335,7 +358,7 @@ new Proxy({}, {
     return true;
   }
 });
-new Proxy({}, {
+const sizeBadge = new Proxy({}, {
   get: (_, prop) => getSizeBadge()?.[prop],
   set: (_, prop, value) => {
     const s = getSizeBadge();
@@ -343,6 +366,20 @@ new Proxy({}, {
     return true;
   }
 });
+const overlay_default = {
+  getElements: getOverlayElements,
+  showToast,
+  showSelection,
+  hideSelection,
+  updateBox,
+  setHint,
+  init: initOverlay,
+  getOverlay,
+  getBox,
+  getHint,
+  getSizeBadge,
+  getToast
+};
 if (typeof document !== "undefined") {
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => getOverlayElements(), { once: true });
@@ -351,11 +388,13 @@ if (typeof document !== "undefined") {
   }
 }
 
+"use strict";
 initClipboardHandler({
   showFeedback: true,
   toastFn: showToast
 });
 
+"use strict";
 class RectSelector {
   overlay = null;
   selectionBox = null;
@@ -489,7 +528,7 @@ class RectSelector {
     this.onCancel = null;
   }
 }
-window.crxSnipSelectRect = async () => {
+globalThis.crxSnipSelectRect = async () => {
   const selector = new RectSelector();
   try {
     return await selector.selectArea();
@@ -498,6 +537,7 @@ window.crxSnipSelectRect = async () => {
   }
 };
 
+"use strict";
 const isInCrx = typeof chrome !== "undefined" && chrome.runtime?.id;
 let crxModule = null;
 const getCrxModule = async () => {
@@ -514,16 +554,21 @@ const MODE_META = {
 let injected = false;
 let active = false;
 let currentMode = "recognize";
+let customInstructionId = null;
 let customInstructionLabel = null;
 const captureTab = async (rect, mode = "recognize") => {
   if (!isInCrx) return Promise.reject(new Error("Not in CRX environment"));
   const module = await getCrxModule();
   if (!module) throw new Error("CRX runtime module not available");
   const meta = MODE_META[mode];
-  ({ type: meta.msgType});
+  const payload = { type: meta.msgType, rect };
+  if (mode === "custom" && customInstructionId) payload.instructionId = customInstructionId;
   const result = await module.capture(rect, mode);
   if (!result?.ok) {
-    showToast(result?.error ? result.error.length > 50 ? result.error.slice(0, 50) + "..." : result.error : meta.error);
+    const rawError = (result?.error || meta.error || "").trim();
+    const visibleError = rawError.length > 500 ? `${rawError.slice(0, 500)}
+…` : rawError;
+    showToast(visibleError || meta.error);
   } else if (!result.data) {
     showToast("No text found in selected area");
   }
@@ -532,6 +577,7 @@ const captureTab = async (rect, mode = "recognize") => {
 function startSnip(mode = "recognize", instructionId, instructionLabel) {
   if (active) return;
   currentMode = mode;
+  customInstructionId = instructionId || null;
   customInstructionLabel = instructionLabel || null;
   const overlay = getOverlay();
   const box = getBox();
@@ -654,11 +700,12 @@ if (isInCrx) {
 }
 initSnip();
 
+"use strict";
 initOverlay();
 const cleanupToast = initToastReceiver();
 const cleanupClipboard = initClipboardReceiver();
 if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => {
+  globalThis?.addEventListener?.("pagehide", () => {
     cleanupToast?.();
     cleanupClipboard?.();
   }, { once: true });
@@ -685,7 +732,7 @@ const copyOps = /* @__PURE__ */ new Map([
 ]);
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "highlight-selection") {
-    sendResponse({ selection: window.getSelection?.()?.toString?.() ?? "" });
+    sendResponse({ selection: (typeof window != "undefined" ? window : globalThis)?.getSelection()?.toString?.() ?? "" });
     return true;
   }
   if (typeof msg?.type === "string" && copyOps.has(msg.type)) {
@@ -712,9 +759,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== "crx-snip-select-rect") return false;
   (async () => {
     try {
-      if (!window.crxSnipSelectRect) await new Promise((r) => setTimeout(r, 100));
-      if (!window.crxSnipSelectRect) throw new Error("Rect selector not available");
-      sendResponse({ rect: await window.crxSnipSelectRect() });
+      if (!(typeof window != "undefined" ? window : globalThis).crxSnipSelectRect) await new Promise((r) => setTimeout(r, 100));
+      if (!(typeof window != "undefined" ? window : globalThis).crxSnipSelectRect) throw new Error("Rect selector not available");
+      sendResponse({ rect: await (typeof window != "undefined" ? window : globalThis)?.crxSnipSelectRect?.() });
     } catch (e) {
       sendResponse({ rect: null, error: e instanceof Error ? e.message : String(e) });
     }
@@ -767,7 +814,7 @@ const showPageNotification = (message, type = "info") => {
       setTimeout(() => el.remove(), 400);
     }, 5e3);
   } catch {
-    if ("Notification" in window && Notification.permission === "granted") {
+    if ("Notification" in (typeof window != "undefined" ? window : globalThis) && Notification.permission === "granted") {
       new Notification("CrossWord", { body: message, icon: chrome.runtime.getURL("icons/icon.png") });
     }
   }

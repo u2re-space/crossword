@@ -1,3 +1,4 @@
+"use strict";
 const canvas = document.getElementById("capture-canvas");
 const ctx = canvas.getContext("2d");
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {

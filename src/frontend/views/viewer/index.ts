@@ -480,12 +480,12 @@ export class ViewerView implements View {
         try {
             if (renderTarget) {
                 renderTarget.setAttribute('data-print', 'true');
-                window.print();
+                globalThis?.print?.();
                 setTimeout(() => {
                     renderTarget.removeAttribute('data-print');
                 }, 1000);
             } else {
-                window.print();
+                globalThis?.print?.();
             }
             this.options.onPrint?.(this.contentRef.value);
         } catch (error) {

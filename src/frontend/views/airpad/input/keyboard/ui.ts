@@ -105,7 +105,7 @@ export function restoreButtonIcon() {
     toggleButton.textContent = '⌨️';
     // Move cursor to end to prevent visible selection
     const range = document.createRange();
-    const sel = window.getSelection();
+    const sel = globalThis?.getSelection?.();
     if (sel && toggleButton.firstChild) {
         try {
             range.setStart(toggleButton.firstChild, Math.min(1, toggleButton.textContent.length));

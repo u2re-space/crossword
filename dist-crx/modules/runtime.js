@@ -1,5 +1,6 @@
-import { detectExecutionContext } from './Env.js';
+import { detectExecutionContext } from './index.js';
 
+"use strict";
 const createChromeExtensionRuntimeChannel = (channelName) => {
   const context = detectExecutionContext();
   if (context != "chrome-extension") {

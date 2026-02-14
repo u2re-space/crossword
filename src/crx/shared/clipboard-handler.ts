@@ -131,7 +131,7 @@ const writeTextWithRAF = async (text: string, maxRetries = 3): Promise<{ ok: boo
                     // Ensure document has focus for clipboard API (if in content script)
                     if (detectContext() === "content" && typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
                         try {
-                            window.focus();
+                            globalThis?.focus?.();
                         } catch {
                             // Ignore focus errors
                         }

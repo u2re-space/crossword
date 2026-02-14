@@ -172,7 +172,7 @@ declare global {
 }
 
 // Make available globally for injection
-window.crxSnipSelectRect = async () => {
+globalThis.crxSnipSelectRect = async () => {
     const selector = new RectSelector();
     try {
         return await selector.selectArea();

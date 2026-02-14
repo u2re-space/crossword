@@ -6,7 +6,7 @@ export const GeoState: any = observe<{ latitude: number | null, longitude: numbe
     longitude: null as number | null,
     accuracy: null as number | null,
     error: null as string | null,
-    isAvailable: "geolocation" in navigator
+    isAvailable: typeof navigator !== "undefined" && "geolocation" in navigator
 });
 
 //

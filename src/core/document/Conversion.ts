@@ -194,7 +194,8 @@ export const copyAsTeX = async (target: HTMLElement, _options?: CopyOptions) => 
 
     // try AI recognition if is image with URL in src or srcset
     if (!LaTeX && forRecognition) {
-        const img = new URL(forRecognition?.currentSrc || forRecognition?.src || forRecognition?.getAttribute?.("src"), window?.location?.origin)?.href;
+        const baseOrigin = (globalThis as any)?.location?.origin;
+        const img = new URL(forRecognition?.currentSrc || forRecognition?.src || forRecognition?.getAttribute?.("src"), baseOrigin)?.href;
         const dataUrl = img ? await deAlphaChannel(img) : null;
         if (dataUrl) {
             const res = await chrome.runtime.sendMessage({

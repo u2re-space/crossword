@@ -19,7 +19,7 @@ function clearAccum() {
 
 function scheduleFlush() {
     if (flushTimer !== null) return;
-    flushTimer = window.setTimeout(() => {
+    flushTimer = globalThis?.setTimeout?.(() => {
         flushTimer = null;
         if (accum.dx === 0 && accum.dy === 0 && accum.dz === 0) return;
         sendWS({
@@ -29,7 +29,7 @@ function scheduleFlush() {
             dz: accum.dz,
         });
         clearAccum();
-    }, MOTION_SEND_INTERVAL);
+    }, MOTION_SEND_INTERVAL) as any;
 }
 
 // Public API: accumulate motion deltas; they will be sent debounced

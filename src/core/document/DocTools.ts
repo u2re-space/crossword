@@ -84,7 +84,7 @@ export const bySelector = (target: HTMLElement, selector: string): HTMLElement |
 
 //
 export const getContainerFromTextSelection = (target: HTMLElement = document.body): HTMLElement | null => {
-    const sel = window.getSelection && window.getSelection();
+    const sel = globalThis?.getSelection && globalThis?.getSelection?.();
     if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
         const range = sel.getRangeAt(0);
         const node = range.commonAncestorContainer;

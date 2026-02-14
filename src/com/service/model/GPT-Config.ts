@@ -1,3 +1,4 @@
+import { canParseURL } from "@rs-core/utils/Runtime";
 export type DataKind = "math" | "url" | "output_text" | "input_text" | "image" | "image_url" | "text" | "input_image" | "input_url" | "json" | "markdown" | "code" | "entity" | "structured" | "unknown" | "svg" | "xml";
 export type DataInput = {
     dataSource: string | Blob | File | any,
@@ -139,7 +140,7 @@ export const detectDataKindFromContent = (content: string): DataKind => {
     }
 
     // Check for URL
-    if (URL.canParse(trimmed?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) return "url";
+    if (canParseURL(trimmed)) return "url";
 
     // Check for SVG - treat as XML/text, not image
     if (trimmed.includes('<svg') && trimmed.includes('</svg>')) return "xml";

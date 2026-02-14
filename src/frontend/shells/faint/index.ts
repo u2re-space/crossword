@@ -320,7 +320,7 @@ export class FaintShell extends ShellBase {
         this.setupPopstateNavigation();
 
         // Navigate based on pathname
-        const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+        const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
         if (pathname && pathname !== "home") {
             await this.navigate(pathname as ViewId);
         } else {

@@ -1,4 +1,4 @@
-import { createClient, type FileStat } from "webdav/web"
+import type { FileStat } from "webdav/web"
 import { getDirectoryHandle, readFile } from "fest/lure"
 import { JSOX } from "jsox";
 
@@ -19,6 +19,23 @@ export const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").rep
 export const DB_NAME = 'req-store';
 export const STORE = 'settings';
 
+type WebDavCreateClient = (remoteURL: string, options?: Record<string, unknown>) => any;
+let createWebDavClient: WebDavCreateClient | null = null;
+
+const getWebDavCreateClient = async (): Promise<WebDavCreateClient | null> => {
+    if (createWebDavClient) return createWebDavClient;
+    try {
+        const mod = await import("webdav/web");
+        if (typeof mod?.createClient === "function") {
+            createWebDavClient = mod.createClient as WebDavCreateClient;
+            return createWebDavClient;
+        }
+    } catch {
+        // WebDAV is optional and not required in service-worker-only flows.
+    }
+    return null;
+};
+
 // Check if we're in a content script context (restricted storage access)
 // Content scripts are extension scripts injected into third-party pages
 // They have chrome.runtime but run on http/https pages (not chrome-extension://)
@@ -30,7 +47,7 @@ const isContentScriptContext = (): boolean => {
 
         // Content scripts run on http/https pages but have chrome.runtime
         // Extension pages run on chrome-extension:// protocol
-        if (typeof window !== "undefined" && window.location?.protocol?.startsWith("http")) {
+        if (typeof window !== "undefined" && globalThis?.location?.protocol?.startsWith("http")) {
             // This is a content script - extension code running on a web page
             return true;
         }
@@ -452,7 +469,9 @@ const getHostOnly = (address: string) => {
 }
 
 //
-export const WebDavSync = (address: string, options: any = {}) => {
+export const WebDavSync = async (address: string, options: any = {}) => {
+    const createClient = await getWebDavCreateClient();
+    if (!createClient) return null;
     const client = createClient(getHostOnly(address), options);
     const status = currentWebDav?.sync?.getDAVCompliance?.()?.catch?.(console.warn.bind(console)) ?? null;
     return {
@@ -475,7 +494,7 @@ if (!isContentScriptContext()) {
                 return;
             }
             if (!settings?.webdav?.url) return;
-            const client = WebDavSync(settings.webdav.url, {
+            const client = await WebDavSync(settings.webdav.url, {
                 //authType: AuthType.Digest,
                 withCredentials: true,
                 username: settings.webdav.username,
@@ -499,7 +518,7 @@ export const updateWebDavSettings = async (settings: any) => {
         return;
     }
     if (!settings?.webdav?.url) return;
-    currentWebDav.sync = WebDavSync(settings.webdav.url, {
+    currentWebDav.sync = await WebDavSync(settings.webdav.url, {
         //authType: AuthType.Digest,
         withCredentials: true,
         username: settings.webdav.username,

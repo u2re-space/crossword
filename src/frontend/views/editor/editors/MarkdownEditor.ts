@@ -15,7 +15,7 @@ export class MarkdownEditor {
     private options: MarkdownEditorOptions;
     private container: HTMLElement | null = null;
     private editor: HTMLTextAreaElement | null = null;
-    private preview: MarkdownViewer | null = null;
+    private preview: any | null = null;
     private autoSaveTimeout: number | null = null;
 
     constructor(options: MarkdownEditorOptions = {}) {
@@ -132,12 +132,12 @@ export class MarkdownEditor {
             }
 
             // Try to use the server-side print route first
-            const printUrl = new URL('/print', window.location.origin);
+            const printUrl = new URL('/print', globalThis?.location?.origin);
             printUrl.searchParams.set('content', previewContent.innerHTML);
             printUrl.searchParams.set('title', 'Markdown Editor Content');
 
             // Open print URL in new window
-            const printWindow = window.open(printUrl.toString(), '_blank', 'width=800,height=600');
+            const printWindow = globalThis?.open(printUrl.toString(), '_blank', 'width=800,height=600');
             if (!printWindow) {
                 console.warn('[MarkdownEditor] Failed to open print window - popup blocked?');
                 // Fallback: trigger browser print dialog on current content
@@ -172,7 +172,7 @@ export class MarkdownEditor {
         if (previewContent) {
             previewContent.setAttribute('data-print', 'true');
             // Trigger print dialog
-            window.print();
+            globalThis?.print?.();
             // Remove print attribute after printing
             setTimeout(() => {
                 previewContent.removeAttribute('data-print');
@@ -446,12 +446,12 @@ export class MarkdownEditor {
 
     private scheduleAutoSave(): void {
         if (this.autoSaveTimeout) {
-            clearTimeout(this.autoSaveTimeout);
+            globalThis?.clearTimeout?.(this.autoSaveTimeout);
         }
 
-        this.autoSaveTimeout = window.setTimeout(() => {
+        this.autoSaveTimeout = globalThis?.setTimeout?.(() => {
             this.save();
-        }, this.options.autoSaveDelay);
+        }, this.options.autoSaveDelay) as any;
     }
 }
 

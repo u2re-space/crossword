@@ -5,7 +5,7 @@ import { applyGridSettings } from "@rs-core/storage/StateStorage";
 //
 const resolveColorScheme = (theme: AppSettings["appearance"] extends { theme?: infer T } ? T : never) => {
     if (theme === "dark" || theme === "light") return theme;
-    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+    return globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
 };
 
 const resolveFontSize = (size?: AppSettings["appearance"] extends { fontSize?: infer T } ? T : never) => {
@@ -47,12 +47,13 @@ export const applyTheme = (settings: AppSettings) => {
 //
 export const initTheme = async () => {
     try {
+        if (typeof document === "undefined") return;
         const settings = await loadSettings();
         applyTheme(settings);
 
         // Listen for system changes if in auto mode?
         // CSS handles this mostly, but if we add listeners here we can be more reactive.
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
+        globalThis.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change', async () => {
             applyTheme(await loadSettings());
         });
     } catch (e) {

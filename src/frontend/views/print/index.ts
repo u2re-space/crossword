@@ -65,7 +65,7 @@ export class PrintView implements View {
         this.loadStyles().catch(e => console.warn("[PrintView] Failed to load print styles:", e));
 
         // Get content from options or URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(globalThis?.location?.search);
         const content = (mergedOptions as PrintViewOptions).initialMarkdown ||
             urlParams.get('content') ||
             urlParams.get('markdown-content') ||
@@ -102,13 +102,13 @@ export class PrintView implements View {
         }
 
         // Auto-print if enabled (scheduled for later)
-        if (autoPrint && content.trim() && typeof window !== 'undefined' && 'print' in window) {
+        if (autoPrint && content.trim() && typeof globalThis !== 'undefined' && 'print' in globalThis) {
             const printDelay = (mergedOptions as PrintViewOptions).printDelay ||
                 (urlParams.get('print-delay') ? parseInt(urlParams.get('print-delay')!) : 1500);
 
             setTimeout(() => {
                 console.log('[PrintView] Auto-printing document');
-                window.print();
+                globalThis?.print?.();
             }, printDelay);
         }
 
@@ -144,10 +144,10 @@ export class PrintView implements View {
         }
 
         // Close window if requested
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(globalThis?.location?.search);
         if (urlParams.get('close') === 'true') {
             try {
-                window.close?.();
+                globalThis?.close?.();
             } catch {
                 // ignore
             }

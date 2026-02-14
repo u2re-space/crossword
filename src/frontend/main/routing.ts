@@ -154,7 +154,7 @@ export function navigate(route: Route, options: NavigateOptions = {}): void {
         history.pushState(options.state ?? route, "", url);
     }
 
-    window.dispatchEvent(new CustomEvent("route-change", { detail: route }));
+    globalThis?.dispatchEvent?.(new CustomEvent("route-change", { detail: route }));
 }
 
 /**
@@ -170,7 +170,7 @@ export function navigateToView(view: ViewId, params?: Record<string, string>): v
 export function navigateToRoot(): void {
     const url = buildRootUrl();
     history.pushState({ view: null }, "", url);
-    window.dispatchEvent(new CustomEvent("route-change", { detail: { view: null } }));
+    globalThis?.dispatchEvent?.(new CustomEvent("route-change", { detail: { view: null } }));
 }
 
 export const goBack = () => history.back();
@@ -223,13 +223,13 @@ export function onRouteChange(listener: RouteListener): () => void {
  * Initialize route listening
  */
 export function initRouteListening(): void {
-    window.addEventListener("popstate", () => {
+    globalThis?.addEventListener?.("popstate", () => {
         const view = getViewFromPath();
         const params = Object.fromEntries(new URLSearchParams(location.search));
         listeners.forEach(l => l(view ? { view, params } : null));
     });
 
-    window.addEventListener("route-change", (e) => {
+    globalThis?.addEventListener?.("route-change", (e) => {
         const route = (e as CustomEvent).detail as Route | null;
         listeners.forEach(l => l(route));
     });

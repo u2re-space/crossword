@@ -32,7 +32,7 @@ export default async function frontend(
     options: ShellOptions = {}
 ): Promise<void> {
     // Check for markdown content in URL parameters (from launch queue or direct links)
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(globalThis.location.search);
     const markdownContent = urlParams.get('markdown-content');
     const sharedFlag = urlParams.get('shared');
 
@@ -73,11 +73,11 @@ export default async function frontend(
         options.initialMarkdown = markdownContent;
 
         // Clean up URL parameters after reading them
-        const url = new URL(window.location.href);
+        const url = new URL(globalThis.location.href);
         url.searchParams.delete('markdown-content');
         url.searchParams.delete('markdown-filename');
         url.searchParams.delete('shared');
-        window.history.replaceState({}, '', url.pathname + url.hash);
+        globalThis?.history?.replaceState?.({}, '', url.pathname + url.hash);
     }
 
     mountShellApp(mountElement, options);

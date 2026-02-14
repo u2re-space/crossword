@@ -1,8 +1,11 @@
 import { GPTResponses, encode, parseAIResponseSafe } from './GPT-Responses.js';
-import { JSOX, writeFileSmart, getDirectoryHandle, getFileHandle, observe, safe, iterated, loadSettings } from './Settings.js';
-import { Promised } from './Env.js';
+import { MAX_BASE64_SIZE, convertImageToJPEG, BASE64_PREFIX, DEFAULT_ENTITY_TYPE } from './ImageProcess.js';
+import { JSOX, writeFileSmart, getDirectoryHandle, getFileHandle, parseDataUrl, stringToFile, decodeBase64ToBytes, observe, iterated, safe, loadSettings } from './Settings.js';
+import { Promised } from './index.js';
 import { showSuccess, showError } from './Toast.js';
+import { canParseURL } from './Runtime2.js';
 
+"use strict";
 const DB_NAME = "req-queue";
 const STORE$1 = "queue";
 const DB_VERSION = 3;
@@ -43,6 +46,225 @@ function withTx(db, mode, fn) {
     });
   });
 }
+async function pushOne(payload) {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      const rec = {
+        payload,
+        enqueuedAt: Date.now(),
+        locked: false,
+        lockedAt: null
+      };
+      const req = store.add(rec);
+      return await new Promise((res, rej) => {
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
+    });
+  } finally {
+    db.close();
+  }
+}
+async function pushMany(payloads) {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      const ids = [];
+      for (const p of payloads) {
+        const rec = {
+          payload: p,
+          enqueuedAt: Date.now(),
+          locked: false,
+          lockedAt: null
+        };
+        const req = store.add(rec);
+        const id = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        ids.push(id);
+      }
+      return ids;
+    });
+  } finally {
+    db.close();
+  }
+}
+async function size() {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readonly", async (store) => {
+      const req = store.count();
+      return await new Promise((res, rej) => {
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
+    });
+  } finally {
+    db.close();
+  }
+}
+async function peek(limit = 50) {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readonly", async (store) => {
+      const result = [];
+      const idx = store.index("byLockedId");
+      const range = IDBKeyRange.bound([false, -Infinity], [false, Infinity]);
+      return await new Promise((res, rej) => {
+        const curReq = idx.openCursor(range, "next");
+        curReq.onerror = () => rej(curReq.error);
+        curReq.onsuccess = () => {
+          const cursor = curReq.result;
+          if (!cursor || result.length >= limit) return res(result);
+          result.push(cursor.value);
+          cursor.continue();
+        };
+      });
+    });
+  } finally {
+    db.close();
+  }
+}
+async function unlockExpired(store, cutoff) {
+  const idx = store.index("byLockedAt");
+  const range = IDBKeyRange.upperBound(cutoff, true);
+  await new Promise((res, rej) => {
+    const curReq = idx.openCursor(range);
+    curReq.onerror = () => rej(curReq.error);
+    curReq.onsuccess = () => {
+      const cursor = curReq.result;
+      if (!cursor) return res();
+      const rec = cursor.value;
+      if (rec.locked && typeof rec.lockedAt === "number" && rec.lockedAt < cutoff) {
+        rec.locked = false;
+        rec.lockedAt = null;
+        const putReq = cursor.update(rec);
+        putReq.onerror = () => rej(putReq.error);
+        putReq.onsuccess = () => cursor.continue();
+      } else {
+        cursor.continue();
+      }
+    };
+  });
+}
+async function claimBatch(limit = 50, lockMs = 5 * 6e4) {
+  const now = Date.now();
+  const cutoff = now - lockMs;
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      await unlockExpired(store, cutoff);
+      const idx = store.index("byLockedId");
+      const range = IDBKeyRange.bound([false, -Infinity], [false, Infinity]);
+      const claimed = [];
+      await new Promise((res, rej) => {
+        const curReq = idx.openCursor(range, "next");
+        curReq.onerror = () => rej(curReq.error);
+        curReq.onsuccess = () => {
+          const cursor = curReq.result;
+          if (!cursor || claimed.length >= limit) return res();
+          const rec = cursor.value;
+          rec.locked = true;
+          rec.lockedAt = now;
+          const putReq = cursor.update(rec);
+          putReq.onerror = () => rej(putReq.error);
+          putReq.onsuccess = () => {
+            claimed.push(rec);
+            cursor.continue();
+          };
+        };
+      });
+      return claimed;
+    });
+  } finally {
+    db.close();
+  }
+}
+async function ack(ids) {
+  if (!ids.length) return;
+  const db = await idbOpen$1();
+  try {
+    await withTx(db, "readwrite", async (store) => {
+      for (const id of ids) {
+        const req = store.delete(id);
+        await new Promise((res, rej) => {
+          req.onsuccess = () => res();
+          req.onerror = () => rej(req.error);
+        });
+      }
+    });
+  } finally {
+    db.close();
+  }
+}
+async function nack(ids) {
+  if (!ids.length) return;
+  const db = await idbOpen$1();
+  try {
+    await withTx(db, "readwrite", async (store) => {
+      for (const id of ids) {
+        const getReq = store.get(id);
+        const rec = await new Promise((res, rej) => {
+          getReq.onsuccess = () => res(getReq.result);
+          getReq.onerror = () => rej(getReq.error);
+        });
+        if (!rec) continue;
+        rec.locked = false;
+        rec.lockedAt = null;
+        const putReq = store.put(rec);
+        await new Promise((res, rej) => {
+          putReq.onsuccess = () => res();
+          putReq.onerror = () => rej(putReq.error);
+        });
+      }
+    });
+  } finally {
+    db.close();
+  }
+}
+async function dumpAll(full = false) {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readonly", async (store) => {
+      const req = store.getAll();
+      return await new Promise((res, rej) => {
+        req.onsuccess = () => {
+          const arr = req.result;
+          res(full ? arr : arr.map((r) => r.payload));
+        };
+        req.onerror = () => rej(req.error);
+      });
+    });
+  } finally {
+    db.close();
+  }
+}
+async function loadFromArray(payloads) {
+  return pushMany(payloads);
+}
+async function drain(handler, opts) {
+  const batchSize = opts?.batchSize ?? 50;
+  const lockMs = opts?.lockMs ?? 5 * 6e4;
+  const stopOnEmpty = opts?.stopOnEmpty ?? true;
+  while (true) {
+    const batch = await claimBatch(batchSize, lockMs);
+    if (batch.length === 0) {
+      if (stopOnEmpty) return;
+      await new Promise((r) => setTimeout(r, 1e3));
+      continue;
+    }
+    const ids = batch.map((r) => r.id);
+    try {
+      await handler(batch.map((r) => r.payload), batch);
+      await ack(ids);
+    } catch (e) {
+      await nack(ids);
+      throw e;
+    }
+  }
+}
 async function dumpAndClear(full = false) {
   const db = await idbOpen$1();
   try {
@@ -63,7 +285,93 @@ async function dumpAndClear(full = false) {
     db.close();
   }
 }
+async function popAllUnlocked(full = false) {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      const out = [];
+      const idx = store.index("byLockedId");
+      const range = IDBKeyRange.bound([false, -Infinity], [false, Infinity]);
+      await new Promise((res, rej) => {
+        const curReq = idx.openCursor(range, "next");
+        curReq.onerror = () => rej(curReq.error);
+        curReq.onsuccess = () => {
+          const cursor = curReq.result;
+          if (!cursor) return res();
+          const rec = cursor.value;
+          out.push(rec);
+          const delReq = cursor.delete();
+          delReq.onerror = () => rej(delReq.error);
+          delReq.onsuccess = () => cursor.continue();
+        };
+      });
+      return full ? out : out.map((r) => r.payload);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function prune(maxAgeMs = 7 * 24 * 60 * 60 * 1e3) {
+  const now = Date.now();
+  const cutoff = now - maxAgeMs;
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      let count = 0;
+      const req = store.openCursor();
+      await new Promise((res, rej) => {
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) return res();
+          const rec = cursor.value;
+          if (rec.enqueuedAt < cutoff) {
+            cursor.delete();
+            count++;
+          }
+          cursor.continue();
+        };
+        req.onerror = () => rej(req.error);
+      });
+      return count;
+    });
+  } finally {
+    db.close();
+  }
+}
+async function deduplicate() {
+  const db = await idbOpen$1();
+  try {
+    return await withTx(db, "readwrite", async (store) => {
+      const hashes = /* @__PURE__ */ new Set();
+      let count = 0;
+      const req = store.openCursor();
+      await new Promise((res, rej) => {
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) return res();
+          const rec = cursor.value;
+          try {
+            const hash = JSOX.stringify(rec.payload);
+            if (hashes.has(hash)) {
+              cursor.delete();
+              count++;
+            } else {
+              hashes.add(hash);
+            }
+          } catch (e) {
+          }
+          cursor.continue();
+        };
+        req.onerror = () => rej(req.error);
+      });
+      return count;
+    });
+  } finally {
+    db.close();
+  }
+}
 
+"use strict";
 const optionize = (values) => (values ?? []).map((value) => value);
 const locationField = (name, path, section = "relations", label = "Location", helper) => ({
   name,
@@ -71,7 +379,7 @@ const locationField = (name, path, section = "relations", label = "Location", he
   path,
   section,
   textarea: true,
-  helper: "String or JSON representation of the location"
+  helper: helper ?? "String or JSON representation of the location"
 });
 const contactFields = (basePath) => [
   {
@@ -229,7 +537,7 @@ const biographyFields = (basePath) => [
   },
   selectField("biography.gender", "Gender", `${basePath}.gender`, GENDER_OPTIONS, "meta")
 ];
-[
+const BASE_ENTITY_FIELD_RULES = [
   {
     name: "id",
     label: "Identifier",
@@ -294,6 +602,47 @@ const biographyFields = (basePath) => [
     multi: true
   }
 ];
+const FIELD_ALIASES = {
+  title: "title",
+  kind: "kind",
+  name: "name",
+  id: "id",
+  price: "properties.price",
+  quantity: "properties.quantity",
+  begin_time: "properties.begin_time",
+  end_time: "properties.end_time",
+  email: "properties.contacts.email",
+  phone: "properties.contacts.phone",
+  links: "properties.contacts.links",
+  "contacts.email": "properties.contacts.email",
+  "contacts.phone": "properties.contacts.phone",
+  "contacts.links": "properties.contacts.links"
+};
+const LEGACY_PROPERTY_RULES = {
+  price: numberField("price", "Price", "properties.price", "properties", "Price as number"),
+  quantity: numberField("quantity", "Quantity", "properties.quantity"),
+  begin_time: stringField("begin_time", "Begin", "properties.begin_time", "schedule", "YYYY-MM-DD or ISO string"),
+  end_time: stringField("end_time", "End", "properties.end_time", "schedule", "YYYY-MM-DD or ISO string"),
+  location: locationField("location", "properties.location"),
+  services: arrayField("services", "Services", "properties.services", "relations", "Service IDs, one per line"),
+  members: arrayField("members", "Members", "properties.members", "relations", "Member IDs, one per line"),
+  actions: arrayField("actions", "Actions", "properties.actions", "relations", "Action IDs, one per line"),
+  bonuses: arrayField("bonuses", "Bonuses", "properties.bonuses", "properties", "Bonus IDs, one per line"),
+  rewards: arrayField("rewards", "Rewards", "properties.rewards", "properties", "Reward IDs, one per line"),
+  feedbacks: arrayField("feedbacks", "Feedbacks", "properties.feedbacks", "properties", "Feedback IDs, one per line"),
+  tasks: arrayField("tasks", "Tasks", "properties.tasks", "relations", "Task IDs, one per line"),
+  persons: arrayField("persons", "Persons", "properties.persons", "relations", "Person IDs, one per line"),
+  events: arrayField("events", "Events", "properties.events", "relations", "Event IDs, one per line"),
+  image: arrayField("image", "Images", "properties.image", "properties", "Image URLs, one per line"),
+  availability: stringField("availability", "Availability", "properties.availability", "properties"),
+  availabilityTime: arrayField("availabilityTime", "Availability time", "properties.availabilityTime", "properties", "Time ranges, one per line"),
+  availabilityDays: arrayField("availabilityDays", "Availability days", "properties.availabilityDays", "properties", "Day names, one per line"),
+  permissions: stringField("permissions", "Permissions", "properties.permissions", "properties"),
+  purpose: stringField("purpose", "Purpose", "properties.purpose", "properties"),
+  home: locationField("home", "properties.home"),
+  jobs: arrayField("jobs", "Jobs", "properties.jobs", "relations", "Job IDs, one per line"),
+  coordinates: jsonField("coordinates", "Coordinates", "properties.coordinates", "properties", "JSON object with latitude and longitude")
+};
 const ENTITY_KIND_MAP = {
   task: ["job", "action", "other"],
   event: [
@@ -513,7 +862,12 @@ const detectEntityTypeByJSON = (unknownJSON) => {
   mostSuitableType = countMap.size == 0 ? [...types]?.[0] : [...countMap.entries()].reduce((a, b) => a[1] > b[1] ? a : b)[0];
   return mostSuitableType || "unknown";
 };
+const detectEntityTypesByJSONs = (unknownJSONs) => {
+  unknownJSONs = typeof unknownJSONs == "string" ? JSOX.parse(unknownJSONs) : unknownJSONs;
+  return Array.isArray(unknownJSONs) ? unknownJSONs?.map?.((unknownJSON) => detectEntityTypeByJSON(unknownJSON)) || [] : [detectEntityTypeByJSON(unknownJSONs)];
+};
 
+"use strict";
 function parseDateCorrectly$1(str) {
   if (str == null) return null;
   if (str instanceof Date) return Number.isFinite(str.getTime()) ? str : null;
@@ -539,6 +893,9 @@ function parseDateCorrectly$1(str) {
     return Number.isFinite(d.getTime()) ? d : null;
   }
   return null;
+}
+function parseAndGetCorrectTime$1(str) {
+  return parseDateCorrectly$1(str)?.getTime?.() ?? Date.now();
 }
 const DEFAULT_MAX_LENGTH = 96;
 const CODE_SUFFIX_PREFIX = "CODE";
@@ -718,7 +1075,7 @@ const generateEntityId = (entity, options = {}) => {
   const reservedLength = codeSuffix ? codeSuffix.length + (base ? 1 : 0) : 0;
   const clampedBase = clampBaseLength(base, maxLength, reservedLength);
   const existingSet = prepareExistingSet(options.existingIds);
-  const candidate = ensureUniqueId(clampedBase, codeSuffix, existingSet);
+  const candidate = ensureUniqueId(clampedBase, codeSuffix, existingSet, maxLength);
   if (options.mutateExistingIds && existingSet) {
     existingSet.add(candidate);
   }
@@ -740,13 +1097,16 @@ const fixEntityId = (entity, options = { mutate: true, rebuild: true }) => {
     sanitizedId = ensureUniqueId(
       baseWithoutCode,
       allowCodeSuffix ? sanitizeCodeSuffix(entity.properties?.code) : "",
-      existingSet);
+      existingSet,
+      maxLength
+    );
   }
   if (options.mutateExistingIds && existingSet) existingSet.add(sanitizedId);
   if (options.mutate !== false && entity) entity.id = sanitizedId;
   return sanitizedId;
 };
 
+"use strict";
 async function opfsModifyJson(options) {
   const {
     dirPath,
@@ -855,16 +1215,48 @@ function normalizeEol(s) {
   return s.replace(/\r\n/g, "\n");
 }
 
+"use strict";
+const writeFilesToDir = async (dir, files) => {
+  const items = Array.from(files);
+  for (const file of items) {
+    dir = dir?.trim?.();
+    dir = dir?.endsWith?.("/") ? dir : dir + "/";
+    await writeFileSmart(null, dir, file);
+  }
+  return items.length;
+};
+const getMarkDownFromFile = async (handle) => {
+  const markdown = await handle?.getFile?.();
+  return await markdown?.text?.() || "";
+};
 const getJSONFromFile = async (handle) => {
   if (Array.isArray(handle)) handle = handle?.[0];
   if (!handle) return null;
   const json = await handle?.getFile?.();
   return parseJsonSafely(await json?.text?.() || "{}");
 };
+const hasCriteriaInText = async (text, criteria) => {
+  return criteria?.some?.(async (criterion) => text?.includes?.(criterion));
+};
 const readJSONs = async (dir) => {
   const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
   const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
   return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
+const readJSONsFiltered = async (dir, filterFiles) => {
+  const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+  const factors = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+  return Promise.all(factors?.map?.((factor) => getJSONFromFile(factor)));
+};
+const readMarkDownsFiltered = async (dir, filterFiles) => {
+  const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+  const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+  return Promise.all(preferences?.map?.(async (preferences2) => await getMarkDownFromFile(preferences2))?.filter?.(async (fileData) => !filterFiles || await hasCriteriaInText(await fileData, filterFiles)));
+};
+const readMarkDowns = async (dir) => {
+  const dirHandle = typeof dir === "string" ? await getDirectoryHandle(null, dir) : dir;
+  const preferences = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+  return Promise.all(preferences?.map?.((preference) => getMarkDownFromFile(preference?.[1])));
 };
 const readOneMarkDown = async (path) => {
   const markdown = await getFileHandle(null, path);
@@ -911,11 +1303,60 @@ const writeMarkDown = async (data, path = null) => {
     document?.dispatchEvent?.(new CustomEvent("rs-fs-changed", { detail: results, bubbles: true, composed: true, cancelable: true }));
   return results;
 };
+const handleDataByType = async (item, handler) => {
+  if (typeof item === "string") {
+    if (item?.startsWith?.("data:image/") && item?.includes?.(";base64,")) {
+      const parts = parseDataUrl(item);
+      const mimeType = parts?.mimeType || "image/png";
+      const file = await stringToFile(item, "clipboard-image", { mimeType, uriComponent: true });
+      return handler({ url: item, file });
+    } else if (canParseURL(item)) {
+      return handler({ url: item });
+    }
+  } else if (item instanceof File || item instanceof Blob) {
+    return handler({ file: item });
+  }
+};
+const handleDataTransferFiles = async (files, handler) => {
+  for (const file of files) {
+    handleDataByType(file, handler);
+  }
+};
+const handleDataTransferItemList = async (items, handler) => {
+  for (const item of items) {
+    handleDataByType(item, handler);
+  }
+};
+const handleClipboardItems = async (items, handler) => {
+  for (const item of items) {
+    for (const type of item?.types ?? []) {
+      if (type.startsWith("text/")) {
+        const text = await (await item?.getType?.(type))?.text?.();
+        return handleDataByType(text, handler);
+      }
+      if (type.startsWith("image/")) {
+        const blob = await item?.getType?.(type);
+        return handleDataByType(blob, handler);
+      }
+    }
+  }
+};
+const handleDataTransferInputEvent = (dataTransfer, handler) => {
+  const items = dataTransfer?.items;
+  const files = dataTransfer?.files ?? [];
+  if (items) {
+    handleDataTransferItemList(items, handler);
+  }
+  if (files && files?.length > 0) {
+    handleDataTransferFiles(files, handler);
+  }
+};
 const parseJsonSafely = (text) => {
   if (!text) return null;
   if (typeof text != "string") {
     return text;
   }
+  ;
   try {
     return JSOX.parse(text);
   } catch (_) {
@@ -927,6 +1368,86 @@ const parseJsonSafely = (text) => {
     }
   }
 };
+const postCommitAnalyze = async (payload, API_ENDPOINT = "/commit-analyze") => {
+  const fd = new FormData();
+  if (payload.text) fd.append("text", payload.text);
+  if (payload.url) fd.append("url", payload.url);
+  if (payload.file) fd.append("files", payload.file, payload.file?.name || "pasted");
+  const resp = await fetch(API_ENDPOINT, { method: "POST", priority: "auto", keepalive: true, body: fd })?.catch?.(console.warn.bind(console));
+  if (!resp) return [];
+  const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+  if (!json) return [];
+  return json?.results?.map?.((res) => res?.data)?.filter?.((data) => !!data?.trim?.());
+};
+const postCommitRecognize = (targetDir = "/docs/preferences/") => {
+  return async (payload, API_ENDPOINT = "/commit-recognize") => {
+    const fd = new FormData();
+    if (payload.text) fd.append("text", payload.text);
+    if (payload.url) fd.append("url", payload.url);
+    if (payload.file) fd.append("files", payload.file, payload.file?.name || "pasted");
+    fd.append("targetDir", targetDir);
+    const resp = await fetch(API_ENDPOINT, { method: "POST", priority: "auto", keepalive: true, body: fd })?.catch?.(console.warn.bind(console));
+    if (!resp) return [];
+    const json = parseJsonSafely(await resp?.text?.()?.catch?.(console.warn.bind(console)) || "{}");
+    if (!json) return [];
+    return json?.results?.filter?.((data) => !!data?.data?.trim?.())?.map?.((res) => res?.data);
+  };
+};
+const normalizePayload = async (payload) => {
+  if (payload.file instanceof File || payload.file instanceof Blob) {
+    if (payload.file instanceof File && payload.file.size > MAX_BASE64_SIZE && payload.file.type.startsWith("image/")) {
+      return { ...payload, file: await convertImageToJPEG(payload.file) };
+    }
+    return payload;
+  }
+  const text = payload.text || payload.url;
+  if (typeof text === "string") {
+    const match = text.match(BASE64_PREFIX);
+    if (match && match.groups) {
+      const { mime, data } = match.groups;
+      const byteLen = Math.ceil(data.length * 3 / 4);
+      if (byteLen > MAX_BASE64_SIZE) {
+        const bytes = decodeBase64ToBytes(data, { alphabet: "base64", lastChunkHandling: "loose" });
+        const blob = new Blob([bytes], { type: mime });
+        const converted = await convertImageToJPEG(blob);
+        return { file: converted };
+      }
+    }
+  }
+  return payload;
+};
+const writeTextDependsByPossibleType = async (payload, entityType) => {
+  if (!payload) return;
+  if (canParseURL(payload || "")) payload = await fetch(payload).then((res) => res.text())?.catch?.(console.warn.bind(console)) || "";
+  if (!payload) return;
+  let json = {};
+  json = parseJsonSafely(payload || "{}");
+  if (!json) return;
+  try {
+    if (!entityType) entityType = detectEntityTypeByJSON(json);
+    return writeJSON(json, entityType == "task" || entityType == "timeline" ? "/timeline/" : `data/${entityType}/`);
+  } catch (e) {
+    return writeMarkDown(payload, `docs/${entityType}/`);
+  }
+};
+const sendToEntityPipeline = async (payload, options = {}) => {
+  const entityType = options.entityType || DEFAULT_ENTITY_TYPE;
+  const normalized = await normalizePayload(payload);
+  const next = options.beforeSend ? await options.beforeSend(normalized) : normalized;
+  if (!next.file && (next.text || next.url)) return writeTextDependsByPossibleType(next.text || next.url, entityType);
+  return handleDataTransferFiles(next.file ? [next.file] : [], postCommitAnalyze);
+};
+const loadTimelineSources = async (dir = "/docs/preferences") => {
+  try {
+    const root = await getDirectoryHandle(null, dir)?.catch(() => null);
+    if (!root) return [];
+    const entries = await Array.fromAsync(root.entries?.() ?? []);
+    return entries.map((entry) => entry?.[0]).filter((name) => typeof name === "string" && name.trim().length).map((name) => name.replace(/\.md$/i, ""));
+  } catch (e) {
+    console.warn(e);
+    return [];
+  }
+};
 const extractRecognizedData = (unknownData) => {
   try {
     unknownData = typeof unknownData == "string" ? JSON.parse(unknownData?.trim?.() || "[]") : unknownData;
@@ -935,6 +1456,7 @@ const extractRecognizedData = (unknownData) => {
   if (unknownData?.recognized_data) {
     return extractRecognizedData(unknownData?.recognized_data);
   }
+  ;
   if (typeof unknownData == "string" && unknownData?.trim?.()) {
     return unknownData?.trim?.();
   } else if (Array.isArray(unknownData) && unknownData?.length) {
@@ -1027,7 +1549,26 @@ const writeTimelineTask = async (task) => {
   const file = new File([JSOX.stringify(task)], fileName, { type: "application/json" });
   return writeFileSmart(null, filePath, file)?.catch?.(console.error.bind(console));
 };
+const writeTimelineTasks = async (tasks) => {
+  return Promise.all(tasks?.map?.(async (task) => writeTimelineTask(task)) || []);
+};
+const loadAllTimelines = async (DIR = TIMELINE_DIR) => {
+  const dirHandle = await getDirectoryHandle(null, DIR)?.catch?.(console.warn.bind(console));
+  const timelines = await Array.fromAsync(dirHandle?.entries?.() ?? []);
+  return (await Promise.all(timelines?.map?.(async ([name, fileHandle]) => {
+    if (name?.endsWith?.(".crswap")) return;
+    if (!name?.trim?.()?.endsWith?.(".json")) return;
+    const file = await fileHandle.getFile();
+    let item = null;
+    item = parseJsonSafely(await file?.text?.() || "{}");
+    if (!item) return;
+    item.__name = name;
+    item.__path = `${DIR}${name}`;
+    return item;
+  })))?.filter?.((e) => e);
+};
 
+"use strict";
 const STORE = "cache";
 const idbOpen = async () => {
   return new Promise((res, rej) => {
@@ -1100,13 +1641,13 @@ const observeCategory = (category) => {
 const $wrapCategory = (category) => {
   return observe(observeCategory(category));
 };
-observe([
+const tasksCategories = observe([
   $wrapCategory({
     label: "Tasks",
     id: "task"
   })
 ]);
-observe([
+const dataCategories = observe([
   $wrapCategory({
     label: "Items",
     id: "item"
@@ -1194,6 +1735,10 @@ setInterval(() => {
 
 const AI_OUTPUT_SCHEMA = "# Entities Spec V2\n\nFor understanding and for AI generation.\n\n## Output Format\n\n`{ \"entities\": ENTITY[], \"keywords\"?: STRING[], \"short_description\"?: MARKDOWN }`\n\n---\n\n## Entity Structure\n\n```\nENTITY={\n    \"type\": ENUM:TYPE,\n    \"id\": UNIQUE[ID],\n    \"kind\": ENUM:KIND[OF:TYPE],\n    \"name\"?: STRING,\n    \"title\"?: STRING,\n    \"icon\"?: PHOSPHOR_ICON_ID,\n    \"properties\": PROPERTIES[OF:TYPE]|{},\n    \"description\": MARKDOWN,\n    \"image\": URL,\n    \"variant\": ENUM:COLOR\n}\n```\n\n---\n\n## Data Types\n\n- `MARKDOWN=STRING|STRING[]`\n- `URL=STRING|{\"url\": STRING, \"type\": ENUM:URL_TYPE}`\n- `DATE={\"timestamp\"?: NUMBER, \"iso_date\"?: STRING}`\n- `CONTACT={\"email\"?: STRING[], \"phone\"?: STRING[], \"links\"?: STRING[]}`\n- `LOCATION=STRING|{ \"coordinate\"?: COORDINATE, \"address\"?: ADDRESS }`\n- `COORDINATE={ \"latitude\": NUMBER, \"longitude\": NUMBER }`\n- `ADDRESS={ \"street\"?: STRING, \"house\"?: STRING, \"flat\"?: STRING, \"floor\"?: NUMBER, \"room\"?: NUMBER, \"square\"?: NUMBER, \"price\"?: NUMBER }`\n- `ID=KEY[STRING|NUMBER]`\n- `BIOGRAPHY={ \"firstName\"?: STRING, \"lastName\"?: STRING, \"middleName\"?: STRING, \"nickName\"?: STRING, \"birthdate\"?: DATE, \"gender\"?: ENUM:GENDER }`\n\n---\n\n## Enums\n\n- `TYPE=\"task\"|\"event\"|\"action\"|\"service\"|\"item\"|\"skill\"|\"vendor\"|\"place\"|\"factor\"|\"person\"|\"bonus\"`\n- `COLOR=\"red\"|\"green\"|\"blue\"|\"yellow\"|\"orange\"|\"purple\"|\"brown\"|\"gray\"|\"black\"|\"white\"`\n- `TASK_STATUS=\"under_consideration\"|\"pending\"|\"in_progress\"|\"completed\"|\"failed\"|\"delayed\"|\"canceled\"|\"other\"`\n- `AFFECT=\"positive\"|\"negative\"|\"neutral\"`\n- `GENDER=\"male\"|\"female\"|\"other\"`\n- `URL_TYPE=\"website\"|\"email\"|\"phone\"|\"social\"|\"other\"`\n\n### Kinds\n\n```\nKIND=MAPPED_BY[TYPE][\n    [\"task\", ENUM=\"job\"|\"action\"|\"other\"],\n    [\"event\", ENUM=\"education\"|\"lecture\"|\"conference\"|\"meeting\"|\"seminar\"|\"workshop\"|\"presentation\"|\"celebration\"|\"opening\"|\"other\"],\n    [\"action\", ENUM=\"thinking\"|\"imagination\"|\"remembering\"|\"speaking\"|\"learning\"|\"listening\"|\"reading\"|\"writing\"|\"moving\"|\"traveling\"|\"speech\"|\"physically\"|\"crafting\"|\"following\"|\"other\"],\n    [\"service\", ENUM=\"product\"|\"consultation\"|\"advice\"|\"medical\"|\"mentoring\"|\"training\"|\"item\"|\"thing\"|\"other\"],\n    [\"item\", ENUM=\"currency\"|\"book\"|\"electronics\"|\"furniture\"|\"medicine\"|\"tools\"|\"software\"|\"consumables\"|\"other\"],\n    [\"skill\", ENUM=\"skill\"|\"knowledge\"|\"ability\"|\"trait\"|\"experience\"|\"other\"],\n    [\"vendor\", ENUM=\"vendor\"|\"company\"|\"organization\"|\"institution\"|\"other\"],\n    [\"place\", ENUM=\"placement\"|\"place\"|\"school\"|\"university\"|\"service\"|\"clinic\"|\"pharmacy\"|\"hospital\"|\"library\"|\"market\"|\"location\"|\"shop\"|\"restaurant\"|\"cafe\"|\"bar\"|\"hotel\"|\"other\"],\n    [\"factor\", ENUM=\"weather\"|\"health\"|\"family\"|\"relationships\"|\"job\"|\"traffic\"|\"business\"|\"economy\"|\"politics\"|\"news\"|\"other\"],\n    [\"person\", ENUM=\"specialist\"|\"consultant\"|\"coach\"|\"mentor\"|\"dear\"|\"helper\"|\"assistant\"|\"friend\"|\"family\"|\"relative\"|\"other\"]\n]\n```\n\n---\n\n## Data Maps\n\n```\nPROPERTIES=MAPPED_BY[TYPE][\n    [\"task\", TASK_STRUCTURE],\n    [\"event\", EVENT_STRUCTURE],\n    [\"action\", ACTION_STRUCTURE],\n    [\"service\", SERVICE_STRUCTURE],\n    [\"item\", ITEM_STRUCTURE],\n    [\"skill\", SKILL_STRUCTURE],\n    [\"vendor\", VENDOR_STRUCTURE],\n    [\"place\", PLACE_STRUCTURE],\n    [\"factor\", FACTOR_STRUCTURE],\n    [\"person\", PERSON_STRUCTURE]\n]\n```\n\n---\n\n## Properties Structures\n\n### Task\n\nImportant: Task can't be recognized directly from data source, but can be created by preference or user/prompt desire.\n\n```\nTASK_STRUCTURE={\n    \"status\": ENUM:TASK_STATUS,\n    \"begin_time\": DATE,\n    \"end_time\": DATE,\n    \"location\"?: LOCATION,\n    \"contacts\"?: CONTACT,\n    \"members\"?: ID[],\n    \"events\"?: ID[],\n}\n```\n\n### Event\n\n```\nEVENT_STRUCTURE={\n    \"begin_time\": DATE,\n    \"end_time\": DATE,\n    \"location\": LOCATION,\n    \"contacts\": CONTACT\n}\n```\n\n### Person\n\n```\nPERSON_STRUCTURE={\n    \"home\": LOCATION,\n    \"jobs\": LOCATION[],\n    \"biography\": BIOGRAPHY,\n    \"tasks\": ID[],\n    \"contacts\": CONTACT,\n    \"services\": ID[],\n    \"prices\": MAP<STRING,NUMBER>\n}\n```\n\n### Service\n\n```\nSERVICE_STRUCTURE={\n    \"location\": LOCATION,\n    \"persons\": ID[],\n    \"specialization\": STRING[],\n    \"contacts\": CONTACT,\n    \"prices\": MAP<STRING,NUMBER>\n}\n```\n\n### Factor\n\n```\nFACTOR_STRUCTURE={\n    \"affect\": ENUM:AFFECT,\n    \"actions\": ID[],\n    \"location\": LOCATION,\n}\n```\n\n### Bonus\n\n```\nBONUS_STRUCTURE={\n    \"code\"?: STRING,\n    \"usableFor\"?: ID[],\n    \"usableIn\"?: ID[],\n    \"availability\"?: {\n        \"count: NUMBER,\n        \"time\": STRING[],\n        \"days\": STRING[]\n    },\n    \"requirements\"?: ANY[],\n    \"additionalProperties\"?: MAP<STRING,UNKNOWN>,\n    \"profits\"?: MAP<STRING,NUMBER>\n}\n```\n\n### OTHER\n\nTODO: Planned to explain later.\n\n---\n\n## Other types\n\nTODO: Planned to explain later.\n\n---\n\n## Appendix: Name Generation\n\n```\n\"Give potential IDs for entities in following rules:\",\n\nRules for generating entity IDs ('id' fields, ID type):\n- Letters or numbers (only in lowercase)\n- Allowed symbols, such as '-', '_', '&', '#', '+'\n- Whitespace not allowed\n- No emojis or special symbols\n- No Cyrillic or Latin letters\n- Only promo-codes or codes may has uppercase letters\n\nHow generates entity IDs:\n- If known person names (biography), use formatted their names, location or job also can be used.\n- Prefixed by service, market or vendor (if bonus entity, such as promo, discount, bonus, etc.)\n- Name, type or kind (if no name declared) of entity encodes into ID by conversion spaces into '-', etc.\n- CODE suffix is used for unique code of entity, such as promo-code, discount-code, etc.\n\nFor example:\n\n/*\n   - [in bonuses list] zdravia-clinic_therapist_CODE123 - promo-code for therapist of zdravia-clinic\n   - [in persons list] alena-victorovna_additional-identifier - person of Alena Viktorovna, for additional identifier may be used service, skill, email or phone number\n   - [in items list] book_the-best-book - book of the best book\n*/\n\nSuch idea used for make simpler search, filtering and sorting of entities.\n```\n";
 
+"use strict";
+const getTimeZone = () => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
 function isPureHHMM(str) {
   if (!str) return false;
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(str).trim());
@@ -1218,6 +1763,16 @@ function parseDateCorrectly(str) {
   }
   return new Date(String(str));
 }
+function parseAndGetCorrectTime(str) {
+  if (!str) return Date.now();
+  if (typeof str == "number") {
+    if (str >= 1e12) return str;
+    const multiplier = Math.pow(10, 11 - (String(str | 0)?.length || 11)) | 0;
+    return str * multiplier;
+  }
+  if (str instanceof Date) return str.getTime();
+  return parseDateCorrectly(str)?.getTime?.() ?? Date.now();
+}
 const getComparableTimeValue = (value) => {
   if (value == null) return Number.NaN;
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1233,6 +1788,24 @@ const getComparableTimeValue = (value) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : Number.NaN;
 };
+const isDate = (date) => {
+  const firstStep = date instanceof Date || typeof date == "string" && date.match(/^\d{4}-\d{2}-\d{2}$/);
+  let secondStep = false;
+  try {
+    secondStep = getComparableTimeValue(date) > 0;
+  } catch {
+    secondStep = false;
+  }
+  return firstStep && secondStep;
+};
+const checkInTimeRange = (beginTime, endTime, currentTime) => {
+  if (beginTime && endTime) {
+    return getComparableTimeValue(beginTime) < getComparableTimeValue(currentTime) && getComparableTimeValue(currentTime) < getComparableTimeValue(endTime);
+  }
+  if (beginTime) return getComparableTimeValue(beginTime) < getComparableTimeValue(currentTime);
+  if (endTime) return getComparableTimeValue(currentTime) < getComparableTimeValue(endTime);
+  return false;
+};
 const checkRemainsTime = (beginTime, endTime, currentTime, maxDays = 7) => {
   let factorMasked = true;
   if (beginTime) factorMasked &&= getComparableTimeValue(currentTime) <= getComparableTimeValue(beginTime);
@@ -1243,10 +1816,152 @@ const checkRemainsTime = (beginTime, endTime, currentTime, maxDays = 7) => {
   }
   return factorMasked;
 };
+const getISOWeekNumber = (input) => {
+  if (!input) return null;
+  const target = new Date(Date.UTC(input.getFullYear(), input.getMonth(), input.getDate()));
+  const dayNumber = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  return Math.ceil(((target.getTime() - yearStart.getTime()) / 864e5 + 1) / 7);
+};
+const createDayDescriptor = (input, partial = {}) => {
+  if (!input) return null;
+  const timeZone = getTimeZone();
+  const dayBegin = new Date(input.getTime());
+  dayBegin.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(input.getTime());
+  dayEnd.setHours(23, 59, 59, 999);
+  const dayDay = dayBegin.toLocaleDateString("en-GB", { day: "numeric", timeZone });
+  const dayWeekday = dayBegin.toLocaleDateString("en-GB", { weekday: "short", timeZone });
+  const dayMonth = dayBegin.toLocaleDateString("en-GB", { month: "short", timeZone });
+  const dayTitle = `${dayDay} ${dayMonth} ${dayWeekday}`;
+  const dayDayForId = dayBegin.toLocaleDateString("en-GB", { day: "numeric", timeZone });
+  const dayMonthForId = dayBegin.toLocaleDateString("en-GB", { month: "numeric", timeZone });
+  const dayYearForId = dayBegin.toLocaleDateString("en-GB", { year: "numeric", timeZone });
+  const dayId = `${dayDayForId}_${dayMonthForId}_${dayYearForId}`;
+  const fullDay = dayBegin.toLocaleDateString("en-GB", {
+    timeZone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+  const weekNumber = getISOWeekNumber(dayBegin);
+  const separatorTitle = weekNumber ? `${fullDay} · Week ${weekNumber}` : fullDay;
+  return {
+    id: dayId,
+    title: dayTitle,
+    begin_time: dayBegin.toISOString(),
+    end_time: dayEnd.toISOString(),
+    separatorTitle,
+    weekNumber,
+    ...partial
+  };
+};
+const insideOfDay = (item, dayDesc) => {
+  const kind = typeof dayDesc == "string" ? dayDesc : dayDesc?.kind;
+  const status = typeof dayDesc == "string" ? dayDesc : dayDesc?.status;
+  const begin_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.begin_time;
+  const end_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.end_time;
+  const inRange = (!begin_time || getComparableTimeValue(item?.properties?.begin_time) >= getComparableTimeValue(begin_time) || String(begin_time)?.toLowerCase?.()?.trim?.() == "all") && (!end_time || getComparableTimeValue(item?.properties?.end_time) <= getComparableTimeValue(end_time) || String(end_time)?.toLowerCase?.()?.trim?.() == "all");
+  const kindMatch = (kind ? item?.kind == kind || kind == "all" : false) || !item?.kind;
+  const statusMatch = (status ? item?.properties?.status == status || status == "all" : !kindMatch) || !item?.properties?.status;
+  return inRange || statusMatch || kindMatch;
+};
+const notInPast = (item, dayDesc = null) => {
+  const kind = typeof dayDesc == "string" ? dayDesc : dayDesc?.kind;
+  const status = typeof dayDesc == "string" ? dayDesc : dayDesc?.status;
+  const end_time = typeof dayDesc == "string" ? dayDesc : dayDesc?.end_time;
+  const now_time = getComparableTimeValue();
+  const inRange = !end_time || getComparableTimeValue(end_time) >= now_time;
+  const kindMatch = (kind ? item?.kind == kind || kind == "all" : false) || !item?.kind;
+  const statusMatch = (status ? item?.properties?.status == status || status == "all" : !kindMatch) || !item?.properties?.status;
+  return inRange || statusMatch || kindMatch;
+};
+const SplitTimelinesByDays = async (timelineMap, daysDesc = null) => {
+  daysDesc ??= observe([]);
+  if (!timelineMap) return daysDesc;
+  for (const timeline of await timelineMap ?? []) {
+    if (timeline?.properties?.begin_time && timeline?.properties?.end_time) {
+      const beginTime = parseDateCorrectly(timeline?.properties?.begin_time);
+      const endTime = parseDateCorrectly(timeline?.properties?.end_time);
+      let day = daysDesc?.find?.((day2) => {
+        return getComparableTimeValue(beginTime) >= getComparableTimeValue(day2?.begin_time) && getComparableTimeValue(endTime) <= getComparableTimeValue(day2?.end_time);
+      }) ?? null;
+      if (!day && getComparableTimeValue(endTime) >= getComparableTimeValue()) {
+        const dayDescriptor = createDayDescriptor(beginTime, { status: "" });
+        if (dayDescriptor) {
+          daysDesc?.push?.(day ??= dayDescriptor);
+        }
+      }
+    }
+  }
+  return daysDesc;
+};
+const computeTimelineOrderInGeneral = (timeOfDay, minTimestamp) => {
+  const dayStart = getComparableTimeValue(timeOfDay) || 0;
+  const normalized = (Number.isFinite(dayStart) ? dayStart : 0) - (minTimestamp || 0);
+  return Math.round(normalized / (24 * 60 * 60 * 1e3));
+};
+const computeTimelineOrderInsideOfDay = (item, dayDesc) => {
+  const beginTime = getComparableTimeValue(item?.properties?.begin_time) || 0;
+  const endTime = getComparableTimeValue(item?.properties?.end_time) || 0;
+  const fallback = Number.isFinite(beginTime) ? beginTime : endTime;
+  if (!Number.isFinite(fallback)) return 0;
+  if (!dayDesc || !dayDesc?.begin_time) {
+    dayDesc = createDayDescriptor(parseDateCorrectly(fallback ?? null));
+  }
+  const dayStart = getComparableTimeValue(dayDesc?.begin_time) || 0;
+  const normalized = Number.isFinite(dayStart) ? fallback - dayStart : fallback;
+  return Math.round(normalized / (60 * 1e3));
+};
+const normalizeSchedule = (value) => {
+  if (!value) return null;
+  if (typeof value === "object" && (value.date || value.iso_date || value.timestamp)) {
+    return value;
+  }
+  return { iso_date: String(value) };
+};
+const formatAsTime = (time) => {
+  const normalized = normalizeSchedule(time);
+  if (!normalized) return "";
+  return parseDateCorrectly(normalized)?.toLocaleTimeString?.("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: getTimeZone()
+  }) || "";
+};
+const formatAsDate = (date) => {
+  return parseDateCorrectly(date)?.toLocaleDateString?.("en-GB", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+    year: "numeric",
+    timeZone: getTimeZone()
+  }) || "";
+};
+const formatDateTime = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(void 0, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+};
 
+"use strict";
 const TIMELINE_DIR = "/timeline/";
+const PREFERENCES_DIR = "/docs/preferences/";
+const PLANS_DIR = "/docs/plans/";
 const FACTORS_DIR = "/data/factors/";
 const EVENTS_DIR = "/data/events/";
+const filterTasks = (timeline, currentTime, maxDays = 7) => {
+  return timeline?.filter?.((task) => checkRemainsTime(task?.properties?.begin_time, task?.properties?.end_time, currentTime, maxDays));
+};
 const filterFactors = (factors, currentTime, maxDays = 7) => {
   return factors?.filter?.((factor) => checkRemainsTime(factor?.properties?.begin_time, factor?.properties?.end_time, currentTime, maxDays));
 };
@@ -1320,5 +2035,5 @@ const requestNewTimeline = async (gptResponses, existsTimeline = null) => {
   return timelines;
 };
 
-export { createTimelineGenerator, fixEntityId, requestNewTimeline, writeTimelineTask };
+export { createDayDescriptor, createTimelineGenerator, fixEntityId, formatDateTime, getISOWeekNumber, getTimeZone, insideOfDay, parseDateCorrectly, requestNewTimeline, writeTimelineTask };
 //# sourceMappingURL=MakeTimeline.js.map

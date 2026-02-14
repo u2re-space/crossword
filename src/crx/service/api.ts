@@ -53,6 +53,14 @@ interface CaptureResult {
 
 const isProbablyUrl = (v: string) => { try { return Boolean(new URL(v)); } catch { return false; } };
 
+const formatRuntimeError = (e: unknown): string => {
+    if (e instanceof Error) {
+        const firstStackLine = e.stack?.split?.("\n")?.[1]?.trim?.();
+        return firstStackLine ? `${e.name}: ${e.message} @ ${firstStackLine}` : `${e.name}: ${e.message}`;
+    }
+    return String(e);
+};
+
 const dataUrlToFile = async (dataUrl: string, name = "snip.png"): Promise<File | Blob> => {
     try {
         const res = await fetch(dataUrl);
@@ -432,7 +440,7 @@ export const enableCapture = (ext: typeof chrome) => {
                     const handler = route[msg.type];
                     sendResponse(handler ? await handler() : { ok: false, error: `Unknown method: ${msg.type}` });
                 } catch (e) {
-                    sendResponse({ ok: false, error: String(e) });
+                    sendResponse({ ok: false, error: formatRuntimeError(e) });
                 }
             })();
             return true;
@@ -458,7 +466,7 @@ export const enableCapture = (ext: typeof chrome) => {
                     });
                     sendResponse(result);
                 } catch (e) {
-                    sendResponse({ ok: false, error: String(e) });
+                    sendResponse({ ok: false, error: formatRuntimeError(e) });
                 }
             })();
             return true;

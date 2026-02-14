@@ -511,7 +511,7 @@ export const applyGridSettings = (settings?: { grid?: GridLayoutSettings }) => {
 };
 
 // Apply grid settings on load
-if (typeof window !== "undefined") {
+if (typeof globalThis !== "undefined") {
     requestAnimationFrame(() => applyGridSettings());
 }
 
@@ -569,7 +569,7 @@ export const parseSpeedDialItemFromURL = (urlText: string, suggestedCell?: GridC
             url = new URL(trimmed);
         } catch {
             try {
-                url = new URL(trimmed, typeof window !== "undefined" ? window.location.href : undefined);
+                url = new URL(trimmed, globalThis?.location?.href);
             } catch {
                 return null;
             }
@@ -618,7 +618,7 @@ export const createSpeedDialItemFromClipboard = async (suggestedCell?: GridCell)
 
         const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed) || /^[^\s]+\.[a-z]{2,}(\/|$)/i.test(trimmed);
 
-        if (isURL && URL.canParse(trimmed, typeof window !== "undefined" ? window.location.origin : undefined)) {
+        if (isURL && URL.canParse(trimmed, globalThis?.location?.origin)) {
             return parseSpeedDialItemFromURL(trimmed, suggestedCell);
         }
 

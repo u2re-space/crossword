@@ -24,9 +24,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="instructions" aria-selected="false">Instructions</button>
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="extension" aria-selected="false" data-extension-tab hidden>Extension</button>
       </div>
+      <span class="note" data-note></span>
       <h2>Settings</h2>
       <button class="btn primary" type="button" data-action="save">Save</button>
-      <span class="note" data-note></span>
     </section>
 
     <section class="card settings-tab-panel" data-tab-panel="appearance">

@@ -158,10 +158,10 @@ export class MinimalShell extends ShellBase {
     }
 
     private getInitialView(): ViewId {
-        if (typeof window === "undefined") return "viewer";
+        if (typeof globalThis === "undefined") return "viewer";
 
         // Get view from pathname (e.g., /viewer, /settings, /workcenter)
-        const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+        const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
 
         if (pathname && isValidNavViewId(pathname)) {
             return pathname;

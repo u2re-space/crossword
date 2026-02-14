@@ -1,39 +1,6 @@
-import { detectExecutionContext } from './Env.js';
-import { createQueuedOptimizedWorkerChannel, createChromeExtensionBroadcast } from './Settings.js';
+import { createChromeExtensionBroadcast, createChromeExtensionRuntimeChannel, createQueuedOptimizedWorkerChannel } from './index.js';
 
-const createChromeExtensionRuntimeChannel = (channelName, options = {}) => {
-  const context = detectExecutionContext();
-  if (context !== "chrome-extension") {
-    return { async request(method) {
-      throw new Error(`Chrome extension messaging not available in ${context}`);
-    }, close() {
-    } };
-  }
-  return {
-    async request(method, args = []) {
-      return new Promise((resolve, reject) => {
-        try {
-          chrome.runtime.sendMessage({
-            id: `crx_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-            type: method,
-            source: context,
-            target: channelName,
-            data: args?.length === 1 ? args[0] : args,
-            metadata: { timestamp: Date.now(), ...options?.metadata ?? {} }
-          }, (response) => {
-            if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-            else resolve(response);
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-    },
-    close() {
-    }
-  };
-};
-
+"use strict";
 const getCrxContext = () => {
   if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
     if (typeof document !== "undefined" && document.contentType) {
@@ -346,8 +313,17 @@ class CrxUnifiedMessaging {
   }
 }
 const crxMessaging = CrxUnifiedMessaging.getInstance();
+function sendCrxMessage(message) {
+  return crxMessaging.sendRuntimeMessage(message);
+}
 function registerCrxHandler(type, handler) {
   crxMessaging.registerRuntimeHandler(type, handler);
+}
+function createCrxWorkerChannel(name, workerScript) {
+  return crxMessaging.createWorkerChannel(name, workerScript);
+}
+function sendToCrxTab(tabId, message) {
+  return crxMessaging.sendToTab(tabId, message);
 }
 function broadcastToCrxTabs(message) {
   return crxMessaging.broadcastToTabs(message);

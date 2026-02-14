@@ -30,7 +30,7 @@ const cleanupToast = initToastReceiver();
 const cleanupClipboard = initClipboardReceiver();
 
 if (typeof window !== "undefined") {
-    window.addEventListener("pagehide", () => { cleanupToast?.(); cleanupClipboard?.(); }, { once: true });
+    globalThis?.addEventListener?.("pagehide", () => { cleanupToast?.(); cleanupClipboard?.(); }, { once: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ const copyOps = new Map<string, (el: HTMLElement) => unknown>([
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     // Selection query
     if (msg?.type === "highlight-selection") {
-        sendResponse({ selection: window.getSelection?.()?.toString?.() ?? "" });
+        sendResponse({ selection: (typeof window != "undefined" ? window : globalThis)?.getSelection()?.toString?.() ?? "" });
         return true;
     }
 
@@ -108,9 +108,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     (async () => {
         try {
-            if (!window.crxSnipSelectRect) await new Promise((r) => setTimeout(r, 100));
-            if (!window.crxSnipSelectRect) throw new Error("Rect selector not available");
-            sendResponse({ rect: await window.crxSnipSelectRect() });
+            if (!(typeof window != "undefined" ? window : globalThis).crxSnipSelectRect) await new Promise((r) => setTimeout(r, 100));
+            if (!(typeof window != "undefined" ? window : globalThis).crxSnipSelectRect) throw new Error("Rect selector not available");
+            sendResponse({ rect: await (typeof window != "undefined" ? window : globalThis)?.crxSnipSelectRect?.() });
         } catch (e) {
             sendResponse({ rect: null, error: e instanceof Error ? e.message : String(e) });
         }
@@ -150,7 +150,7 @@ const showPageNotification = (message: string, type: "success" | "error" | "info
         requestAnimationFrame(() => { el.style.opacity = "1"; el.style.transform = "translateY(0) scale(1)"; });
         setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateY(-20px) scale(0.95)"; setTimeout(() => el.remove(), 400); }, 5000);
     } catch {
-        if ("Notification" in window && Notification.permission === "granted") {
+        if ("Notification" in (typeof window != "undefined" ? window : globalThis) && Notification.permission === "granted") {
             new Notification("CrossWord", { body: message, icon: chrome.runtime.getURL("icons/icon.png") });
         }
     }

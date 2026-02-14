@@ -121,8 +121,8 @@ export class WorkCenterManager {
         }
 
         // Listen for hash changes to update UI elements like drop hints
-        if (typeof window !== 'undefined') {
-            window.addEventListener('hashchange', () => {
+        if (typeof globalThis !== 'undefined') {
+            globalThis?.addEventListener?.('hashchange', () => {
                 // Update drop hints when hash changes
                 this.attachments.updateDropHint?.();
             });

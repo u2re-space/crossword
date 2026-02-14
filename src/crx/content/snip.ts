@@ -71,7 +71,10 @@ const captureTab = async (rect?: CropArea, mode: SnipMode = "recognize") => {
     const result = await module.capture(rect, mode);
 
     if (!result?.ok) {
-        showToast(result?.error ? (result.error.length > 50 ? result.error.slice(0, 50) + "..." : result.error) : meta.error);
+        const rawError = (result?.error || meta.error || "").trim();
+        // Keep diagnostics readable in toast, but don't cut too aggressively.
+        const visibleError = rawError.length > 500 ? `${rawError.slice(0, 500)}\n…` : rawError;
+        showToast(visibleError || meta.error);
     } else if (!result.data) {
         showToast("No text found in selected area");
     }

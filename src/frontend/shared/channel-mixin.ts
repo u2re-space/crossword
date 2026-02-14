@@ -290,7 +290,7 @@ export async function checkAndDeliverShareData(
  * Check URL params for cached content
  */
 export function getContentFromUrlParams(): string | null {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(globalThis?.location?.search);
     return params.get("cached") || params.get("markdown-content");
 }
 

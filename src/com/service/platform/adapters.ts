@@ -69,7 +69,7 @@ const createCrxAdapter = (): PlatformAdapter => ({
 
 	async processImage(dataUrl: string): Promise<string> {
 		try {
-			const isServiceWorker = typeof window === "undefined" || !window.document;
+			const isServiceWorker = typeof globalThis === "undefined" || !globalThis?.document;
 
 			if (isServiceWorker) {
 				console.warn("[RecognizeData] Image processing not available in service worker context");

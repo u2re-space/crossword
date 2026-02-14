@@ -316,7 +316,9 @@ function rtrim(str, c, invert) {
   let suffLen = 0;
   while (suffLen < l) {
     const currChar = str.charAt(l - suffLen - 1);
-    if (currChar === c && true) {
+    if (currChar === c && !invert) {
+      suffLen++;
+    } else if (currChar !== c && invert) {
       suffLen++;
     } else {
       break;

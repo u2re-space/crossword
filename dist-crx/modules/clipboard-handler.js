@@ -1,5 +1,6 @@
 import { toText } from './Clipboard.js';
 
+"use strict";
 const tryParseJson = (input) => {
   const trimmed = input.trim();
   if (!trimmed) return null;
@@ -78,7 +79,7 @@ const writeTextWithRAF = async (text, maxRetries = 3) => {
         timerFn(() => {
           if (detectContext() === "content" && typeof document !== "undefined" && document.hasFocus && !document.hasFocus()) {
             try {
-              window.focus();
+              globalThis?.focus?.();
             } catch {
             }
           }

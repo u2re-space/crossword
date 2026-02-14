@@ -49,7 +49,7 @@ export const writeText = async (text: string): Promise<ClipboardResult> => {
         requestAnimationFrame(() => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
-                window.focus();
+                globalThis?.focus?.();
             }
 
             // Try direct clipboard API first
@@ -115,7 +115,7 @@ export const writeHTML = async (html: string, plainText?: string): Promise<Clipb
         requestAnimationFrame(() => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
-                window.focus();
+                globalThis?.focus?.();
             }
 
             const tryHTMLClipboard = async () => {
@@ -153,7 +153,7 @@ export const writeImage = async (blob: Blob | string): Promise<ClipboardResult> 
         requestAnimationFrame(async () => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
-                window.focus();
+                globalThis?.focus?.();
             }
 
             try {

@@ -10,7 +10,7 @@ const isExtension = () => {
         return (
             typeof chrome !== "undefined" &&
             Boolean((chrome as any)?.runtime?.id) &&
-            window.location.protocol === "chrome-extension:"
+            globalThis?.location?.protocol === "chrome-extension:"
         );
     } catch {
         return false;
@@ -123,18 +123,18 @@ class AssetUpdateManager {
      */
     startPeriodicChecks(intervalMs = 5 * 60 * 1000): void { // 5 minutes default
         if (this.updateCheckInterval) {
-            clearInterval(this.updateCheckInterval);
+            globalThis?.clearInterval?.(this.updateCheckInterval);
         }
 
-        this.updateCheckInterval = window.setInterval(async () => {
+        this.updateCheckInterval = globalThis?.setInterval?.(async () => {
             const updatedAssets = await this.checkAllAssets();
             if (updatedAssets.length > 0) {
                 console.log('[AssetUpdate] Updated assets detected:', updatedAssets);
-                window.dispatchEvent(new CustomEvent('assets-updated', {
+                globalThis?.dispatchEvent?.(new CustomEvent('assets-updated', {
                     detail: { updatedAssets }
                 }));
             }
-        }, intervalMs);
+        }, intervalMs) as unknown as number | null;
     }
 
     /**
@@ -194,14 +194,14 @@ function showReloadNotification(): void {
         }
         if (countdown <= 0) {
             clearInterval(countdownInterval);
-            window.location.reload();
+            globalThis?.location?.reload?.();
         }
     }, 1000);
 
     // Allow immediate reload on click
     notification.addEventListener('click', () => {
         clearInterval(countdownInterval);
-        window.location.reload();
+        globalThis?.location?.reload?.();
     });
 }
 
@@ -254,7 +254,7 @@ class ServiceWorkerUpdateManager {
                     }
                 } else if (newWorker.state === 'activated') {
                     console.log('[SW] New service worker activated');
-                    window.dispatchEvent(new CustomEvent('sw-activated', {
+                    globalThis?.dispatchEvent?.(new CustomEvent('sw-activated', {
                         detail: { registration: this.registration }
                     }));
                 }
@@ -264,7 +264,7 @@ class ServiceWorkerUpdateManager {
         // Handle controller change (new SW takes control)
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             console.log('[SW] Controller changed - new service worker active');
-            window.dispatchEvent(new CustomEvent('sw-controller-changed'));
+            globalThis?.dispatchEvent?.(new CustomEvent('sw-controller-changed'));
         });
 
         // Listen for messages from service worker
@@ -301,7 +301,7 @@ class ServiceWorkerUpdateManager {
 
     private startPeriodicUpdates(): void {
         // Check for updates every 30 minutes
-        setInterval(() => {
+        globalThis?.setInterval?.(() => {
             this.registration?.update().catch(console.warn);
         }, 30 * 60 * 1000);
     }
@@ -375,7 +375,7 @@ class ServiceWorkerUpdateManager {
         document.body.appendChild(this.updateToast);
 
         // Dispatch event for app components to handle
-        window.dispatchEvent(new CustomEvent('sw-update-notification-shown'));
+        globalThis?.dispatchEvent?.(new CustomEvent('sw-update-notification-shown'));
     }
 
     private hideUpdateNotification(): void {
@@ -400,7 +400,7 @@ class ServiceWorkerUpdateManager {
         }
 
         // Reload the page to activate new SW and clear caches
-        window.location.reload();
+        globalThis?.location?.reload?.();
     }
 
     /**
@@ -419,8 +419,8 @@ export const initPWA = async () => {
 
     try {
         // Check if we're running as a PWA
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-            (window.navigator as any)?.standalone === true;
+        const isStandalone = globalThis?.matchMedia?.('(display-mode: standalone)').matches ||
+            (globalThis?.navigator as any)?.standalone === true;
 
         if (isStandalone) {
             console.log('[PWA] Running in standalone mode');
@@ -435,7 +435,7 @@ export const initPWA = async () => {
         const registration = await swManager.register();
 
         // Listen for asset updates
-        window.addEventListener('assets-updated', (event: any) => {
+        globalThis?.addEventListener?.('assets-updated', (event: any) => {
             const { updatedAssets } = event.detail;
             console.log('[PWA] Assets updated:', updatedAssets);
 
@@ -453,19 +453,19 @@ export const initPWA = async () => {
 
         // Handle install prompt for PWA
         let deferredPrompt: any = null;
-        window.addEventListener('beforeinstallprompt', (e) => {
+        globalThis?.addEventListener?.('beforeinstallprompt', (e) => {
             console.log('[PWA] Install prompt available');
             e.preventDefault();
             deferredPrompt = e;
 
             // Dispatch event for app to show install button
-            window.dispatchEvent(new CustomEvent('pwa-install-available', {
+            globalThis?.dispatchEvent?.(new CustomEvent('pwa-install-available', {
                 detail: { prompt: deferredPrompt }
             }));
         });
 
         // Handle successful installation
-        window.addEventListener('appinstalled', () => {
+        globalThis?.addEventListener?.('appinstalled', () => {
             console.log('[PWA] App installed successfully');
             deferredPrompt = null;
         });
@@ -505,13 +505,13 @@ export const checkForUpdates = async (): Promise<void> => {
         const updatedAssets = await assetManager.checkAllAssets();
         if (updatedAssets.length > 0) {
             console.log('[PWA] Asset updates found:', updatedAssets);
-            window.dispatchEvent(new CustomEvent('assets-updated', {
+            globalThis?.dispatchEvent?.(new CustomEvent('assets-updated', {
                 detail: { updatedAssets }
             }));
         } else {
             console.log('[PWA] No updates found');
             // Could dispatch an event to show "up to date" message
-            window.dispatchEvent(new CustomEvent('app-up-to-date'));
+            globalThis?.dispatchEvent?.(new CustomEvent('app-up-to-date'));
         }
     } catch (error) {
         console.error('[PWA] Manual update check failed:', error);
@@ -534,7 +534,7 @@ export const forceRefreshAssets = async (): Promise<void> => {
         console.log('[PWA] All caches cleared');
 
         // Reload the page to fetch fresh assets
-        window.location.reload();
+        globalThis?.location?.reload?.();
     } catch (error) {
         console.error('[PWA] Failed to force refresh assets:', error);
         throw error;

@@ -59,10 +59,9 @@ const getNormalizedPathname = (): string => {
 
 const isExtension = (): boolean => {
     try {
-        return (
-            window.location.protocol === "chrome-extension:" ||
-            (typeof chrome !== "undefined" && Boolean(chrome?.runtime?.id))
-        );
+        const location = globalThis.location;
+        const chrome = (typeof chrome != "undefined") ? chrome : (globalThis as any).chrome;
+        return location.protocol === "chrome-extension:" || Boolean(chrome?.runtime?.id);
     } catch {
         return false;
     }
@@ -70,8 +69,8 @@ const isExtension = (): boolean => {
 
 const isPwaDisplayMode = (): boolean => {
     if (isExtension()) return false;
-    return window.matchMedia("(display-mode: standalone)").matches ||
-           (window.navigator as any).standalone === true;
+    return matchMedia("(display-mode: standalone)").matches ||
+           (globalThis?.navigator as any)?.standalone === true;
 };
 
 /**
@@ -269,7 +268,7 @@ export default async function index(mountElement: HTMLElement) {
 
         // Get current route
         const pathname = getNormalizedPathname();
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(globalThis?.location?.search);
         const sharedFlag = urlParams.get('shared');
         const markdownContent = urlParams.get('markdown-content');
 
@@ -320,7 +319,7 @@ export default async function index(mountElement: HTMLElement) {
             if (shouldSkipBootMenu()) {
                 console.log('[Index] Skipping boot menu (remembered preference)');
                 // Redirect to default view
-                window.location.href = "/viewer";
+                globalThis.location.href = "/viewer";
                 return;
             }
 
@@ -343,7 +342,7 @@ export default async function index(mountElement: HTMLElement) {
 
         // Unknown route → redirect to viewer
         console.log('[Index] Unknown route, redirecting to /viewer');
-        window.location.href = "/viewer";
+        globalThis.location.href = "/viewer";
 
     } catch (error) {
         console.error('[Index] Frontend loader failed:', error);

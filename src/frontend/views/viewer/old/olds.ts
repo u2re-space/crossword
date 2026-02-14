@@ -253,12 +253,12 @@ export class MarkdownViewer {
             }
 
             // Try to use the server-side print route first
-            const printUrl = new URL('/print', window.location.origin);
+            const printUrl = new URL('/print', globalThis?.location?.origin);
             printUrl.searchParams.set('content', viewElement.innerHTML);
             printUrl.searchParams.set('title', this.options.title || 'Markdown Content');
 
             // Open print URL in new window
-            const printWindow = window.open(printUrl.toString(), '_blank', 'width=800,height=600');
+            const printWindow = globalThis?.open(printUrl.toString(), '_blank', 'width=800,height=600');
             if (!printWindow) {
                 console.warn('[MarkdownViewer] Failed to open print window - popup blocked?');
                 // Fallback: trigger browser print dialog on current content
@@ -283,7 +283,7 @@ export class MarkdownViewer {
         if (viewElement) {
             viewElement.setAttribute('data-print', 'true');
             // Trigger print dialog
-            window.print();
+            globalThis?.print?.();
             // Remove print attribute after printing
             setTimeout(() => {
                 viewElement.removeAttribute('data-print');

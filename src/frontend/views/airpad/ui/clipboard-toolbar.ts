@@ -12,7 +12,7 @@ import {
 } from '../network/websocket';
 
 function setPreview(text: string, meta?: { source?: string }) {
-    if (!clipboardPreviewEl) return;
+    if (!clipboardPreviewEl || typeof clipboardPreviewEl === 'undefined') return;
 
     const source = meta?.source ? String(meta.source) : 'pc';
     const safeText = String(text ?? '');
@@ -39,7 +39,7 @@ async function readPhoneClipboardText(): Promise<string> {
         return await nav.clipboard.readText();
     }
     // Fallback
-    return window.prompt('Вставь текст из телефона (clipboard readText недоступен):', '') || '';
+    return globalThis?.prompt?.('Вставь текст из телефона (clipboard readText недоступен):', '') || '';
 }
 
 async function tryWritePhoneClipboardText(text: string): Promise<boolean> {

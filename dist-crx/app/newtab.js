@@ -1,9 +1,13 @@
 import { crxFrontend } from '../modules/crx-entry.js';
 import { loadSettings } from '../modules/Settings.js';
-import '../modules/Env.js';
+import '../modules/index.js';
 import '../modules/UnifiedMessaging.js';
-import '../modules/templates.js';
+import '../modules/BuiltInAI.js';
+import '../modules/Clipboard.js';
 
+const index_html_htmlProxy_inlineCss_index_0 = '';
+
+"use strict";
 const mount = document.getElementById("app");
 const renderDisabled = () => {
   const root = document.createElement("div");

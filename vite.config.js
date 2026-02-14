@@ -50,6 +50,11 @@ const crxInputs = {
 };
 
 const createCrxConfig = () => {
+    // Diagnostic-first CRX build:
+    // keep symbol names and disable aggressive optimizations to make
+    // runtime errors (ReferenceError/undefined) traceable in the extension.
+    const debugCrxBundle = true;
+
     const crxPlugin = crx({
         manifest,
         browser: "chrome",
@@ -97,12 +102,20 @@ const createCrxConfig = () => {
             lib: undefined,
             // Disable modulePreload for CRX - causes broken imports with __vitePreload
             modulePreload: false,
-            // DEBUG: Disable minification and enable source maps for debugging
+            // DEBUG: disable minification and keep source maps
             minify: false,
             sourcemap: true,
             terserOptions: undefined,
+            // Also disable esbuild-level identifier mangling for diagnostics.
+            ...(debugCrxBundle ? {
+                reportCompressedSize: false,
+                cssMinify: false,
+            } : {}),
             rollupOptions: {
                 ...baseRollup,
+                ...(debugCrxBundle ? {
+                    treeshake: false,
+                } : {}),
                 input: crxInputs,
                 output: {
                     ...crxOutput,
@@ -113,7 +126,13 @@ const createCrxConfig = () => {
                     minifyInternalExports: false,
                 }
             }
-        }
+        },
+        esbuild: debugCrxBundle ? {
+            keepNames: true,
+            minifyIdentifiers: false,
+            minifySyntax: false,
+            minifyWhitespace: false,
+        } : undefined,
     };
 };
 

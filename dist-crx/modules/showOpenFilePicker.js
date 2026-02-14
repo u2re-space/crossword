@@ -4,7 +4,7 @@ const { showOpenFilePicker, showSaveFilePicker } = globalThis.showOpenFilePicker
     const mapOfFiles = new WeakMap();
     const prototypeOfFileSystemHandle = FileSystemHandle.prototype;
     const prototypeOfFileSystemFileHandle = FileSystemFileHandle.prototype;
-    document.createElement('a');
+    const a = document.createElement('a');
 
     const getFileHandle = file => {
         const fileHandle = {
@@ -16,9 +16,85 @@ const { showOpenFilePicker, showSaveFilePicker } = globalThis.showOpenFilePicker
 
     const getAcceptType = type => values(Object(type?.accept)).join(',');
 
-    const { getOwnPropertyDescriptors, values } = Object;
+    const { create, defineProperties, getOwnPropertyDescriptors, values } = Object;
     const { name, kind, ...descriptorsOfFileSystemHandle }  = getOwnPropertyDescriptors(prototypeOfFileSystemHandle);
     const { getFile, ...descriptorsOfFileSystemFileHandle } = getOwnPropertyDescriptors(prototypeOfFileSystemFileHandle);
+
+    /*
+    defineProperties(prototypeOfFileSystemHandle, {
+        ...descriptorsOfFileSystemHandle,
+        ...getOwnPropertyDescriptors({
+            get name() {
+                return mapOfFiles.get(this)?.name ?? name.call(this)
+            },
+            get kind() {
+                return mapOfFiles.has(this) ? 'file' : kind.call(this)
+            },
+        }),
+    })
+
+    defineProperties(prototypeOfFileSystemFileHandle, {
+        ...descriptorsOfFileSystemFileHandle,
+        ...getOwnPropertyDescriptors({
+            async getFile() {
+                return await (mapOfFiles?.get?.(this) || getFile?.call?.(this))
+            },
+            async createWritable() {
+                const stream = new FileSystemWritableFileStream()
+                mapOfFiles?.set(stream, mapOfFiles?.get?.(this))
+                return stream
+            },
+        }),
+    })*/
+
+    //
+    class FileSystemWritableFileStream extends WritableStream {
+        constructor() {
+            const answer = super({
+                write: async (chunk) => {
+                    const file = mapOfFiles.get(this);
+                    mapOfFiles?.set?.(this, new File([
+                        file,
+                        chunk instanceof Blob || chunk instanceof Uint8Array || typeof chunk === 'string'
+                            ? chunk
+                            : ArrayBuffer.isView(chunk) || chunk instanceof ArrayBuffer
+                                ? new Uint8Array(chunk)
+                                : chunk instanceof DataView
+                                    ? new Uint8Array(chunk.buffer)
+                                    : new Uint8Array(new TextEncoder().encode(String(chunk))),
+                    ], file.name, {
+                        type: file.type,
+                        lastModified: file.lastModified,
+                    }));
+                },
+            });
+            mapOfFiles?.set?.(answer, new File([], 'Untitled.txt', { type: 'text/plain' }));
+        }
+
+        async write(data) {
+            const writer = this.getWriter();
+            await writer.write(data);
+            writer.releaseLock();
+        }
+
+        async close() {
+            const file = mapOfFiles.get(this);
+            if (file != null) {
+                const url = URL.createObjectURL(file);
+
+                document.documentElement.append(a);
+
+                a.href = url;
+                a.download = file.name;
+                a.type = file.type;
+
+                a.click();
+                a.remove();
+
+                URL.revokeObjectURL(url);
+            }
+        }
+    }
 
     return {
         showOpenFilePicker(options = null) {

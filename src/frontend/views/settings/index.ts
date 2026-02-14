@@ -256,7 +256,7 @@ export class SettingsView implements View {
         const root = this.element?.closest("[data-shell]") as HTMLElement | null;
         if (!root) return;
         const resolved = theme === "auto"
-            ? (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light")
+            ? (globalThis?.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light")
             : theme;
         root.dataset.theme = resolved;
         root.style.colorScheme = resolved;

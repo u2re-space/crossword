@@ -1,3 +1,5 @@
+import { scheduleFrame } from "@rs-core/utils/Runtime";
+
 /**
  * Standalone Toast System
  * Works independently in any context: PWA, Chrome Extension (content script, popup, service worker), vanilla JS
@@ -107,7 +109,9 @@ const TOAST_STYLES = `
     font-weight: var(--toast-font-weight, 500);
     letter-spacing: 0.01em;
     line-height: 1.4;
-    white-space: nowrap;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 
     pointer-events: auto;
     user-select: none;
@@ -242,9 +246,6 @@ export const showToast = (options: ToastOptions | string): HTMLElement | null =>
         return null;
     }
 
-    // Check for window availability
-    if (typeof window === "undefined") return null;
-
     const config: Required<ToastLayerConfig> = {
         ...DEFAULT_CONFIG,
         position
@@ -268,7 +269,7 @@ export const showToast = (options: ToastOptions | string): HTMLElement | null =>
     layer.appendChild(toast);
 
     // Trigger enter animation
-    requestAnimationFrame(() => {
+    scheduleFrame(() => {
         toast.setAttribute("data-visible", "");
     });
 
@@ -276,7 +277,7 @@ export const showToast = (options: ToastOptions | string): HTMLElement | null =>
 
     const removeToast = () => {
         if (hideTimer !== null) {
-            window.clearTimeout(hideTimer);
+            globalThis.clearTimeout(hideTimer);
             hideTimer = null;
         }
         toast.removeAttribute("data-visible");
@@ -292,7 +293,7 @@ export const showToast = (options: ToastOptions | string): HTMLElement | null =>
 
     // Auto-remove after duration (unless persistent)
     if (!persistent) {
-        hideTimer = window.setTimeout(removeToast, duration);
+        hideTimer = globalThis.setTimeout(removeToast, duration) as unknown as number | null;
     }
 
     // Click handler (dismisses toast)
@@ -304,7 +305,7 @@ export const showToast = (options: ToastOptions | string): HTMLElement | null =>
     // Pointer down handler (dismisses toast on tap/click)
     toast.addEventListener("pointerdown", () => {
         if (hideTimer !== null) {
-            window.clearTimeout(hideTimer);
+            globalThis.clearTimeout(hideTimer);
             hideTimer = null;
         }
         removeToast();

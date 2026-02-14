@@ -30,18 +30,18 @@ export function getToggleButton(): HTMLElement | null {
     return toggleButton;
 }
 
-if ('visualViewport' in window) {
+if ('visualViewport' in globalThis) {
     const VIEWPORT_VS_CLIENT_HEIGHT_RATIO = 0.75;
-    window.visualViewport.addEventListener('resize', function (event) {
+    globalThis?.visualViewport?.addEventListener?.('resize', function (event) {
         if (
-            (event.target.height * event.target.scale) / window.screen.height <
+            (event.target.height * event.target.scale) / globalThis?.screen?.height <
             VIEWPORT_VS_CLIENT_HEIGHT_RATIO
         ) keyboardVisible = true;
         else keyboardVisible = false;
     });
 }
 
-if ('virtualKeyboard' in navigator) {
+if ('virtualKeyboard' in globalThis?.navigator) {
     // Tell the browser you are taking care of virtual keyboard occlusions yourself.
     navigator.virtualKeyboard.overlaysContent = true;
     navigator.virtualKeyboard.addEventListener('geometrychange', (event) => {

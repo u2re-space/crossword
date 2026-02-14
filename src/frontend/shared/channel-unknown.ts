@@ -139,7 +139,7 @@ const isLikelyExtension = () => {
         return (
             typeof chrome !== "undefined" &&
             Boolean((chrome as any)?.runtime?.id) &&
-            window.location.protocol === "chrome-extension:"
+            globalThis?.location?.protocol === "chrome-extension:"
         );
     } catch {
         return false;
@@ -149,7 +149,7 @@ const isLikelyExtension = () => {
 // Hash location management
 const getViewFromHash = (): ShellView | null => {
     if (typeof window === "undefined") return null;
-    const hash = window.location.hash;
+    const hash = globalThis?.location?.hash;
     return (HASH_VIEW_MAPPING as any)[hash] || null;
 };
 
@@ -157,12 +157,12 @@ const setViewHash = (view: ShellView): void => {
     if (typeof window === "undefined") return;
     const hash = (VIEW_HASH_MAPPING as any)[view];
     if (hash) {
-        window.history.replaceState(null, '', hash);
+        globalThis?.history?.replaceState?.(null, '', hash);
     }
 };
 
 const applyTheme = (root: HTMLElement, theme: AppSettings["appearance"] extends infer A ? (A extends { theme?: infer T } ? T : never) : never) => {
-    const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    const prefersDark = typeof window !== "undefined" && globalThis?.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
     const resolved = theme === "dark" ? "dark" : theme === "light" ? "light" : prefersDark ? "dark" : "light";
     root.dataset.theme = resolved;
     // Drive scheme-aware styling (used by the markdown-view styles).
@@ -214,16 +214,16 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
     }
 
     // Add debug functions to window for troubleshooting icon issues
-    if (typeof window !== "undefined") {
-        (window as any).clearIconCaches = () => {
+    if (typeof window !== "undefined" && typeof window != "undefined") {
+        globalThis.clearIconCaches = () => {
             clearIconCaches();
             clearIconCache().catch(console.error);
             console.log('[Debug] Icon caches cleared');
         };
-        (window as any).invalidateIconCache = clearIconCaches; // Alias for easier access
-        (window as any).testIconRacing = testIconRacing; // Test racing functionality
-        (window as any).reinitializeIconRegistry = reinitializeRegistry; // Reinitialize registry
-        (window as any).debugIconSystem = debugIconSystem; // Debug icon system status
+        globalThis.invalidateIconCache = clearIconCaches; // Alias for easier access
+        globalThis.testIconRacing = testIconRacing; // Test racing functionality
+        globalThis.reinitializeIconRegistry = reinitializeRegistry; // Reinitialize registry
+        globalThis.debugIconSystem = debugIconSystem; // Debug icon system status
     }
 
     const ext = isLikelyExtension();
@@ -271,7 +271,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
     const templateManager = createTemplateManager();
 
     // Determine initial view based on content availability
-    const hasExistingContent = localStorage.getItem("rs-markdown") || options.initialMarkdown;
+    const hasExistingContent = globalThis?.localStorage?.getItem?.("rs-markdown") || options.initialMarkdown;
     const defaultView = options.initialView || (hasExistingContent ? "markdown-viewer" : "file-picker");
 
     /**
@@ -618,7 +618,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
                 const printableContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 
                 // Open print dialog with the content
-                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                const printWindow = globalThis?.open?.('', '_blank', 'width=800,height=600');
                 if (printWindow) {
                     printWindow.document.write(`
                         <!DOCTYPE html>
@@ -655,7 +655,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
         };
 
         // Listen for hash changes
-        window.addEventListener('hashchange', handleHashChange);
+        globalThis?.addEventListener?.('hashchange', handleHashChange);
 
         // Check initial hash
         const initialHashView = getViewFromHash();
@@ -1415,7 +1415,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
                         const printableContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 
                         // Open print dialog
-                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+                        const printWindow = globalThis?.open?.('', '_blank', 'width=800,height=600');
                         if (printWindow) {
                             printWindow.document.write(`
                                 <!DOCTYPE html>
@@ -1462,8 +1462,8 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
 
         try {
             // Use File System Access API if available
-            if ('showSaveFilePicker' in window) {
-                const handle = await (window as any).showSaveFilePicker({
+            if ('showSaveFilePicker' in globalThis) {
+                const handle = await globalThis?.showSaveFilePicker?.({
                     suggestedName: 'document.md',
                     types: [{
                         description: 'Markdown Files',
@@ -1980,7 +1980,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
                             chrome.tabs.sendMessage(tabId, { type: "START_SNIP" })?.catch?.(() => void 0);
                         }
                         try {
-                            window.close?.();
+                            globalThis?.close?.();
                         } catch {
                             // ignore
                         }

@@ -286,9 +286,9 @@ export class QuillEditor {
             clearTimeout(this.autoSaveTimeout);
         }
 
-        this.autoSaveTimeout = window.setTimeout(() => {
+        this.autoSaveTimeout = globalThis?.setTimeout?.(() => {
             this.save();
-        }, this.options.autoSaveDelay);
+        }, this.options.autoSaveDelay) as any;
     }
 
     private downloadContent(content: string, filename: string, mimeType: string): void {
@@ -310,7 +310,7 @@ export class QuillEditor {
      */
     destroy(): void {
         if (this.autoSaveTimeout) {
-            clearTimeout(this.autoSaveTimeout);
+            globalThis?.clearTimeout?.(this.autoSaveTimeout);
         }
 
         if (this.quill) {

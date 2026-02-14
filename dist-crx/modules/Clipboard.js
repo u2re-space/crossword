@@ -1,3 +1,4 @@
+"use strict";
 const CLIPBOARD_CHANNEL = "rs-clipboard";
 const toText = (data) => {
   if (data == null) return "";
@@ -14,7 +15,7 @@ const writeText = async (text) => {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
       if (typeof document !== "undefined" && document.hasFocus && !document.hasFocus()) {
-        window.focus();
+        globalThis?.focus?.();
       }
       const tryClipboardAPI = async () => {
         try {
@@ -65,7 +66,7 @@ const writeHTML = async (html, plainText) => {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
       if (typeof document !== "undefined" && document.hasFocus && !document.hasFocus()) {
-        window.focus();
+        globalThis?.focus?.();
       }
       const tryHTMLClipboard = async () => {
         try {
@@ -94,7 +95,7 @@ const writeImage = async (blob) => {
   return new Promise((resolve) => {
     requestAnimationFrame(async () => {
       if (typeof document !== "undefined" && document.hasFocus && !document.hasFocus()) {
-        window.focus();
+        globalThis?.focus?.();
       }
       try {
         let imageBlob;
@@ -164,6 +165,25 @@ const convertToPng = async (blob) => {
     img.src = url;
   });
 };
+const readText = async () => {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      const tryReadClipboard = async () => {
+        try {
+          if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+            const text = await navigator.clipboard.readText();
+            resolve({ ok: true, data: text, method: "clipboard-api" });
+            return;
+          }
+        } catch (err) {
+          console.warn("[Clipboard] Read failed:", err);
+        }
+        resolve({ ok: false, error: "Clipboard read not available" });
+      };
+      tryReadClipboard();
+    });
+  });
+};
 const copy = async (data, options = {}) => {
   const { type, showFeedback = false, silentOnError = false } = options;
   return new Promise((resolve) => {
@@ -206,6 +226,15 @@ const broadcastClipboardFeedback = (result) => {
     console.warn("[Clipboard] Feedback broadcast failed:", e);
   }
 };
+const requestCopy = (data, options) => {
+  try {
+    const channel = new BroadcastChannel(CLIPBOARD_CHANNEL);
+    channel.postMessage({ type: "copy", data, options });
+    channel.close();
+  } catch (e) {
+    console.warn("[Clipboard] Request broadcast failed:", e);
+  }
+};
 const listenForClipboardRequests = () => {
   if (typeof BroadcastChannel === "undefined") return () => {
   };
@@ -229,6 +258,98 @@ const listenForClipboardRequests = () => {
 const initClipboardReceiver = () => {
   return listenForClipboardRequests();
 };
+const isClipboardAvailable = () => {
+  return typeof navigator !== "undefined" && !!navigator.clipboard;
+};
+const isClipboardWriteAvailable = () => {
+  return typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
+};
+const isChromeExtension = () => {
+  try {
+    return typeof chrome !== "undefined" && !!chrome?.runtime?.id;
+  } catch {
+    return false;
+  }
+};
+const requestCopyViaCRX = async (data, tabIdOrOptions) => {
+  const options = typeof tabIdOrOptions === "number" ? { tabId: tabIdOrOptions } : tabIdOrOptions || {};
+  const { tabId, offscreenFallback } = options;
+  const text = toText(data).trim();
+  if (!text) return { ok: false, error: "Empty content" };
+  if (isChromeExtension() && typeof chrome?.tabs?.sendMessage === "function") {
+    try {
+      if (typeof tabId === "number" && tabId >= 0) {
+        const response = await chrome.tabs.sendMessage(tabId, {
+          type: "COPY_HACK",
+          data: text
+        });
+        if (response?.ok) {
+          return {
+            ok: true,
+            data: response?.data,
+            method: response?.method ?? "broadcast"
+          };
+        }
+      } else {
+        const tabs = await chrome.tabs.query({ currentWindow: true, active: true });
+        for (const tab of tabs || []) {
+          if (tab?.id != null && tab.id >= 0) {
+            try {
+              const response = await chrome.tabs.sendMessage(tab.id, {
+                type: "COPY_HACK",
+                data: text
+              });
+              if (response?.ok) {
+                return {
+                  ok: true,
+                  data: response?.data,
+                  method: response?.method ?? "broadcast"
+                };
+              }
+            } catch {
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[Clipboard] CRX content script message failed:", err);
+    }
+    if (offscreenFallback) {
+      try {
+        const ok = await offscreenFallback(text);
+        if (ok) {
+          return { ok: true, data: text, method: "offscreen" };
+        }
+      } catch (err) {
+        console.warn("[Clipboard] Offscreen fallback failed:", err);
+      }
+    }
+  }
+  requestCopy(data, { showFeedback: true });
+  return { ok: false, error: "Broadcast sent, result pending", method: "broadcast" };
+};
+const COPY_HACK = async (data) => {
+  const result = await writeText(toText(data));
+  return result.ok;
+};
+const copyWithResult = async (data) => {
+  return writeText(toText(data));
+};
+const Clipboard = {
+  copy,
+  writeText,
+  writeHTML,
+  writeImage,
+  readText,
+  toText,
+  request: requestCopy,
+  requestViaCRX: requestCopyViaCRX,
+  listen: listenForClipboardRequests,
+  init: initClipboardReceiver,
+  isAvailable: isClipboardAvailable,
+  isWriteAvailable: isClipboardWriteAvailable,
+  isChromeExtension
+};
 
-export { initClipboardReceiver, toText, writeHTML, writeText };
+export { COPY_HACK, copy, copyWithResult, Clipboard as default, initClipboardReceiver, isChromeExtension, isClipboardAvailable, isClipboardWriteAvailable, listenForClipboardRequests, readText, requestCopy, requestCopyViaCRX, toText, writeHTML, writeImage, writeText };
 //# sourceMappingURL=Clipboard.js.map

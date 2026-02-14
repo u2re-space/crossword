@@ -63,17 +63,17 @@ interface BeforeInstallPromptEvent extends Event {
  * Setup install prompt handling - call this early in app initialization
  */
 export function setupInstallPrompt(): void {
-    window.addEventListener("beforeinstallprompt", (e) => {
+    globalThis?.addEventListener?.("beforeinstallprompt", (e) => {
         e.preventDefault();
         deferredPrompt = e as BeforeInstallPromptEvent;
         console.log("[PWA] Install prompt available");
-        window.dispatchEvent(new CustomEvent("pwa-install-available"));
+        globalThis?.dispatchEvent?.(new CustomEvent("pwa-install-available"));
     });
 
-    window.addEventListener("appinstalled", () => {
+    globalThis?.addEventListener?.("appinstalled", () => {
         deferredPrompt = null;
         console.log("[PWA] App installed");
-        window.dispatchEvent(new CustomEvent("pwa-installed"));
+        globalThis?.dispatchEvent?.(new CustomEvent("pwa-installed"));
     });
 }
 
@@ -113,7 +113,7 @@ export function isInstallPromptAvailable(): boolean {
  * Apply pending update by reloading the page
  */
 export function applyUpdate(): void {
-    window.location.reload();
+    globalThis?.location?.reload?.();
 }
 
 // ============================================================================
@@ -137,12 +137,12 @@ export function onConnectivityChange(
     const handleOnline = () => callback(true);
     const handleOffline = () => callback(false);
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    globalThis?.addEventListener?.("online", handleOnline);
+    globalThis?.addEventListener?.("offline", handleOffline);
 
     return () => {
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
+        globalThis?.removeEventListener?.("online", handleOnline);
+        globalThis?.removeEventListener?.("offline", handleOffline);
     };
 }
 
@@ -155,9 +155,9 @@ export function onConnectivityChange(
  */
 export function isStandalone(): boolean {
     return (
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes("android-app://")
+        globalThis?.matchMedia?.("(display-mode: standalone)").matches ||
+        (globalThis.navigator as any).standalone === true ||
+        (typeof document != "undefined" ? document.referrer : globalThis.document.referrer).includes("android-app://")
     );
 }
 
@@ -168,10 +168,10 @@ export function isStandalone(): boolean {
 export function onDisplayModeChange(
     callback: (standalone: boolean) => void
 ): () => void {
-    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const mediaQuery = globalThis?.matchMedia?.("(display-mode: standalone)");
     const handler = (e: MediaQueryListEvent) => callback(e.matches);
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+    mediaQuery?.addEventListener?.("change", handler);
+    return () => mediaQuery?.removeEventListener?.("change", handler);
 }
 
 // ============================================================================

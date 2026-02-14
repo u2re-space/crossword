@@ -1,9 +1,11 @@
 import { crxFrontend } from '../modules/crx-entry.js';
 import '../modules/Settings.js';
-import '../modules/Env.js';
+import '../modules/index.js';
 import '../modules/UnifiedMessaging.js';
-import '../modules/templates.js';
+import '../modules/BuiltInAI.js';
+import '../modules/Clipboard.js';
 
+"use strict";
 const rawPre = document.getElementById("raw-md");
 const appDiv = document.getElementById("app");
 const VIRTUAL_VIEW_TOKEN = "${view}";

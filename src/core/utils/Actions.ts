@@ -12,6 +12,7 @@ import { NAVIGATION_SHORTCUTS, snapshotSpeedDialItem } from "@rs-core/storage/St
 import { JSOX } from "jsox";
 import { stringRef } from "fest-src/fest/object/index";
 import { writeText, readText } from "@rs-core/modules/Clipboard";
+import { canParseURL } from "@rs-core/utils/Runtime";
 
 //
 const SERVICE_UUID = '12345678-1234-5678-1234-5678abcdef01';
@@ -283,7 +284,7 @@ let lastSpeechRecogTime = 0;
 
 //
 function isSameOrigin(url: string) {
-    return new URL(url, window.location.href).origin === window.location.origin;
+    return new URL(url, globalThis?.location?.href).origin === globalThis?.location?.origin;
 }
 
 //
@@ -366,7 +367,7 @@ export const actionRegistry = new Map<string, (entityItem: EntityInterface<any, 
             return clientShare({ title: 'Shared by CW from clipboard...', files: multipleFiles as any })?.catch?.(console.warn.bind(console));
         } else
         if (fileToShare) {
-            if ((fileToShare as any) instanceof URL || URL.canParse(fileToShare?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
+            if ((fileToShare as any) instanceof URL || canParseURL(fileToShare?.trim?.() || "")) {
                 return clientShare({ url: (fileToShare as any)?.href ?? fileToShare as string | URL })?.catch?.(console.warn.bind(console));
             } else {
                 return clientShare({ text: fileToShare as string })?.catch?.(console.warn.bind(console));

@@ -2,6 +2,7 @@
 import { computed, isObservable, observe, propRef } from "fest/object";
 import { H, M, Q } from "fest/lure";
 import { JSOX } from "jsox";
+import { canParseURL } from "@rs-core/utils/Runtime";
 
 //
 const editBindings = new WeakMap<any, FieldWithKey>();
@@ -61,7 +62,7 @@ const URL_BY_TYPE = (value: any, description: FieldDescription) => {
 
 //
 const IS_URL = (value: any) => {
-    if (URL.canParse(value?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) return true;
+    if (canParseURL(value?.trim?.() || "")) return true;
     return (value.startsWith("http") || value.startsWith("//") || value.startsWith("www.") || value.startsWith("mailto:") || value.startsWith("tel:") || value.startsWith("https:") || value.startsWith("ftp:") || value.startsWith("file:") || value.startsWith("data:"));
 }
 

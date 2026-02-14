@@ -5,6 +5,7 @@ import { getOrDefaultComputedOfDataSourceCache } from "../lib/DataSourceCache";
 import { GPTResponses } from "@rs-com/service/model/GPT-Responses";
 import type { AppSettings, CustomInstruction } from "@rs-com/config/SettingsTypes";
 import { loadSettings } from "@rs-com/config/Settings";
+import { canParseURL } from "@rs-core/utils/Runtime";
 
 // Re-export unified functions for backward compatibility
 const { analyzeRecognizeUnified, loadAISettings } = UnifiedAIService;
@@ -170,7 +171,7 @@ export const detectInputType = (
         }
 
         // URL detection
-        if (URL.canParse(trimmed?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || "")) && /^https?:\/\//.test(trimmed?.trim?.())) {
+        if (canParseURL(trimmed) && /^https?:\/\//.test(trimmed?.trim?.())) {
             type = "url"; confidence = 0.95; hints.push("valid URL");
             return { type, confidence, extension, mimeType, needsAI: true, hints };
         }

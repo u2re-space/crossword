@@ -6,7 +6,7 @@ const allowedElements = "ui-tabbed-box";
 
 //
 export const implementPasteEvent = (container: HTMLElement | null, handler: (payload: shareTargetFormData) => Promise<void>) => {
-    (container || window)?.addEventListener("paste", (event: any) => {
+    (container || globalThis)?.addEventListener("paste", (event: any) => {
         if (isInFocus(event?.target as HTMLElement, allowedElements)) {
             const dataTransfer: DataTransfer | null = event.clipboardData;
             const items = dataTransfer?.items;

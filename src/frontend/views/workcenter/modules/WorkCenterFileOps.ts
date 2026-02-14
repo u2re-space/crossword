@@ -261,7 +261,7 @@ export class WorkCenterFileOps {
     // ============================================================================
 
     private getCurrentHash(): string {
-        return typeof window !== 'undefined' ? window.location.hash : '';
+        return typeof globalThis !== 'undefined' ? globalThis?.location?.hash : '';
     }
 
     private async handleTextContent(state: WorkCenterState, content: string, sourceType: string): Promise<void> {

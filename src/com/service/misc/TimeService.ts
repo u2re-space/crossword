@@ -78,24 +78,35 @@ export const isNow = (beginTime: any, endTime: any) => {
 
 // Notification Logic
 export const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) return false;
-    if (Notification.permission === "granted") return true;
-    if (Notification.permission !== "denied") {
-        const permission = await Notification.requestPermission();
+    const NotificationCtor = (globalThis as any)?.Notification as (typeof Notification | undefined);
+    if (!NotificationCtor) return false;
+    if (NotificationCtor.permission === "granted") return true;
+    if (NotificationCtor.permission !== "denied") {
+        const permission = await NotificationCtor.requestPermission();
         return permission === "granted";
     }
     return false;
 };
 
 export const sendNotification = (title: string, options?: NotificationOptions) => {
-    if (Notification.permission === "granted") {
-        navigator.serviceWorker.getRegistration().then(reg => {
-            if (reg) {
-                reg.showNotification(title, options);
-            } else {
-                new Notification(title, options);
-            }
-        });
+    const NotificationCtor = (globalThis as any)?.Notification as (typeof Notification | undefined);
+    if (NotificationCtor?.permission === "granted") {
+        const sw = (globalThis as any)?.navigator?.serviceWorker;
+        if (sw?.getRegistration) {
+            sw.getRegistration().then((reg: ServiceWorkerRegistration | undefined) => {
+                if (reg) {
+                    reg.showNotification(title, options);
+                } else {
+                    new NotificationCtor(title, options);
+                }
+            });
+            return;
+        }
+        try {
+            new NotificationCtor(title, options);
+        } catch {
+            // ignore in restricted contexts
+        }
     }
 };
 

@@ -148,11 +148,11 @@ export function setupVirtualKeyboardAPIHandlers() {
             isComposing = false;
             lastCompositionText = '';
         } else {
-            compositionTimeout = window.setTimeout(() => {
+            compositionTimeout = globalThis.setTimeout(() => {
                 isComposing = false;
                 lastCompositionText = '';
                 compositionTimeout = null;
-            }, COMPOSITION_TIMEOUT_MS);
+            }, COMPOSITION_TIMEOUT_MS) as unknown as number;
         }
     };
 
@@ -176,7 +176,7 @@ export function setupVirtualKeyboardAPIHandlers() {
         /*if (pendingRestore !== null) {
             clearTimeout(pendingRestore);
         }
-        pendingRestore = window.setTimeout(() => {
+        pendingRestore = globalThis?.setTimeout(() => {
             pendingRestore = null;
             restoreButtonIcon();
             lastKnownContent = ICON;

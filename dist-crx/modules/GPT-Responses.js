@@ -1,17 +1,31 @@
+import { canParseURL } from './Runtime2.js';
 import { JSOX } from './Settings.js';
 
 //#region src/constants.ts
 const LIST_ITEM_MARKER = "-";
 const LIST_ITEM_PREFIX = "- ";
 const COMMA = ",";
+const COLON = ":";
+const SPACE = " ";
+const PIPE = "|";
 const DOT = ".";
+const OPEN_BRACKET = "[";
+const CLOSE_BRACKET = "]";
+const OPEN_BRACE = "{";
+const CLOSE_BRACE = "}";
 const NULL_LITERAL = "null";
 const TRUE_LITERAL = "true";
 const FALSE_LITERAL = "false";
 const BACKSLASH = "\\";
 const DOUBLE_QUOTE = "\"";
+const NEWLINE = "\n";
+const CARRIAGE_RETURN = "\r";
+const TAB = "	";
 const DELIMITERS = {
-	comma: COMMA};
+	comma: COMMA,
+	tab: TAB,
+	pipe: PIPE
+};
 const DEFAULT_DELIMITER = DELIMITERS.comma;
 
 //#endregion
@@ -25,11 +39,875 @@ const DEFAULT_DELIMITER = DELIMITERS.comma;
 function escapeString(value) {
 	return value.replace(/\\/g, `${BACKSLASH}${BACKSLASH}`).replace(/"/g, `${BACKSLASH}${DOUBLE_QUOTE}`).replace(/\n/g, `${BACKSLASH}n`).replace(/\r/g, `${BACKSLASH}r`).replace(/\t/g, `${BACKSLASH}t`);
 }
+/**
+* Unescapes a string by processing escape sequences.
+*
+* @remarks
+* Handles `\n`, `\t`, `\r`, `\\`, and `\"` escape sequences.
+*/
+function unescapeString(value) {
+	let unescaped = "";
+	let i = 0;
+	while (i < value.length) {
+		if (value[i] === BACKSLASH) {
+			if (i + 1 >= value.length) throw new SyntaxError("Invalid escape sequence: backslash at end of string");
+			const next = value[i + 1];
+			if (next === "n") {
+				unescaped += NEWLINE;
+				i += 2;
+				continue;
+			}
+			if (next === "t") {
+				unescaped += TAB;
+				i += 2;
+				continue;
+			}
+			if (next === "r") {
+				unescaped += CARRIAGE_RETURN;
+				i += 2;
+				continue;
+			}
+			if (next === BACKSLASH) {
+				unescaped += BACKSLASH;
+				i += 2;
+				continue;
+			}
+			if (next === DOUBLE_QUOTE) {
+				unescaped += DOUBLE_QUOTE;
+				i += 2;
+				continue;
+			}
+			throw new SyntaxError(`Invalid escape sequence: \\${next}`);
+		}
+		unescaped += value[i];
+		i++;
+	}
+	return unescaped;
+}
+/**
+* Finds the index of the closing double quote, accounting for escape sequences.
+*/
+function findClosingQuote(content, start) {
+	let i = start + 1;
+	while (i < content.length) {
+		if (content[i] === BACKSLASH && i + 1 < content.length) {
+			i += 2;
+			continue;
+		}
+		if (content[i] === DOUBLE_QUOTE) return i;
+		i++;
+	}
+	return -1;
+}
+/**
+* Finds the index of a character outside of quoted sections.
+*/
+function findUnquotedChar(content, char, start = 0) {
+	let inQuotes = false;
+	let i = start;
+	while (i < content.length) {
+		if (content[i] === BACKSLASH && i + 1 < content.length && inQuotes) {
+			i += 2;
+			continue;
+		}
+		if (content[i] === DOUBLE_QUOTE) {
+			inQuotes = !inQuotes;
+			i++;
+			continue;
+		}
+		if (content[i] === char && !inQuotes) return i;
+		i++;
+	}
+	return -1;
+}
 
 //#endregion
 //#region src/shared/literal-utils.ts
 function isBooleanOrNullLiteral(token) {
 	return token === TRUE_LITERAL || token === FALSE_LITERAL || token === NULL_LITERAL;
+}
+/**
+* Checks if a token represents a valid numeric literal.
+*
+* @remarks
+* Rejects numbers with leading zeros (except `"0"` itself or decimals like `"0.5"`).
+*/
+function isNumericLiteral(token) {
+	if (!token) return false;
+	if (token.length > 1 && token[0] === "0" && token[1] !== ".") return false;
+	const numericValue = Number(token);
+	return !Number.isNaN(numericValue) && Number.isFinite(numericValue);
+}
+
+//#endregion
+//#region src/decode/parser.ts
+function parseArrayHeaderLine(content, defaultDelimiter) {
+	const trimmed = content.trimStart();
+	let bracketStart = -1;
+	if (trimmed.startsWith(DOUBLE_QUOTE)) {
+		const closingQuoteIndex = findClosingQuote(trimmed, 0);
+		if (closingQuoteIndex === -1) return;
+		if (!trimmed.slice(closingQuoteIndex + 1).startsWith(OPEN_BRACKET)) return;
+		const keyEndIndex = content.length - trimmed.length + closingQuoteIndex + 1;
+		bracketStart = content.indexOf(OPEN_BRACKET, keyEndIndex);
+	} else bracketStart = content.indexOf(OPEN_BRACKET);
+	if (bracketStart === -1) return;
+	const bracketEnd = content.indexOf(CLOSE_BRACKET, bracketStart);
+	if (bracketEnd === -1) return;
+	let colonIndex = bracketEnd + 1;
+	let braceEnd = colonIndex;
+	const braceStart = content.indexOf(OPEN_BRACE, bracketEnd);
+	if (braceStart !== -1 && braceStart < content.indexOf(COLON, bracketEnd)) {
+		const foundBraceEnd = content.indexOf(CLOSE_BRACE, braceStart);
+		if (foundBraceEnd !== -1) braceEnd = foundBraceEnd + 1;
+	}
+	colonIndex = content.indexOf(COLON, Math.max(bracketEnd, braceEnd));
+	if (colonIndex === -1) return;
+	let key;
+	if (bracketStart > 0) {
+		const rawKey = content.slice(0, bracketStart).trim();
+		key = rawKey.startsWith(DOUBLE_QUOTE) ? parseStringLiteral(rawKey) : rawKey;
+	}
+	const afterColon = content.slice(colonIndex + 1).trim();
+	const bracketContent = content.slice(bracketStart + 1, bracketEnd);
+	let parsedBracket;
+	try {
+		parsedBracket = parseBracketSegment(bracketContent, defaultDelimiter);
+	} catch {
+		return;
+	}
+	const { length, delimiter } = parsedBracket;
+	let fields;
+	if (braceStart !== -1 && braceStart < colonIndex) {
+		const foundBraceEnd = content.indexOf(CLOSE_BRACE, braceStart);
+		if (foundBraceEnd !== -1 && foundBraceEnd < colonIndex) fields = parseDelimitedValues(content.slice(braceStart + 1, foundBraceEnd), delimiter).map((field) => parseStringLiteral(field.trim()));
+	}
+	return {
+		header: {
+			key,
+			length,
+			delimiter,
+			fields
+		},
+		inlineValues: afterColon || void 0
+	};
+}
+function parseBracketSegment(seg, defaultDelimiter) {
+	let content = seg;
+	let delimiter = defaultDelimiter;
+	if (content.endsWith(TAB)) {
+		delimiter = DELIMITERS.tab;
+		content = content.slice(0, -1);
+	} else if (content.endsWith(PIPE)) {
+		delimiter = DELIMITERS.pipe;
+		content = content.slice(0, -1);
+	}
+	const length = Number.parseInt(content, 10);
+	if (Number.isNaN(length)) throw new TypeError(`Invalid array length: ${seg}`);
+	return {
+		length,
+		delimiter
+	};
+}
+/**
+* Parses a delimited string into values, respecting quoted strings and escape sequences.
+*
+* @remarks
+* Uses a state machine that tracks:
+* - `inQuotes`: Whether we're inside a quoted string (to ignore delimiters)
+* - `valueBuffer`: Accumulates characters for the current value
+* - Escape sequences: Handled within quoted strings
+*/
+function parseDelimitedValues(input, delimiter) {
+	const values = [];
+	let valueBuffer = "";
+	let inQuotes = false;
+	let i = 0;
+	while (i < input.length) {
+		const char = input[i];
+		if (char === BACKSLASH && i + 1 < input.length && inQuotes) {
+			valueBuffer += char + input[i + 1];
+			i += 2;
+			continue;
+		}
+		if (char === DOUBLE_QUOTE) {
+			inQuotes = !inQuotes;
+			valueBuffer += char;
+			i++;
+			continue;
+		}
+		if (char === delimiter && !inQuotes) {
+			values.push(valueBuffer.trim());
+			valueBuffer = "";
+			i++;
+			continue;
+		}
+		valueBuffer += char;
+		i++;
+	}
+	if (valueBuffer || values.length > 0) values.push(valueBuffer.trim());
+	return values;
+}
+function mapRowValuesToPrimitives(values) {
+	return values.map((v) => parsePrimitiveToken(v));
+}
+function parsePrimitiveToken(token) {
+	const trimmed = token.trim();
+	if (!trimmed) return "";
+	if (trimmed.startsWith(DOUBLE_QUOTE)) return parseStringLiteral(trimmed);
+	if (isBooleanOrNullLiteral(trimmed)) {
+		if (trimmed === TRUE_LITERAL) return true;
+		if (trimmed === FALSE_LITERAL) return false;
+		if (trimmed === NULL_LITERAL) return null;
+	}
+	if (isNumericLiteral(trimmed)) {
+		const parsedNumber = Number.parseFloat(trimmed);
+		return Object.is(parsedNumber, -0) ? 0 : parsedNumber;
+	}
+	return trimmed;
+}
+function parseStringLiteral(token) {
+	const trimmedToken = token.trim();
+	if (trimmedToken.startsWith(DOUBLE_QUOTE)) {
+		const closingQuoteIndex = findClosingQuote(trimmedToken, 0);
+		if (closingQuoteIndex === -1) throw new SyntaxError("Unterminated string: missing closing quote");
+		if (closingQuoteIndex !== trimmedToken.length - 1) throw new SyntaxError("Unexpected characters after closing quote");
+		return unescapeString(trimmedToken.slice(1, closingQuoteIndex));
+	}
+	return trimmedToken;
+}
+function parseUnquotedKey(content, start) {
+	let parsePosition = start;
+	while (parsePosition < content.length && content[parsePosition] !== COLON) parsePosition++;
+	if (parsePosition >= content.length || content[parsePosition] !== COLON) throw new SyntaxError("Missing colon after key");
+	const key = content.slice(start, parsePosition).trim();
+	parsePosition++;
+	return {
+		key,
+		end: parsePosition
+	};
+}
+function parseQuotedKey(content, start) {
+	const closingQuoteIndex = findClosingQuote(content, start);
+	if (closingQuoteIndex === -1) throw new SyntaxError("Unterminated quoted key");
+	const key = unescapeString(content.slice(start + 1, closingQuoteIndex));
+	let parsePosition = closingQuoteIndex + 1;
+	if (parsePosition >= content.length || content[parsePosition] !== COLON) throw new SyntaxError("Missing colon after key");
+	parsePosition++;
+	return {
+		key,
+		end: parsePosition
+	};
+}
+function parseKeyToken(content, start) {
+	const isQuoted = content[start] === DOUBLE_QUOTE;
+	return {
+		...isQuoted ? parseQuotedKey(content, start) : parseUnquotedKey(content, start),
+		isQuoted
+	};
+}
+function isArrayHeaderContent(content) {
+	return content.trim().startsWith(OPEN_BRACKET) && findUnquotedChar(content, COLON) !== -1;
+}
+function isKeyValueContent(content) {
+	return findUnquotedChar(content, COLON) !== -1;
+}
+
+//#endregion
+//#region src/decode/scanner.ts
+function createScanState() {
+	return {
+		lineNumber: 0,
+		blankLines: []
+	};
+}
+function parseLineIncremental(raw, state, indentSize, strict) {
+	state.lineNumber++;
+	const lineNumber = state.lineNumber;
+	let indent = 0;
+	while (indent < raw.length && raw[indent] === SPACE) indent++;
+	const content = raw.slice(indent);
+	if (!content.trim()) {
+		const depth$1 = computeDepthFromIndent(indent, indentSize);
+		state.blankLines.push({
+			lineNumber,
+			indent,
+			depth: depth$1
+		});
+		return;
+	}
+	const depth = computeDepthFromIndent(indent, indentSize);
+	if (strict) {
+		let whitespaceEndIndex = 0;
+		while (whitespaceEndIndex < raw.length && (raw[whitespaceEndIndex] === SPACE || raw[whitespaceEndIndex] === TAB)) whitespaceEndIndex++;
+		if (raw.slice(0, whitespaceEndIndex).includes(TAB)) throw new SyntaxError(`Line ${lineNumber}: Tabs are not allowed in indentation in strict mode`);
+		if (indent > 0 && indent % indentSize !== 0) throw new SyntaxError(`Line ${lineNumber}: Indentation must be exact multiple of ${indentSize}, but found ${indent} spaces`);
+	}
+	return {
+		raw,
+		indent,
+		content,
+		depth,
+		lineNumber
+	};
+}
+function* parseLinesSync(source, indentSize, strict, state) {
+	for (const raw of source) {
+		const parsedLine = parseLineIncremental(raw, state, indentSize, strict);
+		if (parsedLine !== void 0) yield parsedLine;
+	}
+}
+async function* parseLinesAsync(source, indentSize, strict, state) {
+	for await (const raw of source) {
+		const parsedLine = parseLineIncremental(raw, state, indentSize, strict);
+		if (parsedLine !== void 0) yield parsedLine;
+	}
+}
+function computeDepthFromIndent(indentSpaces, indentSize) {
+	return Math.floor(indentSpaces / indentSize);
+}
+
+//#endregion
+//#region src/decode/validation.ts
+/**
+* Asserts that the actual count matches the expected count in strict mode.
+*/
+function assertExpectedCount(actual, expected, itemType, options) {
+	if (options.strict && actual !== expected) throw new RangeError(`Expected ${expected} ${itemType}, but got ${actual}`);
+}
+/**
+* Validates that there are no extra list items beyond the expected count.
+*/
+function validateNoExtraListItems(nextLine, itemDepth, expectedCount) {
+	if (nextLine?.depth === itemDepth && nextLine.content.startsWith(LIST_ITEM_PREFIX)) throw new RangeError(`Expected ${expectedCount} list array items, but found more`);
+}
+/**
+* Validates that there are no extra tabular rows beyond the expected count.
+*/
+function validateNoExtraTabularRows(nextLine, rowDepth, header) {
+	if (nextLine?.depth === rowDepth && !nextLine.content.startsWith(LIST_ITEM_PREFIX) && isDataRow(nextLine.content, header.delimiter)) throw new RangeError(`Expected ${header.length} tabular rows, but found more`);
+}
+/**
+* Validates that there are no blank lines within a specific line range in strict mode.
+*/
+function validateNoBlankLinesInRange(startLine, endLine, blankLines, strict, context) {
+	if (!strict) return;
+	const firstBlank = blankLines.find((blank) => blank.lineNumber > startLine && blank.lineNumber < endLine);
+	if (firstBlank) throw new SyntaxError(`Line ${firstBlank.lineNumber}: Blank lines inside ${context} are not allowed in strict mode`);
+}
+/**
+* Checks if a line is a data row (vs a key-value pair) in a tabular array.
+*/
+function isDataRow(content, delimiter) {
+	const colonPos = content.indexOf(COLON);
+	const delimiterPos = content.indexOf(delimiter);
+	if (colonPos === -1) return true;
+	if (delimiterPos !== -1 && delimiterPos < colonPos) return true;
+	return false;
+}
+
+//#endregion
+//#region src/decode/decoders.ts
+var StreamingLineCursor = class {
+	buffer = [];
+	generator;
+	done = false;
+	lastLine;
+	scanState;
+	constructor(generator, scanState) {
+		this.generator = generator;
+		this.scanState = scanState;
+	}
+	getBlankLines() {
+		return this.scanState.blankLines;
+	}
+	async peek() {
+		if (this.buffer.length > 0) return this.buffer[0];
+		if (this.done) return;
+		const result = await this.generator.next();
+		if (result.done) {
+			this.done = true;
+			return;
+		}
+		this.buffer.push(result.value);
+		return result.value;
+	}
+	async next() {
+		const line = await this.peek();
+		if (line !== void 0) {
+			this.buffer.shift();
+			this.lastLine = line;
+		}
+		return line;
+	}
+	async advance() {
+		await this.next();
+	}
+	current() {
+		return this.lastLine;
+	}
+	async atEnd() {
+		return await this.peek() === void 0;
+	}
+	peekSync() {
+		if (this.buffer.length > 0) return this.buffer[0];
+		if (this.done) return;
+		const result = this.generator.next();
+		if (result.done) {
+			this.done = true;
+			return;
+		}
+		this.buffer.push(result.value);
+		return result.value;
+	}
+	nextSync() {
+		const line = this.peekSync();
+		if (line !== void 0) {
+			this.buffer.shift();
+			this.lastLine = line;
+		}
+		return line;
+	}
+	advanceSync() {
+		this.nextSync();
+	}
+	atEndSync() {
+		return this.peekSync() === void 0;
+	}
+};
+function* decodeStreamSync$1(source, options) {
+	if (options?.expandPaths !== void 0) throw new Error("expandPaths is not supported in streaming decode");
+	const resolvedOptions = {
+		indent: options?.indent ?? 2,
+		strict: options?.strict ?? true
+	};
+	const scanState = createScanState();
+	const cursor = new StreamingLineCursor(parseLinesSync(source, resolvedOptions.indent, resolvedOptions.strict, scanState), scanState);
+	const first = cursor.peekSync();
+	if (!first) {
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	}
+	if (isArrayHeaderContent(first.content)) {
+		const headerInfo = parseArrayHeaderLine(first.content, DEFAULT_DELIMITER);
+		if (headerInfo) {
+			cursor.advanceSync();
+			yield* decodeArrayFromHeaderSync(headerInfo.header, headerInfo.inlineValues, cursor, 0, resolvedOptions);
+			return;
+		}
+	}
+	cursor.advanceSync();
+	if (!!cursor.atEndSync() && !isKeyValueLineSync(first)) {
+		yield {
+			type: "primitive",
+			value: parsePrimitiveToken(first.content.trim())
+		};
+		return;
+	}
+	yield { type: "startObject" };
+	yield* decodeKeyValueSync(first.content, cursor, 0, resolvedOptions);
+	while (!cursor.atEndSync()) {
+		const line = cursor.peekSync();
+		if (!line || line.depth !== 0) break;
+		cursor.advanceSync();
+		yield* decodeKeyValueSync(line.content, cursor, 0, resolvedOptions);
+	}
+	yield { type: "endObject" };
+}
+function* decodeKeyValueSync(content, cursor, baseDepth, options) {
+	const arrayHeader = parseArrayHeaderLine(content, DEFAULT_DELIMITER);
+	if (arrayHeader && arrayHeader.header.key) {
+		yield {
+			type: "key",
+			key: arrayHeader.header.key
+		};
+		yield* decodeArrayFromHeaderSync(arrayHeader.header, arrayHeader.inlineValues, cursor, baseDepth, options);
+		return;
+	}
+	const { key, isQuoted } = parseKeyToken(content, 0);
+	const colonIndex = content.indexOf(COLON, key.length);
+	const rest = colonIndex >= 0 ? content.slice(colonIndex + 1).trim() : "";
+	yield isQuoted ? {
+		type: "key",
+		key,
+		wasQuoted: true
+	} : {
+		type: "key",
+		key
+	};
+	if (!rest) {
+		const nextLine = cursor.peekSync();
+		if (nextLine && nextLine.depth > baseDepth) {
+			yield { type: "startObject" };
+			yield* decodeObjectFieldsSync(cursor, baseDepth + 1, options);
+			yield { type: "endObject" };
+			return;
+		}
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	}
+	yield {
+		type: "primitive",
+		value: parsePrimitiveToken(rest)
+	};
+}
+function* decodeObjectFieldsSync(cursor, baseDepth, options) {
+	let computedDepth;
+	while (!cursor.atEndSync()) {
+		const line = cursor.peekSync();
+		if (!line || line.depth < baseDepth) break;
+		if (computedDepth === void 0 && line.depth >= baseDepth) computedDepth = line.depth;
+		if (line.depth === computedDepth) {
+			cursor.advanceSync();
+			yield* decodeKeyValueSync(line.content, cursor, computedDepth, options);
+		} else break;
+	}
+}
+function* decodeArrayFromHeaderSync(header, inlineValues, cursor, baseDepth, options) {
+	yield {
+		type: "startArray",
+		length: header.length
+	};
+	if (inlineValues) {
+		yield* decodeInlinePrimitiveArraySync(header, inlineValues, options);
+		yield { type: "endArray" };
+		return;
+	}
+	if (header.fields && header.fields.length > 0) {
+		yield* decodeTabularArraySync(header, cursor, baseDepth, options);
+		yield { type: "endArray" };
+		return;
+	}
+	yield* decodeListArraySync(header, cursor, baseDepth, options);
+	yield { type: "endArray" };
+}
+function* decodeInlinePrimitiveArraySync(header, inlineValues, options) {
+	if (!inlineValues.trim()) {
+		assertExpectedCount(0, header.length, "inline array items", options);
+		return;
+	}
+	const primitives = mapRowValuesToPrimitives(parseDelimitedValues(inlineValues, header.delimiter));
+	assertExpectedCount(primitives.length, header.length, "inline array items", options);
+	for (const primitive of primitives) yield {
+		type: "primitive",
+		value: primitive
+	};
+}
+function* decodeTabularArraySync(header, cursor, baseDepth, options) {
+	const rowDepth = baseDepth + 1;
+	let rowCount = 0;
+	let startLine;
+	let endLine;
+	while (!cursor.atEndSync() && rowCount < header.length) {
+		const line = cursor.peekSync();
+		if (!line || line.depth < rowDepth) break;
+		if (line.depth === rowDepth) {
+			if (startLine === void 0) startLine = line.lineNumber;
+			endLine = line.lineNumber;
+			cursor.advanceSync();
+			const values = parseDelimitedValues(line.content, header.delimiter);
+			assertExpectedCount(values.length, header.fields.length, "tabular row values", options);
+			const primitives = mapRowValuesToPrimitives(values);
+			yield { type: "startObject" };
+			for (let i = 0; i < header.fields.length; i++) {
+				yield {
+					type: "key",
+					key: header.fields[i]
+				};
+				yield {
+					type: "primitive",
+					value: primitives[i]
+				};
+			}
+			yield { type: "endObject" };
+			rowCount++;
+		} else break;
+	}
+	assertExpectedCount(rowCount, header.length, "tabular rows", options);
+	if (options.strict && startLine !== void 0 && endLine !== void 0) validateNoBlankLinesInRange(startLine, endLine, cursor.getBlankLines(), options.strict, "tabular array");
+	if (options.strict) validateNoExtraTabularRows(cursor.peekSync(), rowDepth, header);
+}
+function* decodeListArraySync(header, cursor, baseDepth, options) {
+	const itemDepth = baseDepth + 1;
+	let itemCount = 0;
+	let startLine;
+	let endLine;
+	while (!cursor.atEndSync() && itemCount < header.length) {
+		const line = cursor.peekSync();
+		if (!line || line.depth < itemDepth) break;
+		const isListItem = line.content.startsWith(LIST_ITEM_PREFIX) || line.content === LIST_ITEM_MARKER;
+		if (line.depth === itemDepth && isListItem) {
+			if (startLine === void 0) startLine = line.lineNumber;
+			endLine = line.lineNumber;
+			yield* decodeListItemSync(cursor, itemDepth, options);
+			const currentLine = cursor.current();
+			if (currentLine) endLine = currentLine.lineNumber;
+			itemCount++;
+		} else break;
+	}
+	assertExpectedCount(itemCount, header.length, "list array items", options);
+	if (options.strict && startLine !== void 0 && endLine !== void 0) validateNoBlankLinesInRange(startLine, endLine, cursor.getBlankLines(), options.strict, "list array");
+	if (options.strict) validateNoExtraListItems(cursor.peekSync(), itemDepth, header.length);
+}
+function* decodeListItemSync(cursor, baseDepth, options) {
+	const line = cursor.nextSync();
+	if (!line) throw new ReferenceError("Expected list item");
+	let afterHyphen;
+	if (line.content === LIST_ITEM_MARKER) {
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	} else if (line.content.startsWith(LIST_ITEM_PREFIX)) afterHyphen = line.content.slice(LIST_ITEM_PREFIX.length);
+	else throw new SyntaxError(`Expected list item to start with "${LIST_ITEM_PREFIX}"`);
+	if (!afterHyphen.trim()) {
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	}
+	if (isArrayHeaderContent(afterHyphen)) {
+		const arrayHeader = parseArrayHeaderLine(afterHyphen, DEFAULT_DELIMITER);
+		if (arrayHeader) {
+			yield* decodeArrayFromHeaderSync(arrayHeader.header, arrayHeader.inlineValues, cursor, baseDepth, options);
+			return;
+		}
+	}
+	if (isKeyValueContent(afterHyphen)) {
+		yield { type: "startObject" };
+		yield* decodeKeyValueSync(afterHyphen, cursor, baseDepth, options);
+		const followDepth = baseDepth + 1;
+		while (!cursor.atEndSync()) {
+			const nextLine = cursor.peekSync();
+			if (!nextLine || nextLine.depth < followDepth) break;
+			if (nextLine.depth === followDepth && !nextLine.content.startsWith(LIST_ITEM_PREFIX)) {
+				cursor.advanceSync();
+				yield* decodeKeyValueSync(nextLine.content, cursor, followDepth, options);
+			} else break;
+		}
+		yield { type: "endObject" };
+		return;
+	}
+	yield {
+		type: "primitive",
+		value: parsePrimitiveToken(afterHyphen)
+	};
+}
+function isKeyValueLineSync(line) {
+	const content = line.content;
+	if (content.startsWith("\"")) {
+		const closingQuoteIndex = findClosingQuote(content, 0);
+		if (closingQuoteIndex === -1) return false;
+		return content.slice(closingQuoteIndex + 1).includes(COLON);
+	} else return content.includes(COLON);
+}
+async function* decodeStream$1(source, options) {
+	if (options?.expandPaths !== void 0) throw new Error("expandPaths is not supported in streaming decode");
+	const resolvedOptions = {
+		indent: options?.indent ?? 2,
+		strict: options?.strict ?? true
+	};
+	const scanState = createScanState();
+	if (Symbol.asyncIterator in source) {
+		const cursor = new StreamingLineCursor(parseLinesAsync(source, resolvedOptions.indent, resolvedOptions.strict, scanState), scanState);
+		const first = await cursor.peek();
+		if (!first) {
+			yield { type: "startObject" };
+			yield { type: "endObject" };
+			return;
+		}
+		if (isArrayHeaderContent(first.content)) {
+			const headerInfo = parseArrayHeaderLine(first.content, DEFAULT_DELIMITER);
+			if (headerInfo) {
+				await cursor.advance();
+				yield* decodeArrayFromHeaderAsync(headerInfo.header, headerInfo.inlineValues, cursor, 0, resolvedOptions);
+				return;
+			}
+		}
+		await cursor.advance();
+		if (!!await cursor.atEnd() && !isKeyValueLineSync(first)) {
+			yield {
+				type: "primitive",
+				value: parsePrimitiveToken(first.content.trim())
+			};
+			return;
+		}
+		yield { type: "startObject" };
+		yield* decodeKeyValueAsync(first.content, cursor, 0, resolvedOptions);
+		while (!await cursor.atEnd()) {
+			const line = await cursor.peek();
+			if (!line || line.depth !== 0) break;
+			await cursor.advance();
+			yield* decodeKeyValueAsync(line.content, cursor, 0, resolvedOptions);
+		}
+		yield { type: "endObject" };
+	} else yield* decodeStreamSync$1(source, options);
+}
+async function* decodeKeyValueAsync(content, cursor, baseDepth, options) {
+	const arrayHeader = parseArrayHeaderLine(content, DEFAULT_DELIMITER);
+	if (arrayHeader && arrayHeader.header.key) {
+		yield {
+			type: "key",
+			key: arrayHeader.header.key
+		};
+		yield* decodeArrayFromHeaderAsync(arrayHeader.header, arrayHeader.inlineValues, cursor, baseDepth, options);
+		return;
+	}
+	const { key, isQuoted } = parseKeyToken(content, 0);
+	const colonIndex = content.indexOf(COLON, key.length);
+	const rest = colonIndex >= 0 ? content.slice(colonIndex + 1).trim() : "";
+	yield isQuoted ? {
+		type: "key",
+		key,
+		wasQuoted: true
+	} : {
+		type: "key",
+		key
+	};
+	if (!rest) {
+		const nextLine = await cursor.peek();
+		if (nextLine && nextLine.depth > baseDepth) {
+			yield { type: "startObject" };
+			yield* decodeObjectFieldsAsync(cursor, baseDepth + 1, options);
+			yield { type: "endObject" };
+			return;
+		}
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	}
+	yield {
+		type: "primitive",
+		value: parsePrimitiveToken(rest)
+	};
+}
+async function* decodeObjectFieldsAsync(cursor, baseDepth, options) {
+	let computedDepth;
+	while (!await cursor.atEnd()) {
+		const line = await cursor.peek();
+		if (!line || line.depth < baseDepth) break;
+		if (computedDepth === void 0 && line.depth >= baseDepth) computedDepth = line.depth;
+		if (line.depth === computedDepth) {
+			await cursor.advance();
+			yield* decodeKeyValueAsync(line.content, cursor, computedDepth, options);
+		} else break;
+	}
+}
+async function* decodeArrayFromHeaderAsync(header, inlineValues, cursor, baseDepth, options) {
+	yield {
+		type: "startArray",
+		length: header.length
+	};
+	if (inlineValues) {
+		yield* decodeInlinePrimitiveArraySync(header, inlineValues, options);
+		yield { type: "endArray" };
+		return;
+	}
+	if (header.fields && header.fields.length > 0) {
+		yield* decodeTabularArrayAsync(header, cursor, baseDepth, options);
+		yield { type: "endArray" };
+		return;
+	}
+	yield* decodeListArrayAsync(header, cursor, baseDepth, options);
+	yield { type: "endArray" };
+}
+async function* decodeTabularArrayAsync(header, cursor, baseDepth, options) {
+	const rowDepth = baseDepth + 1;
+	let rowCount = 0;
+	let startLine;
+	let endLine;
+	while (!await cursor.atEnd() && rowCount < header.length) {
+		const line = await cursor.peek();
+		if (!line || line.depth < rowDepth) break;
+		if (line.depth === rowDepth) {
+			if (startLine === void 0) startLine = line.lineNumber;
+			endLine = line.lineNumber;
+			await cursor.advance();
+			const values = parseDelimitedValues(line.content, header.delimiter);
+			assertExpectedCount(values.length, header.fields.length, "tabular row values", options);
+			const primitives = mapRowValuesToPrimitives(values);
+			yield { type: "startObject" };
+			for (let i = 0; i < header.fields.length; i++) {
+				yield {
+					type: "key",
+					key: header.fields[i]
+				};
+				yield {
+					type: "primitive",
+					value: primitives[i]
+				};
+			}
+			yield { type: "endObject" };
+			rowCount++;
+		} else break;
+	}
+	assertExpectedCount(rowCount, header.length, "tabular rows", options);
+	if (options.strict && startLine !== void 0 && endLine !== void 0) validateNoBlankLinesInRange(startLine, endLine, cursor.getBlankLines(), options.strict, "tabular array");
+	if (options.strict) validateNoExtraTabularRows(await cursor.peek(), rowDepth, header);
+}
+async function* decodeListArrayAsync(header, cursor, baseDepth, options) {
+	const itemDepth = baseDepth + 1;
+	let itemCount = 0;
+	let startLine;
+	let endLine;
+	while (!await cursor.atEnd() && itemCount < header.length) {
+		const line = await cursor.peek();
+		if (!line || line.depth < itemDepth) break;
+		const isListItem = line.content.startsWith(LIST_ITEM_PREFIX) || line.content === LIST_ITEM_MARKER;
+		if (line.depth === itemDepth && isListItem) {
+			if (startLine === void 0) startLine = line.lineNumber;
+			endLine = line.lineNumber;
+			yield* decodeListItemAsync(cursor, itemDepth, options);
+			const currentLine = cursor.current();
+			if (currentLine) endLine = currentLine.lineNumber;
+			itemCount++;
+		} else break;
+	}
+	assertExpectedCount(itemCount, header.length, "list array items", options);
+	if (options.strict && startLine !== void 0 && endLine !== void 0) validateNoBlankLinesInRange(startLine, endLine, cursor.getBlankLines(), options.strict, "list array");
+	if (options.strict) validateNoExtraListItems(await cursor.peek(), itemDepth, header.length);
+}
+async function* decodeListItemAsync(cursor, baseDepth, options) {
+	const line = await cursor.next();
+	if (!line) throw new ReferenceError("Expected list item");
+	let afterHyphen;
+	if (line.content === LIST_ITEM_MARKER) {
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	} else if (line.content.startsWith(LIST_ITEM_PREFIX)) afterHyphen = line.content.slice(LIST_ITEM_PREFIX.length);
+	else throw new SyntaxError(`Expected list item to start with "${LIST_ITEM_PREFIX}"`);
+	if (!afterHyphen.trim()) {
+		yield { type: "startObject" };
+		yield { type: "endObject" };
+		return;
+	}
+	if (isArrayHeaderContent(afterHyphen)) {
+		const arrayHeader = parseArrayHeaderLine(afterHyphen, DEFAULT_DELIMITER);
+		if (arrayHeader) {
+			yield* decodeArrayFromHeaderAsync(arrayHeader.header, arrayHeader.inlineValues, cursor, baseDepth, options);
+			return;
+		}
+	}
+	if (isKeyValueContent(afterHyphen)) {
+		yield { type: "startObject" };
+		yield* decodeKeyValueAsync(afterHyphen, cursor, baseDepth, options);
+		const followDepth = baseDepth + 1;
+		while (!await cursor.atEnd()) {
+			const nextLine = await cursor.peek();
+			if (!nextLine || nextLine.depth < followDepth) break;
+			if (nextLine.depth === followDepth && !nextLine.content.startsWith(LIST_ITEM_PREFIX)) {
+				await cursor.advance();
+				yield* decodeKeyValueAsync(nextLine.content, cursor, followDepth, options);
+			} else break;
+		}
+		yield { type: "endObject" };
+		return;
+	}
+	yield {
+		type: "primitive",
+		value: parsePrimitiveToken(afterHyphen)
+	};
 }
 
 //#endregion
@@ -142,6 +1020,229 @@ function isSafeUnquoted(value, delimiter = DEFAULT_DELIMITER) {
 */
 function isNumericLike(value) {
 	return /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value) || /^0\d+$/.test(value);
+}
+
+//#endregion
+//#region src/decode/expand.ts
+/**
+* Symbol used to mark object keys that were originally quoted in the TOON source.
+* Quoted dotted keys should not be expanded, even if they meet expansion criteria.
+*/
+const QUOTED_KEY_MARKER = Symbol("quotedKey");
+/**
+* Expands dotted keys into nested objects in safe mode.
+*
+* @remarks
+* This function recursively traverses a decoded TOON value and expands any keys
+* containing dots (`.`) into nested object structures, provided all segments
+* are valid identifiers.
+*
+* Expansion rules:
+* - Keys containing dots are split into segments
+* - All segments must pass `isIdentifierSegment` validation
+* - Non-eligible keys (with special characters) are left as literal dotted keys
+* - Deep merge: When multiple dotted keys expand to the same path, their values are merged if both are objects
+* - Conflict handling:
+*   - `strict=true`: Throws TypeError on conflicts (non-object collision)
+*   - `strict=false`: LWW (silent overwrite)
+*
+* @param value - The decoded value to expand
+* @param strict - Whether to throw errors on conflicts
+* @returns The expanded value with dotted keys reconstructed as nested objects
+* @throws TypeError if conflicts occur in strict mode
+*/
+function expandPathsSafe(value, strict) {
+	if (Array.isArray(value)) return value.map((item) => expandPathsSafe(item, strict));
+	if (isJsonObject(value)) {
+		const expandedObject = {};
+		const quotedKeys = value[QUOTED_KEY_MARKER];
+		for (const [key, keyValue] of Object.entries(value)) {
+			const isQuoted = quotedKeys?.has(key);
+			if (key.includes(DOT) && !isQuoted) {
+				const segments = key.split(DOT);
+				if (segments.every((seg) => isIdentifierSegment(seg))) {
+					insertPathSafe(expandedObject, segments, expandPathsSafe(keyValue, strict), strict);
+					continue;
+				}
+			}
+			const expandedValue = expandPathsSafe(keyValue, strict);
+			if (key in expandedObject) {
+				const conflictingValue = expandedObject[key];
+				if (canMerge(conflictingValue, expandedValue)) mergeObjects(conflictingValue, expandedValue, strict);
+				else {
+					if (strict) throw new TypeError(`Path expansion conflict at key "${key}": cannot merge ${typeof conflictingValue} with ${typeof expandedValue}`);
+					expandedObject[key] = expandedValue;
+				}
+			} else expandedObject[key] = expandedValue;
+		}
+		return expandedObject;
+	}
+	return value;
+}
+/**
+* Inserts a value at a nested path, creating intermediate objects as needed.
+*
+* @remarks
+* This function walks the segment path, creating nested objects as needed.
+* When an existing value is encountered:
+* - If both are objects: deep merge (continue insertion)
+* - If values differ: conflict
+*   - strict=true: throw TypeError
+*   - strict=false: overwrite with new value (LWW)
+*
+* @param target - The object to insert into
+* @param segments - Array of path segments (e.g., ['data', 'metadata', 'items'])
+* @param value - The value to insert at the end of the path
+* @param strict - Whether to throw on conflicts
+* @throws TypeError if a conflict occurs in strict mode
+*/
+function insertPathSafe(target, segments, value, strict) {
+	let currentNode = target;
+	for (let i = 0; i < segments.length - 1; i++) {
+		const currentSegment = segments[i];
+		const segmentValue = currentNode[currentSegment];
+		if (segmentValue === void 0) {
+			const newObj = {};
+			currentNode[currentSegment] = newObj;
+			currentNode = newObj;
+		} else if (isJsonObject(segmentValue)) currentNode = segmentValue;
+		else {
+			if (strict) throw new TypeError(`Path expansion conflict at segment "${currentSegment}": expected object but found ${typeof segmentValue}`);
+			const newObj = {};
+			currentNode[currentSegment] = newObj;
+			currentNode = newObj;
+		}
+	}
+	const lastSeg = segments[segments.length - 1];
+	const destinationValue = currentNode[lastSeg];
+	if (destinationValue === void 0) currentNode[lastSeg] = value;
+	else if (canMerge(destinationValue, value)) mergeObjects(destinationValue, value, strict);
+	else {
+		if (strict) throw new TypeError(`Path expansion conflict at key "${lastSeg}": cannot merge ${typeof destinationValue} with ${typeof value}`);
+		currentNode[lastSeg] = value;
+	}
+}
+/**
+* Deep merges properties from source into target.
+*
+* @remarks
+* For each key in source:
+* - If key doesn't exist in target: copy it
+* - If both values are objects: recursively merge
+* - Otherwise: conflict (strict throws, non-strict overwrites)
+*
+* @param target - The target object to merge into
+* @param source - The source object to merge from
+* @param strict - Whether to throw on conflicts
+* @throws TypeError if a conflict occurs in strict mode
+*/
+function mergeObjects(target, source, strict) {
+	for (const [key, sourceValue] of Object.entries(source)) {
+		const targetValue = target[key];
+		if (targetValue === void 0) target[key] = sourceValue;
+		else if (canMerge(targetValue, sourceValue)) mergeObjects(targetValue, sourceValue, strict);
+		else {
+			if (strict) throw new TypeError(`Path expansion conflict at key "${key}": cannot merge ${typeof targetValue} with ${typeof sourceValue}`);
+			target[key] = sourceValue;
+		}
+	}
+}
+function canMerge(a, b) {
+	return isJsonObject(a) && isJsonObject(b);
+}
+
+//#endregion
+//#region src/decode/event-builder.ts
+function buildValueFromEvents(events) {
+	const stack = [];
+	let root;
+	for (const event of events) switch (event.type) {
+		case "startObject": {
+			const obj = {};
+			const quotedKeys = /* @__PURE__ */ new Set();
+			if (stack.length === 0) stack.push({
+				type: "object",
+				obj,
+				quotedKeys
+			});
+			else {
+				const parent = stack[stack.length - 1];
+				if (parent.type === "object") {
+					if (parent.currentKey === void 0) throw new Error("Object startObject event without preceding key");
+					parent.obj[parent.currentKey] = obj;
+					parent.currentKey = void 0;
+				} else if (parent.type === "array") parent.arr.push(obj);
+				stack.push({
+					type: "object",
+					obj,
+					quotedKeys
+				});
+			}
+			break;
+		}
+		case "endObject": {
+			if (stack.length === 0) throw new Error("Unexpected endObject event");
+			const context = stack.pop();
+			if (context.type !== "object") throw new Error("Mismatched endObject event");
+			if (context.quotedKeys.size > 0) Object.defineProperty(context.obj, QUOTED_KEY_MARKER, {
+				value: context.quotedKeys,
+				enumerable: false,
+				writable: false,
+				configurable: false
+			});
+			if (stack.length === 0) root = context.obj;
+			break;
+		}
+		case "startArray": {
+			const arr = [];
+			if (stack.length === 0) stack.push({
+				type: "array",
+				arr
+			});
+			else {
+				const parent = stack[stack.length - 1];
+				if (parent.type === "object") {
+					if (parent.currentKey === void 0) throw new Error("Array startArray event without preceding key");
+					parent.obj[parent.currentKey] = arr;
+					parent.currentKey = void 0;
+				} else if (parent.type === "array") parent.arr.push(arr);
+				stack.push({
+					type: "array",
+					arr
+				});
+			}
+			break;
+		}
+		case "endArray": {
+			if (stack.length === 0) throw new Error("Unexpected endArray event");
+			const context = stack.pop();
+			if (context.type !== "array") throw new Error("Mismatched endArray event");
+			if (stack.length === 0) root = context.arr;
+			break;
+		}
+		case "key": {
+			if (stack.length === 0) throw new Error("Key event outside of object context");
+			const parent = stack[stack.length - 1];
+			if (parent.type !== "object") throw new Error("Key event in non-object context");
+			parent.currentKey = event.key;
+			if (event.wasQuoted) parent.quotedKeys.add(event.key);
+			break;
+		}
+		case "primitive":
+			if (stack.length === 0) root = event.value;
+			else {
+				const parent = stack[stack.length - 1];
+				if (parent.type === "object") {
+					if (parent.currentKey === void 0) throw new Error("Primitive event without preceding key in object");
+					parent.obj[parent.currentKey] = event.value;
+					parent.currentKey = void 0;
+				} else if (parent.type === "array") parent.arr.push(event.value);
+			}
+			break;
+	}
+	if (stack.length !== 0) throw new Error("Incomplete event stream: stack not empty at end");
+	if (root === void 0) throw new Error("No root value built from events");
+	return root;
 }
 
 //#endregion
@@ -474,7 +1575,28 @@ function indentedListItem(depth, content, indentSize) {
 * ```
 */
 function encode(input, options) {
-	return Array.from(encodeLines(input)).join("\n");
+	return Array.from(encodeLines(input, options)).join("\n");
+}
+/**
+* Decodes a TOON format string into a JavaScript value.
+*
+* @param input - TOON formatted string
+* @param options - Optional decoding configuration
+* @returns Parsed JavaScript value (object, array, or primitive)
+*
+* @example
+* ```ts
+* decode('name: Alice\nage: 30')
+* // { name: 'Alice', age: 30 }
+*
+* decode('users[]:\n  - id: 1\n  - id: 2')
+* // { users: [{ id: 1 }, { id: 2 }] }
+*
+* decode(toonString, { strict: false, expandPaths: 'safe' })
+* ```
+*/
+function decode(input, options) {
+	return decodeFromLines(input.split("\n"), options);
 }
 /**
 * Encodes a JavaScript value into TOON format as a sequence of lines.
@@ -501,17 +1623,155 @@ function encode(input, options) {
 * ```
 */
 function encodeLines(input, options) {
-	return encodeJsonValue(normalizeValue(input), resolveOptions(), 0);
+	return encodeJsonValue(normalizeValue(input), resolveOptions(options), 0);
+}
+/**
+* Decodes TOON format from pre-split lines into a JavaScript value.
+*
+* This is a convenience wrapper around the streaming decoder that builds
+* the full value in memory. Useful when you already have lines as an array
+* or iterable and want the standard decode behavior with path expansion support.
+*
+* @param lines - Iterable of TOON lines (without newlines)
+* @param options - Optional decoding configuration (supports expandPaths)
+* @returns Parsed JavaScript value (object, array, or primitive)
+*
+* @example
+* ```ts
+* const lines = ['name: Alice', 'age: 30']
+* decodeFromLines(lines)
+* // { name: 'Alice', age: 30 }
+* ```
+*/
+function decodeFromLines(lines, options) {
+	const resolvedOptions = resolveDecodeOptions(options);
+	const decodedValue = buildValueFromEvents(decodeStreamSync$1(lines, {
+		indent: resolvedOptions.indent,
+		strict: resolvedOptions.strict
+	}));
+	if (resolvedOptions.expandPaths === "safe") return expandPathsSafe(decodedValue, resolvedOptions.strict);
+	return decodedValue;
+}
+/**
+* Synchronously decodes TOON lines into a stream of JSON events.
+*
+* This function yields structured events (startObject, endObject, startArray, endArray,
+* key, primitive) that represent the JSON data model without building the full value tree.
+* Useful for streaming processing, custom transformations, or memory-efficient parsing.
+*
+* @remarks
+* Path expansion (`expandPaths: 'safe'`) is not supported in streaming mode.
+*
+* @param lines - Iterable of TOON lines (without newlines)
+* @param options - Optional decoding configuration (expandPaths not supported)
+* @returns Iterable of JSON stream events
+*
+* @example
+* ```ts
+* const lines = ['name: Alice', 'age: 30']
+* for (const event of decodeStreamSync(lines)) {
+*   console.log(event)
+*   // { type: 'startObject' }
+*   // { type: 'key', key: 'name' }
+*   // { type: 'primitive', value: 'Alice' }
+*   // ...
+* }
+* ```
+*/
+function decodeStreamSync(lines, options) {
+	return decodeStreamSync$1(lines, options);
+}
+/**
+* Asynchronously decodes TOON lines into a stream of JSON events.
+*
+* This function yields structured events (startObject, endObject, startArray, endArray,
+* key, primitive) that represent the JSON data model without building the full value tree.
+* Supports both sync and async iterables for maximum flexibility with file streams,
+* network responses, or other async sources.
+*
+* @remarks
+* Path expansion (`expandPaths: 'safe'`) is not supported in streaming mode.
+*
+* @param source - Async or sync iterable of TOON lines (without newlines)
+* @param options - Optional decoding configuration (expandPaths not supported)
+* @returns Async iterable of JSON stream events
+*
+* @example
+* ```ts
+* const fileStream = createReadStream('data.toon', 'utf-8')
+* const lines = splitLines(fileStream) // Async iterable of lines
+*
+* for await (const event of decodeStream(lines)) {
+*   console.log(event)
+*   // { type: 'startObject' }
+*   // { type: 'key', key: 'name' }
+*   // { type: 'primitive', value: 'Alice' }
+*   // ...
+* }
+* ```
+*/
+function decodeStream(source, options) {
+	return decodeStream$1(source, options);
 }
 function resolveOptions(options) {
 	return {
-		indent: 2,
-		delimiter: DEFAULT_DELIMITER,
-		keyFolding: "off",
-		flattenDepth: Number.POSITIVE_INFINITY
+		indent: options?.indent ?? 2,
+		delimiter: options?.delimiter ?? DEFAULT_DELIMITER,
+		keyFolding: options?.keyFolding ?? "off",
+		flattenDepth: options?.flattenDepth ?? Number.POSITIVE_INFINITY
+	};
+}
+function resolveDecodeOptions(options) {
+	return {
+		indent: options?.indent ?? 2,
+		strict: options?.strict ?? true,
+		expandPaths: options?.expandPaths ?? "off"
 	};
 }
 
+"use strict";
+const PROMPT_COMPUTE_EFFORT = (data) => {
+  const context = data?.context;
+  if (context?.operation === "merge" || context?.operation === "modify") return "high";
+  if (context?.filters && context.filters.length > 3) return "high";
+  if (data?.dataKind === "math") return "high";
+  if (data?.dataKind === "structured" || data?.dataKind === "entity") return "high";
+  if (data?.dataSource instanceof Blob || data?.dataSource instanceof File) {
+    const size = data.dataSource.size;
+    if (size > 1024 * 1024) return "high";
+    if (data?.dataKind === "image") return "medium";
+    return "medium";
+  }
+  if (typeof data?.dataSource === "string") {
+    const len = data.dataSource.length;
+    if (len > 1e4) return "high";
+    if (data?.dataSource?.includes?.("math")) return "high";
+    if (data?.dataKind === "json" || data?.dataKind === "code") return "medium";
+    if (context?.searchTerms?.length) return "medium";
+    return "medium";
+  }
+  if (typeof data?.dataSource === "object" && data?.dataSource !== null) {
+    const keys = Object.keys(data.dataSource);
+    if (keys.length > 20) return "high";
+    if (context?.existingData) return "high";
+    return "medium";
+  }
+  return "medium";
+};
+const COMPUTE_TEMPERATURE = (data) => {
+  const context = data?.context;
+  if (context?.operation === "extract" || context?.operation === "analyze") return 0.1;
+  if (context?.operation === "modify" && context?.existingData) return 0.2;
+  if (data?.dataKind === "math") return 0.1;
+  if (data?.dataKind === "json" || data?.dataKind === "structured") return 0.2;
+  if (data?.dataKind === "code") return 0.3;
+  if (context?.operation === "create") return 0.6;
+  if (data?.dataKind === "url") return 0.3;
+  if (data?.dataKind === "input_image") return 0.4;
+  if (data?.dataKind === "input_text") return 0.5;
+  if (data?.dataKind === "markdown") return 0.5;
+  return 0.4;
+};
 const typesForKind = {
   "math": "input_text",
   "url": "input_image",
@@ -553,7 +1813,7 @@ const detectDataKindFromContent = (content) => {
     } catch {
     }
   }
-  if (URL.canParse(trimmed?.trim?.() || "", typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? void 0 : (typeof window != "undefined" ? window : globalThis)?.location?.origin || "")) return "url";
+  if (canParseURL(trimmed)) return "url";
   if (trimmed.includes("<svg") && trimmed.includes("</svg>")) return "xml";
   if (trimmed.startsWith("data:image/") && trimmed.includes(";base64,") && !trimmed.includes("\n") && trimmed.length < 1e5) {
     try {
@@ -802,6 +2062,7 @@ Expected output structure:
 }
 `;
 
+"use strict";
 const JSON_EXTRACTION_PATTERNS = [
   // ```json ... ``` or ```JSON ... ``` (case insensitive)
   /```json\s*\n?([\s\S]*?)\n?```/i,
@@ -928,6 +2189,34 @@ const parseAIResponseSafe = (response, fallbackKey = "data") => {
     error: result.error || void 0
   };
 };
+const extractAllJSONBlocks = (response) => {
+  if (!response || typeof response !== "string") return [];
+  const results = [];
+  const cleaned = cleanRawText(response);
+  const blockPattern = /```(?:json|toon)?\s*\n?([\s\S]*?)\n?```/gi;
+  let match;
+  while ((match = blockPattern.exec(cleaned)) !== null) {
+    if (match[1]) {
+      const extracted = cleanRawText(match[1]);
+      const result = tryParseJSON(extracted);
+      if (result.ok) {
+        results.push({
+          ok: true,
+          data: result.data,
+          raw: match[0],
+          source: "markdown_block"
+        });
+      }
+    }
+  }
+  if (results.length === 0) {
+    const directResult = extractJSONFromAIResponse(response);
+    if (directResult.ok) {
+      results.push(directResult);
+    }
+  }
+  return results;
+};
 const STRICT_JSON_INSTRUCTIONS = `
 CRITICAL OUTPUT FORMAT REQUIREMENTS:
 
@@ -943,9 +2232,22 @@ CRITICAL OUTPUT FORMAT REQUIREMENTS:
 
 If you cannot provide the requested data, return: {"error": "description of the issue", "ok": false}
 `;
+const COMPACT_JSON_INSTRUCTIONS = `OUTPUT ONLY: Valid JSON. No markdown, no code blocks, no explanations. Start with { or [, end with } or ]. All strings escaped. Must pass JSON.parse().`;
+const buildJSONEnforcedPrompt = (basePrompt, outputSchema) => {
+  const schemaHint = outputSchema ? `
 
+Expected output schema:
+${outputSchema}` : "";
+  return `${basePrompt}${schemaHint}
+
+${STRICT_JSON_INSTRUCTIONS}`;
+};
+
+"use strict";
 const hasFile = () => typeof globalThis.File !== "undefined";
 const hasBlob = () => typeof globalThis.Blob !== "undefined";
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_BASE64_SIZE = 10 * 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUTS = {
   low: 60 * 1e3,
   // 1 minute
@@ -1058,7 +2360,7 @@ const getUsableData = async (data) => {
           }
         } catch {
         }
-      } else if (URL.canParse(content, typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? void 0 : (typeof window != "undefined" ? window : globalThis)?.location?.origin || "")) {
+      } else if (canParseURL(content)) {
         return {
           "type": "input_image",
           "image_url": content,
@@ -1653,6 +2955,32 @@ const createGPTInstance = (apiKey, apiUrl, model) => {
     model || "gpt-5.2"
   );
 };
+const quickRecognize = async (apiKey, data, apiUrl, options = {}) => {
+  const gpt = createGPTInstance(apiKey, apiUrl);
+  await gpt.attachToRequest(data);
+  let raw;
+  try {
+    const timeoutOptions = options.timeoutOverride ? { ...options, maxTokens: options.maxTokens } : options;
+    raw = await gpt.sendRequest("medium", "medium", null, timeoutOptions);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error("[quickRecognize] Request failed:", errorMessage);
+    return { ok: false, error: errorMessage };
+  }
+  if (!raw) {
+    return { ok: false, error: "No response from AI service" };
+  }
+  const parseResult = extractJSONFromAIResponse(raw);
+  if (parseResult.ok) {
+    return { ok: true, data: parseResult.data };
+  }
+  console.warn("[quickRecognize] JSON extraction failed, using raw text");
+  return { ok: true, data: raw };
+};
+const quickModify = async (apiKey, existingData, modificationPrompt, apiUrl) => {
+  const gpt = createGPTInstance(apiKey, apiUrl);
+  return gpt.modifyExistingData(existingData, modificationPrompt);
+};
 
-export { GPTResponses, createGPTInstance, encode, parseAIResponseSafe, toBase64 };
+export { GPTResponses, createGPTInstance, detectDataKindFromContent, encode, extractJSONFromAIResponse, getUsableData, parseAIResponseSafe, toBase64 };
 //# sourceMappingURL=GPT-Responses.js.map

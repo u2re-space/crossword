@@ -148,13 +148,13 @@ export abstract class ShellBase implements Shell {
         this.currentView.value = viewId;
 
         // Update URL pathname (path-based routing, no hash)
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && typeof window != "undefined") {
             const pathname = `/${viewId}`;
             const search = params ? "?" + new URLSearchParams(params).toString() : "";
             const newUrl = pathname + search;
 
-            if (window.location.pathname !== pathname) {
-                window.history.pushState({ viewId, params }, "", newUrl);
+            if (globalThis?.location?.pathname !== pathname) {
+                globalThis?.history?.pushState?.({ viewId, params }, "", newUrl);
             }
         }
 
@@ -289,7 +289,7 @@ export abstract class ShellBase implements Shell {
         if (!this.rootElement) return;
 
         // Set color scheme
-        const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+        const prefersDark = globalThis?.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
         const resolved = theme.colorScheme === "dark" ? "dark"
             : theme.colorScheme === "light" ? "light"
             : prefersDark ? "dark" : "light";
@@ -374,11 +374,11 @@ export abstract class ShellBase implements Shell {
      * Setup popstate navigation (back/forward buttons)
      */
     protected setupPopstateNavigation(): void {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || typeof window == "undefined") return;
 
-        window.addEventListener("popstate", (event) => {
+        globalThis?.addEventListener?.("popstate", (event) => {
             // Get view from pathname
-            const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+            const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
             const viewId = (event.state?.viewId || pathname || "viewer") as ViewId;
 
             if (viewId !== this.currentView.value) {
@@ -396,9 +396,9 @@ export abstract class ShellBase implements Shell {
      * Get view ID from current pathname
      */
     protected getViewFromPathname(): ViewId | null {
-        if (typeof window === "undefined") return null;
+        if (typeof window === "undefined" || typeof window == "undefined") return null;
 
-        const pathname = window.location.pathname.replace(/^\//, "").toLowerCase();
+        const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
         if (!pathname || pathname === "/") {
             return null; // Root route
         }

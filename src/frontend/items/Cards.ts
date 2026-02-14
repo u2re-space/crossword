@@ -581,11 +581,11 @@ const shouldHandlePointer = (ev: PointerEvent) => ev?.pointerType === "touch" ||
 
 const isSwipeEnvironment = () => {
     if (typeof window === "undefined") return false;
-    const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-    const hoverNone = window.matchMedia?.("(hover: none)")?.matches ?? false;
+    const hasCoarsePointer = globalThis?.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+    const hoverNone = globalThis?.matchMedia?.("(hover: none)")?.matches ?? false;
     const viewportInlineSize =
-        window.visualViewport?.width ??
-        window.innerWidth ??
+        globalThis?.visualViewport?.width ??
+        globalThis?.innerWidth ??
         (typeof document !== "undefined" ? document.documentElement?.clientWidth : undefined) ??
         SWIPE_BREAKPOINT;
     const narrowViewport = viewportInlineSize <= SWIPE_BREAKPOINT;
@@ -635,7 +635,7 @@ const setupSwipeGestures = (card: HTMLElement, events: CardEventHandlers, wrappe
 
     const showSuccess = (action: SwipeAction) => {
         card.setAttribute("data-swipe-success", action);
-        window.setTimeout(() => {
+        globalThis?.setTimeout(() => {
             if (card.getAttribute("data-swipe-success") === action) {
                 card.removeAttribute("data-swipe-success");
             }

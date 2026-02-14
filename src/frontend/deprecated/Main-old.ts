@@ -169,7 +169,7 @@ const isLikelyExtension = () => {
         return (
             typeof chrome !== "undefined" &&
             Boolean((chrome as any)?.runtime?.id) &&
-            window.location.protocol === "chrome-extension:"
+            (typeof window != "undefined" ? window : globalThis).location.protocol === "chrome-extension:"
         );
     } catch {
         return false;
@@ -179,7 +179,7 @@ const isLikelyExtension = () => {
     // Hash location management
 const getViewFromHash = (): MinimalView | null => {
     if (typeof window === "undefined") return null;
-    const hash = window.location.hash;
+    const hash = globalThis.location.hash;
     return (HASH_VIEW_MAPPING as any)[hash] || null;
 };
 
@@ -187,12 +187,12 @@ const setViewHash = (view: MinimalView): void => {
     if (typeof window === "undefined") return;
     const hash = (VIEW_HASH_MAPPING as any)[view];
     if (hash) {
-        window.history.replaceState(null, '', hash);
+        globalThis.history.replaceState(null, '', hash);
     }
 };
 
 const applyTheme = (root: HTMLElement, theme: AppSettings["appearance"] extends infer A ? (A extends { theme?: infer T } ? T : never) : never) => {
-    const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    const prefersDark = typeof window !== "undefined" && globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
     const resolved = theme === "dark" ? "dark" : theme === "light" ? "light" : prefersDark ? "dark" : "light";
     root.dataset.theme = resolved;
     // Drive scheme-aware styling (used by the markdown-view styles).
@@ -683,9 +683,9 @@ export const mountMinimalApp = (mountElement: HTMLElement, options: MinimalAppOp
                 const printableContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 
                 // Open print dialog with the content
-                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                const printWindow = globalThis.open('', '_blank', 'width=800,height=600');
                 if (printWindow) {
-                    printWindow.document.write(`
+                    globalThis.document.write(`
                         <!DOCTYPE html>
                         <html>
                         <head>
@@ -720,7 +720,7 @@ export const mountMinimalApp = (mountElement: HTMLElement, options: MinimalAppOp
         };
 
         // Listen for hash changes
-        window.addEventListener('hashchange', handleHashChange);
+        globalThis.addEventListener('hashchange', handleHashChange);
 
         // Check initial hash
         const initialHashView = getViewFromHash();
@@ -1469,7 +1469,7 @@ export const mountMinimalApp = (mountElement: HTMLElement, options: MinimalAppOp
                         const printableContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 
                         // Open print dialog
-                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+                        const printWindow = globalThis.open('', '_blank', 'width=800,height=600');
                         if (printWindow) {
                             printWindow.document.write(`
                                 <!DOCTYPE html>
@@ -2032,7 +2032,7 @@ export const mountMinimalApp = (mountElement: HTMLElement, options: MinimalAppOp
                             chrome.tabs.sendMessage(tabId, { type: "START_SNIP" })?.catch?.(() => void 0);
                         }
                         try {
-                            window.close?.();
+                            globalThis.close?.();
                         } catch {
                             // ignore
                         }

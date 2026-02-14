@@ -170,8 +170,8 @@ export function getExecutionContext(): ExecutionContext {
     }
 
     // Check for PWA (standalone mode)
-    if (window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as any).standalone === true) {
+    if (globalThis?.matchMedia?.("(display-mode: standalone)").matches ||
+        (globalThis.navigator as any).standalone === true) {
         return "pwa";
     }
 

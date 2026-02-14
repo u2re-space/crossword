@@ -16,7 +16,7 @@ export const convertImageToJPEG = async (image: Blob | File | any): Promise<Blob
     const mimeType = image.type?.toLowerCase() || '';
 
     // Check if we're in a service worker (no DOM APIs available)
-    const isServiceWorker = typeof window === 'undefined' || !window.document;
+    const isServiceWorker = typeof globalThis === 'undefined' || !globalThis?.document;
 
     // For PNG files, we can use the optimized @jsquash/png decoder (works in service workers)
     if (mimeType === 'image/png') {

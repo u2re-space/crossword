@@ -19,6 +19,7 @@ import {
     extractJSONFromAIResponse,
     STRICT_JSON_INSTRUCTIONS
 } from "../../../core/document/AIResponseParser";
+import { canParseURL } from "@rs-core/utils/Runtime";
 
 const hasFile = () => typeof (globalThis as any).File !== "undefined";
 const hasBlob = () => typeof (globalThis as any).Blob !== "undefined";
@@ -195,7 +196,7 @@ export const getUsableData = async (data: DataInput) => {
                 } catch {
                     // Invalid data URL, treat as text
                 }
-            } else if (URL.canParse(content, typeof (typeof window != "undefined" ? window : globalThis)?.location == "undefined" ? undefined : ((typeof window != "undefined" ? window : globalThis)?.location?.origin || ""))) {
+            } else if (canParseURL(content)) {
                 // Valid regular URL
                 return {
                     "type": "input_image",
