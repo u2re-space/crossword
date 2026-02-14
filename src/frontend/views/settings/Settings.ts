@@ -18,13 +18,13 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const root = H`<div class="view-settings">
 
     <section class="actions">
-      <h2>Settings</h2>
       <div class="settings-tab-actions" data-settings-tabs data-active-tab="ai">
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="appearance" aria-selected="false">Appearance</button>
         <button class="settings-tab-btn is-active" type="button" data-action="switch-settings-tab" data-tab="ai" aria-selected="true">AI</button>
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="instructions" aria-selected="false">Instructions</button>
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="extension" aria-selected="false" data-extension-tab hidden>Extension</button>
       </div>
+      <h2>Settings</h2>
       <button class="btn primary" type="button" data-action="save">Save</button>
       <span class="note" data-note></span>
     </section>

@@ -65,7 +65,7 @@
         }
 
         h3 {
-            text-align: center;
+            text-align: start;
         }
 
         .card {
@@ -126,11 +126,19 @@
             padding-block-start: var(--spacing-sm, 8px);
             justify-content: flex-start;
             inline-size: stretch;
+            flex-direction: row;
+
+            place-content: center;
+            place-items: center;
+            justify-content: space-between;
 
             h2 {
-                flex-grow: 0;
+                flex-grow: 1;
+                flex-shrink: 1;
+                flex-basis: fit-content;
                 margin-inline-end: var(--spacing-sm, 10px);
-                padding-inline: 0;
+                padding-inline: var(--spacing-md, 16px);
+                text-align: end;
             }
         }
 
@@ -139,7 +147,6 @@
             flex-wrap: wrap;
             gap: var(--space-xs);
             align-items: center;
-            margin-inline-end: auto;
         }
 
         .settings-tab-btn {
@@ -398,7 +405,7 @@
 
             h3 {
                 display: flex;
-                align-items: center;
+                align-items: start;
                 gap: var(--space-sm);
                 margin: 0;
                 font-size: var(--text-lg);
