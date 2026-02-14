@@ -14,7 +14,7 @@
     }
 
     .file-attachment-area {
-        display: flex;
+        display: grid;
         flex-direction: column;
         gap: var(--space-md);
         flex: 1;
@@ -23,6 +23,54 @@
         flex-grow: 1;
         flex-shrink: 1;
         flex-basis: fit-content;
+        grid-template-rows: minmax(0px, 1fr);
+        grid-template-columns: minmax(0px, 1fr);
+        overflow-x: hidden;
+        max-inline-size: stretch;
+        inline-size: stretch;
+        min-inline-size: 0;
+        pointer-events: auto;
+
+        & > * {
+            grid-area: 1 / 1;
+            grid-column: 1 / -1;
+            grid-row: 1 / -1;
+        }
+
+        .file-list {
+            z-index: 2;
+            pointer-events: none;
+            block-size: stretch;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: fit-content;
+            box-sizing: border-box;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0;
+        }
+
+        .file-item {
+            pointer-events: none;
+        }
+
+        button {
+            pointer-events: auto;
+        }
+
+        &:has(.file-list .file-item) {
+            .file-drop-zone {
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+        }
+
+        .file-list:has(.wc-attachments-empty), .file-list:empty {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
     }
 
     .file-drop-zone {
@@ -41,25 +89,25 @@
         flex-grow: 1;
         flex-shrink: 1;
         flex-basis: fit-content;
+        pointer-events: none;
+    }
 
-        &[data-dropzone] {
-            min-block-size: 8rem;
-            padding: var(--space-lg);
-            background: var(--color-surface-container-low);
-            border: 2px dashed color-mix(in oklab, var(--color-outline-variant) 40%, transparent);
+    [data-dropzone] {
+        background: var(--color-surface-container-low);
+        border: 2px dashed color-mix(in oklab, var(--color-outline-variant) 40%, transparent);
+        border-radius: var(--radius-sm);
 
-            &:hover {
-                border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
-                background: color-mix(in oklab, var(--color-primary) 5%, var(--color-surface-container-low));
-            }
+        &:hover {
+            border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+            background: color-mix(in oklab, var(--color-primary) 5%, var(--color-surface-container-low));
+        }
 
-            &.drag-over {
-                border-color: var(--color-primary);
-                background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
-                box-shadow: var(--focus-ring);
+        &.drag-over {
+            border-color: var(--color-primary);
+            background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
+            box-shadow: var(--focus-ring);
 
-                @include wc.wc-dropzone-stripe-overlay;
-            }
+            @include wc.wc-dropzone-stripe-overlay;
         }
     }
 
@@ -93,11 +141,19 @@
         flex: 1;
         min-block-size: 0;
         overflow-y: auto;
-        max-block-size: 300px;
+        max-block-size: stretch;
+        max-inline-size: stretch;
+        inline-size: stretch;
+        min-inline-size: 0;
+        block-size: max-content;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .file-item {
-        display: flex;
+        display: grid;
+        grid-template-columns: [info] minmax(0px, 1fr) [button] minmax(0px, 2rem);
+        grid-template-rows: minmax(0px, 1fr);
         align-items: center;
         gap: var(--space-sm);
         padding: var(--space-sm);
@@ -105,6 +161,34 @@
         background: var(--color-surface-container-high);
         border: 1px solid var(--color-outline-variant);
         margin-block-end: var(--space-xs);
+        max-inline-size: stretch;
+        inline-size: stretch;
+        min-inline-size: 0;
+        overflow: hidden;
+        place-content: center;
+        place-items: center;
+
+        justify-items: safe center;
+        justify-content: safe center;
+        align-self: safe center;
+        align-content: safe center;
+
+        .file-info {
+            grid-column: info;
+            grid-row: 1 / -1;
+        }
+
+        .remove-btn {
+            box-sizing: border-box;
+            grid-column: button;
+            grid-row: 1 / -1;
+            aspect-ratio: auto;
+            max-inline-size: min(2rem, 100%) !important;
+            max-block-size: min(2rem, 100%) !important;
+            inline-size: stretch;
+            block-size: stretch;
+            padding: 0px;
+        }
 
         &:hover {
             background: var(--color-surface-container-highest);
@@ -112,11 +196,41 @@
     }
 
     .file-info {
-        display: flex;
-        align-items: center;
+        display: grid;
+        grid-template-columns: [icon] minmax(0px, 2rem) [details] minmax(0px, 1fr);
+        grid-template-rows: minmax(0px, 1fr);
         gap: var(--space-sm);
         flex: 1;
-        min-inline-size: 0;
+        min-inline-size: 0px;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        place-content: center;
+        place-items: center;
+        justify-items: safe center;
+        justify-content: safe center;
+        align-self: safe center;
+        align-content: safe center;
+        text-align: start;
+
+        .file-icon, .file-preview {
+            grid-column: icon;
+            grid-row: 1 / -1;
+        }
+
+        .file-details {
+            grid-column: details;
+            grid-row: 1 / -1;
+        }
+
+        &:has(.file-preview) {
+            .file-icon {
+                display: none !important;
+            }
+        }
     }
 
     .file-icon,
@@ -125,15 +239,43 @@
     }
 
     .file-preview {
-        inline-size: 32px;
-        block-size: 32px;
+        inline-size: 2rem;
+        block-size: 2rem;
         object-fit: cover;
         border-radius: var(--radius-sm);
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        object-position: center;
     }
 
     .file-details {
-        flex: 1;
-        min-inline-size: 0;
+        display: grid;
+        justify-self: start;
+        min-inline-size: fit-content;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        grid-template-columns: [name] minmax(0px, 1fr) [size] minmax(0px, max-content) [type] minmax(0px, max-content);
+        grid-template-rows: minmax(0px, 1fr);
+        gap: var(--space-xs);
+
+        .file-name {
+            grid-column: name;
+            grid-row: 1 / -1;
+        }
+        
+        .file-size {
+            grid-column: size;
+            grid-row: 1 / -1;
+        }
+        
+        .file-type {
+            grid-column: type;
+            grid-row: 1 / -1;
+        }
     }
 
     .file-name {
@@ -168,14 +310,22 @@
         }
     }
 
-    .file-actions {
+    .wc-attachments-toolbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: var(--space-sm) var(--space-md);
+        flex-wrap: wrap;
+    }
+
+    .file-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
         gap: var(--space-md);
-        inline-size: stretch;
+        inline-size: auto;
         min-inline-size: max-content;
-        max-inline-size: stretch;
+        max-inline-size: 100%;
         place-self: center;
     }
 
@@ -188,6 +338,8 @@
         background: var(--color-surface-container-high);
         border-radius: var(--radius-sm);
         border: 1px solid var(--color-outline-variant);
+        flex-grow: 1;
+        flex-direction: row;
 
         .file-counter,
         .data-counter {

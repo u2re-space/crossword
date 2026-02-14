@@ -253,6 +253,44 @@
         }
     }
 
+    .wc-file-drop-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        border: none;
+        border-radius: var(--radius-md);
+        padding-inline: var(--space-lg);
+        padding-block: var(--space-lg);
+        background: var(--color-surface-container-low);
+        box-shadow: var(--elev-1);
+        z-index: 10;
+        transition: all var(--motion-normal);
+
+        &.drag-over {
+            opacity: 1;
+            visibility: visible;
+            background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
+            box-shadow: var(--focus-ring), var(--elev-2);
+
+            .drop-zone-content {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+
+        @container (max-inline-size: 1024px) {
+            padding-inline: var(--space-md);
+            padding-block: var(--space-md);
+        }
+
+        @container (max-inline-size: 768px) {
+            padding-inline: var(--space-sm);
+            padding-block: var(--space-sm);
+        }
+    }
+
     .prompt-input-group {
         position: relative;
         inset: 0;
@@ -273,44 +311,6 @@
             transition: all var(--motion-normal);
         }
 
-        .wc-file-drop-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0;
-            visibility: hidden;
-            border: none;
-            border-radius: var(--radius-md);
-            padding-inline: var(--space-lg);
-            padding-block: var(--space-lg);
-            background: var(--color-surface-container-low);
-            box-shadow: var(--elev-1);
-            z-index: 10;
-            transition: all var(--motion-normal);
-
-            &.drag-over {
-                opacity: 1;
-                visibility: visible;
-                background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-container-low));
-                box-shadow: var(--focus-ring), var(--elev-2);
-
-                .drop-zone-content {
-                    opacity: 1;
-                    visibility: visible;
-                }
-            }
-
-            @container (max-inline-size: 1024px) {
-                padding-inline: var(--space-md);
-                padding-block: var(--space-md);
-            }
-
-            @container (max-inline-size: 768px) {
-                padding-inline: var(--space-sm);
-                padding-block: var(--space-sm);
-            }
-        }
-
         .file-drop-zone {
             position: relative;
             display: flex;
@@ -318,6 +318,7 @@
             align-items: center;
             gap: var(--space-lg);
             text-align: center;
+            pointer-events: none;
 
             .drop-zone-content {
                 display: flex;
@@ -441,6 +442,10 @@
 
         .file-list {
             margin-block-start: var(--space-md);
+            box-sizing: border-box;
+            inline-size: stretch;
+            max-inline-size: stretch;
+            min-inline-size: 0;
         }
 
         .file-item {
@@ -901,7 +906,7 @@
     }
 
     .prompt-input-overlay {
-        position: absolute;
+        position: absolute !important;
         inset: var(--space-xs);
         display: flex;
         align-items: center;
@@ -914,7 +919,7 @@
         visibility: hidden;
         pointer-events: none;
         transition: opacity var(--motion-fast), visibility var(--motion-fast);
-        z-index: 2;
+        z-index: 3;
         block-size: stretch;
         inline-size: stretch;
         inset: 0px;

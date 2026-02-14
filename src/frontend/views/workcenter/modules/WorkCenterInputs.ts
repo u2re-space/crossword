@@ -185,7 +185,7 @@ export class WorkCenterInputs {
     setupDropZone(state: WorkCenterState): void {
         if (!this.container) return;
 
-        const dropZone = this.container.querySelector('.file-drop-zone') as HTMLElement;
+        const dropZone = this.container.querySelector('[data-dropzone]') as HTMLElement;
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.multiple = true;

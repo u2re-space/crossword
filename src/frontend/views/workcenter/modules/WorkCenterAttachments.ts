@@ -22,49 +22,47 @@ export class WorkCenterAttachments {
     renderAttachmentsSection(state: WorkCenterState): string {
         return `
             <div class="wc-attachments-section">
-              <div class="wc-block-header">
-                <div class="file-actions">
-                  <button class="btn btn-icon" data-action="select-files" title="Choose Files">
-                    <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Add Files</span>
-                  </button>
-                  <div class="file-list" data-file-list></div>
-                  <button class="btn btn-icon" data-action="clear-all-files" title="Clear All Files">
-                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Clear All</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="file-attachment-area">
-                <div class="file-drop-zone" data-dropzone="">
+              <div class="file-attachment-area" data-file-drop-zone="" data-dropzone="">
+                <div class="file-drop-zone" >
                   <div class="drop-zone-content">
                     <ui-icon icon="folder" size="4rem" icon-style="duotone" class="drop-icon"></ui-icon>
                     <div class="drop-text">Drop files here or click to select files</div>
                     <div class="drop-hint" data-drop-hint>Supports: Images, Documents, Text files, PDFs, URLs, Base64 data</div>
                   </div>
                 </div>
+                <div class="file-list" data-file-list></div>
                 ${this.renderRecognizedStatus(state)}
               </div>
-
-              <div class="file-stats">
-                <div class="file-counter" data-file-count>
-                  <ui-icon icon="file" size="16" icon-style="duotone"></ui-icon>
-                  <span class="count">${state.files.length}</span>
-                  <span class="label">files attached</span>
+              <div class="wc-block-header wc-attachments-toolbar">
+                <div class="file-actions">
+                  <button class="btn btn-icon" data-action="select-files" title="Choose Files">
+                    <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">Add Files</span>
+                  </button>
+                  <button class="btn btn-icon" data-action="clear-all-files" title="Clear All Files">
+                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
+                    <span class="btn-text">Clear All</span>
+                  </button>
                 </div>
-                ${state.recognizedData ? `
-                  <div class="data-counter recognized">
-                    <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
-                    <span>Content recognized</span>
+                <div class="file-stats">
+                  <div class="file-counter" data-file-count>
+                    <ui-icon icon="file" size="16" icon-style="duotone"></ui-icon>
+                    <span class="count">${state.files.length}</span>
+                    <span class="label">files attached</span>
                   </div>
-                ` : ''}
-                ${state.processedData && state.processedData.length > 0 ? `
-                  <div class="data-counter processed">
-                    <ui-icon icon="cogs" size="16" icon-style="duotone"></ui-icon>
-                    <span>${state.processedData.length} processing steps</span>
-                  </div>
-                ` : ''}
+                  ${state.recognizedData ? `
+                    <div class="data-counter recognized">
+                      <ui-icon icon="eye" size="16" icon-style="duotone"></ui-icon>
+                      <span>Content recognized</span>
+                    </div>
+                  ` : ''}
+                  ${state.processedData && state.processedData.length > 0 ? `
+                    <div class="data-counter processed">
+                      <ui-icon icon="cogs" size="16" icon-style="duotone"></ui-icon>
+                      <span>${state.processedData.length} processing steps</span>
+                    </div>
+                  ` : ''}
+                </div>
               </div>
             </div>
         `;
@@ -132,7 +130,9 @@ export class WorkCenterAttachments {
         }
 
         const removeBtn = fileItem.querySelector('.remove-btn') as HTMLButtonElement;
-        removeBtn.addEventListener('click', () => {
+        removeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.removeFile(state, index);
         });
 
@@ -154,7 +154,8 @@ export class WorkCenterAttachments {
     setupDropZone(state: WorkCenterState): void {
         if (!this.container) return;
 
-        const dropZone = this.container.querySelector('.file-drop-zone') as HTMLElement;
+        const dropZone = this.container.querySelector('[data-file-drop-zone]') as HTMLElement | null;
+        if (!dropZone) return;
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.multiple = true;
@@ -166,7 +167,13 @@ export class WorkCenterAttachments {
         this.updateDropHint();
 
         // Click to select files
-        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('button, a, input, select, textarea, label, [data-remove], [data-open-md]')) {
+                return;
+            }
+            fileInput.click();
+        });
 
         // Drag and drop events
         dropZone.addEventListener('dragover', (e) => {
