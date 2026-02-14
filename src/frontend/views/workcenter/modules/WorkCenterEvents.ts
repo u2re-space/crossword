@@ -132,6 +132,15 @@ export class WorkCenterEvents {
 
         this.container.addEventListener('paste', async (e) => {
             if (!e.clipboardData) return;
+            const target = e.target as EventTarget | null;
+            const isEditableTarget = this.isEditableTarget(target);
+            const hasClipboardFiles = this.hasClipboardFiles(e.clipboardData);
+
+            // Let native paste work in inputs/textareas/contenteditable when clipboard contains text only.
+            // This prevents prompt input text from being misrouted into attachment handling.
+            if (isEditableTarget && !hasClipboardFiles) {
+                return;
+            }
 
             let contentAdded = false;
 
@@ -196,6 +205,18 @@ export class WorkCenterEvents {
                 this.deps.showMessage?.('Clipboard content detected but no supported payload was extracted');
             }
         });
+    }
+
+    private isEditableTarget(target: EventTarget | null): boolean {
+        if (!(target instanceof HTMLElement)) return false;
+        if (target.isContentEditable) return true;
+        if (target.closest('[contenteditable="true"]')) return true;
+        return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+    }
+
+    private hasClipboardFiles(clipboardData: DataTransfer): boolean {
+        if ((clipboardData.files || []).length > 0) return true;
+        return Array.from(clipboardData.items || []).some((item) => item.kind === 'file');
     }
 
     private setupTemplateSelection(): void {
