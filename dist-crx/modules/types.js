@@ -1,1 +1,0 @@
-function t(t){return{load(){try{const e=localStorage.getItem(t);return e?JSON.parse(e):null}catch{return null}},save(e){try{localStorage.setItem(t,JSON.stringify(e))}catch{}},clear(){try{localStorage.removeItem(t)}catch{}}}}export{t as createViewState};

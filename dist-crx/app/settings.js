@@ -1,1 +1,0 @@
-import{crxFrontend as e}from"../modules/crx-entry.js";import"../modules/Settings.js";import"../modules/Env.js";import"../modules/UnifiedMessaging.js";import"../modules/templates.js";e(document.getElementById("app")??document.body,{initialView:"settings"});
