@@ -215,10 +215,27 @@
         .app-shell {
             background: white;
             color: black;
+            overflow: visible;
+            contain: none;
         }
 
         .app-shell__content {
             overflow: visible;
+            contain: none;
+
+            &::-webkit-scrollbar {
+                display: none;
+            }
+
+            & > [data-view] {
+                position: static !important;
+                inset: auto !important;
+                overflow: visible !important;
+                inline-size: auto !important;
+                block-size: auto !important;
+                max-block-size: none !important;
+                min-block-size: 0 !important;
+            }
         }
     }
 

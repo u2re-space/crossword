@@ -4,7 +4,11 @@
 
 import { io, Socket } from 'socket.io-client';
 import { log, getWsStatusEl, getVoiceTextEl } from '../utils/utils';
-import { remoteHost, remotePort } from '../config/config';
+import {
+    getRemoteHost,
+    getRemotePort,
+    getRemoteProtocol,
+} from '../config/config';
 
 let socket: Socket | null = null;
 let wsConnected = false;
@@ -238,8 +242,9 @@ export function sendWS(obj: any) {
 }
 
 function handleServerMessage(msg: any) {
-    if (msg.type === 'voice_result') {
+    if (msg.type === 'voice_result' || msg.type === 'voice_error') {
         const text =
+            msg.error ||
             msg.message ||
             ('Actions: ' + JSON.stringify(msg.actions || []));
         const voiceTextEl = getVoiceTextEl();
@@ -253,52 +258,93 @@ function handleServerMessage(msg: any) {
 export function connectWS() {
     if (socket && (socket.connected || (socket as any).connecting)) return;
 
-    const protocol = location.protocol === 'https:' ? 'https' : 'http';
-    const port = remotePort || (protocol === 'https' ? '8443' : '8080');
-    const url = `${protocol}://${remoteHost}:${port}`;
-    log('Connecting Socket.IO: ' + url);
+    const remoteHost = getRemoteHost() || location.hostname;
+    const remotePort = getRemotePort().trim();
+    const remoteProtocol = getRemoteProtocol();
+
+    const inferProtocol = (): 'http' | 'https' => {
+        if (remoteProtocol === 'http' || remoteProtocol === 'https') return remoteProtocol;
+        if (remotePort === '443' || remotePort === '8443') return 'https';
+        if (remotePort === '80' || remotePort === '8080') return 'http';
+        return location.protocol === 'https:' ? 'https' : 'http';
+    };
+
+    const primaryProtocol = inferProtocol();
+    const fallbackProtocol = primaryProtocol === 'https' ? 'http' : 'https';
+    const defaultPort = primaryProtocol === 'https' ? '8443' : '8080';
+    const activePort = remotePort || defaultPort;
+
+    const candidates = [
+        `${primaryProtocol}://${remoteHost}:${activePort}`,
+        `${fallbackProtocol}://${remoteHost}:${activePort}`,
+    ].filter((url, idx, arr) => arr.indexOf(url) === idx);
 
     isConnecting = true;
     updateButtonLabel();
 
-    socket = io(url, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 5,
-    });
+    const tryConnect = (index: number) => {
+        if (index >= candidates.length) {
+            log('Socket.IO error: all protocol candidates failed');
+            isConnecting = false;
+            setWsStatus(false);
+            updateButtonLabel();
+            return;
+        }
 
-    socket.on('connect', () => {
-        log('Socket.IO connected');
-        isConnecting = false;
-        setWsStatus(true);
-    });
+        const url = candidates[index];
+        log('Connecting Socket.IO: ' + url);
 
-    socket.on('disconnect', () => {
-        log('Socket.IO disconnected');
-        isConnecting = false;
-        setWsStatus(false);
-        updateButtonLabel();
-    });
+        const probeSocket = io(url, {
+            transports: ['websocket', 'polling'],
+            reconnection: false,
+            timeout: 3500,
+        });
 
-    socket.on('connect_error', (error) => {
-        log('Socket.IO error: ' + (error.message || ''));
-        isConnecting = false;
-        updateButtonLabel();
-    });
+        probeSocket.on('connect', () => {
+            socket = probeSocket;
+            log('Socket.IO connected: ' + url);
+            isConnecting = false;
+            setWsStatus(true);
 
-    socket.on('voice_result', (msg) => {
-        handleServerMessage(msg);
-    });
+            socket.on('disconnect', () => {
+                log('Socket.IO disconnected');
+                isConnecting = false;
+                setWsStatus(false);
+                updateButtonLabel();
+            });
 
-    socket.on('clipboard:update', (msg: any) => {
-        const text = typeof msg?.text === 'string' ? msg.text : '';
-        lastServerClipboardText = text;
-        notifyClipboardHandlers(text, { source: msg?.source });
-    });
+            socket.on('connect_error', (error) => {
+                log('Socket.IO error: ' + (error.message || ''));
+                isConnecting = false;
+                updateButtonLabel();
+            });
 
-    // Expose socket for virtual keyboard
-    (window as any).__socket = socket;
+            socket.on('voice_result', (msg) => {
+                handleServerMessage(msg);
+            });
+            socket.on('voice_error', (msg) => {
+                handleServerMessage(msg);
+            });
+
+            socket.on('clipboard:update', (msg: any) => {
+                const text = typeof msg?.text === 'string' ? msg.text : '';
+                lastServerClipboardText = text;
+                notifyClipboardHandlers(text, { source: msg?.source });
+            });
+
+            // Expose socket for virtual keyboard
+            (window as any).__socket = socket;
+        });
+
+        probeSocket.on('connect_error', (error) => {
+            probeSocket.removeAllListeners();
+            probeSocket.close();
+            tryConnect(index + 1);
+            log(`Socket.IO connect failed (${url}): ${error.message || error}`);
+        });
+    };
+
+    tryConnect(0);
 }
 
 export function disconnectWS() {

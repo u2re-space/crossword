@@ -83,92 +83,98 @@
     }
 }
 
+
 @media print {
 
-    :where(body, html) {
-        place-content: start;
-        place-items: start;
-        text-align: start;
-        padding: 0px;
-        margin: 0px;
-        border: none;
-        outline: none;
-        box-shadow: none;
-        scrollbar-width: none;
-        scrollbar-color: transparent transparent;
-        -webkit-overflow-scrolling: touch;
-        font-family: var(--print-font-family);
+    html[data-view="viewer"],
+    html[data-view="viewer"] body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: auto !important;
+        background: #fff !important;
+        color: #000 !important;
+        color-scheme: light !important;
+        font-family: var(--print-font-family, "Times New Roman", serif);
     }
 
-    :where(body, html, :root)>*:not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown),
-    :where(body, html, :root) :where(#app, #raw-md),
-    :where(body, html, :root) :where(div, span, button, input, header, main, footer):not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown) {
-        display: contents !important;
-    }
-
-    .view-viewer,
-    .view-viewer__content,
-    [data-viewer-content] {
-        display: contents !important;
-    }
-
-    [data-hidden], [hidden], [aria-hidden="true"],
-    .view-viewer__toolbar, [data-viewer-toolbar],
-    button,
-    nav {
+    html[data-view="viewer"] body > :not(#app) {
         display: none !important;
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        opacity: 0;
-        inline-size: 0px;
-        block-size: 0px;
-        border: none;
-        outline: none;
-        box-shadow: none;
-        scrollbar-width: none;
-        scrollbar-color: transparent transparent;
-        overflow: hidden;
-        -webkit-overflow-scrolling: touch;
-        padding: 0px;
-        margin: 0px;
-        font: initial;
-        font-size: initial;
-        font-weight: initial;
-        font-family: initial;
-        font-style: initial;
-        font-variant: initial;
-        line-height: 0;
-        color: transparent;
-        background: transparent;
-        pointer-events: none;
-        user-select: none;
-        touch-action: none;
-        cursor: none;
-        opacity: 0;
-        visibility: collapse;
-        pointer-events: none;
     }
 
-    body,
-    html,
-    :root {
-        background-color: initial;
-        color: initial;
-        padding: 0px;
-        margin: 0px;
+    html[data-view="viewer"] #raw-md,
+    html[data-view="viewer"] #overlays,
+    html[data-view="viewer"] #filter,
+    html[data-view="viewer"] .app-shell__nav,
+    html[data-view="viewer"] .app-shell__status,
+    html[data-view="viewer"] .app-shell__loading,
+    html[data-view="viewer"] .view-viewer__toolbar,
+    html[data-view="viewer"] [data-viewer-toolbar],
+    html[data-view="viewer"] [data-hidden] {
+        display: none !important;
     }
 
-    body {
-        overflow: auto;
+    html[data-view="viewer"] .app-shell,
+    html[data-view="viewer"] .app-shell__content,
+    html[data-view="viewer"] [data-shell-content] > [data-view],
+    html[data-view="viewer"] .app-shell__content > [data-view],
+    html[data-view="viewer"] .view-viewer,
+    html[data-view="viewer"] .view-viewer__content,
+    html[data-view="viewer"] [data-viewer-content] {
+        position: static !important;
+        inset: auto !important;
+        display: block !important;
+        inline-size: auto !important;
+        min-inline-size: 0 !important;
+        max-inline-size: 100% !important;
+        block-size: auto !important;
+        min-block-size: 0 !important;
+        max-block-size: none !important;
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        contain: none !important;
+        transform: none !important;
     }
 
-    :where(*) {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
+    html[data-view="viewer"] .app-shell__content::-webkit-scrollbar,
+    html[data-view="viewer"] [data-shell-content] > [data-view]::-webkit-scrollbar,
+    html[data-view="viewer"] .view-viewer__content::-webkit-scrollbar,
+    html[data-view="viewer"] [data-viewer-content]::-webkit-scrollbar {
+        display: none;
+    }
 
-        &::-webkit-scrollbar {
-            display: none;
-        }
+    html[data-view="viewer"] .app-shell__content,
+    html[data-view="viewer"] [data-shell-content] > [data-view],
+    html[data-view="viewer"] .view-viewer__content,
+    html[data-view="viewer"] [data-viewer-content] {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+    html[data-view="viewer"] [data-render-target]:not([hidden]) {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #111 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        filter: none !important;
+    }
+
+    html[data-view="viewer"] [data-raw-target]:not([hidden]) {
+        display: block !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #111 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        filter: none !important;
     }
 }

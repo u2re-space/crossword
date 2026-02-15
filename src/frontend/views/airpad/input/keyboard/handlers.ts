@@ -15,11 +15,16 @@ import { renderKeyboard, renderEmoji, restoreButtonIcon } from './ui';
 
 const DEBUG_KEYBOARD_INPUT = false;
 
+function isConfigOverlayVisible(): boolean {
+    const overlay = document.querySelector('.config-overlay') as HTMLElement | null;
+    if (!overlay) return false;
+    return overlay.style.display === 'flex' || overlay.classList.contains('flex');
+}
+
 // Show keyboard
 export function showKeyboard() {
     // Don't show keyboard if config dialog is open
-    const configOverlay = document.querySelector('.config-overlay');
-    if (configOverlay && configOverlay.classList.contains('flex')) {
+    if (isConfigOverlayVisible()) {
         return;
     }
 
@@ -68,8 +73,6 @@ export function hideKeyboard() {
             virtualKeyboardAPI.hide();
             toggleButton?.blur();
         }
-
-        (document.activeElement as HTMLElement)?.blur?.();
     } finally {
         isHidingKeyboard = false;
     }
@@ -93,8 +96,7 @@ export function setupToggleButtonHandler() {
 
     toggleButton.addEventListener('click', (e) => {
         // Don't allow keyboard toggle if config dialog is open
-        const configOverlay = document.querySelector('.config-overlay');
-        if (configOverlay && configOverlay.classList.contains('flex')) {
+        if (isConfigOverlayVisible()) {
             return;
         }
 
@@ -672,16 +674,19 @@ export function setupKeyboardUIHandlers() {
         const target = e?.target as HTMLElement;
         const relatedTarget = e?.relatedTarget as HTMLElement;
 
-        // Don't hide keyboard if focus is moving within config overlay
-        if (!(target?.closest?.('.config-overlay') || relatedTarget?.closest?.('.config-overlay'))) {
-            hideKeyboard();
-        }
+        const staysInInteractiveZone = Boolean(
+            target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle') ||
+            relatedTarget?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle') ||
+            relatedTarget?.matches?.("input,textarea,select,[contenteditable=\"true\"]")
+        );
+
+        if (!staysInInteractiveZone) hideKeyboard();
     });
 
     document.addEventListener('click', (e) => {
         const target = e?.target as HTMLElement;
         if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
-              target?.closest?.('.config-overlay'))) {
+              target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {
             hideKeyboard();
         }
     });
@@ -689,7 +694,7 @@ export function setupKeyboardUIHandlers() {
     document.addEventListener('pointerdown', (e) => {
         const target = e?.target as HTMLElement;
         if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
-              target?.closest?.('.config-overlay'))) {
+              target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {
             hideKeyboard();
         }
     });

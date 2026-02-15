@@ -59,50 +59,20 @@
         :where(body, html, :root) :where(#app, #raw-md),
         :where(body, html, :root) :where(div, span, button, input, header, main, footer):not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown) {
             display: contents !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            break-after: avoid !important;
+            break-before: avoid !important;
         }
 
         .view-viewer,
         .view-viewer__content,
         [data-viewer-content] {
             display: contents !important;
-        }
-    
-        [data-hidden], [hidden], [aria-hidden="true"],
-        .view-viewer__toolbar, [data-viewer-toolbar],
-        button,
-        nav {
-            display: none !important;
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            opacity: 0;
-            inline-size: 0px;
-            block-size: 0px;
-            border: none;
-            outline: none;
-            box-shadow: none;
-            scrollbar-width: none;
-            scrollbar-color: transparent transparent;
-            overflow: hidden;
-            -webkit-overflow-scrolling: touch;
-            padding: 0px;
-            margin: 0px;
-            font: initial;
-            font-size: initial;
-            font-weight: initial;
-            font-family: initial;
-            font-style: initial;
-            font-variant: initial;
-            line-height: 0;
-            color: transparent;
-            background: transparent;
-            pointer-events: none;
-            user-select: none;
-            touch-action: none;
-            cursor: none;
-            opacity: 0;
-            visibility: collapse;
-            pointer-events: none;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            break-after: avoid !important;
+            break-before: avoid !important;
         }
 
         body,
@@ -110,12 +80,13 @@
         :root {
             background-color: initial;
             color: initial;
-            padding: 0px;
-            margin: 0px;
-        }
-
-        body {
-            overflow: auto;
+            padding: 0px !important;
+            margin: 0px !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            container-type: inline-size !important;
+            border: 0px none transparent !important;
+            outline: 0px none transparent !important;
         }
 
         :where(*) {
@@ -125,6 +96,75 @@
             &::-webkit-scrollbar {
                 display: none;
             }
+        }
+
+        [data-hidden], [hidden], [aria-hidden="true"],
+        .view-viewer__toolbar, [data-viewer-toolbar],
+        button,
+        nav,
+        head, [hidden], [aria-hidden="true"], [data-hidden], .app-loading, .view-viewer__toolbar, .app-shell__status, #raw-md, .markdown-viewer-raw {
+            &, & * {
+                display: none !important;
+                position: absolute !important;
+                inset: 0 !important;
+                z-index: -1 !important;
+                opacity: 0 !important;
+                inline-size: 0 !important;
+                block-size: 0 !important;
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+                scrollbar-width: none !important;
+                scrollbar-color: transparent transparent !important;
+                overflow: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font: initial !important;
+                font-size: initial !important;
+                font-weight: initial !important;
+                font-family: initial !important;
+                font-style: initial !important;
+                font-variant: initial !important;
+                line-height: 0 !important;
+                color: transparent !important;
+                background: transparent !important;
+                pointer-events: none !important;
+                user-select: none !important;
+                touch-action: none !important;
+                cursor: none !important;
+                opacity: 0 !important;
+                visibility: collapse !important;
+                pointer-events: none !important;
+                interactivity: inert !important;
+                break-after: avoid !important;
+                break-before: avoid !important;
+                font-size: 0 !important;
+                line-height: 0 !important;
+                overflow: hidden !important;
+                contain: strict !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+                break-after: avoid !important;
+                break-before: avoid !important;
+            }
+        }
+
+        #app, .app-shell, .view-viewer, .view-viewer__content, .markdown-body, .markdown-viewer-content, .result-content {
+            display: contents !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            scrollbar-width: none !important;
+            scrollbar-color: transparent transparent !important;
+            -webkit-overflow-scrolling: touch !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            break-after: avoid !important;
+            break-before: avoid !important;
         }
     }
 }

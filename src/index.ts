@@ -301,8 +301,8 @@ export default async function index(mountElement: HTMLElement) {
             console.log('[Index] View route:', pathname);
             clearLoadingState(mountElement);
 
-            // Special handling for airpad/print (use raw shell)
-            const shell = (pathname === "airpad" || pathname === "print")
+            // Print stays on raw shell; other views follow user shell preference.
+            const shell = (pathname === "print")
                 ? "base"
                 : (getSavedShell() || "minimal");
 

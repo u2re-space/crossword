@@ -1,6 +1,6 @@
 @use "veela-lib" as *;
 
-@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, overrides;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, print, print-breaks, overrides;
 
 @layer tokens {
     :root {

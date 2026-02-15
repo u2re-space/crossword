@@ -8,33 +8,21 @@
 
 @layer view.airpad {
 
-    *,
-    *::before,
-    *::after {
+    .view-airpad :is(*, *::before, *::after) {
         box-sizing: border-box;
         font-variant-emoji: text;
     }
 
-    html:has(.view-airpad) {
+    .view-airpad {
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         user-select: none;
         -webkit-user-select: none;
-    }
-
-    body:has(.view-airpad) {
-        margin: 0;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: var(--surface);
-        color: var(--on-surface);
-        display: flex;
-        flex-direction: column;
-        min-block-size: 100vb;
-        position: relative;
         line-height: 1.5;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    :is(html, body):has([data-view="airpad"]) {
+    .view-airpad {
         --view-layout: "flex";
         --view-content-max-width: none;
     }
@@ -46,7 +34,7 @@
    ========================================================================== */
 
 @layer view.airpad {
-    :root:has(.view-airpad) {
+    .view-airpad {
         /* Material You color system - Enhanced with BeerCSS influences */
         --primary: #0061a4;
         --primary-container: #d1e4ff;
@@ -1341,6 +1329,292 @@
             inline-size: 40px;
             block-size: 40px;
             font-size: 20px;
+        }
+    }
+}
+
+/* ==========================================================================
+   STABILITY OVERRIDES - shell-compatible layout guards
+   ========================================================================== */
+
+@layer view.airpad {
+    .view-airpad {
+        position: relative;
+        min-block-size: 100%;
+        background: var(--surface);
+        color: var(--on-surface);
+        --vk-toggle-size: 56px;
+        --vk-toggle-edge: 1.25rem;
+        --vk-log-gap: 0.75rem;
+    }
+
+    .view-airpad .container {
+        min-block-size: 100%;
+        max-inline-size: min(980px, 100%);
+        padding: clamp(0.75rem, 1.8vh, 1.5rem) clamp(0.75rem, 1.8vw, 1.25rem) calc(var(--space-16) + var(--space-2));
+        margin-inline: auto;
+    }
+
+    .view-airpad .hero h1 {
+        font-size: clamp(1.5rem, 3.6vh, 2.5rem);
+        margin-block-end: clamp(0.25rem, 0.8vh, 0.75rem);
+    }
+
+    .view-airpad .hero .subtitle {
+        font-size: clamp(0.875rem, 1.6vh, 1rem);
+    }
+
+    .view-airpad .status-container {
+        gap: clamp(0.35rem, 0.8vh, 0.75rem);
+    }
+
+    .view-airpad .status-bar {
+        gap: clamp(0.25rem, 0.6vh, 0.75rem);
+        padding: clamp(0.25rem, 0.8vh, 0.5rem) clamp(0.5rem, 1vw, 0.875rem);
+    }
+
+    .view-airpad .stage {
+        justify-content: center;
+        gap: clamp(0.6rem, 1.6vh, 1.25rem);
+        min-block-size: clamp(11.5rem, 30vh, 18rem);
+    }
+
+    .view-airpad .air-row {
+        position: relative;
+        align-items: flex-end;
+    }
+
+    .view-airpad .big-button {
+        inline-size: clamp(5.5rem, 14vh, 8.75rem);
+        block-size: clamp(5.5rem, 14vh, 8.75rem);
+        font-size: clamp(1rem, 2.3vh, 1.4rem);
+    }
+
+    .view-airpad .neighbor-button {
+        inline-size: clamp(2.4rem, 5.5vh, 3.2rem);
+        block-size: clamp(2.4rem, 5.5vh, 3.2rem);
+        inset-inline-end: clamp(-2.2rem, -3.5vw, -1.6rem);
+        inset-block-end: 0.2rem;
+        transform: none;
+    }
+
+    .view-airpad .voice-line {
+        inline-size: 100%;
+        max-inline-size: 40rem;
+        margin-block-start: clamp(0.15rem, 0.6vh, 0.5rem);
+        padding: clamp(0.4rem, 1vh, 0.65rem) clamp(0.5rem, 1.2vw, 0.9rem);
+        font-size: clamp(0.85rem, 1.8vh, 1rem);
+    }
+
+    .view-airpad .hint {
+        inline-size: 100%;
+        max-inline-size: min(980px, 100%);
+        margin-block-start: clamp(0.25rem, 0.8vh, 0.75rem);
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(0.35rem, 1vh, 0.7rem);
+        font-size: clamp(0.72rem, 1.5vh, 0.86rem);
+        text-align: initial;
+    }
+
+    .view-airpad .hint-group {
+        margin: 0;
+        padding: clamp(0.35rem, 0.9vh, 0.65rem) clamp(0.45rem, 1vw, 0.8rem);
+        border: 1px solid color-mix(in srgb, var(--outline-variant), transparent 22%);
+        border-radius: var(--radius-lg);
+        background: color-mix(in srgb, var(--surface-container), transparent 10%);
+        line-height: 1.35;
+        overflow: clip;
+    }
+
+    .view-airpad .hint-group summary {
+        cursor: pointer;
+        list-style: none;
+        font-size: clamp(0.76rem, 1.65vh, 0.92rem);
+        font-weight: var(--font-weight-semibold);
+        color: var(--on-surface);
+        padding: 0.05rem 0;
+    }
+
+    .view-airpad .hint-group summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .view-airpad .hint-group summary::after {
+        content: "▾";
+        float: inline-end;
+        opacity: 0.75;
+        transition: transform var(--transition-fast);
+    }
+
+    .view-airpad .hint-group:not([open]) summary::after {
+        transform: rotate(-90deg);
+    }
+
+    .view-airpad .hint-group ul {
+        margin: clamp(0.25rem, 0.8vh, 0.45rem) 0 0;
+        padding-inline-start: 1rem;
+    }
+
+    .view-airpad .hint-group li {
+        margin-block: clamp(0.15rem, 0.45vh, 0.3rem);
+    }
+
+    .view-airpad .hint-group code {
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.4rem;
+        background: color-mix(in srgb, var(--surface-container-high), transparent 8%);
+        border: 1px solid color-mix(in srgb, var(--outline-variant), transparent 30%);
+        font-size: 0.9em;
+    }
+
+    .view-airpad .side-log-toggle {
+        position: fixed;
+        inset-block-start: auto;
+        inset-inline-end: var(--vk-toggle-edge);
+        inset-block-end: calc(
+            max(var(--vk-toggle-edge), env(safe-area-inset-bottom)) +
+            var(--vk-toggle-size) +
+            var(--vk-log-gap)
+        );
+        transform: none;
+        writing-mode: horizontal-tb;
+        white-space: nowrap;
+        inline-size: auto;
+        block-size: auto;
+        min-block-size: 2.5rem;
+        line-height: 1;
+        z-index: 21;
+    }
+
+    .view-airpad .keyboard-toggle {
+        inset-inline-end: var(--vk-toggle-edge);
+        inset-block-end: max(var(--vk-toggle-edge), env(safe-area-inset-bottom));
+        z-index: 22;
+    }
+
+    .view-airpad .bottom-toolbar {
+        position: fixed;
+        inset-inline-start: var(--space-4);
+        inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
+        inline-size: max-content;
+        block-size: auto;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2);
+        border: 1px solid color-mix(in srgb, var(--outline), transparent 35%);
+        border-radius: var(--radius-2xl);
+        background: color-mix(in srgb, var(--surface-container-high), transparent 12%);
+        box-shadow: var(--elevation-4);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        z-index: 20;
+    }
+
+    .view-airpad .bottom-toolbar .toolbar-btn {
+        inline-size: 3.25rem;
+        block-size: 3.25rem;
+        border-radius: var(--radius-xl);
+        font-size: 1.125rem;
+        border: 1px solid color-mix(in srgb, var(--outline-variant), transparent 20%);
+        background: color-mix(in srgb, var(--surface-container), transparent 8%);
+        box-shadow: var(--elevation-2);
+    }
+
+    .view-airpad .bottom-toolbar .toolbar-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--elevation-3);
+    }
+
+    .view-airpad .bottom-toolbar .toolbar-btn:active {
+        transform: scale(0.94);
+    }
+
+    .view-airpad .bottom-toolbar #btnConfig {
+        background: color-mix(in srgb, var(--primary), var(--surface-container-high) 65%);
+        color: var(--on-primary);
+        border-color: color-mix(in srgb, var(--primary), transparent 45%);
+    }
+
+    @media (max-width: 520px) {
+        .view-airpad {
+            --vk-toggle-size: 48px;
+            --vk-toggle-edge: 1rem;
+            --vk-log-gap: 0.6rem;
+        }
+
+        .view-airpad .container {
+            padding: 0.65rem 0.65rem calc(3.25rem + max(1rem, env(safe-area-inset-bottom)));
+        }
+
+        .view-airpad .hero h1 {
+            font-size: clamp(1.2rem, 3vh, 1.5rem);
+        }
+
+        .view-airpad .hero .subtitle {
+            font-size: 0.82rem;
+        }
+
+        .view-airpad .status-bar {
+            font-size: 0.74rem;
+        }
+
+        .view-airpad .big-button {
+            inline-size: clamp(5rem, 17vw, 6.4rem);
+            block-size: clamp(5rem, 17vw, 6.4rem);
+            font-size: 1rem;
+        }
+
+        .view-airpad .neighbor-button {
+            inline-size: 2.2rem;
+            block-size: 2.2rem;
+            inset-inline-end: -1.35rem;
+            font-size: 0.82rem;
+        }
+
+        .view-airpad .bottom-toolbar {
+            inset-inline-start: 1rem;
+            inset-block-end: max(1rem, env(safe-area-inset-bottom));
+            gap: var(--space-1);
+            padding: var(--space-1);
+        }
+
+        .view-airpad .bottom-toolbar .toolbar-btn {
+            inline-size: 2.8rem;
+            block-size: 2.8rem;
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+        }
+
+        .view-airpad .side-log-toggle {
+            inset-inline-end: var(--vk-toggle-edge);
+            inset-block-end: calc(
+                max(var(--vk-toggle-edge), env(safe-area-inset-bottom)) +
+                var(--vk-toggle-size) +
+                var(--vk-log-gap)
+            );
+        }
+
+        .view-airpad .hint {
+            grid-template-columns: 1fr;
+            gap: 0.4rem;
+            font-size: 0.76rem;
+        }
+
+        .view-airpad .hint-group {
+            padding: 0.45rem 0.55rem;
+        }
+    }
+
+    @media (max-width: 980px), (max-height: 860px) {
+        .view-airpad .hint {
+            grid-template-columns: 1fr;
+            max-inline-size: min(620px, 100%);
+        }
+
+        .view-airpad .stage {
+            min-block-size: clamp(10.5rem, 26vh, 14rem);
         }
     }
 }

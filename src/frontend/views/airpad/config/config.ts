@@ -2,9 +2,46 @@
 // Конфигурация
 // =========================
 
+type RemoteProtocol = 'auto' | 'http' | 'https';
+const STORAGE_KEY = 'airpad.remote.connection.v1';
+
+interface StoredRemoteConfig {
+    host?: string;
+    port?: string;
+    protocol?: RemoteProtocol;
+}
+
+function loadStoredRemoteConfig(): StoredRemoteConfig {
+    try {
+        const raw = globalThis?.localStorage?.getItem?.(STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw) as StoredRemoteConfig;
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function persistRemoteConfig(): void {
+    try {
+        globalThis?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify({
+            host: remoteHost,
+            port: remotePort,
+            protocol: remoteProtocol,
+        }));
+    } catch {
+        // localStorage unavailable (private mode, SSR, etc.)
+    }
+}
+
 // Remote connection settings
-export let remoteHost = location.hostname;
-export let remotePort = location.port || (location.protocol === 'https:' ? '8443' : '8080');
+const stored = loadStoredRemoteConfig();
+export let remoteHost = (stored.host || location.hostname || '').trim();
+export let remotePort = (stored.port || location.port || (location.protocol === 'https:' ? '8443' : '8080')).trim();
+export let remoteProtocol: RemoteProtocol =
+    stored.protocol === 'http' || stored.protocol === 'https' || stored.protocol === 'auto'
+        ? stored.protocol
+        : 'auto';
 
 // Configuration getters and setters
 export function getRemoteHost(): string {
@@ -12,7 +49,8 @@ export function getRemoteHost(): string {
 }
 
 export function setRemoteHost(host: string): void {
-    remoteHost = host;
+    remoteHost = (host || '').trim();
+    persistRemoteConfig();
 }
 
 export function getRemotePort(): string {
@@ -20,7 +58,17 @@ export function getRemotePort(): string {
 }
 
 export function setRemotePort(port: string): void {
-    remotePort = port;
+    remotePort = (port || '').trim();
+    persistRemoteConfig();
+}
+
+export function getRemoteProtocol(): RemoteProtocol {
+    return remoteProtocol;
+}
+
+export function setRemoteProtocol(protocol: string): void {
+    remoteProtocol = protocol === 'http' || protocol === 'https' ? protocol : 'auto';
+    persistRemoteConfig();
 }
 
 // Направление и выбор осей (подбирается под телефон)

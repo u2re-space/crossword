@@ -34,8 +34,8 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
         appContainer.id = 'app';
     }
 
-    // Set up complete HTML structure inside the #app container (based on need-to-port-into-ts.html)
-    appContainer.append(H`
+    // Replace previous airpad markup to avoid duplicate UI when remounting.
+    appContainer.replaceChildren(H`
         <div class="container">
             <header class="hero">
                 <h1>Air Trackpad + AI Assistant</h1>
@@ -88,26 +88,34 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
 
             <div id="voiceText" class="voice-line"></div>
 
-            <div class="hint">
-                Жесты Air‑кнопки:
-                <ul>
-                    <li>Короткий тап — клик.</li>
-                    <li>Удержание &gt; 100ms — режим air‑мыши (движение по наклону).</li>
-                    <li>Свайп вверх/вниз по самой кнопке — скролл.</li>
-                    <li>Свайп влево/вправо — жест (можно повесить действие на сервере).</li>
-                </ul>
-                AI‑кнопка:
-                <ul>
-                    <li>Нажми и держи — идёт распознавание речи.</li>
-                    <li>Отпусти — команда отправится на сервер как <code>voice_command</code>.</li>
-                </ul>
-                Виртуальная клавиатура:
-                <ul>
-                    <li>Нажми кнопку ⌨️ в правом нижнем углу для открытия клавиатуры.</li>
-                    <li>Поддерживает ввод текста, эмодзи и специальных символов.</li>
-                    <li>Использует бинарный формат для быстрой передачи.</li>
-                </ul>
-            </div>
+            <section class="hint" id="hintPanel" aria-label="Airpad quick help">
+                <details class="hint-group" data-hint-group open>
+                    <summary>Жесты Air-кнопки</summary>
+                    <ul>
+                        <li>Короткий тап — клик.</li>
+                        <li>Удержание &gt; 100ms — режим air-мыши.</li>
+                        <li>Свайп вверх/вниз по кнопке — скролл.</li>
+                        <li>Свайп влево/вправо — жест.</li>
+                    </ul>
+                </details>
+
+                <details class="hint-group" data-hint-group open>
+                    <summary>AI-кнопка</summary>
+                    <ul>
+                        <li>Нажми и держи — идёт распознавание речи.</li>
+                        <li>Отпусти — команда уйдёт как <code>voice_command</code>.</li>
+                    </ul>
+                </details>
+
+                <details class="hint-group" data-hint-group open>
+                    <summary>Виртуальная клавиатура</summary>
+                    <ul>
+                        <li>Открой кнопкой ⌨️ справа внизу.</li>
+                        <li>Поддерживает текст, эмодзи и спецсимволы.</li>
+                        <li>Передаёт ввод в бинарном формате.</li>
+                    </ul>
+                </details>
+            </section>
         </div>
 
         <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logToggle" class="side-log-toggle"
@@ -148,10 +156,18 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
 
 async function initAirpadApp(): Promise<void> {
     function initConfigButton() {
+    const existingConfigButton = document.getElementById('btnConfig');
+    if (existingConfigButton) {
+        return;
+    }
+
     const configButton = document.createElement('button');
+    configButton.id = 'btnConfig';
+    configButton.type = 'button';
     configButton.className = 'toolbar-btn';
     configButton.textContent = '⚙️';
     configButton.title = 'Configuration';
+    configButton.setAttribute('aria-label', 'Configuration');
     configButton.addEventListener('click', showConfigUI);
 
     const bottomToolbar = document.querySelector('.bottom-toolbar');
@@ -198,7 +214,34 @@ function initLogOverlay() {
     });
     }
 
-    requestIdleCallback(async () => {
+    function initAdaptiveHintPanel() {
+        const hintRoot = document.getElementById('hintPanel');
+        if (!hintRoot) return;
+
+        const groups = Array.from(hintRoot.querySelectorAll('[data-hint-group]')) as HTMLDetailsElement[];
+        if (groups.length === 0) return;
+
+        const compactMedia = globalThis.matchMedia('(max-width: 980px), (max-height: 860px)');
+        const applyHintDensity = () => {
+            const compact = compactMedia.matches;
+            groups.forEach((group, index) => {
+                group.open = compact ? index === 0 : true;
+            });
+        };
+
+        applyHintDensity();
+        compactMedia.addEventListener?.('change', applyHintDensity);
+    }
+
+    const scheduleIdle = (cb: () => void) => {
+        if (typeof globalThis.requestIdleCallback === 'function') {
+            globalThis.requestIdleCallback(() => cb());
+            return;
+        }
+        globalThis.setTimeout(cb, 0);
+    };
+
+    scheduleIdle(async () => {
     // PWA: register Service Worker (auto-update)
     try {
         initServiceWorker({
@@ -225,6 +268,7 @@ function initLogOverlay() {
     initVirtualKeyboard();
     initClipboardToolbar();
     initConfigButton();
+    initAdaptiveHintPanel();
     // Включаем RelativeOrientationSensor как основной источник
     initRelativeOrientation();
     // Остальные можно включить при необходимости

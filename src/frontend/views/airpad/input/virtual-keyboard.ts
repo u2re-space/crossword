@@ -17,11 +17,16 @@ export function initVirtualKeyboard() {
     initVirtualKeyboardAPI();
     const hasAPI = hasVirtualKeyboardAPI();
 
-    // Create keyboard element
-    const container = document.querySelector('#app') ?? document.body;
-    const keyboardHTML = createKeyboardHTML();
-    container.insertAdjacentHTML('beforeend', keyboardHTML);
-    const keyboardElement = document.querySelector('.virtual-keyboard-container') as HTMLElement;
+    // Mount keyboard inside airpad root so it inherits airpad styles/tokens.
+    const container = document.querySelector('.view-airpad') ?? document.querySelector('#app') ?? document.body;
+
+    // Reuse existing instance if already mounted.
+    let keyboardElement = container.querySelector('.virtual-keyboard-container') as HTMLElement | null;
+    if (!keyboardElement) {
+        const keyboardHTML = createKeyboardHTML();
+        container.insertAdjacentHTML('beforeend', keyboardHTML);
+        keyboardElement = container.querySelector('.virtual-keyboard-container') as HTMLElement | null;
+    }
 
     if (!keyboardElement) {
         log('Failed to create keyboard element');
@@ -34,11 +39,14 @@ export function initVirtualKeyboard() {
     setKeyboardElement(keyboardElement);
 
     // Create toggle button in corner
-    const toggleHTML = hasAPI
-        ? '<button type="button" tabindex="-1" contenteditable="true" virtualkeyboardpolicy="manual" class="keyboard-toggle keyboard-toggle-editable" aria-label="Toggle keyboard">⌨️</button>'
-        : '<button type="button" tabindex="-1" class="keyboard-toggle" aria-label="Toggle keyboard">⌨️</button>';
-    container.insertAdjacentHTML('beforeend', toggleHTML);
-    const toggleButton = document.querySelector('.keyboard-toggle') as HTMLElement;
+    let toggleButton = container.querySelector('.keyboard-toggle') as HTMLElement | null;
+    if (!toggleButton) {
+        const toggleHTML = hasAPI
+            ? '<button type="button" tabindex="-1" contenteditable="true" virtualkeyboardpolicy="manual" class="keyboard-toggle keyboard-toggle-editable" aria-label="Toggle keyboard">⌨️</button>'
+            : '<button type="button" tabindex="-1" class="keyboard-toggle" aria-label="Toggle keyboard">⌨️</button>';
+        container.insertAdjacentHTML('beforeend', toggleHTML);
+        toggleButton = container.querySelector('.keyboard-toggle') as HTMLElement | null;
+    }
 
     if (!toggleButton) {
         log('Failed to create toggle button');

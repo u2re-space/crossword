@@ -478,15 +478,21 @@ export class ViewerView implements View {
 
     private handlePrint(renderTarget: HTMLElement): void {
         try {
-            if (renderTarget) {
-                renderTarget.setAttribute('data-print', 'true');
-                globalThis?.print?.();
-                setTimeout(() => {
-                    renderTarget.removeAttribute('data-print');
-                }, 1000);
-            } else {
-                globalThis?.print?.();
+            const rawTarget = this.element?.querySelector("[data-raw-target]") as HTMLPreElement | null;
+            const isRawVisible = Boolean(rawTarget && !rawTarget.hidden);
+            const printTarget = isRawVisible ? rawTarget : renderTarget;
+
+            if (!printTarget || !(printTarget.textContent || "").trim()) {
+                this.showMessage("No content to print");
+                return;
             }
+
+            printTarget.setAttribute("data-print", "true");
+            globalThis?.print?.();
+            setTimeout(() => {
+                printTarget.removeAttribute("data-print");
+            }, 1000);
+
             this.options.onPrint?.(this.contentRef.value);
         } catch (error) {
             console.error("[ViewerView] Error printing content:", error);
