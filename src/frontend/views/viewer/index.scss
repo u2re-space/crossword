@@ -1,5 +1,5 @@
 @use "../scss/_views.scss";
-@use "./scss/markdown.scss";
+@use "fest/veela/scss/runtime/basic/markdown/markdown.scss";
 
 //
 @layer viewer.tokens {

@@ -28,9 +28,11 @@
 
     // Base resets for html/body
     :where(html, body) {
+        inline-size: 100%;
+        min-block-size: 100%;
         margin: 0;
         padding: 0;
-        border: none;
+        background: transparent;
     }
 
     // Body layout for extension pages
@@ -81,100 +83,163 @@
         z-index: 9999999;
         content-visibility: visible;
     }
-}
 
+    #app {
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    #raw-md {
+        box-sizing: border-box;
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: 12px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font:
+            12px/1.5 ui-monospace,
+            SFMono-Regular,
+            Menlo,
+            Monaco,
+            Consolas,
+            "Liberation Mono",
+            "Courier New",
+            monospace;
+        color: rgba(255, 255, 255, 0.92);
+        background: rgba(0, 0, 0, 0.35);
+        pointer-events: auto;
+    }
+
+}
 
 @media print {
 
-    html[data-view="viewer"],
-    html[data-view="viewer"] body {
+    :where(body, html) {
+        place-content: start;
+        place-items: start;
+        text-align: start;
+        padding: 0px;
+        margin: 0px;
+        border: none;
+        outline: none;
+        box-shadow: none;
+        scrollbar-width: none;
+        scrollbar-color: transparent transparent;
+        -webkit-overflow-scrolling: touch;
+        font-family: var(--print-font-family);
+    }
+
+    :where(body, html, :root)>*:not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown),
+    :where(body, html, :root) :where(#app, #raw-md),
+    :where(body, html, :root) :where(div, span, button, input, header, main, footer):not([hidden], [aria-hidden="true"], [data-hidden]):not(markdown-viewer, #markdown-body, .view-markdown) {
+        display: contents !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-after: avoid !important;
+        break-before: avoid !important;
+    }
+
+    .view-viewer,
+    .view-viewer__content,
+    [data-viewer-content] {
+        display: contents !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-after: avoid !important;
+        break-before: avoid !important;
+    }
+
+    body,
+    html,
+    :root {
+        background-color: initial;
+        color: initial;
+        padding: 0px !important;
+        margin: 0px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        container-type: inline-size !important;
+        border: 0px none transparent !important;
+        outline: 0px none transparent !important;
+    }
+
+    :where(*) {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    .loading-spinner, .loading-message,
+    [data-hidden], [hidden], [aria-hidden="true"],
+    .view-viewer__toolbar, [data-viewer-toolbar],
+    button, nav, .app-shell__loading,
+    head, [hidden], [aria-hidden="true"], [data-hidden], .app-loading, .view-viewer__toolbar, .app-shell__status, #raw-md, .markdown-viewer-raw {
+        &, & * {
+            display: none !important;
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: -1 !important;
+            opacity: 0 !important;
+            inline-size: 0 !important;
+            block-size: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            scrollbar-width: none !important;
+            scrollbar-color: transparent transparent !important;
+            overflow: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font: initial !important;
+            font-size: initial !important;
+            font-weight: initial !important;
+            font-family: initial !important;
+            font-style: initial !important;
+            font-variant: initial !important;
+            line-height: 0 !important;
+            color: transparent !important;
+            background: transparent !important;
+            pointer-events: none !important;
+            user-select: none !important;
+            touch-action: none !important;
+            cursor: none !important;
+            opacity: 0 !important;
+            visibility: collapse !important;
+            pointer-events: none !important;
+            interactivity: inert !important;
+            break-after: avoid !important;
+            break-before: avoid !important;
+            font-size: 0 !important;
+            line-height: 0 !important;
+            overflow: hidden !important;
+            contain: strict !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            break-after: avoid !important;
+            break-before: avoid !important;
+        }
+    }
+
+    #app, .app-shell, .view-viewer, .view-viewer__content, .markdown-body, .markdown-viewer-content, .result-content {
+        display: contents !important;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: auto !important;
-        background: #fff !important;
-        color: #000 !important;
-        color-scheme: light !important;
-        font-family: var(--print-font-family, "Times New Roman", serif);
-    }
-
-    html[data-view="viewer"] body > :not(#app) {
-        display: none !important;
-    }
-
-    html[data-view="viewer"] #raw-md,
-    html[data-view="viewer"] #overlays,
-    html[data-view="viewer"] #filter,
-    html[data-view="viewer"] .app-shell__nav,
-    html[data-view="viewer"] .app-shell__status,
-    html[data-view="viewer"] .app-shell__loading,
-    html[data-view="viewer"] .view-viewer__toolbar,
-    html[data-view="viewer"] [data-viewer-toolbar],
-    html[data-view="viewer"] [data-hidden] {
-        display: none !important;
-    }
-
-    html[data-view="viewer"] .app-shell,
-    html[data-view="viewer"] .app-shell__content,
-    html[data-view="viewer"] [data-shell-content] > [data-view],
-    html[data-view="viewer"] .app-shell__content > [data-view],
-    html[data-view="viewer"] .view-viewer,
-    html[data-view="viewer"] .view-viewer__content,
-    html[data-view="viewer"] [data-viewer-content] {
-        position: static !important;
-        inset: auto !important;
-        display: block !important;
-        inline-size: auto !important;
-        min-inline-size: 0 !important;
-        max-inline-size: 100% !important;
-        block-size: auto !important;
-        min-block-size: 0 !important;
-        max-block-size: none !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
         overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        contain: none !important;
-        transform: none !important;
-    }
-
-    html[data-view="viewer"] .app-shell__content::-webkit-scrollbar,
-    html[data-view="viewer"] [data-shell-content] > [data-view]::-webkit-scrollbar,
-    html[data-view="viewer"] .view-viewer__content::-webkit-scrollbar,
-    html[data-view="viewer"] [data-viewer-content]::-webkit-scrollbar {
-        display: none;
-    }
-
-    html[data-view="viewer"] .app-shell__content,
-    html[data-view="viewer"] [data-shell-content] > [data-view],
-    html[data-view="viewer"] .view-viewer__content,
-    html[data-view="viewer"] [data-viewer-content] {
         scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
-    }
-
-    html[data-view="viewer"] [data-render-target]:not([hidden]) {
-        display: block !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        color: #111 !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        filter: none !important;
-    }
-
-    html[data-view="viewer"] [data-raw-target]:not([hidden]) {
-        display: block !important;
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        color: #111 !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        filter: none !important;
+        scrollbar-color: transparent transparent !important;
+        -webkit-overflow-scrolling: touch !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-after: avoid !important;
+        break-before: avoid !important;
     }
 }
