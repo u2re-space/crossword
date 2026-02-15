@@ -34,6 +34,17 @@ import {
     type UnifiedMessage
 } from "@rs-com/core/UnifiedMessaging";
 import { bindViewReceiveChannel } from "./channel-mixin";
+import {
+    VIEW_ENABLED_VIEWER,
+    VIEW_ENABLED_WORKCENTER,
+    VIEW_ENABLED_SETTINGS,
+    VIEW_ENABLED_HISTORY,
+    VIEW_ENABLED_EXPLORER,
+    VIEW_ENABLED_AIRPAD,
+    VIEW_ENABLED_EDITOR,
+    VIEW_ENABLED_HOME,
+    VIEW_ENABLED_PRINT
+} from "../config/views";
 
 
 // ============================================================================
@@ -264,68 +275,86 @@ export function registerDefaultShells(): void {
  * Register default views
  */
 export function registerDefaultViews(): void {
-    ViewRegistry.register({
-        id: "viewer",
-        name: "Viewer",
-        icon: "eye",
-        loader: () => import("../views/viewer")
-    });
+    if (VIEW_ENABLED_VIEWER) {
+        ViewRegistry.register({
+            id: "viewer",
+            name: "Viewer",
+            icon: "eye",
+            loader: () => import("../views/viewer")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "workcenter",
-        name: "Work Center",
-        icon: "lightning",
-        loader: () => import("../views/workcenter")
-    });
+    if (VIEW_ENABLED_WORKCENTER) {
+        ViewRegistry.register({
+            id: "workcenter",
+            name: "Work Center",
+            icon: "lightning",
+            loader: () => import("../views/workcenter")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "settings",
-        name: "Settings",
-        icon: "gear",
-        loader: () => import("../views/settings")
-    });
+    if (VIEW_ENABLED_SETTINGS) {
+        ViewRegistry.register({
+            id: "settings",
+            name: "Settings",
+            icon: "gear",
+            loader: () => import("../views/settings")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "history",
-        name: "History",
-        icon: "clock-counter-clockwise",
-        loader: () => import("../views/history")
-    });
+    if (VIEW_ENABLED_HISTORY) {
+        ViewRegistry.register({
+            id: "history",
+            name: "History",
+            icon: "clock-counter-clockwise",
+            loader: () => import("../views/history")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "explorer",
-        name: "Explorer",
-        icon: "folder",
-        loader: () => import("../views/explorer")
-    });
+    if (VIEW_ENABLED_EXPLORER) {
+        ViewRegistry.register({
+            id: "explorer",
+            name: "Explorer",
+            icon: "folder",
+            loader: () => import("../views/explorer")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "airpad",
-        name: "Airpad",
-        icon: "hand-pointing",
-        loader: () => import("../views/airpad")
-    });
+    if (VIEW_ENABLED_AIRPAD) {
+        ViewRegistry.register({
+            id: "airpad",
+            name: "Airpad",
+            icon: "hand-pointing",
+            loader: () => import("../views/airpad")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "editor",
-        name: "Editor",
-        icon: "pencil",
-        loader: () => import("../views/editor")
-    });
+    if (VIEW_ENABLED_EDITOR) {
+        ViewRegistry.register({
+            id: "editor",
+            name: "Editor",
+            icon: "pencil",
+            loader: () => import("../views/editor")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "home",
-        name: "Home",
-        icon: "house",
-        loader: () => import("../views/home")
-    });
+    if (VIEW_ENABLED_HOME) {
+        ViewRegistry.register({
+            id: "home",
+            name: "Home",
+            icon: "house",
+            loader: () => import("../views/home")
+        });
+    }
 
-    ViewRegistry.register({
-        id: "print",
-        name: "Print",
-        icon: "printer",
-        loader: () => import("../views/print")
-    });
+    if (VIEW_ENABLED_PRINT) {
+        ViewRegistry.register({
+            id: "print",
+            name: "Print",
+            icon: "printer",
+            loader: () => import("../views/print")
+        });
+    }
 }
 
 // ============================================================================

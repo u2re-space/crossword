@@ -154,6 +154,7 @@ export type { CrxAppOptions } from "./crx-entry";
 import { bootLoader, type BootConfig } from "./BootLoader";
 import { createBootConfigFromUrl, loadSubAppWithShell } from "./routing";
 import type { Shell } from "../shells/types";
+import { isEnabledView, pickEnabledView } from "../config/views";
 
 /**
  * Execution context types
@@ -207,8 +208,8 @@ export async function initializeApp(
     const finalConfig: BootConfig = {
         styleSystem: config?.styleSystem ?? urlConfig.styleSystem ?? savedConfig?.styleSystem ?? "vl-basic",
         shell: config?.shell ?? urlConfig.shell ?? savedConfig?.shell ?? "minimal",
-        defaultView: config?.defaultView ?? urlConfig.defaultView ?? savedConfig?.defaultView ?? "viewer",
-        channels: config?.channels ?? ["workcenter", "settings", "viewer"],
+        defaultView: pickEnabledView(config?.defaultView ?? urlConfig.defaultView ?? savedConfig?.defaultView ?? "viewer"),
+        channels: config?.channels ?? ["workcenter", "settings", "viewer"].filter((channelId) => isEnabledView(channelId)),
         rememberChoice: config?.rememberChoice ?? true,
         theme: config?.theme
     };

@@ -9,6 +9,7 @@ import { H } from "fest/lure";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
+import { isEnabledView } from "../../config/views";
 
 // @ts-ignore
 import style from "./home.scss?inline";
@@ -109,13 +110,21 @@ export class HomeView implements View {
     private setupEventHandlers(): void {
         if (!this.element) return;
 
+        const actionButtons = this.element.querySelectorAll("[data-view]");
+        actionButtons.forEach((button) => {
+            const viewId = (button as HTMLElement).dataset.view || "";
+            if (!isEnabledView(viewId)) {
+                button.remove();
+            }
+        });
+
         this.element.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
             const button = target.closest("[data-view]") as HTMLButtonElement | null;
             if (!button) return;
 
             const viewId = button.dataset.view;
-            if (viewId) {
+            if (viewId && isEnabledView(viewId)) {
                 this.shellContext?.navigate(viewId);
             }
         });

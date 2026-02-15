@@ -1,6 +1,7 @@
 import { resolve  } from "node:path";
 import { readFile } from "node:fs/promises";
 import { crx } from "@crxjs/vite-plugin";
+import { loadEnv } from "vite";
 
 //
 const importConfig = (url, ...args)=>{ return import(url)?.then?.((m)=>m?.default?.(...args)); }
@@ -37,6 +38,64 @@ export const __dirname = resolve(import.meta.dirname, "./");
 const manifest = await readFile(resolve(__dirname, "./src/crx/manifest.json"), { encoding: "utf8" }).then(JSON.parse);
 
 const crxRoot = resolve(__dirname, "./src/crx");
+const ALL_VIEW_IDS = ["viewer", "editor", "workcenter", "explorer", "airpad", "settings", "history", "home", "print"];
+const DEFAULT_VIEWS_BY_MODE = {
+    crx: ["viewer", "editor", "settings", "history", "home", "print"],
+    default: ALL_VIEW_IDS
+};
+
+const parseViewsFromEnv = (rawValue) => {
+    if (!rawValue || typeof rawValue !== "string") return null;
+    const normalized = rawValue.trim().toLowerCase();
+    if (!normalized || normalized === "all" || normalized === "*") {
+        return [...ALL_VIEW_IDS];
+    }
+
+    const parsed = normalized
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    if (!parsed.length) return null;
+    const uniqueKnownViews = [...new Set(parsed)].filter((view) => ALL_VIEW_IDS.includes(view));
+    return uniqueKnownViews.length ? uniqueKnownViews : null;
+};
+
+const resolveEnabledViews = (mode, env) => {
+    const defaults = mode === "crx" ? DEFAULT_VIEWS_BY_MODE.crx : DEFAULT_VIEWS_BY_MODE.default;
+    const explicit = parseViewsFromEnv(env?.VITE_ENABLED_VIEWS);
+    const disabled = parseViewsFromEnv(env?.VITE_DISABLED_VIEWS);
+    const start = explicit ?? defaults;
+
+    if (!disabled?.length) {
+        return [...start];
+    }
+
+    const disabledSet = new Set(disabled);
+    const filtered = start.filter((view) => !disabledSet.has(view));
+    return filtered.length ? filtered : ["viewer"];
+};
+
+const toViewDefineEntries = (enabledViews) => {
+    const enabledSet = new Set(enabledViews);
+    return ALL_VIEW_IDS.reduce((acc, viewId) => {
+        const key = `__RS_VIEW_${viewId.toUpperCase()}__`;
+        acc[key] = enabledSet.has(viewId);
+        return acc;
+    }, {});
+};
+
+const createViewDefine = (mode) => {
+    const env = loadEnv(mode || "production", __dirname, "");
+    const enabledViews = resolveEnabledViews(mode, env);
+    const defaultView = enabledViews.includes("viewer")
+        ? "viewer"
+        : (enabledViews[0] || "viewer");
+    return {
+        ...toViewDefineEntries(enabledViews),
+        __RS_DEFAULT_VIEW__: JSON.stringify(defaultView),
+    };
+};
 
 const crxInputs = {
     popup: resolve(crxRoot, "./popup/index.html"),
@@ -49,11 +108,11 @@ const crxInputs = {
     background: resolve(crxRoot, "./sw.ts")
 };
 
-const createCrxConfig = () => {
-    // Diagnostic-first CRX build:
-    // keep symbol names and disable aggressive optimizations to make
-    // runtime errors (ReferenceError/undefined) traceable in the extension.
-    const debugCrxBundle = true;
+const createCrxConfig = (mode) => {
+    // Diagnostic CRX mode can be enabled explicitly.
+    // Production defaults to optimized tree-shaken bundle.
+    const env = loadEnv(mode || "crx", __dirname, "");
+    const debugCrxBundle = env?.VITE_CRX_DEBUG_BUNDLE === "1";
 
     const crxPlugin = crx({
         manifest,
@@ -95,6 +154,10 @@ const createCrxConfig = () => {
         ...baseConfig,
         root: crxRoot,
         base: "./",
+        define: {
+            ...(baseConfig?.define ?? {}),
+            ...createViewDefine(mode)
+        },
         plugins: [...basePlugins, crxPlugin],
         build: {
             ...(baseConfig?.build ?? {}),
@@ -102,11 +165,10 @@ const createCrxConfig = () => {
             lib: undefined,
             // Disable modulePreload for CRX - causes broken imports with __vitePreload
             modulePreload: false,
-            // DEBUG: disable minification and keep source maps
-            minify: false,
-            sourcemap: true,
+            // Diagnostic mode keeps symbols/sourcemaps for easier debugging.
+            minify: debugCrxBundle ? false : (baseConfig?.build?.minify ?? "esbuild"),
+            sourcemap: debugCrxBundle,
             terserOptions: undefined,
-            // Also disable esbuild-level identifier mangling for diagnostics.
             ...(debugCrxBundle ? {
                 reportCompressedSize: false,
                 cssMinify: false,
@@ -138,12 +200,16 @@ const createCrxConfig = () => {
 
 export default async ({ mode } = {}) => {
     if (mode === "crx") {
-        return createCrxConfig();
+        return createCrxConfig(mode);
     }
 
     // For regular build, modify base config to use multiple entry points
     const config = {
         ...baseConfig,
+        define: {
+            ...(baseConfig?.define ?? {}),
+            ...createViewDefine(mode)
+        },
         build: {
             ...baseConfig.build,
             rollupOptions: {

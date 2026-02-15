@@ -19,6 +19,7 @@ import { initPWA, checkForUpdates, forceRefreshAssets } from "./frontend/pwa/pwa
 import { loadSubAppWithShell, loadBootMenu, getViewFromPath, isRootRoute, VALID_VIEWS } from "./frontend/main/routing";
 import { initializeLayers } from "./frontend/shared/layer-manager";
 import type { ViewId } from "./frontend/shells/types";
+import { DEFAULT_VIEW_ID, pickEnabledView } from "./frontend/config/views";
 
 import { loadAsAdopted } from "fest/dom";
 import viewStyles from "@rs-frontend/views/scss/_views.scss?inline";
@@ -282,7 +283,7 @@ export default async function index(mountElement: HTMLElement) {
         if (pathname === "share-target" || pathname === "share_target") {
             console.log('[Index] Share target route');
             clearLoadingState(mountElement);
-            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", "viewer");
+            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", pickEnabledView("viewer"));
             await appLoader.mount(mountElement);
             return;
         }
@@ -291,7 +292,7 @@ export default async function index(mountElement: HTMLElement) {
         if ((!pathname || pathname === "") && (sharedFlag === "1" || sharedFlag === "true" || markdownContent)) {
             console.log('[Index] Root with share/markdown params');
             clearLoadingState(mountElement);
-            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", "viewer");
+            const appLoader = await loadSubAppWithShell(getSavedShell() || "minimal", pickEnabledView("viewer"));
             await appLoader.mount(mountElement);
             return;
         }
@@ -319,7 +320,7 @@ export default async function index(mountElement: HTMLElement) {
             if (shouldSkipBootMenu()) {
                 console.log('[Index] Skipping boot menu (remembered preference)');
                 // Redirect to default view
-                globalThis.location.href = "/viewer";
+                globalThis.location.href = `/${DEFAULT_VIEW_ID}`;
                 return;
             }
 
@@ -327,7 +328,7 @@ export default async function index(mountElement: HTMLElement) {
             if (isExtension()) {
                 console.log('[Index] Extension mode - loading default view');
                 clearLoadingState(mountElement);
-                const appLoader = await loadSubAppWithShell("base", "viewer");
+                const appLoader = await loadSubAppWithShell("base", pickEnabledView("viewer"));
                 await appLoader.mount(mountElement);
                 return;
             }
@@ -342,7 +343,7 @@ export default async function index(mountElement: HTMLElement) {
 
         // Unknown route → redirect to viewer
         console.log('[Index] Unknown route, redirecting to /viewer');
-        globalThis.location.href = "/viewer";
+        globalThis.location.href = `/${DEFAULT_VIEW_ID}`;
 
     } catch (error) {
         console.error('[Index] Frontend loader failed:', error);

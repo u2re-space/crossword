@@ -18,6 +18,7 @@ export * from "./types";
 
 // Channel mixin for view connectivity
 export * from "../shared/channel-mixin";
+import { ENABLED_VIEW_IDS } from "../config/views";
 
 // ============================================================================
 // VIEW COMPONENTS
@@ -64,15 +65,5 @@ export { AirpadView, createAirpadView } from "./airpad";
  * Get all available view IDs
  */
 export function getAvailableViews(): string[] {
-    return [
-        "workcenter",
-        "settings", 
-        "viewer",
-        "editor",
-        "explorer",
-        "history",
-        "home",
-        "print",
-        "airpad"
-    ];
+    return [...ENABLED_VIEW_IDS];
 }

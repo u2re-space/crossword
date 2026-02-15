@@ -20,6 +20,7 @@
 import type { ShellId, ViewId, Shell } from "../shells/types";
 import type { FrontendChoice } from "./boot-menu";
 import { bootMinimal, bootBase, type BootConfig, type StyleSystem } from "./BootLoader";
+import { ENABLED_VIEW_IDS, DEFAULT_VIEW_ID, isEnabledView, pickEnabledView } from "../config/views";
 
 // ============================================================================
 // ROUTE TYPES
@@ -60,20 +61,12 @@ const normalizeShellPreference = (shell: ShellId | null | undefined): ShellId =>
 
 /** All registered view routes */
 export const VALID_VIEWS: ViewId[] = [
-    "viewer",
-    "editor",
-    "workcenter",
-    "explorer",
-    "airpad",
-    "settings",
-    "history",
-    "home",
-    "print"
+    ...ENABLED_VIEW_IDS
 ];
 
 const DEFAULT_CONFIG: RouteConfig = {
     views: VALID_VIEWS,
-    defaultView: "viewer"
+    defaultView: DEFAULT_VIEW_ID
 };
 
 // ============================================================================
@@ -184,7 +177,7 @@ export const goForward = () => history.forward();
  * Check if a view is valid
  */
 export function isValidView(view: string): view is ViewId {
-    return VALID_VIEWS.includes(view as ViewId);
+    return isEnabledView(view);
 }
 
 /**
@@ -266,7 +259,7 @@ export const loadSubAppWithShell = async (
     initialView?: ViewId
 ): Promise<AppLoaderResult> => {
     const shell = normalizeShellPreference(shellId || getSavedShellPreference() || "minimal");
-    const view = initialView || getViewFromPath() || "viewer";
+    const view = pickEnabledView(initialView || getViewFromPath() || DEFAULT_VIEW_ID, DEFAULT_VIEW_ID);
     
     console.log('[App] Loading sub-app with shell:', shell, 'view:', view);
 
@@ -330,14 +323,14 @@ export function resolvePathToView(pathname: string): ViewId | null {
         return normalized;
     }
     
-    return "viewer"; // Default fallback
+    return DEFAULT_VIEW_ID; // Default fallback
 }
 
 /**
  * Create boot config from URL
  */
 export function createBootConfigFromUrl(): BootConfig {
-    const view = getViewFromPath() || "viewer";
+    const view = pickEnabledView(getViewFromPath() || DEFAULT_VIEW_ID, DEFAULT_VIEW_ID);
     const shell = normalizeShellPreference(getSavedShellPreference() || "minimal");
     const params = Object.fromEntries(new URLSearchParams(location.search));
 

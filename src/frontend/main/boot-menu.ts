@@ -11,12 +11,13 @@ import { loadAsAdopted } from "fest/dom";
 //@ts-ignore
 import style from "./boot-menu.scss?inline";
 import type { ShellId } from "../shells/types";
+import { pickEnabledView } from "../config/views";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
-export type FrontendChoice = ShellId | "airpad" | "";
+export type FrontendChoice = ShellId | "";
 
 export type ChoiceScreenOptions = {
     seconds: number;
@@ -60,8 +61,8 @@ const navigateToDefaultView = (shell: ShellId, remember: boolean): void => {
     const normalizedShell = normalizeShellChoice(shell);
     saveShellPreference(normalizedShell, remember);
     
-    // Navigate to /viewer (default view)
-    const defaultView = "viewer";
+    // Navigate to the configured default view.
+    const defaultView = pickEnabledView("viewer");
     globalThis?.history?.pushState?.({ shell: normalizedShell, view: defaultView }, "", `/${defaultView}`);
     
     // Dispatch route change event
@@ -100,7 +101,7 @@ export const ChoiceScreen = (opts: ChoiceScreenOptions): ChoiceScreenResult => {
  */
 const createUIElements = (opts: ChoiceScreenOptions) => {
     const headerText = H`<header class="choice-header">Boot menu</header>` as HTMLElement;
-    const reasonsText = H`<div class="choice-reasons">Currently, I'm not able to actively support the complex <b>Faint</b> project. The <b>Minimal</b> version is the default.</div>` as HTMLElement;
+    const reasonsText = H`<div class="choice-reasons">Use the stable <b>Minimal</b> shell to ensure a safe first launch.</div>` as HTMLElement;
 
     const countdown = H`<div class="choice-countdown">Auto-starting in <b data-countdown>${opts.seconds}</b> seconds…</div>` as HTMLElement;
     const hint = H`<div class="choice-hint">Use <b>↑</b>/<b>↓</b> to select, <b>Enter</b> to boot.</div>` as HTMLElement;
@@ -115,11 +116,8 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
 
     // Menu buttons
     const bigMinimalButton = H`<button class="minimal big recommended" type="button">Minimal</button>` as HTMLButtonElement;
-    const unstableFaint = H`<button class="unstable small faint" type="button">Faint OS (temporarily unavailable)</button>` as HTMLButtonElement;
-    const airpadButton = H`<button class="airpad small" type="button">Airpad</button>` as HTMLButtonElement;
-
     // Menu buttons array
-    const buttons = [bigMinimalButton, unstableFaint, airpadButton];
+    const buttons = [bigMinimalButton];
 
     // Keyboard navigation state object (mutable reference to persist currentIndex)
     const keyboardNavigation = {
@@ -139,8 +137,6 @@ const createUIElements = (opts: ChoiceScreenOptions) => {
         remember,
         rememberInput,
         bigMinimalButton,
-        unstableFaint,
-        airpadButton,
         buttons,
         keyboardNavigation
     };
@@ -153,7 +149,7 @@ const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof
     const container = H`<div class="choice container"></div>` as HTMLElement;
     const menu = H`<div class="choice-menu" role="menu"></div>` as HTMLElement;
 
-    menu.append(elements.bigMinimalButton, elements.unstableFaint, elements.airpadButton);
+    menu.append(elements.bigMinimalButton);
     container.append(
         elements.headerText,
         elements.countdown,
@@ -170,7 +166,7 @@ const createContainer = (_opts: ChoiceScreenOptions, elements: ReturnType<typeof
  * Set up event handlers for buttons and keyboard navigation
  */
 const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<typeof createUIElements>) => {
-    const { bigMinimalButton, unstableFaint, airpadButton, keyboardNavigation, rememberInput, countdown } = elements;
+    const { bigMinimalButton, keyboardNavigation, rememberInput, countdown } = elements;
 
     // Track if countdown is active (for cancellation on interaction)
     let countdownActive = true;
@@ -192,21 +188,12 @@ const setupEventHandlers = (opts: ChoiceScreenOptions, elements: ReturnType<type
         stopCountdown();
         const remember = Boolean(rememberInput?.checked);
         
-        // For special views like airpad, navigate directly to that view
-        if (choice === "airpad") {
-            saveShellPreference("base", remember);
-            globalThis.location.href = "/airpad";
-            return;
-        }
-        
         // For shells, save preference and navigate to default view
         const shell = (choice || "minimal") as ShellId;
         navigateToDefaultView(shell, remember);
     };
 
     bigMinimalButton.addEventListener("click", () => handleChoice("minimal"));
-    unstableFaint.addEventListener("click", () => handleChoice("minimal"));
-    airpadButton.addEventListener("click", () => handleChoice("airpad"));
 
     // Start countdown timer
     const countdownEl = countdown.querySelector("[data-countdown]");

@@ -14,6 +14,7 @@ import { bootLoader } from "./BootLoader";
 import type { ViewId, Shell } from "../shells/types";
 import { ViewRegistry } from "../shared/registry";
 import { initializeLayers } from "../shared/layer-manager";
+import { pickEnabledView } from "../config/views";
 
 // ============================================================================
 // TYPES
@@ -41,7 +42,7 @@ const CRX_VIEW_MAP: Record<string, ViewId> = {
 };
 
 const resolveViewId = (input?: string): ViewId =>
-    (input && CRX_VIEW_MAP[input]) ?? (input as ViewId) ?? "viewer";
+    pickEnabledView((input && CRX_VIEW_MAP[input]) ?? (input as ViewId) ?? "viewer");
 
 // ============================================================================
 // ENTRY POINT

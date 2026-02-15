@@ -24,6 +24,7 @@ import { serviceChannels, type ServiceChannelId } from "@rs-com/core/ServiceChan
 import { loadSettings } from "@rs-com/config/Settings";
 import { applyTheme as applyAppTheme } from "@rs-core/utils/Theme";
 import type { AppSettings } from "@rs-com/config/SettingsTypes";
+import { isEnabledView, pickEnabledView } from "../config/views";
 
 import { loadVeelaVariant, type VeelaVariant } from "fest/veela";
 import { initializeLayers } from "../shared/layer-manager";
@@ -504,11 +505,12 @@ export async function bootMinimal(
     container: HTMLElement,
     view: ViewId = "viewer"
 ): Promise<Shell> {
+    const channels = ["workcenter", "settings", "viewer"].filter((channelId) => isEnabledView(channelId));
     return bootLoader.boot(container, {
         styleSystem: "vl-basic",
         shell: "minimal",
-        defaultView: view,
-        channels: ["workcenter", "settings", "viewer"],
+        defaultView: pickEnabledView(view, "viewer"),
+        channels,
         rememberChoice: true
     });
 }
@@ -523,7 +525,7 @@ export async function bootBase(
     return bootLoader.boot(container, {
         styleSystem: "vl-core",
         shell: "base",
-        defaultView: view,
+        defaultView: pickEnabledView(view, "viewer"),
         channels: [],
         rememberChoice: false
     });

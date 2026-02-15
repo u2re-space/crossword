@@ -1,5 +1,9 @@
 import { removeAdopted, loadAsAdopted, H } from './Settings.js';
+import { isEnabledView } from './crx-entry.js';
 import './index.js';
+import './UnifiedMessaging.js';
+import './BuiltInAI.js';
+import './Clipboard.js';
 
 const style = "@layer view.home{:root:has([data-view=home]),html:has([data-view=home]){--view-home-bg:linear-gradient(135deg,light-dark(#f8f9fa,#1b1f24),light-dark(#e9ecef,#0f1216));--view-fg:light-dark(#1a1a1a,#e9ecef);--view-border:light-dark(#00000014,#ffffff1f);--view-card-bg:light-dark(#fff,#1a1f26);--view-primary:light-dark(#007acc,#66b7ff);--view-layout:\"flex\";--view-padding:var(--space-8);--view-content-max-width:1200px;--view-hero-padding:var(--space-16);--view-card-gap:var(--space-6)}.view-home{align-items:center;background:var(--view-home-bg);block-size:100%;color:var(--view-fg);display:flex;justify-content:center;overflow-y:auto;padding:2rem}.view-home__content{max-inline-size:800px;text-align:center}.view-home__header{margin-block-end:3rem}.view-home__title{background:linear-gradient(135deg,var(--view-primary) 0,light-dark(#0059a6,#3a8ad6) 100%);-webkit-background-clip:text;font-size:3rem;font-weight:800;margin:0;-webkit-text-fill-color:#0000;background-clip:text}.view-home__subtitle{color:var(--view-fg);font-size:1.125rem;margin:.5rem 0 0;opacity:.7}.view-home__actions{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.view-home__action{align-items:center;background-color:var(--view-card-bg);border:1px solid var(--view-border);border-radius:16px;color:var(--view-fg);cursor:pointer;display:flex;flex-direction:column;gap:.75rem;padding:1.5rem;text-align:center;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}.view-home__action ui-icon{color:var(--view-primary);opacity:.8}.view-home__action:hover{border-color:var(--view-primary);box-shadow:0 8px 24px light-dark(#0000001a,#0006);transform:translateY(-4px)}.view-home__action:hover ui-icon{opacity:1}.view-home__action:focus-visible{outline:2px solid var(--view-primary);outline-offset:2px}.view-home__action-title{font-size:1rem;font-weight:600}.view-home__action-desc{font-size:.8125rem;opacity:.6}@media (max-width:768px){:root:has([data-view=home]),html:has([data-view=home]){--view-hero-padding:var(--space-8);--view-card-gap:var(--space-4)}}@media (max-width:480px){.view-home__actions{grid-template-columns:1fr}}}";
 
@@ -89,12 +93,19 @@ class HomeView {
   // ========================================================================
   setupEventHandlers() {
     if (!this.element) return;
+    const actionButtons = this.element.querySelectorAll("[data-view]");
+    actionButtons.forEach((button) => {
+      const viewId = button.dataset.view || "";
+      if (!isEnabledView(viewId)) {
+        button.remove();
+      }
+    });
     this.element.addEventListener("click", (e) => {
       const target = e.target;
       const button = target.closest("[data-view]");
       if (!button) return;
       const viewId = button.dataset.view;
-      if (viewId) {
+      if (viewId && isEnabledView(viewId)) {
         this.shellContext?.navigate(viewId);
       }
     });

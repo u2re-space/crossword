@@ -15,12 +15,6 @@
     "src": "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline",
     "isDynamicEntry": true
   },
-  "../../../../modules/projects/veela.css/src/ts/font-registry.ts": {
-    "file": "modules/font-registry.js",
-    "name": "font-registry",
-    "src": "../../../../modules/projects/veela.css/src/ts/font-registry.ts",
-    "isDynamicEntry": true
-  },
   "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs": {
     "file": "modules/showOpenFilePicker.js",
     "name": "showOpenFilePicker",
@@ -39,14 +33,8 @@
     "file": "assets/squoosh_png_bg.wasm",
     "src": "../../../../node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm"
   },
-  "../../../../node_modules/cbor-x/index.js": {
-    "file": "modules/index15.js",
-    "name": "index",
-    "src": "../../../../node_modules/cbor-x/index.js",
-    "isDynamicEntry": true
-  },
   "../../../../node_modules/webdav/dist/web/index.js": {
-    "file": "modules/index14.js",
+    "file": "modules/index10.js",
     "name": "index",
     "src": "../../../../node_modules/webdav/dist/web/index.js",
     "isDynamicEntry": true
@@ -57,27 +45,6 @@
     "src": "../../node_modules/marked/lib/marked.esm.js",
     "isDynamicEntry": true
   },
-  "../com/config/RuntimeSettings.ts": {
-    "file": "modules/RuntimeSettings.js",
-    "name": "RuntimeSettings",
-    "src": "../com/config/RuntimeSettings.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Settings.js",
-      "_index.js"
-    ]
-  },
-  "../com/service/misc/CustomInstructions.ts": {
-    "file": "modules/CustomInstructions.js",
-    "name": "CustomInstructions",
-    "src": "../com/service/misc/CustomInstructions.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Settings.js",
-      "_BuiltInAI.js",
-      "_index.js"
-    ]
-  },
   "../core/document/DocxExport.ts": {
     "file": "modules/DocxExport.js",
     "name": "DocxExport",
@@ -85,402 +52,214 @@
     "isDynamicEntry": true,
     "imports": [
       "../../node_modules/marked/lib/marked.esm.js",
-      "_index17.js",
-      "_auto-render.js"
-    ]
-  },
-  "../core/modules/Clipboard.ts": {
-    "file": "modules/Clipboard.js",
-    "name": "Clipboard",
-    "src": "../core/modules/Clipboard.ts",
-    "isDynamicEntry": true
-  },
-  "../core/workers/ImageProcess.ts": {
-    "file": "modules/ImageProcess.js",
-    "name": "ImageProcess",
-    "src": "../core/workers/ImageProcess.ts",
-    "isDynamicEntry": true,
-    "assets": [
-      "assets/squoosh_png_bg.wasm",
-      "assets/mozjpeg_enc.wasm",
-      "assets/mozjpeg_dec.wasm"
-    ]
-  },
-  "../frontend/items/Toast.ts": {
-    "file": "modules/Toast.js",
-    "name": "Toast",
-    "src": "../frontend/items/Toast.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Runtime2.js"
+      "_index9.js",
+      "_Markdown.js",
+      "__commonjsHelpers.js",
+      "_Settings.js",
+      "_Env.js"
     ]
   },
   "../frontend/shells/base/index.ts": {
-    "file": "modules/index2.js",
+    "file": "modules/index.js",
     "name": "index",
     "src": "../frontend/shells/base/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_Settings.js",
+      "_Env.js",
       "_shell.js",
-      "_index.js",
       "_crx-entry.js",
       "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts",
-      "../frontend/items/Toast.ts",
-      "_Runtime2.js",
-      "_index16.js",
+      "_templates.js",
+      "_Toast.js",
       "_Markdown.js",
-      "_browser.js",
       "__commonjsHelpers.js",
-      "_auto-render.js",
-      "_index17.js"
+      "_index9.js"
     ]
   },
   "../frontend/shells/faint/index.ts": {
-    "file": "modules/index4.js",
+    "file": "modules/index3.js",
     "name": "index",
     "src": "../frontend/shells/faint/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_shell.js",
       "_Settings.js",
+      "_Env.js",
       "_crx-entry.js",
-      "_index16.js",
-      "../frontend/items/Toast.ts",
-      "_Runtime2.js",
-      "_index.js",
-      "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts",
+      "_Toast.js",
       "_Markdown.js",
-      "_browser.js",
       "__commonjsHelpers.js",
-      "_auto-render.js",
-      "_index17.js"
+      "_index9.js",
+      "_UnifiedMessaging.js",
+      "_templates.js"
     ]
   },
   "../frontend/shells/minimal/index.ts": {
-    "file": "modules/index3.js",
+    "file": "modules/index2.js",
     "name": "index",
     "src": "../frontend/shells/minimal/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_Settings.js",
-      "_index16.js",
+      "_Env.js",
       "_shell.js",
-      "_index.js",
       "_crx-entry.js",
-      "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts",
+      "_Toast.js",
       "_Markdown.js",
-      "_browser.js",
       "__commonjsHelpers.js",
-      "_auto-render.js",
-      "_index17.js",
-      "../frontend/items/Toast.ts",
-      "_Runtime2.js"
-    ]
-  },
-  "../frontend/views/airpad/main.ts": {
-    "file": "modules/main.js",
-    "name": "main",
-    "src": "../frontend/views/airpad/main.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_index.js",
-      "_index18.js",
-      "_MakeTimeline.js",
-      "../core/modules/Clipboard.ts",
-      "_Settings.js",
-      "../core/document/DocxExport.ts",
-      "_Conversion.js",
-      "_GPT-Responses.js",
-      "_BuiltInAI.js",
-      "_Runtime2.js",
-      "_crx-entry.js",
-      "../frontend/items/Toast.ts",
+      "_index9.js",
       "_UnifiedMessaging.js",
-      "_index10.js",
-      "../core/workers/ImageProcess.ts",
-      "../../node_modules/marked/lib/marked.esm.js",
-      "_index17.js",
-      "_auto-render.js",
-      "__commonjsHelpers.js"
-    ],
-    "dynamicImports": [
-      "../../node_modules/marked/lib/marked.esm.js",
-      "../core/modules/Clipboard.ts",
-      "../core/modules/Clipboard.ts",
-      "../core/modules/Clipboard.ts",
-      "../core/modules/Clipboard.ts",
-      "../core/modules/Clipboard.ts",
-      "../frontend/items/Toast.ts",
-      "../core/modules/Clipboard.ts",
-      "_UnifiedMessaging.js",
-      "../com/config/RuntimeSettings.ts"
-    ]
-  },
-  "../frontend/views/editor/index.ts": {
-    "file": "modules/index11.js",
-    "name": "index",
-    "src": "../frontend/views/editor/index.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Settings.js",
-      "_types.js",
-      "_index.js"
-    ]
-  },
-  "../frontend/views/explorer/index.ts": {
-    "file": "modules/index9.js",
-    "name": "index",
-    "src": "../frontend/views/explorer/index.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Settings.js",
-      "_index18.js",
-      "_index16.js",
-      "_index.js",
-      "_crx-entry.js",
-      "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts",
-      "_Markdown.js",
-      "_browser.js",
-      "__commonjsHelpers.js",
-      "_auto-render.js",
-      "_index17.js"
+      "_templates.js"
     ]
   },
   "../frontend/views/history/index.ts": {
-    "file": "modules/index8.js",
+    "file": "modules/index6.js",
     "name": "index",
     "src": "../frontend/views/history/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_Settings.js",
-      "_index18.js",
-      "_index.js"
+      "_Env.js"
     ]
   },
   "../frontend/views/home/index.ts": {
-    "file": "modules/index12.js",
+    "file": "modules/index7.js",
     "name": "index",
     "src": "../frontend/views/home/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_Settings.js",
-      "_index.js"
+      "_Env.js",
+      "_crx-entry.js",
+      "_UnifiedMessaging.js",
+      "_templates.js"
     ]
   },
   "../frontend/views/print/index.ts": {
-    "file": "modules/index13.js",
+    "file": "modules/index8.js",
     "name": "index",
     "src": "../frontend/views/print/index.ts",
     "isDynamicEntry": true,
     "imports": [
-      "_index.js",
       "_Settings.js",
+      "_Env.js",
       "_Markdown.js",
-      "_browser.js",
       "__commonjsHelpers.js",
-      "_auto-render.js",
-      "_index17.js"
+      "_index9.js"
     ],
     "dynamicImports": [
       "../core/document/DocxExport.ts"
     ]
   },
   "../frontend/views/settings/index.ts": {
-    "file": "modules/index7.js",
+    "file": "modules/index5.js",
     "name": "index",
     "src": "../frontend/views/settings/index.ts",
     "isDynamicEntry": true,
     "imports": [
       "_Settings.js",
+      "_Env.js",
       "_crx-entry.js",
-      "../com/service/misc/CustomInstructions.ts",
-      "_BuiltInAI.js",
-      "_index.js",
-      "_UnifiedMessaging.js",
-      "../core/modules/Clipboard.ts"
+      "_CustomInstructions.js",
+      "_templates.js",
+      "_UnifiedMessaging.js"
     ]
   },
   "../frontend/views/viewer/index.ts": {
-    "file": "modules/index5.js",
+    "file": "modules/index4.js",
     "name": "index",
     "src": "../frontend/views/viewer/index.ts",
     "isDynamicEntry": true,
     "imports": [
-      "_index.js",
       "_Settings.js",
-      "_browser.js",
-      "_auto-render.js",
-      "_types.js",
+      "_Env.js",
       "_Markdown.js",
       "__commonjsHelpers.js",
-      "_index17.js"
+      "_index9.js"
     ],
     "dynamicImports": [
       "../../node_modules/marked/lib/marked.esm.js",
-      "_index17.js",
+      "_index9.js",
       "../core/document/DocxExport.ts"
     ]
   },
-  "../frontend/views/workcenter/index.ts": {
-    "file": "modules/index6.js",
-    "name": "index",
-    "src": "../frontend/views/workcenter/index.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_Settings.js",
-      "../../node_modules/marked/lib/marked.esm.js",
-      "_index17.js",
-      "_auto-render.js",
-      "_UnifiedMessaging.js",
-      "_index.js",
-      "_crx-entry.js",
-      "../com/service/misc/CustomInstructions.ts",
-      "_BuiltInAI.js",
-      "_ExecutionCore.js",
-      "_GPT-Responses.js",
-      "_browser.js",
-      "../core/modules/Clipboard.ts",
-      "../com/config/RuntimeSettings.ts",
-      "_Runtime2.js",
-      "__commonjsHelpers.js"
-    ],
-    "dynamicImports": [
-      "_UnifiedMessaging.js",
-      "_UnifiedMessaging.js"
-    ]
-  },
-  "_BuiltInAI.js": {
-    "file": "modules/BuiltInAI.js",
-    "name": "BuiltInAI"
-  },
-  "_Conversion.js": {
-    "file": "modules/Conversion.js",
-    "name": "Conversion",
-    "imports": [
-      "_index.js",
-      "__commonjsHelpers.js",
-      "../core/workers/ImageProcess.ts",
-      "../core/modules/Clipboard.ts",
-      "_Settings.js"
-    ],
-    "dynamicImports": [
-      "../../node_modules/marked/lib/marked.esm.js",
-      "_index17.js"
-    ]
+  "_Clipboard.js": {
+    "file": "modules/Clipboard.js",
+    "name": "Clipboard"
   },
   "_CrxMessaging.js": {
     "file": "modules/CrxMessaging.js",
     "name": "CrxMessaging",
     "imports": [
-      "_index.js"
-    ]
-  },
-  "_ExecutionCore.js": {
-    "file": "modules/ExecutionCore.js",
-    "name": "ExecutionCore",
-    "imports": [
-      "_Settings.js",
-      "_GPT-Responses.js",
-      "_index.js",
-      "../com/config/RuntimeSettings.ts",
-      "_BuiltInAI.js"
-    ],
-    "dynamicImports": [
-      "../core/modules/Clipboard.ts",
-      "../frontend/items/Toast.ts",
-      "../core/modules/Clipboard.ts",
-      "../core/workers/ImageProcess.ts",
-      "../com/service/misc/CustomInstructions.ts"
-    ]
-  },
-  "_GPT-Responses.js": {
-    "file": "modules/GPT-Responses.js",
-    "name": "GPT-Responses",
-    "imports": [
-      "_Runtime2.js",
+      "_Env.js",
       "_Settings.js"
+    ],
+    "assets": [
+      "assets/mozjpeg_enc.wasm"
     ]
   },
-  "_MakeTimeline.js": {
-    "file": "modules/MakeTimeline.js",
-    "name": "MakeTimeline",
+  "_CustomInstructions.js": {
+    "file": "modules/CustomInstructions.js",
+    "name": "CustomInstructions",
+    "isDynamicEntry": true,
     "imports": [
-      "_GPT-Responses.js",
-      "../core/workers/ImageProcess.ts",
       "_Settings.js",
-      "_index.js",
-      "../frontend/items/Toast.ts",
-      "_Runtime2.js"
+      "_templates.js"
+    ]
+  },
+  "_Env.js": {
+    "file": "modules/Env.js",
+    "name": "Env",
+    "assets": [
+      "assets/Worker.ts"
     ]
   },
   "_Markdown.js": {
     "file": "modules/Markdown.js",
     "name": "Markdown",
     "imports": [
-      "_browser.js",
+      "__commonjsHelpers.js",
       "_Settings.js",
-      "_auto-render.js",
-      "_index17.js"
+      "_Env.js",
+      "_index9.js"
     ]
-  },
-  "_Runtime2.js": {
-    "file": "modules/Runtime2.js",
-    "name": "Runtime"
   },
   "_Settings.js": {
     "file": "modules/Settings.js",
     "name": "Settings",
     "imports": [
-      "_index.js"
+      "_Env.js"
     ],
     "dynamicImports": [
       "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs",
       "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs",
-      "../../../../modules/shared/fest/polyfill/showOpenFilePicker.mjs",
       "../../../../node_modules/webdav/dist/web/index.js"
     ]
+  },
+  "_Toast.js": {
+    "file": "modules/Toast.js",
+    "name": "Toast"
   },
   "_UnifiedMessaging.js": {
     "file": "modules/UnifiedMessaging.js",
     "name": "UnifiedMessaging",
     "isDynamicEntry": true,
     "imports": [
-      "_index.js",
-      "_BuiltInAI.js"
+      "_Env.js",
+      "_Settings.js",
+      "_templates.js"
     ]
   },
   "__commonjsHelpers.js": {
     "file": "modules/_commonjsHelpers.js",
     "name": "_commonjsHelpers"
   },
-  "_auto-render.js": {
-    "file": "modules/auto-render.js",
-    "name": "auto-render",
-    "imports": [
-      "_index17.js"
-    ]
-  },
-  "_browser.js": {
-    "file": "modules/browser.js",
-    "name": "browser",
-    "imports": [
-      "__commonjsHelpers.js"
-    ]
-  },
   "_clipboard-handler.js": {
     "file": "modules/clipboard-handler.js",
     "name": "clipboard-handler",
     "imports": [
-      "../core/modules/Clipboard.ts"
+      "_Clipboard.js"
     ]
   },
   "_crx-entry.js": {
@@ -488,67 +267,25 @@
     "name": "crx-entry",
     "imports": [
       "_Settings.js",
-      "_index.js",
-      "_UnifiedMessaging.js",
-      "../core/modules/Clipboard.ts"
+      "_Env.js",
+      "_UnifiedMessaging.js"
     ],
     "dynamicImports": [
       "../frontend/shells/base/index.ts",
       "../frontend/shells/minimal/index.ts",
       "../frontend/shells/faint/index.ts",
       "../frontend/views/viewer/index.ts",
-      "../frontend/views/workcenter/index.ts",
       "../frontend/views/settings/index.ts",
       "../frontend/views/history/index.ts",
-      "../frontend/views/explorer/index.ts",
-      "_index10.js",
-      "../frontend/views/editor/index.ts",
       "../frontend/views/home/index.ts",
       "../frontend/views/print/index.ts",
-      "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline",
-      "../../../../modules/projects/veela.css/src/ts/font-registry.ts"
+      "../../../../modules/projects/veela.css/src/scss/runtime/beercss/_index.scss?inline"
     ]
   },
-  "_index.js": {
-    "file": "modules/index.js",
-    "name": "index",
-    "dynamicImports": [
-      "../../../../node_modules/cbor-x/index.js"
-    ],
-    "assets": [
-      "assets/Worker.ts"
-    ]
-  },
-  "_index10.js": {
-    "file": "modules/index10.js",
-    "name": "index",
-    "isDynamicEntry": true,
-    "imports": [
-      "_index.js",
-      "_Settings.js"
-    ],
-    "dynamicImports": [
-      "../frontend/views/airpad/main.ts"
-    ]
-  },
-  "_index16.js": {
-    "file": "modules/index16.js",
-    "name": "index",
-    "imports": [
-      "_Settings.js",
-      "_index.js",
-      "_crx-entry.js",
-      "_Markdown.js"
-    ]
-  },
-  "_index17.js": {
-    "file": "modules/index17.js",
+  "_index9.js": {
+    "file": "modules/index9.js",
     "name": "index",
     "isDynamicEntry": true
-  },
-  "_index18.js": {
-    "file": "modules/index18.js",
-    "name": "index"
   },
   "_main.ts-loader.js": {
     "file": "assets/main.ts-loader.js",
@@ -558,22 +295,23 @@
     "file": "modules/runtime.js",
     "name": "runtime",
     "imports": [
-      "_index.js"
+      "_Env.js"
     ]
   },
   "_shell.js": {
     "file": "modules/shell.js",
     "name": "shell",
     "imports": [
+      "_Env.js",
       "_Settings.js",
       "_crx-entry.js",
-      "../frontend/items/Toast.ts",
-      "_index16.js"
+      "_Toast.js",
+      "_Markdown.js"
     ]
   },
-  "_types.js": {
-    "file": "modules/types.js",
-    "name": "types"
+  "_templates.js": {
+    "file": "modules/templates.js",
+    "name": "templates"
   },
   "content/main.ts": {
     "file": "app/content.js",
@@ -581,17 +319,18 @@
     "src": "content/main.ts",
     "isEntry": true,
     "imports": [
-      "../core/modules/Clipboard.ts",
-      "../frontend/items/Toast.ts",
-      "_Conversion.js",
+      "_Clipboard.js",
+      "_Toast.js",
+      "_Settings.js",
+      "__commonjsHelpers.js",
+      "_CrxMessaging.js",
       "_clipboard-handler.js",
       "_runtime.js",
-      "_CrxMessaging.js",
-      "_Runtime2.js",
-      "_index.js",
-      "__commonjsHelpers.js",
-      "../core/workers/ImageProcess.ts",
-      "_Settings.js"
+      "_Env.js"
+    ],
+    "dynamicImports": [
+      "../../node_modules/marked/lib/marked.esm.js",
+      "_index9.js"
     ]
   },
   "markdown/viewer.html": {
@@ -602,10 +341,9 @@
     "imports": [
       "_crx-entry.js",
       "_Settings.js",
-      "_index.js",
+      "_Env.js",
       "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts"
+      "_templates.js"
     ]
   },
   "newtab/index.html": {
@@ -616,10 +354,9 @@
     "imports": [
       "_crx-entry.js",
       "_Settings.js",
-      "_index.js",
+      "_Env.js",
       "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts"
+      "_templates.js"
     ]
   },
   "offscreen/capture.html": {
@@ -635,7 +372,7 @@
     "isEntry": true,
     "imports": [
       "_clipboard-handler.js",
-      "../core/modules/Clipboard.ts"
+      "_Clipboard.js"
     ]
   },
   "popup/index.html": {
@@ -645,7 +382,7 @@
     "isEntry": true,
     "imports": [
       "_runtime.js",
-      "_index.js"
+      "_Env.js"
     ]
   },
   "settings/index.html": {
@@ -656,10 +393,9 @@
     "imports": [
       "_crx-entry.js",
       "_Settings.js",
-      "_index.js",
+      "_Env.js",
       "_UnifiedMessaging.js",
-      "_BuiltInAI.js",
-      "../core/modules/Clipboard.ts"
+      "_templates.js"
     ]
   },
   "style.css": {
@@ -672,21 +408,16 @@
     "src": "sw.ts",
     "isEntry": true,
     "imports": [
-      "_index.js",
-      "_MakeTimeline.js",
-      "../core/workers/ImageProcess.ts",
-      "_ExecutionCore.js",
-      "../core/modules/Clipboard.ts",
-      "../com/service/misc/CustomInstructions.ts",
       "_Settings.js",
+      "_Toast.js",
+      "_Env.js",
       "_CrxMessaging.js",
-      "_BuiltInAI.js",
-      "_GPT-Responses.js",
-      "_Runtime2.js",
-      "../frontend/items/Toast.ts",
-      "../com/config/RuntimeSettings.ts"
+      "_templates.js",
+      "_CustomInstructions.js",
+      "_Clipboard.js"
     ],
     "dynamicImports": [
+      "_CustomInstructions.js",
       "_UnifiedMessaging.js"
     ]
   }

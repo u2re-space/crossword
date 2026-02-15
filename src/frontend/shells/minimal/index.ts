@@ -19,6 +19,7 @@ import style from "./minimal.scss?inline";
 // Side effect: register icon component
 import "fest/icon";
 import { ShellBase } from "../shell";
+import { isEnabledView, pickEnabledView } from "../../config/views";
 
 // ============================================================================
 // NAVIGATION ITEMS
@@ -32,7 +33,7 @@ interface NavItem {
 }
 
 /** Main navigation items shown in the toolbar */
-const MAIN_NAV_ITEMS = [
+const ALL_NAV_ITEMS = [
     { id: "viewer", name: "Viewer", icon: "eye" },
     { id: "explorer", name: "Explorer", icon: "folder" },
     { id: "workcenter", name: "Work Center", icon: "lightning" },
@@ -40,6 +41,7 @@ const MAIN_NAV_ITEMS = [
     { id: "settings", name: "Settings", icon: "gear" },
     { id: "history", name: "History", icon: "clock-counter-clockwise" }
 ] as const satisfies readonly NavItem[];
+const MAIN_NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => isEnabledView(item.id));
 
 /** Set of valid nav view IDs for fast lookup */
 const VALID_NAV_VIEW_IDS = new Set(MAIN_NAV_ITEMS.map(item => item.id));
@@ -159,7 +161,7 @@ export class MinimalShell extends ShellBase {
     }
 
     private getInitialView(): ViewId {
-        if (typeof globalThis === "undefined") return "viewer";
+        if (typeof globalThis === "undefined") return pickEnabledView("viewer");
 
         // Get view from pathname (e.g., /viewer, /settings, /workcenter)
         const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
@@ -169,7 +171,7 @@ export class MinimalShell extends ShellBase {
         }
 
         // Default to viewer
-        return "viewer";
+        return pickEnabledView("viewer", MAIN_NAV_ITEMS[0]?.id || "viewer");
     }
 }
 
