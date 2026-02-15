@@ -164,6 +164,20 @@ https
 https/
 https/*
 
+# dist
+dist
+dist/
+dist/*
+dist-pwa
+dist-pwa/
+dist-pwa/*
+dist-crx
+dist-crx/
+dist-crx/*
+dist-modules
+dist-modules/
+dist-modules/*
+
 # Build
 ./dist
 ./dist/
