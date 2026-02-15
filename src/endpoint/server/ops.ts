@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
-import { loadUserSettings, verifyUser } from "../../lib/users.ts";
+import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import type { WsHub } from "./websocket.ts";
 import type { AppSettings } from "@rs-com/config/SettingsTypes.js";
 

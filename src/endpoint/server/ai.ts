@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
-import { loadUserSettings, verifyUser } from "../../lib/users.ts";
+import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import { createOrchestrator } from "@rs-com/service/AI-ops/Orchestrator.js";
 import type { CustomInstruction } from "@rs-com/service/InstructionUtils.js";
 

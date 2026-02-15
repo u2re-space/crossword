@@ -46,16 +46,18 @@ async function startServers() {
     registerRoutes(httpsApp);
     registerRoutes(httpApp);
 
-    await httpsApp.listen({ port: HTTPS_PORT, host: '0.0.0.0' });
-    httpsApp.log.info(`Listening on https://0.0.0.0:${HTTPS_PORT}`);
-
-    await httpApp.listen({ port: HTTP_LISTEN_PORT, host: '0.0.0.0' });
-    httpApp.log.info(`Listening on http://0.0.0.0:${HTTP_LISTEN_PORT}`);
-
-    // Initialize Socket.IO servers (both HTTP and HTTPS).
-    // Frontend chooses port based on page protocol/port, so we serve Socket.IO on both.
+    // Initialize Socket.IO servers (both HTTP and HTTPS) before listen.
+    // This ensures `/socket.io` handlers are already attached when ports open.
     setupSocketIO(httpsApp.server, httpsApp.log);
     setupSocketIO(httpApp.server, httpApp.log);
+
+    // Start HTTP/HTTPS in parallel to reduce startup latency.
+    await Promise.all([
+        httpsApp.listen({ port: HTTPS_PORT, host: '0.0.0.0' })
+            .then(() => httpsApp.log.info(`Listening on https://0.0.0.0:${HTTPS_PORT}`)),
+        httpApp.listen({ port: HTTP_LISTEN_PORT, host: '0.0.0.0' })
+            .then(() => httpApp.log.info(`Listening on http://0.0.0.0:${HTTP_LISTEN_PORT}`)),
+    ]);
 
     // Start background tasks
     startMouseFlushInterval();

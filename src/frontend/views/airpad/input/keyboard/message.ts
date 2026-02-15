@@ -4,7 +4,6 @@
 
 import {
     isWSConnected,
-    connectWS,
     sendKeyboardChar as wsSendKeyboardChar,
     createKeyboardMessage,
     sendBinaryMessage
@@ -12,10 +11,7 @@ import {
 
 // Re-export for backward compatibility and direct binary sending
 export function sendKeyboardChar(char: string) {
-    // Try to connect if not connected (non-blocking)
-    if (!isWSConnected()) {
-        connectWS();
-    }
+    if (!isWSConnected()) return;
 
     // Use the websocket module's function
     wsSendKeyboardChar(char);
@@ -23,9 +19,7 @@ export function sendKeyboardChar(char: string) {
 
 // For sending pre-built binary messages (optimization)
 export function sendKeyboardBinary(codePoint: number, flags: number) {
-    if (!isWSConnected()) {
-        connectWS();
-    }
+    if (!isWSConnected()) return;
 
     const buffer = createKeyboardMessage(codePoint, flags);
     sendBinaryMessage(buffer);

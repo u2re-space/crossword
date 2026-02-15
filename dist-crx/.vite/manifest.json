@@ -184,19 +184,6 @@
       "_Runtime2.js"
     ]
   },
-  "../frontend/views/airpad/index.ts": {
-    "file": "modules/index10.js",
-    "name": "index",
-    "src": "../frontend/views/airpad/index.ts",
-    "isDynamicEntry": true,
-    "imports": [
-      "_index.js",
-      "_Settings.js"
-    ],
-    "dynamicImports": [
-      "../frontend/views/airpad/main.ts"
-    ]
-  },
   "../frontend/views/airpad/main.ts": {
     "file": "modules/main.js",
     "name": "main",
@@ -216,6 +203,7 @@
       "_crx-entry.js",
       "../frontend/items/Toast.ts",
       "_UnifiedMessaging.js",
+      "_index10.js",
       "../core/workers/ImageProcess.ts",
       "../../node_modules/marked/lib/marked.esm.js",
       "_index17.js",
@@ -513,7 +501,7 @@
       "../frontend/views/settings/index.ts",
       "../frontend/views/history/index.ts",
       "../frontend/views/explorer/index.ts",
-      "../frontend/views/airpad/index.ts",
+      "_index10.js",
       "../frontend/views/editor/index.ts",
       "../frontend/views/home/index.ts",
       "../frontend/views/print/index.ts",
@@ -529,6 +517,18 @@
     ],
     "assets": [
       "assets/Worker.ts"
+    ]
+  },
+  "_index10.js": {
+    "file": "modules/index10.js",
+    "name": "index",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index.js",
+      "_Settings.js"
+    ],
+    "dynamicImports": [
+      "../frontend/views/airpad/main.ts"
     ]
   },
   "_index16.js": {

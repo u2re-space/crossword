@@ -9,6 +9,8 @@ import { H } from "fest/lure";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
+import { disconnectWS } from "./network/websocket";
+import { setRemoteKeyboardEnabled } from "./input/virtual-keyboard";
 
 // @ts-ignore
 import style from "./airpad.scss?inline";
@@ -33,7 +35,11 @@ export class AirpadView implements View {
         onMount: () => this.initAirpad(),
         onUnmount: () => this.cleanup(),
         onShow: () => { this._sheet = loadAsAdopted(style) as CSSStyleSheet; },
-        onHide: () => { removeAdopted(this._sheet); },
+        onHide: () => {
+            setRemoteKeyboardEnabled(false);
+            disconnectWS();
+            removeAdopted(this._sheet);
+        },
     };
 
     constructor(options: BaseViewOptions = {}) {
@@ -108,7 +114,8 @@ export class AirpadView implements View {
     }
 
     private cleanup(): void {
-        // Cleanup any airpad resources if needed
+        setRemoteKeyboardEnabled(false);
+        disconnectWS();
         this.initialized = false;
     }
 

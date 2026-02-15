@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
-import { mergeSettings, readCoreSettings, type SettingsPatch } from "../../lib/settings.ts";
-import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../../lib/users.ts";
+import { mergeSettings, readCoreSettings, type SettingsPatch } from "../lib/settings.ts";
+import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
 import { DEFAULT_SETTINGS, type AppSettings } from "@rs-com/config/SettingsTypes.js";
 
 export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {

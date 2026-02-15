@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 
 import { type AppSettings } from "@rs-com/config/SettingsTypes.js";
-import { loadUserSettings } from "./lib/users.ts";
+import { loadUserSettings } from "../lib/users.ts";
 
 type ClientInfo = {
     userId: string;

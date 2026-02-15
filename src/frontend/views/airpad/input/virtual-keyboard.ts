@@ -4,13 +4,34 @@
 
 import { log } from '../utils/utils';
 import { initVirtualKeyboardAPI, hasVirtualKeyboardAPI } from './keyboard/api';
-import { setKeyboardElement, setToggleButton } from './keyboard/state';
+import {
+    setKeyboardElement,
+    setToggleButton,
+    setRemoteKeyboardEnabled as setRemoteKeyboardEnabledState,
+    getToggleButton,
+} from './keyboard/state';
 import { createKeyboardHTML } from './keyboard/ui';
 import {
+    hideKeyboard,
     setupToggleButtonHandler,
     setupVirtualKeyboardAPIHandlers,
     setupKeyboardUIHandlers,
 } from './keyboard/handlers';
+
+function updateToggleButtonEnabledState(enabled: boolean) {
+    const toggleButton = getToggleButton();
+    if (!(toggleButton instanceof HTMLButtonElement)) return;
+    toggleButton.disabled = !enabled;
+    toggleButton.setAttribute('aria-disabled', String(!enabled));
+}
+
+export function setRemoteKeyboardEnabled(enabled: boolean) {
+    setRemoteKeyboardEnabledState(enabled);
+    updateToggleButtonEnabledState(enabled);
+    if (!enabled) {
+        hideKeyboard();
+    }
+}
 
 export function initVirtualKeyboard() {
     // Initialize VirtualKeyboard API if available
@@ -56,6 +77,7 @@ export function initVirtualKeyboard() {
     toggleButton.autofocus = false;
     toggleButton.removeAttribute('autofocus');
     setToggleButton(toggleButton);
+    setRemoteKeyboardEnabled(false);
 
     // Setup event handlers
     setupToggleButtonHandler();

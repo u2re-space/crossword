@@ -8,15 +8,17 @@ import { initServiceWorker } from '@rs-frontend/pwa/sw-handling';
 
 //
 import { log, getBtnConnect } from './utils/utils';
-import { initWebSocket } from './network/websocket';
+import { initWebSocket, onWSConnectionChange } from './network/websocket';
 import { initSpeechRecognition, initAiButton } from './input/speech';
 import { initAirButton } from './ui/air-button';
 import { initRelativeOrientation } from './input/sensor/relative-orientation';
-import { initVirtualKeyboard } from './input/virtual-keyboard';
+import { initVirtualKeyboard, setRemoteKeyboardEnabled } from './input/virtual-keyboard';
 import { initClipboardToolbar } from './ui/clipboard-toolbar';
 import { showConfigUI } from './ui/config-ui';
 import { loadAsAdopted } from 'fest/dom';
 import { H } from 'fest/lure';
+
+let unsubscribeWsKeyboardSync: (() => void) | null = null;
 
 // =========================
 // Mount function for routing system
@@ -61,7 +63,7 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
 
                     <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
                         class="primary-btn">
-                        Подключить WS
+                        WS Connect
                     </button>
                 </div>
             </header>
@@ -257,7 +259,7 @@ function initLogOverlay() {
         log('PWA: service worker disabled: ' + (err?.message || err));
     }
 
-    log('Готово. Нажми "Подключить WS", затем используй Air/AI кнопки.');
+    log('Готово. Нажми "WS Connect", затем используй Air/AI кнопки.');
     log('Движение мыши основано только на Gyroscope API (повороты телефона).');
 
     initLogOverlay();
@@ -266,6 +268,10 @@ function initLogOverlay() {
     initAiButton();
     initAirButton();
     initVirtualKeyboard();
+    unsubscribeWsKeyboardSync?.();
+    unsubscribeWsKeyboardSync = onWSConnectionChange((connected) => {
+        setRemoteKeyboardEnabled(connected);
+    });
     initClipboardToolbar();
     initConfigButton();
     initAdaptiveHintPanel();

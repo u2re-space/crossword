@@ -5,6 +5,7 @@
 let keyboardVisible = false;
 let keyboardElement: HTMLElement | null = null;
 let toggleButton: HTMLElement | null = null;
+let remoteKeyboardEnabled = false;
 
 export function setKeyboardVisible(visible: boolean) {
     keyboardVisible = visible;
@@ -28,6 +29,14 @@ export function setToggleButton(button: HTMLElement | null) {
 
 export function getToggleButton(): HTMLElement | null {
     return toggleButton;
+}
+
+export function setRemoteKeyboardEnabled(enabled: boolean) {
+    remoteKeyboardEnabled = enabled;
+}
+
+export function isRemoteKeyboardEnabled(): boolean {
+    return remoteKeyboardEnabled;
 }
 
 if ('visualViewport' in globalThis) {

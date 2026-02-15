@@ -9,7 +9,8 @@ import {
     isKeyboardVisible,
     setKeyboardVisible,
     getKeyboardElement,
-    getToggleButton
+    getToggleButton,
+    isRemoteKeyboardEnabled
 } from './state';
 import { renderKeyboard, renderEmoji, restoreButtonIcon } from './ui';
 
@@ -23,6 +24,8 @@ function isConfigOverlayVisible(): boolean {
 
 // Show keyboard
 export function showKeyboard() {
+    if (!isRemoteKeyboardEnabled()) return;
+
     // Don't show keyboard if config dialog is open
     if (isConfigOverlayVisible()) {
         return;
@@ -95,6 +98,8 @@ export function setupToggleButtonHandler() {
     if (!toggleButton) return;
 
     toggleButton.addEventListener('click', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         // Don't allow keyboard toggle if config dialog is open
         if (isConfigOverlayVisible()) {
             return;
@@ -188,6 +193,7 @@ export function setupVirtualKeyboardAPIHandlers() {
 
     // Helper to send char and restore
     const sendAndRestore = (char: string) => {
+        if (!isRemoteKeyboardEnabled()) return;
         sendKeyboardChar(char);
         scheduleRestore();
     };
@@ -223,6 +229,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // KEYDOWN - Special keys + detect Unidentified for mobile
     // ==================
     toggleButton.addEventListener('keydown', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         // Check native isComposing flag
         if (e.isComposing) {
             if (compositionTimeout !== null) {
@@ -302,6 +310,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // BEFOREINPUT - Main handler for text input
     // ==================
     toggleButton.addEventListener('beforeinput', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         const inputEvent = e as InputEvent;
         lastKnownContent = toggleButton.textContent || ICON;
         beforeInputFired = true;
@@ -399,6 +409,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // COMPOSITION - Send characters incrementally during compositionupdate
     // ==================
     toggleButton.addEventListener('compositionstart', () => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         if (compositionTimeout !== null) {
             clearTimeout(compositionTimeout);
             compositionTimeout = null;
@@ -410,6 +422,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     });
 
     toggleButton.addEventListener('compositionupdate', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         if (compositionTimeout !== null) {
             clearTimeout(compositionTimeout);
             compositionTimeout = null;
@@ -453,6 +467,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     });
 
     toggleButton.addEventListener('compositionend', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         if (DEBUG_KEYBOARD_INPUT) console.log('[Composition] end:', e.data, 'lastSent:', lastCompositionText);
 
         if (compositionTimeout !== null) {
@@ -485,6 +501,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // INPUT - Fallback handler
     // ==================
     toggleButton.addEventListener('input', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         const inputEvent = e as InputEvent;
 
         // Skip composition-related input - handled by composition events
@@ -541,6 +559,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // PASTE
     // ==================
     toggleButton.addEventListener('paste', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         e.preventDefault();
         e.stopPropagation();
         waitingForInput = false;
@@ -559,6 +579,8 @@ export function setupVirtualKeyboardAPIHandlers() {
     // DROP
     // ==================
     toggleButton.addEventListener('drop', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         e.preventDefault();
         e.stopPropagation();
         waitingForInput = false;
@@ -671,6 +693,8 @@ export function setupKeyboardUIHandlers() {
     });
 
     document.addEventListener('focusout', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         const target = e?.target as HTMLElement;
         const relatedTarget = e?.relatedTarget as HTMLElement;
 
@@ -684,6 +708,8 @@ export function setupKeyboardUIHandlers() {
     });
 
     document.addEventListener('click', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         const target = e?.target as HTMLElement;
         if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
               target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {
@@ -692,6 +718,8 @@ export function setupKeyboardUIHandlers() {
     });
 
     document.addEventListener('pointerdown', (e) => {
+        if (!isRemoteKeyboardEnabled()) return;
+
         const target = e?.target as HTMLElement;
         if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
               target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {

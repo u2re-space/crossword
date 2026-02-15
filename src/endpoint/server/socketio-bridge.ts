@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 
 import { parsePayload, verifyWithoutDecrypt } from "./crypto-utils.ts";
+import { registerAirpadSocketHandlers, setupAirpadClipboardBroadcast } from "./socket-airpad.ts";
 
 type ClipHistoryEntry = {
     from: string;
@@ -56,6 +57,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
 
     // Message hooks for translation/routing
     const messageHooks: MessageHook[] = [];
+
+    setupAirpadClipboardBroadcast(io as any);
 
     const routeMessage = (sourceSocket: Socket, msg: any): void => {
         const processed = processHooks(messageHooks, msg, sourceSocket);
@@ -112,52 +115,60 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
             socket.broadcast.emit("device-connected", { id: deviceId });
         });
 
-        socket.on("message", async (msg: any) => {
-            if (!msg || typeof msg !== "object") return;
+        registerAirpadSocketHandlers(socket, {
+            logger: app.log,
+            onObjectMessage: async (msg) => {
+                msg.mode = msg.mode || "blind";
+                msg.from = msg.from || deviceId || socket.id;
 
-            msg.mode = msg.mode || "blind";
-            msg.from = msg.from || deviceId || socket.id;
+                logMsg("IN ", msg);
 
-            logMsg("IN ", msg);
-
-            try {
-                if (msg.mode === "blind") {
-                    const ok = verifyWithoutDecrypt(msg.payload);
-                    if (!ok) {
-                        console.warn(`[Server] Signature verification failed (blind mode) for from=${msg.from}`);
-                        socket.emit("error", { message: "Signature verification failed" });
+                try {
+                    if (msg.mode === "blind") {
+                        const ok = verifyWithoutDecrypt(msg.payload);
+                        if (!ok) {
+                            console.warn(`[Server] Signature verification failed (blind mode) for from=${msg.from}`);
+                            socket.emit("error", { message: "Signature verification failed" });
+                            return;
+                        }
+                        routeMessage(socket, msg);
                         return;
                     }
-                    routeMessage(socket, msg);
-                    return;
-                }
 
-                if (msg.mode === "inspect") {
-                    const { from, inner } = parsePayload(msg.payload);
-                    console.log(
-                        `[Server] INSPECT from=${from} to=${msg.to} type=${msg.type} action=${msg.action} data=${JSON.stringify(inner)}`
-                    );
+                    if (msg.mode === "inspect") {
+                        const { from, inner } = parsePayload(msg.payload);
+                        console.log(
+                            `[Server] INSPECT from=${from} to=${msg.to} type=${msg.type} action=${msg.action} data=${JSON.stringify(inner)}`
+                        );
 
-                    if (msg.type === "clip") {
-                        clipHistory.push({
-                            from,
-                            to: msg.to,
-                            ts: inner?.ts || Date.now(),
-                            data: inner?.data ?? null
-                        });
-                        if (clipHistory.length > maxHistory) clipHistory.shift();
+                        if (msg.type === "clip") {
+                            clipHistory.push({
+                                from,
+                                to: msg.to,
+                                ts: inner?.ts || Date.now(),
+                                data: inner?.data ?? null
+                            });
+                            if (clipHistory.length > maxHistory) clipHistory.shift();
+                        }
+
+                        routeMessage(socket, msg);
+                        return;
                     }
 
-                    routeMessage(socket, msg);
-                    return;
+                    console.warn(`[Server] Unknown mode: ${msg.mode}`);
+                    socket.emit("error", { message: `Unknown mode: ${msg.mode}` });
+                } catch (error: any) {
+                    console.error(`[Server] Error handling message:`, error);
+                    socket.emit("error", { message: `Error processing message: ${error?.message || String(error)}` });
                 }
-
-                console.warn(`[Server] Unknown mode: ${msg.mode}`);
-                socket.emit("error", { message: `Unknown mode: ${msg.mode}` });
-            } catch (error: any) {
-                console.error(`[Server] Error handling message:`, error);
-                socket.emit("error", { message: `Error processing message: ${error?.message || String(error)}` });
-            }
+            },
+            onDisconnect: (reason) => {
+                console.log(`[Server] Disconnected: ${deviceId || socket.id}, reason: ${reason}`);
+                if (deviceId && clients.get(deviceId) === socket) {
+                    clients.delete(deviceId);
+                    socket.broadcast.emit("device-disconnected", { id: deviceId });
+                }
+            },
         });
 
         socket.on("multicast", (data: { message: any; deviceIds?: string[] }) => {
@@ -166,14 +177,6 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
                 return;
             }
             multicastMessage(socket, data.message, data.deviceIds);
-        });
-
-        socket.on("disconnect", (reason: string) => {
-            console.log(`[Server] Disconnected: ${deviceId || socket.id}, reason: ${reason}`);
-            if (deviceId && clients.get(deviceId) === socket) {
-                clients.delete(deviceId);
-                socket.broadcast.emit("device-disconnected", { id: deviceId });
-            }
         });
 
         socket.on("error", (error: Error) => {

@@ -14,6 +14,9 @@ let socket: Socket | null = null;
 let wsConnected = false;
 let isConnecting = false;
 let btnEl: HTMLElement | null = null;
+let connectAttemptId = 0;
+type WSConnectionHandler = (connected: boolean) => void;
+const wsConnectionHandlers = new Set<WSConnectionHandler>();
 
 // Clipboard state + listeners (PC clipboard as seen by backend)
 let lastServerClipboardText = '';
@@ -40,6 +43,16 @@ export function getWS(): Socket | null {
 
 export function isWSConnected(): boolean {
     return wsConnected;
+}
+
+export function onWSConnectionChange(handler: WSConnectionHandler): () => void {
+    wsConnectionHandlers.add(handler);
+    try {
+        handler(wsConnected);
+    } catch {
+        // ignore subscriber errors
+    }
+    return () => wsConnectionHandlers.delete(handler);
 }
 
 export function getLastServerClipboard(): string {
@@ -117,6 +130,14 @@ function setWsStatus(connected: boolean) {
         }
     }
     updateButtonLabel();
+
+    for (const handler of wsConnectionHandlers) {
+        try {
+            handler(connected);
+        } catch {
+            // ignore subscriber errors
+        }
+    }
 }
 
 // Create binary message buffer for mouse/scroll (8 bytes)
@@ -257,6 +278,8 @@ function handleServerMessage(msg: any) {
 
 export function connectWS() {
     if (socket && (socket.connected || (socket as any).connecting)) return;
+    connectAttemptId += 1;
+    const attemptId = connectAttemptId;
 
     const remoteHost = getRemoteHost() || location.hostname;
     const remotePort = getRemotePort().trim();
@@ -271,19 +294,49 @@ export function connectWS() {
 
     const primaryProtocol = inferProtocol();
     const fallbackProtocol = primaryProtocol === 'https' ? 'http' : 'https';
-    const defaultPort = primaryProtocol === 'https' ? '8443' : '8080';
-    const activePort = remotePort || defaultPort;
+    const defaultPortByProtocol = {
+        http: '8080',
+        https: '8443',
+    } as const;
+    const locationPort = location.port?.trim?.() || '';
 
-    const candidates = [
-        `${primaryProtocol}://${remoteHost}:${activePort}`,
-        `${fallbackProtocol}://${remoteHost}:${activePort}`,
-    ].filter((url, idx, arr) => arr.indexOf(url) === idx);
+    const protocolOrder = remoteProtocol === 'http'
+        ? (['http', 'https'] as const)
+        : remoteProtocol === 'https'
+            ? (['https', 'http'] as const)
+            : ([primaryProtocol, fallbackProtocol] as const);
+
+    const getPortsForProtocol = (protocol: 'http' | 'https') => {
+        const ports = [
+            remotePort,
+            defaultPortByProtocol[protocol],
+            locationPort,
+        ].filter((port): port is string => Boolean(port));
+        return ports.filter((port, idx) => ports.indexOf(port) === idx);
+    };
+
+    const candidates: string[] = [];
+    for (const protocol of protocolOrder) {
+        for (const port of getPortsForProtocol(protocol)) {
+            candidates.push(`${protocol}://${remoteHost}:${port}`);
+        }
+    }
+    const uniqueCandidates = candidates.filter((url, idx) => candidates.indexOf(url) === idx);
 
     isConnecting = true;
     updateButtonLabel();
 
-    const tryConnect = (index: number) => {
-        if (index >= candidates.length) {
+    const maxRounds = 3;
+    const retryDelayMs = 450;
+    const tryConnect = (index: number, round: number) => {
+        if (attemptId !== connectAttemptId) return;
+
+        if (index >= uniqueCandidates.length) {
+            if (round + 1 < maxRounds) {
+                log(`Socket.IO retry ${round + 2}/${maxRounds}...`);
+                globalThis.setTimeout(() => tryConnect(0, round + 1), retryDelayMs);
+                return;
+            }
             log('Socket.IO error: all protocol candidates failed');
             isConnecting = false;
             setWsStatus(false);
@@ -291,7 +344,7 @@ export function connectWS() {
             return;
         }
 
-        const url = candidates[index];
+        const url = uniqueCandidates[index];
         log('Connecting Socket.IO: ' + url);
 
         const probeSocket = io(url, {
@@ -301,6 +354,11 @@ export function connectWS() {
         });
 
         probeSocket.on('connect', () => {
+            if (attemptId !== connectAttemptId) {
+                probeSocket.removeAllListeners();
+                probeSocket.close();
+                return;
+            }
             socket = probeSocket;
             log('Socket.IO connected: ' + url);
             isConnecting = false;
@@ -337,17 +395,23 @@ export function connectWS() {
         });
 
         probeSocket.on('connect_error', (error) => {
+            if (attemptId !== connectAttemptId) {
+                probeSocket.removeAllListeners();
+                probeSocket.close();
+                return;
+            }
             probeSocket.removeAllListeners();
             probeSocket.close();
-            tryConnect(index + 1);
+            tryConnect(index + 1, round);
             log(`Socket.IO connect failed (${url}): ${error.message || error}`);
         });
     };
 
-    tryConnect(0);
+    tryConnect(0, 0);
 }
 
 export function disconnectWS() {
+    connectAttemptId += 1;
     if (!socket) {
         setWsStatus(false);
         return;

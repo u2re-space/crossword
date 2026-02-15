@@ -205,7 +205,7 @@
         box-shadow: var(--elevation-1);
         transition: all var(--transition-fast);
         text-decoration: none;
-        min-inline-size: 12rem;
+        min-inline-size: calc-size(min-content, min(12rem, size));
         position: relative;
         overflow: hidden;
 
@@ -636,7 +636,7 @@
         place-content: center;
         place-items: center;
         gap: var(--space-2);
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
 
     /* Status bar - Material Design 3 layout */
@@ -1537,6 +1537,19 @@
         border-color: color-mix(in srgb, var(--primary), transparent 45%);
     }
 
+    #btnConnect {
+        max-inline-size: calc-size(fit-content, min(12rem, size));
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        inline-size: fit-content;
+        display: block;
+
+        @container(max-inline-size: 520px) {
+            max-inline-size: calc-size(fit-content, min(3rem, size));
+        }
+    }
+
     @media (max-width: 520px) {
         .view-airpad {
             --vk-toggle-size: 48px;
@@ -1558,6 +1571,12 @@
 
         .view-airpad .status-bar {
             font-size: 0.74rem;
+        }
+
+        .view-airpad #btnConnect {
+            min-inline-size: calc-size(min-content, min(3rem, size));
+            padding-inline: var(--space-4);
+            font-size: var(--text-sm);
         }
 
         .view-airpad .big-button {

@@ -2,8 +2,8 @@ import path from "node:path";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { readdir, stat, rm } from "node:fs/promises";
 
-import { ensureUserDir, readUserFile, verifyUser, writeUserFile } from "../../lib/users.ts";
-import { safeJoin } from "../../lib/paths.ts";
+import { ensureUserDir, readUserFile, verifyUser, writeUserFile } from "../lib/users.ts";
+import { safeJoin } from "../lib/paths.ts";
 
 export const registerStorageRoutes = async (app: FastifyInstance) => {
     app.post("/core/storage/list", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; dir?: string } }>) => {
