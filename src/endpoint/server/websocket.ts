@@ -23,9 +23,24 @@ export type WsHub = {
 
 export const createWsServer = (app: FastifyInstance): WsHub => {
     const server = app.server;
-    const wss = new WebSocketServer({ server, path: "/ws" });
+    const wss = new WebSocketServer({ noServer: true });
     const clients = new Map<WebSocket, ClientInfo>();
     const namespaces = new Map<string, Map<string, ClientInfo>>();
+
+    const upgradeHandler = (req: any, socket: any, head: Buffer) => {
+        let pathname = "";
+        try {
+            pathname = new URL(req.url || "", "http://localhost").pathname;
+        } catch {
+            pathname = "";
+        }
+        if (pathname !== "/ws") return;
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            wss.emit("connection", ws, req);
+        });
+    };
+    server.on("upgrade", upgradeHandler);
 
     const verify = async (userId?: string, userKey?: string) => {
         if (!userId || !userKey) return null;
@@ -101,6 +116,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
 
     const close = async () => {
         clients.forEach((c) => c.ws.close());
+        server.off("upgrade", upgradeHandler);
         await new Promise<void>((resolve) => { wss.close(() => resolve()); });
     };
 
