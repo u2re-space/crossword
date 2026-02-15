@@ -10,6 +10,9 @@
     "scripts": {
         "start": "tsx Receive.ts",
         "start:fastify": "tsx server/fastify-server.ts",
+        "pack:portable": "PORTABLE_NODE_MODULES_MODE=none node ./scripts/pack-portable.mjs",
+        "pack:portable:ci": "PORTABLE_NODE_MODULES_MODE=ci node ./scripts/pack-portable.mjs",
+        "pack:portable:fast": "PORTABLE_NODE_MODULES_MODE=copy node ./scripts/pack-portable.mjs",
         "deno:start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-ffi --unstable server/fastify-server.ts",
         "deno:dev": "deno run --allow-net --allow-env --allow-read --allow-write --allow-ffi --unstable --watch server/fastify-server.ts",
         "typecheck": "tsc -p tsconfig.json --noEmit",

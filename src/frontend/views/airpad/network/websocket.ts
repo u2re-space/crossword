@@ -74,6 +74,14 @@ function notifyClipboardHandlers(text: string, meta?: { source?: string }) {
     }
 }
 
+function safeJson(value: unknown): string {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+}
+
 export function requestClipboardGet(): Promise<{ ok: boolean; text?: string; error?: string }> {
     return new Promise((resolve) => {
         if (!socket || !socket.connected) return resolve({ ok: false, error: 'WS not connected' });
@@ -284,6 +292,15 @@ export function connectWS() {
     const remoteHost = getRemoteHost() || location.hostname;
     const remotePort = getRemotePort().trim();
     const remoteProtocol = getRemoteProtocol();
+    const hostLooksLikeIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(remoteHost);
+
+    if (location.protocol === 'https:' && remoteProtocol === 'http') {
+        log('Socket.IO error: browser blocks ws/http from https page (mixed content). Open Airpad via http:// or use valid HTTPS cert on endpoint.');
+        isConnecting = false;
+        setWsStatus(false);
+        updateButtonLabel();
+        return;
+    }
 
     const inferProtocol = (): 'http' | 'https' => {
         if (remoteProtocol === 'http' || remoteProtocol === 'https') return remoteProtocol;
@@ -301,27 +318,37 @@ export function connectWS() {
     const locationPort = location.port?.trim?.() || '';
 
     const protocolOrder = remoteProtocol === 'http'
-        ? (['http', 'https'] as const)
+        ? (['http'] as const)
         : remoteProtocol === 'https'
-            ? (['https', 'http'] as const)
+            ? (['https'] as const)
             : ([primaryProtocol, fallbackProtocol] as const);
 
+    const isLikelyHttpsPort = (port: string): boolean => port === '443' || port === '8443';
+    const isLikelyHttpPort = (port: string): boolean => port === '80' || port === '8080';
+
     const getPortsForProtocol = (protocol: 'http' | 'https') => {
-        const ports = [
-            remotePort,
-            defaultPortByProtocol[protocol],
-            locationPort,
-        ].filter((port): port is string => Boolean(port));
+        const ports: string[] = [];
+        // Keep user-provided port only when it matches protocol expectations.
+        if (remotePort) {
+            if (protocol === 'https' && isLikelyHttpsPort(remotePort)) ports.push(remotePort);
+            if (protocol === 'http' && isLikelyHttpPort(remotePort)) ports.push(remotePort);
+            // If protocol is explicit in UI, honor custom port as-is.
+            if (remoteProtocol === protocol && !ports.includes(remotePort)) ports.push(remotePort);
+        }
+        ports.push(defaultPortByProtocol[protocol]);
+        if (locationPort) ports.push(locationPort);
         return ports.filter((port, idx) => ports.indexOf(port) === idx);
     };
 
-    const candidates: string[] = [];
+    const candidates: Array<{ url: string; protocol: 'http' | 'https' }> = [];
     for (const protocol of protocolOrder) {
+        // Browsers block active mixed content from HTTPS pages to HTTP endpoints.
+        if (location.protocol === 'https:' && protocol === 'http') continue;
         for (const port of getPortsForProtocol(protocol)) {
-            candidates.push(`${protocol}://${remoteHost}:${port}`);
+            candidates.push({ url: `${protocol}://${remoteHost}:${port}`, protocol });
         }
     }
-    const uniqueCandidates = candidates.filter((url, idx) => candidates.indexOf(url) === idx);
+    const uniqueCandidates = candidates.filter((item, idx) => candidates.findIndex((x) => x.url === item.url) === idx);
 
     isConnecting = true;
     updateButtonLabel();
@@ -344,13 +371,18 @@ export function connectWS() {
             return;
         }
 
-        const url = uniqueCandidates[index];
-        log('Connecting Socket.IO: ' + url);
+        const candidate = uniqueCandidates[index];
+        const url = candidate.url;
+        log(`Connecting Socket.IO: ${url} (page=${location.protocol}//${location.host})`);
 
         const probeSocket = io(url, {
-            transports: ['websocket', 'polling'],
+            // Start with polling and upgrade to websocket when possible.
+            // This avoids immediate hard-fail on networks where direct WS handshake is blocked.
+            transports: ['polling', 'websocket'],
             reconnection: false,
             timeout: 3500,
+            secure: candidate.protocol === 'https',
+            forceNew: true,
         });
 
         probeSocket.on('connect', () => {
@@ -402,8 +434,28 @@ export function connectWS() {
             }
             probeSocket.removeAllListeners();
             probeSocket.close();
+            const details = (error as any)?.description || (error as any)?.context || '';
+            const errorMessage = String((error as any)?.message || error || '');
+            const certLikely =
+                candidate.protocol === 'https' &&
+                hostLooksLikeIp &&
+                /xhr poll error|websocket error/i.test(errorMessage);
+
+            if (certLikely) {
+                log(
+                    `Socket.IO connect failed (${url}): ${errorMessage}. ` +
+                    'Likely TLS certificate mismatch for IP. Certificate must include this IP in SAN, ' +
+                    'or use HTTP endpoint from an HTTP page.'
+                );
+                log('Socket.IO error: stopping retries because HTTPS certificate is not trusted for this host.');
+                isConnecting = false;
+                setWsStatus(false);
+                updateButtonLabel();
+                return;
+            }
+
             tryConnect(index + 1, round);
-            log(`Socket.IO connect failed (${url}): ${error.message || error}`);
+            log(`Socket.IO connect failed (${url}): ${errorMessage} ${details ? `| ${safeJson(details)}` : ''}`);
         });
     };
 

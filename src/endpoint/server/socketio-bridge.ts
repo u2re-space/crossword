@@ -3,6 +3,7 @@ import { Server as SocketIOServer, type Socket } from "socket.io";
 
 import { parsePayload, verifyWithoutDecrypt } from "./crypto-utils.ts";
 import { registerAirpadSocketHandlers, setupAirpadClipboardBroadcast } from "./socket-airpad.ts";
+import { buildSocketIoOptions, describeHandshake } from "./socketio-security.ts";
 
 type ClipHistoryEntry = {
     from: string;
@@ -44,9 +45,16 @@ const processHooks = (hooks: MessageHook[], msg: any, socket: Socket): any | nul
 
 export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?: number }): SocketIoBridge => {
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
-    const io = new SocketIOServer(app.server, {
-        cors: { origin: "*", methods: ["GET", "POST"] },
-        transports: ["websocket", "polling"]
+    const io = new SocketIOServer(app.server, buildSocketIoOptions(app.log as any));
+    io.engine.on("connection_error", (err: any) => {
+        app.log?.warn?.(
+            {
+                code: err?.code,
+                message: err?.message,
+                context: err?.context
+            },
+            "[socket.io] Engine connection error"
+        );
     });
 
     // Device management: deviceId -> socket
@@ -105,7 +113,14 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
 
     io.on("connection", (socket: Socket) => {
         let deviceId: string | null = null;
-        console.log(`[Server] New connection: ${socket.id}`);
+        app.log?.info?.(
+            {
+                socketId: socket.id,
+                transport: socket?.conn?.transport?.name,
+                handshake: describeHandshake(socket.request)
+            },
+            "[socket.io] New connection"
+        );
 
         socket.on("hello", (data: any) => {
             deviceId = (data?.id as string) || socket.id;
@@ -180,7 +195,14 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
         });
 
         socket.on("error", (error: Error) => {
-            console.error(`[Server] Socket error for ${deviceId || socket.id}:`, error);
+            app.log?.error?.(
+                {
+                    socketId: deviceId || socket.id,
+                    message: error?.message,
+                    stack: (error as any)?.stack
+                },
+                "[socket.io] Socket error"
+            );
         });
     });
 

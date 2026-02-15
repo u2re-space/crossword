@@ -173,3 +173,7 @@ frontend/modules
 frontend/modules/*
 ./frontend/modules
 ./frontend/modules/*
+
+portable
+portable/
+portable/*

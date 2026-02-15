@@ -12,6 +12,7 @@ import { startMouseFlushInterval } from './server/mouse.ts';
 import { setApp as setPythonApp } from './server/python.ts';
 import { registerRoutes } from './server/routes.ts';
 import { setupSocketIO } from './server/socket.ts';
+import { createWsServer } from './server/websocket.ts';
 
 let httpsApp: any = null;
 let httpApp: any = null;
@@ -50,13 +51,23 @@ async function startServers() {
     // This ensures `/socket.io` handlers are already attached when ports open.
     setupSocketIO(httpsApp.server, httpsApp.log);
     setupSocketIO(httpApp.server, httpApp.log);
+    createWsServer(httpsApp);
+    createWsServer(httpApp);
 
     // Start HTTP/HTTPS in parallel to reduce startup latency.
     await Promise.all([
         httpsApp.listen({ port: HTTPS_PORT, host: '0.0.0.0' })
-            .then(() => httpsApp.log.info(`Listening on https://0.0.0.0:${HTTPS_PORT}`)),
+            .then(() => {
+                httpsApp.log.info(`Listening on https://0.0.0.0:${HTTPS_PORT}`);
+                httpsApp.log.info(`Socket.IO endpoint: https://0.0.0.0:${HTTPS_PORT}/socket.io`);
+                httpsApp.log.info(`WebSocket endpoint: wss://0.0.0.0:${HTTPS_PORT}/ws`);
+            }),
         httpApp.listen({ port: HTTP_LISTEN_PORT, host: '0.0.0.0' })
-            .then(() => httpApp.log.info(`Listening on http://0.0.0.0:${HTTP_LISTEN_PORT}`)),
+            .then(() => {
+                httpApp.log.info(`Listening on http://0.0.0.0:${HTTP_LISTEN_PORT}`);
+                httpApp.log.info(`Socket.IO endpoint: http://0.0.0.0:${HTTP_LISTEN_PORT}/socket.io`);
+                httpApp.log.info(`WebSocket endpoint: ws://0.0.0.0:${HTTP_LISTEN_PORT}/ws`);
+            }),
     ]);
 
     // Start background tasks

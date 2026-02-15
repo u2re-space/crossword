@@ -7,12 +7,21 @@ import axios from 'axios';
 import config from '../config.js';
 
 const { peers, secret, pollInterval } = config;
+const clipboardReadTimeoutMs = Math.max(200, Number((config as any)?.clipboardReadTimeoutMs ?? 2000));
+const clipboardErrorLogIntervalMs = Math.max(1000, Number((config as any)?.clipboardErrorLogIntervalMs ?? 15000));
+const clipboardUnsupportedRetryIntervalMs = Math.max(
+    5000,
+    Number((config as any)?.clipboardUnsupportedRetryIntervalMs ?? 60000)
+);
 
 let lastClipboard = '';
 let lastNetworkClipboard = '';
 let isBroadcasting = false;
 let httpClient = axios;
 let app: any = null;
+let clipboardUnsupported = false;
+let lastClipboardErrorLogAt = 0;
+let pollingTimer: NodeJS.Timeout | null = null;
 
 type ClipboardChangeSource = 'local' | 'network';
 type ClipboardListener = (text: string, meta: { source: ClipboardChangeSource }) => void;
@@ -36,6 +45,35 @@ export function setBroadcasting(value: boolean) {
 
 function normalizeText(text: string) {
     return String(text ?? '');
+}
+
+function isClipboardUnavailableError(err: unknown): boolean {
+    const message = String((err as any)?.message || '');
+    const fallbackMessage = String((err as any)?.fallbackError?.message || '');
+    const stack = String((err as any)?.stack || '');
+    const joined = `${message}\n${fallbackMessage}\n${stack}`;
+    return (
+        joined.includes('xsel') ||
+        joined.includes('xclip') ||
+        joined.includes("Can't open display") ||
+        joined.includes('fallback didn\'t work')
+    );
+}
+
+async function readClipboardWithTimeout(): Promise<string> {
+    return await Promise.race<string>([
+        clipboardy.read(),
+        new Promise<string>((_, reject) => {
+            setTimeout(() => reject(new Error(`Clipboard read timeout (${clipboardReadTimeoutMs}ms)`)), clipboardReadTimeoutMs);
+        })
+    ]);
+}
+
+function shouldLogClipboardErrorNow(): boolean {
+    const now = Date.now();
+    if (now - lastClipboardErrorLogAt < clipboardErrorLogIntervalMs) return false;
+    lastClipboardErrorLogAt = now;
+    return true;
 }
 
 function emitClipboardChange(text: string, source: ClipboardChangeSource) {
@@ -86,8 +124,9 @@ async function broadcastClipboard(text: string) {
 }
 
 async function pollClipboard() {
+    if (clipboardUnsupported) return;
     try {
-        const current = normalizeText(await clipboardy.read());
+        const current = normalizeText(await readClipboardWithTimeout());
 
         if (current === lastClipboard) {
             return;
@@ -111,12 +150,44 @@ async function pollClipboard() {
         emitClipboardChange(current, 'local');
         await broadcastClipboard(current);
     } catch (err) {
-        app.log.error({ err }, '[Poll] Error reading clipboard');
+        if (isClipboardUnavailableError(err)) {
+            clipboardUnsupported = true;
+            app?.log?.warn?.(
+                { err },
+                '[Poll] Clipboard backend is unavailable. Polling is temporarily disabled and will retry later.'
+            );
+            return;
+        }
+        if (shouldLogClipboardErrorNow()) {
+            app?.log?.error?.({ err }, '[Poll] Error reading clipboard');
+        }
     }
 }
 
 export function startClipboardPolling() {
-    setInterval(pollClipboard, pollInterval);
+    if (pollingTimer) return;
+    const intervalMs = Math.max(10, Number(pollInterval) || 100);
+    const loop = () => {
+        const delay = clipboardUnsupported ? clipboardUnsupportedRetryIntervalMs : intervalMs;
+        pollingTimer = setTimeout(async () => {
+            if (clipboardUnsupported) {
+                try {
+                    await readClipboardWithTimeout();
+                    clipboardUnsupported = false;
+                    app?.log?.info?.('[Poll] Clipboard backend became available again; polling resumed.');
+                } catch (err) {
+                    if (shouldLogClipboardErrorNow()) {
+                        app?.log?.warn?.({ err }, '[Poll] Clipboard backend still unavailable.');
+                    }
+                    loop();
+                    return;
+                }
+            }
+            await pollClipboard();
+            loop();
+        }, delay);
+    };
+    loop();
 }
 
 export async function readClipboard(): Promise<string> {

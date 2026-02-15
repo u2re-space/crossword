@@ -6,7 +6,8 @@
     "exclude": [
         "./node_modules/**/*",
         "./dist/**/*",
-        "./windows_use/**/*"
+        "./windows_use/**/*",
+        "./portable/**/*"
     ],
     "baseUrl": "./",
     "compilerOptions": {
