@@ -30,14 +30,19 @@ export class AirpadView implements View {
     private initialized = false;
     
     private _sheet: CSSStyleSheet | null = null;
+    private _orientationLocked = false;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.initAirpad(),
         onUnmount: () => this.cleanup(),
-        onShow: () => { this._sheet = loadAsAdopted(style) as CSSStyleSheet; },
+        onShow: () => {
+            this._sheet = loadAsAdopted(style) as CSSStyleSheet;
+            void this.lockOrientationForAirpad();
+        },
         onHide: () => {
             setRemoteKeyboardEnabled(false);
             disconnectWS();
+            this.unlockOrientationForAirpad();
             removeAdopted(this._sheet);
         },
     };
@@ -95,6 +100,7 @@ export class AirpadView implements View {
             
             // Mount airpad
             await mountAirpad(content as HTMLElement);
+            await this.lockOrientationForAirpad()?.catch?.((error) => { console.error("[Airpad] Failed to lock orientation:", error); });
             
             this.initialized = true;
         } catch (error) {
@@ -116,7 +122,36 @@ export class AirpadView implements View {
     private cleanup(): void {
         setRemoteKeyboardEnabled(false);
         disconnectWS();
+        this.unlockOrientationForAirpad();
         this.initialized = false;
+    }
+
+    private async lockOrientationForAirpad(): Promise<void> {
+        try {
+            const orientationApi = globalThis?.screen?.orientation as ScreenOrientation;
+            if (!orientationApi || typeof orientationApi.lock !== "function") return;
+
+            const type = (String(orientationApi.type || "").toLowerCase()) || "natural";
+            const lockType = type as OrientationType;
+            await orientationApi?.lock?.(lockType);
+            this._orientationLocked = true;
+        } catch {
+            // Orientation lock can fail outside installed/fullscreen contexts.
+            this._orientationLocked = false;
+        }
+    }
+
+    private unlockOrientationForAirpad(): void {
+        try {
+            if (!this._orientationLocked) return;
+            const orientationApi = globalThis?.screen?.orientation as ScreenOrientation | undefined;
+            if (!orientationApi || typeof orientationApi.unlock !== "function") return;
+            orientationApi.unlock();
+        } catch {
+            // no-op
+        } finally {
+            this._orientationLocked = false;
+        }
     }
 
     canHandleMessage(): boolean {
