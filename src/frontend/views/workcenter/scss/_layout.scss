@@ -129,21 +129,21 @@
     }
 
     .results-tab-panels {
-        min-block-size: fit-content;
+        min-block-size: calc-size(fit-content, min(size, 100%));
     }
 
     .tab-panel,
     .results-tab-panel {
         display: none;
         min-inline-size: 0;
-        min-block-size: 0;
         block-size: fit-content;
-        min-block-size: fit-content;
+        min-block-size: calc-size(fit-content, min(size, 100%));
+        max-block-size: stretch;
         flex-basis: fit-content;
         flex-grow: 1;
         flex-shrink: 1;
         inline-size: stretch;
-        max-block-size: stretch;
+        
 
         place-content: center;
         place-items: center;
@@ -160,6 +160,7 @@
             flex-grow: 1;
             flex-shrink: 1;
             flex-basis: fit-content;
+            max-block-size: stretch;
         }
     }
 

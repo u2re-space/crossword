@@ -121,16 +121,17 @@
         .actions {
             display: flex;
             align-items: center;
-            flex-wrap: wrap;
             gap: var(--space-sm);
             padding-block-start: var(--spacing-sm, 8px);
             justify-content: flex-start;
             inline-size: stretch;
             flex-direction: row;
+            flex-wrap: nowrap;
 
             place-content: center;
             place-items: center;
             justify-content: space-between;
+            max-inline-size: stretch;
 
             h2 {
                 flex-grow: 1;
@@ -144,7 +145,7 @@
 
         .settings-tab-actions {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: var(--space-xs);
             align-items: center;
         }
@@ -212,6 +213,13 @@
             font-size: var(--text-xs, 12px);
             color: var(--color-on-surface-variant);
             opacity: 0.9;
+            flex-grow: 0;
+            max-inline-size: stretch;
+            display: block;
+            flex-shrink: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .ext-note {
@@ -451,6 +459,7 @@
             gap: var(--space-md);
             margin-block-start: var(--space-xl);
             padding-block-start: var(--space-lg);
+            flex-wrap: nowrap;
 
             @container (max-inline-size: 768px) {
                 flex-direction: column;

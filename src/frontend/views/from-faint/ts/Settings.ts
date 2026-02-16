@@ -370,7 +370,7 @@ export const Settings = async () => {
                         <ui-icon icon="clipboard"></ui-icon>
                         <span>Paste from Bluetooth</span>
                     </button>`;
-                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${pasteBtn}${enableBluetoothBtn}</div>`;
+                    const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: nowrap;">${pasteBtn}${enableBluetoothBtn}</div>`;
                     body.append(actionsContainer);
                 } else
                 if (group.key === 'synchronization') {
