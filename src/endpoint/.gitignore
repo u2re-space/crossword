@@ -177,3 +177,7 @@ frontend/modules/*
 portable
 portable/
 portable/*
+
+assets
+assets/
+assets/*

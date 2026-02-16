@@ -12,6 +12,17 @@ const getActiveCustomInstruction = (settings: any): string => {
     return active?.instruction || "";
 };
 
+const resolveAiProvider = (body: any, settings: any) => {
+    const ai = settings?.ai || {};
+    const provider = body?.provider || {};
+    const passthrough = body?.passthrough || body?.throughput || {};
+    return {
+        apiKey: body?.apiKey || provider?.apiKey || passthrough?.apiKey || ai.apiKey,
+        baseUrl: body?.baseUrl || provider?.baseUrl || passthrough?.baseUrl || ai.baseUrl,
+        model: body?.model || provider?.model || passthrough?.model || ai.customModel || ai.model
+    };
+};
+
 export const registerAiRoutes = async (app: FastifyInstance) => {
     app.post("/core/ai/recognize", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; title?: string; text?: string; url?: string; customInstruction?: string } }>) => {
         const { userId, userKey, title, text, url, customInstruction, ...rest } = (request.body as any) || {};
@@ -102,6 +113,63 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
             ok: false,
             error: "Timeline generation is not backend-enabled yet (depends on browser/OPFS workers in current core implementation).",
             source: source || null
+        };
+    });
+
+    app.post("/api/processing", async (request: FastifyRequest<{ Body: any }>) => {
+        const body = (request.body || {}) as any;
+        const { userId, userKey } = body;
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const settings = await loadUserSettings(userId, userKey).catch(() => null);
+        const input = (body.input || body.text || body.url || "").toString();
+        if (!input.trim()) return { ok: false, error: "Missing input (text/url/input)" };
+
+        const provider = resolveAiProvider(body, settings);
+        if (!provider.apiKey) {
+            return {
+                ok: false,
+                error: "Missing AI apiKey (send apiKey/provider.apiKey or set settings.ai.apiKey)"
+            };
+        }
+
+        const orchestrator = createOrchestrator({
+            apiKey: provider.apiKey,
+            baseUrl: provider.baseUrl,
+            model: provider.model
+        });
+
+        const effectiveInstruction = body.customInstruction || getActiveCustomInstruction(settings);
+        const recognizeOptions = effectiveInstruction ? { customInstruction: effectiveInstruction } : undefined;
+        const mode = (body.mode || body.action || "smartRecognize").toString().trim();
+
+        if (mode === "timeline") {
+            return {
+                ok: false,
+                error: "Timeline generation is not backend-enabled yet (depends on browser/OPFS workers in current core implementation)."
+            };
+        }
+
+        const result =
+            mode === "recognize"
+                ? await orchestrator.recognize(input, { context: body.context || {}, ...recognizeOptions })
+                : mode === "analyze" || mode === "extract"
+                    ? await orchestrator.extractEntitiesFromData(input, recognizeOptions)
+                    : await orchestrator.smartRecognize(input, body.hints || body.hint, recognizeOptions);
+
+        return {
+            ok: Boolean((result as any)?.ok ?? true),
+            mode,
+            customInstruction: Boolean(effectiveInstruction),
+            provider: {
+                baseUrl: provider.baseUrl || null,
+                model: provider.model || null,
+                apiKeySource: body.apiKey || body.provider?.apiKey || body.passthrough?.apiKey
+                    ? "request"
+                    : "settings"
+            },
+            result
         };
     });
 };

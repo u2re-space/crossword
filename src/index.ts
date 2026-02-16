@@ -89,10 +89,33 @@ const normalizeShellPreference = (shell: ShellPreference | null): "base" | "mini
     return "minimal";
 };
 
+const getShellFromQuery = (): ShellPreference | null => {
+    try {
+        const params = new URLSearchParams(globalThis?.location?.search);
+        const shell = (params.get("shell") || "").trim().toLowerCase();
+        if ((VALID_SHELLS as readonly string[]).includes(shell)) {
+            return normalizeShellPreference(shell as ShellPreference);
+        }
+    } catch {
+        // Ignore query parsing issues
+    }
+    return null;
+};
+
 /**
  * Get saved shell preference from localStorage
  */
 const getSavedShell = (): ShellPreference | null => {
+    const fromQuery = getShellFromQuery();
+    if (fromQuery) {
+        try {
+            localStorage.setItem("rs-boot-shell", fromQuery);
+        } catch {
+            // localStorage unavailable
+        }
+        return fromQuery;
+    }
+
     try {
         const saved = localStorage.getItem("rs-boot-shell");
         if (saved && (VALID_SHELLS as readonly string[]).includes(saved)) {

@@ -50,6 +50,8 @@ export const API_PATHS = {
     ANALYZE: "/api/analyze",
     HEALTH: "/api/health",
     TEST: "/api/test",
+    ICONS: "/assets/icons",
+    DUOTONE_ICONS: "/assets/icons/duotone",
     PHOSPHOR_ICONS: "/assets/icons/phosphor"
 } as const;
 

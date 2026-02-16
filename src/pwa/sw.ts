@@ -1255,23 +1255,67 @@ registerRoute(
 );
 
 // Phosphor Icons Proxy (for PWA offline support)
+const PHOSPHOR_ICON_STYLES = new Set(['thin', 'light', 'regular', 'bold', 'fill', 'duotone']);
+
+const normalizeIconName = (value: string): string =>
+    value.replace(/\.svg$/i, '').trim().toLowerCase();
+
+const parsePhosphorAliasPath = (pathname: string): { style: string; icon: string } | null => {
+    const p = pathname || '';
+    if (!p.startsWith('/assets/icons/')) return null;
+
+    const parts = p.split('/').filter(Boolean);
+    // "/assets/icons/..."
+    if (parts.length < 3) return null;
+
+    // /assets/icons/phosphor/:style/:icon
+    if (parts[2] === 'phosphor') {
+        if (parts.length < 5) return null;
+        const style = parts[3]?.toLowerCase?.();
+        const icon = normalizeIconName(parts.slice(4).join('/'));
+        if (!PHOSPHOR_ICON_STYLES.has(style) || !/^[a-z0-9-]+$/i.test(icon)) return null;
+        return { style, icon };
+    }
+
+    // /assets/icons/duotone/:icon
+    if (parts[2] === 'duotone') {
+        if (parts.length < 4) return null;
+        const icon = normalizeIconName(parts.slice(3).join('/'));
+        if (!/^[a-z0-9-]+$/i.test(icon)) return null;
+        return { style: 'duotone', icon };
+    }
+
+    // /assets/icons/:style/:icon
+    if (parts.length >= 4) {
+        const style = parts[2]?.toLowerCase?.();
+        const icon = normalizeIconName(parts.slice(3).join('/'));
+        if (!PHOSPHOR_ICON_STYLES.has(style) || !/^[a-z0-9-]+$/i.test(icon)) return null;
+        return { style, icon };
+    }
+
+    // /assets/icons/:icon -> default to duotone
+    const icon = normalizeIconName(parts[2] || '');
+    if (!/^[a-z0-9-]+$/i.test(icon)) return null;
+    return { style: 'duotone', icon };
+};
+
+const phosphorAssetFileName = (style: string, icon: string): string => {
+    if (style === 'duotone') return `${icon}-duotone.svg`;
+    if (style === 'regular') return `${icon}.svg`;
+    return `${icon}-${style}.svg`;
+};
+
 registerRoute(
-    ({ url }) => url?.pathname?.startsWith?.('/assets/icons/phosphor/'),
+    ({ url }) => !!parsePhosphorAliasPath(url?.pathname || ''),
     async ({ url, request }) => {
         try {
-            // Convert proxy path to actual CDN URL
-            const pathParts = url.pathname.replace('/assets/icons/phosphor/', '').split('/');
-            const iconStyle = pathParts[0];
-            let iconFile = pathParts.slice(1).join('/');
-
-            // Fix the icon filename - add the style suffix for duotone and other styles
-            // (e.g., "eye.svg" -> "eye-duotone.svg" for duotone style)
-            if (iconStyle === 'duotone' && !iconFile.includes('-duotone')) {
-                iconFile = iconFile.replace('.svg', '-duotone.svg');
-            } else if (iconStyle !== 'regular' && !iconFile.includes(`-${iconStyle}`)) {
-                // For other styles like bold, fill, etc., add the style suffix if not present
-                iconFile = iconFile.replace('.svg', `-${iconStyle}.svg`);
+            const parsed = parsePhosphorAliasPath(url.pathname);
+            if (!parsed) {
+                return fetch(request);
             }
+
+            const iconStyle = parsed.style;
+            const iconFile = phosphorAssetFileName(iconStyle, parsed.icon);
 
             // Build the actual CDN URL
             const cdnUrl = `https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2/assets/${iconStyle}/${iconFile}`;

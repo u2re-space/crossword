@@ -55,6 +55,19 @@ const normalizeShellPreference = (shell: ShellId | null | undefined): ShellId =>
     return "minimal";
 };
 
+const getShellFromQuery = (): ShellId | null => {
+    try {
+        const params = new URLSearchParams(location.search);
+        const shell = (params.get("shell") || "").trim().toLowerCase();
+        if (shell === "minimal" || shell === "faint" || shell === "base") {
+            return normalizeShellPreference(shell as ShellId);
+        }
+    } catch {
+        // Ignore malformed URL params
+    }
+    return null;
+};
+
 // ============================================================================
 // ROUTE CONFIG
 // ============================================================================
@@ -236,6 +249,16 @@ export function initRouteListening(): void {
  * Get saved shell preference
  */
 export function getSavedShellPreference(): ShellId | null {
+    const fromQuery = getShellFromQuery();
+    if (fromQuery) {
+        try {
+            localStorage.setItem("rs-boot-shell", fromQuery);
+        } catch {
+            // Ignore storage issues
+        }
+        return fromQuery;
+    }
+
     try {
         const saved = localStorage.getItem("rs-boot-shell");
         if (saved === "minimal" || saved === "faint" || saved === "base") {

@@ -17,6 +17,66 @@ import { registerStorageRoutes } from "./storage.ts";
 import { registerAiRoutes } from "./ai.ts";
 import { registerOpsRoutes } from "./ops.ts";
 
+const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
+type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];
+
+const isValidPhosphorStyle = (value: string): value is PhosphorStyle => {
+    return (PHOSPHOR_STYLES as readonly string[]).includes(value);
+};
+
+const isValidPhosphorIconName = (value: string): boolean => /^[a-z0-9-]+$/i.test(value);
+
+const withStyleSuffix = (style: PhosphorStyle, iconName: string): string => {
+    if (style === "duotone") return `${iconName}-duotone`;
+    if (style === "regular") return iconName;
+    return `${iconName}-${style}`;
+};
+
+const phosphorCdnUrl = (style: PhosphorStyle, iconName: string): string => {
+    const fileName = withStyleSuffix(style, iconName);
+    return `https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2/assets/${style}/${fileName}.svg`;
+};
+
+const proxyPhosphorIcon = async (reply: FastifyReply, style: string, iconRaw: string) => {
+    const iconName = iconRaw.replace(/\.svg$/i, "").trim().toLowerCase();
+    const normalizedStyle = style.trim().toLowerCase();
+
+    if (!isValidPhosphorStyle(normalizedStyle)) {
+        return reply.code(400).send({ ok: false, error: `Invalid phosphor style: ${style}` });
+    }
+    if (!isValidPhosphorIconName(iconName)) {
+        return reply.code(400).send({ ok: false, error: `Invalid icon name: ${iconRaw}` });
+    }
+
+    const upstreamUrl = phosphorCdnUrl(normalizedStyle, iconName);
+    try {
+        const res = await fetch(upstreamUrl, {
+            method: "GET",
+            headers: { accept: "image/svg+xml,text/plain,*/*" }
+        });
+
+        if (!res.ok) {
+            return reply.code(res.status).send({
+                ok: false,
+                error: `Icon not found in upstream source`,
+                style: normalizedStyle,
+                icon: iconName
+            });
+        }
+
+        const svg = await res.text();
+        reply.header("Content-Type", "image/svg+xml; charset=utf-8");
+        reply.header("Cache-Control", "public, max-age=604800");
+        return reply.send(svg);
+    } catch (error) {
+        return reply.code(502).send({
+            ok: false,
+            error: "Failed to fetch upstream icon",
+            details: String(error)
+        });
+    }
+};
+
 const defaultHttpsPaths = () => ({
     key: path.resolve(moduleDirname(import.meta), "./https/local/multi.key"),
     cert: path.resolve(moduleDirname(import.meta), "./https/local/multi.crt")
@@ -163,12 +223,74 @@ const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
         return reply?.send?.(await readFile(path.resolve(ADMIN_DIR, "index.html"), { encoding: "utf-8" })) as unknown as string;
     }) as unknown as FastifyReply;
 
+    app.get("/assets/icons/phosphor", async () => ({
+        ok: true,
+        source: "@phosphor-icons/core@2",
+        styles: PHOSPHOR_STYLES
+    }));
+
+    app.get("/assets/icons/phosphor/:style/:icon", async (request: FastifyRequest<{ Params: { style: string; icon: string } }>, reply) => {
+        return proxyPhosphorIcon(reply, request.params.style, request.params.icon);
+    });
+
+    app.get("/assets/icons/duotone", async () => ({
+        ok: true,
+        aliasOf: "/assets/icons/phosphor/duotone/:icon",
+        styles: ["duotone"]
+    }));
+
+    app.get("/assets/icons/duotone/:icon", async (request: FastifyRequest<{ Params: { icon: string } }>, reply) => {
+        return proxyPhosphorIcon(reply, "duotone", request.params.icon);
+    });
+
+    app.get("/assets/icons", async () => ({
+        ok: true,
+        source: "@phosphor-icons/core@2",
+        defaultStyle: "duotone",
+        styles: PHOSPHOR_STYLES,
+        aliases: {
+            duotone: "/assets/icons/duotone/:icon",
+            style: "/assets/icons/:style/:icon",
+            default: "/assets/icons/:icon"
+        }
+    }));
+
+    app.get("/assets/icons/:style/:icon", async (request: FastifyRequest<{ Params: { style: string; icon: string } }>, reply) => {
+        return proxyPhosphorIcon(reply, request.params.style, request.params.icon);
+    });
+
+    app.get("/assets/icons/:icon", async (request: FastifyRequest<{ Params: { icon: string } }>, reply) => {
+        return proxyPhosphorIcon(reply, "duotone", request.params.icon);
+    });
+
+    app.get("/api", async () => ({
+        ok: true,
+        endpoints: [
+            "/api/processing",
+            "/api/request",
+            "/api/broadcast",
+            "/api/action",
+            "/api/storage",
+            "/api/ws"
+        ]
+    }));
+
     await registerCoreSettingsEndpoints(app);
     await registerAuthRoutes(app);
     await registerCoreSettingsRoutes(app);
 
     await registerStorageRoutes(app);
     await registerAiRoutes(app);
+};
+
+const registerApiFallback = (app: FastifyInstance) => {
+    app.all("/api/*", async (request: FastifyRequest, reply: FastifyReply) => {
+        return reply.code(404).send({
+            ok: false,
+            error: "Unknown API endpoint",
+            path: (request as any).url || null
+        });
+    });
 };
 
 export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<FastifyInstance> => {
@@ -183,6 +305,7 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
 
     const wsHub = createWsServer(app);
     await registerOpsRoutes(app, wsHub);
+    registerApiFallback(app);
 
     // Socket.IO bridge for legacy/native clients (merged from server-old.ts concepts)
     createSocketIoBridge(app);
@@ -199,6 +322,7 @@ export const buildCoreServers = async (
     await registerCoreApp(http);
     const httpWsHub = createWsServer(http);
     await registerOpsRoutes(http, httpWsHub);
+    registerApiFallback(http);
     createSocketIoBridge(http);
 
     if (!httpsOptions) return { http };
@@ -210,6 +334,7 @@ export const buildCoreServers = async (
     await registerCoreApp(https);
     const httpsWsHub = createWsServer(https);
     await registerOpsRoutes(https, httpsWsHub);
+    registerApiFallback(https);
     createSocketIoBridge(https);
 
     return { http, https };

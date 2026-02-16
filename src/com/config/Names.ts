@@ -122,6 +122,8 @@ export const API_ENDPOINTS = {
     HEALTH: '/health',
 
     // Asset proxies
+    ICONS: '/assets/icons',
+    DUOTONE_ICONS: '/assets/icons/duotone',
     PHOSPHOR_ICONS: '/assets/icons/phosphor',
     ICON_PROXY: '/api/icon-proxy',
 
