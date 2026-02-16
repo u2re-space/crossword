@@ -8,6 +8,7 @@
  *  - Settings (API key, language, translate, SVG)
  */
 
+import "../fix.scss";
 import "./index.scss";
 import { createRuntimeChannelModule } from "../shared/runtime";
 

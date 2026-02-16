@@ -1,307 +1,331 @@
 // CrossWord Popup Styles
 // Scoped to [data-crx-page="popup"] to prevent leaking
+@layer webext-popup {
+    :root[data-crx-page="popup"] {
+        color-scheme: light dark;
+    }
 
-:root[data-crx-page="popup"] {
-    color-scheme: light dark;
-}
-
-html[data-crx-page="popup"],
-body[data-crx-page="popup"] {
-    margin: 0;
-    padding: 0;
-    border: none;
-    outline: none;
-    box-sizing: border-box;
-    overflow: hidden;
-    background: transparent;
-    font: 13px/1.4 system-ui, -apple-system, sans-serif;
-    inline-size: max-content;
-    block-size: max-content;
-    min-inline-size: 380px;
-    min-block-size: max-content;
-}
-
-body[data-crx-page="popup"] {
-    *,
-    *::before,
-    *::after {
+    html[data-crx-page="popup"],
+    body[data-crx-page="popup"] {
+        margin: 0;
+        padding: 0;
+        border: none;
+        outline: none;
         box-sizing: border-box;
-    }
-
-    // Typography
-    h1 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 650;
-        line-height: 1.2;
-        text-align: center;
-        white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis;
+        background: transparent;
+        font: 13px/1.4 system-ui, -apple-system, sans-serif;
+        inline-size: max-content !important;
+        block-size: max-content !important;
+        min-inline-size: 380px !important;
+        min-block-size: 480px !important;
+        max-inline-size: none !important;
+        max-block-size: none !important;
     }
 
-    h2 {
-        margin: 0;
-        font-size: 12px;
-        font-weight: 650;
-        opacity: 0.9;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+    #app {
+        block-size: fit-content !important;
+        min-block-size: stretch !important;
+        max-block-size: stretch !important;
+        overflow: auto !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: light-dark(#10101044, #f0f0f044) transparent !important;
+        scrollbar-gutter: stable !important;
+        justify-items: safe center !important;
+        align-items: safe center !important;
+        justify-content: start !important;
+        align-content: safe center !important;
     }
 
-    // Layout
-    section {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        inline-size: 100%;
-        padding: 0;
-        place-content: center;
-        place-items: center;
-    }
+    body[data-crx-page="popup"] {
 
-    ul {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        grid-template-columns: [label] max-content [input] 1fr [checkbox] max-content;
-        gap: 8px;
-        inline-size: 100%;
-        align-items: center;
-    }
-
-    li {
-        display: grid;
-        grid-column: 1 / -1;
-        grid-template-columns: subgrid;
-        gap: 8px;
-        inline-size: 100%;
-        align-items: center;
-    }
-
-    // Form elements
-    label {
-        grid-column: label;
-        font-size: 12px;
-        font-weight: 650;
-        opacity: 0.92;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    input[type="url"],
-    input[type="password"],
-    input[type="text"] {
-        grid-column: input;
-        inline-size: 100%;
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.22);
-        color: inherit;
-        font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        user-select: text;
-        -webkit-user-select: text;
-
-        &::placeholder {
-            color: rgba(255, 255, 255, 0.35);
-            font-family: system-ui, sans-serif;
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
         }
 
-        &:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.35);
-            outline-offset: 0;
-        }
-    }
-
-    input[type="checkbox"] {
-        grid-column: checkbox;
-        appearance: none;
-        inline-size: 1.6rem;
-        block-size: 1.6rem;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        background: rgba(0, 0, 0, 0.22);
-        cursor: pointer;
-        display: grid;
-        place-items: center;
-        color: rgba(255, 255, 255, 0.9);
-
-        &::before {
-            content: var(--for-show-icon, "");
-            inline-size: 100%;
-            block-size: 100%;
-            display: grid;
-            place-items: center;
-            line-height: 0;
+        // Typography
+        h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 650;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        &:checked::before {
-            content: var(--for-hide-icon, "✓");
-        }
-
-        &:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.35);
-            outline-offset: 0;
-        }
-    }
-
-    select {
-        grid-column: input;
-        inline-size: 100%;
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.22);
-        color: inherit;
-        font: 12px/1.3 system-ui;
-        cursor: pointer;
-
-        &:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.35);
-            outline-offset: 0;
-        }
-
-        option {
-            background: #222;
-            color: inherit;
-        }
-    }
-
-    button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.32);
-        color: inherit;
-        font: 13px/1.2 system-ui;
-        cursor: pointer;
-        user-select: none;
-        -webkit-user-select: none;
-        white-space: nowrap;
-
-        &:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.35);
-            outline-offset: 0;
-        }
-
-        &:hover {
-            background: rgba(0, 0, 0, 0.42);
-            border-color: rgba(255, 255, 255, 0.24);
-        }
-
-        &:active {
-            background: rgba(0, 0, 0, 0.52);
-        }
-
-        &:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-    }
-
-    // Snip controls
-    .snip-controls {
-        display: flex;
-        gap: 8px;
-        inline-size: 100%;
-        align-items: stretch;
-
-        select {
-            flex: 1;
-            min-inline-size: 0;
-        }
-
-        button {
-            flex-shrink: 0;
-            padding: 10px 16px;
-            font-weight: 600;
-        }
-    }
-
-    // Copy-as-* grid
-    .copy-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
-        inline-size: 100%;
-
-        button {
-            padding: 8px 4px;
+        h2 {
+            margin: 0;
             font-size: 12px;
-            font-weight: 600;
-            justify-content: center;
-        }
-    }
-
-    // Markdown viewer controls
-    .md-controls {
-        display: flex;
-        gap: 8px;
-        inline-size: 100%;
-        align-items: stretch;
-
-        input[type="url"] {
-            flex: 1;
-            min-inline-size: 0;
-            grid-column: unset;
+            font-weight: 650;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
-        button {
-            flex-shrink: 0;
-            padding: 8px 14px;
-            font-weight: 600;
+        // Layout
+        section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            inline-size: 100%;
+            padding: 0;
+            place-content: center;
+            place-items: center;
         }
-    }
 
-    // Details/summary for settings
-    details {
-        inline-size: 100%;
-
-        summary {
-            cursor: pointer;
+        ul {
+            margin: 0;
+            padding: 0;
             list-style: none;
-            padding: 4px 0;
-            opacity: 0.8;
+            display: grid;
+            grid-template-columns: [label] max-content [input] 1fr [checkbox] max-content;
+            gap: 8px;
+            inline-size: 100%;
+            align-items: center;
+        }
 
-            &::-webkit-details-marker { display: none; }
+        li {
+            display: grid;
+            grid-column: 1 / -1;
+            grid-template-columns: subgrid;
+            gap: 8px;
+            inline-size: 100%;
+            align-items: center;
+        }
 
-            &::before {
-                content: "▸ ";
-                font-size: 10px;
+        // Form elements
+        label {
+            grid-column: label;
+            font-size: 12px;
+            font-weight: 650;
+            opacity: 0.92;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        input[type="url"],
+        input[type="password"],
+        input[type="text"] {
+            grid-column: input;
+            inline-size: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(0, 0, 0, 0.22);
+            color: inherit;
+            font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            user-select: text;
+            -webkit-user-select: text;
+
+            &::placeholder {
+                color: rgba(255, 255, 255, 0.35);
+                font-family: system-ui, sans-serif;
             }
 
-            h2 { display: inline; }
+            &:focus-visible {
+                outline: 2px solid rgba(255, 255, 255, 0.35);
+                outline-offset: 0;
+            }
         }
 
-        &[open] summary::before {
-            content: "▾ ";
+        input[type="checkbox"] {
+            grid-column: checkbox;
+            appearance: none;
+            inline-size: 1.6rem;
+            block-size: 1.6rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.22);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            color: rgba(255, 255, 255, 0.9);
+
+            &::before {
+                content: var(--for-show-icon, "");
+                inline-size: 100%;
+                block-size: 100%;
+                display: grid;
+                place-items: center;
+                line-height: 0;
+                overflow: hidden;
+            }
+
+            &:checked::before {
+                content: var(--for-hide-icon, "✓");
+            }
+
+            &:focus-visible {
+                outline: 2px solid rgba(255, 255, 255, 0.35);
+                outline-offset: 0;
+            }
         }
 
-        > section {
-            padding-block-start: 10px;
-        }
-    }
+        select {
+            grid-column: input;
+            inline-size: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(0, 0, 0, 0.22);
+            color: inherit;
+            font: 12px/1.3 system-ui;
+            cursor: pointer;
 
-    // App container
-    #app {
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        text-align: start;
-        background: rgba(0, 0, 0, 0.35);
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        backdrop-filter: blur(8px);
-        inline-size: 100%;
-        block-size: fit-content;
+            &:focus-visible {
+                outline: 2px solid rgba(255, 255, 255, 0.35);
+                outline-offset: 0;
+            }
+
+            option {
+                background: #222;
+                color: inherit;
+            }
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(0, 0, 0, 0.32);
+            color: inherit;
+            font: 13px/1.2 system-ui;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            white-space: nowrap;
+
+            &:focus-visible {
+                outline: 2px solid rgba(255, 255, 255, 0.35);
+                outline-offset: 0;
+            }
+
+            &:hover {
+                background: rgba(0, 0, 0, 0.42);
+                border-color: rgba(255, 255, 255, 0.24);
+            }
+
+            &:active {
+                background: rgba(0, 0, 0, 0.52);
+            }
+
+            &:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+        }
+
+        // Snip controls
+        .snip-controls {
+            display: flex;
+            gap: 8px;
+            inline-size: 100%;
+            align-items: stretch;
+
+            select {
+                flex: 1;
+                min-inline-size: 0;
+            }
+
+            button {
+                flex-shrink: 0;
+                padding: 10px 16px;
+                font-weight: 600;
+            }
+        }
+
+        // Copy-as-* grid
+        .copy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            inline-size: 100%;
+
+            button {
+                padding: 8px 4px;
+                font-size: 12px;
+                font-weight: 600;
+                justify-content: center;
+            }
+        }
+
+        // Markdown viewer controls
+        .md-controls {
+            display: flex;
+            gap: 8px;
+            inline-size: 100%;
+            align-items: stretch;
+
+            input[type="url"] {
+                flex: 1;
+                min-inline-size: 0;
+                grid-column: unset;
+            }
+
+            button {
+                flex-shrink: 0;
+                padding: 8px 14px;
+                font-weight: 600;
+            }
+        }
+
+        // Details/summary for settings
+        details {
+            inline-size: 100%;
+
+            summary {
+                cursor: pointer;
+                list-style: none;
+                padding: 4px 0;
+                opacity: 0.8;
+
+                &::-webkit-details-marker {
+                    display: none;
+                }
+
+                &::before {
+                    content: "▸ ";
+                    font-size: 10px;
+                }
+
+                h2 {
+                    display: inline;
+                }
+            }
+
+            &[open] summary::before {
+                content: "▾ ";
+            }
+
+            >section {
+                padding-block-start: 10px;
+            }
+        }
+
+        // App container
+        #app {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            text-align: start;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(8px);
+            inline-size: 100%;
+            block-size: fit-content;
+        }
     }
 }
