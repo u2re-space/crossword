@@ -21,6 +21,10 @@
         min-block-size: 480px !important;
         max-inline-size: none !important;
         max-block-size: none !important;
+        justify-items: safe center !important;
+        align-items: safe center !important;
+        justify-content: safe center !important;
+        align-content: safe center !important;
     }
 
     #app {
