@@ -345,6 +345,16 @@
         font-size: var(--text-sm);
         line-height: 1.5;
         white-space: pre;
+        min-block-size: calc-size(fit-content, min(size, 100%));
+        block-size: max-content;
+        max-block-size: calc-size(max-content, min(size, 100%));
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-outline-variant) transparent;
+        overflow-x: auto;
+        overflow-y: auto;
+        inline-size: stretch;
+        max-inline-size: stretch;
+        min-inline-size: calc-size(fit-content, min(size, 100%));
     }
 
     .data-pipeline-section {
@@ -368,6 +378,12 @@
         justify-content: space-between;
         gap: var(--space-sm);
         margin-block-end: var(--space-sm);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        block-size: max-content;
+        max-block-size: fit-content;
+        min-block-size: calc-size(fit-content, min(size, 100%));
+        inline-size: stretch;
 
         h3 {
             margin: 0;
@@ -385,6 +401,7 @@
         max-block-size: fit-content;
         min-block-size: calc-size(fit-content, min(size, 100%));
         inline-size: stretch;
+        overflow: hidden;
     }
 
     .pipeline-actions {
@@ -395,6 +412,11 @@
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
+        block-size: max-content;
+        max-block-size: fit-content;
+        min-block-size: calc-size(fit-content, min(size, 100%));
+        inline-size: stretch;
+        overflow: hidden;
         block-size: max-content;
         max-block-size: fit-content;
         min-block-size: calc-size(fit-content, min(size, 100%));
@@ -414,6 +436,8 @@
         border: 1px solid var(--color-outline-variant);
         border-radius: var(--radius-md);
         transition: all var(--motion-fast);
+        overflow: hidden;
+        text-overflow: ellipsis;
 
         &:hover {
             background: var(--color-surface-container-highest);
