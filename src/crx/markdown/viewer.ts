@@ -17,7 +17,7 @@ const loadFromSessionKey = async (key: string): Promise<string | null> => {
     return null;
 };
 
-const fetchViaServiceWorker = (src: string): Promise<{ ok: boolean; key?: string; src?: string }> => {
+const fetchViaServiceWorker = (src: string): Promise<{ ok: boolean; key?: string; src?: string; error?: string }> => {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ type: "md:load", src }, (response) => {
             if (chrome.runtime.lastError) {
@@ -34,7 +34,12 @@ const fetchDirect = async (src: string): Promise<string | null> => {
     try {
         const res = await fetch(src, { credentials: "include", cache: "no-store" });
         if (!res.ok) return null;
-        return await res.text();
+        const text = await res.text();
+        const trimmed = text.trimStart().toLowerCase();
+        if (trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html") || trimmed.startsWith("<head") || trimmed.startsWith("<body")) {
+            return null;
+        }
+        return text;
     } catch {
         return null;
     }
@@ -50,6 +55,9 @@ const loadMarkdown = async (src: string, sessionKey?: string | null): Promise<st
     if (swResult.ok && swResult.key) {
         const text = await loadFromSessionKey(swResult.key);
         if (text) return text;
+    }
+    if (!swResult.ok && swResult.error === "not-markdown") {
+        return "> Skipped loading: source appears to be HTML or is not confidently Markdown.";
     }
 
     const text = await fetchDirect(src);

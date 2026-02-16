@@ -351,12 +351,22 @@ const VIEWER_URL = chrome.runtime.getURL(VIEWER_PAGE);
 const MARKDOWN_EXT_RE = /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)(?:$|[?#])/i;
 const MD_VIEW_MENU_ID = "crossword:markdown-view";
 
+const looksLikeHtmlDocument = (text: string): boolean => {
+    const trimmed = (text || "").trimStart().toLowerCase();
+    return trimmed.startsWith("<!doctype html")
+        || trimmed.startsWith("<html")
+        || trimmed.startsWith("<head")
+        || trimmed.startsWith("<body");
+};
+
 const isMarkdownUrl = (candidate?: string | null): candidate is string => {
     if (!candidate || typeof candidate !== "string") return false;
     try {
         const url = new URL(candidate);
         if (url.protocol === "chrome-extension:") return false;
         if (!["http:", "https:", "file:", "ftp:"].includes(url.protocol)) return false;
+        // GitHub blob/tree pages are HTML views, not raw markdown assets.
+        if (url.hostname === "github.com" && /(^|\/)(blob|tree)\//i.test(url.pathname)) return false;
         if (MARKDOWN_EXT_RE.test(url.pathname)) return true;
         if (url.hostname === "raw.githubusercontent.com" || url.hostname === "gist.githubusercontent.com") {
             if (MARKDOWN_EXT_RE.test(url.pathname)) return true;
@@ -382,25 +392,23 @@ const isMarkdownContent = (text: string): boolean => {
     return hits >= 2 && score >= 0.8;
 };
 
-const normalizeMarkdownSourceUrl = (candidate: string) => {
-    try {
-        const u = new URL(candidate);
-        if (u.hostname === "github.com") {
-            const parts = u.pathname.split("/").filter(Boolean);
-            if (parts.length >= 5 && parts[2] === "blob") {
-                return `https://raw.githubusercontent.com/${parts[0]}/${parts[1]}/${parts[3]}/${parts.slice(4).join("/")}`;
-            }
-        }
-        if (u.hostname.endsWith("gitlab.com")) {
-            const parts = u.pathname.split("/").filter(Boolean);
-            const di = parts.indexOf("-");
-            if (di >= 0 && parts[di + 1] === "blob") {
-                return `https://${u.hostname}/${parts.slice(0, di).join("/")}/-/raw/${parts[di + 2] || ""}/${parts.slice(di + 3).join("/")}`;
-            }
-        }
-        if (u.hostname === "bitbucket.org") { if (!u.searchParams.has("raw")) u.searchParams.set("raw", "1"); return u.toString(); }
-        return u.toString();
-    } catch { return candidate; }
+const isDefinitelyMarkdownResponse = (sourceUrl: string, text: string, contentType = ""): boolean => {
+    if (!text?.trim() || looksLikeHtmlDocument(text)) return false;
+
+    const ct = (contentType || "").toLowerCase();
+    if (ct.includes("text/html") || ct.includes("application/xhtml+xml")) return false;
+    if (ct.includes("text/markdown") || ct.includes("text/x-markdown")) return true;
+
+    const pathname = (() => {
+        try { return new URL(sourceUrl).pathname; } catch { return ""; }
+    })();
+    const hasMarkdownFileExt = MARKDOWN_EXT_RE.test(pathname);
+    const hasMarkdownSyntax = isMarkdownContent(text);
+
+    if (hasMarkdownSyntax) return true;
+    // Extension alone can be spoofed; require plain text-ish response to trust it.
+    if (hasMarkdownFileExt && (ct.includes("text/plain") || !ct)) return true;
+    return false;
 };
 
 const toViewerUrl = (source?: string | null, markdownKey?: string | null) => {
@@ -429,18 +437,21 @@ const putMarkdownToSession = async (text: string) => {
 };
 
 const fetchMarkdownText = async (candidate: string) => {
-    const src = normalizeMarkdownSourceUrl(candidate);
+    const src = candidate;
     const res = await fetch(src, { credentials: "include", cache: "no-store" });
     const text = await res.text().catch(() => "");
-    return { ok: res.ok, status: res.status, src, text };
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    return { ok: res.ok, status: res.status, src, text, contentType };
 };
 
 const openMarkdownInViewer = async (originalUrl: string, tabId: number) => {
-    if (originalUrl.startsWith("file:")) { openViewer(originalUrl, tabId, null); return; }
+    if (originalUrl.startsWith("file:")) { openViewer(originalUrl, tabId, null); return true; }
     const fetched = await fetchMarkdownText(originalUrl).catch(() => null);
-    if (!fetched) { openViewer(normalizeMarkdownSourceUrl(originalUrl), tabId, null); return; }
-    const key = fetched.ok && fetched.text ? await putMarkdownToSession(fetched.text) : null;
+    if (!fetched || !fetched.ok || !fetched.text) return false;
+    if (!isDefinitelyMarkdownResponse(fetched.src, fetched.text, fetched.contentType)) return false;
+    const key = await putMarkdownToSession(fetched.text);
     openViewer(fetched.src, tabId, key);
+    return true;
 };
 
 const tryReadMarkdownFromTab = async (tabId: number, url?: string) => {
@@ -560,7 +571,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // Markdown viewer
     if (menuId === MD_VIEW_MENU_ID) {
         const candidate = (info as any).linkUrl || (info as any).pageUrl;
-        if (candidate && isMarkdownUrl(candidate)) { void openMarkdownInViewer(candidate, tabId ?? 0); return; }
+        if (candidate && isMarkdownUrl(candidate)) {
+            void openMarkdownInViewer(candidate, tabId ?? 0).then((opened) => {
+                if (!opened) {
+                    chrome.notifications.create({
+                        type: "basic",
+                        iconUrl: "icons/icon.png",
+                        title: "CrossWord Markdown Viewer",
+                        message: "Skipped: response is HTML or not confidently Markdown.",
+                    });
+                }
+            });
+            return;
+        }
         openViewer(candidate, tabId);
         return;
     }
@@ -873,8 +896,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const src = typeof message.src === "string" ? message.src : "";
         if (!src) { sendResponse({ ok: false, error: "missing src" }); return; }
         const fetched = await fetchMarkdownText(src);
-        const key = fetched.ok && fetched.text ? await putMarkdownToSession(fetched.text) : null;
-        sendResponse({ ok: fetched.ok, status: fetched.status, src: fetched.src, key });
+        if (!fetched.ok || !fetched.text) {
+            sendResponse({ ok: false, status: fetched.status, src: fetched.src, error: "fetch-failed" });
+            return;
+        }
+        if (!isDefinitelyMarkdownResponse(fetched.src, fetched.text, fetched.contentType)) {
+            sendResponse({ ok: false, status: fetched.status, src: fetched.src, error: "not-markdown" });
+            return;
+        }
+        const key = await putMarkdownToSession(fetched.text);
+        sendResponse({ ok: true, status: fetched.status, src: fetched.src, key });
     })().catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
 });
