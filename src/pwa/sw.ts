@@ -17,6 +17,7 @@ import {
     type ShareData
 } from './lib/ShareTargetUtils';
 import { BROADCAST_CHANNELS, MESSAGE_TYPES, STORAGE_KEYS, ROUTE_HASHES, COMPONENTS } from '@rs-com/config/Names';
+import { summarizeForLog } from '@rs-com/core/LogSanitizer';
 
 // ============================================================================
 // SERVICE WORKER CONTENT ASSOCIATION SYSTEM
@@ -157,7 +158,13 @@ async function processContentWithAssociation(
     content: any,
     event?: any
 ): Promise<Response> {
-
+    console.log('[SW-Association] Incoming content:', summarizeForLog({
+        contentType,
+        context,
+        eventType: event?.type,
+        hasContent: content != null,
+        content
+    }));
     const association = resolveSWContentAssociation(contentType, context, content);
 
     if (!association) {
@@ -198,14 +205,14 @@ async function processContentWithAssociation(
 }
 
 // Action handlers
-async function handleCacheAction(content: any, context: SWContentContext, event?: any): Promise<Response> {
+async function handleCacheAction(content: any, context: SWContentContext, _event?: any): Promise<Response> {
     try {
         // Cache the content for later retrieval by the main app
         const cacheKey = `sw-content-${context}-${Date.now()}`;
-        const cache = await (self as any).caches?.open?.('sw-content-cache');
+        const cache = await (self as any).caches?.open?.(SW_CONTENT_CACHE_NAME);
 
         if (cache) {
-            await cache.put(cacheKey, new Response(JSON.stringify({
+            await cache.put(toSWContentCacheRequest(cacheKey), new Response(JSON.stringify({
                 content,
                 context,
                 timestamp: Date.now(),
@@ -233,6 +240,13 @@ async function handleCacheAction(content: any, context: SWContentContext, event?
             // Default behavior for other contexts
             redirectLocation = `/?cached=${cacheKey}`;
         }
+
+        console.log('[SW-Cache] Cached pipeline content:', summarizeForLog({
+            context,
+            cacheKey,
+            redirectLocation,
+            content
+        }));
 
         return new Response(null, {
             status: 302,
@@ -349,17 +363,31 @@ function determineShareTargetRoute(content: any): string {
     }
 
     // Map content type to route hash
+    let routeHash: string;
     switch (contentType) {
         case 'image':
-            return ROUTE_HASHES.SHARE_TARGET_IMAGE;
+            routeHash = ROUTE_HASHES.SHARE_TARGET_IMAGE;
+            break;
         case 'file':
-            return ROUTE_HASHES.SHARE_TARGET_FILES;
+            routeHash = ROUTE_HASHES.SHARE_TARGET_FILES;
+            break;
         case 'url':
-            return ROUTE_HASHES.SHARE_TARGET_URL;
+            routeHash = ROUTE_HASHES.SHARE_TARGET_URL;
+            break;
         case 'text':
         default:
-            return ROUTE_HASHES.SHARE_TARGET_TEXT;
+            routeHash = ROUTE_HASHES.SHARE_TARGET_TEXT;
+            break;
     }
+
+    console.log('[ShareTarget] Route decision:', {
+        contentType,
+        routeHash,
+        fileCount: content?.files?.length || 0,
+        hasUrl: !!content?.url
+    });
+
+    return routeHash;
 }
 
 // Cache key management
@@ -371,6 +399,49 @@ interface CacheKeyEntry {
 
 const CACHE_KEYS_DB_NAME = 'sw-cache-keys';
 const CACHE_KEYS_STORE_NAME = 'keys';
+const SW_CONTENT_CACHE_NAME = 'sw-content-cache';
+const SW_CONTENT_CACHE_PREFIX = '/__sw-content/';
+
+const toSWContentCacheRequest = (cacheKey: string): string => {
+    const normalizedKey = String(cacheKey || '').trim();
+    if (!normalizedKey) {
+        throw new Error('Invalid SW cache key');
+    }
+
+    // Use canonical URL keys for Cache API stability.
+    const safeKey = normalizedKey.replace(/^\/+/, '');
+    return new URL(`${SW_CONTENT_CACHE_PREFIX}${encodeURIComponent(safeKey)}`, self.location.origin).toString();
+};
+
+const toCacheRequestInfo = (requestLike: RequestInfo | URL | null | undefined): RequestInfo | undefined => {
+    if (!requestLike) return undefined;
+    return requestLike instanceof URL ? requestLike.toString() : requestLike;
+};
+
+const safeCacheMatch = async (
+    cache: Cache | null | undefined,
+    requestLike: RequestInfo | URL | null | undefined
+): Promise<Response | undefined> => {
+    const request = toCacheRequestInfo(requestLike);
+    if (!cache || !request) return undefined;
+    try {
+        return await cache.match(request);
+    } catch (error) {
+        console.warn('[SW] Cache.match failed:', request, error);
+        return undefined;
+    }
+};
+
+const safeCachesMatch = async (requestLike: RequestInfo | URL | null | undefined): Promise<Response | undefined> => {
+    const request = toCacheRequestInfo(requestLike);
+    if (!request) return undefined;
+    try {
+        return await caches.match(request);
+    } catch (error) {
+        console.warn('[SW] caches.match failed:', request, error);
+        return undefined;
+    }
+};
 
 async function getStoredCacheKeys(): Promise<CacheKeyEntry[]> {
     try {
@@ -774,7 +845,7 @@ async function handleAssetRequest(arg: any): Promise<Response> {
 
         // Fallback to cache
         const cache = await caches.open('crossword-assets-v1');
-        const cachedResponse = await cache?.match?.(request);
+        const cachedResponse = await safeCacheMatch(cache, request);
         if (cachedResponse) {
             console.log(`[SW] Serving cached asset: ${pathname}`);
             return cachedResponse;
@@ -850,8 +921,8 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
     try {
         // Step 1: Parse request data
         const { formData, error } = await parseFormDataFromRequest(request);
-        console.log('[ShareTarget] FormData:', formData);
-        console.log('[ShareTarget] Error:', error);
+        console.log('[ShareTarget] FormData:', summarizeForLog(formData));
+        console.log('[ShareTarget] Error:', summarizeForLog(error));
 
         if (!formData) {
             console.warn('[ShareTarget] No valid data received:', error);
@@ -860,12 +931,12 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
 
         // Step 2: Build share data from form
         const shareData = await buildShareData(formData);
-        console.log('[ShareTarget] Share data:', shareData);
+        console.log('[ShareTarget] Share data:', summarizeForLog(shareData));
         logShareDataSummary(shareData);
 
         // Step 3: Cache for client retrieval
         await cacheShareData(shareData);
-        console.log('[ShareTarget] Cache share data:', shareData);
+        console.log('[ShareTarget] Cache share data:', summarizeForLog(shareData));
 
         const aiConfig = await getAIProcessingConfig();
         console.log('[ShareTarget] AI processing config:', aiConfig);
@@ -884,7 +955,7 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
 
         // Step 5: AI Processing (async, non-blocking)
         console.log('[ShareTarget] AI processing config:', aiConfig);
-        console.log('[ShareTarget] Share data:', shareData);
+        console.log('[ShareTarget] Share data:', summarizeForLog(shareData));
         console.log('[ShareTarget] Has processable content:', hasProcessableContent(shareData));
 
         if (aiConfig.enabled && hasProcessableContent(shareData)) {
@@ -903,13 +974,13 @@ registerRoute(({ url, request }) => isShareTargetUrl(url?.pathname) && request?.
                 customInstruction: aiConfig.customInstruction
             }).then((result) => {
                 clearTimeout(aiTimeout);
-                console.log('[ShareTarget] Async AI processing completed:', result);
+                console.log('[ShareTarget] Async AI processing completed:', summarizeForLog(result));
 
                 if (result.success && result.results?.length) {
                     // Extract the actual data from results
                     const firstResult = result.results[0];
                     const extractedData = firstResult?.data?.data || firstResult?.data || firstResult;
-                    console.log('[ShareTarget] Async AI processing extracted data:', extractedData);
+                    console.log('[ShareTarget] Async AI processing extracted data:', summarizeForLog(extractedData));
 
                     // Broadcast success to frontend
                     notifyAIResult({
@@ -1112,7 +1183,7 @@ registerRoute(
             for (const cacheRequest of cacheKeys) {
                 try {
                     // Check if the request body is similar (basic heuristic)
-                    const cachedResponse = await cache?.match?.(cacheRequest);
+                    const cachedResponse = await safeCacheMatch(cache, cacheRequest);
                     if (cachedResponse) {
                         console.log('[SW] Serving cached processing result');
                         return cachedResponse;
@@ -1338,14 +1409,14 @@ registerRoute(
             if (response.ok) {
                 // Cache the response for offline use
                 const cache = await caches.open('phosphor-icons-cache');
-                cache.put(url, response.clone());
+                await cache.put(request, response.clone());
 
                 return response;
             } else {
                 console.warn('[SW] Failed to fetch Phosphor icon:', cdnUrl, response.status);
                 // Try to serve from cache if available
                 const cache = await caches.open('phosphor-icons-cache');
-                const cachedResponse = await cache?.match?.(url);
+                const cachedResponse = await safeCacheMatch(cache, request);
                 if (cachedResponse) {
                     console.log('[SW] Serving cached Phosphor icon:', url.pathname);
                     return cachedResponse;
@@ -1357,7 +1428,7 @@ registerRoute(
             // Try to serve from cache if available
             try {
                 const cache = await caches.open('phosphor-icons-cache');
-                const cachedResponse = await cache?.match?.(url);
+                const cachedResponse = await safeCacheMatch(cache, request);
                 if (cachedResponse) {
                     console.log('[SW] Serving cached Phosphor icon (fallback):', url.pathname);
                     return cachedResponse;
@@ -1374,7 +1445,7 @@ registerRoute(
 setCatchHandler(({ event }: any): Promise<Response> => {
     switch (event?.request?.destination) {
         case 'document':
-            return caches?.match?.("/")?.then?.((r: any) => {
+            return safeCachesMatch("/")?.then?.((r: any) => {
                 return r ? Promise.resolve(r) : Promise.resolve(Response.error());
             })
         default:
@@ -1498,11 +1569,23 @@ async function sendCacheStatus(client: any): Promise<void> {
 // Share target GET handler (for testing/debugging)
 registerRoute(
     ({ url, request }) => isShareTargetUrl(url?.pathname) && request?.method === 'GET',
-    async () => {
+    async ({ event }) => {
+        const navEvent = event as any;
+        // Navigation preload can be started by the browser for this navigation.
+        // Ensure it settles to avoid cancellation warnings in console.
+        const preloadPromise = navEvent?.preloadResponse
+            ? Promise.resolve(navEvent.preloadResponse).catch(() => undefined)
+            : null;
+        if (preloadPromise) {
+            navEvent.waitUntil(preloadPromise.then(() => undefined));
+            await preloadPromise;
+        }
+
         console.log('[ShareTarget] GET request received - redirecting to app');
         return new Response(null, {
             status: 302,
-            headers: { Location: '/?shared=test' }
+            // Keep real share flow marker instead of test marker.
+            headers: { Location: '/workcenter?shared=1' }
         });
     },
     'GET'
@@ -1623,13 +1706,21 @@ registerRoute(
         const cacheKey = url.pathname.replace('/sw-content/', '');
         console.log('[SW] Received request for cached content:', cacheKey);
 
+        if (!cacheKey) {
+            return new Response(JSON.stringify({ error: 'Missing cache key' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         try {
-            const cache = await (self as any).caches?.open?.('sw-content-cache');
+            const cache = await (self as any).caches?.open?.(SW_CONTENT_CACHE_NAME);
             if (cache) {
-                const response = await cache?.match?.(cacheKey);
+                const cacheRequest = toSWContentCacheRequest(cacheKey);
+                const response = await safeCacheMatch(cache, cacheRequest);
                 if (response) {
                     // Delete from cache after retrieval (one-time use)
-                    await cache.delete(cacheKey);
+                    await cache.delete(cacheRequest);
                     return response;
                 }
             }
@@ -1655,7 +1746,7 @@ registerRoute(
         try {
             const cache = await (self as any).caches?.open?.(SHARE_CACHE_NAME);
             if (cache) {
-                const manifestResponse = await cache?.match?.(SHARE_FILES_MANIFEST_KEY);
+                const manifestResponse = await safeCacheMatch(cache, SHARE_FILES_MANIFEST_KEY);
                 if (manifestResponse) {
                     const manifest = await manifestResponse.json();
                     return new Response(JSON.stringify(manifest), {
@@ -1681,10 +1772,17 @@ registerRoute(
         const fileKey = url.pathname.replace(SHARE_FILE_PREFIX, '');
         console.log('[SW] Received request for share target file:', fileKey);
 
+        if (!fileKey) {
+            return new Response(JSON.stringify({ error: 'Missing file key' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         try {
             const cache = await (self as any).caches?.open?.(SHARE_CACHE_NAME);
             if (cache) {
-                const response = await cache?.match?.(SHARE_FILE_PREFIX + fileKey);
+                const response = await safeCacheMatch(cache, SHARE_FILE_PREFIX + fileKey);
                 if (response) {
                     // Return the file but don't delete from cache (work center may need it multiple times)
                     return response;
@@ -1717,6 +1815,11 @@ self.addEventListener?.('launchqueue', async (event: any) => {
             return;
         }
 
+        console.log('[LaunchQueue] Launch queue payload summary:', summarizeForLog({
+            fileCount: launchQueue?.files?.length,
+            hasFilesIterator: typeof launchQueue?.files?.[Symbol.asyncIterator] === 'function'
+        }));
+
         // Process launch queue files
         for await (const fileHandle of launchQueue.files) {
             try {
@@ -1724,6 +1827,11 @@ self.addEventListener?.('launchqueue', async (event: any) => {
 
                 // Get file from handle
                 const file = await fileHandle.getFile();
+                console.log('[LaunchQueue] File loaded from handle:', summarizeForLog({
+                    name: file?.name,
+                    type: file?.type,
+                    size: file?.size
+                }));
                 const content = {
                     files: [file],
                     timestamp: Date.now(),
@@ -1783,9 +1891,10 @@ self.addEventListener?.('sync', async (event: any) => {
 
             for (const cacheKey of processingKeys) {
                 try {
-                    const cache = await (self as any).caches?.open?.('sw-content-cache');
+                    const cache = await (self as any).caches?.open?.(SW_CONTENT_CACHE_NAME);
                     if (cache) {
-                        const response = await cache?.match?.(cacheKey.key);
+                        const cacheRequest = toSWContentCacheRequest(cacheKey.key);
+                        const response = await safeCacheMatch(cache, cacheRequest);
                         if (response) {
                             const content = await response.json();
 
@@ -1793,7 +1902,7 @@ self.addEventListener?.('sync', async (event: any) => {
                             await processContentWithAssociation('any', 'background-sync', content, event);
 
                             // Remove from cache after processing
-                            await cache.delete(cacheKey.key);
+                            await cache.delete(cacheRequest);
                         }
                     }
                 } catch (error) {
@@ -1865,18 +1974,16 @@ registerRoute(
     ({ request }) => request.mode === 'navigate',
     async ({ event, request }: any) => {
         try {
-            // Try to use the navigation preload response if available
-            if (event?.preloadResponse) {
-                try {
-                    const preloadResponse = await event.preloadResponse;
-                    if (preloadResponse) {
-                        // Extend event lifetime to ensure preload completes
-                        event.waitUntil(Promise.resolve());
-                        return preloadResponse;
-                    }
-                } catch (preloadError) {
-                    // Preload was cancelled or failed, continue to network fetch
-                    console.log('[SW] Navigation preload cancelled, falling back to network');
+            const preloadPromise = event?.preloadResponse
+                ? Promise.resolve(event.preloadResponse).catch(() => undefined)
+                : null;
+
+            // Keep SW alive until preload settles to avoid cancellation warnings.
+            if (preloadPromise) {
+                event.waitUntil(preloadPromise.then(() => undefined));
+                const preloadResponse = await preloadPromise;
+                if (preloadResponse) {
+                    return preloadResponse;
                 }
             }
 
@@ -1886,7 +1993,7 @@ registerRoute(
         } catch (error) {
             console.warn('[SW] Navigation fetch failed:', error);
             // Fall back to cache
-            const cached = await caches?.match?.('/');
+            const cached = await safeCachesMatch('/');
             return cached || Response.error();
         }
     }

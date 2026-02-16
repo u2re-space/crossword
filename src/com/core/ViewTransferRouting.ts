@@ -1,4 +1,5 @@
 import { sendMessage, type UnifiedMessage } from "@rs-com/core/UnifiedMessaging";
+import { summarizeForLog } from "@rs-com/core/LogSanitizer";
 
 export type ViewTransferSource = "share-target" | "launch-queue" | "pending" | "clipboard";
 
@@ -102,7 +103,7 @@ export const resolveViewTransfer = (payload: ViewTransferPayload): ViewTransferR
         hint: payload.hint
     };
 
-    return {
+    const resolved: ViewTransferResolved = {
         destination,
         routePath: `/${destination}`,
         messageType,
@@ -116,6 +117,19 @@ export const resolveViewTransfer = (payload: ViewTransferPayload): ViewTransferR
             ...(payload.metadata || {})
         }
     };
+
+    console.log("[ViewTransfer] Resolved transfer:", summarizeForLog({
+        source: payload.source,
+        route: payload.route,
+        pending: payload.pending,
+        hint: payload.hint,
+        contentType,
+        destination,
+        messageType,
+        fileCount: files.length
+    }));
+
+    return resolved;
 };
 
 export const dispatchViewTransfer = async (
@@ -131,6 +145,14 @@ export const dispatchViewTransfer = async (
         source: `view-transfer:${payload.source}`
     };
 
+    console.log("[ViewTransfer] Dispatching message:", summarizeForLog({
+        destination: message.destination,
+        type: message.type,
+        contentType: message.contentType,
+        metadata: message.metadata
+    }));
+
     const delivered = await sendMessage(message);
+    console.log("[ViewTransfer] Message delivery status:", { delivered, destination: resolved.destination, routePath: resolved.routePath });
     return { delivered, resolved };
 };

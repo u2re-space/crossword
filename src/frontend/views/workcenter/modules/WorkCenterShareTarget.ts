@@ -1,5 +1,6 @@
-import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";
-import { fetchCachedShareFiles } from "@rs-com/core/ShareTargetGateway";
+import { sendMessage as sendUnifiedMessage } from "@rs-com/core/UnifiedMessaging";
+import { consumeCachedShareTargetPayload, fetchCachedShareFiles } from "@rs-com/core/ShareTargetGateway";
+import { summarizeForLog } from "@rs-com/core/LogSanitizer";
 import { normalizeDataAsset } from "fest/lure";
 import type { WorkCenterState, WorkCenterDependencies } from "./WorkCenterState";
 import type { WorkCenterFileOps } from "./WorkCenterFileOps";
@@ -7,7 +8,6 @@ import type { WorkCenterFileOps } from "./WorkCenterFileOps";
 export class WorkCenterShareTarget {
     private deps: WorkCenterDependencies;
     private _fileOps: WorkCenterFileOps;
-    private workCenterComm = getWorkCenterComm();
 
     constructor(dependencies: WorkCenterDependencies, fileOps: WorkCenterFileOps) {
         this.deps = dependencies;
@@ -17,16 +17,32 @@ export class WorkCenterShareTarget {
     }
 
     initShareTargetListener(_state: WorkCenterState): void {
-        // The WorkCenterCommunicator handles the BroadcastChannel setup
-        // We just need to set up our message processing
-        console.log('[WorkCenter] Share target result listener initialized via WorkCenterComm');
+        // Unified messaging handles channel setup and pending delivery.
+        console.log('[WorkCenter] Share target result listener initialized via unified messaging');
     }
 
     async processQueuedMessages(_state: WorkCenterState): Promise<void> {
         try {
-            // The WorkCenterCommunicator will automatically process queued messages
-            // when it detects the work center is available
-            console.log('[WorkCenter] Queued message processing handled by WorkCenterComm');
+            // Unified messaging drains pending messages when the component is ready.
+            console.log('[WorkCenter] Queued message processing handled by unified messaging');
+
+            // Startup fallback: consume share-target cache in case message delivery was missed
+            // while the shell/view was still mounting.
+            const payload = await consumeCachedShareTargetPayload({ clear: true });
+            if (payload) {
+                const meta = (payload.meta && typeof payload.meta === 'object')
+                    ? payload.meta as Record<string, unknown>
+                    : {};
+
+                await this.addShareTargetInput(_state, {
+                    files: payload.files,
+                    title: typeof meta.title === 'string' ? meta.title : '',
+                    text: typeof meta.text === 'string' ? meta.text : '',
+                    url: typeof meta.url === 'string' ? meta.url : '',
+                    timestamp: typeof meta.timestamp === 'number' ? meta.timestamp : Date.now(),
+                    source: 'share-target-cache'
+                });
+            }
         } catch (error) {
             console.error('[WorkCenter] Failed to process queued messages:', error);
         }
@@ -36,22 +52,22 @@ export class WorkCenterShareTarget {
         const { type, data, pingId } = event.data || {};
 
         if (type === 'ping' && pingId) {
-            // Respond to ping to indicate work center is available
-            this.workCenterComm.respondToPing(pingId);
+            // Legacy ping messages are no longer required with unified messaging.
+            return;
         } else if (type === 'share-target-result' && data) {
-            console.log('[WorkCenter] Received share target result:', data);
+            console.log('[WorkCenter] Received share target result:', summarizeForLog(data));
             this.addShareTargetResult(state, data);
         } else if (type === 'share-target-input' && data) {
-            console.log('[WorkCenter] Received share target input:', data);
+            console.log('[WorkCenter] Received share target input:', summarizeForLog(data));
             this.addShareTargetInput(state, data);
         } else if (type === 'ai-result' && data) {
-            console.log('[WorkCenter] Received AI processing result:', data);
+            console.log('[WorkCenter] Received AI processing result:', summarizeForLog(data));
             this.handleAIResult(state, data);
         } else if (type === 'content-cached' && data) {
-            console.log('[WorkCenter] Received cached content from SW:', data);
+            console.log('[WorkCenter] Received cached content from SW:', summarizeForLog(data));
             this.handleCachedContent(state, data);
         } else if (type === 'content-received' && data) {
-            console.log('[WorkCenter] Received content from SW:', data);
+            console.log('[WorkCenter] Received content from SW:', summarizeForLog(data));
             this.handleReceivedContent(state, data);
         }
     }
@@ -87,7 +103,7 @@ export class WorkCenterShareTarget {
     }
 
     async addShareTargetInput(state: WorkCenterState, inputData: any): Promise<void> {
-        console.log('[WorkCenter] Adding share target input:', inputData);
+        console.log('[WorkCenter] Adding share target input:', summarizeForLog(inputData));
 
         try {
             let filesAdded = 0;
@@ -172,26 +188,34 @@ export class WorkCenterShareTarget {
     }
 
     sendShareTargetResult(resultData: any): void {
-        try {
-            this.workCenterComm.sendMessage('share-target-result', resultData, { priority: 'high' });
-        } catch (error) {
+        void sendUnifiedMessage({
+            type: 'share-target-result',
+            source: 'workcenter',
+            destination: 'workcenter',
+            data: resultData,
+            metadata: { priority: 'high' }
+        }).catch((error) => {
             console.error('[WorkCenter] Failed to send share target result:', error);
-        }
+        });
     }
 
     sendShareTargetInput(inputData: any): void {
-        try {
-            this.workCenterComm.sendMessage('share-target-input', inputData, { priority: 'high' });
-        } catch (error) {
+        void sendUnifiedMessage({
+            type: 'share-target-input',
+            source: 'workcenter',
+            destination: 'workcenter',
+            data: inputData,
+            metadata: { priority: 'high' }
+        }).catch((error) => {
             console.error('[WorkCenter] Failed to send share target input:', error);
-        }
+        });
     }
 
     private async handleCachedContent(state: WorkCenterState, data: any): Promise<void> {
         const { cacheKey, context, content } = data;
 
         if (context === 'share-target' && content) {
-            console.log('[WorkCenter] Processing cached share-target content:', content);
+            console.log('[WorkCenter] Processing cached share-target content:', summarizeForLog(content));
 
             // Add the content to work center
             await this.addShareTargetInput(state, content);
@@ -205,7 +229,7 @@ export class WorkCenterShareTarget {
         const { content, context } = data;
 
         if (context === 'share-target' && content) {
-            console.log('[WorkCenter] Processing received share-target content:', content);
+            console.log('[WorkCenter] Processing received share-target content:', summarizeForLog(content));
 
             // Add the content to work center
             await this.addShareTargetInput(state, content);

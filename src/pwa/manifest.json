@@ -27,7 +27,8 @@
         {
             "action": "/",
             "accept": {
-                "text/*": [".txt"],
+                "text/*": [".txt", ".text", ".log", ".csv", ".tsv"],
+                "text/plain": [".txt", ".text", ".log", ".csv", ".tsv", ".md", ".markdown", ".mdown", ".mdx"],
                 "application/pdf": [".pdf"],
                 "application/json": [".json"],
                 "application/xml": [".xml"],
@@ -37,8 +38,12 @@
                 "image/svg+xml": [".svg"],
                 "image/jpeg": [".jpg", ".jpeg"],
                 "image/png": [".png"],
-                "text/markdown": [".md"],
-                "text/html": [".html"]
+                "text/markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
+                "application/markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
+                "text/x-markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
+                "application/x-markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
+                "application/md": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
+                "text/html": [".html", ".htm"]
             }
         }
     ],
@@ -54,13 +59,24 @@
                 {
                     "name": "mapped_files",
                     "accept": [
+                        "text/plain",
+                        "text/markdown",
+                        "text/x-markdown",
+                        "text/html",
                         "image/jpeg",
                         "image/png",
                         "image/webp",
                         "image/*",
                         "image/svg+xml",
                         "text/*",
+                        "application/octet-stream",
+                        "application/x-markdown",
+                        "application/markdown",
+                        "application/md",
                         "application/pdf",
+                        "application/xml",
+                        "application/javascript",
+                        "application/typescript",
                         "application/json"
                     ]
                 }

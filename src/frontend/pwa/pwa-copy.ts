@@ -7,6 +7,7 @@
 import { initClipboardReceiver, listenForClipboardRequests, requestCopy } from "../../core";
 import { initToastReceiver } from "../items/Toast";
 import { unifiedMessaging } from "@rs-com/core/UnifiedMessaging";
+import { summarizeForLog } from "@rs-com/core/LogSanitizer";
 
 // Track initialization
 let _pwaClipboardInitialized = false;
@@ -227,7 +228,7 @@ export const initPWAClipboard = (): (() => void) => {
 
         const clipboardHandler = async (event: MessageEvent) => {
             const { type, data, options, operations } = event.data || {};
-            console.log('[PWA-Copy] Clipboard channel message:', type, data);
+            console.log('[PWA-Copy] Clipboard channel message:', type, summarizeForLog(data));
 
             // Handle direct clipboard copy requests
             if (type === "copy" && data !== undefined) {
@@ -280,7 +281,7 @@ export const initPWAClipboard = (): (() => void) => {
 
         const shareHandler = async (event: MessageEvent) => {
             const { type, data } = event.data || {};
-            console.log('[PWA-Copy] Share channel message:', type, data);
+            console.log('[PWA-Copy] Share channel message:', type, summarizeForLog(data));
 
             // Handle share-target copy request
             if (type === "copy-shared" && data) {
@@ -290,12 +291,12 @@ export const initPWAClipboard = (): (() => void) => {
 
             // Handle share-received notification
             if (type === "share-received" && data) {
-                console.log('[PWA-Copy] Share received from SW:', data);
+                console.log('[PWA-Copy] Share received from SW:', summarizeForLog(data));
             }
 
             // Handle AI result from service worker
             if (type === "ai-result" && data) {
-                console.log('[PWA-Copy] AI result from SW:', data);
+                console.log('[PWA-Copy] AI result from SW:', summarizeForLog(data));
                 if (data.success && data.data) {
                     const text = extractRecognizedContent(data.data);
                     const { copy } = await import("../../core/modules/Clipboard");
@@ -326,7 +327,7 @@ export const initPWAClipboard = (): (() => void) => {
 
             // Handle share target input attachment (when files/text/URLs come in)
             if (type === "share-received" && data) {
-                console.log('[PWA-Copy] Share received, broadcasting input to work center:', data);
+                console.log('[PWA-Copy] Share received, broadcasting input to work center:', summarizeForLog(data));
                 await unifiedMessaging.sendMessage({
                     type: 'share-target-input',
                     destination: 'workcenter',
@@ -354,13 +355,13 @@ export const initPWAClipboard = (): (() => void) => {
 
         const swHandler = async (event: MessageEvent) => {
             const { type, results } = event.data || {};
-            console.log('[PWA-Copy] SW channel message:', type, results);
+            console.log('[PWA-Copy] SW channel message:', type, summarizeForLog(results));
 
             // Handle commit-to-clipboard messages
             if (type === "commit-to-clipboard" && results && Array.isArray(results)) {
                 for (const result of results) {
                     if (result?.status === 'queued' && result?.data) {
-                        console.log('[PWA-Copy] Copying result data:', result.data);
+                        console.log('[PWA-Copy] Copying result data:', summarizeForLog(result.data));
                         // Use the extractRecognizedContent function to get the right data
                         const extractedContent = extractRecognizedContent(result.data);
                         const { copy } = await import("../../core/modules/Clipboard");
