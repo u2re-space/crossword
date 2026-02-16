@@ -12,11 +12,8 @@ const createPwaAdapter = (): PlatformAdapter => ({
 
 	async readFromClipboard(): Promise<ClipboardResult> {
 		try {
-			if (navigator.clipboard?.readText) {
-				const text = await navigator.clipboard.readText();
-				return { ok: true, data: text };
-			}
-			return { ok: false, error: "Clipboard access not available" };
+			const { readText } = await import("@rs-core/modules/Clipboard");
+			return (await readText()) as ClipboardResult;
 		} catch (e) {
 			return { ok: false, error: String(e) };
 		}
@@ -57,11 +54,8 @@ const createCrxAdapter = (): PlatformAdapter => ({
 
 	async readFromClipboard(): Promise<ClipboardResult> {
 		try {
-			if (navigator.clipboard?.readText) {
-				const text = await navigator.clipboard.readText();
-				return { ok: true, data: text };
-			}
-			return { ok: false, error: "Clipboard access not available" };
+			const { readText } = await import("@rs-core/modules/Clipboard");
+			return (await readText()) as ClipboardResult;
 		} catch (e) {
 			return { ok: false, error: String(e) };
 		}
@@ -144,21 +138,8 @@ const createCrxAdapter = (): PlatformAdapter => ({
 const createCoreAdapter = (): PlatformAdapter => ({
 	async copyToClipboard(data: string): Promise<ClipboardResult> {
 		try {
-			if (navigator.clipboard?.writeText) {
-				await navigator.clipboard.writeText(data);
-				return { ok: true, data, method: "clipboard-api" };
-			}
-
-			const textArea = document.createElement("textarea");
-			textArea.value = data;
-			textArea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;";
-			document.body.appendChild(textArea);
-			textArea.select();
-
-			const success = document.execCommand("copy");
-			textArea.remove();
-
-			return success ? { ok: true, data, method: "legacy" } : { ok: false, error: "Copy failed" };
+			const { writeText } = await import("@rs-core/modules/Clipboard");
+			return (await writeText(data)) as ClipboardResult;
 		} catch (e) {
 			return { ok: false, error: String(e) };
 		}
@@ -166,11 +147,8 @@ const createCoreAdapter = (): PlatformAdapter => ({
 
 	async readFromClipboard(): Promise<ClipboardResult> {
 		try {
-			if (navigator.clipboard?.readText) {
-				const text = await navigator.clipboard.readText();
-				return { ok: true, data: text };
-			}
-			return { ok: false, error: "Clipboard access not available" };
+			const { readText } = await import("@rs-core/modules/Clipboard");
+			return (await readText()) as ClipboardResult;
 		} catch (e) {
 			return { ok: false, error: String(e) };
 		}

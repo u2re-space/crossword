@@ -11,6 +11,7 @@ import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { getItem, setItem } from "../../../core/storage";
+import { writeText as writeClipboardText } from "@rs-core/modules/Clipboard";
 
 // @ts-ignore
 import style from "./history.scss?inline";
@@ -151,7 +152,8 @@ export class HistoryView implements View {
                 const entry = this.entries.find(e => e.id === entryId);
                 if (entry?.content) {
                     try {
-                        await navigator.clipboard.writeText(entry.content);
+                        const result = await writeClipboardText(entry.content);
+                        if (!result.ok) throw new Error(result.error || "Clipboard write failed");
                         this.showMessage("Copied to clipboard");
                     } catch {
                         this.showMessage("Failed to copy");

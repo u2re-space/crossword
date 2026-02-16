@@ -385,8 +385,11 @@ export class WorkCenterAttachments {
                     this.deps.state.view = "markdown-viewer";
                 }
             } catch { /* ignore */ }
-            this.deps.showMessage?.(`Opened ${file.name || 'file'} in Markdown Viewer`);
             this.deps.render?.();
+            // Defer toast/status updates so the view switch render completes first.
+            setTimeout(() => {
+                this.deps.showMessage?.(`Opened ${file.name || 'file'} in Markdown Viewer`);
+            }, 0);
         } catch (e) {
             this.deps.showMessage?.(`Failed to open ${file.name || 'file'}`);
             console.warn("[WorkCenter] Failed to open markdown file:", e);

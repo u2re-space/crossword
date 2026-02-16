@@ -3,6 +3,29 @@ import { getGPTInstance } from "@rs-com/service/shared/gpt-utils";
 import { recognizeWithContext } from "./core";
 import type { AIConfig, RecognitionResult } from "@rs-com/service/shared/types";
 
+const waitForClipboardFrame = (): Promise<void> =>
+	new Promise((resolve) => {
+		if (typeof requestAnimationFrame === "function") {
+			requestAnimationFrame(() => resolve());
+			return;
+		}
+		if (typeof MessageChannel !== "undefined") {
+			const channel = new MessageChannel();
+			channel.port1.onmessage = () => resolve();
+			channel.port2.postMessage(undefined);
+			return;
+		}
+		if (typeof setTimeout === "function") {
+			setTimeout(() => resolve(), 16);
+			return;
+		}
+		if (typeof queueMicrotask === "function") {
+			queueMicrotask(() => resolve());
+			return;
+		}
+		resolve();
+	});
+
 export const smartRecognize = async (
 	data: File | Blob | string,
 	hints?: {
@@ -130,6 +153,7 @@ Expected output structure:
 
 export const recognizeFromClipboard = async (): Promise<RecognitionResult | null> => {
 	try {
+		await waitForClipboardFrame();
 		const clipboardItems = await navigator.clipboard.read().catch(() => null);
 
 		if (clipboardItems) {
@@ -143,6 +167,7 @@ export const recognizeFromClipboard = async (): Promise<RecognitionResult | null
 			}
 		}
 
+		await waitForClipboardFrame();
 		const text = await navigator.clipboard.readText().catch(() => null);
 		if (text) {
 			return recognizeWithContext(text, {});

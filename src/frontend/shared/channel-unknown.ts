@@ -436,7 +436,12 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
      */
     const showStatusMessage = (message: string, duration = 3000) => {
         state.message = message;
-        renderStatus();
+        // Defer status rendering to avoid racing the active view render cycle.
+        setTimeout(() => {
+            if (state.message === message) {
+                renderStatus();
+            }
+        }, 0);
         setTimeout(() => {
             if (state.message === message) {
                 state.message = "";
@@ -1864,14 +1869,7 @@ export const mountShellApp = (mountElement: HTMLElement, options: ShellOptions =
                                 renderToolbar();
                             },
                             getSpeechPrompt,
-                            showMessage: (message: string) => {
-                                state.message = message;
-                                renderStatus();
-                                setTimeout(() => {
-                                    state.message = "";
-                                    renderStatus();
-                                }, 3000);
-                            },
+                            showMessage: (message: string) => showStatusMessage(message),
                             render: () => render()
                         });
                     }

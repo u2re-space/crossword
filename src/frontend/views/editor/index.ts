@@ -10,6 +10,7 @@ import { loadAsAdopted, removeAdopted } from "fest/dom";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { createViewState } from "../types";
+import { writeText as writeClipboardText } from "@rs-core/modules/Clipboard";
 
 // @ts-ignore
 import style from "./editor.scss?inline";
@@ -222,7 +223,8 @@ export class EditorView implements View {
 
     private async handleCopy(): Promise<void> {
         try {
-            await navigator.clipboard.writeText(this.contentRef.value);
+            const result = await writeClipboardText(this.contentRef.value);
+            if (!result.ok) throw new Error(result.error || "Clipboard write failed");
             this.showMessage("Copied to clipboard");
         } catch {
             this.showMessage("Failed to copy");

@@ -1,6 +1,7 @@
 import { processDataWithInstruction } from '@rs-com/service/service/RecognizeData';
 import { toBase64 } from '@rs-com/service/model/GPT-Responses';
 import { actionHistory, type ActionEntry, type ActionContext, type ActionInput, type ActionResult } from './ActionHistory';
+import { writeText as writeClipboardText } from '@rs-core/modules/Clipboard';
 
 export interface ExecutionRule {
     id: string;
@@ -205,7 +206,10 @@ export class ExecutionCore {
                         return;
                     }
                 } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    await navigator.clipboard.writeText(textToCopy.trim());
+                    const writeResult = await writeClipboardText(textToCopy.trim());
+                    if (!writeResult.ok) {
+                        throw new Error(writeResult.error || 'Clipboard write failed');
+                    }
                 } else if (typeof document !== 'undefined' && document.body) {
                     // Fallback method - only available in main thread context
                     const textArea = document.createElement('textarea');

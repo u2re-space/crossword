@@ -24,6 +24,28 @@ export interface ClipboardResult {
 
 // BroadcastChannel for cross-context clipboard operations
 const CLIPBOARD_CHANNEL = "rs-clipboard";
+const scheduleClipboardFrame = (cb: FrameRequestCallback | (() => void)): void => {
+    if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(cb as FrameRequestCallback);
+        return;
+    }
+    if (typeof MessageChannel !== "undefined") {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => (cb as () => void)();
+        channel.port2.postMessage(undefined);
+        return;
+    }
+    if (typeof setTimeout === "function") {
+        // Approximate a frame boundary when RAF is unavailable.
+        setTimeout(() => (cb as () => void)(), 16);
+        return;
+    }
+    if (typeof queueMicrotask === "function") {
+        queueMicrotask(() => (cb as () => void)());
+        return;
+    }
+    (cb as () => void)();
+};
 
 /**
  * Convert data to string safely
@@ -46,7 +68,7 @@ export const writeText = async (text: string): Promise<ClipboardResult> => {
     if (!trimmed) return { ok: false, error: "Empty content" };
 
     return new Promise<ClipboardResult>((resolve) => {
-        requestAnimationFrame(() => {
+        scheduleClipboardFrame(() => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
                 globalThis?.focus?.();
@@ -112,7 +134,7 @@ export const writeHTML = async (html: string, plainText?: string): Promise<Clipb
     if (!htmlContent) return { ok: false, error: "Empty content" };
 
     return new Promise<ClipboardResult>((resolve) => {
-        requestAnimationFrame(() => {
+        scheduleClipboardFrame(() => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
                 globalThis?.focus?.();
@@ -150,7 +172,7 @@ export const writeHTML = async (html: string, plainText?: string): Promise<Clipb
  */
 export const writeImage = async (blob: Blob | string): Promise<ClipboardResult> => {
     return new Promise<ClipboardResult>((resolve) => {
-        requestAnimationFrame(async () => {
+        scheduleClipboardFrame(async () => {
             // Ensure document has focus for clipboard API
             if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) {
                 globalThis?.focus?.();
@@ -248,7 +270,7 @@ const convertToPng = async (blob: Blob): Promise<Blob> => {
  */
 export const readText = async (): Promise<ClipboardResult> => {
     return new Promise<ClipboardResult>((resolve) => {
-        requestAnimationFrame(() => {
+        scheduleClipboardFrame(() => {
             const tryReadClipboard = async () => {
                 try {
                     if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
@@ -278,7 +300,7 @@ export const copy = async (
     const { type, showFeedback = false, silentOnError = false } = options;
 
     return new Promise<ClipboardResult>((resolve) => {
-        requestAnimationFrame(async () => {
+        scheduleClipboardFrame(async () => {
             let result: ClipboardResult;
 
             // Determine type and copy

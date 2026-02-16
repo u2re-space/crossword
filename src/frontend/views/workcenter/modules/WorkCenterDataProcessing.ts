@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
 import { extractJSONFromAIResponse } from "@rs-core/document/AIResponseParser";
+import { writeText as writeClipboardText } from "@rs-core/modules/Clipboard";
 
 export class WorkCenterDataProcessing {
     formatResult(result: any, format: string, outputFormat?: string): string {
@@ -570,6 +571,10 @@ export class WorkCenterDataProcessing {
             textToCopy = result?.textContent || '';
         }
 
-        return navigator.clipboard.writeText(textToCopy);
+        return writeClipboardText(textToCopy).then((result) => {
+            if (!result.ok) {
+                throw new Error(result.error || "Clipboard write failed");
+            }
+        });
     }
 }

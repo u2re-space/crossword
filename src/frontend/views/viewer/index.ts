@@ -14,6 +14,7 @@ import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
 import { createViewState } from "../types";
+import { writeText as writeClipboardText } from "@rs-core/modules/Clipboard";
 
 // Import the md-view web component from fl.ui
 import "fest/fl-ui/services/markdown-view/Markdown";
@@ -335,7 +336,7 @@ export class ViewerView implements View {
                     break;
                 case "copy-rendered":
                     if (renderTarget) {
-                        this.handleCopyRendered(renderTarget);
+                        void this.handleCopyRendered(renderTarget);
                     }
                     break;
                 case "download":
@@ -411,7 +412,8 @@ export class ViewerView implements View {
 
     private async handleCopy(): Promise<void> {
         try {
-            await navigator.clipboard.writeText(this.contentRef.value);
+            const result = await writeClipboardText(this.contentRef.value);
+            if (!result.ok) throw new Error(result.error || "Clipboard write failed");
             this.showMessage("Copied raw content to clipboard");
             this.options.onCopy?.(this.contentRef.value);
         } catch (error) {
@@ -420,23 +422,19 @@ export class ViewerView implements View {
         }
     }
 
-    private handleCopyRendered(renderTarget: HTMLElement): void {
+    private async handleCopyRendered(renderTarget: HTMLElement): Promise<void> {
         const text = (renderTarget?.innerText || "").trim();
         if (!text) {
             this.showMessage("No content to copy");
             return;
         }
-        navigator.clipboard.writeText(text).then(() => {
+        try {
+            const result = await writeClipboardText(text);
+            if (!result.ok) throw new Error(result.error || "Clipboard write failed");
             this.showMessage("Copied rendered text to clipboard");
-        }).catch(() => {
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.append(ta);
-            ta.select();
-            document.execCommand("copy");
-            ta.remove();
-            this.showMessage("Copied rendered text to clipboard");
-        });
+        } catch {
+            this.showMessage("Failed to copy rendered text");
+        }
     }
 
     private handleDownload(): void {
