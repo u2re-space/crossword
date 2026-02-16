@@ -30,7 +30,7 @@ function loadRobot(): RobotLike | null {
         robotInstance = null;
         if (!warnedUnavailable) {
             warnedUnavailable = true;
-            console.warn('[robot-adapter] robotjs is unavailable; mouse/keyboard automation will be disabled.', error);
+            console.warn('[robot-adapter] robotjs is unavailable; falling back to alternative adapters (AHK if available).', error);
         }
     }
 

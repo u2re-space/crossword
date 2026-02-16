@@ -106,6 +106,8 @@ const writeLaunchers = async () => {
     const runSh = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+export SOCKET_IO_ALLOWED_ORIGINS="\${SOCKET_IO_ALLOWED_ORIGINS:-https://u2re.space,https://www.u2re.space,http://localhost:8080,https://localhost:8443}"
+export CORS_ALLOW_PRIVATE_NETWORK="\${CORS_ALLOW_PRIVATE_NETWORK:-true}"
 if ! command -v node >/dev/null 2>&1; then
   echo "[portable] Node.js 22+ is required."
   exit 1
@@ -120,6 +122,8 @@ npm run start
     const runCmd = `@echo off
 setlocal
 cd /d "%~dp0"
+if not defined SOCKET_IO_ALLOWED_ORIGINS set "SOCKET_IO_ALLOWED_ORIGINS=https://u2re.space,https://www.u2re.space,http://localhost:8080,https://localhost:8443"
+if not defined CORS_ALLOW_PRIVATE_NETWORK set "CORS_ALLOW_PRIVATE_NETWORK=true"
 where node >nul 2>&1
 if errorlevel 1 (
   echo [portable] Node.js 22+ is required.
@@ -168,6 +172,7 @@ This bundle is generated from apps/CrossWord/src/endpoint.
 ${installNote}
 - Slim mode auto-installs dependencies on first run via npm.
 - Launcher starts \`npm run start\` (\`server/index.ts\`) to preserve full legacy WS/Socket.IO control stack.
+- Default launcher environment allows \`https://u2re.space\` origins and enables Private-Network CORS response header.
 - If clipboard backend is unavailable on Linux headless environments, endpoint still starts.
 `;
 

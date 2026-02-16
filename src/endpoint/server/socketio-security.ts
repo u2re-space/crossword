@@ -26,7 +26,7 @@ const normalizePort = (value: string | undefined): number | undefined => {
 const getDefaultAllowedOrigins = (): string[] => {
     const httpsPort = Number((config as any)?.listenPort ?? 8443);
     const httpPort = Number((config as any)?.httpPort ?? 8080);
-    const hosts = ["localhost", "127.0.0.1"];
+    const hosts = ["localhost", "127.0.0.1", "u2re.space", "www.u2re.space"];
     const values = new Set<string>();
     for (const host of hosts) {
         values.add(`http://${host}:${httpPort}`);

@@ -62,6 +62,31 @@ const normalizeControlMessage = (msg: any, sourceId: string): any => {
 export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?: number }): SocketIoBridge => {
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
     const io = new SocketIOServer(app.server, buildSocketIoOptions(app.log as any));
+    const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== "false";
+    const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
+        if (!allowPrivateNetwork) return;
+        const pnaHeader = String(req?.headers?.["access-control-request-private-network"] || "").toLowerCase();
+        if (pnaHeader !== "true") return;
+
+        headers["Access-Control-Allow-Private-Network"] = "true";
+        const existingVary = String(headers["Vary"] || headers["vary"] || "");
+        const varyParts = existingVary
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (!varyParts.includes("Access-Control-Request-Private-Network")) {
+            varyParts.push("Access-Control-Request-Private-Network");
+        }
+        if (varyParts.length > 0) {
+            headers["Vary"] = varyParts.join(", ");
+        }
+    };
+    io.engine.on("initial_headers", (headers, req) => {
+        applyPrivateNetworkHeaders(headers as any, req);
+    });
+    io.engine.on("headers", (headers, req) => {
+        applyPrivateNetworkHeaders(headers as any, req);
+    });
     io.engine.on("connection_error", (err: any) => {
         app.log?.warn?.(
             {

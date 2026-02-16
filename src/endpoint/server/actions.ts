@@ -22,7 +22,7 @@ interface CharTask {
 let charQueue: CharTask[] = [];
 let isProcessingQueue = false;
 let lastKeyboardEvent = { charCode: -1, flags: -1, at: 0 };
-const KEYBOARD_DUPLICATE_WINDOW_MS = 12;
+const KEYBOARD_DUPLICATE_WINDOW_MS = 20;
 
 // =========================
 // AHK Service Management

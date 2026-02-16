@@ -207,7 +207,32 @@ const registerDebugRequestLogging = async (app: FastifyInstance): Promise<void> 
 
 const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
     await registerDebugRequestLogging(app);
-    await app.register(cors, { origin: true });
+    await app.register(cors, {
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    });
+    app.addHook("onSend", async (req, reply, payload) => {
+        const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== "false";
+        if (!allowPrivateNetwork) return payload;
+
+        const pnaHeader = String(req.headers["access-control-request-private-network"] || "").toLowerCase();
+        if (pnaHeader === "true") {
+            reply.header("Access-Control-Allow-Private-Network", "true");
+            const existingVary = String(reply.getHeader("Vary") || "");
+            const varyParts = existingVary
+                .split(",")
+                .map((part) => part.trim())
+                .filter(Boolean);
+            if (!varyParts.includes("Access-Control-Request-Private-Network")) {
+                varyParts.push("Access-Control-Request-Private-Network");
+            }
+            if (varyParts.length > 0) {
+                reply.header("Vary", varyParts.join(", "));
+            }
+        }
+        return payload;
+    });
     await app.register(compress, { global: true });
     await app.register(fastifyStatic, {
         list: true,
@@ -274,6 +299,33 @@ const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
             "/api/ws"
         ]
     }));
+
+    // Explicit probe endpoint for Local Network Access / Private Network Access checks.
+    // Browser may use this from secure public origins before local-network control traffic.
+    app.options("/lna-probe", async (req, reply) => {
+        const origin = String((req.headers as any)?.origin || "");
+        if (origin) reply.header("Access-Control-Allow-Origin", origin);
+        reply.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+        reply.header("Access-Control-Allow-Headers", "Content-Type");
+        reply.header("Access-Control-Max-Age", "600");
+        if (String((req.headers as any)?.["access-control-request-private-network"] || "").toLowerCase() === "true") {
+            reply.header("Access-Control-Allow-Private-Network", "true");
+            reply.header("Vary", "Origin, Access-Control-Request-Private-Network");
+        } else if (origin) {
+            reply.header("Vary", "Origin");
+        }
+        return reply.code(204).send();
+    });
+
+    app.get("/lna-probe", async (req, reply) => {
+        const origin = String((req.headers as any)?.origin || "");
+        if (origin) {
+            reply.header("Access-Control-Allow-Origin", origin);
+            reply.header("Vary", "Origin");
+        }
+        reply.header("Cache-Control", "no-store");
+        return reply.code(204).send();
+    });
 
     await registerCoreSettingsEndpoints(app);
     await registerAuthRoutes(app);

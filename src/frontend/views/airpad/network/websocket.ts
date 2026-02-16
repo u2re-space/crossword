@@ -15,6 +15,8 @@ let wsConnected = false;
 let isConnecting = false;
 let btnEl: HTMLElement | null = null;
 let connectAttemptId = 0;
+let activeProbeSocket: Socket | null = null;
+const localNetworkPermissionProbeDone = new Set<string>();
 type WSConnectionHandler = (connected: boolean) => void;
 const wsConnectionHandlers = new Set<WSConnectionHandler>();
 
@@ -79,6 +81,43 @@ function safeJson(value: unknown): string {
         return JSON.stringify(value);
     } catch {
         return String(value);
+    }
+}
+
+function isPrivateOrLocalTarget(host: string): boolean {
+    if (!host) return false;
+    if (host === 'localhost') return true;
+    if (host.endsWith('.local')) return true;
+    if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return false;
+    return (
+        host.startsWith('10.') ||
+        host.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+        host.startsWith('127.')
+    );
+}
+
+async function tryRequestLocalNetworkPermission(origin: string, host: string): Promise<void> {
+    if (!origin || !host) return;
+    if (!isPrivateOrLocalTarget(host)) return;
+    if (location.protocol !== 'https:') return;
+    if (localNetworkPermissionProbeDone.has(origin)) return;
+
+    localNetworkPermissionProbeDone.add(origin);
+    try {
+        // Best-effort warm-up for Chrome Local Network Access permission flow.
+        // `targetAddressSpace` is currently experimental and may be ignored by some browsers.
+        await fetch(`${origin}/lna-probe`, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-store',
+            credentials: 'omit',
+            // TS libs may not include this yet.
+            ...( { targetAddressSpace: 'local' } as any ),
+        } as RequestInit);
+    } catch (error: any) {
+        const msg = String(error?.message || error || '');
+        log(`LNA probe: ${msg || 'request failed'}`);
     }
 }
 
@@ -285,6 +324,7 @@ function handleServerMessage(msg: any) {
 }
 
 export function connectWS() {
+    if (isConnecting) return;
     if (socket && (socket.connected || (socket as any).connecting)) return;
     connectAttemptId += 1;
     const attemptId = connectAttemptId;
@@ -293,6 +333,21 @@ export function connectWS() {
     const remotePort = getRemotePort().trim();
     const remoteProtocol = getRemoteProtocol();
     const hostLooksLikeIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(remoteHost);
+    const isPrivateIpHost = hostLooksLikeIp && (
+        remoteHost.startsWith('10.') ||
+        remoteHost.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(remoteHost)
+    );
+    const pageHost = location.hostname || "";
+    const isLocalPageHost = /^(localhost|127\.0\.0\.1)$/.test(pageHost) || (
+        /^\d{1,3}(?:\.\d{1,3}){3}$/.test(pageHost) &&
+        (
+            pageHost.startsWith('10.') ||
+            pageHost.startsWith('192.168.') ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(pageHost)
+        )
+    );
+    const useWebSocketOnly = location.protocol === "https:" && isPrivateIpHost && !isLocalPageHost;
 
     if (location.protocol === 'https:' && remoteProtocol === 'http') {
         log('Socket.IO error: browser blocks ws/http from https page (mixed content). Open Airpad via http:// or use valid HTTPS cert on endpoint.');
@@ -310,6 +365,9 @@ export function connectWS() {
     };
 
     const primaryProtocol = inferProtocol();
+    const probePort = remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
+    const probeOrigin = `${primaryProtocol}://${remoteHost}:${probePort}`;
+    void tryRequestLocalNetworkPermission(probeOrigin, remoteHost);
     const fallbackProtocol = primaryProtocol === 'https' ? 'http' : 'https';
     const defaultPortByProtocol = {
         http: '8080',
@@ -376,21 +434,25 @@ export function connectWS() {
         log(`Connecting Socket.IO: ${url} (page=${location.protocol}//${location.host})`);
 
         const probeSocket = io(url, {
-            // Start with polling and upgrade to websocket when possible.
-            // This avoids immediate hard-fail on networks where direct WS handshake is blocked.
-            transports: ['polling', 'websocket'],
+            // For public->private HTTPS (PNA), polling triggers fetch preflight restrictions.
+            // Prefer WS-only in that scenario.
+            transports: useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
+            upgrade: !useWebSocketOnly,
             reconnection: false,
             timeout: 3500,
             secure: candidate.protocol === 'https',
             forceNew: true,
         });
+        activeProbeSocket = probeSocket;
 
         probeSocket.on('connect', () => {
             if (attemptId !== connectAttemptId) {
                 probeSocket.removeAllListeners();
                 probeSocket.close();
+                if (activeProbeSocket === probeSocket) activeProbeSocket = null;
                 return;
             }
+            if (activeProbeSocket === probeSocket) activeProbeSocket = null;
             socket = probeSocket;
             log('Socket.IO connected: ' + url);
             isConnecting = false;
@@ -430,10 +492,12 @@ export function connectWS() {
             if (attemptId !== connectAttemptId) {
                 probeSocket.removeAllListeners();
                 probeSocket.close();
+                if (activeProbeSocket === probeSocket) activeProbeSocket = null;
                 return;
             }
             probeSocket.removeAllListeners();
             probeSocket.close();
+            if (activeProbeSocket === probeSocket) activeProbeSocket = null;
             const details = (error as any)?.description || (error as any)?.context || '';
             const errorMessage = String((error as any)?.message || error || '');
             const certLikely =
@@ -454,6 +518,16 @@ export function connectWS() {
                 return;
             }
 
+            if (
+                useWebSocketOnly &&
+                /xhr poll error|cors|private network|address space|failed fetch/i.test(errorMessage)
+            ) {
+                log(
+                    `Socket.IO connect failed (${url}): ${errorMessage}. ` +
+                    'Endpoint must allow CORS from this origin and reply with Access-Control-Allow-Private-Network: true.'
+                );
+            }
+
             tryConnect(index + 1, round);
             log(`Socket.IO connect failed (${url}): ${errorMessage} ${details ? `| ${safeJson(details)}` : ''}`);
         });
@@ -464,8 +538,15 @@ export function connectWS() {
 
 export function disconnectWS() {
     connectAttemptId += 1;
+    if (activeProbeSocket) {
+        activeProbeSocket.removeAllListeners();
+        activeProbeSocket.close();
+        activeProbeSocket = null;
+    }
+    isConnecting = false;
     if (!socket) {
         setWsStatus(false);
+        updateButtonLabel();
         return;
     }
     log('Disconnecting Socket.IO...');
@@ -481,7 +562,7 @@ export function initWebSocket(btnConnect: HTMLElement | null) {
     if (!btnConnect) return;
 
     btnConnect.addEventListener('click', () => {
-        if (wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
+        if (isConnecting || wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
             disconnectWS();
         } else {
             connectWS();

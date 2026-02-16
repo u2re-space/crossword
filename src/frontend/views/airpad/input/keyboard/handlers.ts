@@ -143,7 +143,7 @@ export function setupVirtualKeyboardAPIHandlers() {
     // Track what was handled to prevent duplicates
     let lastHandledKey: string | null = null;
     let lastHandledTime: number = 0;
-    const DEDUP_WINDOW_MS = 80;
+    const DEDUP_WINDOW_MS = 20;
 
     // Track if we're waiting for input event after Unidentified keydown
     let waitingForInput = false;

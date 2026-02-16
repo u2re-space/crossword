@@ -4,6 +4,7 @@
 
 import fastify from 'fastify';
 import formbody from '@fastify/formbody';
+import cors from '@fastify/cors';
 import { HTTP_PORT } from './constants.ts';
 import config from '../config.js';
 import { loadHttpsCredentials, createHttpClient } from './https.ts';
@@ -20,12 +21,65 @@ const HTTPS_PORT = (config as any).listenPort || 8443;
 const HTTP_LISTEN_PORT = (config as any).httpPort || HTTP_PORT;
 
 function registerPlugins(app: any) {
+    app.register(cors, {
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    });
     app.register(formbody);
 
     // Ensure we can receive raw `text/plain` clipboard payloads.
     // Without this, Fastify may not parse text/plain into request.body as a string.
     app.addContentTypeParser('text/plain', { parseAs: 'string' }, async (_req: any, body: any) => {
         return body;
+    });
+
+    // PNA preflights for public -> private network requests
+    app.addHook('onSend', async (req: any, reply: any, payload: any) => {
+        const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== 'false';
+        if (!allowPrivateNetwork) return payload;
+
+        const pnaHeader = String(req?.headers?.['access-control-request-private-network'] || '').toLowerCase();
+        if (pnaHeader === 'true') {
+            reply.header('Access-Control-Allow-Private-Network', 'true');
+            const existingVary = String(reply.getHeader('Vary') || '');
+            const varyParts = existingVary
+                .split(',')
+                .map((part: string) => part.trim())
+                .filter(Boolean);
+            if (!varyParts.includes('Access-Control-Request-Private-Network')) {
+                varyParts.push('Access-Control-Request-Private-Network');
+            }
+            if (varyParts.length > 0) {
+                reply.header('Vary', varyParts.join(', '));
+            }
+        }
+        return payload;
+    });
+
+    app.options('/lna-probe', async (request: any, reply: any) => {
+        const origin = String(request?.headers?.origin || '');
+        if (origin) reply.header('Access-Control-Allow-Origin', origin);
+        reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type');
+        reply.header('Access-Control-Max-Age', '600');
+        if (String(request?.headers?.['access-control-request-private-network'] || '').toLowerCase() === 'true') {
+            reply.header('Access-Control-Allow-Private-Network', 'true');
+            reply.header('Vary', 'Origin, Access-Control-Request-Private-Network');
+        } else if (origin) {
+            reply.header('Vary', 'Origin');
+        }
+        return reply.code(204).send();
+    });
+
+    app.get('/lna-probe', async (request: any, reply: any) => {
+        const origin = String(request?.headers?.origin || '');
+        if (origin) {
+            reply.header('Access-Control-Allow-Origin', origin);
+            reply.header('Vary', 'Origin');
+        }
+        reply.header('Cache-Control', 'no-store');
+        return reply.code(204).send();
     });
 }
 

@@ -8,6 +8,31 @@ import { buildSocketIoOptions, describeHandshake } from './socketio-security.ts'
 
 export function setupSocketIO(server: any, logger?: any) {
     const io = new Server(server, buildSocketIoOptions(logger));
+    const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== 'false';
+    const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
+        if (!allowPrivateNetwork) return;
+        const pnaHeader = String(req?.headers?.['access-control-request-private-network'] || '').toLowerCase();
+        if (pnaHeader !== 'true') return;
+
+        headers['Access-Control-Allow-Private-Network'] = 'true';
+        const existingVary = String(headers['Vary'] || headers['vary'] || '');
+        const varyParts = existingVary
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (!varyParts.includes('Access-Control-Request-Private-Network')) {
+            varyParts.push('Access-Control-Request-Private-Network');
+        }
+        if (varyParts.length > 0) {
+            headers['Vary'] = varyParts.join(', ');
+        }
+    };
+    io.engine.on('initial_headers', (headers, req) => {
+        applyPrivateNetworkHeaders(headers as any, req);
+    });
+    io.engine.on('headers', (headers, req) => {
+        applyPrivateNetworkHeaders(headers as any, req);
+    });
     logger?.info?.('[socket.io] Bridge initialized');
 
     io.engine.on('connection_error', (err: any) => {
@@ -36,10 +61,11 @@ export function setupSocketIO(server: any, logger?: any) {
         );
         registerAirpadSocketHandlers(socket, {
             logger,
-            onDisconnect: () => {
+            onDisconnect: (reason) => {
                 logger?.info?.(
                     {
                         socketId: socket?.id,
+                        reason,
                         transport: socket?.conn?.transport?.name,
                         handshake: describeHandshake(socket?.request)
                     },

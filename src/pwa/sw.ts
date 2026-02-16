@@ -1060,6 +1060,30 @@ registerRoute(
     })
 );
 
+// Never cache/proxy local-network control channels.
+// This avoids SW interference with PNA/LNA handshakes and Socket.IO transports.
+registerRoute(
+    ({ url }) => {
+        const host = url?.hostname || '';
+        const isPrivateIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) && (
+            host.startsWith('10.') ||
+            host.startsWith('192.168.') ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+            host.startsWith('127.')
+        );
+        const isLocalHost = host === 'localhost' || host.endsWith('.local');
+        const isSocketIoPath = (url?.pathname || '').startsWith('/socket.io/');
+
+        return isSocketIoPath || isPrivateIp || isLocalHost;
+    },
+    new NetworkOnly({
+        fetchOptions: {
+            cache: 'no-store',
+            credentials: 'omit',
+        }
+    })
+);
+
 //
 setDefaultHandler(new StaleWhileRevalidate({
     cacheName: 'default-cache',
