@@ -212,6 +212,10 @@ export default async ({ mode } = {}) => {
         },
         build: {
             ...baseConfig.build,
+            // Keep PWA/regular build symbols stable (Fastify runtime print route issue).
+            minify: false,
+            cssMinify: false,
+            terserOptions: undefined,
             rollupOptions: {
                 ...baseConfig.build?.rollupOptions,
                 input: {

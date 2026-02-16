@@ -81,7 +81,10 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             drop_console: false,
             pure_getters: true,
         },
-        mangle: true,
+        mangle: {
+            // Preserve class names used by custom elements (e.g. MarkdownView).
+            keep_classnames: true,
+        },
     };
 
     //
