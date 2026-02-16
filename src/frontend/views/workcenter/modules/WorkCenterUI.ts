@@ -214,7 +214,16 @@ export class WorkCenterUI {
                         <button class="tab-btn ${activeTab === 'attachments' ? 'is-active' : ''}" data-action="switch-input-tab" data-tab="attachments" aria-selected="${activeTab === 'attachments'}">Files (${state.files.length})</button>
                     </div>
                     <h3>Work Inputs</h3>
-                    <div></div>
+                    <div class="file-actions">
+                        <button class="btn btn-icon" data-action="select-files" title="Choose Files">
+                            <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
+                            <span class="btn-text">Add Files</span>
+                        </button>
+                        <button class="btn btn-icon" data-action="clear-all-files" title="Clear All Files">
+                            <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
+                            <span class="btn-text">Clear All</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="input-tab-panels">
                     <section class="tab-panel ${activeTab === 'prompt' ? 'is-active' : ''}" data-tab-panel="prompt">

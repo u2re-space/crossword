@@ -793,7 +793,7 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--space-md);
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         inline-size: stretch;
         max-inline-size: stretch;
         flex-direction: row;

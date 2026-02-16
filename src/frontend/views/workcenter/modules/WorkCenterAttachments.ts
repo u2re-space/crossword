@@ -34,16 +34,6 @@ export class WorkCenterAttachments {
                 ${this.renderRecognizedStatus(state)}
               </div>
               <div class="wc-block-header wc-attachments-toolbar">
-                <div class="file-actions">
-                  <button class="btn btn-icon" data-action="select-files" title="Choose Files">
-                    <ui-icon icon="folder-open" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Add Files</span>
-                  </button>
-                  <button class="btn btn-icon" data-action="clear-all-files" title="Clear All Files">
-                    <ui-icon icon="trash" size="18" icon-style="duotone"></ui-icon>
-                    <span class="btn-text">Clear All</span>
-                  </button>
-                </div>
                 <div class="file-stats">
                   <div class="file-counter" data-file-count>
                     <ui-icon icon="file" size="16" icon-style="duotone"></ui-icon>
