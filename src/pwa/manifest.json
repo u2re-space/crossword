@@ -101,7 +101,7 @@
     "launch_handler": {
         "client_mode": "focus-existing"
     },
-    "orientation": "any",
+    "orientation": "natural",
     "edge_side": "left",
     "edge_side_delegate": {
         "url": "/",
