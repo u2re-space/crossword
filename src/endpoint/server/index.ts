@@ -4,15 +4,15 @@
 
 import fastify from 'fastify';
 import formbody from '@fastify/formbody';
-import { HTTP_PORT } from './server/constants.ts';
-import config from './config.js';
-import { loadHttpsCredentials, createHttpClient } from './server/https.ts';
-import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from './server/clipboard.ts';
-import { startMouseFlushInterval } from './server/mouse.ts';
-import { setApp as setPythonApp } from './server/python.ts';
-import { registerRoutes } from './server/routes.ts';
-import { setupSocketIO } from './server/socket.ts';
-import { createWsServer } from './server/websocket.ts';
+import { HTTP_PORT } from './constants.ts';
+import config from '../config.js';
+import { loadHttpsCredentials, createHttpClient } from './https.ts';
+import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from './clipboard.ts';
+import { startMouseFlushInterval } from './mouse.ts';
+import { setApp as setPythonApp } from './python.ts';
+import { registerRoutes } from './routes.ts';
+import { setupSocketIO } from './socket.ts';
+import { createWsServer } from './websocket.ts';
 
 let httpsApp: any = null;
 let httpApp: any = null;

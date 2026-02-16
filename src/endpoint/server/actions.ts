@@ -8,6 +8,7 @@ import { getRobot } from './robot-adapter.ts';
 
 let useAHK = false;
 let ahkInitialized = false;
+let ahkInitPromise: Promise<boolean> | null = null;
 const preferAhkMouse = process.env.ENDPOINT_USE_AHK_MOUSE === '1';
 
 // Очередь для последовательной обработки символов
@@ -20,6 +21,8 @@ interface CharTask {
 
 let charQueue: CharTask[] = [];
 let isProcessingQueue = false;
+let lastKeyboardEvent = { charCode: -1, flags: -1, at: 0 };
+const KEYBOARD_DUPLICATE_WINDOW_MS = 12;
 
 // =========================
 // AHK Service Management
@@ -27,19 +30,25 @@ let isProcessingQueue = false;
 
 async function initAHKService(): Promise<boolean> {
     if (ahkInitialized) return useAHK;
+    if (ahkInitPromise) return ahkInitPromise;
 
-    ahkInitialized = true;
+    ahkInitPromise = (async () => {
+        ahkInitialized = true;
+        try {
+            await ahkService.start();
+            useAHK = true;
+            console.log('AHK service started successfully');
+            return true;
+        } catch (err) {
+            console.warn('AHK not available, using fallback:', (err as Error).message);
+            useAHK = false;
+            return false;
+        } finally {
+            ahkInitPromise = null;
+        }
+    })();
 
-    try {
-        await ahkService.start();
-        useAHK = true;
-        console.log('AHK service started successfully');
-        return true;
-    } catch (err) {
-        console.warn('AHK not available, using fallback:', (err as Error).message);
-        useAHK = false;
-        return false;
-    }
+    return ahkInitPromise;
 }
 
 function shutdownAHKService() {
@@ -58,6 +67,9 @@ function ensureAHKInitialized() {
 function canUseAHKMouse(robotAvailable: boolean): boolean {
     return useAHK && ahkService.isReady() && (preferAhkMouse || !robotAvailable);
 }
+
+// Try AHK first by default, but never block startup when unavailable.
+void initAHKService();
 
 // =========================
 // Mouse Functions
@@ -234,6 +246,16 @@ async function pasteViaClipboard(text: string): Promise<void> {
 
 // Публичная функция для отправки символа
 function executeKeyboardChar(charCode: number, flags: number): Promise<void> {
+    const now = Date.now();
+    if (
+        lastKeyboardEvent.charCode === charCode &&
+        lastKeyboardEvent.flags === flags &&
+        (now - lastKeyboardEvent.at) < KEYBOARD_DUPLICATE_WINDOW_MS
+    ) {
+        return Promise.resolve();
+    }
+    lastKeyboardEvent = { charCode, flags, at: now };
+
     // Инициализируем AHK при первом вызове
     ensureAHKInitialized();
 

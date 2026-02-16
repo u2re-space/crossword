@@ -2,7 +2,7 @@
 // Clipboard toolbar (Cut / Copy / Paste)
 // =========================
 
-import { log, btnCut, btnCopy, btnPaste, clipboardPreviewEl } from '../utils/utils';
+import { log, getBtnCut, getBtnCopy, getBtnPaste, getClipboardPreviewEl } from '../utils/utils';
 import {
     onServerClipboardUpdate,
     requestClipboardCopy,
@@ -12,6 +12,7 @@ import {
 } from '../network/websocket';
 
 function setPreview(text: string, meta?: { source?: string }) {
+    const clipboardPreviewEl = getClipboardPreviewEl();
     if (!clipboardPreviewEl || typeof clipboardPreviewEl === 'undefined') return;
 
     const source = meta?.source ? String(meta.source) : 'pc';
@@ -56,6 +57,10 @@ async function tryWritePhoneClipboardText(text: string): Promise<boolean> {
 }
 
 export function initClipboardToolbar() {
+    const btnCut = getBtnCut();
+    const btnCopy = getBtnCopy();
+    const btnPaste = getBtnPaste();
+
     // Keep preview in sync with backend clipboard events
     onServerClipboardUpdate((text, meta) => setPreview(text, meta));
 

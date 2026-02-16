@@ -17,10 +17,11 @@ export type CopyOptions = {
 
 // Translation helper using AI
 const translateContent = async (content: string, targetLang: ResponseLanguage): Promise<string> => {
-    if (!content?.trim() || targetLang === "auto") return content;
+    if (!content?.trim() || targetLang === "auto" || targetLang === "follow") return content;
 
     const langNames: Record<ResponseLanguage, string> = {
         auto: "",
+        follow: "",
         en: "English",
         ru: "Russian"
     };
@@ -54,7 +55,7 @@ const shouldTranslate = async (): Promise<{ translate: boolean; lang: ResponseLa
 // Apply translation if enabled
 const applyTranslation = async (content: string): Promise<string> => {
     const { translate, lang } = await shouldTranslate();
-    if (translate && lang !== "auto") {
+    if (translate && lang !== "auto" && lang !== "follow") {
         return translateContent(content, lang);
     }
     return content;

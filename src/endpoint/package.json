@@ -1,16 +1,17 @@
 {
-    "name": "iobackend-unified",
+    "name": "crossword-endpoint",
     "version": "1.0.0",
     "description": "Unified IO Backend combining CrossWord backend, dependencies, and main server functionality",
-    "main": "Receive.ts",
+    "main": "server/index.ts",
     "type": "module",
     "engines": {
         "node": ">=22"
     },
     "scripts": {
-        "start": "tsx Receive.ts",
+        "start": "tsx server/index.ts",
         "start:fastify": "tsx server/fastify-server.ts",
         "pack:portable": "PORTABLE_NODE_MODULES_MODE=none node ./scripts/pack-portable.mjs",
+        "pack:portable:with-modules": "PORTABLE_NODE_MODULES_MODE=copy node ./scripts/pack-portable.mjs",
         "pack:portable:ci": "PORTABLE_NODE_MODULES_MODE=ci node ./scripts/pack-portable.mjs",
         "pack:portable:fast": "PORTABLE_NODE_MODULES_MODE=copy node ./scripts/pack-portable.mjs",
         "deno:start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-ffi --unstable server/fastify-server.ts",
@@ -19,7 +20,8 @@
         "test": "npm run test:unit",
         "test:unit": "python -m pytest tests/unit/ -v",
         "test:integration": "echo \"Integration tests not yet configured\" && exit 0",
-        "build": "npm install --include=dev",
+        "install:dev": "npm install --include=dev",
+        "build": "npm run pack:portable",
         "dev": "npm run start"
     },
     "keywords": [

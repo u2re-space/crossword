@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const AHK_PATH = 'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe';
+const DEFAULT_AHK_PATH = 'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe';
+const getAhkPath = () => (process.env.AUTOHOTKEY_PATH || DEFAULT_AHK_PATH).trim();
 
 class AHKService {
     private process: any = null;
@@ -225,12 +226,19 @@ UTF8BytesToString(bytes) {
 
     async start(): Promise<void> {
         if (this.process) return;
+        if (process.platform !== 'win32') {
+            throw new Error('AutoHotKey is only supported on Windows');
+        }
+        const ahkPath = getAhkPath();
+        if (!ahkPath || !fs.existsSync(ahkPath)) {
+            throw new Error(`AutoHotKey executable not found: ${ahkPath || '(empty path)'}`);
+        }
 
         // Создаём скрипт перед запуском
         this.createServiceScript();
 
         return new Promise((resolve, reject) => {
-            this.process = spawn(AHK_PATH, [this.scriptPath], {
+            this.process = spawn(ahkPath, [this.scriptPath], {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 windowsHide: true
             });

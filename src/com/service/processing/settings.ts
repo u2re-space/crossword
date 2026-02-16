@@ -35,7 +35,7 @@ export const getLanguageInstruction = async (): Promise<string> => {
 		const translate = settings?.ai?.translateResults || false;
 
 		let instruction = LANGUAGE_INSTRUCTIONS[lang] || "";
-		if (translate && lang !== "auto") {
+		if (translate && lang !== "auto" && lang !== "follow") {
 			instruction += TRANSLATE_INSTRUCTION;
 		}
 		return instruction;

@@ -2,9 +2,9 @@
 // Keyboard Event Handlers
 // =========================
 
-import { log } from '../../utils/utils';
+import { log, getVkStatusEl } from '../../utils/utils';
 import { sendKeyboardChar } from './message';
-import { getVirtualKeyboardAPI, hasVirtualKeyboardAPI } from './api';
+import { getVirtualKeyboardAPI } from './api';
 import {
     isKeyboardVisible,
     setKeyboardVisible,
@@ -20,6 +20,11 @@ function isConfigOverlayVisible(): boolean {
     const overlay = document.querySelector('.config-overlay') as HTMLElement | null;
     if (!overlay) return false;
     return overlay.style.display === 'flex' || overlay.classList.contains('flex');
+}
+
+function setVkStatus(text: string): void {
+    const vkStatusEl = getVkStatusEl();
+    if (vkStatusEl) vkStatusEl.textContent = text;
 }
 
 // Show keyboard
@@ -38,13 +43,18 @@ export function showKeyboard() {
     const toggleButton = getToggleButton();
 
     if (virtualKeyboardAPI) {
-        toggleButton!.contentEditable = 'true';
+        if (toggleButton) {
+            toggleButton.contentEditable = 'true';
+            toggleButton.setAttribute('virtualkeyboardpolicy', 'manual');
+        }
         restoreButtonIcon();
-        toggleButton?.focus();
+        toggleButton?.focus({ preventScroll: true });
         virtualKeyboardAPI.show();
+        setVkStatus('overlay:on / policy:manual');
     } else {
         setKeyboardVisible(true);
         keyboardElement?.classList?.add?.('visible');
+        setVkStatus('overlay:off');
     }
 
     renderKeyboard(false);
@@ -74,7 +84,12 @@ export function hideKeyboard() {
         if (virtualKeyboardAPI) {
             restoreButtonIcon();
             virtualKeyboardAPI.hide();
+            if (toggleButton) {
+                toggleButton.contentEditable = 'false';
+                toggleButton.removeAttribute('virtualkeyboardpolicy');
+            }
             toggleButton?.blur();
+            setVkStatus('overlay:on / policy:auto');
         }
     } finally {
         isHidingKeyboard = false;
@@ -93,21 +108,24 @@ export function toggleKeyboard() {
 // Setup toggle button click handler
 export function setupToggleButtonHandler() {
     const toggleButton = getToggleButton();
-    const virtualKeyboardAPI = getVirtualKeyboardAPI();
 
     if (!toggleButton) return;
 
     toggleButton.addEventListener('click', (e) => {
-        if (!isRemoteKeyboardEnabled()) return;
+        // Never allow click-through to underlying UI (details/summary, etc.).
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!isRemoteKeyboardEnabled()) {
+            log('Keyboard is available after WS connection');
+            return;
+        }
 
         // Don't allow keyboard toggle if config dialog is open
         if (isConfigOverlayVisible()) {
             return;
         }
 
-        if (virtualKeyboardAPI) {
-            e.preventDefault();
-        }
         toggleKeyboard();
     });
 }
@@ -165,11 +183,12 @@ export function setupVirtualKeyboardAPIHandlers() {
 
     // Helper to check if we should skip (already handled recently)
     const shouldSkipDuplicate = (key: string): boolean => {
+        const normalizedKey = key.includes(':') ? key.split(':').slice(1).join(':') : key;
         const now = Date.now();
-        if (lastHandledKey === key && (now - lastHandledTime) < DEDUP_WINDOW_MS) {
+        if (lastHandledKey === normalizedKey && (now - lastHandledTime) < DEDUP_WINDOW_MS) {
             return true;
         }
-        lastHandledKey = key;
+        lastHandledKey = normalizedKey;
         lastHandledTime = now;
         return false;
     };
@@ -711,7 +730,7 @@ export function setupKeyboardUIHandlers() {
         if (!isRemoteKeyboardEnabled()) return;
 
         const target = e?.target as HTMLElement;
-        if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
+        if (!(target?.matches?.("input,textarea,select,[contenteditable=\"true\"]") ||
               target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {
             hideKeyboard();
         }
@@ -721,7 +740,7 @@ export function setupKeyboardUIHandlers() {
         if (!isRemoteKeyboardEnabled()) return;
 
         const target = e?.target as HTMLElement;
-        if (!(target?.matches?.("input,textarea,select,button,[contenteditable=\"true\"]") ||
+        if (!(target?.matches?.("input,textarea,select,[contenteditable=\"true\"]") ||
               target?.closest?.('.config-overlay, .virtual-keyboard-container, .keyboard-toggle'))) {
             hideKeyboard();
         }

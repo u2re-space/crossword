@@ -2,18 +2,43 @@
 // SpeechRecognition (AI-кнопка)
 // =========================
 
-import { log, aiButton, aiStatusEl, voiceTextEl } from '../utils/utils';
+import { log, getAiButton, getAiStatusEl, getVoiceTextEl } from '../utils/utils';
 import { sendWS, connectWS, isWSConnected } from '../network/websocket';
+import { loadSettings } from '@rs-com/config/Settings';
 
 let recognition: any = null;
 let aiListening = false;
 export let aiModeActive = false;
+let speechLanguage = 'ru-RU';
+
+const normalizeSpeechLanguage = (value: string | undefined): string => {
+    const lang = (value || '').trim();
+    if (!lang) return 'ru-RU';
+    if (lang === 'ru') return 'ru-RU';
+    if (lang === 'en') return 'en-US';
+    if (lang === 'en-GB') return 'en-GB';
+    if (lang === 'en-US') return 'en-US';
+    return lang;
+};
+
+async function loadSpeechLanguagePreference() {
+    try {
+        const settings = await loadSettings();
+        speechLanguage = normalizeSpeechLanguage(settings?.speech?.language);
+        if (recognition) {
+            recognition.lang = speechLanguage;
+        }
+    } catch {
+        speechLanguage = 'ru-RU';
+    }
+}
 
 export const checkIsAiModeActive = () => {
     return aiListening || aiModeActive;
 }
 
 function setAiStatus(text: string) {
+    const aiStatusEl = getAiStatusEl();
     if (aiStatusEl) {
         aiStatusEl.textContent = text;
     }
@@ -26,17 +51,20 @@ function setupSpeechRecognition() {
         return null;
     }
     const recog = new SR();
-    recog.lang = 'ru-RU';
+    recog.lang = speechLanguage;
     recog.interimResults = false;
     recog.maxAlternatives = 1;
     return recog;
 }
 
 export function initSpeechRecognition() {
+    void loadSpeechLanguagePreference();
     recognition = setupSpeechRecognition();
 
     if (recognition) {
         recognition.onstart = () => {
+            const aiButton = getAiButton();
+            const voiceTextEl = getVoiceTextEl();
             aiListening = true;
             aiModeActive = true;
             if (aiButton) {
@@ -50,6 +78,7 @@ export function initSpeechRecognition() {
         };
 
         recognition.onend = () => {
+            const aiButton = getAiButton();
             aiListening = false;
             aiModeActive = false;
             if (aiButton) {
@@ -60,6 +89,7 @@ export function initSpeechRecognition() {
         };
 
         recognition.onerror = (event: any) => {
+            const voiceTextEl = getVoiceTextEl();
             if (voiceTextEl) {
                 voiceTextEl.textContent = 'Ошибка распознавания: ' + event.error;
             }
@@ -67,6 +97,7 @@ export function initSpeechRecognition() {
         };
 
         recognition.onresult = (event: any) => {
+            const voiceTextEl = getVoiceTextEl();
             const transcript = event.results[0][0].transcript;
             const normalized = (transcript || '').trim();
             const words = normalized.split(/\s+/).filter(Boolean);
@@ -115,6 +146,7 @@ export function initSpeechRecognition() {
 // AI-кнопка: pointer
 // =========================
 export function initAiButton() {
+    const aiButton = getAiButton();
     if (!aiButton) return;
 
     let pointerActive = false;

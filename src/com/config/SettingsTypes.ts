@@ -68,7 +68,19 @@ export type CustomInstruction = {
     order?: number;
 };
 
-export type ResponseLanguage = "en" | "ru" | "auto";
+export type ResponseLanguage = "en" | "ru" | "auto" | "follow";
+export type SpeechRecognitionLanguage = "ru" | "en" | "en-GB" | "en-US";
+
+const defaultSpeechLanguage = (): SpeechRecognitionLanguage => {
+    const fallback: SpeechRecognitionLanguage = "en-US";
+    if (typeof navigator === "undefined") return fallback;
+    const normalized = (navigator.language || "").trim();
+    if (normalized === "ru" || normalized.startsWith("ru-")) return "ru";
+    if (normalized === "en-GB") return "en-GB";
+    if (normalized === "en-US") return "en-US";
+    if (normalized === "en" || normalized.startsWith("en-")) return "en";
+    return fallback;
+};
 
 export type AppSettings = {
     core?: {
@@ -125,7 +137,7 @@ export type AppSettings = {
         color?: string;
     };
     speech?: {
-        language?: string;
+        language?: SpeechRecognitionLanguage;
     };
     grid?: {
         columns?: number;
@@ -185,7 +197,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         color: ""
     },
     speech: {
-        language: typeof navigator !== "undefined" ? navigator.language : "en-US"
+        language: defaultSpeechLanguage()
     },
     grid: {
         columns: 4,

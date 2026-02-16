@@ -13,6 +13,58 @@ export type SettingsViewOptions = {
     onTheme?: (theme: AppSettings["appearance"] extends { theme?: infer T } ? (T extends string ? T : "auto") : "auto") => void;
 };
 
+const SUPPORTED_SPEECH_LANGUAGES = ["en", "ru", "en-GB", "en-US"] as const;
+type SupportedSpeechLanguage = (typeof SUPPORTED_SPEECH_LANGUAGES)[number];
+
+const speechLanguageLabel = (lang: SupportedSpeechLanguage): string => {
+    if (lang === "en") return "English (generic)";
+    if (lang === "ru") return "Russian";
+    if (lang === "en-GB") return "English (UK)";
+    return "English (US)";
+};
+
+const normalizeSpeechLanguage = (lang: string | undefined): SupportedSpeechLanguage | null => {
+    const value = (lang || "").trim();
+    if (!value) return null;
+    if (value === "ru" || value.startsWith("ru-")) return "ru";
+    if (value === "en-GB") return "en-GB";
+    if (value === "en-US") return "en-US";
+    if (value === "en" || value.startsWith("en-")) return "en";
+    return null;
+};
+
+const buildSpeechLanguageOptions = (): SupportedSpeechLanguage[] => {
+    const ordered = new Set<SupportedSpeechLanguage>();
+    const navLanguages = typeof navigator !== "undefined"
+        ? [...(navigator.languages || []), navigator.language]
+        : [];
+
+    for (const navLanguage of navLanguages) {
+        const normalized = normalizeSpeechLanguage(navLanguage);
+        if (normalized) ordered.add(normalized);
+    }
+    for (const fallback of SUPPORTED_SPEECH_LANGUAGES) {
+        ordered.add(fallback);
+    }
+    return Array.from(ordered);
+};
+
+const buildResponseLanguageOptions = (): string[] => {
+    const baseline = ["ru", "en"];
+    const ordered = new Set<string>(baseline);
+    const navLanguages = typeof navigator !== "undefined"
+        ? [...(navigator.languages || []), navigator.language]
+        : [];
+
+    for (const navLanguage of navLanguages) {
+        const value = (navLanguage || "").trim();
+        if (!value || value === "en" || value === "ru") continue;
+        ordered.add(value);
+    }
+
+    return Array.from(ordered);
+};
+
 export const createSettingsView = (opts: SettingsViewOptions) => {
     loadAsAdopted(style)
     const root = H`<div class="view-settings">
@@ -74,11 +126,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       </label>
       <label class="field">
         <span>Response language</span>
-        <select class="form-select" data-field="ai.responseLanguage">
-          <option value="auto">Auto-detect</option>
-          <option value="en">English</option>
-          <option value="ru">Russian</option>
-        </select>
+        <select class="form-select" data-field="ai.responseLanguage"></select>
       </label>
       <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ai.translateResults" />
@@ -87,6 +135,10 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ai.generateSvgGraphics" />
         <span>Generate SVG graphics</span>
+      </label>
+      <label class="field">
+        <span>Speech Recognition language</span>
+        <select class="form-select" data-field="speech.language"></select>
       </label>
     </section>
 
@@ -117,11 +169,46 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const responseLanguage = field('[data-field="ai.responseLanguage"]') as HTMLSelectElement | null;
     const translateResults = field('[data-field="ai.translateResults"]') as HTMLInputElement | null;
     const generateSvgGraphics = field('[data-field="ai.generateSvgGraphics"]') as HTMLInputElement | null;
+    const speechLanguage = field('[data-field="speech.language"]') as HTMLSelectElement | null;
     const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
     const fontSize = field('[data-field="appearance.fontSize"]') as HTMLSelectElement | null;
     const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
     const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
     const extTab = root.querySelector('[data-extension-tab]') as HTMLButtonElement | null;
+
+    if (responseLanguage) {
+        responseLanguage.replaceChildren();
+        const autoOption = document.createElement("option");
+        autoOption.value = "auto";
+        autoOption.textContent = "Auto-detect";
+        responseLanguage.append(autoOption);
+
+        const followOption = document.createElement("option");
+        followOption.value = "follow";
+        followOption.textContent = "Follow source/context";
+        responseLanguage.append(followOption);
+
+        for (const lang of buildResponseLanguageOptions()) {
+            const option = document.createElement("option");
+            option.value = lang;
+            option.textContent = lang === "ru"
+                ? "Russian"
+                : lang === "en"
+                    ? "English"
+                    : lang;
+            responseLanguage.append(option);
+        }
+    }
+
+    if (speechLanguage) {
+        speechLanguage.replaceChildren();
+        for (const lang of buildSpeechLanguageOptions()) {
+            const option = document.createElement("option");
+            option.value = lang;
+            option.textContent = speechLanguageLabel(lang);
+            speechLanguage.append(option);
+        }
+    }
 
     const switchSettingsTab = (tab: string) => {
         const nextTab = tab || "ai";
@@ -160,6 +247,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
             if (responseLanguage) responseLanguage.value = (s?.ai?.responseLanguage || "auto") as any;
             if (translateResults) translateResults.checked = Boolean(s?.ai?.translateResults);
             if (generateSvgGraphics) generateSvgGraphics.checked = Boolean(s?.ai?.generateSvgGraphics);
+            if (speechLanguage) speechLanguage.value = (s?.speech?.language || "en-US") as any;
             if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
             if (fontSize) fontSize.value = (s?.appearance?.fontSize || "medium") as any;
             if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
@@ -197,6 +285,9 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
                     responseLanguage: (responseLanguage?.value as any) || "auto",
                     translateResults: Boolean(translateResults?.checked),
                     generateSvgGraphics: Boolean(generateSvgGraphics?.checked),
+                },
+                speech: {
+                    language: (speechLanguage?.value as any) || "en-US",
                 },
                 core: {
                     ntpEnabled: Boolean(ntpEnabled?.checked),

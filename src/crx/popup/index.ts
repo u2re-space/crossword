@@ -29,7 +29,7 @@ const getModule = async () => {
 // ---------------------------------------------------------------------------
 
 const SETTINGS_KEY = "rs-settings";
-type ResponseLanguage = "en" | "ru" | "auto";
+type ResponseLanguage = "en" | "ru" | "auto" | "follow";
 type PopupSettings = { ai?: { apiKey?: string; baseUrl?: string; model?: string; responseLanguage?: ResponseLanguage; translateResults?: boolean; generateSvgGraphics?: boolean }; [k: string]: unknown };
 
 const loadSettings = async (): Promise<PopupSettings> => {

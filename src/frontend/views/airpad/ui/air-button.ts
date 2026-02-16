@@ -2,7 +2,7 @@
 // Air-кнопка: pointer + жесты + AirMove (Trackball/Touchpad)
 // =========================
 
-import { log, airButton, airStatusEl } from '../utils/utils';
+import { log, getAirButton, getAirStatusEl } from '../utils/utils';
 import { sendWS, connectWS } from '../network/websocket';
 import { checkIsAiModeActive } from '../input/speech';
 import { HOLD_DELAY, TAP_THRESHOLD, MOVE_TAP_THRESHOLD, SWIPE_THRESHOLD } from '../config/config';
@@ -91,6 +91,8 @@ export function setLastMotionSentAt(time: number) {
 // ========== State Management ==========
 
 function setAirStatus(state: AirState) {
+    const airStatusEl = getAirStatusEl();
+    const airButton = getAirButton();
     airState = state;
     if (airStatusEl) {
         airStatusEl.textContent = state + (dragActive ? ' [DRAG]' : '');
@@ -520,6 +522,7 @@ export function isMiddleScrollActive(): boolean {
 // ========== Initialization ==========
 
 export function initAirButton() {
+    const airButton = getAirButton();
     if (!airButton) return;
 
     initNeighborButton();

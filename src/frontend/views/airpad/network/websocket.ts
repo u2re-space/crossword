@@ -113,13 +113,13 @@ export function requestClipboardPaste(text: string): Promise<{ ok: boolean; erro
 function updateButtonLabel() {
     if (!btnEl) return;
     if (isConnecting || (socket && socket.connected === false)) {
-        btnEl.textContent = 'Подключение...';
+        btnEl.textContent = 'WS…';
         return;
     }
     if (wsConnected || (socket && socket.connected)) {
-        btnEl.textContent = 'Отключить WS';
+        btnEl.textContent = 'WS ✓';
     } else {
-        btnEl.textContent = 'Подключить WS';
+        btnEl.textContent = 'WS ↔';
     }
 }
 

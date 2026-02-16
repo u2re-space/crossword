@@ -8,6 +8,7 @@ export const getAirStatusEl = () => document.getElementById('airStatus');
 export const getAiStatusEl = () => document.getElementById('aiStatus');
 export const getLogEl = () => document.getElementById('logContainer'); // Changed to logContainer
 export const getVoiceTextEl = () => document.getElementById('voiceText');
+export const getVkStatusEl = () => document.getElementById('vkStatus');
 
 export const getBtnConnect = () => document.getElementById('btnConnect');
 export const getAirButton = () => document.getElementById('airButton');

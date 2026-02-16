@@ -70,9 +70,14 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         ws.on("message", async (data) => {
             let parsed: any;
             try { parsed = JSON.parse(data.toString()); } catch { return; }
-            const { type, payload, targetId, namespace: msgNamespace } = parsed || {};
+            const msg = parsed || {};
+            const type = msg.type || msg.action || "dispatch";
+            const payload = msg.payload ?? msg.data ?? msg.body ?? msg.message ?? msg;
+            const targetId = msg.targetId || msg.target || msg.to || msg.deviceId || msg.target_id;
+            const msgNamespace = msg.namespace || msg.ns;
+            const shouldBroadcast = msg.broadcast === true || targetId === "broadcast";
             // Simple forwarding: if targetId matches a client, relay
-            if (targetId) {
+            if (targetId && !shouldBroadcast) {
                 const target = [...clients.values()].find((c) => c.id === targetId || c.userId === targetId);
                 target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
             } else {

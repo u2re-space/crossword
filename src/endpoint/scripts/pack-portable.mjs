@@ -106,12 +106,46 @@ const writeLaunchers = async () => {
     const runSh = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+if ! command -v node >/dev/null 2>&1; then
+  echo "[portable] Node.js 22+ is required."
+  exit 1
+fi
+if [ ! -f "node_modules/.bin/tsx" ]; then
+  echo "[portable] Installing dependencies (first run)..."
+  npm ci --include=dev || npm install --include=dev
+fi
 npm run start
 `;
 
     const runCmd = `@echo off
+setlocal
 cd /d "%~dp0"
+where node >nul 2>&1
+if errorlevel 1 (
+  echo [portable] Node.js 22+ is required.
+  pause
+  exit /b 1
+)
+if not exist "node_modules\\.bin\\tsx.cmd" (
+  echo [portable] Installing dependencies ^(first run^)^...
+  call npm ci --include=dev
+  if errorlevel 1 (
+    echo [portable] npm ci failed, retrying with npm install...
+    call npm install --include=dev
+    if errorlevel 1 (
+      echo [portable] Failed to install dependencies.
+      pause
+      exit /b 1
+    )
+  )
+)
 call npm run start
+set EXIT_CODE=%ERRORLEVEL%
+if not "%EXIT_CODE%"=="0" (
+  echo [portable] Endpoint exited with code %EXIT_CODE%.
+  pause
+)
+exit /b %EXIT_CODE%
 `;
 
     const installNote = includeNodeModules
@@ -132,6 +166,8 @@ This bundle is generated from apps/CrossWord/src/endpoint.
 ## Notes
 - Node modules mode: ${nodeModulesMode}
 ${installNote}
+- Slim mode auto-installs dependencies on first run via npm.
+- Launcher starts \`npm run start\` (\`server/index.ts\`) to preserve full legacy WS/Socket.IO control stack.
 - If clipboard backend is unavailable on Linux headless environments, endpoint still starts.
 `;
 

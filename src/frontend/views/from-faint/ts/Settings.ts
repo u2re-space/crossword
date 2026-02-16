@@ -742,7 +742,7 @@ export const Settings = async () => {
                 color: readValue("appearance.color")
             },
             speech: {
-                language: readValue("speech.language")
+                language: readValue("speech.language") as any
             },
             grid: {
                 columns: parseInt(readValue("grid.columns"), 10) || DEFAULT_SETTINGS.grid?.columns || 4,

@@ -40,11 +40,6 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
     appContainer.replaceChildren(H`
         <div class="container">
             <header class="hero">
-                <h1>Air Trackpad + AI Assistant</h1>
-                <div class="subtitle">
-                    Подключись к серверу и используй: Air‑кнопку для курсора, AI‑кнопку для голосовых команд.
-                </div>
-
                 <div class="status-container">
                     <div class="status-bar">
                         <div class="status-item">
@@ -59,18 +54,17 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
                             AI:
                             <span id="aiStatus" class="value">idle</span>
                         </div>
+                        <div class="status-item">
+                            VK:
+                            <span id="vkStatus" class="value">overlay:off</span>
+                        </div>
                     </div>
-
-                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnConnect"
-                        class="primary-btn">
-                        WS Connect
-                    </button>
                 </div>
             </header>
 
             <div class="stage">
                 <div class="ai-block">
-                    <div contenteditable="false" virtualkeyboardpolicy="manual" id="aiButton" class="big-button ai">
+                    <div id="aiButton" class="big-button ai" data-no-virtual-keyboard="true">
                         AI
                     </div>
                     <div class="label">Голосовой ассистент (удерживай для записи)</div>
@@ -78,72 +72,82 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
 
                 <div class="air-block">
                     <div class="air-row">
-                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airButton" class="big-button air">
+                    <button type="button" id="airButton" class="big-button air" data-no-virtual-keyboard="true">
                         Air
                     </button>
-                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="airNeighborButton"
+                    <button type="button" id="airNeighborButton" data-no-virtual-keyboard="true"
                         class="neighbor-button">Act</button>
                     </div>
                     <div class="label">Air‑трекбол/курсор и жесты</div>
                 </div>
             </div>
-
             <div id="voiceText" class="voice-line"></div>
-
-            <section class="hint" id="hintPanel" aria-label="Airpad quick help">
-                <details class="hint-group" data-hint-group open>
-                    <summary>Жесты Air-кнопки</summary>
-                    <ul>
-                        <li>Короткий тап — клик.</li>
-                        <li>Удержание &gt; 100ms — режим air-мыши.</li>
-                        <li>Свайп вверх/вниз по кнопке — скролл.</li>
-                        <li>Свайп влево/вправо — жест.</li>
-                    </ul>
-                </details>
-
-                <details class="hint-group" data-hint-group open>
-                    <summary>AI-кнопка</summary>
-                    <ul>
-                        <li>Нажми и держи — идёт распознавание речи.</li>
-                        <li>Отпусти — команда уйдёт как <code>voice_command</code>.</li>
-                    </ul>
-                </details>
-
-                <details class="hint-group" data-hint-group open>
-                    <summary>Виртуальная клавиатура</summary>
-                    <ul>
-                        <li>Открой кнопкой ⌨️ справа внизу.</li>
-                        <li>Поддерживает текст, эмодзи и спецсимволы.</li>
-                        <li>Передаёт ввод в бинарном формате.</li>
-                    </ul>
-                </details>
-            </section>
         </div>
 
-        <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logToggle" class="side-log-toggle"
-            aria-controls="logOverlay" aria-expanded="false">
-            Логи
-        </button>
+        <div class="side-actions-row" role="group" aria-label="Panels">
+            <button type="button" id="hintToggle" class="side-log-toggle side-hint-toggle"
+                aria-controls="hintOverlay" aria-expanded="false">
+                Hints
+            </button>
+            <button type="button" id="logToggle" class="side-log-toggle"
+                aria-controls="logOverlay" aria-expanded="false">
+                Логи
+            </button>
+        </div>
 
         <div id="logOverlay" class="log-overlay" aria-hidden="true">
             <div class="log-panel">
                 <div class="log-overlay-header">
                     <span>Журнал соединения</span>
-                    <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="logClose"
-                        class="ghost-btn" aria-label="Закрыть логи">Закрыть</button>
+                    <button type="button" id="logClose" class="ghost-btn" aria-label="Закрыть логи">Закрыть</button>
                 </div>
                 <div id="logContainer" class="log-container"></div>
             </div>
         </div>
 
+        <div id="hintOverlay" class="log-overlay hint-overlay" aria-hidden="true">
+            <div class="log-panel hint-panel">
+                <div class="log-overlay-header">
+                    <span>Подсказки AirPad</span>
+                    <button type="button" id="hintClose" class="ghost-btn" aria-label="Закрыть подсказки">Закрыть</button>
+                </div>
+                <section class="hint hint-modal-content" id="hintPanel" aria-label="Airpad quick help">
+                    <details class="hint-group" data-hint-group>
+                        <summary>Жесты Air-кнопки</summary>
+                        <ul>
+                            <li>Короткий тап — клик.</li>
+                            <li>Удержание &gt; 100ms — режим air-мыши.</li>
+                            <li>Свайп вверх/вниз по кнопке — скролл.</li>
+                            <li>Свайп влево/вправо — жест.</li>
+                        </ul>
+                    </details>
+
+                    <details class="hint-group" data-hint-group>
+                        <summary>AI-кнопка</summary>
+                        <ul>
+                            <li>Нажми и держи — идёт распознавание речи.</li>
+                            <li>Отпусти — команда уйдёт как <code>voice_command</code>.</li>
+                        </ul>
+                    </details>
+
+                    <details class="hint-group" data-hint-group>
+                        <summary>Виртуальная клавиатура</summary>
+                        <ul>
+                            <li>Открой кнопкой ⌨️ на нижней панели.</li>
+                            <li>Поддерживает текст, эмодзи и спецсимволы.</li>
+                            <li>Передаёт ввод в бинарном формате.</li>
+                        </ul>
+                    </details>
+                </section>
+            </div>
+        </div>
+
         <!-- Bottom clipboard toolbar (phone <-> PC) -->
         <div class="bottom-toolbar" id="clipboardToolbar" aria-label="Clipboard actions">
-            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCut"
-                class="toolbar-btn" aria-label="Cut (Ctrl+X)">✂️</button>
-            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnCopy"
-                class="toolbar-btn" aria-label="Copy (Ctrl+C)">📋</button>
-            <button contenteditable="false" virtualkeyboardpolicy="manual" type="button" id="btnPaste"
-                class="toolbar-btn" aria-label="Paste (Ctrl+V)">📥</button>
+            <button type="button" id="btnCut" class="toolbar-btn" aria-label="Cut (Ctrl+X)">✂️</button>
+            <button type="button" id="btnCopy" class="toolbar-btn" aria-label="Copy (Ctrl+C)">📋</button>
+            <button type="button" id="btnPaste" class="toolbar-btn" aria-label="Paste (Ctrl+V)">📥</button>
+            <button type="button" id="btnConnect" class="toolbar-btn connect-fab connect-fab--ws">WS ↔</button>
         </div>
         <div id="clipboardPreview" class="clipboard-preview" aria-live="polite"></div>
     `);
@@ -216,6 +220,41 @@ function initLogOverlay() {
     });
     }
 
+function initHintOverlay() {
+    const overlay = document.getElementById('hintOverlay');
+    const toggle = document.getElementById('hintToggle');
+    const close = document.getElementById('hintClose');
+
+    if (!overlay || !toggle) {
+        return;
+    }
+
+    const openOverlay = () => {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        toggle.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeOverlay = () => {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
+    };
+
+    toggle.addEventListener('click', openOverlay);
+    close?.addEventListener('click', closeOverlay);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeOverlay();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) {
+            closeOverlay();
+        }
+    });
+}
+
     function initAdaptiveHintPanel() {
         const hintRoot = document.getElementById('hintPanel');
         if (!hintRoot) return;
@@ -226,8 +265,8 @@ function initLogOverlay() {
         const compactMedia = globalThis.matchMedia('(max-width: 980px), (max-height: 860px)');
         const applyHintDensity = () => {
             const compact = compactMedia.matches;
-            groups.forEach((group, index) => {
-                group.open = compact ? index === 0 : true;
+            groups.forEach((group) => {
+                if (compact) { group.open = false; }
             });
         };
 
@@ -263,6 +302,7 @@ function initLogOverlay() {
     log('Движение мыши основано только на Gyroscope API (повороты телефона).');
 
     initLogOverlay();
+    initHintOverlay();
     initWebSocket(getBtnConnect());
     initSpeechRecognition();
     initAiButton();

@@ -67,6 +67,7 @@ export const generateInstructionId = (): string => {
 
 export const LANGUAGE_INSTRUCTIONS: Record<ResponseLanguage, string> = {
 	auto: "",
+	follow: "\n\nIMPORTANT: Follow the language of the source/context data. Preserve the original language unless explicitly asked to translate or change language.",
 	en: "\n\nIMPORTANT: Respond in English. All explanations, answers, and comments must be in English.",
 	ru: "\n\nВАЖНО: Отвечай на русском языке. Все объяснения, ответы и комментарии должны быть на русском языке.",
 };

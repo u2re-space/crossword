@@ -43,6 +43,22 @@ const processHooks = (hooks: MessageHook[], msg: any, socket: Socket): any | nul
     return processed;
 };
 
+const normalizeControlMessage = (msg: any, sourceId: string): any => {
+    const source = msg?.from || msg?.sender || sourceId;
+    const target = msg?.to || msg?.target || msg?.targetId || msg?.deviceId || msg?.target_id || "broadcast";
+    const mode = msg?.mode || msg?.protocolMode || "blind";
+    const type = msg?.type || msg?.action || "dispatch";
+    const payload = msg?.payload ?? msg?.data ?? msg?.body ?? msg;
+    return {
+        ...msg,
+        from: source,
+        to: target,
+        mode,
+        type,
+        payload
+    };
+};
+
 export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?: number }): SocketIoBridge => {
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
     const io = new SocketIOServer(app.server, buildSocketIoOptions(app.log as any));
@@ -69,13 +85,14 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
     setupAirpadClipboardBroadcast(io as any);
 
     const routeMessage = (sourceSocket: Socket, msg: any): void => {
-        const processed = processHooks(messageHooks, msg, sourceSocket);
+        const normalized = normalizeControlMessage(msg, sourceSocket.id);
+        const processed = processHooks(messageHooks, normalized, sourceSocket);
         if (processed === null) {
             console.log(`[Router] Message skipped by hook`);
             return;
         }
 
-        if (processed.to === "broadcast") {
+        if (processed.to === "broadcast" || processed.broadcast === true) {
             sourceSocket.broadcast.emit("message", processed);
             logMsg("OUT(broadcast)", processed);
             return;
@@ -133,45 +150,44 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
         registerAirpadSocketHandlers(socket, {
             logger: app.log,
             onObjectMessage: async (msg) => {
-                msg.mode = msg.mode || "blind";
-                msg.from = msg.from || deviceId || socket.id;
+                const normalized = normalizeControlMessage(msg, deviceId || socket.id);
 
-                logMsg("IN ", msg);
+                logMsg("IN ", normalized);
 
                 try {
-                    if (msg.mode === "blind") {
-                        const ok = verifyWithoutDecrypt(msg.payload);
+                    if (normalized.mode === "blind") {
+                        const ok = verifyWithoutDecrypt(normalized.payload);
                         if (!ok) {
-                            console.warn(`[Server] Signature verification failed (blind mode) for from=${msg.from}`);
+                            console.warn(`[Server] Signature verification failed (blind mode) for from=${normalized.from}`);
                             socket.emit("error", { message: "Signature verification failed" });
                             return;
                         }
-                        routeMessage(socket, msg);
+                        routeMessage(socket, normalized);
                         return;
                     }
 
-                    if (msg.mode === "inspect") {
-                        const { from, inner } = parsePayload(msg.payload);
+                    if (normalized.mode === "inspect") {
+                        const { from, inner } = parsePayload(normalized.payload);
                         console.log(
-                            `[Server] INSPECT from=${from} to=${msg.to} type=${msg.type} action=${msg.action} data=${JSON.stringify(inner)}`
+                            `[Server] INSPECT from=${from} to=${normalized.to} type=${normalized.type} action=${normalized.action} data=${JSON.stringify(inner)}`
                         );
 
-                        if (msg.type === "clip") {
+                        if (normalized.type === "clip") {
                             clipHistory.push({
                                 from,
-                                to: msg.to,
+                                to: normalized.to,
                                 ts: inner?.ts || Date.now(),
                                 data: inner?.data ?? null
                             });
                             if (clipHistory.length > maxHistory) clipHistory.shift();
                         }
 
-                        routeMessage(socket, msg);
+                        routeMessage(socket, normalized);
                         return;
                     }
 
-                    console.warn(`[Server] Unknown mode: ${msg.mode}`);
-                    socket.emit("error", { message: `Unknown mode: ${msg.mode}` });
+                    console.warn(`[Server] Unknown mode: ${normalized.mode}`);
+                    socket.emit("error", { message: `Unknown mode: ${normalized.mode}` });
                 } catch (error: any) {
                     console.error(`[Server] Error handling message:`, error);
                     socket.emit("error", { message: `Error processing message: ${error?.message || String(error)}` });

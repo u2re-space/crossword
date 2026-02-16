@@ -2,7 +2,7 @@
 // Virtual Keyboard Component
 // =========================
 
-import { log } from '../utils/utils';
+import { log, getVkStatusEl } from '../utils/utils';
 import { initVirtualKeyboardAPI, hasVirtualKeyboardAPI } from './keyboard/api';
 import {
     setKeyboardElement,
@@ -21,8 +21,17 @@ import {
 function updateToggleButtonEnabledState(enabled: boolean) {
     const toggleButton = getToggleButton();
     if (!(toggleButton instanceof HTMLButtonElement)) return;
-    toggleButton.disabled = !enabled;
+    // Keep pointer hit-testing active even when remote keyboard is unavailable.
+    // Using native "disabled" can cause click-through on some mobile browsers.
+    toggleButton.disabled = false;
     toggleButton.setAttribute('aria-disabled', String(!enabled));
+    toggleButton.classList.toggle('is-disabled', !enabled);
+
+    const vkStatusEl = getVkStatusEl();
+    if (vkStatusEl) {
+        const base = (vkStatusEl.textContent || 'overlay:off').replace(/\s*\/\s*remote:(on|off)\s*$/i, '');
+        vkStatusEl.textContent = `${base} / remote:${enabled ? 'on' : 'off'}`;
+    }
 }
 
 export function setRemoteKeyboardEnabled(enabled: boolean) {
@@ -37,6 +46,10 @@ export function initVirtualKeyboard() {
     // Initialize VirtualKeyboard API if available
     initVirtualKeyboardAPI();
     const hasAPI = hasVirtualKeyboardAPI();
+    const vkStatusEl = getVkStatusEl();
+    if (vkStatusEl) {
+        vkStatusEl.textContent = hasAPI ? 'overlay:on / policy:auto' : 'overlay:off';
+    }
 
     // Mount keyboard inside airpad root so it inherits airpad styles/tokens.
     const container = document.querySelector('.view-airpad') ?? document.querySelector('#app') ?? document.body;
@@ -60,13 +73,14 @@ export function initVirtualKeyboard() {
     setKeyboardElement(keyboardElement);
 
     // Create toggle button in corner
-    let toggleButton = container.querySelector('.keyboard-toggle') as HTMLElement | null;
+    const toggleContainer = ((container.querySelector('.bottom-toolbar') ?? container) as HTMLElement);
+    let toggleButton = toggleContainer.querySelector('.keyboard-toggle') as HTMLElement | null;
     if (!toggleButton) {
         const toggleHTML = hasAPI
-            ? '<button type="button" tabindex="-1" contenteditable="true" virtualkeyboardpolicy="manual" class="keyboard-toggle keyboard-toggle-editable" aria-label="Toggle keyboard">⌨️</button>'
+            ? '<button type="button" tabindex="-1" contenteditable="false" virtualkeyboardpolicy="manual" class="keyboard-toggle keyboard-toggle-editable" aria-label="Toggle keyboard">⌨️</button>'
             : '<button type="button" tabindex="-1" class="keyboard-toggle" aria-label="Toggle keyboard">⌨️</button>';
-        container.insertAdjacentHTML('beforeend', toggleHTML);
-        toggleButton = container.querySelector('.keyboard-toggle') as HTMLElement | null;
+        toggleContainer.insertAdjacentHTML('beforeend', toggleHTML);
+        toggleButton = toggleContainer.querySelector('.keyboard-toggle') as HTMLElement | null;
     }
 
     if (!toggleButton) {
@@ -76,6 +90,11 @@ export function initVirtualKeyboard() {
 
     toggleButton.autofocus = false;
     toggleButton.removeAttribute('autofocus');
+    if (toggleButton instanceof HTMLElement) {
+        toggleButton.setAttribute('autocapitalize', 'off');
+        toggleButton.setAttribute('autocorrect', 'off');
+        toggleButton.setAttribute('spellcheck', 'false');
+    }
     setToggleButton(toggleButton);
     setRemoteKeyboardEnabled(false);
 

@@ -10,6 +10,7 @@
         block-size: 100%;
         background-color: var(--view-bg, var(--color-surface, #0a0a0a));
         color: var(--view-fg, var(--color-on-surface, #ffffff));
+        --action-rail-edge: max(0.75rem, env(safe-area-inset-bottom));
     }
 
     .view-airpad__content {
@@ -20,6 +21,15 @@
         // Floating controls/overlays are siblings and must keep intrinsic size.
         & > .container {
             block-size: 100%;
+        }
+    }
+
+    // Shared behavior for the unified bottom action rail.
+    .bottom-toolbar {
+        touch-action: pan-x;
+
+        button {
+            -webkit-tap-highlight-color: transparent;
         }
     }
 
