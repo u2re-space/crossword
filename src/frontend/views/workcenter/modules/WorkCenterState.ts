@@ -42,6 +42,7 @@ export interface WorkCenterDependencies {
     getSpeechPrompt: () => Promise<string | null>;
     showMessage: (message: string) => void;
     render: () => void;
+    navigate?: (viewId: string) => Promise<void> | void; // Optional shell navigation API
     onFilesChanged?: () => void; // Callback when files are added/removed
 }
 

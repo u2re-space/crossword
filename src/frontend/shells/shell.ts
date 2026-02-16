@@ -256,6 +256,8 @@ export abstract class ShellBase implements Shell {
             return;
         }
 
+        this.contentContainer.setAttribute("data-current-view", this.currentView.value);
+
         // Detach previous view from DOM and keep it cached in loadedViews.
         const previousId = this.navigationState.previousView;
         if (previousId && previousId !== this.currentView.value && this.loadedViews.has(previousId)) {

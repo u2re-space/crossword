@@ -138,6 +138,33 @@
     }
 }
 
+@layer shell {
+    [data-shell-content] {
+        // Always respect hidden state in shell content.
+        & > [hidden] {
+            display: none !important;
+        }
+
+        // Once a current view is selected, hide non-view siblings (loaders/placeholders).
+        &[data-current-view] > :not([data-view]) {
+            display: none !important;
+        }
+
+        // Keep only the selected view visible if multiple data-view nodes exist.
+        &[data-current-view="home"] > [data-view]:not([data-view="home"]),
+        &[data-current-view="viewer"] > [data-view]:not([data-view="viewer"]),
+        &[data-current-view="editor"] > [data-view]:not([data-view="editor"]),
+        &[data-current-view="workcenter"] > [data-view]:not([data-view="workcenter"]),
+        &[data-current-view="explorer"] > [data-view]:not([data-view="explorer"]),
+        &[data-current-view="airpad"] > [data-view]:not([data-view="airpad"]),
+        &[data-current-view="settings"] > [data-view]:not([data-view="settings"]),
+        &[data-current-view="history"] > [data-view]:not([data-view="history"]),
+        &[data-current-view="print"] > [data-view]:not([data-view="print"]) {
+            display: none !important;
+        }
+    }
+}
+
 @layer components {
     .custom-instructions-editor,
     .custom-instructions-panel {

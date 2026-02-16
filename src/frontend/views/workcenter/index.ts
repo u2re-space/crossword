@@ -52,6 +52,7 @@ export class WorkCenterView implements View {
             getSpeechPrompt: async () => null,
             showMessage: (message: string) => this.showMessage(message),
             render: () => this.requestRender(),
+            navigate: (viewId: string) => this.shellContext?.navigate(viewId as Parameters<ShellContext["navigate"]>[0]),
             onFilesChanged: () => this.emitFilesChanged()
         };
     }

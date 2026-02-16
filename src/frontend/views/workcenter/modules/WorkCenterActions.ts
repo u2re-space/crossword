@@ -260,9 +260,24 @@ export class WorkCenterActions {
                     format: state.outputFormat
                 }
             } as any);
+
+            await this.navigateToViewer();
         } catch (error) {
             console.error('Failed to open output in viewer:', error);
             this.deps.showMessage('Failed to open output in viewer');
+        }
+    }
+
+    private async navigateToViewer(): Promise<void> {
+        if (this.deps.navigate) {
+            await this.deps.navigate('viewer');
+            return;
+        }
+
+        // Backward compatibility for legacy state-based navigation.
+        if (this.deps?.state) {
+            this.deps.state.view = 'markdown-viewer';
+            this.deps.render?.();
         }
     }
 
