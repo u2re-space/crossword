@@ -84,14 +84,33 @@
         flex-basis: fit-content;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
         gap: var(--space-xs);
+        flex-wrap: nowrap;
     }
 
     .input-tab-actions,
     .results-tab-actions {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: var(--space-xs);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex-shrink: 1;
+        flex-grow: 0;
+
+        & > * {
+            min-inline-size: 0;
+            overflow: hidden;
+            max-inline-size: stretch;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            inline-size: fit-content;
+            flex-shrink: 1;
+            flex-grow: 0;
+        }
     }
 
     .tab-btn {

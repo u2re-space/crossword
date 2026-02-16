@@ -806,6 +806,9 @@
             flex-grow: 1;
             flex-shrink: 1;
             flex-basis: fit-content;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .prompt-actions {
