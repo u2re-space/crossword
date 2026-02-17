@@ -74,6 +74,8 @@ export const ensureAppCss = () => {
 
 let _swRegistration: ServiceWorkerRegistration | null = null;
 let _swInitPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+let _swControllerReloadBound = false;
+let _swReloadPending = false;
 let _swOptions: { immediate?: boolean, onRegistered?: () => void, onRegisterError?: (error: any) => void } = {
     immediate: false,
     onRegistered: () => {
@@ -82,6 +84,25 @@ let _swOptions: { immediate?: boolean, onRegistered?: () => void, onRegisterErro
     onRegisterError: (error) => {
         console.error('[PWA] Service worker registration failed:', error);
     }
+};
+
+const bindControllerChangeReload = () => {
+    if (_swControllerReloadBound || typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+    _swControllerReloadBound = true;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_swReloadPending) return;
+        _swReloadPending = true;
+        console.log('[PWA] Service worker controller changed, reloading app');
+        globalThis.location.reload();
+    });
+};
+
+const activateWaitingWorker = (registration: ServiceWorkerRegistration, reason: 'initial' | 'updatefound') => {
+    const waiting = registration?.waiting;
+    if (!waiting) return false;
+    console.log(`[PWA] Activating waiting service worker (${reason})`);
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+    return true;
 };
 
 /**
@@ -110,15 +131,16 @@ export const initServiceWorker = async (_options: { immediate?: boolean, onRegis
 
             _swRegistration = registration;
             const viteEnv = (import.meta as any)?.env;
+            bindControllerChangeReload();
 
             // In dev, aggressively activate updated SW to avoid stale Workbox routes breaking Vite module fetches.
             // This prevents "Failed to fetch dynamically imported module: /src/..." when an old SW is still controlling the page.
             try {
-                if (viteEnv?.DEV && registration.waiting) {
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                if (registration.waiting) {
+                    activateWaitingWorker(registration, 'initial');
                 }
             } catch (e) {
-                console.warn('[PWA] Failed to auto-skip-waiting in dev:', e);
+                console.warn('[PWA] Failed to auto-activate waiting service worker:', e);
             }
 
             // Handle updates
@@ -130,11 +152,18 @@ export const initServiceWorker = async (_options: { immediate?: boolean, onRegis
                             console.log('[PWA] New service worker available');
                             showToast({ message: 'App update available', kind: 'info' });
                             try {
-                                if (viteEnv?.DEV && registration.waiting) {
-                                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                                if (!activateWaitingWorker(registration, 'updatefound') && viteEnv?.DEV) {
+                                    // In dev, try one more time after a micro-delay while waiting worker settles.
+                                    globalThis.setTimeout(() => {
+                                        try {
+                                            activateWaitingWorker(registration, 'updatefound');
+                                        } catch (retryError) {
+                                            console.warn('[PWA] Delayed SW activation failed:', retryError);
+                                        }
+                                    }, 0);
                                 }
                             } catch (e) {
-                                console.warn('[PWA] Failed to auto-skip-waiting on updatefound:', e);
+                                console.warn('[PWA] Failed to auto-activate waiting service worker on updatefound:', e);
                             }
                         }
                     });

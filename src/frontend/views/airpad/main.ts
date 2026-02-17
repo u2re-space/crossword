@@ -17,6 +17,9 @@ import { initClipboardToolbar } from './ui/clipboard-toolbar';
 import { showConfigUI } from './ui/config-ui';
 import { loadAsAdopted } from 'fest/dom';
 import { H } from 'fest/lure';
+import { resetMotionAccum } from './config/motion-state';
+import { resetMotionBaseline } from './ui/air-button';
+import { resetRelativeOrientationRuntimeState } from './input/sensor/relative-orientation';
 
 let unsubscribeWsKeyboardSync: (() => void) | null = null;
 
@@ -93,6 +96,10 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
                 aria-controls="logOverlay" aria-expanded="false">
                 Логи
             </button>
+            <button type="button" id="btnMotionReset" class="side-log-toggle side-fix-toggle"
+                aria-label="Reset motion calibration">
+                Fix
+            </button>
         </div>
 
         <div id="logOverlay" class="log-overlay" aria-hidden="true">
@@ -161,6 +168,13 @@ export default async function mountAirpad(mountElement: HTMLElement): Promise<vo
 // =========================
 
 async function initAirpadApp(): Promise<void> {
+    function resetMotionRuntime() {
+        resetMotionAccum();
+        resetMotionBaseline();
+        resetRelativeOrientationRuntimeState();
+        log('Motion runtime state reset (recalibrated).');
+    }
+
     function initConfigButton() {
     const existingConfigButton = document.getElementById('btnConfig');
     if (existingConfigButton) {
@@ -180,6 +194,13 @@ async function initAirpadApp(): Promise<void> {
     if (bottomToolbar) {
         bottomToolbar.appendChild(configButton);
     }
+}
+
+    function initMotionResetButton() {
+    const resetButton = document.getElementById('btnMotionReset') as HTMLButtonElement | null;
+    if (!resetButton) return;
+    resetButton.title = 'Reset motion calibration';
+    resetButton.onclick = () => resetMotionRuntime();
 }
 
 // =========================
@@ -314,6 +335,7 @@ function initHintOverlay() {
     });
     initClipboardToolbar();
     initConfigButton();
+    initMotionResetButton();
     initAdaptiveHintPanel();
     // Включаем RelativeOrientationSensor как основной источник
     initRelativeOrientation();

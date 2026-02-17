@@ -42,6 +42,12 @@ let lastQuat: [number, number, number, number] | null = null;
 let smoothedDelta: Vector3 = vec3Zero(); // smoothed small-angle delta
 let dynamicMaxStepPx: number = REL_ORIENT_MAX_STEP; // adaptive clamp radius in pixels/tick
 
+export function resetRelativeOrientationRuntimeState() {
+    lastQuat = null;
+    smoothedDelta = vec3Zero();
+    dynamicMaxStepPx = REL_ORIENT_MAX_STEP;
+}
+
 // Quaternion helpers
 type Quat = [number, number, number, number];
 

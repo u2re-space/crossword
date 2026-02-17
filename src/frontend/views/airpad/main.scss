@@ -145,6 +145,51 @@
         --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
         --motion-easing-decelerate: cubic-bezier(0, 0, 0, 1);
         --motion-easing-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+        /* Side actions (Hints / Logs / Fix) */
+        --side-action-bg: #2f3940;
+        --side-action-fg: #f2f6fa;
+        --side-action-border: #6f8694;
+        --side-action-shadow: 0 2px 4px rgba(0, 0, 0, 0.32), 0 8px 14px rgba(0, 0, 0, 0.24);
+        --side-action-hover-bg: #3a4852;
+        --side-action-active-bg: #26323a;
+
+        --side-action-hint-bg: #2f536e;
+        --side-action-hint-fg: #e6f2ff;
+        --side-action-hint-border: #6ca3c9;
+        --side-action-hint-hover-bg: #3b6482;
+        --side-action-hint-active-bg: #25485f;
+
+        --side-action-fix-bg: #6b4b1b;
+        --side-action-fix-fg: #fff0cf;
+        --side-action-fix-border: #f1b654;
+        --side-action-fix-hover-bg: #7c5821;
+        --side-action-fix-active-bg: #5b3e12;
+    }
+}
+
+@layer view.airpad {
+    @media (prefers-color-scheme: light) {
+        .view-airpad {
+            --side-action-bg: color-mix(in srgb, #ffffff, var(--surface-container-highest) 14%);
+            --side-action-fg: #21303a;
+            --side-action-border: color-mix(in srgb, #8fa2af, transparent 24%);
+            --side-action-shadow: 0 1px 2px rgba(10, 31, 48, 0.16), 0 4px 10px rgba(10, 31, 48, 0.14);
+            --side-action-hover-bg: color-mix(in srgb, #ffffff, var(--secondary-container) 16%);
+            --side-action-active-bg: color-mix(in srgb, #ffffff, var(--secondary-container) 26%);
+
+            --side-action-hint-bg: color-mix(in srgb, #ffffff, var(--secondary-container) 38%);
+            --side-action-hint-fg: #1f2c40;
+            --side-action-hint-border: color-mix(in srgb, var(--secondary), transparent 56%);
+            --side-action-hint-hover-bg: color-mix(in srgb, #ffffff, var(--secondary-container) 54%);
+            --side-action-hint-active-bg: color-mix(in srgb, #ffffff, var(--secondary-container) 68%);
+
+            --side-action-fix-bg: #ffe5b5;
+            --side-action-fix-fg: #5b3600;
+            --side-action-fix-border: #c88b1a;
+            --side-action-fix-hover-bg: #ffdd9e;
+            --side-action-fix-active-bg: #ffd187;
+        }
     }
 }
 
@@ -1530,20 +1575,68 @@
         transform: none;
         writing-mode: horizontal-tb;
         white-space: nowrap;
-        inline-size: auto;
+        inline-size: 100%;
+        min-inline-size: 5.25rem;
         block-size: auto;
         min-block-size: 2.3rem;
         line-height: 1;
         border-radius: 0.95rem;
         padding: 0.55rem 0.9rem;
         order: 1;
+        background: var(--side-action-bg);
+        color: var(--side-action-fg);
+        border: 1px solid var(--side-action-border);
+        box-shadow: var(--side-action-shadow);
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: 0.01em;
+        text-align: center;
+        transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
+
+        &:hover {
+            background: var(--side-action-hover-bg);
+            border-color: color-mix(in srgb, var(--side-action-border), var(--side-action-fg) 22%);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.34), 0 10px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        &:focus-visible {
+            outline: 2px solid color-mix(in srgb, var(--primary), white 20%);
+            outline-offset: 1px;
+        }
+
+        &:active {
+            background: var(--side-action-active-bg);
+            transform: translateY(1px);
+        }
     }
 
     .view-airpad .side-actions-row .side-hint-toggle {
-        background: color-mix(in srgb, var(--secondary-container), var(--surface-container-high) 62%);
-        color: var(--on-secondary-container);
-        border-color: color-mix(in srgb, var(--secondary), transparent 45%);
+        background: var(--side-action-hint-bg);
+        color: var(--side-action-hint-fg);
+        border-color: var(--side-action-hint-border);
         order: 2;
+
+        &:hover {
+            background: var(--side-action-hint-hover-bg, var(--side-action-hint-bg));
+        }
+
+        &:active {
+            background: var(--side-action-hint-active-bg, var(--side-action-active-bg));
+        }
+    }
+
+    .view-airpad .side-actions-row .side-fix-toggle {
+        background: var(--side-action-fix-bg);
+        color: var(--side-action-fix-fg);
+        border-color: var(--side-action-fix-border);
+        order: 3;
+
+        &:hover {
+            background: var(--side-action-fix-hover-bg, var(--side-action-fix-bg));
+        }
+
+        &:active {
+            background: var(--side-action-fix-active-bg, var(--side-action-active-bg));
+        }
     }
 
     .view-airpad .keyboard-toggle {
