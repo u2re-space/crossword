@@ -214,7 +214,7 @@
     .bottom-toolbar {
         position: fixed;
         inset-inline-start: var(--space-4);
-        inset-block-end: var(--space-4);
+        inset-block-end: max(var(--space-4), env(safe-area-inset-bottom, 0px), env(keyboard-inset-height, 0px));
         display: flex;
         gap: var(--space-3);
         align-items: center;
@@ -1344,7 +1344,7 @@
 
         .bottom-toolbar {
             inset-inline-start: 1rem;
-            inset-block-end: 1rem;
+            inset-block-end: max(1rem, env(safe-area-inset-bottom, 0px), env(keyboard-inset-height, 0px));
             gap: 0.5rem;
         }
 
@@ -1406,7 +1406,7 @@
     .view-airpad .container {
         min-block-size: 100%;
         max-inline-size: min(1080px, 100%);
-        padding: clamp(0.55rem, 1.25vh, 1.05rem) clamp(0.75rem, 1.8vw, 1.25rem) calc(var(--action-rail-height) + var(--action-rail-bottom) + var(--space-4));
+        padding: clamp(0.55rem, 1.25vh, 1.05rem) clamp(0.75rem, 1.8vw, 1.25rem) calc(var(--action-rail-height) + var(--space-4));
         margin-inline: auto;
     }
 
@@ -1796,12 +1796,12 @@
         .view-airpad {
             --action-rail-btn-size: 2.8rem;
             --action-rail-height: 3.55rem;
-            --action-rail-bottom: max(0.75rem, env(safe-area-inset-bottom));
+            --action-rail-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px), env(keyboard-inset-height, 0px));
             --action-rail-edge: 0.3rem;
         }
 
         .view-airpad .container {
-            padding: 0.5rem 0.6rem calc(var(--action-rail-height) + var(--action-rail-bottom) + 0.6rem);
+            padding: 0.5rem 0.6rem calc(var(--action-rail-height) + 0.6rem);
         }
 
         .view-airpad .hero h1 {
