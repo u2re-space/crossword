@@ -335,10 +335,10 @@ function initHintOverlay() {
     });
     initClipboardToolbar();
     initConfigButton();
-    initMotionResetButton();
     initAdaptiveHintPanel();
     // Включаем RelativeOrientationSensor как основной источник
     initRelativeOrientation();
+    initMotionResetButton();
     // Остальные можно включить при необходимости
     //initGravitySensor();
     //initGyro();
