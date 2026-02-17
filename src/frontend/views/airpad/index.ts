@@ -28,6 +28,7 @@ export class AirpadView implements View {
     private shellContext?: ShellContext;
     private element: HTMLElement | null = null;
     private initialized = false;
+    private initPromise: Promise<void> | null = null;
     
     private _sheet: CSSStyleSheet | null = null;
     private _orientationLocked = false;
@@ -87,36 +88,43 @@ export class AirpadView implements View {
 
     private async initAirpad(): Promise<void> {
         if (this.initialized) return;
+        if (this.initPromise) return this.initPromise;
 
-        const content = this.element?.querySelector("[data-airpad-content]");
-        if (!content) return;
+        this.initPromise = (async () => {
+            const content = this.element?.querySelector("[data-airpad-content]");
+            if (!content) return;
 
-        try {
-            // Dynamic import of airpad main
-            const { default: mountAirpad } = await import("./main");
-            
-            // Clear loading state
-            content.innerHTML = "";
-            
-            // Mount airpad
-            await mountAirpad(content as HTMLElement);
-            await this.lockOrientationForAirpad()?.catch?.((error) => { console.error("[Airpad] Failed to lock orientation:", error); });
-            
-            this.initialized = true;
-        } catch (error) {
-            console.error("[Airpad] Failed to initialize:", error);
-            content.innerHTML = `
+            try {
+                // Dynamic import of airpad main
+                const { default: mountAirpad } = await import("./main");
+
+                // Clear loading state
+                content.innerHTML = "";
+
+                // Mount airpad
+                await mountAirpad(content as HTMLElement);
+                await this.lockOrientationForAirpad()?.catch?.((error) => { console.error("[Airpad] Failed to lock orientation:", error); });
+
+                this.initialized = true;
+            } catch (error) {
+                console.error("[Airpad] Failed to initialize:", error);
+                content.innerHTML = `
                 <div class="view-airpad__error">
                     <p>Failed to load Airpad</p>
                     <p class="view-airpad__error-detail">${String(error)}</p>
                     <button type="button" data-action="retry">Try Again</button>
                 </div>
             `;
-            content.querySelector("[data-action=retry]")?.addEventListener("click", () => {
-                this.initialized = false;
-                this.initAirpad();
-            });
-        }
+                content.querySelector("[data-action=retry]")?.addEventListener("click", () => {
+                    this.initialized = false;
+                    this.initAirpad();
+                });
+            } finally {
+                this.initPromise = null;
+            }
+        })();
+
+        return this.initPromise;
     }
 
     private cleanup(): void {

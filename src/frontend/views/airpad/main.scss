@@ -1354,7 +1354,7 @@
         color: var(--on-surface);
         --action-rail-btn-size: 3.25rem;
         --action-rail-height: 4.15rem;
-        --action-rail-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+        --action-rail-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px), env(keyboard-inset-height, 0px));
         --action-rail-edge: clamp(0.35rem, 1.1vw, 0.7rem);
     }
 

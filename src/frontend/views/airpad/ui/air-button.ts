@@ -34,6 +34,9 @@ let pendingDragOnHold = false;    // Флаг: если hold — активир�
 
 const DOUBLE_TAP_WINDOW = 300;    // Окно между tap и следующим down для drag
 const DRAG_HOLD_DELAY = 150;      // Задержка hold для drag (короче обычного HOLD_DELAY)
+const TAP_MOVE_FORGIVENESS = Math.max(MOVE_TAP_THRESHOLD, 12);
+const AIR_MOVE_TAP_GRACE_MS = TAP_THRESHOLD + 140;
+const AIR_MOVE_TAP_GRACE_MOVE = Math.max(MOVE_TAP_THRESHOLD, 16);
 
 // ========== Getters / Setters ==========
 
@@ -225,9 +228,21 @@ function airOnUp(e: PointerEvent | null) {
 
     const now = Date.now();
     const dt = now - airDownTime;
+    const pointerUpX = e?.clientX ?? airDownPos?.x ?? 0;
+    const pointerUpY = e?.clientY ?? airDownPos?.y ?? 0;
 
     // Определяем был ли это "чистый" tap
     let wasCleanTap = false;
+    let shouldClickFromAirMoveGrace = false;
+
+    if (airState === 'AIR_MOVE' && !dragActive && airDownPos) {
+        const dx = pointerUpX - airDownPos.x;
+        const dy = pointerUpY - airDownPos.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Если AIR_MOVE включился из-за слегка длинного тапа, всё равно считаем это кликом.
+        shouldClickFromAirMoveGrace = dt < AIR_MOVE_TAP_GRACE_MS && dist < AIR_MOVE_TAP_GRACE_MOVE;
+    }
 
     // Выход из режима AIR_MOVE
     if (airState === 'AIR_MOVE') {
@@ -242,13 +257,11 @@ function airOnUp(e: PointerEvent | null) {
     // Обработка тапа (короткое нажатие без движения = клик)
     if (airState === 'WAIT_TAP_OR_HOLD') {
         if (airDownPos && dt < TAP_THRESHOLD) {
-            const clientX = e ? e.clientX : airDownPos.x;
-            const clientY = e ? e.clientY : airDownPos.y;
-            const dx = clientX - airDownPos.x;
-            const dy = clientY - airDownPos.y;
+            const dx = pointerUpX - airDownPos.x;
+            const dy = pointerUpY - airDownPos.y;
             const dist = Math.hypot(dx, dy);
 
-            if (dist < MOVE_TAP_THRESHOLD) {
+            if (dist < TAP_MOVE_FORGIVENESS) {
                 // Это чистый tap!
                 wasCleanTap = true;
 
@@ -265,6 +278,12 @@ function airOnUp(e: PointerEvent | null) {
                 }
             }
         }
+    }
+
+    if (shouldClickFromAirMoveGrace) {
+        sendWS({ type: 'click', button: 'left' });
+        log('Air: short hold + small move → click (grace)');
+        wasCleanTap = true;
     }
 
     // Запоминаем информацию о tap для следующего нажатия
