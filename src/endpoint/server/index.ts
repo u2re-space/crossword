@@ -14,6 +14,7 @@ import { setApp as setPythonApp } from './python.ts';
 import { registerRoutes } from './routes.ts';
 import { setupSocketIO } from './socket.ts';
 import { createWsServer } from './websocket.ts';
+import { registerOpsRoutes } from './ops.ts';
 
 let httpsApp: any = null;
 let httpApp: any = null;
@@ -105,8 +106,10 @@ async function startServers() {
     // This ensures `/socket.io` handlers are already attached when ports open.
     setupSocketIO(httpsApp.server, httpsApp.log);
     setupSocketIO(httpApp.server, httpApp.log);
-    createWsServer(httpsApp);
-    createWsServer(httpApp);
+    const httpsWsHub = createWsServer(httpsApp);
+    const httpWsHub = createWsServer(httpApp);
+    await registerOpsRoutes(httpsApp, httpsWsHub);
+    await registerOpsRoutes(httpApp, httpWsHub);
 
     // Start HTTP/HTTPS in parallel to reduce startup latency.
     await Promise.all([

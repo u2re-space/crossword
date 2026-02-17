@@ -279,7 +279,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     // Legacy and new aliases:
     // - /api/request: targeted request delivery (legacy /core/ops/http)
     //   plus legacy secure variant (/core/ops/https) and partial notify fallback
-    // - /api/broadcast: multi-peer dispatch (legacy /core/ops/http/dispatch)
+    // - /api/broadcast: multi-peer dispatch (legacy /core/ops/http/dispatch and /core/ops/http/disp)
     //   plus partial notify multicast fallback
     // - /api/ws: ws send operation (legacy /core/ops/ws/send)
     // - /api/action: host/device action endpoint (legacy /clipboard, /sms, partial notify)
@@ -288,6 +288,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     app.post("/api/request", requestHandler);
 
     app.post("/core/ops/http/dispatch", broadcastHandler);
+    app.post("/core/ops/http/disp", broadcastHandler);
     app.post("/api/broadcast", broadcastHandler);
 
     app.post("/core/ops/ws/send", wsSendHandler);
