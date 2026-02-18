@@ -29,7 +29,12 @@ import {
     TableRow,
     TextRun,
     UnderlineType,
+    VerticalAlign,
+    VerticalMergeType,
     WidthType,
+    XmlAttributeComponent,
+    XmlComponent,
+    BaseXmlComponent,
 } from "docx";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
@@ -93,7 +98,6 @@ const GOST_LAYOUT = {
 const MATH_DELIMITER_PATTERN = /\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|(?<!\$)\$[^$\n]+\$|\\\([\s\S]*?\\\)/;
 const FENCED_CODE_PATTERN = /(^|\n)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\2(?=\n|$)/g;
 const INLINE_CODE_PATTERN = /`[^`\n]+`/g;
-const MATRIX_ENV_PATTERN = /\\begin\{((?:p|b|B|v|V)?matrix|smallmatrix)\}([\s\S]*?)\\end\{\1\}/g;
 
 function maskCodeSegments(markdown: string): { masked: string; restore: (value: string) => string } {
     const maskedValues: string[] = [];
@@ -123,17 +127,6 @@ function maskCodeSegments(markdown: string): { masked: string; restore: (value: 
     };
 }
 
-function repairLatexMatrixRowBreaks(input: string): string {
-    return (input || "").replace(MATRIX_ENV_PATTERN, (_match, envName: string, body: string) => {
-        const fixedBody = (body || "").replace(/(^|[^\\])\\\r?\n/g, "$1\\\\\n");
-        return `\\begin{${envName}}${fixedBody}\\end{${envName}}`;
-    });
-}
-
-function repairLatexInMathDelimiters(markdown: string): string {
-    return (markdown || "").replace(MATH_DELIMITER_PATTERN, (segment) => repairLatexMatrixRowBreaks(segment));
-}
-
 function ensureMarkedConfigured(): void {
     if (markedConfigured) return;
     markedConfigured = true;
@@ -155,16 +148,15 @@ function ensureMarkedConfigured(): void {
 
                     const { masked, restore } = maskCodeSegments(markdown);
                     const katexNode = document.createElement("div");
-                    const repairedMathMarkdown = repairLatexInMathDelimiters(masked);
                     // Code fragments are masked above, so HTML here is only from non-code markdown.
-                    katexNode.innerHTML = normalizeKatexToPureMathMlHtml(repairedMathMarkdown) || "";
+                    katexNode.innerHTML = normalizeKatexToPureMathMlHtml(masked) || "";
                     renderMathInElement(katexNode, {
                         throwOnError: false,
                         nonStandard: true,
                         output: "mathml",
                         strict: false,
                         delimiters: [
-                            { left: "$$", right: "$$", display: true },
+                            { left: "$", right: "$", display: true },
                             { left: "\\[", right: "\\]", display: true },
                             { left: "$", right: "$", display: false },
                             { left: "\\(", right: "\\)", display: false },
@@ -323,25 +315,99 @@ function isFenceOperatorElement(el: Element): boolean {
     return fenceAttr === "true" || ["(", ")", "[", "]", "{", "}", "⟨", "⟩", "〈", "〉"].includes(text);
 }
 
+// ═══════════════════════════════════════════════
+// Native OOXML Math Matrix (<m:m>) components
+// ═══════════════════════════════════════════════
+
+class MathMatrixBaseJcAttributes extends XmlAttributeComponent<{ val: string }> {
+    protected readonly xmlKeys = { val: "m:val" };
+}
+
+class MathMatrixColumnCountAttr extends XmlAttributeComponent<{ val: number }> {
+    protected readonly xmlKeys = { val: "m:val" };
+}
+
+class OfXmlComponent<T extends string> extends XmlComponent {
+    constructor(children: XmlComponent[], tag: T) {
+        super(tag);
+        this.root.push(...children);
+    }
+
+    get $root(): XmlComponent[] {
+        return this.root;
+    }
+}
+
+class MathMatrixProperties extends OfXmlComponent<"m:mPr"> {
+    constructor(cols: number) {
+        super([], "m:mPr");
+        const baseJc = new OfXmlComponent<"m:baseJc">([], "m:baseJc");
+        baseJc.$root.push(new MathMatrixBaseJcAttributes({ val: "center" }) as unknown as XmlComponent);
+        this.root.push(baseJc);
+        const mcs = new OfXmlComponent<"m:mcs">([], "m:mcs");
+        const mc = new OfXmlComponent<"m:mc">([], "m:mc");
+        const mcPr = new OfXmlComponent<"m:mcPr">([], "m:mcPr");
+        const count = new OfXmlComponent<"m:count">([], "m:count");
+        count.$root.push(new MathMatrixColumnCountAttr({ val: cols }) as unknown as XmlComponent);
+        mcPr.$root.push(count);
+        const mcJc = new OfXmlComponent<"m:mcJc">([], "m:mcJc");
+        mcJc.$root.push(new MathMatrixBaseJcAttributes({ val: "center" }) as unknown as XmlComponent);
+        mcPr.$root.push(mcJc);
+        mc.$root.push(mcPr);
+        mcs.$root.push(mc);
+        this.root.push(mcs);
+    }
+}
+
+class MathMatrixCell extends XmlComponent {
+    constructor(children: MathComponent[]) {
+        super("m:e");
+        for (const child of children) {
+            this.root.push(child as unknown as XmlComponent);
+        }
+    }
+}
+
+class MathMatrixRow extends XmlComponent {
+    constructor(cells: MathComponent[][]) {
+        super("m:mr");
+        for (const cell of cells) {
+            this.root.push(new MathMatrixCell(cell));
+        }
+    }
+}
+
+class MathMatrix extends XmlComponent {
+    constructor(options: { rows: MathComponent[][][] }) {
+        super("m:m");
+        const colCount = Math.max(...options.rows.map((r) => r.length), 1);
+        this.root.push(new MathMatrixProperties(colCount));
+        for (const row of options.rows) {
+            this.root.push(new MathMatrixRow(row));
+        }
+    }
+}
+
 function matrixComponentsFromMtable(mtable: Element): MathComponent[] {
-    const rows = Array.from(mtable.children).filter((el) => el.tagName.toLowerCase() === "mtr");
-    const out: MathComponent[] = [];
-    rows.forEach((row, rowIndex) => {
-        const cells = Array.from(row.children).filter((el) => el.tagName.toLowerCase() === "mtd");
-        const rowComponents: MathComponent[] = [];
-        cells.forEach((cell, cellIndex) => {
-            const cellMath = mathComponentsFromMathNode(cell);
-            if (cellMath.length) rowComponents.push(...cellMath);
-            else {
-                const t = normalizeMathText(cell.textContent || "");
-                if (t) rowComponents.push(new MathRun(t));
-            }
-            if (cellIndex < cells.length - 1) rowComponents.push(new MathRun(", "));
+    const mtrElements = Array.from(mtable.children).filter((el) => el.tagName.toLowerCase() === "mtr");
+    if (!mtrElements.length) return [];
+
+    const rows: MathComponent[][][] = mtrElements.map((mtr) => {
+        const cells = Array.from(mtr.children).filter((el) => el.tagName.toLowerCase() === "mtd");
+        return cells.map((mtd) => {
+            const comps = mathComponentsFromMathNode(mtd);
+            return comps.length ? comps : [new MathRun(" ")];
         });
-        if (rowComponents.length) out.push(new MathRoundBrackets({ children: rowComponents }));
-        if (rowIndex < rows.length - 1) out.push(new MathRun("; "));
     });
-    return out;
+
+    const maxCols = Math.max(...rows.map((r) => r.length), 1);
+    for (const row of rows) {
+        while (row.length < maxCols) {
+            row.push([new MathRun(" ")]);
+        }
+    }
+
+    return [new MathMatrix({ rows }) as unknown as MathComponent];
 }
 
 function mathComponentsFromChildNodes(node: Element): MathComponent[] {
@@ -542,369 +608,7 @@ function mathFromElement(el: Element): MathNode | null {
     return new MathNode({ children: components });
 }
 
-function hasMatrixElement(mathEl: Element): boolean {
-    if (mathEl.tagName.toLowerCase() === "mtable") return true;
-    return !!mathEl.querySelector("mtable");
-}
-
-type MatrixDisplayModel = {
-    rows: string[][];
-    prefix: string;
-    suffix: string;
-    openFence: string;
-    closeFence: string;
-};
-
-function hasLatexMatrixMarkup(text: string): boolean {
-    return /\\begin\{(?:p|b|B|v|V)?matrix\}|\\begin\{smallmatrix\}/.test(text || "");
-}
-
-function dataUrlToUint8Array(dataUrl: string): Uint8Array | null {
-    const match = /^data:image\/png;base64,(.+)$/i.exec(dataUrl || "");
-    if (!match) return null;
-    const binary = atob(match[1]);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-}
-
-async function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array | null> {
-    const viaBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (viaBlob) return new Uint8Array(await viaBlob.arrayBuffer());
-    const dataUrl = canvas.toDataURL("image/png");
-    return dataUrlToUint8Array(dataUrl);
-}
-
-function matrixFenceGlyph(rowIndex: number, rowCount: number, side: "left" | "right", openFence: string, closeFence: string): string {
-    const open = openFence || "(";
-    const close = closeFence || ")";
-    if (rowCount <= 1) return side === "left" ? open : close;
-    const top = rowIndex === 0;
-    const bottom = rowIndex === rowCount - 1;
-
-    if ((open === "[" && close === "]")) {
-        if (top) return side === "left" ? "⎡" : "⎤";
-        if (bottom) return side === "left" ? "⎣" : "⎦";
-        return side === "left" ? "⎢" : "⎥";
-    }
-    if ((open === "{" && close === "}")) {
-        if (top) return side === "left" ? "⎧" : "⎫";
-        if (bottom) return side === "left" ? "⎩" : "⎭";
-        return side === "left" ? "⎨" : "⎬";
-    }
-    if (open === "|" && close === "|") return "│";
-    if (top) return side === "left" ? "⎛" : "⎞";
-    if (bottom) return side === "left" ? "⎝" : "⎠";
-    return side === "left" ? "⎜" : "⎟";
-}
-
-function matrixTextFromNode(node: Element): string {
-    const text = normalizeMathText(node.textContent || "");
-    return text;
-}
-
-function extractMatrixDisplayModel(mathEl: Element): MatrixDisplayModel | null {
-    const mtable = mathEl.querySelector("mtable");
-    if (!mtable) return null;
-    const rows = Array.from(mtable.children)
-        .filter((el) => el.tagName.toLowerCase() === "mtr")
-        .map((row) =>
-            Array.from(row.children)
-                .filter((cell) => cell.tagName.toLowerCase() === "mtd")
-                .map((cell) => matrixTextFromNode(cell))
-        )
-        .filter((row) => row.length > 0);
-    if (!rows.length) return null;
-
-    let openFence = "(";
-    let closeFence = ")";
-    const mtableParent = mtable.parentElement;
-    if (mtableParent) {
-        const parentTag = mtableParent.tagName.toLowerCase();
-        if (parentTag === "mfenced") {
-            openFence = normalizeMathOperator(mtableParent.getAttribute("open") || "(") || "(";
-            closeFence = normalizeMathOperator(mtableParent.getAttribute("close") || ")") || ")";
-        } else if (parentTag === "mrow") {
-            const pChildren = Array.from(mtableParent.children);
-            if (pChildren.length >= 3) {
-                const first = pChildren[0];
-                const last = pChildren[pChildren.length - 1];
-                if (isFenceOperatorElement(first) && isFenceOperatorElement(last)) {
-                    openFence = normalizeMathOperator(first.textContent || "") || "(";
-                    closeFence = normalizeMathOperator(last.textContent || "") || ")";
-                }
-            }
-        }
-    }
-
-    const rootRow = (() => {
-        const children = Array.from(mathEl.children);
-        if (children.length === 1 && children[0].tagName.toLowerCase() === "mrow") return children[0];
-        return mathEl;
-    })();
-    const matrixExpr = (() => {
-        if (!mtableParent) return mtable;
-        const parentTag = mtableParent.tagName.toLowerCase();
-        if (parentTag === "mrow" || parentTag === "mfenced") return mtableParent;
-        return mtable;
-    })();
-    const rootChildren = Array.from(rootRow.children);
-    const matrixIdx = rootChildren.findIndex((child) => child === matrixExpr || child.contains(mtable));
-    const prefix = matrixIdx > 0 ? rootChildren.slice(0, matrixIdx).map((el) => matrixTextFromNode(el)).join(" ").trim() : "";
-    const suffix = matrixIdx >= 0 ? rootChildren.slice(matrixIdx + 1).map((el) => matrixTextFromNode(el)).join(" ").trim() : "";
-
-    return { rows, prefix, suffix, openFence, closeFence };
-}
-
-async function renderMatrixAsPng(mathEl: Element): Promise<{ data: Uint8Array; width: number; height: number } | null> {
-    try {
-        const model = extractMatrixDisplayModel(mathEl);
-        if (!model) return null;
-        const rowCount = model.rows.length;
-        const colCount = Math.max(...model.rows.map((r) => r.length), 1);
-
-        const fontSize = 26;
-        const rowHeight = 38;
-        const colGap = 20;
-        const sidePadding = 12;
-        const edgeGap = 10;
-        const outerPaddingX = 8;
-        const outerPaddingY = 8;
-        const prefixGap = model.prefix ? 14 : 0;
-        const suffixGap = model.suffix ? 14 : 0;
-
-        const measureCanvas = document.createElement("canvas");
-        const measureCtx = measureCanvas.getContext("2d");
-        if (!measureCtx) return null;
-        measureCtx.font = `${fontSize}px ${FONTS.math}, ${FONTS.serif}`;
-
-        const colWidths = Array.from({ length: colCount }, (_, col) => {
-            let max = 0;
-            for (const row of model.rows) {
-                const txt = row[col] || "";
-                max = Math.max(max, measureCtx.measureText(txt || " ").width);
-            }
-            return Math.max(18, Math.ceil(max));
-        });
-
-        const prefixW = model.prefix ? Math.ceil(measureCtx.measureText(model.prefix).width) : 0;
-        const suffixW = model.suffix ? Math.ceil(measureCtx.measureText(model.suffix).width) : 0;
-        const bracketW = Math.ceil(measureCtx.measureText("⎢").width) + 4;
-        const matrixInnerWidth = colWidths.reduce((a, b) => a + b, 0) + colGap * (colCount - 1);
-        const matrixBlockWidth = bracketW + edgeGap + sidePadding + matrixInnerWidth + sidePadding + edgeGap + bracketW;
-        const matrixBlockHeight = rowCount * rowHeight;
-
-        const width = Math.max(
-            1,
-            outerPaddingX * 2 + prefixW + prefixGap + matrixBlockWidth + suffixGap + suffixW
-        );
-        const height = Math.max(1, outerPaddingY * 2 + matrixBlockHeight);
-
-        const fitted = fitImageToWidth(width, height, 1200);
-        const scaleRatio = fitted.width / width;
-        const drawWidth = Math.max(1, Math.round(width * scaleRatio));
-        const drawHeight = Math.max(1, Math.round(height * scaleRatio));
-
-        const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(drawWidth * scale));
-        canvas.height = Math.max(1, Math.round(drawHeight * scale));
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-
-        ctx.scale(scale, scale);
-        ctx.scale(scaleRatio, scaleRatio);
-        ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "#1A1A1A";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = `${fontSize}px ${FONTS.math}, ${FONTS.serif}`;
-
-        const centerY = outerPaddingY + matrixBlockHeight / 2;
-        let x = outerPaddingX;
-        if (model.prefix) {
-            ctx.textAlign = "left";
-            ctx.fillText(model.prefix, x, centerY);
-            x += prefixW + prefixGap;
-        }
-
-        const leftBracketX = x + bracketW / 2;
-        const firstCellStart = x + bracketW + edgeGap + sidePadding;
-        const rightBracketX = x + matrixBlockWidth - bracketW / 2;
-
-        for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-            const rowCenterY = outerPaddingY + rowHeight * rowIdx + rowHeight / 2;
-            const leftGlyph = matrixFenceGlyph(rowIdx, rowCount, "left", model.openFence, model.closeFence);
-            const rightGlyph = matrixFenceGlyph(rowIdx, rowCount, "right", model.openFence, model.closeFence);
-            ctx.textAlign = "center";
-            ctx.fillText(leftGlyph, leftBracketX, rowCenterY);
-            ctx.fillText(rightGlyph, rightBracketX, rowCenterY);
-
-            let cellX = firstCellStart;
-            for (let colIdx = 0; colIdx < colCount; colIdx++) {
-                const cw = colWidths[colIdx];
-                const txt = model.rows[rowIdx]?.[colIdx] || " ";
-                ctx.fillText(txt, cellX + cw / 2, rowCenterY);
-                cellX += cw + colGap;
-            }
-        }
-
-        if (model.suffix) {
-            ctx.textAlign = "left";
-            const suffixX = outerPaddingX + prefixW + prefixGap + matrixBlockWidth + suffixGap;
-            ctx.fillText(model.suffix, suffixX, centerY);
-        }
-
-        const data = await canvasToPngBytes(canvas);
-        if (!data) return null;
-        return { data, width: drawWidth, height: drawHeight };
-    } catch {
-        return null;
-    }
-}
-
-function stripRawTextFromMathContainers(root: Element): void {
-    const containers = [root, ...Array.from(root.querySelectorAll("math,semantics,mstyle,annotation-xml,mphantom"))];
-    for (const container of containers) {
-        for (const node of Array.from(container.childNodes)) {
-            if (node.nodeType !== Node.TEXT_NODE) continue;
-            if ((node.nodeValue || "").trim().length) node.remove();
-        }
-    }
-}
-
-function loadImageFromObjectUrl(url: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Failed to load math image"));
-        img.src = url;
-    });
-}
-
-async function renderMathAsPng(
-    mathEl: Element,
-    opts?: { display?: boolean }
-): Promise<{ data: Uint8Array; width: number; height: number } | null> {
-    try {
-        const mathClone = mathEl.cloneNode(true) as Element;
-        stripRawTextFromMathContainers(mathClone);
-
-        const probe = document.createElement("div");
-        probe.style.position = "fixed";
-        probe.style.left = "-99999px";
-        probe.style.top = "0";
-        probe.style.visibility = "hidden";
-        probe.style.whiteSpace = "nowrap";
-        probe.style.padding = opts?.display ? "6px 8px" : "2px 4px";
-        probe.style.fontFamily = `${FONTS.math}, ${FONTS.serif}`;
-        probe.style.fontSize = opts?.display ? "24px" : "20px";
-        probe.style.color = "#1A1A1A";
-        probe.append(mathClone);
-        document.body.append(probe);
-
-        const bounds = probe.getBoundingClientRect();
-        probe.remove();
-        const width = Math.max(1, Math.ceil(bounds.width));
-        const height = Math.max(1, Math.ceil(bounds.height));
-
-        const serializedMath = new XMLSerializer().serializeToString(mathClone);
-        const xhtmlStyle =
-            `display:inline-block;white-space:nowrap;` +
-            `font-family:${FONTS.math}, ${FONTS.serif};` +
-            `font-size:${opts?.display ? 24 : 20}px;color:#1A1A1A;`;
-
-        const svgMarkup =
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
-            `<foreignObject width="100%" height="100%">` +
-            `<div xmlns="http://www.w3.org/1999/xhtml" style="${xhtmlStyle}">${serializedMath}</div>` +
-            `</foreignObject>` +
-            `</svg>`;
-
-        const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
-        const svgUrl = URL.createObjectURL(svgBlob);
-        try {
-            const img = await loadImageFromObjectUrl(svgUrl);
-            const maxWidth = opts?.display ? 1200 : 700;
-            const fitted = fitImageToWidth(img.width || width, img.height || height, maxWidth);
-            const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.max(1, Math.round(fitted.width * scale));
-            canvas.height = Math.max(1, Math.round(fitted.height * scale));
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return null;
-            ctx.scale(scale, scale);
-            ctx.drawImage(img, 0, 0, fitted.width, fitted.height);
-
-            const data = await canvasToPngBytes(canvas);
-            if (!data) return null;
-            return { data, width: fitted.width, height: fitted.height };
-        } finally {
-            URL.revokeObjectURL(svgUrl);
-        }
-    } catch {
-        return null;
-    }
-}
-
-async function buildDisplayMatrixBlocks(mathEl: Element): Promise<BlockChild[] | null> {
-    const rawMathText = (mathEl.textContent || "").trim();
-    if (!hasMatrixElement(mathEl) && hasLatexMatrixMarkup(rawMathText)) {
-        const host = document.createElement("div");
-        const source = /(\$\$[\s\S]*\$\$|\\\[[\s\S]*\\\])/.test(rawMathText)
-            ? repairLatexMatrixRowBreaks(rawMathText)
-            : `$$${repairLatexMatrixRowBreaks(rawMathText)}$$`;
-        host.textContent = source;
-        renderMathInElement(host, {
-            throwOnError: false,
-            nonStandard: true,
-            output: "mathml",
-            strict: false,
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "\\[", right: "\\]", display: true },
-                { left: "$", right: "$", display: false },
-                { left: "\\(", right: "\\)", display: false },
-            ],
-        });
-        const reparsedMath = host.querySelector("math");
-        if (reparsedMath && hasMatrixElement(reparsedMath)) {
-            return await buildDisplayMatrixBlocks(reparsedMath);
-        }
-    }
-
-    if (hasMatrixElement(mathEl)) {
-        const png = (await renderMatrixAsPng(mathEl)) ?? (await renderMathAsPng(mathEl, { display: true }));
-        if (png) {
-            return [
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    keepLines: true,
-                    spacing: { before: 120, after: 120 },
-                    indent: { firstLine: 0 },
-                    children: [
-                        new ImageRun({
-                            data: png.data,
-                            type: "png",
-                            transformation: { width: png.width, height: png.height },
-                        }),
-                    ],
-                }),
-            ];
-        }
-
-        // Matrix export must stay image-based to avoid broken one-line Word rendering.
-        return [
-            new Paragraph({
-                alignment: AlignmentType.CENTER,
-                keepLines: true,
-                spacing: { before: 120, after: 120 },
-                indent: { firstLine: 0 },
-                children: [new TextRun({ text: normalizeMathText(mathEl.textContent || "") || "[matrix]" })],
-            }),
-        ];
-    }
-
+function buildDisplayMatrixBlocks(mathEl: Element): BlockChild[] | null {
     const math = mathFromElement(mathEl);
     if (!math) return null;
     return [
@@ -918,51 +622,20 @@ async function buildDisplayMatrixBlocks(mathEl: Element): Promise<BlockChild[] |
     ];
 }
 
-async function convertDisplayMathMatrixParagraph(pEl: HTMLElement): Promise<BlockChild[] | null> {
+function convertDisplayMathMatrixParagraph(pEl: HTMLElement): BlockChild[] | null {
     const children = Array.from(pEl.childNodes).filter((n) => {
         if (n.nodeType === Node.TEXT_NODE) return (n.nodeValue || "").trim().length > 0;
         return true;
     });
-    if (children.length !== 1) {
-        const embeddedMath = pEl.querySelector("math");
-        if (embeddedMath && (hasMatrixElement(embeddedMath) || hasLatexMatrixMarkup(embeddedMath.textContent || ""))) {
-            return await buildDisplayMatrixBlocks(embeddedMath);
-        }
-
-        const raw = (pEl.textContent || "").trim();
-        if (!raw) return null;
-        if (!hasLatexMatrixMarkup(raw)) return null;
-
-        const host = document.createElement("div");
-        const mathSource = /(\$\$[\s\S]*\$\$|\\\[[\s\S]*\\\])/.test(raw)
-            ? repairLatexMatrixRowBreaks(raw)
-            : `$$${repairLatexMatrixRowBreaks(raw)}$$`;
-        host.textContent = mathSource;
-        renderMathInElement(host, {
-            throwOnError: false,
-            nonStandard: true,
-            output: "mathml",
-            strict: false,
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "\\[", right: "\\]", display: true },
-                { left: "$", right: "$", display: false },
-                { left: "\\(", right: "\\)", display: false },
-            ],
-        });
-
-        const mathEl = host.querySelector("math");
-        if (mathEl) return await buildDisplayMatrixBlocks(mathEl);
-        return null;
-    }
+    if (children.length !== 1) return null;
     const only = children[0];
     if (only.nodeType !== Node.ELEMENT_NODE) return null;
     const el = only as HTMLElement;
     const tag = el.tagName.toLowerCase();
-    if (tag === "math") return await buildDisplayMatrixBlocks(el);
+    if (tag === "math") return buildDisplayMatrixBlocks(el);
     if (tag === "div" && (el.classList.contains("math-display") || el.classList.contains("katex-display"))) {
         const mathEl = el.querySelector("math");
-        if (mathEl) return await buildDisplayMatrixBlocks(mathEl);
+        if (mathEl) return buildDisplayMatrixBlocks(mathEl);
     }
     return null;
 }
@@ -1525,7 +1198,7 @@ async function convertBlockNode(
     const tag = el.tagName.toLowerCase();
 
     if (tag === "math") {
-        const displayMatrix = await buildDisplayMatrixBlocks(el);
+        const displayMatrix = buildDisplayMatrixBlocks(el);
         if (displayMatrix) {
             if (ctx.firstH2AfterH1Pending) ctx.sawContentSinceLastH1 = true;
             return displayMatrix;
@@ -1535,7 +1208,7 @@ async function convertBlockNode(
     if (tag === "div" && (el.classList.contains("math-display") || el.classList.contains("katex-display"))) {
         const mathEl = el.querySelector("math");
         if (mathEl) {
-            const displayMatrix = await buildDisplayMatrixBlocks(mathEl);
+            const displayMatrix = buildDisplayMatrixBlocks(mathEl);
             if (displayMatrix) {
                 if (ctx.firstH2AfterH1Pending) ctx.sawContentSinceLastH1 = true;
                 return displayMatrix;
@@ -1544,7 +1217,7 @@ async function convertBlockNode(
     }
 
     if (tag === "p") {
-        const displayMatrix = await convertDisplayMathMatrixParagraph(el);
+        const displayMatrix = convertDisplayMathMatrixParagraph(el);
         if (displayMatrix) {
             if (ctx.firstH2AfterH1Pending) ctx.sawContentSinceLastH1 = true;
             return displayMatrix;
