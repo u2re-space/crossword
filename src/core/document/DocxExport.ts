@@ -1,6 +1,7 @@
 import {
     AlignmentType,
     BorderStyle,
+    convertMillimetersToTwip,
     Document,
     ExternalHyperlink,
     HeadingLevel,
@@ -18,6 +19,7 @@ import {
     MathSubSuperScript,
     MathSuperScript,
     LevelFormat,
+    PageOrientation,
     Packer,
     Paragraph,
     ShadingType,
@@ -70,13 +72,27 @@ const SIZES = {
     h6: 22,
 } as const;
 
+// Word "Normal" baseline + ГОСТ-like overrides for exported DOCX.
+const GOST_LAYOUT = {
+    page: {
+        widthMm: 210,
+        heightMm: 297,
+        marginTopMm: 20,
+        marginRightMm: 15,
+        marginBottomMm: 20,
+        marginLeftMm: 30,
+    },
+    paragraph: {
+        // ~1.25 cm first-line indent.
+        firstLineTwip: 708,
+        // 1.5 line spacing in twentieths of a point.
+        lineTwip: 360,
+    },
+} as const;
+
 const MATH_DELIMITER_PATTERN = /\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|(?<!\$)\$[^$\n]+\$|\\\([\s\S]*?\\\)/;
 const FENCED_CODE_PATTERN = /(^|\n)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\2(?=\n|$)/g;
 const INLINE_CODE_PATTERN = /`[^`\n]+`/g;
-const SANITIZE_OPTIONS = {
-    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "applet", "link", "meta", "base", "form", "noscript", "template"],
-    FORBID_CONTENTS: ["script", "style", "iframe", "object", "embed", "applet", "noscript", "template"]
-};
 
 function maskCodeSegments(markdown: string): { masked: string; restore: (value: string) => string } {
     const maskedValues: string[] = [];
@@ -257,6 +273,35 @@ function mathComponentsFromMathNode(node: Element): MathComponent[] {
         ];
     }
 
+    // Matrix table cells/rows: preserve nested structure.
+    if (tag === "mtd" || tag === "mtr") {
+        const kids: MathComponent[] = [];
+        for (const c of Array.from(node.children)) {
+            kids.push(...mathComponentsFromMathNode(c));
+        }
+        if (kids.length) return kids;
+        const t = normalizeMathText(node.textContent || "");
+        return t ? [new MathRun(t)] : [];
+    }
+
+    // Matrix fallback for inline/unsupported contexts.
+    // DOCX API does not expose a dedicated matrix MathComponent, so we encode
+    // matrix rows/cells as bracketed math runs to keep semantics readable.
+    if (tag === "mtable") {
+        const rowElements = Array.from(node.children).filter((c) => c.tagName.toLowerCase() === "mtr");
+        const matrixChildren: MathComponent[] = [];
+        for (let ri = 0; ri < rowElements.length; ri++) {
+            const row = rowElements[ri];
+            const cellElements = Array.from(row.children).filter((c) => c.tagName.toLowerCase() === "mtd");
+            for (let ci = 0; ci < cellElements.length; ci++) {
+                matrixChildren.push(...mathComponentsFromMathNode(cellElements[ci]));
+                if (ci < cellElements.length - 1) matrixChildren.push(new MathRun(", "));
+            }
+            if (ri < rowElements.length - 1) matrixChildren.push(new MathRun("; "));
+        }
+        return matrixChildren.length ? [new MathSquareBrackets({ children: matrixChildren })] : [];
+    }
+
     // Roots
     if (tag === "msqrt") {
         const children: MathComponent[] = [];
@@ -327,6 +372,124 @@ function mathFromElement(el: Element): MathNode | null {
     const components = mathComponentsFromMathNode(el);
     if (!components.length) return null;
     return new MathNode({ children: components });
+}
+
+type MathMatrixData = {
+    rows: Element[][];
+    open: string;
+    close: string;
+};
+
+function extractMathMatrix(mathEl: Element): MathMatrixData | null {
+    let fenced: Element | null = null;
+    let mtable: Element | null = null;
+
+    for (const candidate of Array.from(mathEl.querySelectorAll("mfenced, mtable"))) {
+        const tag = candidate.tagName.toLowerCase();
+        if (!fenced && tag === "mfenced" && candidate.querySelector("mtable")) fenced = candidate;
+        if (!mtable && tag === "mtable") mtable = candidate;
+        if (fenced && mtable) break;
+    }
+    if (!mtable) return null;
+
+    const rows = Array.from(mtable.querySelectorAll(":scope > mtr")).map((r) =>
+        Array.from(r.querySelectorAll(":scope > mtd"))
+    );
+    if (!rows.length) return null;
+
+    const open = (fenced?.getAttribute("open") || "[").trim() || "[";
+    const close = (fenced?.getAttribute("close") || "]").trim() || "]";
+    return { rows, open, close };
+}
+
+function matrixBracketGlyph(open: string, close: string, rowIndex: number, rowCount: number): { left: string; right: string } {
+    const isSingle = rowCount <= 1;
+    const isFirst = rowIndex === 0;
+    const isLast = rowIndex === rowCount - 1;
+
+    const edge = (o: string, c: string): { left: string; right: string } => ({ left: o, right: c });
+    if (open === "(" && close === ")") {
+        if (isSingle) return edge("(", ")");
+        if (isFirst) return edge("⎛", "⎞");
+        if (isLast) return edge("⎝", "⎠");
+        return edge("⎜", "⎟");
+    }
+    if (open === "[" && close === "]") {
+        if (isSingle) return edge("[", "]");
+        if (isFirst) return edge("⎡", "⎤");
+        if (isLast) return edge("⎣", "⎦");
+        return edge("⎢", "⎥");
+    }
+    if (open === "{" && close === "}") {
+        if (isSingle) return edge("{", "}");
+        if (isFirst) return edge("⎧", "⎫");
+        if (isLast) return edge("⎩", "⎭");
+        return edge("⎨", "⎬");
+    }
+    if (open === "⟨" && close === "⟩") {
+        if (isSingle) return edge("⟨", "⟩");
+        if (isFirst) return edge("⎧", "⎫");
+        if (isLast) return edge("⎩", "⎭");
+        return edge("⎪", "⎪");
+    }
+    return edge(open, close);
+}
+
+function convertDisplayMathMatrixParagraph(pEl: HTMLElement): BlockChild[] | null {
+    const meaningful = Array.from(pEl.childNodes).filter((n) => {
+        if (n.nodeType === Node.TEXT_NODE) return !!(n.nodeValue || "").trim();
+        return n.nodeType === Node.ELEMENT_NODE;
+    });
+    if (meaningful.length !== 1 || meaningful[0].nodeType !== Node.ELEMENT_NODE) return null;
+
+    const onlyEl = meaningful[0] as HTMLElement;
+    const displayRoot =
+        onlyEl.classList.contains("katex-display") ? onlyEl : (onlyEl.querySelector(".katex-display") as HTMLElement | null);
+    if (!displayRoot) return null;
+
+    const mathEl = displayRoot.querySelector("math");
+    if (!mathEl) return null;
+    const matrix = extractMathMatrix(mathEl);
+    if (!matrix) return null;
+
+    const rowCount = matrix.rows.length;
+    const tableRows = matrix.rows.map((cells, rowIndex) => {
+        const bracket = matrixBracketGlyph(matrix.open, matrix.close, rowIndex, rowCount);
+        const cellChildren = cells.map((cell) => {
+            const math = mathFromElement(cell);
+            const children = math ? [math] : [new TextRun({ text: normalizeMathText(cell.textContent || "") })];
+            return new TableCell({
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children })],
+            });
+        });
+
+        return new TableRow({
+            children: [
+                new TableCell({
+                    children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: bracket.left, font: FONTS.math })] })],
+                }),
+                ...cellChildren,
+                new TableCell({
+                    children: [new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: bracket.right, font: FONTS.math })] })],
+                }),
+            ],
+        });
+    });
+
+    return [
+        new Table({
+            alignment: AlignmentType.CENTER,
+            borders: ({
+                top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
+            } as any) satisfies TableBorders,
+            rows: tableRows,
+        }),
+    ];
 }
 
 function collectInline(node: Node, style: InlineStyle, out: InlineChild[]): void {
@@ -556,10 +719,18 @@ function convertPre(preEl: HTMLElement): Paragraph[] {
     ];
 }
 
-type DataUrlParts = { mimeType: string; isBase64: boolean; data: string };
+function tryDecodeUriComponent(input: string): string {
+    try {
+        return decodeURIComponent(input);
+    } catch {
+        return input;
+    }
+}
 
-function parseDataUrl(src: string): DataUrlParts | null {
-    const s = (src || "").trim();
+type ParsedDataUrl = { mimeType: string; isBase64: boolean; data: string };
+
+function parseDataUrlLocal(input: string): ParsedDataUrl | null {
+    const s = (input || "").trim();
     if (!s.toLowerCase().startsWith("data:")) return null;
     const m = s.match(/^data:(?<mime>[^;,]+)?(?<params>(?:;[^,]*)*?),(?<data>[\s\S]*)$/i);
     if (!m?.groups) return null;
@@ -570,25 +741,75 @@ function parseDataUrl(src: string): DataUrlParts | null {
     return { mimeType, isBase64, data };
 }
 
-function decodeBase64ToBytes(base64: string): Uint8Array {
-    const s = (base64 || "").trim();
-    if (typeof (Uint8Array as any).fromBase64 === "function") {
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
-        return (Uint8Array as any).fromBase64(s, { alphabet: "base64", lastChunkHandling: "loose" });
-    }
-    const padLen = (4 - (s.length % 4)) % 4;
-    const padded = s + "=".repeat(padLen);
+function decodeBase64ToBytesLocal(base64: string): Uint8Array {
+    const s = (base64 || "").trim().replace(/[\r\n\s]/g, "");
+    const normalized = s.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (normalized.length % 4)) % 4;
+    const padded = normalized + "=".repeat(padLen);
     const bin = typeof atob === "function" ? atob(padded) : "";
     const out = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
 }
 
-function bytesFromDataUrl(dataUrl: string): { bytes: Uint8Array; mimeType: string } | null {
-    const p = parseDataUrl(dataUrl);
-    if (!p) return null;
-    if (!p.isBase64) return null;
-    return { bytes: decodeBase64ToBytes(p.data), mimeType: p.mimeType };
+function isBase64LikeLocal(input: string): boolean {
+    const t = (input || "").trim().replace(/[\r\n\s]/g, "");
+    if (!t || t.length < 8) return false;
+    const normalized = t.replace(/-/g, "+").replace(/_/g, "/");
+    return /^[A-Za-z0-9+/]*={0,2}$/.test(normalized);
+}
+
+function looksLikeSvgText(value: string): boolean {
+    return /^\s*(<\?xml[\s\S]*?)?<svg[\s\S]*?>/i.test(value || "");
+}
+
+function mimeHintFromEncodedSource(src: string): string | undefined {
+    const raw = (src || "").trim();
+    if (!raw) return undefined;
+
+    const parsed = parseDataUrlLocal(raw);
+    if (parsed?.mimeType) return parsed.mimeType;
+
+    const decoded = raw.includes("%") ? tryDecodeUriComponent(raw) : raw;
+    const decodedDataUrl = parseDataUrlLocal(decoded);
+    if (decodedDataUrl?.mimeType) return decodedDataUrl.mimeType;
+
+    if (looksLikeSvgText(decoded)) return "image/svg+xml";
+
+    // Common base64 signatures (with or without URI encoding).
+    const compact = decoded.replace(/[\r\n\s]/g, "");
+    if (/^iVBORw0KGgo/i.test(compact)) return "image/png";
+    if (/^\/9j\//.test(compact)) return "image/jpeg";
+    if (/^R0lGOD/.test(compact)) return "image/gif";
+    if (/^Qk/.test(compact)) return "image/bmp";
+    if (/^UklGR/i.test(compact)) return "image/webp";
+    if (/^(PHN2Zy|PD94bWwg)/i.test(compact)) return "image/svg+xml";
+
+    return undefined;
+}
+
+function sniffImageMimeFromBytes(bytes: Uint8Array): string | undefined {
+    if (bytes.length >= 8 &&
+        bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+        bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) {
+        return "image/png";
+    }
+    if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+    if (bytes.length >= 6 &&
+        bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 &&
+        bytes[3] === 0x38 && (bytes[4] === 0x39 || bytes[4] === 0x37) && bytes[5] === 0x61) {
+        return "image/gif";
+    }
+    if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) return "image/bmp";
+    if (bytes.length >= 12 &&
+        bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+        bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+        return "image/webp";
+    }
+
+    const head = new TextDecoder("utf-8").decode(bytes.slice(0, Math.min(bytes.length, 512))).trimStart();
+    if (looksLikeSvgText(head)) return "image/svg+xml";
+    return undefined;
 }
 
 function imageTypeFromMime(mime: string): "png" | "jpg" | "gif" | "bmp" | undefined {
@@ -601,6 +822,59 @@ function imageTypeFromMime(mime: string): "png" | "jpg" | "gif" | "bmp" | undefi
     return undefined;
 }
 
+type BinaryAsset = { bytes: Uint8Array; mimeType: string };
+
+async function normalizeImageBinaryFromSource(src: string): Promise<BinaryAsset | null> {
+    const raw = (src || "").trim();
+    if (!raw) return null;
+
+    const decoded = raw.includes("%") ? tryDecodeUriComponent(raw) : raw;
+    const dataUrl = parseDataUrlLocal(raw) || parseDataUrlLocal(decoded);
+    const hasEncodedPayload = !!dataUrl || isBase64LikeLocal(raw) || isBase64LikeLocal(decoded) || looksLikeSvgText(decoded);
+    const mimeHint = mimeHintFromEncodedSource(raw);
+
+    if (hasEncodedPayload) {
+        try {
+            let bytes: Uint8Array;
+            let mimeType = mimeHint || "application/octet-stream";
+
+            if (dataUrl) {
+                mimeType = dataUrl.mimeType || mimeType;
+                const payload = dataUrl.data || "";
+                if (dataUrl.isBase64) {
+                    bytes = decodeBase64ToBytesLocal(payload);
+                } else {
+                    const text = payload.includes("%") ? tryDecodeUriComponent(payload) : payload;
+                    bytes = new TextEncoder().encode(text);
+                }
+            } else if (isBase64LikeLocal(raw) || isBase64LikeLocal(decoded)) {
+                bytes = decodeBase64ToBytesLocal(isBase64LikeLocal(raw) ? raw : decoded);
+            } else {
+                bytes = new TextEncoder().encode(decoded);
+            }
+
+            mimeType = mimeType || sniffImageMimeFromBytes(bytes) || "application/octet-stream";
+            if (mimeType === "application/octet-stream") {
+                mimeType = sniffImageMimeFromBytes(bytes) || mimeType;
+            }
+            return { bytes, mimeType };
+        } catch {
+            // continue to fetch fallback
+        }
+    }
+
+    try {
+        const res = await fetch(raw);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const mimeType = blob.type || mimeHint || sniffImageMimeFromBytes(bytes) || "application/octet-stream";
+        return { bytes, mimeType };
+    } catch {
+        return null;
+    }
+}
+
 function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
     const buf: ArrayBufferLike = bytes.buffer;
     if (buf instanceof ArrayBuffer) return buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -609,43 +883,74 @@ function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
     return ab;
 }
 
-async function imageRunFromSrc(src: string, alt: string): Promise<ImageRun | null> {
-    const s = (src || "").trim();
-    if (!s) return null;
-
-    // Try data URL first
-    const data = bytesFromDataUrl(s);
-    if (data) {
-        const type = imageTypeFromMime(data.mimeType);
-        if (!type) return null;
-        const { width, height } = await getImageSize(data.bytes, data.mimeType);
-        return new ImageRun({
-            type,
-            data: data.bytes,
-            transformation: fitImageToWidth(width, height, 600),
-            altText: alt ? { title: alt, description: alt, name: alt } : undefined,
-        });
-    }
-
-    // Fetch external URL / blob URL
+async function rasterizeToPng(bytes: Uint8Array, mimeType: string): Promise<{ bytes: Uint8Array; width: number; height: number } | null> {
     try {
-        const res = await fetch(s);
-        if (!res.ok) return null;
-        const blob = await res.blob();
-        const mimeType = blob.type || "application/octet-stream";
-        const type = imageTypeFromMime(mimeType);
-        if (!type) return null;
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        const { width, height } = await getImageSize(bytes, mimeType);
-        return new ImageRun({
-            type,
-            data: bytes,
-            transformation: fitImageToWidth(width, height, 600),
-            altText: alt ? { title: alt, description: alt, name: alt } : undefined,
-        });
+        if (typeof document === "undefined") return null;
+        const blob = new Blob([bytesToArrayBuffer(bytes)], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        try {
+            const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const image = new Image();
+                image.decoding = "async";
+                image.onload = () => resolve(image);
+                image.onerror = () => reject(new Error("Failed to decode image"));
+                image.src = url;
+            });
+
+            const width = Math.max(1, Math.round((img.naturalWidth || img.width || 600)));
+            const height = Math.max(1, Math.round((img.naturalHeight || img.height || 400)));
+
+            if (typeof OffscreenCanvas !== "undefined") {
+                const canvas = new OffscreenCanvas(width, height);
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return null;
+                ctx.drawImage(img, 0, 0, width, height);
+                const pngBlob = await canvas.convertToBlob({ type: "image/png" });
+                return { bytes: new Uint8Array(await pngBlob.arrayBuffer()), width, height };
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return null;
+            ctx.drawImage(img, 0, 0, width, height);
+            const pngBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+            if (!pngBlob) return null;
+            return { bytes: new Uint8Array(await pngBlob.arrayBuffer()), width, height };
+        } finally {
+            URL.revokeObjectURL(url);
+        }
     } catch {
         return null;
     }
+}
+
+async function imageRunFromSrc(src: string, alt: string): Promise<ImageRun | null> {
+    const data = await normalizeImageBinaryFromSource(src);
+    if (!data) return null;
+
+    let bytes = data.bytes;
+    let mimeType = (data.mimeType || "").toLowerCase();
+    let type = imageTypeFromMime(mimeType);
+
+    // DOCX supports a subset of formats. Convert unsupported image payloads
+    // (e.g. SVG/WebP/URI-encoded sources) to PNG for reliable embedding.
+    if (!type) {
+        const rasterized = await rasterizeToPng(bytes, mimeType || "application/octet-stream");
+        if (!rasterized) return null;
+        bytes = rasterized.bytes;
+        mimeType = "image/png";
+        type = "png";
+    }
+
+    const { width, height } = await getImageSize(bytes, mimeType);
+    return new ImageRun({
+        type,
+        data: bytes,
+        transformation: fitImageToWidth(width, height, 600),
+        altText: alt ? { title: alt, description: alt, name: alt } : undefined,
+    });
 }
 
 async function getImageSize(bytes: Uint8Array, mimeType: string): Promise<{ width: number; height: number }> {
@@ -682,6 +987,9 @@ async function convertBlockNode(node: Node, listLevel: number, ctx: ConvertConte
     const tag = el.tagName.toLowerCase();
 
     if (tag === "p") {
+        const displayMatrix = convertDisplayMathMatrixParagraph(el);
+        if (displayMatrix) return displayMatrix;
+
         const imgs = Array.from(el.children).filter((c) => c.tagName.toLowerCase() === "img") as HTMLElement[];
         const hasOnlyImg =
             imgs.length === 1 &&
@@ -872,8 +1180,9 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                         color: COLORS.text,
                     },
                     paragraph: {
-                        // Slightly tighter + smaller than print view; visually closer to DOCX norms.
-                        spacing: { line: 320, before: 0, after: 200 },
+                        // Word "Normal" baseline with ГОСТ-like line spacing.
+                        spacing: { line: GOST_LAYOUT.paragraph.lineTwip, before: 0, after: 0 },
+                        indent: { firstLine: GOST_LAYOUT.paragraph.firstLineTwip },
                         alignment: AlignmentType.JUSTIFIED,
                     },
                 },
@@ -892,6 +1201,18 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
             ],
             paragraphStyles: [
                 {
+                    id: "Normal",
+                    name: "Normal",
+                    next: "Normal",
+                    quickFormat: true,
+                    paragraph: {
+                        spacing: { line: GOST_LAYOUT.paragraph.lineTwip, before: 0, after: 0 },
+                        indent: { firstLine: GOST_LAYOUT.paragraph.firstLineTwip },
+                        alignment: AlignmentType.JUSTIFIED,
+                    },
+                    run: { font: FONTS.serif, color: COLORS.text, size: SIZES.body },
+                },
+                {
                     id: "ListParagraph",
                     name: "List Paragraph",
                     basedOn: "Normal",
@@ -899,6 +1220,7 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                     quickFormat: true,
                     paragraph: {
                         spacing: { after: 180 },
+                        indent: { firstLine: 0 },
                     },
                     run: { font: FONTS.serif, color: COLORS.text, size: SIZES.body },
                 },
@@ -910,7 +1232,7 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                     quickFormat: true,
                     paragraph: {
                         spacing: { after: 240 },
-                        indent: { left: 720 },
+                        indent: { left: 720, firstLine: 0 },
                     },
                     run: { font: FONTS.serif, color: COLORS.text, italics: true, size: SIZES.body },
                 },
@@ -923,6 +1245,7 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                     paragraph: {
                         spacing: { before: 120, after: 120 },
                         alignment: AlignmentType.LEFT,
+                        indent: { firstLine: 0 },
                     },
                     run: { font: FONTS.mono, color: COLORS.link, size: SIZES.code },
                 },
@@ -932,7 +1255,7 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                     basedOn: "Normal",
                     next: "Normal",
                     quickFormat: true,
-                    paragraph: { spacing: { before: 80, after: 160 } },
+                    paragraph: { spacing: { before: 80, after: 160 }, indent: { firstLine: 0 } },
                     run: { font: FONTS.serif, color: COLORS.link, size: 20, italics: true },
                 },
                 {
@@ -1018,7 +1341,26 @@ export async function createDocxBlobFromHtml(html: string, options: DocxExportOp
                 },
             ],
         },
-        sections: [{ children }],
+        sections: [
+            {
+                properties: {
+                    page: {
+                        size: {
+                            orientation: PageOrientation.PORTRAIT,
+                            width: convertMillimetersToTwip(GOST_LAYOUT.page.widthMm),
+                            height: convertMillimetersToTwip(GOST_LAYOUT.page.heightMm),
+                        },
+                        margin: {
+                            top: convertMillimetersToTwip(GOST_LAYOUT.page.marginTopMm),
+                            right: convertMillimetersToTwip(GOST_LAYOUT.page.marginRightMm),
+                            bottom: convertMillimetersToTwip(GOST_LAYOUT.page.marginBottomMm),
+                            left: convertMillimetersToTwip(GOST_LAYOUT.page.marginLeftMm),
+                        },
+                    },
+                },
+                children,
+            },
+        ],
     });
 
     // Improve justified text handling for soft line breaks (Shift+Enter equivalents)

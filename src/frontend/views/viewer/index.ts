@@ -151,6 +151,8 @@ export interface ViewerOptions extends BaseViewOptions {
     onPrint?: (content: string) => void;
     /** Callback to open file */
     onOpen?: () => void;
+    /** Source URL/path used to resolve relative markdown resources */
+    source?: string;
 }
 
 // ============================================================================
@@ -171,6 +173,7 @@ export class ViewerView implements View {
     private pasteController: AbortController | null = null;
     private isViewVisible = false;
     private isPointerInView = false;
+    private sourceUrl: string | null = null;
 
     lifecycle: ViewLifecycle = {
         onMount: () => this.onMount(),
@@ -183,6 +186,7 @@ export class ViewerView implements View {
     constructor(options: ViewerOptions = {}) {
         this.options = options;
         this.shellContext = options.shellContext;
+        this.sourceUrl = this.normalizeSourceUrl(options.source);
 
         // Load initial content
         const savedState = this.stateManager.load();
@@ -279,10 +283,14 @@ export class ViewerView implements View {
     /**
      * Update the displayed content
      */
-    setContent(content: string, filename?: string): void {
+    setContent(content: string, filename?: string, source?: string | null): void {
         this.contentRef.value = content;
         if (filename) {
             this.options.filename = filename;
+        }
+        if (source !== undefined) {
+            this.sourceUrl = this.normalizeSourceUrl(source);
+            this.options.source = source || undefined;
         }
     }
 
@@ -329,6 +337,7 @@ export class ViewerView implements View {
             const handleParsed = (html: string) => {
                 const sanitized = DOMPurify?.sanitize?.((html || "")?.trim?.() || "", SANITIZE_OPTIONS) || "";
                 renderTarget.innerHTML = sanitized;
+                this.resolveRelativeResourceUrls(renderTarget);
                 console.log('[ViewerView] Markdown rendered successfully');
             };
 
@@ -345,6 +354,110 @@ export class ViewerView implements View {
             console.error('[ViewerView] Error rendering markdown:', error);
             renderTarget.innerHTML = `<div style="color: red; padding: 1rem; background: #fee; border: 1px solid #fcc; border-radius: 4px;">Error parsing markdown: ${(error as any)?.message}</div>`;
         }
+    }
+
+    private normalizeSourceUrl(source?: string | null): string | null {
+        const raw = (source || "").trim();
+        if (!raw) return null;
+        try {
+            return new URL(raw, globalThis.location.href).toString();
+        } catch {
+            return null;
+        }
+    }
+
+    private isUnsafeProtocol(value: string): boolean {
+        return /^(?:javascript|vbscript|data:text\/html)/i.test((value || "").trim());
+    }
+
+    private resolveUrlAgainstSource(rawValue: string): string | null {
+        const value = (rawValue || "").trim();
+        if (!value) return null;
+        if (value.startsWith("#")) return value;
+        if (this.isUnsafeProtocol(value)) return null;
+
+        const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(value);
+        if (hasScheme || value.startsWith("//")) {
+            try {
+                return new URL(value, globalThis.location.href).toString();
+            } catch {
+                return value;
+            }
+        }
+
+        if (!this.sourceUrl) {
+            return value;
+        }
+
+        try {
+            return new URL(value, this.sourceUrl).toString();
+        } catch {
+            return value;
+        }
+    }
+
+    private resolveRelativeResourceUrls(root: HTMLElement): void {
+        const apply = (selector: string, attr: "src" | "href") => {
+            const nodes = Array.from(root.querySelectorAll(selector)) as HTMLElement[];
+            for (const node of nodes) {
+                const current = (node.getAttribute(attr) || "").trim();
+                if (!current) continue;
+                const resolved = this.resolveUrlAgainstSource(current);
+                if (!resolved) {
+                    node.removeAttribute(attr);
+                    continue;
+                }
+                if (resolved !== current) node.setAttribute(attr, resolved);
+            }
+        };
+
+        apply("img[src]", "src");
+        apply("source[src]", "src");
+        apply("a[href]", "href");
+    }
+
+    private isLikelyMarkdownUrl(value: string): boolean {
+        const raw = (value || "").trim();
+        if (!raw) return false;
+        const noHash = raw.split("#")[0];
+        const noQuery = noHash.split("?")[0];
+        return /\.(?:md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)$/i.test(noQuery);
+    }
+
+    private isLikelyBinaryAssetUrl(value: string): boolean {
+        const raw = (value || "").trim();
+        if (!raw) return false;
+        const noHash = raw.split("#")[0];
+        const noQuery = noHash.split("?")[0];
+        return /\.(?:png|jpe?g|gif|webp|bmp|svg|ico|pdf|zip|rar|7z|gz|mp4|webm|mp3|wav|ogg|avi|mov)$/i.test(noQuery);
+    }
+
+    private async fetchMarkdownFromUrl(source: string): Promise<string | null> {
+        const src = (source || "").trim();
+        if (!src) return null;
+        try {
+            const response = await fetch(src, { credentials: "include", cache: "no-store" });
+            if (!response.ok) return null;
+            const text = await response.text();
+            const lowered = (text || "").trimStart().toLowerCase();
+            if (lowered.startsWith("<!doctype html") || lowered.startsWith("<html") || lowered.startsWith("<head") || lowered.startsWith("<body")) {
+                return null;
+            }
+            return text;
+        } catch (error) {
+            console.warn("[ViewerView] Failed to load markdown URL:", error);
+            return null;
+        }
+    }
+
+    private async openMarkdownSource(source: string, filename?: string): Promise<boolean> {
+        const normalizedSource = this.normalizeSourceUrl(source);
+        if (!normalizedSource) return false;
+        const markdown = await this.fetchMarkdownFromUrl(normalizedSource);
+        if (markdown === null) return false;
+        this.setContent(markdown, filename, normalizedSource);
+        this.showMessage(filename ? `Opened ${filename}` : "Opened markdown link");
+        return true;
     }
 
     private setupEventHandlers(rawElement?: HTMLPreElement): void {
@@ -429,6 +542,32 @@ export class ViewerView implements View {
         document.addEventListener("paste", (e) => {
             void this.handlePaste(e as ClipboardEvent);
         }, { signal: this.pasteController.signal });
+
+        renderTarget?.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement | null;
+            const link = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+            if (!link) return;
+
+            const href = (link.getAttribute("href") || "").trim();
+            if (!href || href.startsWith("#")) return;
+            if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e as MouseEvent).button !== 0) return;
+
+            const resolved = this.resolveUrlAgainstSource(href);
+            if (!resolved) return;
+
+            const rawLinkLooksRelative = !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(href) && !href.startsWith("//");
+            const shouldOpenAsMarkdown =
+                this.isLikelyMarkdownUrl(resolved) ||
+                (rawLinkLooksRelative && !this.isLikelyBinaryAssetUrl(resolved));
+            if (!shouldOpenAsMarkdown) return;
+
+            e.preventDefault();
+            void this.openMarkdownSource(resolved).then((ok) => {
+                if (!ok) {
+                    this.showMessage("Failed to open markdown link");
+                }
+            });
+        });
     }
 
     private handleOpen(): void {
@@ -440,7 +579,7 @@ export class ViewerView implements View {
             if (file) {
                 try {
                     const content = await file.text();
-                    this.setContent(content);
+                    this.setContent(content, file.name, null);
                     this.showMessage(`Opened ${file.name}`);
                 } catch (error) {
                     console.error("[ViewerView] Failed to read file:", error);
@@ -604,12 +743,12 @@ export class ViewerView implements View {
                     return;
                 }
                 const content = await asset.file.text();
-                this.setContent(content, asset.file.name);
+                this.setContent(content, asset.file.name, null);
                 this.showMessage("Opened pasted encoded document");
                 return;
             }
 
-            this.setContent(raw);
+            this.setContent(raw, undefined, null);
             this.showMessage("Content pasted");
         } catch (error) {
             console.error("[ViewerView] Failed to process pasted data:", error);
@@ -727,11 +866,33 @@ export class ViewerView implements View {
     }
 
     async handleMessage(message: unknown): Promise<void> {
-        const msg = message as { type?: string; data?: { text?: string; content?: string; filename?: string; url?: string } };
+        const msg = message as {
+            type?: string;
+            data?: {
+                text?: string;
+                content?: string;
+                filename?: string;
+                url?: string;
+                source?: string;
+                path?: string;
+                src?: string;
+            };
+        };
 
-        if (msg.data?.text || msg.data?.content || msg.data?.url) {
-            const content = msg.data.text || msg.data.content || msg.data.url || "";
-            this.setContent(content, msg.data.filename);
+        if (msg.data?.text || msg.data?.content) {
+            const content = msg.data.text || msg.data.content || "";
+            const source = msg.data.source || msg.data.src || msg.data.path;
+            this.setContent(content, msg.data.filename, source);
+            return;
+        }
+
+        if (msg.data?.url) {
+            const source = msg.data.source || msg.data.src || msg.data.path || msg.data.url;
+            const opened = await this.openMarkdownSource(source, msg.data.filename);
+            if (!opened) {
+                const fallbackContent = `> Failed to load markdown from:\n> ${source}`;
+                this.setContent(fallbackContent, msg.data.filename, source);
+            }
         }
     }
 }

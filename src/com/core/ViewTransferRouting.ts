@@ -60,7 +60,11 @@ const getContentType = (payload: ViewTransferPayload): string => {
         return "file";
     }
 
-    if (url) return "url";
+    if (url) {
+        const normalized = url.split("#")[0].split("?")[0].toLowerCase();
+        if (/\.(md|markdown|mdown|mkd|mkdn|mdtxt|mdtext)$/.test(normalized)) return "markdown";
+        return "url";
+    }
     if (text) return "text";
     return "other";
 };
