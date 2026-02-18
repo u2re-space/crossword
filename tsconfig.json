@@ -6,6 +6,7 @@
         "**/*.d.ts",
         "**/*.tsx",
         "**/*.vue",
+        "src/core/document/docx/**/*.ts",
         "../../modules/projects/lur.e/src/extension/core/Base64Data.ts"
 , "../../modules/projects/uniform.ts/src/newer/misc/AppCommunicator.ts"    ],
     "exclude": [
