@@ -1,16 +1,14 @@
 import { resolve } from "node:path";
 
 //
-import optimizer from 'vite-plugin-optimizer';
 import https from "../private/https/certificate.mjs";
 import postcssConfig from "../postcss.config.js";
-import jspmPlugin from "vite-plugin-jspm";
 
 //
-import { viteSingleFile } from 'vite-plugin-singlefile';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa'
 import { searchForWorkspaceRoot } from "vite";
+import { ViteMcp } from 'vite-plugin-mcp';
 
 /**
  * Plugin to handle SPA fallback routes (share-target, etc.)
@@ -103,6 +101,14 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
                 ]
             })
         ],
+        ViteMcp({
+            target: "browser",
+            mode: "development",
+            port: 443,
+            host: "0.0.0.0",
+            origin: "https://192.168.0.200",
+            allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', '192.168.0.200', '95.188.82.223'],
+        }),
         VitePWA({
             srcDir: resolve(__dirname, "./src/pwa/"),
             dstDir: resolve(__dirname, "./dist/"),

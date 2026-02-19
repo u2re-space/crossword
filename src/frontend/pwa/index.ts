@@ -30,9 +30,7 @@ export {
     checkPendingShareData,
     processShareTargetData,
     storeShareTargetPayloadToCache,
-    consumeCachedShareTargetPayload,
     CHANNELS,
-    type CachedShareTargetPayload
 } from "./sw-handling";
 
 // Re-export SW URL utilities

@@ -7,8 +7,7 @@
         "default_popup": "popup/index.html",
         "default_title": "CrossWord"
     },
-    "chrome_url_overrides": {
-    },
+    "chrome_url_overrides": {},
     "options_ui": {
         "page": "settings/index.html",
         "open_in_tab": true
@@ -52,18 +51,24 @@
                 "file:///**/*",
                 "file://**/*"
             ],
-            "js": ["content/main.ts"],
+            "js": [
+                "content/main.ts"
+            ],
             "run_at": "document_start"
         }
     ],
-    "web_accessible_resources": [{
-        "resources": [
-            "markdown/viewer.html",
-            "offscreen/*",
-            "assets/*"
-        ],
-        "matches": ["<all_urls>"]
-    }],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "markdown/viewer.html",
+                "offscreen/*",
+                "assets/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
     "commands": {
         "crx-snip-text": {
             "suggested_key": {

@@ -5,10 +5,18 @@
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
-    "display_override": ["window-controls-overlay", "standalone"],
+    "display_override": [
+        "window-controls-overlay",
+        "standalone"
+    ],
     "background_color": "#ffffff",
     "theme_color": "#007acc",
-    "categories": ["productivity", "lifestyle", "finance", "navigation"],
+    "categories": [
+        "productivity",
+        "lifestyle",
+        "finance",
+        "navigation"
+    ],
     "icons": [
         {
             "src": "icons/icon.svg",
@@ -27,23 +35,96 @@
         {
             "action": "/",
             "accept": {
-                "text/*": [".txt", ".text", ".log", ".csv", ".tsv"],
-                "text/plain": [".txt", ".text", ".log", ".csv", ".tsv", ".md", ".markdown", ".mdown", ".mdx"],
-                "application/pdf": [".pdf"],
-                "application/json": [".json"],
-                "application/xml": [".xml"],
-                "application/javascript": [".js"],
-                "application/typescript": [".ts"],
-                "image/webp": [".webp"],
-                "image/svg+xml": [".svg"],
-                "image/jpeg": [".jpg", ".jpeg"],
-                "image/png": [".png"],
-                "text/markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
-                "application/markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
-                "text/x-markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
-                "application/x-markdown": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
-                "application/md": [".md", ".markdown", ".mdown", ".mdx", ".mkd", ".mkdn"],
-                "text/html": [".html", ".htm"]
+                "text/*": [
+                    ".txt",
+                    ".text",
+                    ".log",
+                    ".csv",
+                    ".tsv"
+                ],
+                "text/plain": [
+                    ".txt",
+                    ".text",
+                    ".log",
+                    ".csv",
+                    ".tsv",
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx"
+                ],
+                "application/pdf": [
+                    ".pdf"
+                ],
+                "application/json": [
+                    ".json"
+                ],
+                "application/xml": [
+                    ".xml"
+                ],
+                "application/javascript": [
+                    ".js"
+                ],
+                "application/typescript": [
+                    ".ts"
+                ],
+                "image/webp": [
+                    ".webp"
+                ],
+                "image/svg+xml": [
+                    ".svg"
+                ],
+                "image/jpeg": [
+                    ".jpg",
+                    ".jpeg"
+                ],
+                "image/png": [
+                    ".png"
+                ],
+                "text/markdown": [
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx",
+                    ".mkd",
+                    ".mkdn"
+                ],
+                "application/markdown": [
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx",
+                    ".mkd",
+                    ".mkdn"
+                ],
+                "text/x-markdown": [
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx",
+                    ".mkd",
+                    ".mkdn"
+                ],
+                "application/x-markdown": [
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx",
+                    ".mkd",
+                    ".mkdn"
+                ],
+                "application/md": [
+                    ".md",
+                    ".markdown",
+                    ".mdown",
+                    ".mdx",
+                    ".mkd",
+                    ".mkdn"
+                ],
+                "text/html": [
+                    ".html",
+                    ".htm"
+                ]
             }
         }
     ],
