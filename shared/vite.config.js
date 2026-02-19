@@ -135,12 +135,14 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
         })
     ];
 
-    //
+    // Packages that are often tree-shaken or only used in workers; keep default chunking to avoid empty chunks
+    const VENDOR_SKIP_NAMES = new Set(['png', 'jpeg', 'cbor-x']);
     const manualChunks = function(id) {
         if (id.includes('node_modules')) {
             const modules = id.split('node_modules/');
             const pkg = modules[modules.length - 1].split('/');
             const name = pkg[0].startsWith('@') ? pkg[1] : pkg[0];
+            if (VENDOR_SKIP_NAMES.has(name)) return undefined;
             return `vendor/${name}`;
         }
         if (id.includes('/modules/projects/')) {

@@ -31,6 +31,7 @@
         "vite-plugin-pwa": ">=1.2.0"
     },
     "optionalDependencies": {
+        "rollup": "npm:@rollup/wasm-node@latest",
         "@rollup/rollup-linux-x64-gnu": "npm:@rollup/wasm-node@latest",
         "@rollup/rollup-win32-x64-msvc": "npm:@rollup/wasm-node@latest",
         "@rollup/wasm-node": ">=4.57.1"

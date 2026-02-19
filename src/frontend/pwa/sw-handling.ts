@@ -32,10 +32,10 @@ export const ensureAppCss = () => {
     link.rel = "stylesheet";
 
     // Resolve CSS relative to module location (handles /apps/cw/ mounting)
-    // Module is at .../modules/index.js, CSS is at .../assets/crossword.css
+    // Module is at .../modules/index.js, CSS is at .../assets/crossword.css (resolved at runtime)
     try {
         // Go up from modules/ to app root, then into assets/
-        const cssUrl = new URL("../assets/crossword.css", import.meta.url);
+        const cssUrl = new URL(/* @vite-ignore */ "../assets/crossword.css", import.meta.url);
         link.href = cssUrl.toString();
     } catch {
         // Fallback: try document-relative path
@@ -47,7 +47,7 @@ export const ensureAppCss = () => {
     link.onerror = () => {
         const altPaths = [
             // Relative to app root (if main entry, not in modules/)
-            new URL("./assets/crossword.css", import.meta.url).toString(),
+            new URL(/* @vite-ignore */ "./assets/crossword.css", import.meta.url).toString(),
             // Absolute from document root
             "/assets/crossword.css",
             // Common app mounting paths

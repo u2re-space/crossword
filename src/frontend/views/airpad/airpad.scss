@@ -3,13 +3,12 @@
  */
 
 @layer view.airpad {
-
     .view-airpad {
         display: flex;
         flex-direction: column;
         block-size: 100%;
         background-color: var(--view-bg, var(--color-surface, #0a0a0a));
-        color: var(--view-fg, var(--color-on-surface, #ffffff));
+        color: var(--view-fg, var(--color-on-surface, #fff));
         --action-rail-edge: 0.75rem;
     }
 

@@ -1,5 +1,4 @@
 @use "veela-lib" as *;
-
 @layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, print, print-breaks, overrides;
 
 @layer tokens {
@@ -1958,6 +1957,7 @@
                 font-size: var(--text-sm);
                 padding: var(--space-xs) var(--space-sm);
             }
+
             @media (max-width: 480px) {
                 padding: var(--space-xs);
 
