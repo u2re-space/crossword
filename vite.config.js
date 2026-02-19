@@ -190,11 +190,20 @@ const createCrxConfig = (mode) => {
             }
         },
         esbuild: debugCrxBundle ? {
+            target: 'esnext',
+            platform: 'chrome',
             keepNames: true,
             minifyIdentifiers: false,
             minifySyntax: false,
             minifyWhitespace: false,
-        } : undefined,
+        } : {
+            target: 'esnext',
+            platform: 'browser',
+            keepNames: true,
+            minifyIdentifiers: false,
+            minifySyntax: false,
+            minifyWhitespace: false,
+        },
     };
 };
 

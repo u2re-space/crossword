@@ -1,4 +1,3 @@
-import type { FileStat } from "webdav/web"
 import { getDirectoryHandle, readFile } from "fest/lure"
 import { JSOX } from "jsox";
 
@@ -23,16 +22,17 @@ type WebDavCreateClient = (remoteURL: string, options?: Record<string, unknown>)
 let createWebDavClient: WebDavCreateClient | null = null;
 
 const getWebDavCreateClient = async (): Promise<WebDavCreateClient | null> => {
-    if (createWebDavClient) return createWebDavClient;
-    try {
-        const mod = await import("webdav/web");
-        if (typeof mod?.createClient === "function") {
+    if (createWebDavClient != null) return createWebDavClient;
+    /*try {
+        const mod = await import("webdav/web")?.catch?.((e) => { console.warn(e); return null; });
+        console.log("[Settings] getWebDavCreateClient - mod:", mod);
+        if (mod != null && typeof mod?.createClient === "function") {
             createWebDavClient = mod.createClient as WebDavCreateClient;
             return createWebDavClient;
         }
     } catch {
         // WebDAV is optional and not required in service-worker-only flows.
-    }
+    }*/
     return null;
 };
 
@@ -470,6 +470,7 @@ const getHostOnly = (address: string) => {
 
 //
 export const WebDavSync = async (address: string, options: any = {}) => {
+    console.log("[Settings] WebDavSync", address, options); if (!address) return null;
     const createClient = await getWebDavCreateClient();
     if (!createClient) return null;
     const client = createClient(getHostOnly(address), options);

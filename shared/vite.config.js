@@ -11,7 +11,6 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa'
 import { searchForWorkspaceRoot } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 /**
  * Plugin to handle SPA fallback routes (share-target, etc.)
