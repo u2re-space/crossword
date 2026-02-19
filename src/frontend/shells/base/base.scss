@@ -9,16 +9,16 @@
         color-scheme: light dark;
 
         /* colors */
-        --shell-bg: light-dark(var(--color-surface, var(--color-surface)), var(--color-surface, var(--color-surface)));
-        --shell-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
-        --shell-nav-bg: light-dark(var(--color-surface-container-high, var(--color-surface-container-high)), var(--color-surface-container-high, var(--color-surface-container-high)));
-        --shell-nav-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
-        --shell-nav-border: light-dark(var(--color-outline-variant, var(--color-outline-variant)), var(--color-outline-variant, var(--color-outline-variant)));
-        --shell-btn-hover: light-dark(var(--color-surface-container, var(--color-surface-container)), var(--color-surface-container, var(--color-surface-container)));
-        --shell-btn-active-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
-        --shell-btn-active-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
-        --shell-status-bg: light-dark(var(--color-surface-container-low, var(--color-surface-container-low)), var(--color-surface-container-low, var(--color-surface-container-low)));
-        --shell-status-fg: light-dark(var(--color-on-surface, var(--color-on-surface)), var(--color-on-surface, var(--color-on-surface)));
+        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
+        --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
+        --shell-btn-hover: light-dark(var(--color-surface-container), var(--color-surface-container));
+        --shell-btn-active-bg: light-dark(var(--color-surface-container-low), var(--color-surface-container-low));
+        --shell-btn-active-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-status-bg: light-dark(var(--color-surface-container-low), var(--color-surface-container-low));
+        --shell-status-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
 
         /* layout */
         --shell-nav-height: var(--shell-nav-height-base, 48px);
@@ -28,11 +28,11 @@
     }
 
     :is(:root, html):has([data-shell="base"][data-theme="dark"]) {
-        --shell-bg: var(--color-surface);
-        --shell-fg: var(--color-on-surface);
-        --shell-nav-bg: var(--color-surface-container-high);
-        --shell-nav-fg: var(--color-on-surface);
-        --shell-nav-border: var(--color-outline-variant);
+        --shell-bg: light-dark(var(--color-surface), var(--color-surface));
+        --shell-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-bg: light-dark(var(--color-surface-container-high), var(--color-surface-container-high));
+        --shell-nav-fg: light-dark(var(--color-on-surface), var(--color-on-surface));
+        --shell-nav-border: light-dark(var(--color-outline-variant), var(--color-outline-variant));
     }
 }
 

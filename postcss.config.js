@@ -1,6 +1,5 @@
 import autoprefixer from "autoprefixer";
 import cssnano from "cssnano";
-import removeDuplicateValues  from "postcss-remove-duplicate-values";
 import postcssImport from "postcss-import";
 import postcssPresetEnv from "postcss-preset-env";
 
@@ -11,7 +10,9 @@ const presetEnvConfig = {
     autoprefixer: false,
     browsers,
     features: {
-        "custom-media-queries": true
+        "custom-media-queries": true,
+        // Keep light-dark(light, dark) as-is; do not polyfill or collapse to a single value
+        "light-dark-function": false,
     },
     preserve: true,
 };
@@ -34,6 +35,8 @@ const cssnanoConfig = {
             discardComments: {
                 removeAll: true,
             },
+            // Avoid invalid color definitions from value collapse/optimization
+            colormin: false,
         },
     ],
 };
@@ -42,12 +45,8 @@ export default {
     plugins: [
         //postcssImport(),
         postcssPresetEnv(presetEnvConfig),
-        autoprefixer({
-            overrideBrowserslist: browsers
-        }),
-        removeDuplicateValues({
-            preserveEmpty: false,
-        }),
+        // Disabled: can collapse property values and produce invalid color definitions
+        // removeDuplicateValues({ preserveEmpty: false }),
         cssnano(cssnanoConfig),
     ],
 };
