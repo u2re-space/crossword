@@ -44,7 +44,7 @@
         "@jsquash/jpeg": ">=1.6.0",
         "@jsquash/png": ">=3.1.1",
         "@phosphor-icons/core": ">=2.1.1",
-        "@rollup/wasm-node": "^4.57.1",
+        "@rollup/wasm-node": ">=4.57.1",
         "@toon-format/toon": ">=2.1.0",
         "@types/sanitize-html": ">=2.14.0",
         "autoprefixer": ">=10.4.20",
