@@ -32,7 +32,11 @@ export default {
                 "color-mix",
                 "oklch",
                 "oklab",
-                "style"
+                "style",
+                "config",
+                "emoji-to-icon",
+                "md3-color",
+                "md3-color-scheme"
             ],
             "severity": "warning"
         }],
@@ -127,5 +131,16 @@ export default {
         "logical-css/require-logical-properties": [true, {"severity": "warning"}],
         "logical-css/require-logical-units": [true, {"severity": "warning"}],
         "logical-css/require-logical-keywords": [true, {"severity": "warning"}]
-    }
+    },
+    overrides: [
+        {
+            files: ["**/shared/fest/veela/scss/**/*.scss", "**/fest/veela/scss/**/*.scss"],
+            rules: {
+                "value-keyword-case": null,
+                "color-hex-length": null,
+                "color-function-notation": null,
+                "alpha-value-notation": null
+            }
+        }
+    ]
 }
