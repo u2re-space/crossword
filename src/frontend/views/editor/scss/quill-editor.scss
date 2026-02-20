@@ -7,8 +7,8 @@
         display: flex;
         flex-direction: column;
         gap: var(--space-lg);
-        height: 100%;
-        max-height: 100%;
+        block-size: 100%;
+        max-block-size: 100%;
     }
 
     .quill-wrapper {
@@ -41,7 +41,7 @@
 
     .quill-editor .ql-editor {
         padding: var(--space-lg);
-        min-height: 400px;
+        min-block-size: 400px;
         color: var(--color-on-surface);
 
         &::before {
@@ -108,7 +108,7 @@
 
     /* Custom scrollbar for Quill editor */
     .quill-editor .ql-editor::-webkit-scrollbar {
-        width: 8px;
+        inline-size: 8px;
     }
 
     .quill-editor .ql-editor::-webkit-scrollbar-track {
@@ -126,7 +126,7 @@
     }
 
     /* Responsive Quill editor */
-    @media (max-width: 768px) {
+    @media (max-inline-size: 768px) {
         .quill-editor .ql-editor {
             padding: var(--space-md);
             font-size: var(--text-sm);
@@ -137,7 +137,7 @@
         }
 
         .quill-editor .ql-toolbar .ql-formats {
-            margin-right: var(--space-sm);
+            margin-inline-end: var(--space-sm);
         }
     }
 
@@ -154,15 +154,15 @@
         }
 
         // Responsive padding
-        @container (max-width: 1024px) {
+        @container (max-inline-size: 1024px) {
             padding: var(--space-md);
         }
 
-        @container (max-width: 768px) {
+        @container (max-inline-size: 768px) {
             padding: var(--space-sm);
         }
 
-        @container (max-width: 480px) {
+        @container (max-inline-size: 480px) {
             padding: var(--space-xs);
         }
 
@@ -181,19 +181,19 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: var(--space-xl);
-            padding-bottom: var(--space-lg);
+            margin-block-end: var(--space-xl);
+            padding-block-end: var(--space-lg);
 
             // Responsive layout
-            @container (max-width: 768px) {
+            @container (max-inline-size: 768px) {
                 flex-direction: column;
                 align-items: stretch;
                 gap: var(--space-md);
-                margin-bottom: var(--space-lg);
-                padding-bottom: var(--space-md);
+                margin-block-end: var(--space-lg);
+                padding-block-end: var(--space-md);
             }
 
-            @container (max-width: 480px) {
+            @container (max-inline-size: 480px) {
                 gap: var(--space-sm);
             }
 
@@ -205,11 +205,11 @@
                 letter-spacing: -0.025em;
                 line-height: var(--leading-tight);
 
-                @container (max-width: 1024px) {
+                @container (max-inline-size: 1024px) {
                     font-size: var(--text-xl);
                 }
 
-                @container (max-width: 768px) {
+                @container (max-inline-size: 768px) {
                     text-align: center;
                     font-size: var(--text-lg);
                 }
@@ -222,22 +222,22 @@
                 flex-wrap: wrap;
 
                 // Responsive button layout
-                @container (max-width: 640px) {
+                @container (max-inline-size: 640px) {
                     gap: var(--space-xs);
                 }
 
-                @container (max-width: 480px) {
+                @container (max-inline-size: 480px) {
                     justify-content: center;
                     gap: var(--space-sm);
                 }
 
                 // Scrollable on very small screens
-                @container (max-width: 360px) {
+                @container (max-inline-size: 360px) {
                     overflow-x: auto;
                     overflow-y: hidden;
                     scrollbar-width: none;
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: var(--space-xs);
+                    padding-block-end: var(--space-xs);
 
                     &::-webkit-scrollbar {
                         display: none;
@@ -260,18 +260,18 @@
                     transition: all var(--motion-fast);
                     position: relative;
                     white-space: nowrap;
-                    min-height: 44px;
+                    min-block-size: 44px;
                     box-shadow: var(--elev-0);
 
-                    @container (max-width: 640px) {
+                    @container (max-inline-size: 640px) {
                         padding: var(--space-xs) var(--space-md);
                         font-size: var(--text-xs);
-                        min-height: 40px;
+                        min-block-size: 40px;
                     }
 
-                    @container (max-width: 480px) {
+                    @container (max-inline-size: 480px) {
                         padding: var(--space-sm) var(--space-md);
-                        min-height: 44px;
+                        min-block-size: 44px;
                     }
 
                     &:hover {
@@ -303,7 +303,7 @@
                     &.btn-icon {
                         padding: var(--space-sm);
 
-                        @container (max-width: 640px) {
+                        @container (max-inline-size: 640px) {
                             padding: var(--space-xs);
                         }
 
@@ -313,7 +313,7 @@
                         }
 
                         .btn-text {
-                            @container (max-width: 640px) {
+                            @container (max-inline-size: 640px) {
                                 display: none;
                             }
                         }
@@ -334,13 +334,13 @@
 
                         &::after {
                             content: "";
-                            width: 16px;
-                            height: 16px;
+                            inline-size: 16px;
+                            block-size: 16px;
                             border: 2px solid transparent;
-                            border-top: 2px solid currentColor;
+                            border-block-start: 2px solid currentColor;
                             border-radius: 50%;
                             animation: spin 1s linear infinite;
-                            margin-left: var(--space-xs);
+                            margin-inline-start: var(--space-xs);
                         }
                     }
                 }
@@ -351,19 +351,19 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-top: var(--space-xl);
-            padding-top: var(--space-lg);
+            margin-block-start: var(--space-xl);
+            padding-block-start: var(--space-lg);
 
             // Responsive layout
-            @container (max-width: 768px) {
+            @container (max-inline-size: 768px) {
                 flex-direction: column;
                 align-items: stretch;
                 gap: var(--space-md);
-                margin-top: var(--space-lg);
-                padding-top: var(--space-md);
+                margin-block-start: var(--space-lg);
+                padding-block-start: var(--space-md);
             }
 
-            @container (max-width: 480px) {
+            @container (max-inline-size: 480px) {
                 gap: var(--space-sm);
             }
 
@@ -374,7 +374,7 @@
                 color: var(--color-on-surface-variant);
 
                 // Responsive layout
-                @container (max-width: 768px) {
+                @container (max-inline-size: 768px) {
                     justify-content: center;
                     flex-wrap: wrap;
                     gap: var(--space-md);
@@ -393,7 +393,7 @@
                 color: var(--color-on-surface-variant);
 
                 // Responsive layout
-                @container (max-width: 768px) {
+                @container (max-inline-size: 768px) {
                     justify-content: center;
                     gap: var(--space-sm);
                 }
