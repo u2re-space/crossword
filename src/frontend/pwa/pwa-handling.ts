@@ -94,7 +94,6 @@ class AssetUpdateManager {
 
         const criticalAssets = [
             './choice.js',
-            './assets/crossword.css',
             './sw.js',
             './favicon.svg',
             './favicon.png'

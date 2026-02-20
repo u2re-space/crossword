@@ -27,6 +27,7 @@ export const ensureAppCss = () => {
     const id = "rs-crossword-css";
     if (document.getElementById(id)) return;
 
+    /*
     const link = document.createElement("link");
     link.id = id;
     link.rel = "stylesheet";
@@ -35,7 +36,7 @@ export const ensureAppCss = () => {
     // Module is at .../modules/index.js, CSS is at .../assets/crossword.css (resolved at runtime)
     try {
         // Go up from modules/ to app root, then into assets/
-        const cssUrl = new URL(/* @vite-ignore */ "../assets/crossword.css", import.meta.url);
+        const cssUrl = new URL("../assets/crossword.css", import.meta.url);
         link.href = cssUrl.toString();
     } catch {
         // Fallback: try document-relative path
@@ -47,7 +48,7 @@ export const ensureAppCss = () => {
     link.onerror = () => {
         const altPaths = [
             // Relative to app root (if main entry, not in modules/)
-            new URL(/* @vite-ignore */ "./assets/crossword.css", import.meta.url).toString(),
+            new URL("./assets/crossword.css", import.meta.url).toString(),
             // Absolute from document root
             "/assets/crossword.css",
             // Common app mounting paths
@@ -65,7 +66,7 @@ export const ensureAppCss = () => {
         link.onerror = null;
     };
 
-    document.head.append(link);
+    document.head.append(link);*/
 };
 
 // ============================================================================
