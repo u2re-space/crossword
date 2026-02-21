@@ -1,0 +1,192 @@
+/**
+ * Minimal Shell
+ *
+ * Simple toolbar-based single-view shell.
+ * Features:
+ * - Top navigation toolbar with view buttons
+ * - Status bar for messages
+ * - Single content area for one active view
+ * - NO split view, NO sidebar, NO tabs
+ */
+
+import { H } from "fest/lure";
+import { affected } from "fest/object";
+import type { ShellId, ShellLayoutConfig, ViewId } from "../types";
+
+// @ts-ignore - SCSS import
+import style from "./minimal.scss?inline";
+
+// Side effect: register icon component
+import "fest/icon";
+import { ShellBase } from "../shell";
+import { isEnabledView, pickEnabledView } from "../../config/views";
+
+// ============================================================================
+// NAVIGATION ITEMS
+// ============================================================================
+
+/** Navigation item configuration */
+interface NavItem {
+    readonly id: ViewId;
+    readonly name: string;
+    readonly icon: string;
+}
+
+/** Main navigation items shown in the toolbar */
+const ALL_NAV_ITEMS = [
+    { id: "viewer", name: "Viewer", icon: "eye" },
+    { id: "explorer", name: "Explorer", icon: "folder" },
+    { id: "workcenter", name: "Work Center", icon: "lightning" },
+    { id: "airpad", name: "Airpad", icon: "hand-pointing" },
+    { id: "settings", name: "Settings", icon: "gear" },
+    { id: "history", name: "History", icon: "clock-counter-clockwise" }
+] as const satisfies readonly NavItem[];
+const MAIN_NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => isEnabledView(item.id));
+
+/** Set of valid nav view IDs for fast lookup */
+const VALID_NAV_VIEW_IDS = new Set(MAIN_NAV_ITEMS.map(item => item.id));
+
+/** Type guard for valid navigation view IDs */
+function isValidNavViewId(id: string): id is typeof MAIN_NAV_ITEMS[number]["id"] {
+    return VALID_NAV_VIEW_IDS.has(id as any);
+}
+
+// ============================================================================
+// BASIC SHELL IMPLEMENTATION
+// ============================================================================
+
+export class MinimalShell extends ShellBase {
+    id: ShellId = "minimal";
+    name = "Minimal";
+
+    layout: ShellLayoutConfig = {
+        hasSidebar: false,
+        hasToolbar: true,
+        hasTabs: false,
+        supportsMultiView: false,
+        supportsWindowing: false
+    };
+
+    protected createLayout(): HTMLElement {
+        const root = H`
+            <div class="app-shell" data-shell="minimal">
+                <nav class="app-shell__nav" role="navigation" aria-label="Main navigation">
+                    <div class="app-shell__nav-left" data-nav-left>
+                        ${this.renderNavButtons()}
+                    </div>
+                    <div class="app-shell__nav-right" data-shell-toolbar>
+                        <!-- View-specific toolbar actions go here -->
+                    </div>
+                </nav>
+                <main class="app-shell__content" data-shell-content role="main">
+                    <div class="app-shell__loading">
+                        <div class="loading-spinner"></div>
+                        <span>Loading...</span>
+                    </div>
+                </main>
+                <div class="app-shell__status" data-shell-status hidden aria-live="polite"></div>
+            </div>
+        ` as HTMLElement;
+
+        this.setupNavClickHandlers(root);
+        return root;
+    }
+
+    private renderNavButtons(): DocumentFragment {
+        const fragment = document.createDocumentFragment();
+
+        for (const item of MAIN_NAV_ITEMS) {
+            const button = H`
+                <button
+                    class="app-shell__nav-btn"
+                    data-view="${item.id}"
+                    type="button"
+                    title="${item.name}"
+                >
+                    <ui-icon icon="${item.icon}" icon-style="duotone"></ui-icon>
+                    <span class="app-shell__nav-label">${item.name}</span>
+                </button>
+            ` as HTMLButtonElement;
+
+            fragment.appendChild(button);
+        }
+
+        return fragment;
+    }
+
+    private setupNavClickHandlers(root: HTMLElement): void {
+        const navLeft = root.querySelector("[data-nav-left]");
+        if (!navLeft) return;
+
+        // Handle nav button clicks
+        navLeft.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement;
+            const button = target.closest("[data-view]") as HTMLButtonElement | null;
+            if (!button) return;
+
+            const viewId = button.dataset.view;
+            if (viewId && isValidNavViewId(viewId)) {
+                this.navigate(viewId);
+            }
+        });
+
+        // Update active state reactively
+        affected(this.currentView, (viewId) => {
+            this.updateActiveNavButton(navLeft, viewId);
+        });
+    }
+
+    private updateActiveNavButton(navContainer: Element, activeViewId: ViewId): void {
+        const buttons = navContainer.querySelectorAll("[data-view]");
+        buttons.forEach(btn => {
+            const isActive = (btn as HTMLElement).dataset.view === activeViewId;
+            btn.classList.toggle("active", isActive);
+            btn.setAttribute("aria-current", isActive ? "page" : "false");
+        });
+    }
+
+    protected getStylesheet(): string | null {
+        return style;
+    }
+
+    async mount(container: HTMLElement): Promise<void> {
+        await super.mount(container);
+
+        // Setup path-based navigation
+        this.setupPopstateNavigation();
+
+        // Determine initial view from pathname or default to "viewer"
+        const initialView = this.getInitialView();
+        await this.navigate(initialView);
+    }
+
+    private getInitialView(): ViewId {
+        if (typeof globalThis === "undefined") return pickEnabledView("viewer");
+
+        // Get view from pathname (e.g., /viewer, /settings, /workcenter)
+        const pathname = globalThis?.location?.pathname?.replace(/^\//, "").toLowerCase();
+
+        if (pathname && isValidNavViewId(pathname)) {
+            return pathname;
+        }
+
+        // Default to viewer
+        return pickEnabledView("viewer", MAIN_NAV_ITEMS[0]?.id || "viewer");
+    }
+}
+
+// ============================================================================
+// FACTORY FUNCTION
+// ============================================================================
+
+/**
+ * Factory function for creating MinimalShell instances.
+ * 
+ * Note: The container parameter is required by ShellRegistration interface
+ * but not used here - the shell is mounted later via shell.mount(container).
+ */
+export function createShell(_container: HTMLElement): MinimalShell {
+    return new MinimalShell();
+}
+
+export default createShell;

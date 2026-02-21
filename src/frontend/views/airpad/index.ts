@@ -1,0 +1,183 @@
+/**
+ * Airpad View
+ * 
+ * Shell-agnostic air trackpad + AI assistant component.
+ * Wraps the existing airpad functionality as a view.
+ */
+
+import { H } from "fest/lure";
+import { loadAsAdopted, removeAdopted } from "fest/dom";
+import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
+import type { BaseViewOptions } from "../types";
+import { disconnectWS } from "./network/websocket";
+import { setRemoteKeyboardEnabled } from "./input/virtual-keyboard";
+
+// @ts-ignore
+import style from "./airpad.scss?inline";
+
+// ============================================================================
+// AIRPAD VIEW
+// ============================================================================
+
+export class AirpadView implements View {
+    id = "airpad" as const;
+    name = "Airpad";
+    icon = "hand-pointing";
+
+    private options: BaseViewOptions;
+    private shellContext?: ShellContext;
+    private element: HTMLElement | null = null;
+    private initialized = false;
+    private initPromise: Promise<void> | null = null;
+    
+    private _sheet: CSSStyleSheet | null = null;
+    private _orientationLocked = false;
+
+    lifecycle: ViewLifecycle = {
+        onMount: () => this.initAirpad(),
+        onUnmount: () => this.cleanup(),
+        onShow: () => {
+            this._sheet = loadAsAdopted(style) as CSSStyleSheet;
+            void this.lockOrientationForAirpad();
+        },
+        onHide: () => {
+            setRemoteKeyboardEnabled(false);
+            disconnectWS();
+            this.unlockOrientationForAirpad();
+            removeAdopted(this._sheet);
+        },
+    };
+
+    constructor(options: BaseViewOptions = {}) {
+        this.options = options;
+        this.shellContext = options.shellContext;
+    }
+
+    render(options?: ViewOptions): HTMLElement {
+        if (options) {
+            this.options = { ...this.options, ...options };
+            this.shellContext = options.shellContext || this.shellContext;
+        }
+
+        this._sheet = loadAsAdopted(style) as CSSStyleSheet;
+
+        this.element = H`
+            <div class="view-airpad">
+                <div class="view-airpad__content" data-airpad-content>
+                    <div class="view-airpad__loading">
+                        <div class="view-airpad__spinner"></div>
+                        <span>Loading Airpad...</span>
+                    </div>
+                </div>
+            </div>
+        ` as HTMLElement;
+
+        // Initialize airpad asynchronously
+        this.initAirpad();
+
+        return this.element;
+    }
+
+    getToolbar(): HTMLElement | null {
+        return null;
+    }
+
+    // ========================================================================
+    // PRIVATE METHODS
+    // ========================================================================
+
+    private async initAirpad(): Promise<void> {
+        if (this.initialized) return;
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = (async () => {
+            const content = this.element?.querySelector("[data-airpad-content]");
+            if (!content) return;
+
+            try {
+                // Dynamic import of airpad main
+                const { default: mountAirpad } = await import("./main");
+
+                // Clear loading state
+                content.innerHTML = "";
+
+                // Mount airpad
+                await mountAirpad(content as HTMLElement);
+                await this.lockOrientationForAirpad()?.catch?.((error) => { console.error("[Airpad] Failed to lock orientation:", error); });
+
+                this.initialized = true;
+            } catch (error) {
+                console.error("[Airpad] Failed to initialize:", error);
+                content.innerHTML = `
+                <div class="view-airpad__error">
+                    <p>Failed to load Airpad</p>
+                    <p class="view-airpad__error-detail">${String(error)}</p>
+                    <button type="button" data-action="retry">Try Again</button>
+                </div>
+            `;
+                content.querySelector("[data-action=retry]")?.addEventListener("click", () => {
+                    this.initialized = false;
+                    this.initAirpad();
+                });
+            } finally {
+                this.initPromise = null;
+            }
+        })();
+
+        return this.initPromise;
+    }
+
+    private cleanup(): void {
+        setRemoteKeyboardEnabled(false);
+        disconnectWS();
+        this.unlockOrientationForAirpad();
+        this.initialized = false;
+    }
+
+    private async lockOrientationForAirpad(): Promise<void> {
+        try {
+            const orientationApi = globalThis?.screen?.orientation as ScreenOrientation;
+            if (!orientationApi || typeof orientationApi.lock !== "function") return;
+
+            const type = (String(orientationApi.type || "").toLowerCase()) || "natural";
+            const lockType = type as OrientationType;
+            await orientationApi?.lock?.(lockType);
+            this._orientationLocked = true;
+        } catch {
+            // Orientation lock can fail outside installed/fullscreen contexts.
+            this._orientationLocked = false;
+        }
+    }
+
+    private unlockOrientationForAirpad(): void {
+        try {
+            if (!this._orientationLocked) return;
+            const orientationApi = globalThis?.screen?.orientation as ScreenOrientation | undefined;
+            if (!orientationApi || typeof orientationApi.unlock !== "function") return;
+            orientationApi.unlock();
+        } catch {
+            // no-op
+        } finally {
+            this._orientationLocked = false;
+        }
+    }
+
+    canHandleMessage(): boolean {
+        return false;
+    }
+
+    async handleMessage(): Promise<void> {}
+}
+
+// ============================================================================
+// FACTORY
+// ============================================================================
+
+export function createView(options?: AirpadViewOptions): AirpadView {
+    return new AirpadView(options);
+}
+
+/** Alias for createView */
+export const createAirpadView = createView;
+
+export default createView;
