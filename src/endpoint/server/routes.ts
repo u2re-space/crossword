@@ -58,7 +58,7 @@ export function registerRoutes(app: any) {
         await writeClipboard(text);
       }
 
-      app.log.info({ text }, 'Copied to clipboard');
+      app.log.info('Copied to clipboard');
       setBroadcasting(false);
       setUtf8Plain(reply);
       return reply.code(200).send('OK');

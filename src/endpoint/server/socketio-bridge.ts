@@ -194,7 +194,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
                     if (normalized.mode === "inspect") {
                         const { from, inner } = parsePayload(normalized.payload);
                         console.log(
-                            `[Server] INSPECT from=${from} to=${normalized.to} type=${normalized.type} action=${normalized.action} data=${JSON.stringify(inner)}`
+                            `[Server] INSPECT from=${from} to=${normalized.to} type=${normalized.type} action=${normalized.action} data=<hidden>`
                         );
 
                         if (normalized.type === "clip") {

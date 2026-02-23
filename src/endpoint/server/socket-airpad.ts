@@ -105,7 +105,7 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
                 const jsonData = JSON.parse(data);
                 if (jsonData?.type === "voice_command") {
                     const text = jsonData.text || "";
-                    logger?.info?.({ text }, "Voice command");
+                    logger?.info?.("Voice command");
                     await sendVoiceToPython(socket as any, text).catch((err: any) => {
                         logger?.error?.({ err }, "Failed to send voice command to python");
                         socket.emit("voice_result", {

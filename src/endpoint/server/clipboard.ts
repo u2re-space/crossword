@@ -132,7 +132,7 @@ async function pollClipboard() {
             return;
         }
 
-        app.log.info({ current }, '[Local] Clipboard changed');
+        app.log.info('[Local] Clipboard changed');
         lastClipboard = current;
 
         if (current === lastNetworkClipboard) {

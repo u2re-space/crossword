@@ -165,7 +165,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
         const body = (request.body || {}) as HttpDispatchBody;
         const { userId, userKey } = body;
         const requests = normalizeDispatchRequests(body);
-        console.log(requests);
+        // console.log(requests); // Disabled to prevent logging JSON/payload content
         if (requests.length === 0) {
             const notifyType = (request.body as any)?.type;
             if (notifyType) {
@@ -191,7 +191,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
             if (!isHttps && !(ops.allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
 
             const finalMethod = (entry.method || "POST").toUpperCase();
-            console.log(resolvedUrl, finalMethod, entry.headers || {}, entry.body ?? null);
+            console.log(resolvedUrl, finalMethod, entry.headers || {}, '<body hidden>');
             try {
                 const res = await fetch(resolvedUrl, {
                     method: finalMethod,
