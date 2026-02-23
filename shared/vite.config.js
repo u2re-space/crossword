@@ -11,35 +11,6 @@ import { searchForWorkspaceRoot } from "vite";
 import { ViteMcp } from 'vite-plugin-mcp';
 
 /**
- * Pre-initializes @rollup/wasm-node's WebAssembly parser before any file
- * transforms run.
- *
- * When rollup is overridden with @rollup/wasm-node the internal C `parse`
- * function is set asynchronously after WASM loads.  Vite's
- * `vite:import-analysis` plugin calls the synchronous `parseAst` wrapper
- * during file transforms; if the WASM isn't ready yet, `parse` is still
- * `undefined` and the call throws "parse is not a function".
- *
- * `buildStart` is invoked by Vite at server start, before any transform
- * middleware handles requests.  Calling `parseAstAsync` once here forces
- * the WASM to finish loading so subsequent synchronous `parseAst` calls
- * from `transformCjsImport` / `interopNamedImports` always succeed.
- */
-const initRollupWasmPlugin = () => ({
-    name: 'init-rollup-wasm',
-    async buildStart() {
-        try {
-            const rollup = await import('rollup');
-            if (typeof rollup.parseAstAsync === 'function') {
-                await rollup.parseAstAsync('export default 1');
-            }
-        } catch {
-            // Not using @rollup/wasm-node or parseAstAsync unavailable — no-op.
-        }
-    },
-});
-
-/**
  * Plugin to handle SPA fallback routes (share-target, etc.)
  * Rewrites specific routes to index.html so service worker can intercept
  */
@@ -116,9 +87,6 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
     //
     const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'production';
     const plugins = [
-        // Must be first: ensures @rollup/wasm-node WASM is ready before any
-        // vite:import-analysis transform runs (fixes "parse is not a function").
-        initRollupWasmPlugin(),
         // SPA fallback for PWA routes (share-target, etc.)
         spaFallbackPlugin(),
         /*jspmPlugin({
