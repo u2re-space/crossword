@@ -223,3 +223,13 @@ src/**/*.js.map
 **/src/**/*.js
 **/src/**/*.jsx
 **/src/**/*.js.map
+
+# ── Explicit exceptions: config JS files that must always be tracked ─────────
+!vite.config.js
+!vite.config.mjs
+!vite.config.ts
+!shared/vite.config.js
+!shared/vite.config.mjs
+!shared/vite.config.ts
+!postcss.config.js
+!postcss.config.mjs
