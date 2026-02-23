@@ -1,5 +1,9 @@
 {
-    "include": ["./fest/**/*.ts", "./test/**/*.ts", "./src/**/*.ts"],
+    "include": [
+        "./fest/**/*.ts",
+        "./test/**/*.ts",
+        "./src/**/*.ts"
+    ],
     "exclude": [
         "node_modules/**",
         "dist/**",
@@ -9,39 +13,90 @@
         "cache/**",
         "temp/**",
         "tmp/**",
-        "temp/**",
+        "src/**/*.js",
+        "src/**/*.jsx"
     ],
     "compilerOptions": {
         "outDir": "./dist/",
         "paths": {
-            "@phosphor-icons/core/assets/*": ["./node_modules/@phosphor-icons/core/assets/*"],
-            "fonts/*": ["./shared/assets/fonts/*"],
-            "fest/*": ["./shared/fest/*"],
-            "fest/cdnImport": ["./shared/fest/cdnImport.mjs"],
-            "fest/dom": ["./shared/fest/dom/index.ts"],
-            "fest/lure": ["./shared/fest/lure/index.ts"],
-            "fest/object": ["./shared/fest/object/index.ts"],
-            "fest/uniform": ["./shared/fest/uniform/index.ts"],
-            "fest/theme": ["./shared/fest/theme/index.ts"],
-            "fest/icon": ["./shared/fest/icon/index.ts"],
-            "fest/polyfill/*": ["./shared/fest/polyfill/*"],
-            "polyfill/*": ["./shared/fest/polyfill/*"],
-            "@fl-design/*": ["./shared/fest/fl-ui/design/*"],
-            "@fl-ui/*": ["./shared/fest/fl-ui/ui/*"],
-            "@fl-src/*": ["./shared/fest/fl-ui/*"],
-            "@rs-pwa/*": ["./src/pwa/*"],
-            "@rs-crx/*": ["./src/crx/*"],
-            "@rs-core/*": ["./src/core/*"],
-            "@rs-com/*": ["./src/com/*"],
-            "@rs-frontend/*": ["./src/frontend/*"],
-            "@rs-shared/*": ["./shared/*"],
-            "@rs-test/*": ["./shared/test/*"]
+            "@phosphor-icons/core/assets/*": [
+                "./node_modules/@phosphor-icons/core/assets/*"
+            ],
+            "fonts/*": [
+                "./shared/assets/fonts/*"
+            ],
+            "fest/*": [
+                "./shared/fest/*"
+            ],
+            "fest/cdnImport": [
+                "./shared/fest/cdnImport.mjs"
+            ],
+            "fest/dom": [
+                "./shared/fest/dom/index.ts"
+            ],
+            "fest/lure": [
+                "./shared/fest/lure/index.ts"
+            ],
+            "fest/object": [
+                "./shared/fest/object/index.ts"
+            ],
+            "fest/uniform": [
+                "./shared/fest/uniform/index.ts"
+            ],
+            "fest/theme": [
+                "./shared/fest/theme/index.ts"
+            ],
+            "fest/icon": [
+                "./shared/fest/icon/index.ts"
+            ],
+            "fest/polyfill/*": [
+                "./shared/fest/polyfill/*"
+            ],
+            "polyfill/*": [
+                "./shared/fest/polyfill/*"
+            ],
+            "@fl-design/*": [
+                "./shared/fest/fl-ui/design/*"
+            ],
+            "@fl-ui/*": [
+                "./shared/fest/fl-ui/ui/*"
+            ],
+            "@fl-src/*": [
+                "./shared/fest/fl-ui/*"
+            ],
+            "@rs-pwa/*": [
+                "./src/pwa/*"
+            ],
+            "@rs-crx/*": [
+                "./src/crx/*"
+            ],
+            "@rs-core/*": [
+                "./src/core/*"
+            ],
+            "@rs-com/*": [
+                "./src/com/*"
+            ],
+            "@rs-frontend/*": [
+                "./src/frontend/*"
+            ],
+            "@rs-shared/*": [
+                "./shared/*"
+            ],
+            "@rs-test/*": [
+                "./shared/test/*"
+            ]
         },
         "target": "ESNext",
         "module": "ESNext",
         "moduleResolution": "bundler",
-        "lib": ["ESNext", "DOM", "WebWorker"],
-        "types": ["chrome"],
+        "lib": [
+            "ESNext",
+            "DOM",
+            "WebWorker"
+        ],
+        "types": [
+            "chrome"
+        ],
         "esModuleInterop": true,
         "strict": false,
         "forceConsistentCasingInFileNames": true,
@@ -67,5 +122,6 @@
         "noEmit": true,
         "noEmitOnError": true,
         "noEmitHelpers": true
-    }
+    },
+    "compileOnSave": false
 }

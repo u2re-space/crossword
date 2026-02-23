@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from 'dompurify';
 import { extractJSONFromAIResponse } from "@rs-core/document/AIResponseParser";
 import { writeText as writeClipboardText } from "@rs-core/modules/Clipboard";
 

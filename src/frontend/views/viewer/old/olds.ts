@@ -1,7 +1,7 @@
 import { H } from "fest/lure";
 import { marked, type MarkedExtension } from "marked";
 import markedKatex from "marked-katex-extension";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from 'dompurify';
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import { downloadMarkdownAsDocx } from "../modules/DocxExport";
 import { getWorkCenterComm } from "@rs-com/core/AppCommunicator";

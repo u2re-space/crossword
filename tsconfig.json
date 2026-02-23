@@ -20,7 +20,9 @@
         "cache/**",
         "temp/**",
         "tmp/**",
-        "temp/**"
+        "temp/**",
+        "./src/**/*.js",
+        "./src/**/*.jsx"
     ],
     "compilerOptions": {
         "skipLibCheck": true,
@@ -157,6 +159,9 @@
         "inlineSources": true,
         "inlineSourceMap": true,
         "sourceMap": false,
-        "experimentalDecorators": true
-    }
+        "experimentalDecorators": true,
+        "noEmitOnError": true,
+        "noEmitHelpers": true
+    },
+    "compileOnSave": false
 }

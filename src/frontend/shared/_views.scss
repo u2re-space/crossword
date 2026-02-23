@@ -1,5 +1,116 @@
 @use "veela-lib" as *;
-@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, print, print-breaks, overrides;
+@layer tokens, base, layout, utilities, shells, shell, views, view, viewer, components, ux-layer, markdown, essentials, print, print-breaks, view-transitions, overrides;
+
+// ─── Cross-document View Transitions (CSS View Transitions Level 2) ───────────
+// Enables automatic transitions when the browser navigates between pages
+// (e.g. boot-menu → /viewer, or browser back/forward between routes).
+// Both the leaving and entering document must declare this for it to activate.
+
+@view-transition {
+    navigation: auto;
+}
+
+@layer view-transitions {
+    // ── Named capture target ───────────────────────────────────────────────
+    // The single visible [data-view] inside the shell content area gets the
+    // transition name "active-view".  Because cached views are removed from the
+    // DOM when hidden, only one element ever holds this name at a time.
+    [data-shell-content] > [data-view]:not([hidden]) {
+        view-transition-name: active-view;
+    }
+
+    // The shell navigation bar persists across cross-document navigations;
+    // giving it a stable name lets the browser treat it as a shared element
+    // rather than re-fading the whole bar on each page load.
+    [data-shell] nav[role="navigation"],
+    [data-shell] [class*="__nav"] {
+        view-transition-name: shell-nav;
+        contain: layout;
+    }
+
+    // ── Direction tokens ───────────────────────────────────────────────────
+    // JS sets data-vt-direction on :root before startViewTransition(); CSS
+    // custom properties inherited by ::view-transition-* select the keyframes.
+    :root {
+        --vt-duration: 260ms;
+        --vt-easing: cubic-bezier(0.4, 0, 0.2, 1);
+        --vt-old-anim: vt-fade-out;
+        --vt-new-anim: vt-fade-in;
+    }
+
+    :root[data-vt-direction="forward"] {
+        --vt-old-anim: vt-slide-out-left;
+        --vt-new-anim: vt-slide-in-right;
+    }
+
+    :root[data-vt-direction="backward"] {
+        --vt-old-anim: vt-slide-out-right;
+        --vt-new-anim: vt-slide-in-left;
+    }
+
+    // ── Pseudo-element animations ──────────────────────────────────────────
+    ::view-transition-old(active-view) {
+        animation: var(--vt-old-anim) var(--vt-duration) var(--vt-easing) both;
+    }
+
+    ::view-transition-new(active-view) {
+        animation: var(--vt-new-anim) var(--vt-duration) var(--vt-easing) both;
+    }
+
+    // Nav bar: no animation — it should feel persistent across navigations.
+    ::view-transition-old(shell-nav),
+    ::view-transition-new(shell-nav) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+
+    // ── Keyframes ─────────────────────────────────────────────────────────
+
+    @keyframes vt-fade-in {
+        from { opacity: 0; }
+    }
+
+    @keyframes vt-fade-out {
+        to { opacity: 0; }
+    }
+
+    @keyframes vt-slide-in-right {
+        from {
+            opacity: 0;
+            transform: translateX(5%);
+        }
+    }
+
+    @keyframes vt-slide-out-left {
+        to {
+            opacity: 0;
+            transform: translateX(-5%);
+        }
+    }
+
+    @keyframes vt-slide-in-left {
+        from {
+            opacity: 0;
+            transform: translateX(-5%);
+        }
+    }
+
+    @keyframes vt-slide-out-right {
+        to {
+            opacity: 0;
+            transform: translateX(5%);
+        }
+    }
+
+    // ── Reduced-motion override ────────────────────────────────────────────
+
+    @media (prefers-reduced-motion: reduce) {
+        ::view-transition-old(active-view),
+        ::view-transition-new(active-view) {
+            animation-duration: 0.001ms !important;
+        }
+    }
+}
 
 @layer tokens {
     :root {

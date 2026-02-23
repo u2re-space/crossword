@@ -1,13 +1,37 @@
-import TurndownService from 'turndown';
-import temml from "temml";
-
-//
 import { escapeML, bySelector, serialize, extractFromAnnotation, getContainerFromTextSelection } from './DocTools';
-import { MathMLToLaTeX } from 'mathml-to-latex';
 import { deAlphaChannel } from '@rs-core/workers/ImageProcess';
 import { writeText, writeHTML } from '@rs-core/modules/Clipboard';
 import { loadSettings } from '@rs-com/config/Settings';
 import type { ResponseLanguage } from '@rs-com/config/SettingsTypes';
+
+// Lazy-load CJS packages so vite:import-analysis never needs to run
+// transformCjsImport → parseAst on them (which fails with @rollup/wasm-node).
+const getTurndownService = (() => {
+    let svc: InstanceType<any> | null = null;
+    return async () => {
+        if (!svc) {
+            const { default: TurndownService } = await import('turndown');
+            svc = new TurndownService();
+        }
+        return svc as { turndown(html: string): string };
+    };
+})();
+
+const getTemml = (() => {
+    let mod: { renderToString(input: string, opts?: any): string } | null = null;
+    return async () => {
+        if (!mod) mod = ((await import('temml')) as any).default ?? (await import('temml'));
+        return mod!;
+    };
+})();
+
+const getMathMLToLaTeX = (() => {
+    let MML: { convert(input: string): string } | null = null;
+    return async () => {
+        if (!MML) MML = ((await import('mathml-to-latex')) as any).MathMLToLaTeX;
+        return MML!;
+    };
+})();
 
 // Options for copy operations
 export type CopyOptions = {
@@ -61,9 +85,6 @@ const applyTranslation = async (content: string): Promise<string> => {
     return content;
 };
 
-//
-const turndownService = new TurndownService();
-
 let markedParserPromise: Promise<(input: string) => Promise<string>> | null = null;
 
 const getMarkedParser = async (): Promise<(input: string) => Promise<string>> => {
@@ -105,10 +126,11 @@ export const convertToHtml = async (input: string): Promise<string> => { // conv
 };
 
 // convert html DOM to markdown
-export const convertToMarkdown = (input: string): string => { // convert html DOM to markdown
+export const convertToMarkdown = async (input: string): Promise<string> => {
     const original = escapeML(input);
     try {
-        input = turndownService.turndown(input);
+        const td = await getTurndownService();
+        input = td.turndown(input);
     } catch (e) {
         input = "";
         console.warn(e);
@@ -120,7 +142,7 @@ export const convertToMarkdown = (input: string): string => { // convert html DO
 // copy html DOM as markdown (with optional translation)
 export const copyAsMarkdown = async (target: HTMLElement, options?: CopyOptions) => {
     const container = getContainerFromTextSelection(target);
-    let markdown = convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
+    let markdown = await convertToMarkdown(container?.innerHTML || container?.outerHTML || "");
     let text = markdown?.trim?.()?.normalize?.()?.trim?.() || markdown?.trim?.() || markdown;
 
     // Apply translation if enabled
@@ -190,7 +212,7 @@ export const copyAsTeX = async (target: HTMLElement, _options?: CopyOptions) => 
 
     //
     const original = LaTeX?.trim?.();
-    try { LaTeX = MathMLToLaTeX.convert(LaTeX); } catch (e) { LaTeX = ""; console.warn(e); }
+    try { const MathMLToLaTeX = await getMathMLToLaTeX(); LaTeX = MathMLToLaTeX.convert(LaTeX); } catch (e) { LaTeX = ""; console.warn(e); }
     LaTeX ||= original?.trim?.();
 
     // try AI recognition if is image with URL in src or srcset
@@ -269,6 +291,7 @@ export const copyAsMathML = async (target: HTMLElement, _options?: CopyOptions) 
     //
     if (!(mathML?.trim()?.startsWith?.("<") && mathML?.trim()?.endsWith?.(">"))) {
         try {
+            const temml = await getTemml();
             mathML = escapeML(temml.renderToString(stripMathDelimiters(mathML), {
                 throwOnError: true,
                 strict: false,

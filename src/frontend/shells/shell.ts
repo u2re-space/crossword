@@ -3,6 +3,7 @@ import type { Shell, ShellContext, ShellId, ShellLayoutConfig, ShellNavigationSt
 import { loadInlineStyle, preloadStyle } from "fest/dom";
 import { ViewRegistry } from "../shared/registry";
 import { showToast } from "@rs-frontend/items/Toast";
+import { withViewTransition, getTransitionDirection } from "../shared/view-transitions";
 
 //
 import "fest/fl-ui";
@@ -129,8 +130,10 @@ export abstract class ShellBase implements Shell {
     async navigate(viewId: ViewId, params?: Record<string, string>): Promise<void> {
         console.log(`[${this.id}] Navigating to: ${viewId}`, params);
 
-        // Update navigation state
+        // Capture previous view BEFORE updating state (needed for direction + onHide)
         const previousView = this.navigationState.currentView;
+
+        // Update navigation state
         this.navigationState.previousView = previousView;
         this.navigationState.currentView = viewId;
         this.navigationState.params = params;
@@ -158,10 +161,10 @@ export abstract class ShellBase implements Shell {
             }
         }
 
-        // Load and render view
+        // Load and render view (load happens outside the transition to avoid blocking it)
         try {
             const element = await this.loadView(viewId, params);
-            this.renderView(element);
+            await this.renderViewWithTransition(element);
         } catch (error) {
             console.error(`[${this.id}] Failed to load view ${viewId}:`, error);
             this.showMessage(`Failed to load ${viewId}`);
@@ -248,7 +251,12 @@ export abstract class ShellBase implements Shell {
     // ========================================================================
 
     /**
-     * Render a view into the content container
+     * Perform the raw DOM swap for a view change (no transition animation).
+     *
+     * This is the synchronous inner mutation used both as a standalone call
+     * and as the update callback inside `renderViewWithTransition`.
+     * `onHide` must be called by the caller BEFORE invoking this when using
+     * a view transition so the old view's final state is captured correctly.
      */
     protected renderView(element: HTMLElement): void {
         if (!this.contentContainer) {
@@ -262,9 +270,6 @@ export abstract class ShellBase implements Shell {
         const previousId = this.navigationState.previousView;
         if (previousId && previousId !== this.currentView.value && this.loadedViews.has(previousId)) {
             const prev = this.loadedViews.get(previousId)!;
-            if (prev.view.lifecycle?.onHide) {
-                prev.view.lifecycle.onHide();
-            }
             prev.element.removeAttribute("data-view");
             prev.element.hidden = true;
             if (this.contentContainer.contains(prev.element)) {
@@ -282,6 +287,48 @@ export abstract class ShellBase implements Shell {
         }
 
         this.currentViewElement = element;
+    }
+
+    /**
+     * Render a view with a View Transition animation.
+     *
+     * Calls `onHide` on the outgoing view BEFORE the transition starts so the
+     * browser captures the old view in its final settled state.  The actual
+     * DOM swap runs inside `document.startViewTransition()` so the browser can
+     * capture before/after snapshots and cross-fade (or slide) between them.
+     *
+     * Falls back to a plain `renderView` call on browsers that do not support
+     * the View Transition API.
+     */
+    protected async renderViewWithTransition(element: HTMLElement): Promise<void> {
+        if (!this.contentContainer) {
+            this.renderView(element);
+            return;
+        }
+
+        const previousId = this.navigationState.previousView;
+        const prevEntry =
+            previousId && previousId !== this.currentView.value
+                ? this.loadedViews.get(previousId)
+                : undefined;
+
+        // Fire onHide BEFORE the transition so the old view's state is stable
+        // when the browser captures the "old" snapshot.
+        if (prevEntry?.view.lifecycle?.onHide) {
+            prevEntry.view.lifecycle.onHide();
+        }
+
+        const direction = getTransitionDirection(previousId ?? "", this.currentView.value);
+
+        await withViewTransition(
+            () => this.renderView(element),
+            {
+                direction,
+                // Level 2 type labels for richer CSS targeting via
+                // :active-view-transition-type() (Chrome 125+).
+                types: [direction, `to-${this.currentView.value}`],
+            },
+        );
     }
 
     /**
@@ -384,11 +431,16 @@ export abstract class ShellBase implements Shell {
             const viewId = (event.state?.viewId || pathname || "viewer") as ViewId;
 
             if (viewId !== this.currentView.value) {
-                // Navigate without pushing new history
+                const previousViewId = this.navigationState.currentView;
+
+                // Update state before loading so renderViewWithTransition has
+                // correct previousView and currentView values.
+                this.navigationState.previousView = previousViewId;
                 this.navigationState.currentView = viewId;
                 this.currentView.value = viewId;
+
                 this.loadView(viewId, event.state?.params).then(element => {
-                    this.renderView(element);
+                    return this.renderViewWithTransition(element);
                 }).catch(console.error);
             }
         });

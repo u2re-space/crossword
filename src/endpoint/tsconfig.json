@@ -7,7 +7,9 @@
         "./node_modules/**/*",
         "./dist/**/*",
         "./windows_use/**/*",
-        "./portable/**/*"
+        "./portable/**/*",
+        "./src/**/*.js",
+        "./src/**/*.jsx"
     ],
     "baseUrl": "./",
     "compilerOptions": {
@@ -54,6 +56,9 @@
         "types": [
             "node"
         ],
-        "noEmit": true
-    }
+        "noEmit": true,
+        "noEmitOnError": true,
+        "noEmitHelpers": true
+    },
+    "compileOnSave": false
 }

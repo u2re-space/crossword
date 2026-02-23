@@ -31,10 +31,10 @@
         "vite-plugin-pwa": ">=1.2.0"
     },
     "optionalDependencies": {
-        "rollup": "npm:@rollup/wasm-node@latest",
         "@rollup/rollup-linux-x64-gnu": "npm:@rollup/wasm-node@latest",
         "@rollup/rollup-win32-x64-msvc": "npm:@rollup/wasm-node@latest",
-        "@rollup/wasm-node": ">=4.57.1"
+        "@rollup/wasm-node": ">=4.57.1",
+        "rollup": "npm:@rollup/wasm-node@latest"
     },
     "resolutions": {
         "@rollup/rollup-win32-x64-msvc": "npm:@rollup/wasm-node@latest",
@@ -67,6 +67,7 @@
         "postcss-preset-env": ">=10.2.1",
         "postcss-remove-duplicate-values": ">=2.0.0",
         "prettier": ">=3.8.1",
+        "quill": "^2.0.0-beta.2",
         "rollup": "npm:@rollup/wasm-node@latest",
         "sass": ">=1.97.3",
         "socket.io-client": ">=4.8.3",

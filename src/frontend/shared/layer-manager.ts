@@ -118,6 +118,9 @@ export const LAYER_HIERARCHY: LayerDefinition[] = [
     { name: 'layer.view.print',               category: 'view', order: 390, description: 'Print view' },
     { name: 'view-explorer',                  category: 'view', order: 392, description: 'Explorer legacy layered scope' },
 
+    // === VIEW TRANSITION LAYERS (order 850-899) ===
+    { name: 'view-transitions',           category: 'override', order: 850, description: 'View Transition API named targets and keyframes' },
+
     // === OVERRIDE LAYERS (order 900-999) ===
     { name: 'layer.override.theme',  category: 'override', order: 900, description: 'Theme customizations' },
     { name: 'layer.override.print',  category: 'override', order: 910, description: 'Print media styles' },
@@ -330,6 +333,9 @@ export const LAYERS = {
     VIEW_AIRPAD: 'layer.view.airpad',
     VIEW_HOME: 'layer.view.home',
     VIEW_PRINT: 'layer.view.print',
+
+    // View Transitions
+    VIEW_TRANSITIONS: 'view-transitions',
 
     // Override
     OVERRIDE_THEME: 'layer.override.theme',

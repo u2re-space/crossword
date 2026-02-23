@@ -9,7 +9,7 @@
 import { H, normalizeDataAsset, parseDataUrl, isBase64Like } from "fest/lure";
 import { ref, affected } from "fest/object";
 import { loadAsAdopted, removeAdopted } from "fest/dom";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from 'dompurify';
 import renderMathInElement from "katex/dist/contrib/auto-render.mjs";
 import type { View, ViewOptions, ViewLifecycle, ShellContext } from "../../shells/types";
 import type { BaseViewOptions } from "../types";
