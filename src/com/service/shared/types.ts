@@ -1,8 +1,9 @@
+import type { MCPConfig } from "@rs-com/config/SettingsTypes";
 import type { DataKind, DataContext } from "../model/GPT-Config";
 
 export type { DataKind, DataContext };
 
-export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string };
+export type AIConfig = { apiKey?: string; baseUrl?: string; model?: string; mcp?: MCPConfig[] };
 
 export type RecognitionMode = "auto" | "image" | "text" | "structured" | "mixed";
 

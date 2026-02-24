@@ -2,6 +2,13 @@ type OrchestratorConfig = {
     apiKey?: string;
     baseUrl?: string;
     model?: string;
+    mcp?: Array<{
+        id?: string;
+        serverLabel?: string;
+        origin?: string;
+        clientKey?: string;
+        secretKey?: string;
+    }>;
 };
 
 type RecognizeOptions = {
@@ -35,6 +42,29 @@ type RecognitionResult = {
 
 const DEFAULT_API_URL = "https://api.proxyapi.ru/openai/v1";
 const DEFAULT_MODEL = "gpt-5.2";
+
+const resolveMcpTools = (mcp: Array<any> | undefined) => {
+    if (!Array.isArray(mcp)) return [];
+    return mcp
+        .map((entry) => {
+            const origin = String(entry?.origin || "").trim();
+            const clientKey = String(entry?.clientKey || "").trim();
+            const secretKey = String(entry?.secretKey || "").trim();
+            if (!origin || !clientKey || !secretKey) return null;
+
+            const serverLabel = String(entry?.serverLabel || entry?.label || origin).trim() || origin;
+            return {
+                type: "mcp",
+                server_label: serverLabel,
+                server_url: origin,
+                headers: {
+                    authorization: `Bearer ${clientKey}:${secretKey}`
+                },
+                require_approval: "never"
+            };
+        })
+        .filter((item): item is Record<string, any> => !!item);
+};
 
 const extractContent = (payload: any): string => {
     if (!payload) return "";
@@ -109,11 +139,13 @@ export class AIOrchestrator {
     private readonly apiKey: string;
     private readonly baseUrl: string;
     private readonly model: string;
+    private readonly mcp: Array<any>;
 
     constructor(config: OrchestratorConfig = {}) {
         this.apiKey = config.apiKey || "";
         this.baseUrl = (config.baseUrl || DEFAULT_API_URL).replace(/\/$/, "");
         this.model = config.model || DEFAULT_MODEL;
+        this.mcp = resolveMcpTools(config.mcp);
     }
 
     private async runPrompt(input: string, prompt: string): Promise<{ ok: boolean; text: string; error?: string }> {
@@ -129,6 +161,7 @@ export class AIOrchestrator {
                 },
                 body: JSON.stringify({
                     model: this.model,
+                    ...(this.mcp.length ? { tools: this.mcp } : {}),
                     input: [
                         {
                             type: "message",

@@ -118,6 +118,38 @@
             }
         }
 
+        .mcp-actions {
+            margin-block-start: var(--space-xs, 8px);
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .mcp-section {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm, 8px);
+        }
+
+        .mcp-row {
+            display: grid;
+            gap: var(--space-sm, 8px);
+            padding: var(--space-sm, 10px);
+            border: 1px dashed var(--color-outline-variant);
+            border-radius: var(--radius-md, 10px);
+            background: var(--color-surface-container-low);
+        }
+
+        .mcp-row .field {
+            margin: 0;
+        }
+
+        .mcp-empty-note {
+            margin: 0;
+            color: var(--color-on-surface-variant);
+            font-size: var(--text-xs, 12px);
+            opacity: 0.85;
+        }
+
         .actions {
             display: flex;
             align-items: center;

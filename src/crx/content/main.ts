@@ -39,6 +39,29 @@ if (typeof window !== "undefined") {
 
 const coordinate: [number, number] = [0, 0];
 let lastElement: HTMLElement | null = null;
+let selectionNotifyTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSelectionKey = "0";
+
+const notifySelectionState = () => {
+    const selectedText = (typeof window != "undefined" ? window : globalThis)?.getSelection?.()?.toString?.() || "";
+    const trimmed = selectedText.trim();
+    const hasSelection = Boolean(trimmed);
+    const length = trimmed.length;
+    const nextKey = `${hasSelection ? "1" : "0"}-${length}`;
+    if (nextKey === lastSelectionKey) return;
+    lastSelectionKey = nextKey;
+    try {
+        chrome.runtime.sendMessage({ type: "crx-selection-change", hasSelection, length });
+    } catch {
+        // ignore
+    }
+};
+
+document.addEventListener("selectionchange", () => {
+    if (selectionNotifyTimer) clearTimeout(selectionNotifyTimer);
+    selectionNotifyTimer = setTimeout(() => notifySelectionState(), 120);
+});
+setTimeout(() => notifySelectionState(), 120);
 
 const savePosition = (e: PointerEvent | MouseEvent) => {
     coordinate[0] = e.clientX;

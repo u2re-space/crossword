@@ -18,7 +18,7 @@
 import { encode } from "@toon-format/toon";
 
 //
-import { GPTResponses } from "../model/GPT-Responses";
+import { getGPTInstance } from "@rs-com/service/shared/gpt-utils";
 import { readJSONs, readOneMarkDown } from "@rs-core/storage/FileSystem";
 import { realtimeStates } from "../misc/Cache";
 
@@ -67,7 +67,13 @@ export const createTimelineGenerator = async (sourcePath: string | null = null, 
     if (!settings || !settings?.ai || !settings.ai?.apiKey) return;
 
     //
-    const gptResponses = new GPTResponses(settings.ai?.apiKey || "", settings.ai?.baseUrl || "https://api.proxyapi.ru/openai/v1", "", settings.ai?.model || "gpt-5.2");
+    const gptResponses = await getGPTInstance({
+        apiKey: settings.ai?.apiKey,
+        baseUrl: settings.ai?.baseUrl,
+        model: settings.ai?.model,
+        mcp: settings.ai?.mcp,
+    });
+    if (!gptResponses) return;
     console.log(gptResponses);
 
     // attach some factors (except finished)

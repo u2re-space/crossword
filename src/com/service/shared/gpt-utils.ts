@@ -1,4 +1,5 @@
 import { loadSettings } from "@rs-com/config/Settings";
+import type { MCPConfig } from "@rs-com/config/SettingsTypes";
 import { GPTResponses, createGPTInstance } from "../model/GPT-Responses";
 import type { AIConfig, OutputFormat } from "./types";
 
@@ -6,6 +7,50 @@ const DEFAULT_MODEL = "gpt-5.2";
 const DEFAULT_API_URL = "https://api.proxyapi.ru/openai/v1";
 
 export { DEFAULT_MODEL, DEFAULT_API_URL };
+
+type MCPConfigInput = Partial<MCPConfig> & {
+	id?: unknown;
+	serverLabel?: unknown;
+	label?: unknown;
+	origin?: unknown;
+	clientKey?: unknown;
+	secretKey?: unknown;
+};
+
+const normalizeMcpConfigList = (mcp: unknown): MCPConfig[] => {
+	if (!Array.isArray(mcp)) return [];
+
+	const parsed = [] as MCPConfig[];
+	for (const item of mcp) {
+		const raw = item as MCPConfigInput;
+		if (!raw || typeof raw !== "object") continue;
+
+		const origin = String(raw?.origin || "").trim();
+		const clientKey = String(raw?.clientKey || "").trim();
+		const secretKey = String(raw?.secretKey || "").trim();
+		if (!origin || !clientKey || !secretKey) continue;
+
+		const serverLabel = String((raw?.serverLabel || raw?.label || origin)).trim() || origin;
+		parsed.push({
+			id: String(raw?.id || origin),
+			serverLabel,
+			origin,
+			clientKey,
+			secretKey,
+		});
+	}
+
+	return parsed;
+};
+
+const configureMcpTools = async (gpt: GPTResponses, mcpConfigs: unknown): Promise<void> => {
+	const normalized = normalizeMcpConfigList(mcpConfigs);
+	if (!normalized.length) return;
+
+	for (const item of normalized) {
+		await gpt.useMCP(item.serverLabel, item.origin, item.clientKey, item.secretKey);
+	}
+};
 
 export const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | null> => {
 	const settings = await loadSettings();
@@ -18,7 +63,10 @@ export const getGPTInstance = async (config?: AIConfig): Promise<GPTResponses | 
 	const baseUrl = config?.baseUrl || settings?.ai?.baseUrl || DEFAULT_API_URL;
 	const model = config?.model || settings?.ai?.model || DEFAULT_MODEL;
 
-	return createGPTInstance(apiKey, baseUrl, model);
+	const gpt = createGPTInstance(apiKey, baseUrl, model);
+	await configureMcpTools(gpt, config?.mcp ?? settings?.ai?.mcp);
+
+	return gpt;
 };
 
 export function unwrapUnwantedCodeBlocks(content: string): string {

@@ -3,7 +3,7 @@ import style from "./Settings.scss?inline";
 
 import { H } from "fest/lure";
 import { loadSettings, saveSettings } from "@rs-com/config/Settings";
-import type { AppSettings } from "@rs-com/config/SettingsTypes";
+import type { AppSettings, MCPConfig } from "@rs-com/config/SettingsTypes";
 import { applyTheme } from "@rs-core/utils/Theme";
 import { createCustomInstructionsEditor } from "../../items/CustomInstructionsEditor";
 import { loadAsAdopted } from "fest/dom";
@@ -73,6 +73,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       <div class="settings-tab-actions" data-settings-tabs data-active-tab="ai">
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="appearance" aria-selected="false">Appearance</button>
         <button class="settings-tab-btn is-active" type="button" data-action="switch-settings-tab" data-tab="ai" aria-selected="true">AI</button>
+        <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="mcp" aria-selected="false">MCP</button>
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="instructions" aria-selected="false">Instructions</button>
         <button class="settings-tab-btn" type="button" data-action="switch-settings-tab" data-tab="extension" aria-selected="false" data-extension-tab hidden>Extension</button>
       </div>
@@ -103,11 +104,11 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       <h3>AI</h3>
       <label class="field">
         <span>Base URL</span>
-        <input class="form-input" type="url" inputmode="url" autocomplete="off" data-field="ai.baseUrl" placeholder="https://api.proxyapi.ru/openai/v1" />
+        <input placeholder="https://api.proxyapi.ru/openai/v1" class="form-input" type="url" inputmode="url" autocomplete="off" data-field="ai.baseUrl" />
       </label>
       <label class="field">
         <span>API Key</span>
-        <input class="form-input" type="password" autocomplete="off" data-field="ai.apiKey" placeholder="sk-..." />
+        <input placeholder="sk-..." class="form-input" type="password" autocomplete="off" data-field="ai.apiKey"/>
       </label>
       <label class="field checkbox form-checkbox">
         <input type="checkbox" data-field="ui.showKey" />
@@ -142,6 +143,14 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
       </label>
     </section>
 
+    <section class="card settings-tab-panel" data-tab-panel="mcp">
+      <h3>MCP</h3>
+      <div class="mcp-section" data-mcp-section></div>
+      <div class="mcp-actions">
+        <button class="btn" type="button" data-action="add-mcp-server">Add MCP server</button>
+      </div>
+    </section>
+
     <section class="card settings-tab-panel" data-tab-panel="instructions" data-section="instructions">
       <h3>Recognition Instructions</h3>
       <div data-custom-instructions="editor">
@@ -173,6 +182,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
     const theme = field('[data-field="appearance.theme"]') as HTMLSelectElement | null;
     const fontSize = field('[data-field="appearance.fontSize"]') as HTMLSelectElement | null;
     const ntpEnabled = field('[data-field="core.ntpEnabled"]') as HTMLInputElement | null;
+    const mcpSection = root.querySelector("[data-mcp-section]") as HTMLElement | null;
     const extSection = root.querySelector('[data-section="extension"]') as HTMLElement | null;
     const extTab = root.querySelector('[data-extension-tab]') as HTMLButtonElement | null;
 
@@ -238,6 +248,64 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
         if (t) setTimeout(() => (note.textContent = ""), 1500);
     };
 
+    const createMcpRow = (cfg: MCPConfig) => {
+        const safeCfg = {
+            id: (cfg?.id || `mcp-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`).trim(),
+            serverLabel: (cfg?.serverLabel || "").trim(),
+            origin: (cfg?.origin || "").trim(),
+            clientKey: (cfg?.clientKey || "").trim(),
+            secretKey: (cfg?.secretKey || "").trim(),
+        };
+
+        return H`<div class="field mcp-row" data-mcp-id=${safeCfg.id}>
+            <label class="field">
+              <span>Server Label</span>
+              <input class="form-input" type="text" data-mcp-field="serverLabel" autocomplete="off" value="${safeCfg.serverLabel}" />
+            </label>
+            <label class="field">
+              <span>Origin</span>
+              <input class="form-input" type="url" data-mcp-field="origin" autocomplete="off" placeholder="https://server.example" value="${safeCfg.origin}" />
+            </label>
+            <label class="field">
+              <span>Client Key</span>
+              <input class="form-input" type="text" data-mcp-field="clientKey" autocomplete="off" value="${safeCfg.clientKey}" />
+            </label>
+            <label class="field">
+              <span>Secret Key</span>
+              <input class="form-input" type="password" data-mcp-field="secretKey" autocomplete="off" placeholder="sk-..." value="${safeCfg.secretKey}" />
+            </label>
+            <button class="btn btn-danger" type="button" data-action="remove-mcp-server">Remove</button>
+          </div>` as HTMLElement;
+    };
+
+    const collectMcpConfigurations = () => {
+        if (!mcpSection) return [];
+        const rows = Array.from(mcpSection.querySelectorAll<HTMLElement>("[data-mcp-id]"));
+        const items: MCPConfig[] = [];
+
+        for (const row of rows) {
+            const id = row.getAttribute("data-mcp-id") || `mcp-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+            const serverLabel = row.querySelector<HTMLInputElement>('[data-mcp-field="serverLabel"]')?.value?.trim() || "";
+            const origin = row.querySelector<HTMLInputElement>('[data-mcp-field="origin"]')?.value?.trim() || "";
+            const clientKey = row.querySelector<HTMLInputElement>('[data-mcp-field="clientKey"]')?.value?.trim() || "";
+            const secretKey = row.querySelector<HTMLInputElement>('[data-mcp-field="secretKey"]')?.value?.trim() || "";
+            if (!serverLabel) continue;
+            items.push({ id, serverLabel, origin, clientKey, secretKey });
+        }
+        return items;
+    };
+
+    const renderMcpConfigurations = (configs: MCPConfig[]) => {
+        if (!mcpSection) return;
+        mcpSection.replaceChildren();
+        const list = Array.isArray(configs) ? configs : [];
+        if (!list.length) {
+            mcpSection.appendChild(H`<p class="mcp-empty-note">No MCP servers configured.</p>` as HTMLElement);
+            return;
+        }
+        list.forEach((cfg) => mcpSection.appendChild(createMcpRow(cfg)));
+    };
+
     void loadSettings()
         .then((s) => {
             if (apiUrl) apiUrl.value = (s?.ai?.baseUrl || "").trim();
@@ -251,9 +319,12 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
             if (theme) theme.value = (s?.appearance?.theme || "auto") as any;
             if (fontSize) fontSize.value = (s?.appearance?.fontSize || "medium") as any;
             if (ntpEnabled) ntpEnabled.checked = Boolean(s?.core?.ntpEnabled);
+            renderMcpConfigurations(Array.isArray(s?.ai?.mcp) ? s.ai.mcp : []);
             opts.onTheme?.((theme?.value as any) || "auto");
         })
-        .catch(() => void 0);
+        .catch(() => {
+            renderMcpConfigurations([]);
+        });
 
     showKey?.addEventListener("change", () => {
         if (!apiKey || !showKey) return;
@@ -272,6 +343,28 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
             return;
         }
 
+        const addMcpBtn = t?.closest?.('button[data-action="add-mcp-server"]') as HTMLButtonElement | null;
+        if (addMcpBtn && mcpSection) {
+            mcpSection.querySelector(".mcp-empty-note")?.remove();
+            mcpSection.appendChild(createMcpRow({
+                id: `mcp-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+                serverLabel: "",
+                origin: "",
+                clientKey: "",
+                secretKey: "",
+            }));
+            return;
+        }
+
+        const removeMcpBtn = t?.closest?.('button[data-action="remove-mcp-server"]') as HTMLButtonElement | null;
+        if (removeMcpBtn) {
+            removeMcpBtn.closest(".mcp-row")?.remove();
+            if (mcpSection && !mcpSection.querySelector("[data-mcp-id]")) {
+                renderMcpConfigurations([]);
+            }
+            return;
+        }
+
         const btn = t?.closest?.('button[data-action="save"]') as HTMLButtonElement | null;
         if (!btn) return;
 
@@ -285,6 +378,7 @@ export const createSettingsView = (opts: SettingsViewOptions) => {
                     responseLanguage: (responseLanguage?.value as any) || "auto",
                     translateResults: Boolean(translateResults?.checked),
                     generateSvgGraphics: Boolean(generateSvgGraphics?.checked),
+                    mcp: collectMcpConfigurations(),
                 },
                 speech: {
                     language: (speechLanguage?.value as any) || "en-US",

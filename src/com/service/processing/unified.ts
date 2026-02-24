@@ -1,7 +1,6 @@
 import { loadSettings } from "@rs-com/config/Settings";
-import { createGPTInstance } from "@rs-com/service/model/GPT-Responses";
 import { buildInstructionPrompt, getOutputFormatInstruction, getIntermediateRecognitionInstruction } from "@rs-com/service/instructions/utils";
-import { DEFAULT_API_URL, DEFAULT_MODEL, isImageData, unwrapUnwantedCodeBlocks, getResponseFormat } from "@rs-com/service/shared/gpt-utils";
+import { DEFAULT_API_URL, DEFAULT_MODEL, getGPTInstance, isImageData, unwrapUnwantedCodeBlocks, getResponseFormat } from "@rs-com/service/shared/gpt-utils";
 import { loadAISettings, getActiveCustomInstruction, getLanguageInstruction, getSvgGraphicsAddon } from "@rs-com/service/processing/settings";
 import { RecognitionCache } from "@rs-com/service/recognition/cache";
 import { detectPlatform, getPlatformAdapter } from "@rs-com/service/platform/adapters";
@@ -83,7 +82,17 @@ export const processDataWithInstruction = async (
 		}
 	}
 
-	const gpt = createGPTInstance(token, settings?.baseUrl || DEFAULT_API_URL, settings?.model || DEFAULT_MODEL);
+	const gpt = await getGPTInstance({
+		apiKey: token,
+		baseUrl: settings?.baseUrl,
+		model: settings?.model,
+		mcp: settings?.mcp,
+	});
+	if (!gpt) {
+		const result: ProcessDataWithInstructionResult = { ok: false, error: "AI initialization failed" };
+		sendResponse?.(result);
+		return result;
+	}
 	gpt.clearPending();
 
 	let processingStages = 1;
@@ -132,7 +141,7 @@ export const processDataWithInstruction = async (
 							item,
 							recognitionInstruction,
 							undefined,
-							{ apiKey: token, baseUrl: settings?.baseUrl, model: settings?.model },
+							{ apiKey: token, baseUrl: settings?.baseUrl, model: settings?.model, mcp: settings?.mcp },
 							{ customInstruction: undefined, useActiveInstruction: false },
 						);
 

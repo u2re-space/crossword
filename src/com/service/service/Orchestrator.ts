@@ -7,11 +7,12 @@
 import { encode } from "@toon-format/toon";
 
 // Service imports
-import { getRuntimeSettings } from "@rs-com/config/RuntimeSettings";
-import { createGPTInstance, GPTResponses, type AIResponse } from "../model/GPT-Responses";
+import type { MCPConfig } from "@rs-com/config/SettingsTypes";
+import { GPTResponses, type AIResponse } from "../model/GPT-Responses";
 import { type DataContext, type DataFilter, type ModificationInstruction } from "../model/GPT-Config";
 import { fixEntityId } from "@rs-com/template/EntityId";
 import { detectEntityTypeByJSON } from "@rs-com/template/EntityUtils";
+import { getGPTInstance } from "../shared/gpt-utils";
 
 import {
     modifyEntityByPrompt,
@@ -36,7 +37,6 @@ import {
 } from "./AIDataSelector";
 
 import { resolveEntity } from "./EntityItemResolve";
-import { loadSettings } from "@rs-com/config/Settings";
 import { batchRecognize, extractEntities, recognizeWithContext, smartRecognize, type BatchRecognitionResult, type RecognitionResult, type RecognizeByInstructionsOptions } from "./ProcessingData";
 
 //
@@ -44,6 +44,7 @@ export type OrchestratorConfig = {
     apiKey?: string;
     baseUrl?: string;
     model?: string;
+	mcp?: MCPConfig[];
     defaultEffort?: "low" | "medium" | "high";
     defaultVerbosity?: "low" | "medium" | "high";
     cacheEnabled?: boolean;
@@ -90,19 +91,18 @@ export class AIOrchestrator {
     //
     async initialize(): Promise<boolean> {
         try {
-            const settings = this.config.apiKey ? null : await loadSettings();
-            const apiKey = this.config.apiKey || settings?.ai?.apiKey;
-
-            if (!apiKey) {
+            const gptInstance = await getGPTInstance({
+                apiKey: this.config.apiKey,
+                baseUrl: this.config.baseUrl,
+                model: this.config.model,
+                mcp: this.config.mcp,
+            });
+            if (!gptInstance) {
                 console.warn("No API key available for AIOrchestrator");
                 return false;
             }
 
-            this.gptInstance = createGPTInstance(
-                apiKey,
-                this.config.baseUrl || settings?.ai?.baseUrl,
-                this.config.model || settings?.ai?.model
-            );
+            this.gptInstance = gptInstance;
 
             return true;
         } catch (e) {

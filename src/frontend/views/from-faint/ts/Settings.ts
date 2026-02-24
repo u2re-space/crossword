@@ -26,11 +26,7 @@ import { wallpaperState, persistWallpaper } from "@rs-core/storage/StateStorage"
 import { applyTheme } from "@rs-core/utils/Theme";
 
 //
-export const SETTINGS_SECTIONS: SectionConfig[] = [
-    RuntimeSection,
-    CoreSection,
-    AppSection
-];
+export const SETTINGS_SECTIONS: SectionConfig[] = [RuntimeSection, CoreSection, AppSection];
 
 //
 const pickWallpaper = () => {
@@ -56,7 +52,7 @@ const pickWallpaper = () => {
 };
 
 //
-export const SECTION_KEYS = SETTINGS_SECTIONS.map(section => section.key) as SectionKey[];
+export const SECTION_KEYS = SETTINGS_SECTIONS.map((section) => section.key) as SectionKey[];
 
 //
 export const Settings = async () => {
@@ -96,15 +92,15 @@ export const Settings = async () => {
             const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
             const palette = H`<div class="color-palette-grid" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>` as HTMLElement;
 
-            (config.options ?? []).forEach(opt => {
+            (config.options ?? []).forEach((opt) => {
                 const btn = H`<button type="button" class="color-option" data-color=${opt.color} title=${opt.label} data-value=${opt.value}></button>` as HTMLButtonElement;
 
                 btn.onclick = () => {
                     hidden.value = opt.value;
                     // Update visual selection
-                    const allBtns = palette.querySelectorAll('.color-option');
-                    allBtns.forEach(b => (b as HTMLElement).style.borderColor = 'transparent');
-                    btn.style.borderColor = 'var(--text-primary, #fff)'; // highlight selected
+                    const allBtns = palette.querySelectorAll(".color-option");
+                    allBtns.forEach((b) => ((b as HTMLElement).style.borderColor = "transparent"));
+                    btn.style.borderColor = "var(--text-primary, #fff)"; // highlight selected
 
                     // Live preview
                     if (config.path === "appearance.color") {
@@ -124,7 +120,7 @@ export const Settings = async () => {
             const hidden = H`<input type="hidden" id=${id} name=${config.path} />` as HTMLInputElement;
             const palette = H`<div class="shape-palette-grid"></div>` as HTMLElement;
 
-            (config.options ?? []).forEach(opt => {
+            (config.options ?? []).forEach((opt) => {
                 const btn = H`<button type="button" class="shape-option" title=${opt.label} data-value=${opt.value}>
                     <span class="shape-preview shaped" data-shape=${opt.shape || opt.value}></span>
                     <span class="shape-label">${opt.label}</span>
@@ -133,13 +129,13 @@ export const Settings = async () => {
                 btn.onclick = () => {
                     hidden.value = opt.value;
                     // Update visual selection
-                    const allBtns = palette.querySelectorAll('.shape-option');
-                    allBtns.forEach(b => b.classList.remove('is-selected'));
-                    btn.classList.add('is-selected');
+                    const allBtns = palette.querySelectorAll(".shape-option");
+                    allBtns.forEach((b) => b.classList.remove("is-selected"));
+                    btn.classList.add("is-selected");
 
                     // Live preview for grid shape
                     if (config.path === "grid.shape") {
-                        document.querySelectorAll('.speed-dial-grid').forEach(grid => {
+                        document.querySelectorAll(".speed-dial-grid").forEach((grid) => {
                             (grid as HTMLElement).dataset.gridShape = opt.value;
                         });
                     }
@@ -208,19 +204,19 @@ export const Settings = async () => {
     };
 
     const createMCPContainer = (mcpConfig: MCPConfig, isNew: boolean = false) => {
-        const container = H`<div class="mcp-config ${isNew ? 'mcp-config-new' : ''}" data-mcp-id=${mcpConfig.id}>
+        const container = H`<div class="mcp-config ${isNew ? "mcp-config-new" : ""}" data-mcp-id=${mcpConfig.id}>
             <div class="mcp-header">
-                <h4>MCP Server: ${mcpConfig.serverLabel || 'New Server'}</h4>
+                <h4>MCP Server: ${mcpConfig.serverLabel || "New Server"}</h4>
                 <button type="button" class="btn btn-danger btn-sm remove-mcp" data-mcp-id=${mcpConfig.id} on:click=${() => removeMCPConfig(mcpConfig.id)}>
                     <ui-icon icon="trash"></ui-icon>
                     <span>Remove</span>
                 </button>
             </div>
             <div class="mcp-fields">
-                ${createMCPField(mcpConfig.id, 'serverLabel', 'Server Label', 'text', 'my-bridge')}
-                ${createMCPField(mcpConfig.id, 'origin', 'Origin', 'text', 'https://server.example')}
-                ${createMCPField(mcpConfig.id, 'clientKey', 'Client Key', 'text')}
-                ${createMCPField(mcpConfig.id, 'secretKey', 'Secret Key', 'password')}
+                ${createMCPField(mcpConfig.id, "serverLabel", "Server Label", "text", "my-bridge")}
+                ${createMCPField(mcpConfig.id, "origin", "Origin", "text", "https://server.example")}
+                ${createMCPField(mcpConfig.id, "clientKey", "Client Key", "text")}
+                ${createMCPField(mcpConfig.id, "secretKey", "Secret Key", "password")}
             </div>
         </div>` as HTMLElement;
 
@@ -232,19 +228,19 @@ export const Settings = async () => {
         const newId = `mcp-${Date.now()}`;
         const newConfig: MCPConfig = {
             id: newId,
-            serverLabel: '',
-            origin: '',
-            clientKey: '',
-            secretKey: ''
+            serverLabel: "",
+            origin: "",
+            clientKey: "",
+            secretKey: ""
         };
         mcpConfigs.push(newConfig);
 
-        const mcpGroup = groupRefs.get('core:mcp-management');
+        const mcpGroup = groupRefs.get("core:mcp-management");
         if (mcpGroup) {
-            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
+            const body = mcpGroup.querySelector(".group-body") as HTMLElement;
             if (body) {
                 // Insert before the add button (which should be the last element)
-                const addButton = body.querySelector('.mcp-actions');
+                const addButton = body.querySelector(".mcp-actions");
                 const container = createMCPContainer(newConfig, true);
                 if (addButton) {
                     addButton.before(container);
@@ -256,7 +252,7 @@ export const Settings = async () => {
     };
 
     const removeMCPConfig = (mcpId: string) => {
-        const index = mcpConfigs.findIndex(config => config.id === mcpId);
+        const index = mcpConfigs.findIndex((config) => config.id === mcpId);
         if (index !== -1) {
             mcpConfigs.splice(index, 1);
         }
@@ -282,22 +278,22 @@ export const Settings = async () => {
             mcpConfigs.push(...settings.ai.mcp);
         }
 
-        const mcpGroup = groupRefs.get('mcp:mcp-management');
+        const mcpGroup = groupRefs.get("core:mcp-management");
         if (mcpGroup) {
-            const body = mcpGroup.querySelector('.group-body') as HTMLElement;
+            const body = mcpGroup.querySelector(".group-body") as HTMLElement;
             if (body) {
                 // Clear existing MCP containers
-                const existingContainers = body.querySelectorAll('.mcp-config');
-                existingContainers.forEach(container => container.remove());
+                const existingContainers = body.querySelectorAll(".mcp-config");
+                existingContainers.forEach((container) => container.remove());
 
                 // Add loaded MCP configurations
-                const addButton = body.querySelector('.mcp-actions');
-                mcpConfigs.forEach(config => {
-                     if (addButton) {
-                         addButton.before(createMCPContainer(config));
-                     } else {
-                         body.append(createMCPContainer(config));
-                     }
+                const addButton = body.querySelector(".mcp-actions");
+                mcpConfigs.forEach((config) => {
+                    if (addButton) {
+                        addButton.before(createMCPContainer(config));
+                    } else {
+                        body.append(createMCPContainer(config));
+                    }
                 });
             }
         }
@@ -331,49 +327,55 @@ export const Settings = async () => {
             const { root, body } = createGroup(section.key, group);
 
             // Special handling for Custom Instructions section
-            if (group.key === 'custom-instructions') {
+            if (group.key === "custom-instructions") {
                 body.append(createCustomInstructionsPanel());
             }
             // Special handling for MCP section
-            else if (group.key === 'mcp-management') {
+            else if (group.key === "mcp-management") {
                 // Add MCP management buttons
                 const addButton = H`<button type="button" class="btn btn-primary add-mcp" on:click=${addMCPConfig}>
                     <ui-icon icon="plus"></ui-icon>
                     <span>Add MCP Server</span>
                 </button>` as HTMLButtonElement;
 
-
                 //
-                mcpConfigs.forEach(config => {
+                mcpConfigs.forEach((config) => {
                     body.append(createMCPContainer(config));
                 });
 
                 //
                 body.append(H`<div class="mcp-actions">${addButton}</div>` as HTMLElement);
-            } else if (section.key === 'app') {
-                if (group.key === 'actions') {
+            } else if (section.key === "app") {
+                if (group.key === "actions") {
                     // Add Share clipboard button
-                    const shareClipboardBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("share-clipboard")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
+                    const shareClipboardBtn = H`<button type="button" class="btn btn-secondary" on:click=${() =>
+                        actionRegistry
+                            .get("share-clipboard")?.(null as any, null as any, container)
+                            ?.catch?.(console.warn.bind(console))}>
                         <ui-icon icon="share"></ui-icon>
                         <span>Share Clipboard</span>
                     </button>`;
                     body.append(shareClipboardBtn);
-                } else
-                if (group.key === 'bluetooth') {
+                } else if (group.key === "bluetooth") {
                     // Add Bluetooth Enable Acceptance button
-                    const enableBluetoothBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("bluetooth-enable-acceptance")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
+                    const enableBluetoothBtn = H`<button type="button" class="btn btn-secondary" on:click=${() =>
+                        actionRegistry
+                            .get("bluetooth-enable-acceptance")?.(null as any, null as any, container)
+                            ?.catch?.(console.warn.bind(console))}>
                         <ui-icon icon="bluetooth"></ui-icon>
                         <span>Enable Bluetooth Acceptance</span>
                     </button>`;
                     // Add Paste button
-                    const pasteBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("bluetooth-share-clipboard")?.(null as any, null as any, container)?.catch?.(console.warn.bind(console))}>
+                    const pasteBtn = H`<button type="button" class="btn btn-secondary" on:click=${() =>
+                        actionRegistry
+                            .get("bluetooth-share-clipboard")?.(null as any, null as any, container)
+                            ?.catch?.(console.warn.bind(console))}>
                         <ui-icon icon="clipboard"></ui-icon>
                         <span>Paste from Bluetooth</span>
                     </button>`;
                     const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: nowrap;">${pasteBtn}${enableBluetoothBtn}</div>`;
                     body.append(actionsContainer);
-                } else
-                if (group.key === 'synchronization') {
+                } else if (group.key === "synchronization") {
                     // Add Import/Export buttons
                     const importBtn = H`<button type="button" class="btn btn-secondary" on:click=${() => actionRegistry.get("import-settings")?.(null as any, null as any, container)}>
                         <ui-icon icon="upload-simple"></ui-icon>
@@ -385,8 +387,7 @@ export const Settings = async () => {
                     </button>`;
                     const actionsContainer = H`<div class="settings-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">${importBtn}${exportBtn}</div>`;
                     body.append(actionsContainer);
-                } else
-                if (group.key === 'wallpaper') {
+                } else if (group.key === "wallpaper") {
                     const wallpaperBtn = H`<button type="button" class="btn btn-primary" on:click=${pickWallpaper}>
                         <ui-icon icon="image"></ui-icon>
                         <span>Change Wallpaper</span>
@@ -439,7 +440,7 @@ export const Settings = async () => {
         timelineRecentSelect.addEventListener("change", () => {
             if (timelineRecentSelect.value) {
                 timelineInputEl.value = timelineRecentSelect.value;
-                timelineInputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                timelineInputEl.dispatchEvent(new Event("input", { bubbles: true }));
             }
             timelineRecentSelect.value = "";
         });
@@ -485,29 +486,29 @@ export const Settings = async () => {
             control.value = stringValue;
             // Update visual state for color palette
             if (control.type === "hidden" && control.parentElement?.querySelector(".color-palette-grid")) {
-                 const palette = control.parentElement.querySelector(".color-palette-grid");
-                 if (palette) {
-                     palette.querySelectorAll('.color-option').forEach(b => {
+                const palette = control.parentElement.querySelector(".color-palette-grid");
+                if (palette) {
+                    palette.querySelectorAll(".color-option").forEach((b) => {
                         if ((b as HTMLElement).dataset.value === stringValue) {
-                            (b as HTMLElement).style.borderColor = 'var(--text-primary, #fff)';
+                            (b as HTMLElement).style.borderColor = "var(--text-primary, #fff)";
                         } else {
-                            (b as HTMLElement).style.borderColor = 'transparent';
+                            (b as HTMLElement).style.borderColor = "transparent";
                         }
-                     });
-                 }
+                    });
+                }
             }
             // Update visual state for shape palette
             if (control.type === "hidden" && control.parentElement?.querySelector(".shape-palette-grid")) {
-                 const palette = control.parentElement.querySelector(".shape-palette-grid");
-                 if (palette) {
-                     palette.querySelectorAll('.shape-option').forEach(b => {
+                const palette = control.parentElement.querySelector(".shape-palette-grid");
+                if (palette) {
+                    palette.querySelectorAll(".shape-option").forEach((b) => {
                         if ((b as HTMLElement).dataset.value === stringValue) {
-                            b.classList.add('is-selected');
+                            b.classList.add("is-selected");
                         } else {
-                            b.classList.remove('is-selected');
+                            b.classList.remove("is-selected");
                         }
-                     });
-                 }
+                    });
+                }
             }
         }
     };
@@ -530,7 +531,7 @@ export const Settings = async () => {
 
         // Apply MCP configurations
         if (settings.ai?.mcp && Array.isArray(settings.ai.mcp)) {
-            settings.ai.mcp.forEach(mcpConfig => {
+            settings.ai.mcp.forEach((mcpConfig) => {
                 const serverLabelControl = fieldRefs.get(`mcp.${mcpConfig.id}.serverLabel`);
                 const originControl = fieldRefs.get(`mcp.${mcpConfig.id}.origin`);
                 const clientKeyControl = fieldRefs.get(`mcp.${mcpConfig.id}.clientKey`);
@@ -609,20 +610,20 @@ export const Settings = async () => {
     if (speechLangField && typeof navigator !== "undefined" && navigator.languages) {
         // Use a Set to avoid duplicates if any, though navigator.languages shouldn't have them
         const uniqueLangs = Array.from(new Set(navigator.languages));
-        speechLangField.options = uniqueLangs.map(lang => ({ value: lang, label: lang }));
+        speechLangField.options = uniqueLangs.map((lang) => ({ value: lang, label: lang }));
         // If navigator.language is not in the list (e.g. specialized), add it
         if (navigator.language && !uniqueLangs.includes(navigator.language)) {
-             speechLangField.options.unshift({ value: navigator.language, label: navigator.language });
+            speechLangField.options.unshift({ value: navigator.language, label: navigator.language });
         }
 
         const select = fieldRefs.get("speech.language") as HTMLSelectElement;
         if (select) {
             select.innerHTML = "";
-             // Add a default option if none
+            // Add a default option if none
             if (speechLangField.options.length === 0) {
-                 select.appendChild(new Option("Default (en-US)", "en-US"));
+                select.appendChild(new Option("Default (en-US)", "en-US"));
             } else {
-                speechLangField.options.forEach(opt => select.appendChild(new Option(opt.label, opt.value)));
+                speechLangField.options.forEach((opt) => select.appendChild(new Option(opt.label, opt.value)));
             }
         }
     }
@@ -647,7 +648,7 @@ export const Settings = async () => {
     //
     const handleFormInput = (event: Event) => {
         if (!(event.target instanceof HTMLElement)) return;
-        if (!event.target.closest('.settings-form')) return;
+        if (!event.target.closest(".settings-form")) return;
         statusText.value = "";
     };
 
@@ -663,7 +664,7 @@ export const Settings = async () => {
 
     const handleSubmit = async (event: SubmitEvent) => {
         const submittedForm = event.target;
-        if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.classList.contains('settings-form')) return;
+        if (!(submittedForm instanceof HTMLFormElement) || !submittedForm.classList.contains("settings-form")) return;
         event.preventDefault();
 
         const modelSelection = modelSelectEl?.value ?? DEFAULT_SETTINGS.ai?.model;
@@ -678,7 +679,7 @@ export const Settings = async () => {
 
         // Collect MCP configurations
         const mcpConfigurations: MCPConfig[] = [];
-        mcpConfigs.forEach(config => {
+        mcpConfigs.forEach((config) => {
             const serverLabel = readValue(`mcp.${config.id}.serverLabel`);
             const origin = readValue(`mcp.${config.id}.origin`);
             const clientKey = readValue(`mcp.${config.id}.clientKey`);
@@ -738,7 +739,7 @@ export const Settings = async () => {
                 source: readValue("timeline.source")
             },
             appearance: {
-                theme: readValue("appearance.theme") as any || "auto",
+                theme: (readValue("appearance.theme") as any) || "auto",
                 color: readValue("appearance.color")
             },
             speech: {
@@ -763,12 +764,16 @@ export const Settings = async () => {
             statusText.value = "Saved";
             showSuccess("Settings updated");
             syncCustomVisibility();
-            setTimeout(() => { statusText.value = ""; }, 1600);
+            setTimeout(() => {
+                statusText.value = "";
+            }, 1600);
         } catch (e) {
             console.warn(e);
             showError("Failed to save settings");
             statusText.value = "Error";
-            setTimeout(() => { statusText.value = ""; }, 1800);
+            setTimeout(() => {
+                statusText.value = "";
+            }, 1800);
         }
     };
 
@@ -778,7 +783,7 @@ export const Settings = async () => {
     container.tabsState = tabsState;
     container.forms = forms;
     (container as any).reloadSettings = async (newSettings?: AppSettings) => {
-        settings = newSettings || await loadSettings();
+        settings = newSettings || (await loadSettings());
         renderMCPs(settings);
         await updateTimelineSelect(settings);
         applySettingsToForm(settings);

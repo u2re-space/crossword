@@ -2,7 +2,7 @@
 <html lang="en" data-crx-page="popup">
 <head>
     <meta charset="UTF-8">
-    <meta name="text-scale" content="scale" />
+    <meta name="text-scale" content="scale">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CrossWord</title>
     <link rel="stylesheet" href="../fix.scss" data-owner="critical-init">
@@ -10,18 +10,16 @@
 </head>
 <body data-crx-page="popup">
     <div id="app">
-        <h1>CrossWord</h1>
 
         <!-- Feature 2: Snip & Process -->
-        <section>
-            <h2>Snip & Process</h2>
+        <section class="popup-section">
+            <h2>Snip &amp; Process</h2>
             <div class="snip-controls">
                 <select id="snip-action-select">
                     <option value="START_SNIP">📝 Recognize (OCR/AI)</option>
                     <option value="SOLVE_AND_ANSWER">🧮 Solve / Answer</option>
                     <option value="WRITE_CODE">💻 Generate Code</option>
                     <option value="EXTRACT_CSS">🎨 Extract CSS</option>
-                    <option value="CRX_SNIP_TEXT">📋 Process Selected Text</option>
                     <option value="CRX_SNIP_SCREEN">📸 Rectangle Capture</option>
                 </select>
                 <button type="button" id="snip-do" title="Execute selected action">⚡ Go</button>
@@ -29,30 +27,34 @@
         </section>
 
         <!-- Feature 3: Copy / Convert -->
-        <section>
-            <h2>Copy Selection As</h2>
-            <div class="copy-grid">
-                <button type="button" data-copy="copy-as-latex" title="Copy as LaTeX">LaTeX</button>
-                <button type="button" data-copy="copy-as-mathml" title="Copy as MathML">MathML</button>
-                <button type="button" data-copy="copy-as-markdown" title="Copy as Markdown">Markdown</button>
-                <button type="button" data-copy="copy-as-html" title="Copy as HTML">HTML</button>
+        <section id="copy-section" class="popup-section" hidden>
+            <h2>Process &amp; Copy</h2>
+            <p id="selection-empty" class="selection-empty">Select text in the page to use this action.</p>
+            <div class="selection-copy-row selection-copy-row--wrap">
+                <button type="button" id="selection-process" title="Process selected text with CRX-Snip">📋 Process Selected Text</button>
+                <div class="copy-grid">
+                    <button type="button" data-copy="copy-as-latex" title="Copy as LaTeX">LaTeX</button>
+                    <button type="button" data-copy="copy-as-mathml" title="Copy as MathML">MathML</button>
+                    <button type="button" data-copy="copy-as-markdown" title="Copy as Markdown">Markdown</button>
+                    <button type="button" data-copy="copy-as-html" title="Copy as HTML">HTML</button>
+                </div>
             </div>
         </section>
 
         <!-- Feature 1: Markdown Viewer -->
-        <section>
+        <section class="popup-section">
             <h2>Markdown Viewer</h2>
             <div class="md-controls">
-                <input type="url" id="md-url" placeholder="Paste .md URL or GitHub link…" />
+                <input type="url" id="md-url" placeholder="Paste .md URL or GitHub link…" >
                 <button type="button" id="md-open" title="Open in viewer">Open</button>
             </div>
         </section>
 
         <!-- Settings (collapsible) -->
         <details>
-            <summary><h2 style="display:inline">Settings</h2></summary>
-            <section>
-                <ul>
+            <summary><h2 class="settings-summary-title">Settings</h2></summary>
+            <section class="popup-section">
+                <form id="settings-form"><ul>
                     <li>
                         <label for="response-language">Response Language</label>
                         <select id="response-language">
@@ -64,25 +66,36 @@
                     </li>
                     <li>
                         <label for="translate-results">Translate Results</label>
-                        <input type="checkbox" id="translate-results" style="grid-column: input;" />
+                        <input type="checkbox" id="translate-results" class="settings-grid-input" >
                     </li>
                     <li>
                         <label for="generate-svg" title="Generate inline SVG graphics for graphs, diagrams, and visualizations">Generate SVG</label>
-                        <input type="checkbox" id="generate-svg" style="grid-column: input;" />
+                        <input type="checkbox" id="generate-svg" class="settings-grid-input" >
                     </li>
                     <li>
                         <label for="api-url">API URL</label>
-                        <input keyboard-type="url" type="url" id="api-url" />
+                        <input keyboard-type="url" type="url" id="api-url" >
                     </li>
                     <li>
                         <label for="api-key">API Key</label>
-                        <input keyboard-type="password" type="password" id="api-key" />
-                        <input type="checkbox" id="show-api-key" style="--for-hide-icon: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1leWUtaWNvbiBsdWNpZGUtZXllIj48cGF0aCBkPSJNMi4wNjIgMTIuMzQ4YTEgMSAwIDAgMSAwLS42OTYgMTAuNzUgMTAuNzUgMCAwIDEgMTkuODc2IDAgMSAxIDAgMCAxIDAgLjY5NiAxMC43NSAxMC43NSAwIDAgMS0xOS44NzYgMCIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiLz48L3N2Zz4=');--for-show-icon: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWV5ZS1jbG9zZWQtaWNvbiBsdWNpZGUtZXllLWNsb3NlZCI+PHBhdGggZD0ibTE1IDE4LS43MjItMy4yNSIvPjxwYXRoIGQ9Ik0yIDhhMTAuNjQ1IDEwLjY0NSAwIDAgMCAyMCAwIi8+PHBhdGggZD0ibTIwIDE1LTEuNzI2LTIuMDUiLz48cGF0aCBkPSJtNCAxNSAxLjcyNi0yLjA1Ii8+PHBhdGggZD0ibTkgMTggLjcyMi0zLjI1Ii8+PC9zdmc+');" />
+                        <input keyboard-type="password" type="password" id="api-key" autocomplete="off">
+                        <input type="checkbox" id="show-api-key" class="show-api-key-toggle" >
                     </li>
-                    <li style="display: flex; justify-content: space-around;">
-                        <button type="button" id="save-settings">Save Settings</button>
+                    <li class="settings-grid-full">
+                        <label>MCP Servers</label>
+                        <p id="mcp-validation-error" class="mcp-error" aria-live="polite"></p>
+                        <div id="mcp-config-list" class="mcp-list" aria-live="polite"></div>
+                        <div class="mcp-actions">
+                            <button type="button" id="mcp-add">Add MCP server</button>
+                            <button type="button" id="mcp-import">Import MCP</button>
+                            <button type="button" id="mcp-export">Export MCP</button>
+                            <input type="file" id="mcp-import-file" accept="application/json" >
+                        </div>
                     </li>
-                </ul>
+                    <li class="settings-save-row">
+                        <button type="submit" id="save-settings">Save Settings</button>
+                    </li>
+                </ul></form>
             </section>
         </details>
     </div>

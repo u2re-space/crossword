@@ -46,6 +46,83 @@ const broadcast = (channel: string, message: unknown): void => {
 const showExtensionToast = (message: string, kind: "info" | "success" | "warning" | "error" = "info"): void =>
     broadcast(TOAST_CHANNEL, { type: "show-toast", options: { message, kind, duration: 3000 } });
 
+// Keep a chronological fallback of the last known active tab for popup-facing APIs.
+let lastKnownActiveTab: {
+    tabId: number | null;
+    windowId: number | null;
+    title: string | null;
+    url: string | null;
+    updatedAt: number;
+} | null = null;
+
+const isContentTabCandidate = (tab?: chrome.tabs.Tab | null) => {
+    if (!tab) return false;
+    if (typeof tab.id !== "number" || tab.id < 0) return false;
+    const url = tab.url || "";
+    return !url.startsWith("chrome-extension://") && !url.startsWith("chrome://") && !url.startsWith("devtools://");
+};
+
+const normalizeTabForState = (tab?: chrome.tabs.Tab | null) => {
+    if (!isContentTabCandidate(tab)) return null;
+    return {
+        tabId: tab.id,
+        windowId: tab.windowId ?? null,
+        title: tab.title ?? null,
+        url: tab.url ?? null,
+        updatedAt: Date.now(),
+    };
+};
+
+const updateLastKnownActiveTab = (tab?: chrome.tabs.Tab | null) => {
+    const next = normalizeTabForState(tab);
+    if (!next) return;
+    lastKnownActiveTab = next;
+};
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    if (!activeInfo || typeof activeInfo.tabId !== "number" || activeInfo.tabId < 0) return;
+    try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (!isContentTabCandidate(tab)) return;
+        updateLastKnownActiveTab(tab);
+    } catch {
+        lastKnownActiveTab = {
+            tabId: activeInfo.tabId,
+            windowId: activeInfo.windowId ?? null,
+            title: null,
+            url: null,
+            updatedAt: Date.now(),
+        };
+    }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+    if (!lastKnownActiveTab || lastKnownActiveTab.tabId !== tabId) return;
+    lastKnownActiveTab = null;
+});
+
+const getChronologicalActiveTab = async () => {
+    try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true, lastFocusedWindow: true }).catch(() => []);
+        const direct = tabs?.find(isContentTabCandidate);
+        if (direct) {
+            updateLastKnownActiveTab(direct);
+            return normalizeTabForState(direct);
+        }
+        if (lastKnownActiveTab?.tabId != null) {
+            const last = await chrome.tabs.get(lastKnownActiveTab.tabId).catch(() => null);
+            if (isContentTabCandidate(last)) {
+                updateLastKnownActiveTab(last);
+                return normalizeTabForState(last);
+            }
+            lastKnownActiveTab = null;
+        }
+    } catch {
+        /* ignore */
+    }
+    return lastKnownActiveTab ? { ...lastKnownActiveTab } : null;
+};
+
 // ---------------------------------------------------------------------------
 // Clipboard shortcut
 // ---------------------------------------------------------------------------
@@ -714,6 +791,22 @@ const processWithBuiltInInstruction = async (
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message?.type) return false;
+
+    if (message.type === "crx-query-active-tab") {
+        (async () => {
+            const activeTab = await getChronologicalActiveTab();
+            sendResponse({
+                ok: true,
+                tabId: activeTab?.tabId ?? null,
+                windowId: activeTab?.windowId ?? null,
+                title: activeTab?.title ?? null,
+                url: activeTab?.url ?? null,
+            });
+        })().catch((error) => {
+            sendResponse({ ok: false, error: String(error) });
+        });
+        return true;
+    }
 
     // Timeline
     if (message.type === "MAKE_TIMELINE") {

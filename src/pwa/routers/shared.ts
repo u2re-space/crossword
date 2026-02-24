@@ -52,6 +52,7 @@ export const callBackendIfAvailable = async <T = any>(path: string, payload: Rec
                 userId: core.userId,
                 userKey: core.userKey,
                 ...payload,
+                ...(Array.isArray(settings?.ai?.mcp) ? { mcp: settings.ai.mcp } : {}),
                 ...(customInstruction ? { customInstruction } : {})
             })
         });

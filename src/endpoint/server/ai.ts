@@ -16,10 +16,12 @@ const resolveAiProvider = (body: any, settings: any) => {
     const ai = settings?.ai || {};
     const provider = body?.provider || {};
     const passthrough = body?.passthrough || body?.throughput || {};
+	const providerMcp = provider?.mcp || body?.mcp || passthrough?.mcp || ai?.mcp;
     return {
         apiKey: body?.apiKey || provider?.apiKey || passthrough?.apiKey || ai.apiKey,
         baseUrl: body?.baseUrl || provider?.baseUrl || passthrough?.baseUrl || ai.baseUrl,
-        model: body?.model || provider?.model || passthrough?.model || ai.customModel || ai.model
+		model: body?.model || provider?.model || passthrough?.model || ai.customModel || ai.model,
+		mcp: Array.isArray(providerMcp) ? providerMcp : undefined
     };
 };
 
@@ -38,7 +40,8 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
         const orchestrator = createOrchestrator({
             apiKey: ai.apiKey,
             baseUrl: ai.baseUrl,
-            model: ai.customModel || ai.model
+            model: ai.customModel || ai.model,
+            mcp: ai?.mcp
         });
 
         // Keep request shape flexible: allow hints/context passthrough from clients.
@@ -82,7 +85,8 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
         const orchestrator = createOrchestrator({
             apiKey: ai.apiKey,
             baseUrl: ai.baseUrl,
-            model: ai.customModel || ai.model
+            model: ai.customModel || ai.model,
+            mcp: ai?.mcp
         });
 
         // Support custom instructions
@@ -137,7 +141,8 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
         const orchestrator = createOrchestrator({
             apiKey: provider.apiKey,
             baseUrl: provider.baseUrl,
-            model: provider.model
+            model: provider.model,
+            mcp: provider?.mcp
         });
 
         const effectiveInstruction = body.customInstruction || getActiveCustomInstruction(settings);
