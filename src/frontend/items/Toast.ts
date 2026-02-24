@@ -100,7 +100,7 @@ const TOAST_STYLES = `
 
     border-radius: var(--toast-radius, 0.5rem);
     background-color: var(--toast-bg, light-dark(#fafbfc, #1e293b));
-    box-shadow: var(--toast-shadow, 0 4px 6px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--toast-shadow, 0 6px 14px rgba(0, 0, 0, 0.45));
     backdrop-filter: blur(12px) saturate(140%);
     color: var(--toast-text, light-dark(#000000, #ffffff));
 
