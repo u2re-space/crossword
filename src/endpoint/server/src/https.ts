@@ -6,13 +6,13 @@ import path from 'node:path';
 import https from 'node:https';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import axios from 'axios';
-import config from '../config.js';
+import config from '../../config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function loadHttpsCredentials(): Promise<any> {
-    const certFile = path.resolve(__dirname, '../https/certificate.mjs');
+    const certFile = path.resolve(__dirname, '../../https/certificate.mjs');
     try {
         const certModule = await import(pathToFileURL(certFile).href);
         const { key, cert, ca } = certModule.default || certModule;

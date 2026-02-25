@@ -3,7 +3,7 @@
 // =========================
 
 import { readClipboard, writeClipboard, setBroadcasting } from './clipboard.ts';
-import config from '../config.js';
+import config from '../../config.js';
 
 function setUtf8Plain(reply: any) {
   reply.header('Content-Type', 'text/plain; charset=utf-8');

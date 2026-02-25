@@ -1,19 +1,21 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
-import { createOrchestrator } from "@rs-com/service/AI-ops/Orchestrator.js";
-import type { CustomInstruction } from "@rs-com/service/InstructionUtils.js";
+import { createOrchestrator } from "../lib/Orchestrator.ts";
+import type { AiSettings,
+    CustomInstruction,
+    Settings } from "../lib/settings.ts";
 
-const getActiveCustomInstruction = (settings: any): string => {
-    const instructions: CustomInstruction[] = settings?.ai?.customInstructions || [];
-    const activeId = settings?.ai?.activeInstructionId;
+const getActiveCustomInstruction = (settings: AiSettings): string => {
+    const instructions: CustomInstruction[] = settings.customInstructions || [];
+    const activeId = settings.activeInstructionId;
     if (!activeId) return "";
     const active = instructions.find(i => i.id === activeId);
     return active?.instruction || "";
 };
 
-const resolveAiProvider = (body: any, settings: any) => {
-    const ai = settings?.ai || {};
+const resolveAiProvider = (body: any, settings: Settings) => {
+    const ai: AiSettings = settings.ai || { apiKey: undefined, baseUrl: undefined, model: undefined, customModel: undefined, mcp: undefined };
     const provider = body?.provider || {};
     const passthrough = body?.passthrough || body?.throughput || {};
 	const providerMcp = provider?.mcp || body?.mcp || passthrough?.mcp || ai?.mcp;

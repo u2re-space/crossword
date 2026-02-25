@@ -2,9 +2,9 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { randomUUID, createHash, scryptSync, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import path from "node:path";
 
-import { DEFAULT_SETTINGS, type AppSettings } from "@rs-com/config/SettingsTypes.js";
 import { USERS_FILE, USER_STORAGE_DIR, ensureDataDirs, safeJoin } from "./paths.ts";
 import { mergeSettings } from "./settings.ts";
+import { DEFAULT_SETTINGS, type Settings } from "./settings.ts";
 
 export type UserRecord = {
     userId: string;
@@ -120,12 +120,12 @@ export const readUserFile = async (userId: string, relPath: string, encrypt: boo
     return buf;
 };
 
-export const loadUserSettings = async (userId: string, userKey: string): Promise<AppSettings> => {
+export const loadUserSettings = async (userId: string, userKey: string): Promise<Settings> => {
     const record = await verifyUser(userId, userKey);
     if (!record) throw new Error("Invalid credentials");
     try {
         const buf = await readUserFile(userId, "settings.json", record.encrypt, userKey);
-        const parsed = JSON.parse(buf.toString("utf-8")) as AppSettings;
+        const parsed = JSON.parse(buf.toString("utf-8")) as Settings;
         return mergeSettings(DEFAULT_SETTINGS, parsed);
     } catch {
         return mergeSettings(DEFAULT_SETTINGS, {});

@@ -1,8 +1,37 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
-import { mergeSettings, readCoreSettings, type SettingsPatch } from "../lib/settings.ts";
+import { AiSettings,
+mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, type Settings } from "../lib/settings.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
-import { DEFAULT_SETTINGS, type AppSettings } from "@rs-com/config/SettingsTypes.js";
+
+export type HttpTarget = {
+    id: string;
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+    unencrypted: boolean;
+};
+
+export type CoreSettings = {
+    mode: "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client";
+    ops?: {
+        httpTargets?: HttpTarget[];
+        allowUnencrypted?: boolean;
+        allowInsecureTls?: boolean;
+        logLevel?: "debug" | "info" | "warn" | "error";
+    };
+};
+
+export type Settings = {
+    core?: CoreSettings;
+    ai?: AiSettings;
+    webdav?: WebdavSettings;
+    timeline?: TimelineSettings;
+    appearance?: AppearanceSettings;
+    speech?: SpeechSettings;
+    grid?: GridSettings;
+};
 
 export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
     app.get("/core/user/settings", async (request: FastifyRequest<{ Querystring: { userId: string; userKey: string } }>) => {
@@ -11,14 +40,14 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
         if (!record) return { ok: false, error: "Invalid credentials" };
         try {
             const buf = await readUserFile(userId, "settings.json", record.encrypt, userKey);
-            const parsed = JSON.parse(buf.toString("utf-8")) as AppSettings;
+            const parsed = JSON.parse(buf.toString("utf-8")) as Settings;
             return { ok: true, settings: mergeSettings(DEFAULT_SETTINGS, parsed), encrypt: record.encrypt };
         } catch {
             return { ok: true, settings: DEFAULT_SETTINGS, encrypt: record.encrypt };
         }
     });
 
-    app.post("/core/user/settings", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; settings: SettingsPatch } }>) => {
+    app.post("/core/user/settings", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; settings: Partial<Settings> } }>) => {
         const { userId, userKey, settings } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -31,23 +60,23 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
 export const registerCoreSettingsEndpoints = async (app: FastifyInstance) => {
     app.get("/health", async () => {
         const settings = await readCoreSettings();
-        return { ok: true, mode: settings.core?.mode ?? "native" };
+        return { ok: true, mode: (settings.core?.mode ?? "native") as "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" };
     });
 };
 
 export const registerOpsSettingsRoutes = async (app: FastifyInstance) => {
     app.post("/core/ops/http", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; targetId?: string; url?: string; method?: string; headers?: Record<string, string>; body?: string } }>) => {
         const { userId, userKey, targetId, url: overrideUrl, method, headers, body } = request.body || {};
-        let settings: AppSettings;
+        let settings: Settings;
         try {
             settings = await loadUserSettings(userId, userKey);
         } catch (e) {
             return { ok: false, error: (e as Error)?.message || "Invalid credentials" };
         }
 
-        const ops = settings?.core?.ops || {};
-        const httpTargets = ops.httpTargets || [];
-        const target = httpTargets.find((t) => t.id === targetId);
+        const ops = settings.core?.ops || { httpTargets: [], allowUnencrypted: false, allowInsecureTls: false, logLevel: "info" };
+        const httpTargets = ops.httpTargets || [] as HttpTarget[];
+        const target = httpTargets.find((t: HttpTarget) => t.id === targetId);
         const resolvedUrl = overrideUrl || target?.url;
         if (!resolvedUrl) return { ok: false, error: "No URL" };
 

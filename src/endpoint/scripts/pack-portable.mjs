@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, rm, writeFile, chmod, stat, readdir, readFile } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile, chmod, stat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -50,23 +50,6 @@ const copyEndpointSources = async () => {
     const entries = await readdir(ROOT_DIR);
     for (const name of entries) {
         await copyEntry(name);
-    }
-};
-
-const materializeComShims = async () => {
-    const shimPath = path.resolve(BUNDLE_DIR, "lib/com/config/SettingsTypes.ts");
-    try {
-        const shimSource = await readFile(shimPath, "utf-8");
-        const match = shimSource.match(/export\s+\*\s+from\s+["']\.\.\/\.\.\/\.\.\/\.\.\/com\/(.+?)["'];?/);
-        if (!match?.[1]) return;
-
-        const relativeTarget = match[1];
-        const sourceFile = path.resolve(ROOT_DIR, "..", "com", relativeTarget);
-        const realSource = await readFile(sourceFile, "utf-8");
-        await writeFile(shimPath, realSource, "utf-8");
-        console.log(`[portable] Materialized shim: lib/com/config/SettingsTypes.ts <- ${sourceFile}`);
-    } catch (error) {
-        console.warn("[portable] Unable to materialize COM shim:", error);
     }
 };
 
@@ -198,8 +181,6 @@ const main = async () => {
 
     console.log("[portable] Copying endpoint sources...");
     await copyEndpointSources();
-    await materializeComShims();
-
     await installNodeModules();
     await writeLaunchers();
     createArchive();

@@ -5,16 +5,16 @@
 import fastify from 'fastify';
 import formbody from '@fastify/formbody';
 import cors from '@fastify/cors';
-import { HTTP_PORT } from './constants.ts';
+import { HTTP_PORT } from './src/constants.ts';
 import config from '../config.js';
-import { loadHttpsCredentials, createHttpClient } from './https.ts';
-import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from './clipboard.ts';
-import { startMouseFlushInterval } from './mouse.ts';
-import { setApp as setPythonApp } from './python.ts';
-import { registerRoutes } from './routes.ts';
-import { setupSocketIO } from './socket.ts';
-import { createWsServer } from './websocket.ts';
-import { registerOpsRoutes } from './ops.ts';
+import { loadHttpsCredentials, createHttpClient } from './src/https.ts';
+import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from './src/clipboard.ts';
+import { startMouseFlushInterval } from './src/mouse.ts';
+import { setApp as setPythonApp } from './src/python.ts';
+import { registerRoutes } from './src/routes.ts';
+import { setupSocketIO } from './src/socket.ts';
+import { createWsServer } from './src/websocket.ts';
+import { registerOpsRoutes } from './src/ops.ts';
 
 let httpsApp: any = null;
 let httpApp: any = null;
@@ -84,6 +84,40 @@ function registerPlugins(app: any) {
     });
 }
 
+const makeUnifiedWsHub = (hubs: Array<ReturnType<typeof createWsServer>>) => {
+    return {
+        broadcast: (userId: string, payload: any) => {
+            hubs.forEach((hub) => hub.broadcast(userId, payload));
+        },
+        multicast: (userId: string, payload: any, namespace?: string, excludeId?: string) => {
+            hubs.forEach((hub) => hub.multicast(userId, payload, namespace, excludeId));
+        },
+        notify: (userId: string, type: string, data?: any) => {
+            hubs.forEach((hub) => hub.notify(userId, type, data));
+        },
+        sendTo: (clientId: string, payload: any) => {
+            hubs.forEach((hub) => hub.sendTo(clientId, payload));
+        },
+        sendToDevice: (userId: string, deviceId: string, payload: any): boolean => {
+            for (const hub of hubs) {
+                const ok = hub.sendToDevice(userId, deviceId, payload);
+                if (ok) return true;
+            }
+            return false;
+        },
+        getConnectedDevices: (userId?: string) => {
+            const set = new Set<string>();
+            for (const hub of hubs) {
+                hub.getConnectedDevices(userId).forEach((id) => set.add(id));
+            }
+            return Array.from(set);
+        },
+        close: async () => {
+            await Promise.all(hubs.map((hub) => hub.close()));
+        }
+    };
+};
+
 async function startServers() {
     const httpsOptions = await loadHttpsCredentials();
     httpsApp = fastify({ logger: true, https: httpsOptions });
@@ -108,8 +142,9 @@ async function startServers() {
     setupSocketIO(httpApp.server, httpApp.log);
     const httpsWsHub = createWsServer(httpsApp);
     const httpWsHub = createWsServer(httpApp);
-    await registerOpsRoutes(httpsApp, httpsWsHub);
-    await registerOpsRoutes(httpApp, httpWsHub);
+    const unifiedWsHub = makeUnifiedWsHub([httpsWsHub, httpWsHub]);
+    await registerOpsRoutes(httpsApp, unifiedWsHub);
+    await registerOpsRoutes(httpApp, unifiedWsHub);
 
     // Start HTTP/HTTPS in parallel to reduce startup latency.
     await Promise.all([

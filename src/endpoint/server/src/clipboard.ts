@@ -4,7 +4,7 @@
 
 import clipboardy from 'clipboardy';
 import axios from 'axios';
-import config from '../config.js';
+import config from '../../config.js';
 
 const { peers, secret, pollInterval } = config;
 const clipboardReadTimeoutMs = Math.max(200, Number((config as any)?.clipboardReadTimeoutMs ?? 2000));

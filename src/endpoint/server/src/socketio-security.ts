@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
-import config from "../config.js";
+import config from "../../config.js";
 
 type LoggerLike = {
     info?: (obj: any, msg?: string) => void;

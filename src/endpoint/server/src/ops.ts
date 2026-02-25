@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import type { WsHub } from "./websocket.ts";
-import type { AppSettings } from "@rs-com/config/SettingsTypes.js";
 import {
     executeActions,
     executeCopyHotkey,
@@ -10,11 +9,24 @@ import {
     executePasteHotkey
 } from "./actions.ts";
 import { readClipboard, writeClipboard } from "./clipboard.ts";
+import { Settings } from "@rs-server/lib/settings.ts";
 
-type HttpDispatchRequest = { url?: string; ip?: string; method?: string; headers?: Record<string, string>; body?: string; unencrypted?: boolean };
+type HttpDispatchRequest = {
+    url?: string;
+    ip?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    unencrypted?: boolean;
+    deviceId?: string;
+    targetId?: string;
+    type?: string;
+    data?: any;
+};
 type HttpDispatchBody = {
     userId: string;
     userKey: string;
+    targetDeviceId?: string;
     requests?: HttpDispatchRequest[];
     addresses?: Array<string | HttpDispatchRequest>;
     urls?: string[];
@@ -24,6 +36,7 @@ type HttpRequestBody = {
     userId: string;
     userKey: string;
     targetId?: string;
+    targetDeviceId?: string;
     url?: string;
     ip?: string;
     address?: string;
@@ -42,6 +55,14 @@ type HttpRequestBody = {
     namespace?: string;
 };
 type WsSendBody = { userId: string; userKey: string; namespace?: string; type?: string; data?: any };
+type ReverseSendBody = {
+    userId: string;
+    userKey: string;
+    deviceId: string;
+    type?: string;
+    data?: any;
+    action?: string;
+};
 type ActionBody = {
     userId: string;
     userKey: string;
@@ -119,9 +140,9 @@ const toTargetUrl = (
 export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
-        const { userId, userKey, targetId, method, headers, body } = payload;
+        const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
         const forceHttpsRoute = (request.url || "").startsWith("/core/ops/https") || payload.https === true || payload.secure === true;
-        let settings: AppSettings;
+        let settings: Settings;
         try {
             settings = await loadUserSettings(userId, userKey);
         } catch (e) {
@@ -132,6 +153,20 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
         const httpTargets = ops.httpTargets || [];
         const target = httpTargets.find((t) => t.id === targetId);
         const resolvedUrl = toTargetUrl(payload, target?.url, forceHttpsRoute);
+
+        const reverseTarget = targetDeviceId || (payload as any).deviceId || targetId;
+        if (!resolvedUrl && reverseTarget && typeof reverseTarget === "string" && reverseTarget.trim()) {
+            const delivered = wsHub.sendToDevice(userId, reverseTarget, {
+                type: (payload as any).type || "dispatch",
+                data: (payload as any).data ?? payload,
+            });
+            return {
+                ok: !!delivered,
+                delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                mode: "request-fallback-reverse",
+                targetDeviceId: reverseTarget
+            };
+        }
 
         // Partial legacy notify compatibility: accept notify-like payloads via /api/request.
         if (!resolvedUrl && payload.type) {
@@ -163,7 +198,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
 
     const broadcastHandler = async (request: FastifyRequest<{ Body: HttpDispatchBody }>) => {
         const body = (request.body || {}) as HttpDispatchBody;
-        const { userId, userKey } = body;
+        const { userId, userKey, targetDeviceId } = body;
+        const defaultDeviceId = targetDeviceId && targetDeviceId.trim() ? targetDeviceId.trim() : undefined;
         const requests = normalizeDispatchRequests(body);
         // console.log(requests); // Disabled to prevent logging JSON/payload content
         if (requests.length === 0) {
@@ -175,7 +211,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
             return { ok: false, error: "No requests" };
         }
 
-        let settings: AppSettings;
+        let settings: Settings;
         try {
             settings = await loadUserSettings(userId, userKey);
         } catch (e) {
@@ -184,6 +220,20 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
 
         const ops = settings?.core?.ops || { allowUnencrypted: true };
         const execOne = async (entry: HttpDispatchRequest) => {
+            const reverseDeviceId = (entry as any).deviceId || (entry as any).targetId || defaultDeviceId;
+            if (typeof reverseDeviceId === "string" && reverseDeviceId.trim()) {
+                const delivered = wsHub.sendToDevice(userId, reverseDeviceId.trim(), {
+                    type: (entry as any).type || "dispatch",
+                    data: (entry as any).data ?? (entry as any).body
+                });
+                return {
+                    target: reverseDeviceId,
+                    ok: !!delivered,
+                    delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                    mode: "reverse"
+                };
+            }
+
             const resolvedUrl = entry.url || (entry.ip ? `http://${entry.ip}` : undefined);
             if (!resolvedUrl) return { target: entry.ip || entry.url, ok: false, error: "No URL" };
 
@@ -218,12 +268,32 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
         return { ok: true };
     };
 
+    const reverseSendHandler = async (request: FastifyRequest<{ Body: ReverseSendBody }>) => {
+        const { userId, userKey, deviceId, type, data, action } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+        if (!deviceId?.trim()) return { ok: false, error: "Missing deviceId" };
+
+        const delivered = wsHub.sendToDevice(userId, deviceId, {
+            type: type || action || "dispatch",
+            data,
+        });
+        return { ok: !!delivered, delivered: delivered ? "ws-reverse" : "ws-reverse-missing", deviceId };
+    };
+
     const notifyHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string; type: string; data?: any } }>) => {
         const { userId, userKey, type, data } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         wsHub.notify(userId, type, data);
         return { ok: true };
+    };
+
+    const reverseDevicesHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
+        const { userId, userKey } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+        return { ok: true, devices: wsHub.getConnectedDevices(userId) };
     };
 
     const actionHandler = async (request: FastifyRequest<{ Body: ActionBody }>) => {
@@ -293,6 +363,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
 
     app.post("/core/ops/ws/send", wsSendHandler);
     app.post("/api/ws", wsSendHandler);
+    app.post("/core/reverse/send", reverseSendHandler);
+    app.post("/api/reverse/send", reverseSendHandler);
+    app.post("/core/reverse/devices", reverseDevicesHandler);
+    app.post("/api/reverse/devices", reverseDevicesHandler);
 
     app.post("/core/ops/notify", notifyHandler);
     app.post("/api/action", actionHandler);
