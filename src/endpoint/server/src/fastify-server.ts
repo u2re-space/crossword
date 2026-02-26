@@ -29,6 +29,36 @@ import { setApp as setPythonApp } from "../gpt/python.ts";
 
 const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
 type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];
+const unique = (items: string[]) => [...new Set(items.map((item) => path.resolve(item)))];
+
+const KEY_FILE_NAME = "multi.key";
+const CRT_FILE_NAME = "multi.crt";
+const candidateHttpsFiles = () => {
+    const moduleDir = moduleDirname(import.meta);
+    const cwd = process.cwd();
+    return {
+        keys: unique([
+            path.resolve(cwd, "./https/local/" + KEY_FILE_NAME),
+            path.resolve(cwd, "./" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "../" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "../../" + KEY_FILE_NAME),
+            path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)
+        ]),
+        certs: unique([
+            path.resolve(cwd, "./https/local/" + CRT_FILE_NAME),
+            path.resolve(cwd, "./" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "../" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "../../" + CRT_FILE_NAME),
+            path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)
+        ])
+    };
+};
 const ADMIN_FALLBACK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
     <path fill="currentColor" d="M12 2a2.6 2.6 0 0 1 2.6 2.6V7.4l4.1 2.1c.6.3 1 1 1 1.7v4.6c0 .7-.4 1.4-1 1.7l-4.1 2.1v1.6c0 1.4-1.2 2.6-2.6 2.6H6.6C5.2 21 4 19.8 4 18.4V13.2c0-.7.4-1.4 1-1.7l4.2-2.1V4.6A2.6 2.6 0 0 1 11.8 2H12Zm-1 12.1v4.8c0 .5.4.9.9.9h6.1c.5 0 .9-.4.9-.9V13l-.2-.1l-3.6-1.8V11h-4v3.1Zm-1-8.5V19c0 .4-.3.7-.7.7h-.6c-.4 0-.7-.3-.7-.7v-1.6L4.4 14.7A.6.6 0 0 1 4 14.1V8.9a.6.6 0 0 1 .4-.6L10 5.3V8h2V3.6c0-.4-.3-.8-.8-.8H11.7c-.4 0-.7.3-.7.7Z"/>
 </svg>`;
@@ -97,20 +127,27 @@ const sendAdminIcon = (reply: FastifyReply) => {
         .send(ADMIN_FALLBACK_ICON);
 };
 
-const defaultHttpsPaths = () => ({
-    key: path.resolve(moduleDirname(import.meta), "./https/local/multi.key"),
-    cert: path.resolve(moduleDirname(import.meta), "./https/local/multi.crt")
-});
+const defaultHttpsPaths = () => {
+    const candidates = candidateHttpsFiles();
+    return {
+        key: candidates.keys[0] ?? path.resolve(moduleDirname(import.meta), "./https/local/multi.key"),
+        cert: candidates.certs[0] ?? path.resolve(moduleDirname(import.meta), "./https/local/multi.crt")
+    };
+};
 
 const loadHttpsOptions = async () => {
     if (process.env.HTTPS_ENABLED === "false") return undefined;
     const { key: keyPath, cert: certPath } = defaultHttpsPaths();
-    const envKey = process.env.HTTPS_KEY_FILE || keyPath;
-    const envCert = process.env.HTTPS_CERT_FILE || certPath;
+    const envKey = process.env.HTTPS_KEY_FILE;
+    const envCert = process.env.HTTPS_CERT_FILE;
+    const keyCandidates = envKey ? [envKey] : candidateHttpsFiles().keys;
+    const certCandidates = envCert ? [envCert] : candidateHttpsFiles().certs;
     try {
+        const keyFile = keyCandidates[0] ?? keyPath;
+        const certFile = certCandidates[0] ?? certPath;
         const [key, cert] = await Promise.all([
-            readFile(envKey),
-            readFile(envCert)
+            readFile(keyFile),
+            readFile(certFile)
         ]);
         const requestClientCerts = process.env.HTTPS_REQUEST_CLIENT_CERTS === "true";
         const allowUntrustedClientCerts = process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS !== "false";
@@ -122,7 +159,12 @@ const loadHttpsOptions = async () => {
                 ? (allowUntrustedClientCerts ? { requestCert: true, rejectUnauthorized: false } : { requestCert: true })
                 : {})
         };
-    } catch {
+    } catch (error) {
+        const details = String((error as any)?.message || error || "unknown");
+        console.warn(
+            `[core-backend] HTTPS disabled: failed to load certificate files ` +
+            `key=${envKey || keyPath}, cert=${envCert || certPath}. ${details}`
+        );
         return undefined;
     }
 };
@@ -585,6 +627,9 @@ export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: 
         const httpPort = typeof httpPortRaw === "undefined" ? await pickHttpPort(host) : Number(httpPortRaw);
         await http.listen({ port: httpPort, host });
         console.log(`[core-backend] listening on http://${host}:${httpPort}`);
+    }
+    if (!httpsEnabled) {
+        console.log("[core-backend] HTTPS disabled: no valid certificates found or HTTPS disabled by env.");
     }
     if (httpsEnabled && https) {
         await https.listen({ port: httpsPort, host });

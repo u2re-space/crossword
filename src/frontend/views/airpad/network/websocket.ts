@@ -518,12 +518,15 @@ export function connectWS() {
     const remoteHost = getRemoteHost() || location.hostname;
     const remotePort = getRemotePort().trim();
     const remoteProtocol = getRemoteProtocol();
-    const hostLooksLikeIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(remoteHost);
-    const isPrivateIpHost = hostLooksLikeIp && (
-        remoteHost.startsWith('10.') ||
-        remoteHost.startsWith('192.168.') ||
-        /^172\.(1[6-9]|2\d|3[01])\./.test(remoteHost)
-    );
+    const isPrivateIp = (host: string): boolean => {
+        if (!host) return false;
+        if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return false;
+        return (
+            host.startsWith('10.') ||
+            host.startsWith('192.168.') ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+        );
+    };
     const pageHost = location.hostname || "";
     const isLocalPageHost = /^(localhost|127\.0\.0\.1)$/.test(pageHost) || (
         /^\d{1,3}(?:\.\d{1,3}){3}$/.test(pageHost) &&
@@ -533,8 +536,6 @@ export function connectWS() {
             /^172\.(1[6-9]|2\d|3[01])\./.test(pageHost)
         )
     );
-    const useWebSocketOnly = location.protocol === "https:" && isPrivateIpHost && !isLocalPageHost;
-
     if (location.protocol === 'https:' && remoteProtocol === 'http') {
         log('Socket.IO error: browser blocks ws/http from https page (mixed content). Open Airpad via http:// or use valid HTTPS cert on endpoint.');
         isConnecting = false;
@@ -584,12 +585,22 @@ export function connectWS() {
         return ports.filter((port, idx) => ports.indexOf(port) === idx);
     };
 
-    const candidates: Array<{ url: string; protocol: 'http' | 'https' }> = [];
+    const fallbackHost = location.hostname && location.hostname !== remoteHost ? location.hostname : undefined;
+    const candidateHosts = [remoteHost, ...(fallbackHost ? [fallbackHost] : [])];
+    const candidates: Array<{ url: string; protocol: 'http' | 'https'; host: string; useWebSocketOnly: boolean }> = [];
     for (const protocol of protocolOrder) {
         // Browsers block active mixed content from HTTPS pages to HTTP endpoints.
         if (location.protocol === 'https:' && protocol === 'http') continue;
-        for (const port of getPortsForProtocol(protocol)) {
-            candidates.push({ url: `${protocol}://${remoteHost}:${port}`, protocol });
+        for (const host of candidateHosts) {
+            for (const port of getPortsForProtocol(protocol)) {
+                const useWebSocketOnly = location.protocol === "https:" && isPrivateIp(host) && !isLocalPageHost;
+                candidates.push({
+                    url: `${protocol}://${host}:${port}`,
+                    protocol,
+                    host,
+                    useWebSocketOnly
+                });
+            }
         }
     }
     const uniqueCandidates = candidates.filter((item, idx) => candidates.findIndex((x) => x.url === item.url) === idx);
@@ -633,8 +644,8 @@ export function connectWS() {
             auth: handshakeAuth,
             // For public->private HTTPS (PNA), polling triggers fetch preflight restrictions.
             // Prefer WS-only in that scenario.
-            transports: useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
-            upgrade: !useWebSocketOnly,
+            transports: candidate.useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
+            upgrade: !candidate.useWebSocketOnly,
             reconnection: false,
             timeout: 3500,
             secure: candidate.protocol === 'https',
@@ -702,7 +713,7 @@ export function connectWS() {
             const errorMessage = String((error as any)?.message || error || '');
             const certLikely =
                 candidate.protocol === 'https' &&
-                hostLooksLikeIp &&
+                isPrivateIp(candidate.host) &&
                 /xhr poll error|websocket error/i.test(errorMessage);
 
             if (certLikely) {
@@ -711,15 +722,12 @@ export function connectWS() {
                     'Likely TLS certificate mismatch for IP. Certificate must include this IP in SAN, ' +
                     'or use HTTP endpoint from an HTTP page.'
                 );
-                log('Socket.IO error: stopping retries because HTTPS certificate is not trusted for this host.');
-                isConnecting = false;
-                setWsStatus(false);
-                updateButtonLabel();
+                tryConnect(index + 1, round);
                 return;
             }
 
             if (
-                useWebSocketOnly &&
+                candidate.useWebSocketOnly &&
                 /xhr poll error|cors|private network|address space|failed fetch/i.test(errorMessage)
             ) {
                 log(
