@@ -21,4 +21,28 @@ export default {
 
     // Простейшая защита: токен (по желанию, можно оставить пустым)
     secret: '', // тот же токен у всех участников
+
+    // Роли/режимы этого узла:
+    // - endpoint: full endpoint behavior
+    // - server: run local HTTP/HTTPS endpoints and WS/Socket.IO bridge
+    // - client: connect as reverse client to another endpoint/hub
+    // - peer: participate as a peer device (reverse dispatch target)
+    // - hub: act as upstream relay participant
+    // - node: generic aggregate role (server+client+peer)
+    roles: ["endpoint", "server", "peer", "client", "node", "hub"],
+
+    // Upstream tunnel-through / be-as-device settings.
+    // Когда enabled=true, endpoint откроет reverse WS на другой точке.
+    upstream: {
+        enabled: false,
+        endpointUrl: "",
+        userId: "",
+        userKey: "",
+        upstreamMasterKey: "",
+        upstreamSigningPrivateKeyPem: "",
+        upstreamPeerPublicKeyPem: "",
+        deviceId: "",
+        namespace: "default",
+        reconnectMs: 5000
+    },
 };

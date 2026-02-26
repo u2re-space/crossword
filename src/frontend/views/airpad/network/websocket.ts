@@ -8,6 +8,11 @@ import {
     getRemoteHost,
     getRemotePort,
     getRemoteProtocol,
+    getAirPadAuthToken,
+    getAirPadTransportMode,
+    getAirPadTransportSecret,
+    getAirPadSigningSecret,
+    getAirPadClientId,
 } from '../config/config';
 
 let socket: Socket | null = null;
@@ -24,6 +29,14 @@ const wsConnectionHandlers = new Set<WSConnectionHandler>();
 let lastServerClipboardText = '';
 type ClipboardUpdateHandler = (text: string, meta?: { source?: string }) => void;
 const clipboardHandlers = new Set<ClipboardUpdateHandler>();
+
+type AirPadTransportMode = "plaintext" | "secure";
+type SignedEnvelope = { cipher: string; sig: string; from?: string };
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+let aesKeyCache = new Map<string, CryptoKey>();
+let hmacKeyCache = new Map<string, CryptoKey>();
 
 // Binary message format constants
 export const MSG_TYPE_MOVE = 0;
@@ -83,6 +96,178 @@ function safeJson(value: unknown): string {
         return String(value);
     }
 }
+
+function getTransportMode(): AirPadTransportMode {
+    return getAirPadTransportMode() === "secure" ? "secure" : "plaintext";
+}
+
+const toBase64 = (buffer: ArrayBuffer | Uint8Array): string => {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+};
+
+const fromBase64 = (value: string): Uint8Array | null => {
+    try {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    } catch {
+        return null;
+    }
+};
+
+const isSignedEnvelope = (value: unknown): value is SignedEnvelope =>
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as any).cipher === "string" &&
+    typeof (value as any).sig === "string";
+
+const toSafeObject = (value: unknown): any => {
+    if (!value || typeof value !== "string") return null;
+    try {
+        const parsed = JSON.parse(value);
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const getSecret = (): string => (getAirPadTransportSecret() || "").trim();
+const getSigningSecret = (): string => (getAirPadSigningSecret() || "").trim();
+const getClientId = (): string => (getAirPadClientId() || "").trim() || "airpad-client";
+
+const getAesKey = async (secret: string): Promise<CryptoKey | null> => {
+    if (!secret || !globalThis.crypto?.subtle) return null;
+    if (aesKeyCache.has(secret)) return aesKeyCache.get(secret) || null;
+    const material = textEncoder.encode(secret);
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", material);
+    const key = await globalThis.crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+    aesKeyCache.set(secret, key);
+    return key;
+};
+
+const getHmacKey = async (secret: string): Promise<CryptoKey | null> => {
+    if (!secret || !globalThis.crypto?.subtle) return null;
+    if (hmacKeyCache.has(secret)) return hmacKeyCache.get(secret) || null;
+    const key = await globalThis.crypto.subtle.importKey(
+        "raw",
+        textEncoder.encode(secret),
+        {
+            name: "HMAC",
+            hash: "SHA-256"
+        },
+        false,
+        ["sign", "verify"]
+    );
+    hmacKeyCache.set(secret, key);
+    return key;
+};
+
+const buildSignedEnvelope = async (payload: unknown): Promise<SignedEnvelope> => {
+    const payloadJson = safeJson(payload);
+    const payloadBytes = textEncoder.encode(payloadJson);
+    const secret = getSecret();
+    const signingSecret = getSigningSecret();
+
+    let cipher = toBase64(payloadBytes);
+    if (secret && globalThis.crypto?.subtle) {
+        const key = await getAesKey(secret);
+        if (key) {
+            const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = new Uint8Array(
+                await globalThis.crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payloadBytes)
+            );
+            const merged = new Uint8Array(iv.length + encrypted.length);
+            merged.set(iv, 0);
+            merged.set(encrypted, iv.length);
+            cipher = toBase64(merged);
+        }
+    }
+
+    const cipherBytesForSig = textEncoder.encode(cipher);
+    let sig = toBase64(cipherBytesForSig);
+    if (signingSecret && globalThis.crypto?.subtle) {
+        const key = await getHmacKey(signingSecret);
+        if (key) {
+            const signature = new Uint8Array(
+                await globalThis.crypto.subtle.sign(
+                    {
+                        name: "HMAC"
+                    },
+                    key,
+                    cipherBytesForSig
+                )
+            );
+            sig = toBase64(signature);
+        }
+    }
+
+    return { cipher, sig, from: getClientId() };
+};
+
+const unwrapSignedPayload = async (envelope: SignedEnvelope): Promise<any> => {
+    if (!isSignedEnvelope(envelope)) return envelope;
+    const secret = getSecret();
+    const cipherBytes = fromBase64(envelope.cipher);
+    if (!cipherBytes) return envelope;
+    if (!secret || !globalThis.crypto?.subtle) {
+        const decodedText = textDecoder.decode(cipherBytes);
+        return toSafeObject(decodedText) ?? envelope;
+    }
+
+    const key = await getAesKey(secret);
+    if (!key) return envelope;
+    if (cipherBytes.length < 28) {
+        const decodedText = textDecoder.decode(cipherBytes);
+        return toSafeObject(decodedText) ?? envelope;
+    }
+
+    const iv = cipherBytes.slice(0, 12);
+    const encrypted = cipherBytes.slice(12);
+    try {
+        const decrypted = new Uint8Array(await globalThis.crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted));
+        const decodedText = textDecoder.decode(decrypted);
+        return toSafeObject(decodedText) ?? envelope;
+    } catch {
+        return envelope;
+    }
+};
+
+const wrapObjectForTransport = async (payload: any): Promise<any> => {
+    if (getTransportMode() !== "secure" || typeof payload !== "object" || payload === null) {
+        return payload;
+    }
+
+    const envelope = await buildSignedEnvelope(payload);
+    return {
+        ...payload,
+        mode: "secure",
+        payload: envelope
+    };
+};
+
+const emitPayload = (value: any): void => {
+    if (!socket || !socket.connected) return;
+    socket.emit("message", value);
+};
+
+const emitSignedObjectMessage = async (payload: any): Promise<void> => {
+    const wrapped = await wrapObjectForTransport(payload);
+    emitPayload(wrapped);
+};
+
+const unwrapIncomingPayload = async (payload: any): Promise<any> => {
+    if (!isSignedEnvelope(payload)) return payload;
+    if (getTransportMode() !== "secure") return payload;
+    return unwrapSignedPayload(payload);
+};
 
 function isPrivateOrLocalTarget(host: string): boolean {
     if (!host) return false;
@@ -305,7 +490,8 @@ export function sendWS(obj: any) {
         }
         default:
             // Fallback to JSON for unknown types
-            socket.emit('message', JSON.stringify(obj));
+            void emitSignedObjectMessage(obj);
+            break;
     }
 }
 
@@ -432,8 +618,19 @@ export function connectWS() {
         const candidate = uniqueCandidates[index];
         const url = candidate.url;
         log(`Connecting Socket.IO: ${url} (page=${location.protocol}//${location.host})`);
+        const authToken = getAirPadAuthToken().trim();
+        const clientId = getAirPadClientId().trim();
+        const handshakeAuth: Record<string, string> = {};
+        if (authToken) {
+            handshakeAuth.token = authToken;
+            handshakeAuth.airpadToken = authToken;
+        }
+        if (clientId) {
+            handshakeAuth.clientId = clientId;
+        }
 
         const probeSocket = io(url, {
+            auth: handshakeAuth,
             // For public->private HTTPS (PNA), polling triggers fetch preflight restrictions.
             // Prefer WS-only in that scenario.
             transports: useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
@@ -471,17 +668,20 @@ export function connectWS() {
                 updateButtonLabel();
             });
 
-            socket.on('voice_result', (msg) => {
-                handleServerMessage(msg);
+            socket.on('voice_result', async (msg: any) => {
+                const decoded = await unwrapIncomingPayload(msg);
+                handleServerMessage(decoded);
             });
-            socket.on('voice_error', (msg) => {
-                handleServerMessage(msg);
+            socket.on('voice_error', async (msg: any) => {
+                const decoded = await unwrapIncomingPayload(msg);
+                handleServerMessage(decoded);
             });
 
-            socket.on('clipboard:update', (msg: any) => {
-                const text = typeof msg?.text === 'string' ? msg.text : '';
+            socket.on('clipboard:update', async (msg: any) => {
+                const decoded = await unwrapIncomingPayload(msg);
+                const text = typeof decoded?.text === 'string' ? decoded.text : '';
                 lastServerClipboardText = text;
-                notifyClipboardHandlers(text, { source: msg?.source });
+                notifyClipboardHandlers(text, { source: decoded?.source });
             });
 
             // Expose socket for virtual keyboard

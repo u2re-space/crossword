@@ -15,6 +15,7 @@ import { registerRoutes } from './src/routes.ts';
 import { setupSocketIO } from './src/socket.ts';
 import { createWsServer } from './src/websocket.ts';
 import { registerOpsRoutes } from './src/ops.ts';
+import { startUpstreamPeerClient } from './src/upstream-peer-client.ts';
 
 let httpsApp: any = null;
 let httpApp: any = null;
@@ -118,6 +119,15 @@ const makeUnifiedWsHub = (hubs: Array<ReturnType<typeof createWsServer>>) => {
     };
 };
 
+const buildNetworkContext = (upstreamClient: ReturnType<typeof startUpstreamPeerClient> | null) => {
+    if (!upstreamClient) return undefined;
+    return {
+        getUpstreamStatus: () => upstreamClient.getStatus(),
+        sendToUpstream: (payload: any) => upstreamClient.send(payload),
+        getNodeId: () => String((config as any)?.upstream?.userId || "").trim() || null
+    };
+};
+
 async function startServers() {
     const httpsOptions = await loadHttpsCredentials();
     httpsApp = fastify({ logger: true, https: httpsOptions });
@@ -135,7 +145,6 @@ async function startServers() {
 
     registerRoutes(httpsApp);
     registerRoutes(httpApp);
-
     // Initialize Socket.IO servers (both HTTP and HTTPS) before listen.
     // This ensures `/socket.io` handlers are already attached when ports open.
     setupSocketIO(httpsApp.server, httpsApp.log);
@@ -143,8 +152,50 @@ async function startServers() {
     const httpsWsHub = createWsServer(httpsApp);
     const httpWsHub = createWsServer(httpApp);
     const unifiedWsHub = makeUnifiedWsHub([httpsWsHub, httpWsHub]);
-    await registerOpsRoutes(httpsApp, unifiedWsHub);
-    await registerOpsRoutes(httpApp, unifiedWsHub);
+    const upstreamClient = startUpstreamPeerClient(config as any, {
+        onMessage: (message: any) => {
+            if (!message || typeof message !== "object") return;
+            const msg = message as Record<string, unknown>;
+            const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
+            const userId =
+                typeof msg.userId === "string" && msg.userId.trim()
+                    ? (msg.userId as string).trim()
+                    : ((config as any)?.upstream?.userId || "");
+            if (!userId) return;
+
+            const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
+            const namespace = typeof msg.namespace === "string" && msg.namespace
+                ? msg.namespace
+                : typeof msg.ns === "string"
+                    ? msg.ns
+                    : undefined;
+            const type = String(msg.type || msg.action || "dispatch");
+            const routed = {
+                type,
+                data: payload,
+                namespace,
+                from: typeof msg.from === "string" ? msg.from : String((config as any)?.upstream?.userId || ""),
+                ts: Number.isFinite(Number(msg.ts)) ? Number(msg.ts) : Date.now()
+            };
+
+            if (typeof target === "string" && target.trim()) {
+                unifiedWsHub.sendToDevice(userId, target.trim(), routed);
+                return;
+            }
+            unifiedWsHub.multicast(userId, routed, namespace);
+        }
+    });
+    const networkContext = buildNetworkContext(upstreamClient);
+    if (upstreamClient?.isRunning?.()) {
+        httpsApp.log.info(`Upstream peer bridge started`);
+    }
+    if (upstreamClient) {
+        const stopUpstream = () => upstreamClient.stop();
+        httpApp.addHook("onClose", stopUpstream);
+        httpsApp.addHook("onClose", stopUpstream);
+    }
+    await registerOpsRoutes(httpsApp, unifiedWsHub, networkContext);
+    await registerOpsRoutes(httpApp, unifiedWsHub, networkContext);
 
     // Start HTTP/HTTPS in parallel to reduce startup latency.
     await Promise.all([

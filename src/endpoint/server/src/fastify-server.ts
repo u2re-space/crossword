@@ -10,12 +10,15 @@ import fastifyStatic from "@fastify/static";
 import { ADMIN_DIR } from "../lib/paths.ts";
 import { isMainModule, moduleDirname, runtimeArgs } from "../lib/runtime.ts";
 import { createWsServer } from "./websocket.ts";
+import type { WsHub } from "./websocket.ts";
 import { createSocketIoBridge } from "./socketio-bridge.ts";
 import { registerAuthRoutes } from "./auth.ts";
 import { registerCoreSettingsEndpoints, registerCoreSettingsRoutes } from "./userSettings.ts";
 import { registerStorageRoutes } from "./storage.ts";
 import { registerAiRoutes } from "./ai.ts";
 import { registerOpsRoutes } from "./ops.ts";
+import { startUpstreamPeerClient } from "./upstream-peer-client.ts";
+import config from "../../config.js";
 
 const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
 type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];
@@ -345,6 +348,90 @@ const registerApiFallback = (app: FastifyInstance) => {
     });
 };
 
+const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
+    return {
+        broadcast: (userId, payload) => {
+            hubs.forEach((hub) => hub.broadcast(userId, payload));
+        },
+        multicast: (userId, payload, namespace, excludeId) => {
+            hubs.forEach((hub) => hub.multicast(userId, payload, namespace, excludeId));
+        },
+        notify: (userId, type, data) => {
+            hubs.forEach((hub) => hub.notify(userId, type, data));
+        },
+        sendTo: (clientId, payload) => {
+            hubs.forEach((hub) => hub.sendTo(clientId, payload));
+        },
+        sendToDevice: (userId, deviceId, payload) => {
+            for (const hub of hubs) {
+                const ok = hub.sendToDevice(userId, deviceId, payload);
+                if (ok) return true;
+            }
+            return false;
+        },
+        getConnectedDevices: (userId) => {
+            const set = new Set<string>();
+            for (const hub of hubs) {
+                hub.getConnectedDevices(userId).forEach((id) => set.add(id));
+            }
+            return Array.from(set);
+        },
+        close: async () => {
+            await Promise.all(hubs.map((hub) => hub.close()));
+        }
+    };
+};
+
+const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
+    const defaultUserId = fallbackUserId || "";
+    return (message: any) => {
+        if (!message || typeof message !== "object") return;
+        const msg = message as Record<string, unknown>;
+        const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
+        const userId =
+            typeof msg.userId === "string" && msg.userId.trim()
+                ? (msg.userId as string).trim()
+                : defaultUserId;
+        if (!userId) return;
+
+        const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
+        const namespace = typeof msg.namespace === "string" && msg.namespace
+            ? msg.namespace
+            : typeof msg.ns === "string"
+                ? msg.ns
+                : undefined;
+        const type = String(msg.type || msg.action || "dispatch");
+        const routed = {
+            type,
+            data: payload,
+            namespace,
+            from: typeof msg.from === "string" ? msg.from : defaultUserId,
+            ts: Number.isFinite(Number(msg.ts)) ? Number(msg.ts) : Date.now()
+        };
+
+        if (typeof target === "string" && target.trim()) {
+            const delivered = hub.sendToDevice(userId, target.trim(), routed);
+            app.log?.debug?.({
+                delivered,
+                target: target.trim(),
+                userId
+            }, "[upstream] routed command to device");
+            return;
+        }
+
+        hub.multicast(userId, routed, namespace);
+    };
+};
+
+const buildNetworkContext = (upstreamClient: ReturnType<typeof startUpstreamPeerClient> | null) => {
+    if (!upstreamClient) return undefined;
+    return {
+        getUpstreamStatus: () => upstreamClient.getStatus(),
+        sendToUpstream: (payload: any) => upstreamClient.send(payload),
+        getNodeId: () => String((config as any)?.upstream?.userId || "").trim() || null
+    };
+};
+
 export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<FastifyInstance> => {
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
 
@@ -354,9 +441,18 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     }) as unknown as FastifyInstance;
 
     await registerCoreApp(app);
-
     const wsHub = createWsServer(app);
-    await registerOpsRoutes(app, wsHub);
+    const upstreamClient = startUpstreamPeerClient(config as any, {
+        onMessage: buildUpstreamRouter(app, wsHub, (config as any)?.upstream?.userId || "")
+    });
+    if (upstreamClient) {
+        app.addHook("onClose", async () => {
+            upstreamClient.stop();
+        });
+        app.log?.info?.("Upstream peer bridge started");
+    }
+
+    await registerOpsRoutes(app, wsHub, buildNetworkContext(upstreamClient));
     registerApiFallback(app);
 
     // Socket.IO bridge for legacy/native clients (merged from server-old.ts concepts)
@@ -369,23 +465,40 @@ export const buildCoreServers = async (
     opts: { logger?: boolean; httpsOptions?: any } = {}
 ): Promise<{ http: FastifyInstance; https?: FastifyInstance }> => {
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
-
     const http = Fastify({ logger: opts.logger ?? true }) as unknown as FastifyInstance;
-    await registerCoreApp(http);
-    const httpWsHub = createWsServer(http);
-    await registerOpsRoutes(http, httpWsHub);
-    registerApiFallback(http);
-    createSocketIoBridge(http);
-
-    if (!httpsOptions) return { http };
-
     const https = Fastify({
         logger: opts.logger ?? true,
         https: httpsOptions
     }) as unknown as FastifyInstance;
-    await registerCoreApp(https);
+    const fallbackUserId = String((config as any)?.upstream?.userId || "").trim();
+    const httpWsHub = createWsServer(http);
+    const httpWsHubs: WsHub[] = [httpWsHub];
+    const unifiedHub = makeUnifiedWsHub(httpWsHubs);
+    const upstreamClient = startUpstreamPeerClient(config as any, {
+        onMessage: buildUpstreamRouter(http, unifiedHub, fallbackUserId)
+    });
+    const networkContext = buildNetworkContext(upstreamClient);
+
+    await registerCoreApp(http);
+    if (upstreamClient) {
+        http.addHook("onClose", async () => {
+            upstreamClient.stop();
+        });
+    }
+    await registerOpsRoutes(http, unifiedHub, networkContext);
+    registerApiFallback(http);
+    createSocketIoBridge(http);
+
+    if (!httpsOptions) return { http };
     const httpsWsHub = createWsServer(https);
-    await registerOpsRoutes(https, httpsWsHub);
+    httpWsHubs.push(httpsWsHub);
+    await registerCoreApp(https);
+    if (upstreamClient) {
+        https.addHook("onClose", async () => {
+            upstreamClient.stop();
+        });
+    }
+    await registerOpsRoutes(https, unifiedHub, networkContext);
     registerApiFallback(https);
     createSocketIoBridge(https);
 

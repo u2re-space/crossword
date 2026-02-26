@@ -74,6 +74,38 @@
         </section>
 
         <section class="card">
+            <h2>Role + upstream peer bridge</h2>
+            <div class="grid">
+                <label>Roles (comma separated)
+                    <input type="text" id="coreRoles" placeholder="endpoint,server,peer,client,node,hub">
+                </label>
+                <label>Upstream enabled
+                    <select id="upstreamEnabled">
+                        <option value="false">Disabled</option>
+                        <option value="true">Enabled</option>
+                    </select>
+                </label>
+                <label>Upstream endpoint URL
+                    <input type="text" id="upstreamUrl" placeholder="https://peer-host:8443">
+                </label>
+                <label>Upstream userId <input type="text" id="upstreamUserId"></label>
+                <label>Upstream userKey <input type="password" id="upstreamUserKey"></label>
+                <label>Upstream master key <input type="password" id="upstreamMasterKey"></label>
+                <label>Upstream signing private key (PEM)
+                    <textarea id="upstreamSigningPrivateKeyPem" rows="4" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY----- ..."></textarea>
+                </label>
+                <label>Upstream peer public key (PEM)
+                    <textarea id="upstreamPeerPublicKeyPem" rows="4" spellcheck="false" placeholder="-----BEGIN PUBLIC KEY----- ..."></textarea>
+                </label>
+                <label>Upstream deviceId <input type="text" id="upstreamDeviceId"></label>
+                <label>Upstream namespace <input type="text" id="upstreamNamespace" value="default"></label>
+                <label>Reconnect interval (ms)
+                    <input type="number" id="upstreamReconnectMs" min="1000" step="1000" value="5000">
+                </label>
+            </div>
+        </section>
+
+        <section class="card">
             <h2>MCP Servers</h2>
             <p class="hint">JSON array of servers: [{ id, serverLabel, origin, clientKey, secretKey }]</p>
             <textarea id="mcpJson" rows="6" spellcheck="false" placeholder='[{"id":"srv-1","serverLabel":"local","origin":"http://localhost:3001","clientKey":"","secretKey":""}]'></textarea>

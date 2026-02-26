@@ -35,6 +35,12 @@ const getSettingsPayload = () => {
     if (mcpText) {
         try { mcp = JSON.parse(mcpText); } catch (e) { console.warn(e); }
     }
+    const coreRoles = $("#coreRoles").value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const upstreamReconnect = Number($("#upstreamReconnectMs").value);
+
     return {
         core: {
             mode: "endpoint",
@@ -42,7 +48,20 @@ const getSettingsPayload = () => {
             userId: $("#userId").value.trim(),
             userKey: $("#userKey").value.trim(),
             encrypt: $("#encrypt").value === "true",
-            preferBackendSync: $("#preferBackendSync").value === "true"
+            preferBackendSync: $("#preferBackendSync").value === "true",
+            roles: coreRoles,
+            upstream: {
+                enabled: $("#upstreamEnabled").value === "true",
+                endpointUrl: $("#upstreamUrl").value.trim(),
+                userId: $("#upstreamUserId").value.trim(),
+                userKey: $("#upstreamUserKey").value.trim(),
+                upstreamMasterKey: $("#upstreamMasterKey").value.trim(),
+                upstreamSigningPrivateKeyPem: $("#upstreamSigningPrivateKeyPem").value.trim(),
+                upstreamPeerPublicKeyPem: $("#upstreamPeerPublicKeyPem").value.trim(),
+                deviceId: $("#upstreamDeviceId").value.trim(),
+                namespace: $("#upstreamNamespace").value.trim() || "default",
+                reconnectMs: Number.isFinite(upstreamReconnect) && upstreamReconnect > 0 ? upstreamReconnect : 5000
+            }
         },
         ai: {
             baseUrl: $("#aiBaseUrl").value.trim(),
@@ -72,6 +91,19 @@ const applySettingsToForm = (settings) => {
     $("#userKey").value = core.userKey || "";
     $("#encrypt").value = core.encrypt ? "true" : "false";
     $("#preferBackendSync").value = core.preferBackendSync ? "true" : "false";
+    const upstream = core.upstream || {};
+    const roles = Array.isArray(core.roles) ? core.roles : [];
+    $("#coreRoles").value = roles.join(", ");
+    $("#upstreamEnabled").value = upstream.enabled ? "true" : "false";
+    $("#upstreamUrl").value = upstream.endpointUrl || "";
+    $("#upstreamUserId").value = upstream.userId || "";
+    $("#upstreamUserKey").value = upstream.userKey || "";
+    $("#upstreamMasterKey").value = upstream.upstreamMasterKey || "";
+    $("#upstreamSigningPrivateKeyPem").value = upstream.upstreamSigningPrivateKeyPem || "";
+    $("#upstreamPeerPublicKeyPem").value = upstream.upstreamPeerPublicKeyPem || "";
+    $("#upstreamDeviceId").value = upstream.deviceId || "";
+    $("#upstreamNamespace").value = upstream.namespace || "default";
+    $("#upstreamReconnectMs").value = `${Number.isFinite(Number(upstream.reconnectMs)) && Number(upstream.reconnectMs) > 0 ? Number(upstream.reconnectMs) : 5000}`;
 
     const ai = settings?.ai || {};
     $("#aiBaseUrl").value = ai.baseUrl || "";
@@ -146,7 +178,9 @@ const main = () => {
             const url = new URL("/health", $("#endpointUrl").value.trim() || `https://${window.location.hostname}:8443`).toString();
             const res = await fetch(url);
             const json = await res.json();
-            setStatus($("#healthStatus"), `Health: ${json?.ok ? "ok" : "fail"} (mode: ${json?.mode || "-"})`);
+            const roles = Array.isArray(json?.roles) ? json.roles.join(", ") : "-";
+            const upstream = json?.upstreamEnabled ? "on" : "off";
+            setStatus($("#healthStatus"), `Health: ${json?.ok ? "ok" : "fail"} (mode: ${json?.mode || "-"}, roles: ${roles}, upstream: ${upstream})`);
         } catch (e) {
             setStatus($("#healthStatus"), `Health: error`);
             console.warn(e);

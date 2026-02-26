@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { AiSettings,
-mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, type Settings } from "../lib/settings.ts";
+mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "../lib/settings.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
 
 export type HttpTarget = {
@@ -14,7 +14,20 @@ export type HttpTarget = {
 };
 
 export type CoreSettings = {
-    mode: "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client";
+    mode: "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint";
+    roles?: string[];
+    upstream?: {
+        enabled?: boolean;
+        endpointUrl?: string;
+        userId?: string;
+        userKey?: string;
+        upstreamMasterKey?: string;
+        upstreamSigningPrivateKeyPem?: string;
+        upstreamPeerPublicKeyPem?: string;
+        deviceId?: string;
+        namespace?: string;
+        reconnectMs?: number;
+    };
     ops?: {
         httpTargets?: HttpTarget[];
         allowUnencrypted?: boolean;
@@ -40,18 +53,18 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
         if (!record) return { ok: false, error: "Invalid credentials" };
         try {
             const buf = await readUserFile(userId, "settings.json", record.encrypt, userKey);
-            const parsed = JSON.parse(buf.toString("utf-8")) as Settings;
+            const parsed = JSON.parse(buf.toString("utf-8")) as StoredSettings;
             return { ok: true, settings: mergeSettings(DEFAULT_SETTINGS, parsed), encrypt: record.encrypt };
         } catch {
             return { ok: true, settings: DEFAULT_SETTINGS, encrypt: record.encrypt };
         }
     });
 
-    app.post("/core/user/settings", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; settings: Partial<Settings> } }>) => {
+    app.post("/core/user/settings", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; settings: Partial<StoredSettings> } }>) => {
         const { userId, userKey, settings } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
-        const merged = mergeSettings(DEFAULT_SETTINGS, settings || {});
+        const merged = mergeSettings(DEFAULT_SETTINGS, settings as Partial<StoredSettings> || {});
         await writeUserFile(userId, "settings.json", Buffer.from(JSON.stringify(merged, null, 2)), record.encrypt, userKey);
         return { ok: true, settings: merged };
     });
@@ -60,14 +73,19 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
 export const registerCoreSettingsEndpoints = async (app: FastifyInstance) => {
     app.get("/health", async () => {
         const settings = await readCoreSettings();
-        return { ok: true, mode: (settings.core?.mode ?? "native") as "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" };
+        return {
+            ok: true,
+            mode: (settings.core?.mode ?? "endpoint") as "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint",
+            roles: settings.core?.roles ?? (DEFAULT_SETTINGS.core?.roles || ["server", "endpoint"]),
+            upstreamEnabled: !!settings.core?.upstream?.enabled
+        };
     });
 };
 
 export const registerOpsSettingsRoutes = async (app: FastifyInstance) => {
     app.post("/core/ops/http", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; targetId?: string; url?: string; method?: string; headers?: Record<string, string>; body?: string } }>) => {
         const { userId, userKey, targetId, url: overrideUrl, method, headers, body } = request.body || {};
-        let settings: Settings;
+        let settings: StoredSettings;
         try {
             settings = await loadUserSettings(userId, userKey);
         } catch (e) {

@@ -22,6 +22,50 @@ export type SocketIoBridge = {
 };
 
 const MAX_HISTORY_DEFAULT = 100;
+const requiresAirpadMessageAuth = process.env.AIRPAD_REQUIRE_SIGNED_MESSAGE === "true";
+const getAirPadTokens = () =>
+    (process.env.AIRPAD_AUTH_TOKENS || process.env.AIRPAD_TOKENS || "")
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+const getAirPadTokenFromSocket = (socket: Socket) => {
+    const handshake: any = (socket as any).handshake || {};
+    const auth = handshake.auth || {};
+    const query = handshake.query || {};
+    const pick = (value: unknown) => {
+        if (typeof value === "string") return value;
+        if (Array.isArray(value)) return typeof value[0] === "string" ? value[0] : "";
+        return "";
+    };
+
+    return (
+        pick(auth.token) ||
+        pick(auth.airpadToken) ||
+        pick(query.token) ||
+        pick(query.airpadToken)
+    );
+};
+
+const isAirPadAuthorized = (socket: Socket) => {
+    const allowed = getAirPadTokens();
+    if (!allowed.length) return true;
+    const provided = getAirPadTokenFromSocket(socket);
+    return !!provided && allowed.includes(provided);
+};
+
+const hasSignedEnvelope = (payload: unknown): payload is { cipher: string; sig: string; from?: string } =>
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as any).cipher === "string" &&
+    typeof (payload as any).sig === "string";
+
+const extractPayload = (payload: unknown) => {
+    if (!hasSignedEnvelope(payload)) return payload as unknown;
+    if (!requiresAirpadMessageAuth) return payload;
+    const parsed = parsePayload(payload);
+    return parsed.inner;
+};
 
 const logMsg = (prefix: string, msg: any): void => {
     const payloadLen = msg?.payload
@@ -155,6 +199,14 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
 
     io.on("connection", (socket: Socket) => {
         let deviceId: string | null = null;
+
+        if (!isAirPadAuthorized(socket)) {
+            console.warn(`[Server] AirPad socket rejected due to missing/invalid token`);
+            socket.emit("error", { message: "Unauthorized AirPad token" });
+            socket.disconnect(true);
+            return;
+        }
+
         app.log?.info?.(
             {
                 socketId: socket.id,
@@ -176,16 +228,40 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
             logger: app.log,
             onObjectMessage: async (msg) => {
                 const normalized = normalizeControlMessage(msg, deviceId || socket.id);
+                const signed = hasSignedEnvelope(normalized.payload);
+                const envelopeRequired = requiresAirpadMessageAuth || normalized.mode === "secure";
+
+                if (envelopeRequired) {
+                    if (!signed) {
+                        console.warn(`[Server] AirPad signed payload required for mode=${normalized.mode}, from=${normalized.from}`);
+                        socket.emit("error", { message: "Signed payload required" });
+                        return;
+                    }
+                    const ok = verifyWithoutDecrypt(normalized.payload);
+                    if (!ok) {
+                        console.warn(`[Server] Signed payload validation failed for from=${normalized.from}`);
+                        socket.emit("error", { message: "Signed payload validation failed" });
+                        return;
+                    }
+                }
+
+                const parsed = hasSignedEnvelope(normalized.payload) ? parsePayload(normalized.payload) : null;
+                if (parsed) {
+                    normalized.from = normalized.from || parsed.from;
+                    normalized.payload = extractPayload(normalized.payload);
+                }
 
                 logMsg("IN ", normalized);
 
                 try {
                     if (normalized.mode === "blind") {
-                        const ok = verifyWithoutDecrypt(normalized.payload);
-                        if (!ok) {
-                            console.warn(`[Server] Signature verification failed (blind mode) for from=${normalized.from}`);
-                            socket.emit("error", { message: "Signature verification failed" });
-                            return;
+                        if (!requiresAirpadMessageAuth && !envelopeRequired) {
+                            const ok = verifyWithoutDecrypt(normalized.payload);
+                            if (!ok) {
+                                console.warn(`[Server] Signature verification failed (blind mode) for from=${normalized.from}`);
+                                socket.emit("error", { message: "Signature verification failed" });
+                                return;
+                            }
                         }
                         routeMessage(socket, normalized);
                         return;

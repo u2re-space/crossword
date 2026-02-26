@@ -3,12 +3,18 @@
 // =========================
 
 type RemoteProtocol = 'auto' | 'http' | 'https';
+export type AirpadTransportMode = "plaintext" | "secure";
 const STORAGE_KEY = 'airpad.remote.connection.v1';
 
 interface StoredRemoteConfig {
     host?: string;
     port?: string;
     protocol?: RemoteProtocol;
+    transportMode?: AirpadTransportMode;
+    authToken?: string;
+    clientId?: string;
+    transportSecret?: string;
+    signingSecret?: string;
 }
 
 function loadStoredRemoteConfig(): StoredRemoteConfig {
@@ -22,12 +28,32 @@ function loadStoredRemoteConfig(): StoredRemoteConfig {
     }
 }
 
+const readGlobalAirpadValue = (keys: string[]): string => {
+    const globalValue = (globalThis as any).AIRPAD_CONFIG;
+    for (const key of keys) {
+        const direct = (globalThis as any)[key];
+        if (typeof direct === "string" && direct.trim()) {
+            return direct.trim();
+        }
+        const fromConfig = globalValue && typeof globalValue === "object" && typeof globalValue[key] === "string" ? globalValue[key] : "";
+        if (fromConfig.trim()) {
+            return String(fromConfig).trim();
+        }
+    }
+    return "";
+};
+
 function persistRemoteConfig(): void {
     try {
         globalThis?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify({
             host: remoteHost,
             port: remotePort,
             protocol: remoteProtocol,
+            transportMode: remoteConfig.transportMode,
+            authToken: remoteConfig.authToken,
+            clientId: remoteConfig.clientId,
+            transportSecret: remoteConfig.transportSecret,
+            signingSecret: remoteConfig.signingSecret,
         }));
     } catch {
         // localStorage unavailable (private mode, SSR, etc.)
@@ -42,6 +68,19 @@ export let remoteProtocol: RemoteProtocol =
     stored.protocol === 'http' || stored.protocol === 'https' || stored.protocol === 'auto'
         ? stored.protocol
         : 'auto';
+const remoteConfig: {
+    transportMode: AirpadTransportMode;
+    authToken: string;
+    clientId: string;
+    transportSecret: string;
+    signingSecret: string;
+} = {
+    transportMode: stored.transportMode === "secure" ? "secure" : "plaintext",
+    authToken: stored.authToken || "",
+    clientId: stored.clientId || "",
+    transportSecret: stored.transportSecret || "",
+    signingSecret: stored.signingSecret || "",
+};
 
 // Configuration getters and setters
 export function getRemoteHost(): string {
@@ -68,6 +107,53 @@ export function getRemoteProtocol(): RemoteProtocol {
 
 export function setRemoteProtocol(protocol: string): void {
     remoteProtocol = protocol === 'http' || protocol === 'https' ? protocol : 'auto';
+    persistRemoteConfig();
+}
+
+export function getAirPadTransportMode(): AirpadTransportMode {
+    const envMode = readGlobalAirpadValue(["AIRPAD_TRANSPORT_MODE", "AIRPAD_TRANSPORT"]);
+    if (envMode === "secure" || envMode === "plaintext") return envMode;
+    return remoteConfig.transportMode === "secure" ? "secure" : "plaintext";
+}
+
+export function setAirPadTransportMode(mode: string): void {
+    remoteConfig.transportMode = mode === "secure" ? "secure" : "plaintext";
+    persistRemoteConfig();
+}
+
+export function getAirPadAuthToken(): string {
+    return remoteConfig.authToken || readGlobalAirpadValue(["AIRPAD_AUTH_TOKEN", "AIRPAD_TOKEN"]);
+}
+
+export function setAirPadAuthToken(token: string): void {
+    remoteConfig.authToken = token || "";
+    persistRemoteConfig();
+}
+
+export function getAirPadClientId(): string {
+    return remoteConfig.clientId || readGlobalAirpadValue(["AIRPAD_CLIENT_ID", "AIRPAD_CLIENT"]);
+}
+
+export function setAirPadClientId(clientId: string): void {
+    remoteConfig.clientId = clientId || "";
+    persistRemoteConfig();
+}
+
+export function getAirPadTransportSecret(): string {
+    return remoteConfig.transportSecret || readGlobalAirpadValue(["AIRPAD_TRANSPORT_SECRET", "AIRPAD_MASTER_KEY"]);
+}
+
+export function setAirPadTransportSecret(secret: string): void {
+    remoteConfig.transportSecret = secret || "";
+    persistRemoteConfig();
+}
+
+export function getAirPadSigningSecret(): string {
+    return remoteConfig.signingSecret || readGlobalAirpadValue(["AIRPAD_SIGNING_SECRET", "AIRPAD_HMAC_SECRET"]);
+}
+
+export function setAirPadSigningSecret(secret: string): void {
+    remoteConfig.signingSecret = secret || "";
     persistRemoteConfig();
 }
 

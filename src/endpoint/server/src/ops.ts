@@ -54,6 +54,10 @@ type HttpRequestBody = {
     data?: any;
     namespace?: string;
 };
+type DeviceFeatureRequestBody = HttpRequestBody & {
+    text?: string;
+    limit?: number;
+};
 type WsSendBody = { userId: string; userKey: string; namespace?: string; type?: string; data?: any };
 type ReverseSendBody = {
     userId: string;
@@ -72,6 +76,39 @@ type ActionBody = {
     text?: string;
     actions?: any[];
     namespace?: string;
+};
+
+type UpstreamTopologyStatus = {
+    running: boolean;
+    connected: boolean;
+    upstreamEnabled: boolean;
+    endpointUrl?: string;
+    userId?: string;
+    deviceId?: string;
+    namespace?: string;
+};
+
+type NetworkContextProvider = {
+    getUpstreamStatus?: () => UpstreamTopologyStatus | null;
+    sendToUpstream?: (payload: any) => boolean;
+    getNodeId?: () => string | null;
+};
+
+type NetworkDispatchBody = {
+    userId: string;
+    userKey: string;
+    route?: "local" | "upstream" | "both";
+    target?: string;
+    targetId?: string;
+    deviceId?: string;
+    peerId?: string;
+    namespace?: string;
+    ns?: string;
+    type?: string;
+    action?: string;
+    data?: any;
+    payload?: any;
+    broadcast?: boolean;
 };
 
 const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[] => {
@@ -99,6 +136,43 @@ const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[
     (body.ips || []).forEach((ip) => pushEntry({ ip }));
     return out;
 };
+
+const readFeatureLimit = (body: DeviceFeatureRequestBody): number => {
+    const rawLimit = Number((body as any).limit);
+    const limit = Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : 50;
+    return Math.max(1, Math.min(200, limit));
+};
+
+const readTextPayload = (body: DeviceFeatureRequestBody): string => {
+    const textFromBody = (body as any).text;
+    if (textFromBody == null) return "";
+    if (typeof textFromBody === "string") return textFromBody.trim();
+    return String(textFromBody).trim();
+};
+
+const resolveFeatureTarget = (body: DeviceFeatureRequestBody) => (
+    body.targetDeviceId?.trim() || body.targetId?.trim() || body.deviceId?.trim()
+);
+
+const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<string, string | number | undefined>) => {
+    const normalizedBase = baseUrl.trim().replace(/\/+$/, "");
+    const cleanPath = featurePath.startsWith("/") ? featurePath : `/${featurePath}`;
+    const queryItems = Object.entries(query)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+    const urlWithPath = `${normalizedBase}${cleanPath}`;
+    if (queryItems.length === 0) return urlWithPath;
+    const joiner = urlWithPath.includes("?") ? "&" : "?";
+    return `${urlWithPath}${joiner}${queryItems.join("&")}`;
+};
+
+const reverseDispatchPayload = (feature: string, payload: any) => ({
+    type: "feature",
+    data: {
+        feature,
+        payload
+    }
+});
 
 const toTargetUrl = (
     body: HttpRequestBody,
@@ -137,7 +211,7 @@ const toTargetUrl = (
     return `${protocol}://${host}${port}${normalizedPath}`;
 };
 
-export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
+export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, networkContext?: NetworkContextProvider) => {
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
         const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
@@ -289,6 +363,167 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
         return { ok: true };
     };
 
+    const featureDevicesHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
+        const { userId, userKey } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        let settings: Settings;
+        try {
+            settings = await loadUserSettings(userId, userKey);
+        } catch (e) {
+            settings = {} as Settings;
+        }
+        const ops = settings?.core?.ops || {};
+        const configuredTargets = Array.isArray((ops as any).httpTargets)
+            ? (ops as any).httpTargets
+                .map((target: any) => String(target?.id || target?.name || "").trim())
+                .filter(Boolean)
+            : [];
+
+        const reverseDevices = wsHub.getConnectedDevices(userId);
+        return {
+            ok: true,
+            reverseDevices,
+            configuredTargets,
+            features: ["/sms", "/notifications", "/notifications/speak"]
+        };
+    };
+
+    const smsFeatureHandler = async (request: FastifyRequest<{ Body: DeviceFeatureRequestBody }>) => {
+        const body = (request.body || {}) as DeviceFeatureRequestBody;
+        const { userId, userKey, headers, targetId } = body;
+        const limit = readFeatureLimit(body);
+
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const settings = await loadUserSettings(userId, userKey);
+        const ops = settings?.core?.ops || {};
+        const target = Array.isArray((ops as any).httpTargets)
+            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
+            : undefined;
+        const resolvedBase = toTargetUrl(body, target?.url, false);
+        const reverseDeviceId = resolveFeatureTarget(body);
+
+        if (!resolvedBase && reverseDeviceId) {
+            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("sms", { method: "GET", limit }));
+            return {
+                ok: !!delivered,
+                delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                targetDeviceId: reverseDeviceId,
+                mode: "reverse",
+                feature: "sms",
+                limit
+            };
+        }
+
+        if (!resolvedBase) return { ok: false, error: "No URL" };
+        const finalHeaders = { ...(target?.headers || {}), ...(headers || {}) };
+        try {
+            const targetUrl = withFeatureUrl(resolvedBase, "/sms", {
+                limit
+            });
+            const res = await fetch(targetUrl, {
+                method: "GET",
+                headers: finalHeaders
+            });
+            const text = await res.text();
+            return { ok: true, status: res.status, data: text };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    };
+
+    const notificationsFeatureHandler = async (request: FastifyRequest<{ Body: DeviceFeatureRequestBody }>) => {
+        const body = (request.body || {}) as DeviceFeatureRequestBody;
+        const { userId, userKey, headers, targetId } = body;
+        const limit = readFeatureLimit(body);
+
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const settings = await loadUserSettings(userId, userKey);
+        const ops = settings?.core?.ops || {};
+        const target = Array.isArray((ops as any).httpTargets)
+            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
+            : undefined;
+        const resolvedBase = toTargetUrl(body, target?.url, false);
+        const reverseDeviceId = resolveFeatureTarget(body);
+
+        if (!resolvedBase && reverseDeviceId) {
+            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("notifications", { method: "GET", limit }));
+            return {
+                ok: !!delivered,
+                delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                targetDeviceId: reverseDeviceId,
+                mode: "reverse",
+                feature: "notifications",
+                limit
+            };
+        }
+
+        if (!resolvedBase) return { ok: false, error: "No URL" };
+        const finalHeaders = { ...(target?.headers || {}), ...(headers || {}) };
+        try {
+            const targetUrl = withFeatureUrl(resolvedBase, "/notifications", {
+                limit
+            });
+            const res = await fetch(targetUrl, {
+                method: "GET",
+                headers: finalHeaders
+            });
+            const text = await res.text();
+            return { ok: true, status: res.status, data: text };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    };
+
+    const notificationsSpeakHandler = async (request: FastifyRequest<{ Body: DeviceFeatureRequestBody }>) => {
+        const body = (request.body || {}) as DeviceFeatureRequestBody;
+        const { userId, userKey, headers, targetId, text } = body;
+        const message = readTextPayload(body);
+
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+        if (!message) return { ok: false, error: "Missing text" };
+
+        const settings = await loadUserSettings(userId, userKey);
+        const ops = settings?.core?.ops || {};
+        const target = Array.isArray((ops as any).httpTargets)
+            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
+            : undefined;
+        const resolvedBase = toTargetUrl(body, target?.url, false);
+        const reverseDeviceId = resolveFeatureTarget(body);
+
+        if (!resolvedBase && reverseDeviceId) {
+            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("notifications.speak", { text: message }));
+            return {
+                ok: !!delivered,
+                delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                targetDeviceId: reverseDeviceId,
+                mode: "reverse",
+                feature: "notifications.speak"
+            };
+        }
+
+        if (!resolvedBase) return { ok: false, error: "No URL" };
+        const finalHeaders = { ...(target?.headers || {}), ...(headers || {}), "Content-Type": "text/plain; charset=utf-8" };
+        try {
+            const targetUrl = withFeatureUrl(resolvedBase, "/notifications/speak", {});
+            const res = await fetch(targetUrl, {
+                method: "POST",
+                headers: finalHeaders,
+                body: text?.toString() || message
+            });
+            const responseText = await res.text();
+            return { ok: true, status: res.status, data: responseText };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    };
+
     const reverseDevicesHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
         const { userId, userKey } = request.body || {};
         const record = await verifyUser(userId, userKey);
@@ -346,6 +581,154 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
         return { ok: true, action: notifyType, delivered: "ws-notify" };
     };
 
+    const rootCompatHandler = async (request: FastifyRequest<{ Body: any }>) => {
+        const payload = (request.body || {}) as Record<string, unknown>;
+        const isBroadcastLike =
+            Array.isArray(payload.requests) ||
+            Array.isArray(payload.addresses) ||
+            Array.isArray(payload.urls) ||
+            Array.isArray(payload.ips);
+
+        if (isBroadcastLike) {
+            return broadcastHandler(request as FastifyRequest<{ Body: HttpDispatchBody }>);
+        }
+        return requestHandler(request as FastifyRequest<{ Body: HttpRequestBody }>);
+    };
+
+    const topologyHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
+        const { userId, userKey } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const peers = wsHub.getConnectedDevices(userId);
+        const upstreamStatus = networkContext?.getUpstreamStatus?.() || null;
+        const nodes = [
+            {
+                id: userId,
+                kind: "node",
+                role: "endpoint",
+                peers: peers.length
+            },
+            ...peers.map((peer) => ({
+                id: `${userId}:${peer}`,
+                kind: "peer",
+                parent: userId,
+                deviceId: peer
+            }))
+        ];
+
+        if (upstreamStatus) {
+            nodes.push({
+                id: `upstream:${upstreamStatus.userId || "default"}`,
+                kind: "node",
+                role: upstreamStatus.connected ? "upstream-client" : "upstream-client-offline",
+                connected: upstreamStatus.connected
+            });
+        }
+
+        const links = [
+            ...peers.map((peer) => ({
+                id: `link:${userId}:${peer}`,
+                source: userId,
+                target: `${userId}:${peer}`,
+                type: "ws-peer"
+            }))
+        ];
+
+        if (upstreamStatus && (upstreamStatus.connected || upstreamStatus.running || upstreamStatus.upstreamEnabled)) {
+            links.push({
+                id: `link:${userId}:upstream`,
+                source: userId,
+                target: `upstream:${upstreamStatus.userId || "default"}`,
+                type: "upstream-client"
+            });
+        }
+
+        return {
+            ok: true,
+            nodes,
+            links,
+            peers,
+            units: [
+                {
+                    id: userId,
+                    kind: "unit",
+                    nodes: peers.map((peer) => `${userId}:${peer}`).concat(userId)
+                },
+                {
+                    id: "upstream",
+                    kind: "unit",
+                    active: !!upstreamStatus
+                }
+            ],
+            upstream: upstreamStatus || null
+        };
+    };
+
+    const networkDispatchHandler = async (request: FastifyRequest<{ Body: NetworkDispatchBody }>) => {
+        const {
+            userId,
+            userKey,
+            route = "local",
+            target,
+            targetId,
+            deviceId,
+            peerId,
+            namespace,
+            ns,
+            type,
+            action,
+            data,
+            payload,
+            broadcast
+        } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const messagePayload = payload ?? data ?? {};
+        const destination = targetId || deviceId || peerId || target || "";
+        const normalizedNamespace = typeof namespace === "string" && namespace.trim()
+            ? namespace.trim()
+            : typeof ns === "string" && ns.trim()
+                ? ns.trim()
+                : undefined;
+        const payloadEnvelope = {
+            type: String(type || action || "dispatch"),
+            from: userId,
+            namespace: normalizedNamespace,
+            data: messagePayload
+        };
+
+        const targetValue = destination.trim ? destination.trim() : destination;
+        let upstreamDispatched = false;
+        if (route === "upstream" || route === "both") {
+            const upstreamPayload = targetValue
+                ? { ...payloadEnvelope, targetId: targetValue, target: targetValue, to: targetValue }
+                : payloadEnvelope;
+            upstreamDispatched = networkContext?.sendToUpstream?.(upstreamPayload) || false;
+        }
+
+        let localDelivered = false;
+        if (route === "local" || route === "both") {
+            if (broadcast === true || !targetValue) {
+                wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
+                localDelivered = true;
+            } else {
+                localDelivered = wsHub.sendToDevice(userId, targetValue, payloadEnvelope);
+            }
+        }
+
+        return {
+            ok: true,
+            route,
+            delivered: {
+                local: localDelivered,
+                upstream: upstreamDispatched,
+                target: targetValue || null
+            }
+        };
+    };
+
     // Legacy and new aliases:
     // - /api/request: targeted request delivery (legacy /core/ops/http)
     //   plus legacy secure variant (/core/ops/https) and partial notify fallback
@@ -353,9 +736,21 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     //   plus partial notify multicast fallback
     // - /api/ws: ws send operation (legacy /core/ops/ws/send)
     // - /api/action: host/device action endpoint (legacy /clipboard, /sms, partial notify)
+    // - /api/devices, /api/sms, /api/notifications and /api/notifications/speak:
+    //   feature mirrors for device capability requests
     app.post("/core/ops/http", requestHandler);
     app.post("/core/ops/https", requestHandler);
     app.post("/api/request", requestHandler);
+    app.post("/", rootCompatHandler);
+
+    app.post("/core/ops/devices", featureDevicesHandler);
+    app.post("/api/devices", featureDevicesHandler);
+    app.post("/core/ops/sms", smsFeatureHandler);
+    app.post("/api/sms", smsFeatureHandler);
+    app.post("/core/ops/notifications", notificationsFeatureHandler);
+    app.post("/api/notifications", notificationsFeatureHandler);
+    app.post("/core/ops/notifications/speak", notificationsSpeakHandler);
+    app.post("/api/notifications/speak", notificationsSpeakHandler);
 
     app.post("/core/ops/http/dispatch", broadcastHandler);
     app.post("/core/ops/http/disp", broadcastHandler);
@@ -367,6 +762,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub) => {
     app.post("/api/reverse/send", reverseSendHandler);
     app.post("/core/reverse/devices", reverseDevicesHandler);
     app.post("/api/reverse/devices", reverseDevicesHandler);
+    app.post("/core/network/topology", topologyHandler);
+    app.post("/api/network/topology", topologyHandler);
+    app.post("/core/network/dispatch", networkDispatchHandler);
+    app.post("/api/network/dispatch", networkDispatchHandler);
 
     app.post("/core/ops/notify", notifyHandler);
     app.post("/api/action", actionHandler);

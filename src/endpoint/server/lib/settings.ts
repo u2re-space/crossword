@@ -19,7 +19,20 @@ export type Settings = {
 export type AppSettings = Omit<Settings, "core">;
 
 export interface CoreSettings {
-    // ...
+    mode?: "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint";
+    roles?: string[];
+    upstream?: {
+        enabled?: boolean;
+        endpointUrl?: string;
+        userId?: string;
+        userKey?: string;
+        upstreamMasterKey?: string;
+        upstreamSigningPrivateKeyPem?: string;
+        upstreamPeerPublicKeyPem?: string;
+        deviceId?: string;
+        namespace?: string;
+        reconnectMs?: number;
+    };
 }
 
 export interface AiSettings {
@@ -40,6 +53,7 @@ export interface WebdavSettings {
     url?: string;
     username?: string;
     password?: string;
+    token?: string;
 }
 
 export interface TimelineSettings {
@@ -61,7 +75,21 @@ export interface GridSettings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-    core: {},
+    core: {
+        roles: ["endpoint", "server", "peer", "client", "node", "hub"],
+        upstream: {
+            enabled: false,
+            endpointUrl: "",
+            userId: "",
+            userKey: "",
+            upstreamMasterKey: "",
+            upstreamSigningPrivateKeyPem: "",
+            upstreamPeerPublicKeyPem: "",
+            deviceId: "",
+            namespace: "default",
+            reconnectMs: 5000
+        }
+    },
     ai: { customInstructions: [], activeInstructionId: "" },
     webdav: { url: "", username: undefined, password: undefined },
     timeline: { enabled: false },
