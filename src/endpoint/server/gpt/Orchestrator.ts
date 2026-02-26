@@ -11,6 +11,16 @@ type OrchestratorConfig = {
     }>;
 };
 
+type McpTool = {
+    type: string;
+    server_label: string;
+    server_url: string;
+    headers: {
+        authorization: string;
+    };
+    require_approval: string;
+};
+
 type RecognizeOptions = {
     context?: Record<string, any>;
     customInstruction?: string;
@@ -63,7 +73,7 @@ const resolveMcpTools = (mcp: Array<any> | undefined) => {
                 require_approval: "never"
             };
         })
-        .filter((item): item is Record<string, any> => !!item);
+        .filter((item): item is McpTool => item !== null);
 };
 
 const extractContent = (payload: any): string => {

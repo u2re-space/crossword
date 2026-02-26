@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { SETTINGS_FILE, ensureDataDirs } from "./paths.ts";
+import { SETTINGS_FILE, ensureDataDirs } from "../lib/paths.ts";
 
 export type CustomInstruction = {
     id: string;

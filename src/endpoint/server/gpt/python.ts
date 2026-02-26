@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { executeActions } from './actions.ts';
+import { executeActions } from '../io/actions.ts';
 
 let py: any = null;
 const pythonSubscribers = new Set<any>();

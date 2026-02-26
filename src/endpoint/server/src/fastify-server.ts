@@ -6,22 +6,32 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import compress from "@fastify/compress";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import formbody from "@fastify/formbody";
 
 import { ADMIN_DIR } from "../lib/paths.ts";
 import { isMainModule, moduleDirname, runtimeArgs } from "../lib/runtime.ts";
-import { createWsServer } from "./websocket.ts";
-import type { WsHub } from "./websocket.ts";
-import { createSocketIoBridge } from "./socketio-bridge.ts";
+import { createWsServer } from "../socket/websocket.ts";
+import type { WsHub } from "../socket/websocket.ts";
+import { createSocketIoBridge } from "../socket/socketio-bridge.ts";
 import { registerAuthRoutes } from "./auth.ts";
-import { registerCoreSettingsEndpoints, registerCoreSettingsRoutes } from "./userSettings.ts";
+import { registerCoreSettingsEndpoints, registerCoreSettingsRoutes } from "../config/userSettings.ts";
 import { registerStorageRoutes } from "./storage.ts";
-import { registerAiRoutes } from "./ai.ts";
-import { registerOpsRoutes } from "./ops.ts";
+import { registerOpsRoutes } from "../io/ops.ts";
 import { startUpstreamPeerClient } from "./upstream-peer-client.ts";
-import config from "../../config.js";
+import config from "../config/config.ts";
+import { registerGptRoutes } from "../gpt/index.ts";
+import { loadEndpointDotenv } from "../gpt/provider.ts";
+import { registerRoutes } from "./routes.ts";
+import { createHttpClient } from "./https.ts";
+import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from "../io/clipboard.ts";
+import { startMouseFlushInterval } from "../io/mouse.ts";
+import { setApp as setPythonApp } from "../gpt/python.ts";
 
 const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
 type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];
+const ADMIN_FALLBACK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M12 2a2.6 2.6 0 0 1 2.6 2.6V7.4l4.1 2.1c.6.3 1 1 1 1.7v4.6c0 .7-.4 1.4-1 1.7l-4.1 2.1v1.6c0 1.4-1.2 2.6-2.6 2.6H6.6C5.2 21 4 19.8 4 18.4V13.2c0-.7.4-1.4 1-1.7l4.2-2.1V4.6A2.6 2.6 0 0 1 11.8 2H12Zm-1 12.1v4.8c0 .5.4.9.9.9h6.1c.5 0 .9-.4.9-.9V13l-.2-.1l-3.6-1.8V11h-4v3.1Zm-1-8.5V19c0 .4-.3.7-.7.7h-.6c-.4 0-.7-.3-.7-.7v-1.6L4.4 14.7A.6.6 0 0 1 4 14.1V8.9a.6.6 0 0 1 .4-.6L10 5.3V8h2V3.6c0-.4-.3-.8-.8-.8H11.7c-.4 0-.7.3-.7.7Z"/>
+</svg>`;
 
 const isValidPhosphorStyle = (value: string): value is PhosphorStyle => {
     return (PHOSPHOR_STYLES as readonly string[]).includes(value);
@@ -78,6 +88,13 @@ const proxyPhosphorIcon = async (reply: FastifyReply, style: string, iconRaw: st
             details: String(error)
         });
     }
+};
+
+const sendAdminIcon = (reply: FastifyReply) => {
+    return reply
+        .type("image/svg+xml; charset=utf-8")
+        .header("Cache-Control", "public, max-age=604800")
+        .send(ADMIN_FALLBACK_ICON);
 };
 
 const defaultHttpsPaths = () => ({
@@ -209,7 +226,9 @@ const registerDebugRequestLogging = async (app: FastifyInstance): Promise<void> 
 };
 
 const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
+    loadEndpointDotenv();
     await registerDebugRequestLogging(app);
+    await app.register(formbody);
     await app.register(cors, {
         origin: true,
         credentials: true,
@@ -236,6 +255,11 @@ const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
         }
         return payload;
     });
+
+    // Ensure raw text payloads are available for clipboard and action endpoints.
+    app.addContentTypeParser("text/plain", { parseAs: "string" }, async (_req: any, body: any) => {
+        return body;
+    });
     await app.register(compress, { global: true });
     await app.register(fastifyStatic, {
         list: true,
@@ -250,6 +274,12 @@ const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
         reply.status(200);
         return reply?.send?.(await readFile(path.resolve(ADMIN_DIR, "index.html"), { encoding: "utf-8" })) as unknown as string;
     }) as unknown as FastifyReply;
+    app.get("/admin/icon.svg", async (_req, reply) => {
+        return sendAdminIcon(reply);
+    });
+    app.get("/icon.svg", async (_req, reply) => {
+        return sendAdminIcon(reply);
+    });
 
     app.get("/assets/icons/phosphor", async () => ({
         ok: true,
@@ -335,7 +365,7 @@ const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
     await registerCoreSettingsRoutes(app);
 
     await registerStorageRoutes(app);
-    await registerAiRoutes(app);
+    await registerGptRoutes(app);
 };
 
 const registerApiFallback = (app: FastifyInstance) => {
@@ -440,6 +470,11 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
         ...(httpsOptions ? { https: httpsOptions } : {})
     }) as unknown as FastifyInstance;
 
+    const httpClient = createHttpClient(httpsOptions);
+    setClipboardApp(app);
+    setHttpClient(httpClient);
+    setPythonApp(app);
+    registerRoutes(app);
     await registerCoreApp(app);
     const wsHub = createWsServer(app);
     const upstreamClient = startUpstreamPeerClient(config as any, {
@@ -470,6 +505,14 @@ export const buildCoreServers = async (
         logger: opts.logger ?? true,
         https: httpsOptions
     }) as unknown as FastifyInstance;
+
+    const sharedHttpClient = createHttpClient(httpsOptions);
+    setHttpClient(sharedHttpClient);
+    registerRoutes(http);
+    const primaryApp = httpsOptions ? https : http;
+    setClipboardApp(primaryApp);
+    setPythonApp(primaryApp);
+
     const fallbackUserId = String((config as any)?.upstream?.userId || "").trim();
     const httpWsHub = createWsServer(http);
     const httpWsHubs: WsHub[] = [httpWsHub];
@@ -493,6 +536,7 @@ export const buildCoreServers = async (
     const httpsWsHub = createWsServer(https);
     httpWsHubs.push(httpsWsHub);
     await registerCoreApp(https);
+    registerRoutes(https);
     if (upstreamClient) {
         https.addHook("onClose", async () => {
             upstreamClient.stop();
@@ -505,51 +549,54 @@ export const buildCoreServers = async (
     return { http, https };
 };
 
-if (isMainModule(import.meta)) {
+export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<void> => {
     const args = parseCli(runtimeArgs());
-    loadHttpsOptions()
-        .then((httpsOptions) => {
-            const httpsEnabled = Boolean(httpsOptions) && process.env.HTTPS_ENABLED !== "false";
-            const httpEnabled = process.env.HTTP_ENABLED !== "false";
+    const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
+    const httpsEnabled = Boolean(httpsOptions) && process.env.HTTPS_ENABLED !== "false";
+    const httpEnabled = process.env.HTTP_ENABLED !== "false";
 
-            const host = args.host ?? process.env.HOST ?? "0.0.0.0";
+    const host = args.host ?? process.env.HOST ?? "0.0.0.0";
+    const defaultHttpsPort = 8443;
 
-            const defaultHttpsPort = 8443;
+    // Backwards-compatible behavior:
+    // - if only --port/PORT is provided:
+    //   - when HTTPS is available -> treat as HTTPS port
+    //   - when HTTPS is unavailable -> treat as HTTP port
+    const envPort = typeof process.env.PORT === "string" ? Number(process.env.PORT) : undefined;
+    const legacyPort = Number(args.port ?? envPort ?? NaN);
+    const hasLegacyPort = Number.isFinite(legacyPort);
 
-            // Backwards-compatible behavior:
-            // - if only --port/PORT is provided:
-            //   - when HTTPS is available -> treat as HTTPS port
-            //   - when HTTPS is unavailable -> treat as HTTP port
-            const envPort = typeof process.env.PORT === "string" ? Number(process.env.PORT) : undefined;
-            const legacyPort = Number(args.port ?? envPort ?? NaN);
-            const hasLegacyPort = Number.isFinite(legacyPort);
+    const httpPortRaw =
+        args.httpPort ??
+        process.env.HTTP_PORT ??
+        process.env.PORT_HTTP ??
+        (!httpsEnabled && hasLegacyPort ? legacyPort : undefined);
 
-            const httpPortRaw =
-                args.httpPort ??
-                process.env.HTTP_PORT ??
-                process.env.PORT_HTTP ??
-                (!httpsEnabled && hasLegacyPort ? legacyPort : undefined);
+    const httpsPort = Number(
+        args.httpsPort ??
+            process.env.HTTPS_PORT ??
+            process.env.PORT_HTTPS ??
+            (httpsEnabled && hasLegacyPort ? legacyPort : defaultHttpsPort)
+    );
 
-            const httpsPort = Number(
-                args.httpsPort ??
-                    process.env.HTTPS_PORT ??
-                    process.env.PORT_HTTPS ??
-                    (httpsEnabled && hasLegacyPort ? legacyPort : defaultHttpsPort)
-            );
+    const { http, https } = await buildCoreServers({ logger: opts.logger ?? true, httpsOptions });
 
-            return buildCoreServers({ logger: true, httpsOptions })
-                .then(async ({ http, https }) => {
-                    if (httpEnabled) {
-                        const httpPort = typeof httpPortRaw === "undefined" ? await pickHttpPort(host) : Number(httpPortRaw);
-                        await http.listen({ port: httpPort, host });
-                        console.log(`[core-backend] listening on http://${host}:${httpPort}`);
-                    }
-                    if (httpsEnabled && https) {
-                        await https.listen({ port: httpsPort, host });
-                        console.log(`[core-backend] listening on https://${host}:${httpsPort}`);
-                    }
-                });
-        })
+    if (httpEnabled) {
+        const httpPort = typeof httpPortRaw === "undefined" ? await pickHttpPort(host) : Number(httpPortRaw);
+        await http.listen({ port: httpPort, host });
+        console.log(`[core-backend] listening on http://${host}:${httpPort}`);
+    }
+    if (httpsEnabled && https) {
+        await https.listen({ port: httpsPort, host });
+        console.log(`[core-backend] listening on https://${host}:${httpsPort}`);
+    }
+
+    startMouseFlushInterval();
+    startClipboardPolling();
+};
+
+if (isMainModule(import.meta)) {
+    startCoreBackend()
         .catch((err) => {
             console.error("[core-backend] failed to start", err);
             process.exit(1);

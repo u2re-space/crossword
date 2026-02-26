@@ -2,8 +2,8 @@
 // HTTP Routes
 // =========================
 
-import { readClipboard, writeClipboard, setBroadcasting } from './clipboard.ts';
-import config from '../../config.js';
+import { readClipboard, writeClipboard, setBroadcasting } from '../io/clipboard.ts';
+import config from '../config/config.ts';
 
 function setUtf8Plain(reply: any) {
   reply.header('Content-Type', 'text/plain; charset=utf-8');

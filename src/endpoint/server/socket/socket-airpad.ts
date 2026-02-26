@@ -1,6 +1,6 @@
 import type { Server as SocketIOServer, Socket } from "socket.io";
 
-import { parseBinaryMessage, buttonFromFlags } from "./message.ts";
+import { parseBinaryMessage, buttonFromFlags } from "../io/message.ts";
 import {
     MSG_TYPE_MOVE,
     MSG_TYPE_CLICK,
@@ -10,8 +10,8 @@ import {
     MSG_TYPE_KEYBOARD,
     FLAG_DOUBLE,
     SERVER_JITTER_EPS,
-} from "./constants.ts";
-import { addMouseDelta } from "./mouse.ts";
+} from "../config/constants.ts";
+import { addMouseDelta } from "../io/mouse.ts";
 import {
     executeMouseClick,
     executeMouseToggle,
@@ -20,9 +20,9 @@ import {
     executeCopyHotkey,
     executeCutHotkey,
     executePasteHotkey,
-} from "./actions.ts";
-import { sendVoiceToPython, removePythonSubscriber } from "./python.ts";
-import { readClipboard, writeClipboard, onClipboardChange } from "./clipboard.ts";
+} from "../io/actions.ts";
+import { sendVoiceToPython, removePythonSubscriber } from "../gpt/python.ts";
+import { readClipboard, writeClipboard, onClipboardChange } from "../io/clipboard.ts";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;

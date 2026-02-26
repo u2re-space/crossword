@@ -3,8 +3,8 @@ import { randomUUID, createHash, scryptSync, randomBytes, createCipheriv, create
 import path from "node:path";
 
 import { USERS_FILE, USER_STORAGE_DIR, ensureDataDirs, safeJoin } from "./paths.ts";
-import { mergeSettings } from "./settings.ts";
-import { DEFAULT_SETTINGS, type Settings } from "./settings.ts";
+import { mergeSettings } from "../config/settings.ts";
+import { DEFAULT_SETTINGS, type Settings } from "../config/settings.ts";
 
 export type UserRecord = {
     userId: string;

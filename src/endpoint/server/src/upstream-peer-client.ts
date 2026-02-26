@@ -5,6 +5,7 @@ import { WebSocket } from "ws";
 type UpstreamPeerConfig = {
     enabled?: boolean;
     endpointUrl?: string;
+    endpoints?: string[];
     userId?: string;
     userKey?: string;
     upstreamMasterKey?: string;
@@ -29,6 +30,8 @@ type RunningClient = {
         connected: boolean;
         upstreamEnabled: boolean;
         endpointUrl?: string;
+        upstreamEndpoints?: string[];
+        activeEndpoint?: string;
         userId?: string;
         deviceId?: string;
         namespace?: string;
@@ -152,7 +155,19 @@ const decodeServerPayload = (rawText: string, cfg: Required<UpstreamPeerConfig>)
 const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerConfig> | null => {
     const upstream = config?.upstream || {};
     const enabled = upstream.enabled === true;
-    const endpointUrl = typeof upstream.endpointUrl === "string" ? upstream.endpointUrl.trim() : "";
+    const endpointEntries = Array.isArray(upstream.endpoints)
+        ? upstream.endpoints
+        : typeof upstream.endpointUrl === "string"
+            ? [upstream.endpointUrl]
+            : [];
+    const normalizedEndpoints = endpointEntries
+        .map((item) => String(item ?? "").trim())
+        .filter((item) => !!item);
+    const uniqueEndpoints = Array.from(new Set(normalizedEndpoints));
+
+    const endpointUrl = typeof upstream.endpointUrl === "string"
+        ? upstream.endpointUrl.trim()
+        : uniqueEndpoints[0] || "";
     const userId = typeof upstream.userId === "string" ? upstream.userId.trim() : "";
     const userKey = typeof upstream.userKey === "string" ? upstream.userKey.trim() : "";
     if (!enabled || !endpointUrl || !userId || !userKey) {
@@ -162,6 +177,10 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
     const reconnectMs = Number(upstream.reconnectMs);
     return {
         enabled: true,
+        upstreamMasterKey: upstream.upstreamMasterKey,
+        upstreamSigningPrivateKeyPem: upstream.upstreamSigningPrivateKeyPem,
+        upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
+        endpoints: uniqueEndpoints,
         endpointUrl,
         userId,
         userKey,
@@ -175,20 +194,20 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
     };
 };
 
-const buildWsUrl = (cfg: Required<UpstreamPeerConfig>): string | null => {
+const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): string | null => {
     try {
-        let endpointUrl = cfg.endpointUrl.trim().replace(/\/+$/, "");
-        if (!endpointUrl) return null;
+        let target = endpointUrl.trim().replace(/\/+$/, "");
+        if (!target) return null;
 
-        if (!/^wss?:\/\//i.test(endpointUrl)) {
-            endpointUrl = `ws://${endpointUrl}`;
-        } else if (/^https:\/\//i.test(endpointUrl)) {
-            endpointUrl = endpointUrl.replace(/^https:\/\//i, "wss://");
-        } else if (/^http:\/\//i.test(endpointUrl)) {
-            endpointUrl = endpointUrl.replace(/^http:\/\//i, "ws://");
+        if (!/^wss?:\/\//i.test(target)) {
+            target = `ws://${target}`;
+        } else if (/^https:\/\//i.test(target)) {
+            target = target.replace(/^https:\/\//i, "wss://");
+        } else if (/^http:\/\//i.test(target)) {
+            target = target.replace(/^http:\/\//i, "ws://");
         }
 
-        const url = new URL(endpointUrl);
+        const url = new URL(target);
         const hasWsPath = /\/ws(?:[/?#]|$)/.test(url.pathname);
         if (!hasWsPath) {
             const normalizedPath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
@@ -213,13 +232,21 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
 
     const cfg = normalizeUpstreamConfig(rawConfig);
     if (!cfg) return null;
-    const wsUrl = buildWsUrl(cfg);
-    if (!wsUrl) return null;
+
+    const upstreamCandidates = Array.isArray(cfg.endpoints) && cfg.endpoints.length > 0
+        ? cfg.endpoints.slice()
+        : [cfg.endpointUrl];
+    let candidateIndex = Math.max(0, upstreamCandidates.indexOf(cfg.endpointUrl));
+    if (candidateIndex < 0) candidateIndex = 0;
+
+    let wsUrl: string | null = null;
+    let activeEndpoint = cfg.endpointUrl;
 
     let socket: WebSocket | null = null;
     let stopped = false;
     let reconnectHandle: ReturnType<typeof setTimeout> | null = null;
     let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
+    let connectTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
     const clearHeartbeat = () => {
         if (heartbeatHandle) {
@@ -244,16 +271,46 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         }, cfg.reconnectMs);
     };
 
+    const setNextEndpoint = () => {
+        if (upstreamCandidates.length <= 1) return;
+        candidateIndex = (candidateIndex + 1) % upstreamCandidates.length;
+    };
+
+    const clearConnectTimeout = () => {
+        if (connectTimeoutHandle) {
+            clearTimeout(connectTimeoutHandle);
+            connectTimeoutHandle = null;
+        }
+    };
+
     const connect = () => {
         if (stopped) return;
         try {
+            const endpoint = upstreamCandidates[candidateIndex] || cfg.endpointUrl;
+            wsUrl = buildWsUrl(endpoint, cfg);
+            if (!wsUrl) {
+                setNextEndpoint();
+                scheduleReconnect();
+                return;
+            }
+            activeEndpoint = endpoint;
             socket = new WebSocket(wsUrl);
         } catch {
+            setNextEndpoint();
             scheduleReconnect();
             return;
         }
 
+        clearConnectTimeout();
+        connectTimeoutHandle = setTimeout(() => {
+            if (socket && socket.readyState !== WebSocket.OPEN) {
+                socket?.close(4000, "connect-timeout");
+                socket = null;
+            }
+        }, 12_000);
+
         socket.on("open", () => {
+            clearConnectTimeout();
             clearReconnect();
             clearHeartbeat();
             socket?.send(`{"type":"hello","deviceId":"${cfg.deviceId}"}`);
@@ -283,13 +340,15 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         });
 
         socket.on("close", () => {
+            clearConnectTimeout();
             clearHeartbeat();
             socket = null;
+            setNextEndpoint();
             scheduleReconnect();
         });
 
         socket.on("error", () => {
-            socket?.close();
+            socket?.close(4001, "upstream-error");
         });
     };
 
@@ -300,6 +359,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             stopped = true;
             clearReconnect();
             clearHeartbeat();
+            clearConnectTimeout();
             if (socket && socket.readyState !== WebSocket.CLOSED) {
                 socket.close(1000, "client stop");
             }
@@ -321,6 +381,8 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             connected: !!(socket && socket.readyState === WebSocket.OPEN),
             upstreamEnabled: cfg.enabled,
             endpointUrl: wsUrl,
+            upstreamEndpoints: upstreamCandidates,
+            activeEndpoint,
             userId: cfg.userId,
             deviceId: cfg.deviceId,
             namespace: cfg.namespace

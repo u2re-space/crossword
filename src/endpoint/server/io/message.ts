@@ -7,7 +7,7 @@ import {
     BUTTON_LEFT,
     BUTTON_RIGHT,
     BUTTON_MIDDLE,
-} from './constants.ts';
+} from '../config/constants.ts';
 
 // Binary message format (8 bytes)
 //

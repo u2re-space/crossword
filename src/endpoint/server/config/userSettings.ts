@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { AiSettings,
-mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "../lib/settings.ts";
+mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "./settings.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
 
 export type HttpTarget = {

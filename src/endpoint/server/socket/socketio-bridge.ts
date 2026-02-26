@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 
-import { parsePayload, verifyWithoutDecrypt } from "./crypto-utils.ts";
+import { parsePayload, verifyWithoutDecrypt } from "../src/crypto-utils.ts";
 import { registerAirpadSocketHandlers, setupAirpadClipboardBroadcast } from "./socket-airpad.ts";
 import { buildSocketIoOptions, describeHandshake } from "./socketio-security.ts";
 

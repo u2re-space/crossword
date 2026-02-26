@@ -4,12 +4,20 @@ const ls = {
     load(key, fallback = null) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
 };
 
+const resolveEndpointUrl = () => {
+    const explicit = $("#endpointUrl")?.value?.trim?.() || "";
+    if (explicit) return explicit;
+
+    const { protocol, hostname, port } = window.location;
+    return port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
+};
+
 const state = {
     get creds() {
         return {
             userId: $("#userId").value.trim(),
             userKey: $("#userKey").value.trim(),
-            endpointUrl: $("#endpointUrl").value.trim() || `https://${window.location.hostname}:8443`,
+            endpointUrl: resolveEndpointUrl(),
             encrypt: $("#encrypt").value === "true"
         };
     }
@@ -175,7 +183,7 @@ const renderUsers = (users = []) => {
 const main = () => {
     $("#btnHealth").onclick = async () => {
         try {
-            const url = new URL("/health", $("#endpointUrl").value.trim() || `https://${window.location.hostname}:8443`).toString();
+            const url = new URL("/health", resolveEndpointUrl()).toString();
             const res = await fetch(url);
             const json = await res.json();
             const roles = Array.isArray(json?.roles) ? json.roles.join(", ") : "-";
@@ -261,7 +269,7 @@ const main = () => {
                 userId: $("#userId").value.trim(),
                 userKey: $("#userKey").value.trim()
             });
-            const url = new URL(`/core/user/settings?${qs.toString()}`, $("#endpointUrl").value.trim() || `https://${window.location.hostname}:8443`).toString();
+            const url = new URL(`/core/user/settings?${qs.toString()}`, resolveEndpointUrl()).toString();
             const res = await fetch(url);
             const json = await res.json();
             if (json?.ok) {
@@ -297,7 +305,7 @@ const main = () => {
                 userId: $("#userId").value.trim(),
                 userKey: $("#userKey").value.trim()
             });
-            const url = new URL(`/core/auth/users?${qs.toString()}`, $("#endpointUrl").value.trim() || `https://${window.location.hostname}:8443`).toString();
+            const url = new URL(`/core/auth/users?${qs.toString()}`, resolveEndpointUrl()).toString();
             const res = await fetch(url);
             const json = await res.json();
             if (json?.ok) {
