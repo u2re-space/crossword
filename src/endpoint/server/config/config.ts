@@ -6,7 +6,9 @@ import { SETTINGS_FILE } from "../lib/paths.ts";
 type EndpointConfig = {
     listenPort?: number;
     httpPort?: number;
+    broadcastForceHttps?: boolean;
     peers?: string[];
+    clipboardPeerTargets?: string[];
     pollInterval?: number;
     httpTimeoutMs?: number;
     secret?: string;
@@ -34,17 +36,22 @@ const defaultConfig = {
     // На каком порту слушаем входящие НЕ-HTTPS (HTTP) запросы (эндпоинты, Socket.IO)
     // Нужно для совместимости/простых клиентов в локальной сети: http://host:8080/clipboard
     httpPort: 8080,
+    // По умолчанию в broadcast пытаемся использовать HTTPS для портов 443/8443
+    broadcastForceHttps: true,
 
-    // Список получателей (URL), куда рассылаем изменения клипборда
+    // Список получателей (URL/IP/host), куда рассылаем изменения клипборда.
+    // Формат может быть URL или хост/IP; без схемы будут пробованы https и http варианты.
     peers: [
-        'http://100.81.105.5:8080/',
-        'http://100.90.155.65:8080/', // пример: Android/другой ПК
-        'http://100.81.105.5:8080/',
-        'https://192.168.0.196:8443/',
-        'https://192.168.0.200:8443/',
-        'https://192.168.0.110:8443/',
-        'https://45.147.121.152:8443/'
+        '100.81.105.5',
+        '100.90.155.65',
+        '192.168.0.196',
+        '192.168.0.200',
+        '192.168.0.110',
+        '45.147.121.152'
     ],
+    // Список вариантов схема:порт, которые пробуются для peers без явного порта/схемы.
+    // Формат: "https:443", "https:8443", "http:8080", "http:80"
+    clipboardPeerTargets: ["https:443", "https:8443", "http:8080", "http:80"],
 
     // Интервал опроса системного буфера (мс)
     pollInterval: 100,
@@ -128,6 +135,27 @@ const normalizeUrlList = (raw: unknown): string[] | undefined => {
     return items.length ? items : undefined;
 };
 
+const normalizePeerTargets = (raw: unknown): string[] | undefined => {
+    if (Array.isArray(raw)) {
+        const list = raw
+            .map((v) => String(v ?? "").trim())
+            .filter(Boolean);
+        return list.length ? list : undefined;
+    }
+    if (typeof raw !== "string") return undefined;
+    const list = raw.split(/[;,]/).map((v) => v.trim()).filter(Boolean);
+    return list.length ? list : undefined;
+};
+
+const normalizePeerSource = (value: unknown): string[] | undefined => {
+    if (typeof value !== "string") return undefined;
+    const split = value
+        .split(/[;,]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return split.length ? split : undefined;
+};
+
 const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
     const source = (value && typeof value === "object") ? value : {};
     const coreSource = (source.core && typeof source.core === "object") ? (source.core as Record<string, any>) : {};
@@ -158,7 +186,14 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
         ...(defaultConfig as Record<string, any>),
         ...source,
         ...coreSource,
-        peers: normalizeUrlList(source.peers ?? coreSource.peers) ?? defaultConfig.peers,
+        peers: normalizeUrlList(
+            source.peers ?? coreSource.peers ?? normalizePeerSource(process.env.CLIPBOARD_PEERS)
+        ) ?? defaultConfig.peers,
+        clipboardPeerTargets: normalizePeerTargets(
+            source.clipboardPeerTargets ??
+            coreSource.clipboardPeerTargets ??
+            process.env.CLIPBOARD_PEER_TARGETS
+        ) ?? defaultConfig.clipboardPeerTargets,
         roles: Array.isArray(coreSource.roles) ? coreSource.roles : source.roles ?? defaultConfig.roles,
         upstream: mergedUpstreamWithFallback,
         ai: {

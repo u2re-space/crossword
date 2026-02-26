@@ -10,6 +10,7 @@ import {
 } from "./actions.ts";
 import { readClipboard, writeClipboard } from "./clipboard.ts";
 import { Settings } from "@rs-server/lib/settings.ts";
+import config from "../config/config.ts";
 
 type HttpDispatchRequest = {
     url?: string;
@@ -22,6 +23,7 @@ type HttpDispatchRequest = {
     targetId?: string;
     type?: string;
     data?: any;
+    broadcastForceHttps?: boolean;
 };
 type HttpDispatchBody = {
     userId: string;
@@ -53,6 +55,7 @@ type HttpRequestBody = {
     type?: string;
     data?: any;
     namespace?: string;
+    broadcastForceHttps?: boolean;
 };
 type DeviceFeatureRequestBody = HttpRequestBody & {
     text?: string;
@@ -111,6 +114,125 @@ type NetworkDispatchBody = {
     broadcast?: boolean;
 };
 
+const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
+const BROADCAST_PROTO_RE = /^https?:\/\//i;
+
+const hasProtocol = (value: string): boolean => BROADCAST_PROTO_RE.test(value);
+
+const looksLikeAliasedHostTarget = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+
+    if (/^\[[^\]]+\](?::\d{1,5})?$/.test(trimmed)) return true;
+    if (/^\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?$/.test(trimmed)) return true;
+    if (/^[a-zA-Z0-9._-]+(?::\d{1,5})?$/.test(trimmed)) return true;
+    return false;
+};
+
+const stripAliasPrefix = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+
+    const match = trimmed.match(/^([A-Za-z][A-Za-z0-9_-]*):(.*)$/);
+    if (!match) return trimmed;
+
+    const aliasTarget = match[2].trim();
+    return looksLikeAliasedHostTarget(aliasTarget) ? aliasTarget : trimmed;
+};
+
+const normalizeBroadcastTarget = (target: string): { normalized: string; hasExplicitProtocol: boolean } | undefined => {
+    const trimmed = target.trim();
+    if (!trimmed) return undefined;
+
+    const protocolMatch = trimmed.match(BROADCAST_PROTO_RE);
+    if (!protocolMatch) {
+        const normalized = stripAliasPrefix(trimmed);
+        return { normalized: `http://${normalized}`, hasExplicitProtocol: false };
+    }
+
+    const protocol = protocolMatch[0].toLowerCase();
+    if (protocol !== "http://" && protocol !== "https://") {
+        return { normalized: trimmed, hasExplicitProtocol: false };
+    }
+
+    const rawTarget = trimmed.slice(protocol.length);
+    const splitIndex = rawTarget.search(/[/?#]/);
+    const hostWithPort = splitIndex === -1 ? rawTarget : rawTarget.slice(0, splitIndex);
+    const suffix = splitIndex === -1 ? "" : rawTarget.slice(splitIndex);
+    const normalizedHostWithPort = stripAliasPrefix(hostWithPort);
+    return {
+        normalized: `${protocol}${normalizedHostWithPort}${suffix}`,
+        hasExplicitProtocol: true
+    };
+};
+
+const parseBroadcastTarget = (target: string): { url: URL; hasExplicitProtocol: boolean; normalized: string } | undefined => {
+    const normalized = normalizeBroadcastTarget(target);
+    if (!normalized) return undefined;
+    try {
+        return {
+            url: new URL(normalized.normalized),
+            hasExplicitProtocol: normalized.hasExplicitProtocol,
+            normalized: normalized.normalized
+        };
+    } catch {
+        return undefined;
+    }
+};
+
+const resolveBroadcastProtocol = (source: string, opts: {
+    allowUnencrypted?: boolean;
+    forceHttps?: boolean;
+}): { protocol: "http" | "https"; sourceWithoutProtocol: string } | undefined => {
+    const trimmed = source.trim();
+    if (!trimmed) return undefined;
+
+    const parsed = parseBroadcastTarget(trimmed);
+    if (!parsed) return undefined;
+    const { url: parsedUrl, hasExplicitProtocol, normalized } = parsed;
+    const isLikelySecurePort = BROADCAST_HTTPS_PORTS.has(parsedUrl.port);
+    const hasForceHttps = opts.forceHttps && isLikelySecurePort;
+    const denyUnencrypted = opts.allowUnencrypted === false && isLikelySecurePort;
+    const forcedProtocol = hasForceHttps || denyUnencrypted ? "https" : undefined;
+    const sourceWithoutProtocol = hasExplicitProtocol
+        ? normalized.replace(BROADCAST_PROTO_RE, "")
+        : `${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+
+    if (hasExplicitProtocol) {
+        return {
+            protocol: forcedProtocol || (trimmed.toLowerCase().startsWith("https://") ? "https" : "http"),
+            sourceWithoutProtocol
+        };
+    }
+
+    return {
+        protocol: (hasForceHttps || denyUnencrypted) ? "https" : "http",
+        sourceWithoutProtocol
+    };
+};
+
+const resolveBroadcastUrl = (
+    entry: HttpDispatchRequest,
+    allowUnencrypted: boolean,
+    broadcastForceHttps: boolean
+): string | undefined => {
+    const source = entry.url?.trim() || entry.ip?.trim();
+    if (!source) return undefined;
+
+    const explicitForceHttps = typeof entry.broadcastForceHttps === "boolean"
+        ? entry.broadcastForceHttps
+        : broadcastForceHttps;
+    const resolved = resolveBroadcastProtocol(
+        source,
+        {
+            allowUnencrypted,
+            forceHttps: explicitForceHttps
+        }
+    );
+    if (!resolved) return undefined;
+    return `${resolved.protocol}://${resolved.sourceWithoutProtocol}`;
+};
+
 const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[] => {
     const out: HttpDispatchRequest[] = [];
     const pushEntry = (entry: string | HttpDispatchRequest | undefined | null) => {
@@ -118,8 +240,8 @@ const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[
         if (typeof entry === "string") {
             const trimmed = entry.trim();
             if (!trimmed) return;
-            const hasProtocol = /^https?:\/\//i.test(trimmed);
-            out.push(hasProtocol ? { url: trimmed } : { ip: trimmed });
+            const hasProtocolInValue = BROADCAST_PROTO_RE.test(trimmed);
+            out.push(hasProtocolInValue ? { url: trimmed } : { ip: trimmed });
             return;
         }
         const normalized: HttpDispatchRequest = {
@@ -292,7 +414,15 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             /*return { ok: false, error: (e as Error)?.message || "Invalid credentials" };*/
         }
 
-        const ops = settings?.core?.ops || { allowUnencrypted: true };
+        const ops = settings?.core?.ops || {};
+        const allowUnencrypted = ops.allowUnencrypted !== false;
+        const configBroadcastForceHttps = Boolean(
+            (config as any)?.broadcastForceHttps
+            || (config as any)?.ops?.broadcastForceHttps
+            || (config as any)?.core?.ops?.broadcastForceHttps
+        );
+        const requestBroadcastForceHttps = typeof body.broadcastForceHttps === "boolean" ? body.broadcastForceHttps : undefined;
+        const forceBroadcastHttps = requestBroadcastForceHttps ?? (Boolean(ops.broadcastForceHttps) || configBroadcastForceHttps);
         const execOne = async (entry: HttpDispatchRequest) => {
             const reverseDeviceId = (entry as any).deviceId || (entry as any).targetId || defaultDeviceId;
             if (typeof reverseDeviceId === "string" && reverseDeviceId.trim()) {
@@ -308,11 +438,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 };
             }
 
-            const resolvedUrl = entry.url || (entry.ip ? `http://${entry.ip}` : undefined);
+            const resolvedUrl = resolveBroadcastUrl(entry, allowUnencrypted, forceBroadcastHttps);
             if (!resolvedUrl) return { target: entry.ip || entry.url, ok: false, error: "No URL" };
 
             const isHttps = resolvedUrl.startsWith("https://");
-            if (!isHttps && !(ops.allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
+            if (!isHttps && !(allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
 
             const finalMethod = (entry.method || "POST").toUpperCase();
             console.log(resolvedUrl, finalMethod, entry.headers || {}, '<body hidden>');
@@ -382,9 +512,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             : [];
 
         const reverseDevices = wsHub.getConnectedDevices(userId);
+        const reverseDeviceProfiles = wsHub.getConnectedPeerProfiles(userId).map((peer) => ({ id: peer.id, label: peer.label }));
         return {
             ok: true,
             reverseDevices,
+            reverseDeviceProfiles,
             configuredTargets,
             features: ["/sms", "/notifications", "/notifications/speak"]
         };
@@ -528,7 +660,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const { userId, userKey } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
-        return { ok: true, devices: wsHub.getConnectedDevices(userId) };
+        const profiles = wsHub.getConnectedPeerProfiles(userId);
+        return {
+            ok: true,
+            devices: profiles.map((peer) => peer.id),
+            deviceProfiles: profiles.map((peer) => ({ id: peer.id, label: peer.label }))
+        };
     };
 
     const actionHandler = async (request: FastifyRequest<{ Body: ActionBody }>) => {
@@ -601,6 +738,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         if (!record) return { ok: false, error: "Invalid credentials" };
 
         const peers = wsHub.getConnectedDevices(userId);
+        const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const upstreamStatus = networkContext?.getUpstreamStatus?.() || null;
         const nodes = [
             {
@@ -609,11 +747,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 role: "endpoint",
                 peers: peers.length
             },
-            ...peers.map((peer) => ({
-                id: `${userId}:${peer}`,
+            ...peerProfiles.map((peer) => ({
+                id: `${userId}:${peer.id}`,
                 kind: "peer",
                 parent: userId,
-                deviceId: peer
+                deviceId: peer.id,
+                label: peer.label
             }))
         ];
 
@@ -627,10 +766,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         }
 
         const links = [
-            ...peers.map((peer) => ({
-                id: `link:${userId}:${peer}`,
+            ...peerProfiles.map((peer) => ({
+                id: `link:${userId}:${peer.id}`,
                 source: userId,
-                target: `${userId}:${peer}`,
+                target: `${userId}:${peer.id}`,
                 type: "ws-peer"
             }))
         ];

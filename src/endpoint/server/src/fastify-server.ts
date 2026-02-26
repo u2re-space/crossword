@@ -482,11 +482,62 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         };
 
         if (typeof target === "string" && target.trim()) {
-            const delivered = hub.sendToDevice(userId, target.trim(), routed);
+            const requestedTarget = target.trim();
+            let resolvedTarget = requestedTarget;
+            let delivered = hub.sendToDevice(userId, resolvedTarget, routed);
+            let matchedLabel: string | undefined;
+
+            if (!delivered) {
+                const profiles = hub.getConnectedPeerProfiles(userId);
+                const exactLabel = profiles.find((entry) => entry.label.toLowerCase() === requestedTarget.toLowerCase());
+                if (exactLabel) {
+                    delivered = hub.sendToDevice(userId, exactLabel.id, routed);
+                    resolvedTarget = exactLabel.id;
+                    matchedLabel = exactLabel.label;
+                }
+            }
+            if (!delivered) {
+                const profiles = hub.getConnectedPeerProfiles(userId);
+                const containsLabel = profiles.find((entry) =>
+                    requestedTarget.includes(entry.label) || entry.label.includes(requestedTarget)
+                );
+                if (containsLabel) {
+                    delivered = hub.sendToDevice(userId, containsLabel.id, routed);
+                    resolvedTarget = containsLabel.id;
+                    matchedLabel = containsLabel.label;
+                }
+            }
+
+            if (!delivered) {
+                app.log?.warn?.(
+                    {
+                        userId,
+                        target: target.trim(),
+                        matchedLabel,
+                        resolvedTarget,
+                        knownTargets: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`),
+                        payloadType: type
+                    },
+                    "[upstream] failed to route command to reverse target"
+                );
+            } else {
+                app.log?.debug?.(
+                    {
+                        userId,
+                        requestedTarget: requestedTarget,
+                        resolvedTarget,
+                        matchedLabel,
+                        payloadType: type,
+                        knownTargets: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`)
+                    },
+                    "[upstream] routed command to reverse target"
+                );
+            }
             app.log?.debug?.({
                 delivered,
                 target: target.trim(),
-                userId
+                userId,
+                knownPeers: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`)
             }, "[upstream] routed command to device");
             return;
         }

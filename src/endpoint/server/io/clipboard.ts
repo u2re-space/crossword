@@ -14,6 +14,44 @@ const clipboardUnsupportedRetryIntervalMs = Math.max(
     Number((config as any)?.clipboardUnsupportedRetryIntervalMs ?? 60000)
 );
 
+type ClipboardProtocol = "http" | "https";
+type ClipboardPeerTarget = { protocol: ClipboardProtocol; port: number };
+
+const DEFAULT_CLIPBOARD_PEER_TARGETS: ClipboardPeerTarget[] = [
+    { protocol: "https", port: 443 },
+    { protocol: "https", port: 8443 },
+    { protocol: "http", port: 8080 },
+    { protocol: "http", port: 80 },
+];
+
+const parseClipboardPeerTargets = (value: unknown): ClipboardPeerTarget[] => {
+    const items = Array.isArray((config as any)?.clipboardPeerTargets)
+        ? (config as any).clipboardPeerTargets
+        : typeof value === "string"
+            ? value.split(/[;,]/)
+            : [];
+
+    const parsed = items
+        .map((entry: any) => String(entry ?? "").trim())
+        .filter(Boolean)
+        .map((entry: string) => {
+            const [rawProtocol, rawPort] = entry.split(":").map((part) => part.trim());
+            if (!rawProtocol || !rawPort) return null;
+            const protocol = rawProtocol.toLowerCase() as ClipboardProtocol;
+            const port = Number(rawPort);
+            if ((protocol !== "http" && protocol !== "https") || !Number.isInteger(port) || port <= 0 || port > 65535) {
+                return null;
+            }
+            return { protocol, port };
+        })
+        .filter((entry: ClipboardPeerTarget | null): entry is ClipboardPeerTarget => Boolean(entry));
+
+    return parsed.length ? parsed : [];
+};
+
+const peerTargets = parseClipboardPeerTargets((config as any).clipboardPeerTargets ?? process.env.CLIPBOARD_PEER_TARGETS);
+const fallbackPeerTargets = peerTargets.length ? peerTargets : DEFAULT_CLIPBOARD_PEER_TARGETS;
+
 let lastClipboard = '';
 let lastNetworkClipboard = '';
 let isBroadcasting = false;
@@ -45,6 +83,75 @@ export function setBroadcasting(value: boolean) {
 
 function normalizeText(text: string) {
     return String(text ?? '');
+}
+
+const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    const hasProtocol = /^https?:\/\//i.test(trimmed);
+    const normalized: string[] = [];
+
+    const parseWithProtocol = (input: string): URL | undefined => {
+        try {
+            return new URL(input);
+        } catch {
+            return undefined;
+        }
+    };
+
+    if (hasProtocol) {
+        const parsed = parseWithProtocol(trimmed);
+        if (!parsed) {
+            app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+            return [];
+        }
+        if (!parsed.pathname || parsed.pathname === "/") {
+            parsed.pathname = "/clipboard";
+        }
+        normalized.push(parsed.toString());
+        return normalized;
+    }
+
+    const baseUrl = parseWithProtocol(`https://${trimmed}`);
+    if (!baseUrl) {
+        app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+        return [];
+    }
+
+    const targetVariants = baseUrl.port
+        ? [
+            { protocol: "https" as const, port: Number(baseUrl.port) },
+            { protocol: "http" as const, port: Number(baseUrl.port) }
+        ]
+        : fallbackPeerTargets;
+
+    for (const target of targetVariants) {
+        try {
+            const parsed = new URL(baseUrl.toString());
+            parsed.protocol = `${target.protocol}:`;
+            const shouldUseDefaultPort = (target.protocol === "https" && target.port === 443) ||
+                (target.protocol === "http" && target.port === 80);
+            parsed.port = shouldUseDefaultPort ? "" : String(target.port);
+            if (!parsed.pathname || parsed.pathname === "/") {
+                parsed.pathname = "/clipboard";
+            }
+            const normalizedUrl = parsed.toString();
+            if (!normalized.includes(normalizedUrl)) {
+                normalized.push(normalizedUrl);
+            }
+        } catch (_: unknown) {
+            app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+        }
+    }
+
+    return normalized;
+};
+
+async function sendClipboardToPeer(candidate: string, body: string, headers: Record<string, string>): Promise<void> {
+    const client = httpClient || axios;
+    await client.post(candidate, body, { headers });
+    app.log.info(`[Broadcast] Sent to ${candidate}`);
 }
 
 function isClipboardUnavailableError(err: unknown): boolean {
@@ -105,17 +212,26 @@ async function broadcastClipboard(text: string) {
 
     app.log.info({ peers }, '[Broadcast] Sending to peers');
     isBroadcasting = true;
-    const client = httpClient || axios;
-
     await Promise.all(
-        peers.map(async (url: string) => {
-            try {
-                await client.post(url, body, { headers });
-                app.log.info(`[Broadcast] Sent to ${url}`);
-            } catch (err: any) {
-                const code = err?.code ? ` code=${err.code}` : '';
-                const status = err?.response?.status ? ` status=${err.response.status}` : '';
-                app.log.warn(`[Broadcast] Failed to send to ${url}:${code}${status} ${err?.message || err}`);
+        peers.map(async (rawUrl: string) => {
+            const candidates = buildClipboardPeerUrlCandidates(rawUrl);
+            let ok = false;
+            let lastError = "";
+
+            for (const candidate of candidates) {
+                try {
+                    await sendClipboardToPeer(candidate, body, headers);
+                    ok = true;
+                    break;
+                } catch (err: any) {
+                    const code = err?.code ? ` code=${err.code}` : "";
+                    const status = err?.response?.status ? ` status=${err.response.status}` : "";
+                    lastError = `[Broadcast] Failed to send to ${candidate}:${code}${status} ${err?.message || err}`;
+                }
+            }
+
+            if (!ok) {
+                app.log.warn(lastError || `[Broadcast] No valid peer URL: ${rawUrl}`);
             }
         })
     );
