@@ -132,19 +132,19 @@ export const loadUserSettings = async (userId: string, userKey: string): Promise
     }
 };
 
-export const registerUser = async (userId: string | undefined, encrypt = false) => {
+export const registerUser = async (userId: string | undefined, encrypt = false, userKey?: string) => {
     const users = await loadUsers();
     const resolved = userId?.trim() || randomUUID();
-    const userKey = randomBytes(24).toString("base64url");
+    const resolvedUserKey = (typeof userKey === "string" ? userKey.trim() : "") || randomBytes(24).toString("base64url");
     users[resolved] = {
         userId: resolved,
-        userKeyHash: hashKey(userKey),
+        userKeyHash: hashKey(resolvedUserKey),
         encrypt: Boolean(encrypt),
         createdAt: Date.now()
     };
     await saveUsers(users);
     await ensureUserDir(resolved);
-    return { userId: resolved, userKey, encrypt: users[resolved].encrypt };
+    return { userId: resolved, userKey: resolvedUserKey, encrypt: users[resolved].encrypt };
 };
 
 export const rotateUserKey = async (userId: string, userKey: string, encrypt?: boolean) => {

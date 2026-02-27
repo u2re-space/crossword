@@ -3,9 +3,9 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { registerUser, rotateUserKey, listUsers, deleteUser, verifyUser } from "../lib/users.ts";
 
 export const registerAuthRoutes = async (app: FastifyInstance) => {
-    app.post("/core/auth/register", async (request: FastifyRequest<{ Body: { userId?: string; encrypt?: boolean } }>) => {
-        const { userId, encrypt } = request.body || {};
-        const res = await registerUser(userId, Boolean(encrypt));
+    app.post("/core/auth/register", async (request: FastifyRequest<{ Body: { userId?: string; userKey?: string; encrypt?: boolean } }>) => {
+        const { userId, userKey, encrypt } = request.body || {};
+        const res = await registerUser(userId, Boolean(encrypt), userKey);
         return { ok: true, ...res };
     });
 

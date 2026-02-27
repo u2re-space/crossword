@@ -198,10 +198,15 @@ const main = () => {
     $("#btnRegister").onclick = async () => {
         try {
             const { endpointUrl, encrypt } = state.creds;
+            const body = {
+                userId: $("#userId").value.trim() || undefined,
+                userKey: $("#userKey").value.trim() || undefined,
+                encrypt
+            };
             const res = await fetch(new URL("/core/auth/register", endpointUrl).toString(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ encrypt, userId: $("#userId").value.trim() || undefined })
+                body: JSON.stringify(body)
             });
             const json = await res.json();
             if (json?.ok) {

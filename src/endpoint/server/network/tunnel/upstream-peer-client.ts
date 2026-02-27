@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createDecipheriv, createHash, createVerify, randomUUID } from "node:crypto";
+import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "../routing/index.ts";
 
@@ -60,6 +61,115 @@ type EnvelopePayload = {
     to?: string;
     broadcast?: boolean;
     [key: string]: any;
+};
+
+const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const shouldRejectUnauthorized = String(process.env.AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED ?? "true").toLowerCase() !== "false";
+const invalidCredentialsRetryMs = Math.max(
+    1000,
+    Number(process.env.AIRPAD_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS ?? "30000") || 30000
+);
+const TLS_VERIFY_ERRORS = [
+    "unable to verify the first certificate",
+    "self signed certificate",
+    "certificate has expired",
+    "certificate is not yet valid",
+    "self signed certificate in certificate chain",
+    "DEPTH_ZERO_SELF_SIGNED_CERT",
+    "SELF_SIGNED_CERT_IN_CHAIN",
+    "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+];
+
+const isTlsVerifyError = (message: string) => {
+    const lower = (message || "").toLowerCase();
+    return TLS_VERIFY_ERRORS.some((fragment) => lower.includes(fragment.toLowerCase()));
+};
+
+const formatEndpointList = (items: string[] | undefined): string => {
+    if (!Array.isArray(items) || !items.length) return "-";
+    return items.join(" | ");
+};
+
+const maskValue = (value: string): string => {
+    if (!value) return "-";
+    if (value.length <= 6) return `***(${value.length})`;
+    return `${value.slice(0, 2)}...${value.slice(-2)}(${value.length})`;
+};
+
+const normalizeHost = (value: string): string => {
+    return String(value || "").trim().toLowerCase();
+};
+
+const normalizeInterfaceAddress = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const withoutZone = raw.split("%")[0];
+    const trimmed = withoutZone.replace(/^\[(.*)\]$/, "$1");
+    return normalizeHost(trimmed);
+};
+
+const getLocalUpstreamHosts = (): Set<string> => {
+    const hosts = new Set<string>([
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        normalizeHost(getHostName())
+    ]);
+    const interfaces = networkInterfaces();
+    for (const entryList of Object.values(interfaces || {})) {
+        if (!entryList) continue;
+        for (const entry of entryList) {
+            if (!entry?.address) continue;
+            hosts.add(normalizeInterfaceAddress(entry.address));
+        }
+    }
+    return hosts;
+};
+
+const isSelfLoopCandidate = (endpoint: string, localHosts: Set<string>): boolean => {
+    const rawEndpoint = String(endpoint || "").trim();
+    if (!rawEndpoint) return true;
+    try {
+        const candidate = rawEndpoint.includes("://") ? rawEndpoint : `https://${rawEndpoint}`;
+        const parsed = new URL(candidate);
+        const host = normalizeHost(parsed.hostname);
+        return host ? localHosts.has(host) : false;
+    } catch {
+        return false;
+    }
+};
+
+const normalizeEndpointSignature = (value: string): string => {
+    const rawEndpoint = String(value || "").trim();
+    if (!rawEndpoint) return "";
+    try {
+        const candidate = rawEndpoint.includes("://") ? rawEndpoint : `https://${rawEndpoint}`;
+        const parsed = new URL(candidate);
+        const host = normalizeHost(parsed.hostname);
+        if (!host) return "";
+        const port = parsed.port || (parsed.protocol === "https:" || parsed.protocol === "wss:" ? "443" : parsed.protocol === "http:" || parsed.protocol === "ws:" ? "80" : "");
+        return `${host}:${port}`;
+    } catch {
+        return "";
+    }
+};
+
+const formatCloseReason = (reason: Buffer | string | undefined): string => {
+    if (!reason) return "";
+    if (typeof reason === "string") return reason;
+    try {
+        return reason.toString();
+    } catch {
+        return "";
+    }
+};
+
+let invalidCredentialBlockUntil = 0;
+
+const formatHintForInvalidCredentials = (userId?: string, deviceId?: string, endpoint?: string) => {
+    return `Invalid upstream credentials for userId="${userId || "-"}" deviceId="${deviceId || "-"}" endpoint="${endpoint || "-"}". ` +
+        "Create or align this user on the target endpoint via `/core/auth/register` (POST {\"userId\":\"...\",\"userKey\":\"...\",\"encrypt\":false}) " +
+        "then set the same upstream.userId/upstream.userKey in both endpoints.";
 };
 
 const normalizeRoleSet = (roles: unknown): Set<string> => {
@@ -171,7 +281,30 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
         : uniqueEndpoints[0] || "";
     const userId = typeof upstream.userId === "string" ? upstream.userId.trim() : "";
     const userKey = typeof upstream.userKey === "string" ? upstream.userKey.trim() : "";
-    if (!enabled || !endpointUrl || !userId || !userKey) {
+    if (!enabled) {
+        if (isTunnelDebug) {
+            console.info(
+                `[upstream] disabled: enabled=false`,
+                `roles=${formatEndpointList(Array.isArray(config.roles) ? config.roles : [])}`,
+                `endpointUrl=${endpointUrl || "-"}`,
+                `userId=${maskValue(userId)}`,
+                `userKey=${maskValue(userKey)}`
+            );
+        }
+        return null;
+    }
+    if (!endpointUrl || !userId || !userKey) {
+        const missing: string[] = [];
+        if (!endpointUrl) missing.push("endpointUrl");
+        if (!userId) missing.push("userId");
+        if (!userKey) missing.push("userKey");
+        console.warn(
+            `[upstream] disabled: missing required fields`,
+            `missing=${missing.join(",") || "none"}`,
+            `endpointUrl=${endpointUrl || "-"}`,
+            `userId=${userId ? "***" : "-"}`,
+            `userKey=${userKey ? "***" : "-"}`
+        );
         return null;
     }
 
@@ -197,31 +330,28 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
 
 const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): string | null => {
     try {
-        let target = endpointUrl.trim().replace(/\/+$/, "");
-        if (!target) return null;
+        const rawEndpoint = endpointUrl.trim().replace(/\/+$/, "");
+        if (!rawEndpoint) return null;
 
-        if (!/^wss?:\/\//i.test(target)) {
-            target = `ws://${target}`;
-        } else if (/^https:\/\//i.test(target)) {
-            target = target.replace(/^https:\/\//i, "wss://");
-        } else if (/^http:\/\//i.test(target)) {
-            target = target.replace(/^http:\/\//i, "ws://");
+        const candidate = rawEndpoint.includes("://") ? rawEndpoint : `https://${rawEndpoint}`;
+        const url = new URL(candidate);
+        if (url.protocol === "https:") {
+            url.protocol = "wss:";
+        } else if (url.protocol === "http:") {
+            url.protocol = "ws:";
+        } else if (url.protocol !== "ws:" && url.protocol !== "wss:") {
+            return null;
         }
-
-        const url = new URL(target);
         const hasWsPath = /\/ws(?:[/?#]|$)/.test(url.pathname);
         if (!hasWsPath) {
             const normalizedPath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
             url.pathname = `${normalizedPath}ws`;
         }
-        const search = new URLSearchParams({
-            mode: "reverse",
-            userId: cfg.userId,
-            userKey: cfg.userKey,
-            namespace: cfg.namespace,
-            deviceId: cfg.deviceId
-        });
-        url.search = search.toString();
+        url.searchParams.set("mode", "reverse");
+        url.searchParams.set("userId", cfg.userId);
+        url.searchParams.set("userKey", cfg.userKey);
+        url.searchParams.set("namespace", cfg.namespace);
+        url.searchParams.set("deviceId", cfg.deviceId);
         return url.toString();
     } catch {
         return null;
@@ -229,14 +359,69 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): str
 };
 
 export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: UpstreamClientOptions = {}): RunningClient | null => {
-    if (!isClientRoleEnabled(rawConfig)) return null;
+    if (!isClientRoleEnabled(rawConfig)) {
+        if (isTunnelDebug) {
+            console.info(
+                "[upstream] disabled: client/peer/hub role is not enabled",
+                `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`
+            );
+        }
+        return null;
+    }
 
     const cfg = normalizeUpstreamConfig(rawConfig);
     if (!cfg) return null;
+    if (isTunnelDebug) {
+        console.info(
+            "[upstream] config accepted",
+            `enabled=${cfg.enabled}`,
+            `userId=${maskValue(cfg.userId)}`,
+            `endpoint=${cfg.endpointUrl}`,
+            `endpoints=${formatEndpointList(cfg.endpoints)}`,
+            `namespace=${cfg.namespace}`,
+            `deviceId=${cfg.deviceId}`
+        );
+    }
 
-    const upstreamCandidates = Array.isArray(cfg.endpoints) && cfg.endpoints.length > 0
-        ? cfg.endpoints.slice()
-        : [cfg.endpointUrl];
+    const localHosts = getLocalUpstreamHosts();
+    const seenSignatures = new Set<string>();
+    const addCandidate = (rawCandidate: string, list: string[]) => {
+        const item = String(rawCandidate || "").trim();
+        if (!item) return;
+        if (isSelfLoopCandidate(item, localHosts)) {
+            if (isTunnelDebug) {
+                console.info("[upstream] skip self endpoint candidate", `candidate=${item}`);
+            }
+            return;
+        }
+        const signature = normalizeEndpointSignature(item);
+        if (signature && seenSignatures.has(signature)) {
+            if (isTunnelDebug) {
+                console.info("[upstream] skip duplicate endpoint candidate", `candidate=${item}`, `signature=${signature}`);
+            }
+            return;
+        }
+        list.push(item);
+        if (signature) seenSignatures.add(signature);
+    };
+
+    const upstreamCandidates: string[] = [];
+    addCandidate(cfg.endpointUrl || "", upstreamCandidates);
+    if (Array.isArray(cfg.endpoints) && cfg.endpoints.length > 0) {
+        for (const item of cfg.endpoints) addCandidate(item, upstreamCandidates);
+    } else if (!cfg.endpointUrl) {
+        if (isTunnelDebug) {
+            console.warn("[upstream] disabled: no explicit endpoint candidates", `endpoints=${formatEndpointList(cfg.endpoints)}`, `endpointUrl=${cfg.endpointUrl || "-"}`);
+        }
+    }
+
+
+    if (!upstreamCandidates.length) {
+        if (isTunnelDebug) {
+            console.warn("[upstream] disabled: all candidates are local/self endpoints", `host=${Array.from(localHosts).join("|")}`);
+        }
+        return null;
+    }
     let candidateIndex = Math.max(0, upstreamCandidates.indexOf(cfg.endpointUrl));
     if (candidateIndex < 0) candidateIndex = 0;
 
@@ -248,6 +433,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
     let reconnectHandle: ReturnType<typeof setTimeout> | null = null;
     let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
     let connectTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let lastSendWarnAt = 0;
 
     const clearHeartbeat = () => {
         if (heartbeatHandle) {
@@ -263,13 +449,13 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         }
     };
 
-    const scheduleReconnect = () => {
+    const scheduleReconnect = (delayMs?: number) => {
         if (stopped) return;
         clearReconnect();
         reconnectHandle = setTimeout(() => {
             reconnectHandle = null;
             connect();
-        }, cfg.reconnectMs);
+        }, Number.isFinite(delayMs) && delayMs && delayMs > 0 ? delayMs : cfg.reconnectMs);
     };
 
     const setNextEndpoint = () => {
@@ -286,17 +472,36 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
 
     const connect = () => {
         if (stopped) return;
+        if (invalidCredentialBlockUntil > Date.now()) {
+            const waitMs = Math.max(0, invalidCredentialBlockUntil - Date.now());
+            if (isTunnelDebug) {
+                console.warn("[upstream] skip reconnect: credentials rejected, waiting", `endpoint=${cfg.endpointUrl}`, `waitMs=${waitMs}`);
+            }
+            scheduleReconnect(waitMs);
+            return;
+        }
         try {
             const endpoint = upstreamCandidates[candidateIndex] || cfg.endpointUrl;
             wsUrl = buildWsUrl(endpoint, cfg);
             if (!wsUrl) {
+                if (isTunnelDebug) {
+                    console.warn("[upstream] cannot build ws url", `candidate=${endpoint}`);
+                }
                 setNextEndpoint();
                 scheduleReconnect();
                 return;
             }
             activeEndpoint = endpoint;
-            socket = new WebSocket(wsUrl);
+            if (isTunnelDebug) {
+                console.info("[upstream] connecting", `endpoint=${endpoint}`, `url=${wsUrl}`);
+            }
+            socket = new WebSocket(wsUrl, {
+                rejectUnauthorized: shouldRejectUnauthorized
+            });
         } catch {
+            if (isTunnelDebug) {
+                console.error("[upstream] connection setup failed", `candidate=${upstreamCandidates[candidateIndex]}`);
+            }
             setNextEndpoint();
             scheduleReconnect();
             return;
@@ -311,6 +516,10 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         }, 12_000);
 
         socket.on("open", () => {
+            invalidCredentialBlockUntil = 0;
+            if (isTunnelDebug) {
+                console.info("[upstream] connected", `endpoint=${activeEndpoint}`);
+            }
             clearConnectTimeout();
             clearReconnect();
             clearHeartbeat();
@@ -344,15 +553,33 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             }
         });
 
-        socket.on("close", () => {
+        socket.on("close", (code: number, reason: Buffer | string) => {
+            if (isTunnelDebug) {
+                const active = upstreamCandidates[candidateIndex] || cfg.endpointUrl;
+                const reasonText = formatCloseReason(reason);
+                const normalizedReason = reasonText.toLowerCase();
+                console.warn("[upstream] closed", `endpoint=${active}`, `code=${code}`, reasonText ? `reason=${reasonText}` : "");
+                if (code === 4001 && normalizedReason.includes("invalid credentials")) {
+                    invalidCredentialBlockUntil = Date.now() + invalidCredentialsRetryMs;
+                    console.error("[upstream] rejected by target", formatHintForInvalidCredentials(cfg.userId, cfg.deviceId, active));
+                }
+            }
             clearConnectTimeout();
             clearHeartbeat();
             socket = null;
             setNextEndpoint();
-            scheduleReconnect();
+            const delay = invalidCredentialBlockUntil > Date.now() ? invalidCredentialsRetryMs : cfg.reconnectMs;
+            scheduleReconnect(delay);
         });
 
-        socket.on("error", () => {
+        socket.on("error", (error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (isTunnelDebug) {
+                console.error("[upstream] socket error", message);
+                if (isTlsVerifyError(message)) {
+                    console.warn("[upstream] tls verify error", `endpoint=${upstreamCandidates[candidateIndex] || cfg.endpointUrl}`, `use AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false if certificate is self-signed`);
+                }
+            }
             socket?.close(4001, "upstream-error");
         });
     };
@@ -361,6 +588,9 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
 
     return {
         stop: () => {
+            if (isTunnelDebug) {
+                console.info("[upstream] stopping");
+            }
             stopped = true;
             clearReconnect();
             clearHeartbeat();
@@ -371,7 +601,20 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             socket = null;
         },
         send: (payload: unknown) => {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                if (isTunnelDebug) {
+                    const now = Date.now();
+                    if (now - lastSendWarnAt > 5000) {
+                        lastSendWarnAt = now;
+                        console.warn(
+                            "[upstream] send blocked",
+                            `state=${socket ? String(socket.readyState) : "null"}`,
+                            `endpoint=${activeEndpoint}`
+                        );
+                    }
+                }
+                return false;
+            }
             try {
                 const text = typeof payload === "string" ? payload : JSON.stringify(payload);
                 socket.send(text);

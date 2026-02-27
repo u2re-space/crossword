@@ -11,10 +11,9 @@ type LoggerLike = {
 const parseAllowedOrigins = (): string[] => {
     const raw = (process.env.SOCKET_IO_ALLOWED_ORIGINS || "").trim();
     if (!raw) return [];
-    return raw
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean);
+    const values = raw.split(",").map((x) => x.trim()).filter(Boolean);
+    const allowAll = values.some((value) => value === "*" || value.toLowerCase() === "all");
+    return allowAll ? ["*"] : values;
 };
 
 const normalizePort = (value: string | undefined): number | undefined => {
@@ -98,6 +97,63 @@ const hasDefaultOriginPort = (protocol: string, port: string): boolean => {
     return port === "";
 };
 
+const isPrivateNetworkHost = (hostname: string): boolean => {
+    if (!hostname) return false;
+    if (hostname === "localhost" || hostname.startsWith("127.")) return true;
+    if (hostname.startsWith("10.") || hostname.startsWith("192.168.")) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+    return false;
+};
+
+const buildWildcardRegex = (value: string): RegExp => {
+    const escaped = value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`^${escaped.replace(/\*/g, ".*")}$`, "i");
+};
+
+const isAllowedOrigin = (parsedOrigin: ReturnType<typeof parseOrigin>, item: string): boolean => {
+    if (!item) return false;
+    const normalized = item.trim();
+    if (!normalized) return false;
+    if (normalized === "*" || normalized.toLowerCase() === "all") return true;
+
+    const parsedAllowed = parseOrigin(normalized);
+    const hasProtocol = normalized.includes("://");
+    if (parsedAllowed) {
+        if (parsedAllowed.protocol !== parsedOrigin.protocol) return false;
+        if (parsedAllowed.hostname.includes("*")) {
+            if (!buildWildcardRegex(parsedAllowed.hostname).test(parsedOrigin.hostname)) return false;
+        } else if (parsedAllowed.hostname !== parsedOrigin.hostname) {
+            return false;
+        }
+        if (parsedAllowed.port && parsedAllowed.port !== parsedOrigin.port && !(parsedOrigin.port === "" && hasDefaultOriginPort(parsedOrigin.protocol, parsedAllowed.port))) {
+            return false;
+        }
+        return true;
+    }
+
+    const candidate = normalized.toLowerCase();
+    if (!hasProtocol) {
+        let hostPart = normalized;
+        let port = "";
+        const lastColon = normalized.lastIndexOf(":");
+        if (lastColon > 0 && /^\d+$/.test(normalized.slice(lastColon + 1))) {
+            hostPart = normalized.slice(0, lastColon);
+            port = normalized.slice(lastColon + 1);
+        }
+        const host = hostPart.toLowerCase();
+        if (host.includes("*")) {
+            if (!buildWildcardRegex(host).test(parsedOrigin.hostname)) return false;
+        } else if (host !== parsedOrigin.hostname) {
+            return false;
+        }
+        if (port && port !== parsedOrigin.port && !(parsedOrigin.port === "" && hasDefaultOriginPort(parsedOrigin.protocol, port))) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+};
+
 const getDefaultAllowedOrigins = (): string[] => {
     const httpsPort = Number((config as any)?.listenPort ?? 8443);
     const httpPort = Number((config as any)?.httpPort ?? 8080);
@@ -115,6 +171,7 @@ const getDefaultAllowedOrigins = (): string[] => {
 const matchesAllowedOrigin = (origin: string, allowed: string[]): boolean => {
     if (!allowed.length) return true;
     if (allowed.includes(origin)) return true;
+    if (allowed.includes("*")) return true;
 
     const parsedOrigin = parseOrigin(origin);
     if (!parsedOrigin) return false;
@@ -123,25 +180,18 @@ const matchesAllowedOrigin = (origin: string, allowed: string[]): boolean => {
     }
 
     for (const item of allowed) {
-        if (!item) continue;
-        const parsedAllowed = parseOrigin(item);
-        if (!parsedAllowed) continue;
-        if (parsedOrigin.protocol !== parsedAllowed.protocol) continue;
-        if (parsedOrigin.hostname !== parsedAllowed.hostname) continue;
-
-        if (parsedAllowed.port === parsedOrigin.port) return true;
-        if (!parsedAllowed.port && parsedOrigin.port === "") return true;
-        if (parsedOrigin.port === "" && hasDefaultOriginPort(parsedOrigin.protocol, parsedAllowed.port)) return true;
+        if (isAllowedOrigin(parsedOrigin, item)) {
+            return true;
+        }
     }
 
     const allowPrivateRfc1918 = process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false"
         && process.env.SOCKET_IO_ALLOW_PRIVATE_192 !== "false";
-    if (!allowPrivateRfc1918) return false;
+    const allowPrivateNetworkOrigins = process.env.SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS === "true";
+    if (!allowPrivateRfc1918 && !allowPrivateNetworkOrigins) return false;
 
     const host = parsedOrigin.hostname;
-    if (host === "localhost" || host.startsWith("127.")) return true;
-    if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
-    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
+    if (isPrivateNetworkHost(host)) return true;
 
     return false;
 };
@@ -150,12 +200,18 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const allowedOrigins = parseAllowedOrigins();
     const defaults = getDefaultAllowedOrigins();
     const effectiveAllowedOrigins = allowedOrigins.length ? allowedOrigins : defaults;
+    const allowAllOrigins = effectiveAllowedOrigins.includes("*");
+    const allowPrivateNetworkOrigins = process.env.SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS === "true";
+    const hasAirPadAuthTokens = getAirPadTokens().length > 0;
+    const allowUnknownOriginWithAirPadAuth = process.env.SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH !== "false" && hasAirPadAuthTokens;
 
     logger?.info?.(
         {
             allowedOrigins: effectiveAllowedOrigins,
             source: allowedOrigins.length ? "SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins",
-                allowPrivateRfc1918: process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false"
+            allowPrivateRfc1918: process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false",
+            allowPrivateNetworkOrigins,
+            allowUnknownOriginWithAirPadAuth
         },
         "[socket.io] CORS origin policy initialized"
     );
@@ -174,7 +230,11 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                     callback(null, true);
                     return;
                 }
-                if (getAirPadTokens().length > 0) {
+                if (allowAllOrigins) {
+                    callback(null, true);
+                    return;
+                }
+                if (allowUnknownOriginWithAirPadAuth) {
                     callback(null, true);
                     return;
                 }
@@ -191,9 +251,20 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                 callback(null, true);
                 return;
             }
+            if (allowAllOrigins) {
+                callback(null, true);
+                return;
+            }
             if (isAuthorizedByAirPadToken(req)) {
                 callback(null, true);
                 return;
+            }
+            if (allowPrivateNetworkOrigins) {
+                const parsedOrigin = parseOrigin(origin);
+                if (parsedOrigin && isPrivateNetworkHost(parsedOrigin.hostname)) {
+                    callback(null, true);
+                    return;
+                }
             }
             if (matchesAllowedOrigin(origin, effectiveAllowedOrigins)) {
                 callback(null, true);

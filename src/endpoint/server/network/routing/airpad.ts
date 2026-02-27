@@ -58,7 +58,37 @@ export const isAirPadAuthorized = (socket: Socket) => {
     return !!provided && allowed.includes(provided);
 };
 
-export const describeAirPadConnectionMeta = (socket: Socket): Record<string, unknown> => {
+export type AirpadConnectionMeta = {
+    clientId?: string;
+    remoteAddress?: string;
+    remotePort?: number;
+    hopHint?: string;
+    hostHint?: string;
+    targetHost?: string;
+    targetPort?: string;
+    routeHint?: string;
+    viaPort?: string;
+    protocolHint?: string;
+    xForwardedFor?: unknown;
+    xForwardedHost?: unknown;
+    xForwardedProto?: unknown;
+    xRealIp?: unknown;
+    xRealHost?: unknown;
+};
+
+const pickString = (value: unknown): string | undefined => {
+    if (typeof value === "string") {
+        const normalized = value.trim();
+        return normalized.length ? normalized : undefined;
+    }
+    if (Array.isArray(value)) {
+        return typeof value[0] === "string" ? value[0].trim() || undefined : undefined;
+    }
+    return undefined;
+};
+
+export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMeta => {
+    const auth: Record<string, unknown> = (socket as any).handshake?.auth || {};
     const headers: Record<string, unknown> = (socket as any).handshake?.headers || {};
     const query: Record<string, unknown> = (socket as any).handshake?.query || {};
     const remoteAddress =
@@ -67,15 +97,16 @@ export const describeAirPadConnectionMeta = (socket: Socket): Record<string, unk
     const remotePort = (socket as any)?.request?.socket?.remotePort;
 
     return {
-        remoteAddress,
-        remotePort,
-        hopHint: query.__airpad_hop,
-        hostHint: query.__airpad_host,
-        targetHost: query.__airpad_target,
-        targetPort: query.__airpad_target_port,
-        routeHint: query.__airpad_via,
-        viaPort: query.__airpad_via_port,
-        protocolHint: query.__airpad_protocol,
+        remoteAddress: pickString(remoteAddress),
+        remotePort: typeof remotePort === "number" ? remotePort : undefined,
+        clientId: pickString(auth.clientId) || pickString(query.clientId),
+        hopHint: pickString(query.__airpad_hop),
+        hostHint: pickString(query.__airpad_host),
+        targetHost: pickString(query.__airpad_target),
+        targetPort: pickString(query.__airpad_target_port),
+        routeHint: pickString(query.__airpad_via),
+        viaPort: pickString(query.__airpad_via_port),
+        protocolHint: pickString(query.__airpad_protocol),
         xForwardedFor: (headers["x-forwarded-for"] || headers["X-Forwarded-For"]),
         xForwardedHost: (headers["x-forwarded-host"] || headers["X-Forwarded-Host"]),
         xForwardedProto: (headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"]),

@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { SETTINGS_FILE, ensureDataDirs } from "../lib/paths.ts";
+import { DEFAULT_CORE_ROLES, DEFAULT_ENDPOINT_UPSTREAM } from "./default-endpoint-config.ts";
 
 export type CustomInstruction = {
     id: string;
@@ -76,18 +77,9 @@ export interface GridSettings {
 
 export const DEFAULT_SETTINGS: Settings = {
     core: {
-        roles: ["endpoint", "server", "peer", "client", "node", "hub"],
+        roles: [...DEFAULT_CORE_ROLES],
         upstream: {
-            enabled: false,
-            endpointUrl: "",
-            userId: "",
-            userKey: "",
-            upstreamMasterKey: "",
-            upstreamSigningPrivateKeyPem: "",
-            upstreamPeerPublicKeyPem: "",
-            deviceId: "",
-            namespace: "default",
-            reconnectMs: 5000
+            ...DEFAULT_ENDPOINT_UPSTREAM
         }
     },
     ai: { customInstructions: [], activeInstructionId: "" },

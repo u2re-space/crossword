@@ -176,6 +176,7 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 };
 
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
+    const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
     const defaultUserId = fallbackUserId || "";
     return (message: any) => {
         if (!message || typeof message !== "object") return;
@@ -188,6 +189,19 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         if (!userId) return;
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
+        if (isTunnelDebug) {
+            const payloadKeys = payload && typeof payload === "object"
+                ? Object.keys(payload as Record<string, unknown>).join("|")
+                : typeof payload;
+            console.info(
+                `[upstream] IN`,
+                `userId=${userId}`,
+                `from=${String(msg.from || defaultUserId)}`,
+                `target=${target ? String(target) : "-"}`,
+                `type=${String(msg.type || msg.action || "dispatch")}`,
+                `kind=${payloadKeys}`
+            );
+        }
         const namespace = typeof msg.namespace === "string" && msg.namespace
             ? msg.namespace
             : typeof msg.ns === "string"
@@ -210,6 +224,16 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             const delivered = hub.sendToDevice(userId, resolvedTarget, routed);
 
             if (!delivered) {
+                if (isTunnelDebug) {
+                    console.warn(
+                        `[upstream] target resolve failed`,
+                        `userId=${userId}`,
+                        `requested=${requestedTarget}`,
+                        `resolved=${resolvedTarget || "-"}`,
+                        `kind=${resolvedKind || "-"}`,
+                        `known=${hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`).join(",")}`
+                    );
+                }
                 app.log?.warn?.(
                     {
                         userId,
@@ -235,6 +259,16 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                     },
                     "[upstream] routed command to reverse target"
                 );
+                if (isTunnelDebug) {
+                    console.info(
+                        `[upstream] target resolved`,
+                        `userId=${userId}`,
+                        `requested=${requestedTarget}`,
+                        `resolved=${resolvedTarget}`,
+                        `kind=${resolvedKind || "-"}`,
+                        `delivered=${delivered}`
+                    );
+                }
             }
             app.log?.debug?.({
                 delivered,
@@ -276,6 +310,7 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     const upstreamClient = startUpstreamPeerClient(config as any, {
         onMessage: buildUpstreamRouter(app, wsHub, (config as any)?.upstream?.userId || "")
     });
+    const networkContext = buildNetworkContext(upstreamClient);
     if (upstreamClient) {
         app.addHook("onClose", async () => {
             upstreamClient.stop();
@@ -283,11 +318,16 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
         app.log?.info?.("Upstream peer bridge started");
     }
 
-    await registerOpsRoutes(app, wsHub, buildNetworkContext(upstreamClient));
+    await registerOpsRoutes(app, wsHub, networkContext);
     registerApiFallback(app);
 
     // Socket.IO bridge for legacy/native clients (merged from server-old.ts concepts)
-    createSocketIoBridge(app);
+    createSocketIoBridge(app, {
+        networkContext: networkContext ? {
+            sendToUpstream: networkContext.sendToUpstream,
+            upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
+        } : undefined
+    });
 
     return app;
 };
@@ -326,7 +366,12 @@ export const buildCoreServers = async (
     }
     await registerOpsRoutes(http, unifiedHub, networkContext);
     registerApiFallback(http);
-    createSocketIoBridge(http);
+    createSocketIoBridge(http, {
+        networkContext: networkContext ? {
+            sendToUpstream: networkContext.sendToUpstream,
+            upstreamUserId: networkContext.getNodeId() || fallbackUserId
+        } : undefined
+    });
 
     if (!httpsOptions) return { http };
     const httpsWsHub = createWsServer(https);
@@ -340,7 +385,12 @@ export const buildCoreServers = async (
     }
     await registerOpsRoutes(https, unifiedHub, networkContext);
     registerApiFallback(https);
-    createSocketIoBridge(https);
+    createSocketIoBridge(https, {
+        networkContext: networkContext ? {
+            sendToUpstream: networkContext.sendToUpstream,
+            upstreamUserId: networkContext.getNodeId() || fallbackUserId
+        } : undefined
+    });
 
     return { http, https };
 };

@@ -112,6 +112,21 @@ function safeJson(value: unknown): string {
     }
 }
 
+const describeError = (error: unknown): string => {
+    if (!error) return String(error);
+    if (typeof error === "string") return error;
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}`;
+    }
+    return safeJson(error);
+};
+
+type EngineLike = {
+    on?: (event: string, listener: (...args: unknown[]) => void) => void;
+    off?: (event: string, listener: (...args: unknown[]) => void) => void;
+    transport?: { name?: string };
+};
+
 function getTransportMode(): AirPadTransportMode {
     return getAirPadTransportMode() === "secure" ? "secure" : "plaintext";
 }
@@ -794,6 +809,19 @@ export function connectWS() {
             secure: candidate.protocol === 'https',
             forceNew: true,
         });
+        const engine = (probeSocket as any).io?.engine as EngineLike | undefined;
+        const onEngineClose = (code?: number, reason?: unknown) => {
+            log(
+                `Socket.IO engine close (${url}): ` +
+                `code=${code ?? "n/a"}, reason=${typeof reason === "string" ? reason : safeJson(reason)}, ` +
+                `transport=${engine?.transport?.name || "unknown"}`
+            );
+        };
+        const onEngineError = (error: unknown) => {
+            log(`Socket.IO engine error (${url}): ${describeError(error)}`);
+        };
+        engine?.on?.("close", onEngineClose);
+        engine?.on?.("error", onEngineError);
         activeProbeSocket = probeSocket;
 
         probeSocket.on('connect', () => {
@@ -813,6 +841,8 @@ export function connectWS() {
 
             socket.on('disconnect', (reason?: string) => {
                 log('Socket.IO disconnected' + (reason ? `: ${reason}` : ''));
+                engine?.off?.("close", onEngineClose);
+                engine?.off?.("error", onEngineError);
                 isConnecting = false;
                 setWsStatus(false);
             updateButtonLabel();

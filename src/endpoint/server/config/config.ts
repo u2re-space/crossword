@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_SETTINGS } from "./settings.ts";
 import { fileURLToPath } from "node:url";
 import { SETTINGS_FILE } from "../lib/paths.ts";
+import {
+    DEFAULT_CORE_ROLES,
+    DEFAULT_UPSTREAM_ENDPOINTS,
+    DEFAULT_ENDPOINT_UPSTREAM,
+    DEFAULT_ENDPOINT_RUNTIME
+} from "./default-endpoint-config.ts";
 
 type EndpointConfig = {
     listenPort?: number;
@@ -32,41 +39,34 @@ type EndpointConfig = {
 
 const defaultConfig = {
     // На каком порту слушаем входящие HTTP запросы
-    listenPort: 8443,
+    listenPort: DEFAULT_ENDPOINT_RUNTIME.listenPort,
 
     // На каком порту слушаем входящие НЕ-HTTPS (HTTP) запросы (эндпоинты, Socket.IO)
     // Нужно для совместимости/простых клиентов в локальной сети: http://host:8080/clipboard
-    httpPort: 8080,
+    httpPort: DEFAULT_ENDPOINT_RUNTIME.httpPort,
     // По умолчанию в broadcast пытаемся использовать HTTPS для портов 443/8443
-    broadcastForceHttps: true,
+    broadcastForceHttps: DEFAULT_ENDPOINT_RUNTIME.broadcastForceHttps,
 
     // Список получателей (URL/IP/host), куда рассылаем изменения клипборда.
     // Формат может быть URL или хост/IP; без схемы будут пробованы https и http варианты.
-    peers: [
-        '100.81.105.5',
-        '100.90.155.65',
-        '192.168.0.196',
-        '192.168.0.200',
-        '192.168.0.110',
-        '45.147.121.152'
-    ],
+    peers: DEFAULT_ENDPOINT_RUNTIME.peers,
     // Список маршрутов/идентификаторов получателей для /api/network/dispatch.
     // Формат: id, deviceId, label или любой дополнительный токен цели.
     // Будет использован как implicit список при broadcast=true.
-    broadcastTargets: [],
+    broadcastTargets: [...DEFAULT_ENDPOINT_RUNTIME.broadcastTargets],
     // Список вариантов схема:порт, которые пробуются для peers без явного порта/схемы.
     // Формат: "https:443", "https:8443", "http:8080", "http:80"
-    clipboardPeerTargets: ["https:443", "https:8443", "http:8080", "http:80"],
+    clipboardPeerTargets: [...DEFAULT_ENDPOINT_RUNTIME.clipboardPeerTargets],
 
     // Интервал опроса системного буфера (мс)
-    pollInterval: 100,
+    pollInterval: DEFAULT_ENDPOINT_RUNTIME.pollInterval,
 
     // Таймаут для исходящих HTTP запросов к peers (мс)
     // 3000мс часто мало для мобильных устройств/спящих девайсов/первого пробуждения сети.
-    httpTimeoutMs: 10000,
+    httpTimeoutMs: DEFAULT_ENDPOINT_RUNTIME.httpTimeoutMs,
 
     // Простейшая защита: токен (по желанию, можно оставить пустым)
-    secret: '',
+    secret: DEFAULT_ENDPOINT_RUNTIME.secret,
 
     // Роли/режимы этого узла:
     // - endpoint: full endpoint behavior
@@ -75,28 +75,18 @@ const defaultConfig = {
     // - peer: participate as a peer device (reverse dispatch target)
     // - hub: act as upstream relay participant
     // - node: generic aggregate role (server+client+peer)
-    roles: ["endpoint", "server", "peer", "client", "node", "hub"],
+    roles: [...DEFAULT_CORE_ROLES],
 
     // Upstream tunnel-through / be-as-device settings.
     // Когда enabled=true, endpoint откроет reverse WS на другой точке.
     upstream: {
-        enabled: false,
+        ...(DEFAULT_SETTINGS.core?.upstream || {}),
+        ...DEFAULT_ENDPOINT_UPSTREAM,
         // Основные адреса для hub/server/endpoint подключения:
         // 1) внешний endpoint hub (дефолт)
         // 2) локальный fallback для LAN
-        endpoints: [
-            "https://45.147.121.152:8443/",
-            "https://192.168.0.200:8443/"
-        ],
-        endpointUrl: "https://45.147.121.152:8443/",
-        userId: "",
-        userKey: "",
-        upstreamMasterKey: "",
-        upstreamSigningPrivateKeyPem: "",
-        upstreamPeerPublicKeyPem: "",
-        deviceId: "",
-        namespace: "default",
-        reconnectMs: 5000
+        endpoints: [...DEFAULT_UPSTREAM_ENDPOINTS],
+        endpointUrl: DEFAULT_ENDPOINT_UPSTREAM.endpointUrl
     },
 };
 
@@ -161,6 +151,10 @@ const normalizePeerSource = (value: unknown): string[] | undefined => {
     return split.length ? split : undefined;
 };
 
+const normalizeTextField = (value: unknown, fallback: string): string => {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+};
+
 const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
     const source = (value && typeof value === "object") ? value : {};
     const coreSource = (source.core && typeof source.core === "object") ? (source.core as Record<string, any>) : {};
@@ -179,6 +173,14 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
 
     const mergedUpstreamWithFallback = {
         ...mergedUpstream,
+        userId: normalizeTextField(
+            mergedUpstream.userId,
+            normalizeTextField((defaultConfig.upstream as Record<string, any>).userId, "")
+        ),
+        userKey: normalizeTextField(
+            mergedUpstream.userKey,
+            normalizeTextField((defaultConfig.upstream as Record<string, any>).userKey, "")
+        ),
         endpoints: normalizeUrlList(
             (coreSource.upstream?.endpoints || source.upstream?.endpoints)
         ) ?? normalizeUrlList(mergedUpstream.endpoints) ?? [],

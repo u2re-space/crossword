@@ -26,12 +26,14 @@ import clipboardy from "clipboardy";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;
+type AirpadBinaryMessageHandler = (data: Buffer | Uint8Array, socket: Socket) => boolean | Promise<boolean>;
 type AirpadClipboardSource = "local" | "network";
 const airpadClipboardEnabled = String(process.env.AIRPAD_CLIPBOARD_ENABLED ?? process.env.CLIPBOARD_ENABLED ?? "").toLowerCase() !== "false";
 
 export interface AirpadSocketHandlerOptions {
     logger?: any;
     onObjectMessage?: AirpadObjectMessageHandler;
+    onBinaryMessage?: AirpadBinaryMessageHandler;
     onDisconnect?: AirpadDisconnectHandler;
 }
 
@@ -115,7 +117,7 @@ function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array): vo
 }
 
 export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSocketHandlerOptions = {}): void {
-    const { logger, onObjectMessage, onDisconnect } = options;
+    const { logger, onObjectMessage, onBinaryMessage, onDisconnect } = options;
     airpadSockets.add(socket);
 
     readAirpadClipboard()
@@ -124,6 +126,8 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
 
     socket.on("message", async (data: any) => {
         if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
+            const handled = await onBinaryMessage?.(data as any, socket);
+            if (handled) return;
             handleAirpadBinaryMessage(logger, data);
             return;
         }
