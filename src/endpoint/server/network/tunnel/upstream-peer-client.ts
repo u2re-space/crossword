@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { createDecipheriv, createHash, createVerify, randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
+import { normalizeTunnelRoutingFrame } from "../routing/index.ts";
 
 type UpstreamPeerConfig = {
     enabled?: boolean;
@@ -333,7 +334,11 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
                 }
                 if (msgType === "pong") return;
 
-                options.onMessage?.(parsed, text, cfg);
+                options.onMessage?.(
+                    normalizeTunnelRoutingFrame(parsed, cfg.deviceId || cfg.userId || rawConfig?.upstream?.userId || "", { via: cfg.endpointUrl }),
+                    text,
+                    cfg
+                );
             } catch {
                 // ignore malformed payloads
             }

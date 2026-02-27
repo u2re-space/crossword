@@ -11,6 +11,13 @@ import {
 import { readClipboard, writeClipboard } from "./clipboard.ts";
 import { Settings } from "@rs-server/lib/settings.ts";
 import config from "../config/config.ts";
+import {
+    inferNetworkSurface,
+    makeTargetTokenSet,
+    resolveDispatchAudience,
+    resolveDispatchPlan,
+    type DispatchRouteDecision
+} from "../network/topology.ts";
 
 type HttpDispatchRequest = {
     url?: string;
@@ -100,7 +107,7 @@ type NetworkContextProvider = {
 type NetworkDispatchBody = {
     userId: string;
     userKey: string;
-    route?: "local" | "upstream" | "both";
+    route?: "auto" | "local" | "upstream" | "both";
     target?: string;
     targetId?: string;
     deviceId?: string;
@@ -112,6 +119,7 @@ type NetworkDispatchBody = {
     data?: any;
     payload?: any;
     broadcast?: boolean;
+    targets?: string[];
 };
 
 const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
@@ -745,11 +753,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const peers = wsHub.getConnectedDevices(userId);
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const upstreamStatus = networkContext?.getUpstreamStatus?.() || null;
+        const isGateway = Boolean(upstreamStatus?.running || upstreamStatus?.connected);
         const nodes = [
             {
                 id: userId,
                 kind: "node",
-                role: "endpoint",
+                role: isGateway ? "gateway+endpoint" : "endpoint",
                 peers: peers.length
             },
             ...peerProfiles.map((peer) => ({
@@ -765,7 +774,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             nodes.push({
                 id: `upstream:${upstreamStatus.userId || "default"}`,
                 kind: "node",
-                role: upstreamStatus.connected ? "upstream-client" : "upstream-client-offline",
+                role: upstreamStatus.connected ? "gateway" : "gateway-offline",
+                parent: isGateway ? userId : undefined,
                 connected: upstreamStatus.connected
             });
         }
@@ -813,7 +823,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const {
             userId,
             userKey,
-            route = "local",
+            route = "auto",
             target,
             targetId,
             deviceId,
@@ -824,7 +834,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             action,
             data,
             payload,
-            broadcast
+            broadcast,
+            targets
         } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -836,6 +847,68 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             : typeof ns === "string" && ns.trim()
                 ? ns.trim()
                 : undefined;
+
+        const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
+        const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
+        const localLabels = makeTargetTokenSet(peerProfiles.map((peer) => peer.label));
+        const localIds = makeTargetTokenSet(peerProfiles.map((peer) => peer.id));
+        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds]);
+        const isLocalTarget = (value: string) => allLocalTargets.has(value.trim().toLowerCase());
+        const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
+        const configuredBroadcastTargets = Array.isArray((config as any)?.broadcastTargets)
+            ? (config as any).broadcastTargets
+            : [];
+        const audience = resolveDispatchAudience({
+            target: destination,
+            targets,
+            broadcast,
+            implicitTargets: configuredBroadcastTargets
+        });
+
+        const requestedTargets = audience.targets.length > 0
+            ? audience.targets
+            : [destination];
+
+        const audienceDecisions = requestedTargets.map((resolvedTarget) => {
+            const targetValue = typeof resolvedTarget === "string" ? resolvedTarget.trim() : "";
+            return {
+                target: targetValue,
+                plan: resolveDispatchPlan({
+                    route,
+                    target: targetValue || undefined,
+                    hasUpstreamTransport: Boolean(networkContext?.sendToUpstream),
+                    isLocalTarget,
+                    surface
+                })
+            };
+        });
+
+        const localDecisionTargets = Array.from(new Set(
+            audienceDecisions
+                .filter((entry) => entry.plan.local && entry.target)
+                .map((entry) => entry.target)
+        ));
+        const upstreamDecisionTargets = audienceDecisions
+            .filter((entry) => entry.plan.upstream && entry.plan.route !== "none")
+            .map((entry) => entry.target);
+
+        const shouldBroadcastLocally = audience.source === "implicit-local-broadcast"
+            || !audience.targets.length && (typeof destination !== "string" || !destination.trim());
+        const audienceRouteHints = audienceDecisions.map((entry) => entry.plan.route);
+        const localPlan = audienceRouteHints.some((entry) => entry === "local" || entry === "both");
+        const upstreamPlan = audienceRouteHints.some((entry) => entry === "upstream" || entry === "both");
+        const aggregateRoute: DispatchRouteDecision["route"] = localPlan && upstreamPlan
+            ? "both"
+            : localPlan
+                ? "local"
+                : upstreamPlan
+                    ? "upstream"
+                    : "none";
+        const reasonSet = new Set(audienceDecisions.map((entry) => entry.plan.reason));
+        const aggregateReason = reasonSet.size === 1
+            ? Array.from(reasonSet)[0]
+            : Array.from(reasonSet).join("; ");
+
         const payloadEnvelope = {
             type: String(type || action || "dispatch"),
             from: userId,
@@ -845,35 +918,76 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
         const targetValue = destination.trim ? destination.trim() : destination;
         const localDeliveryPromise = (async () => {
-            if (route === "local" || route === "both") {
-                if (broadcast === true || !targetValue) {
-                    wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
-                    return true;
-                }
-                return wsHub.sendToDevice(userId, targetValue as string, payloadEnvelope);
+            if (!localPlan) return false;
+
+            if (shouldBroadcastLocally || localDecisionTargets.length === 0) {
+                wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
+                return true;
             }
-            return false;
+
+            const results = await Promise.all(
+                localDecisionTargets.map((resolvedTarget) => wsHub.sendToDevice(userId, resolvedTarget, payloadEnvelope))
+            );
+            return results.some(Boolean);
         })();
 
         const upstreamDispatchPromise = (async () => {
-            if (route === "upstream" || route === "both") {
-                const upstreamPayload = targetValue
-                    ? { ...payloadEnvelope, targetId: targetValue, target: targetValue, to: targetValue }
-                    : payloadEnvelope;
-                return networkContext?.sendToUpstream?.(upstreamPayload) || false;
-            }
-            return false;
+            if (!upstreamPlan || !networkContext?.sendToUpstream) return false;
+            const upstreamTargets = Array.from(new Set(upstreamDecisionTargets.filter(Boolean)));
+            const upstreamPayloads = upstreamTargets.length > 0
+                ? upstreamTargets.map((item) => ({ ...payloadEnvelope, targetId: item, target: item, to: item }))
+                : [payloadEnvelope];
+
+            const results = await Promise.all(
+                upstreamPayloads.map((upstreamPayload) => networkContext?.sendToUpstream?.(upstreamPayload) || false)
+            );
+            return results.some(Boolean);
         })();
 
         const [localDelivered, upstreamDispatched] = await Promise.all([localDeliveryPromise, upstreamDispatchPromise]);
 
+        if (!localPlan && !upstreamPlan) {
+            return {
+                ok: false,
+                error: aggregateReason,
+                route: aggregateRoute,
+                delivered: {
+                    local: localDelivered,
+                    upstream: upstreamDispatched,
+                    target: targetValue || null
+                },
+                routePlan: {
+                    decided: aggregateRoute,
+                    reason: aggregateReason,
+                    local: localPlan,
+                    upstream: upstreamPlan,
+                    audience
+                }
+            };
+        }
+
         return {
             ok: true,
-            route,
+            route: aggregateRoute,
             delivered: {
                 local: localDelivered,
                 upstream: upstreamDispatched,
-                target: targetValue || null
+                target: targetValue || null,
+                targets: requestedTargets
+            },
+            routePlan: {
+                decided: aggregateRoute,
+                reason: aggregateReason,
+                local: localPlan,
+                upstream: upstreamPlan,
+                audience,
+                decisions: audienceDecisions.map((entry) => ({
+                    target: entry.target,
+                    route: entry.plan.route,
+                    local: entry.plan.local,
+                    upstream: entry.plan.upstream,
+                    reason: entry.plan.reason
+                }))
             }
         };
     };

@@ -8,6 +8,7 @@ type EndpointConfig = {
     httpPort?: number;
     broadcastForceHttps?: boolean;
     peers?: string[];
+    broadcastTargets?: string[];
     clipboardPeerTargets?: string[];
     pollInterval?: number;
     httpTimeoutMs?: number;
@@ -49,6 +50,10 @@ const defaultConfig = {
         '192.168.0.110',
         '45.147.121.152'
     ],
+    // Список маршрутов/идентификаторов получателей для /api/network/dispatch.
+    // Формат: id, deviceId, label или любой дополнительный токен цели.
+    // Будет использован как implicit список при broadcast=true.
+    broadcastTargets: [],
     // Список вариантов схема:порт, которые пробуются для peers без явного порта/схемы.
     // Формат: "https:443", "https:8443", "http:8080", "http:80"
     clipboardPeerTargets: ["https:443", "https:8443", "http:8080", "http:80"],

@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
-import config from "../config/config.ts";
+import config from "../../config/config.ts";
 
 type LoggerLike = {
     info?: (obj: any, msg?: string) => void;
@@ -46,10 +46,36 @@ const extractTokenFromQuery = (rawUrl: string | undefined): string => {
     }
 };
 
-const isAuthorizedByQueryToken = (rawUrl: string | undefined): boolean => {
+const extractTokenFromHeaders = (headers: IncomingMessage["headers"]): string => {
+    const readHeader = (value: string | string[] | undefined): string => {
+        if (!value) return "";
+        const raw = Array.isArray(value) ? value[0] : value;
+        return typeof raw === "string" ? raw.trim() : "";
+    };
+
+    const rawAuthorization = readHeader(headers.authorization);
+    if (rawAuthorization.toLowerCase().startsWith("bearer ")) {
+        return rawAuthorization.slice(7).trim();
+    }
+
+    return (
+        readHeader(headers["x-airpad-token"]) ||
+        readHeader(headers["x-airpad-client-token"]) ||
+        ""
+    );
+};
+
+const extractTokenFromRequest = (req: IncomingMessage | undefined): string => {
+    if (!req) return "";
+    const queryToken = extractTokenFromQuery(req.url);
+    if (queryToken) return queryToken;
+    return extractTokenFromHeaders(req.headers);
+};
+
+const isAuthorizedByAirPadToken = (req: IncomingMessage | undefined): boolean => {
     const tokens = getAirPadTokens();
     if (!tokens.length) return true;
-    const token = extractTokenFromQuery(rawUrl);
+    const token = extractTokenFromRequest(req);
     return !!token && tokens.includes(token);
 };
 
@@ -108,10 +134,14 @@ const matchesAllowedOrigin = (origin: string, allowed: string[]): boolean => {
         if (parsedOrigin.port === "" && hasDefaultOriginPort(parsedOrigin.protocol, parsedAllowed.port)) return true;
     }
 
-    const allowPrivate192 = process.env.SOCKET_IO_ALLOW_PRIVATE_192 !== "false";
-    if (!allowPrivate192) return false;
+    const allowPrivateRfc1918 = process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false"
+        && process.env.SOCKET_IO_ALLOW_PRIVATE_192 !== "false";
+    if (!allowPrivateRfc1918) return false;
 
-    if (parsedOrigin.hostname.startsWith("192.168.")) return true;
+    const host = parsedOrigin.hostname;
+    if (host === "localhost" || host.startsWith("127.")) return true;
+    if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
 
     return false;
 };
@@ -125,7 +155,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
         {
             allowedOrigins: effectiveAllowedOrigins,
             source: allowedOrigins.length ? "SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins",
-            allowPrivate192: process.env.SOCKET_IO_ALLOW_PRIVATE_192 !== "false"
+                allowPrivateRfc1918: process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false"
         },
         "[socket.io] CORS origin policy initialized"
     );
@@ -144,6 +174,10 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                     callback(null, true);
                     return;
                 }
+                if (getAirPadTokens().length > 0) {
+                    callback(null, true);
+                    return;
+                }
                 if (matchesAllowedOrigin(origin, effectiveAllowedOrigins)) {
                     callback(null, true);
                     return;
@@ -157,7 +191,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                 callback(null, true);
                 return;
             }
-            if (getAirPadTokens().length > 0 && isAuthorizedByQueryToken(req.url)) {
+            if (isAuthorizedByAirPadToken(req)) {
                 callback(null, true);
                 return;
             }

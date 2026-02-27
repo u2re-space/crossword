@@ -6,7 +6,7 @@ import path from 'node:path';
 import https from 'node:https';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import axios from 'axios';
-import config from '../config/config.ts';
+import config from '../../config/config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
