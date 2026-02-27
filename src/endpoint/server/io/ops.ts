@@ -296,6 +296,19 @@ const reverseDispatchPayload = (feature: string, payload: any) => ({
     }
 });
 
+type AuthContext = {
+    record: Awaited<ReturnType<typeof verifyUser>> | null;
+    settings?: Settings;
+};
+
+const resolveAuthContext = async (userId: string, userKey: string): Promise<AuthContext> => {
+    const [record, settings] = await Promise.all([
+        verifyUser(userId, userKey).catch(() => null),
+        loadUserSettings(userId, userKey).catch(() => undefined as Settings | undefined)
+    ]);
+    return { record, settings };
+};
+
 const toTargetUrl = (
     body: HttpRequestBody,
     targetUrlFromSettings?: string,
@@ -338,11 +351,15 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const payload = (request.body || {}) as HttpRequestBody;
         const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
         const forceHttpsRoute = (request.url || "").startsWith("/core/ops/https") || payload.https === true || payload.secure === true;
-        let settings: Settings;
-        try {
-            settings = await loadUserSettings(userId, userKey);
-        } catch (e) {
-            return { ok: false, error: (e as Error)?.message || "Invalid credentials" };
+        const hasCredentials = Boolean(userId && userKey);
+        const settings = hasCredentials
+            ? (await resolveAuthContext(userId, userKey)).settings
+            : undefined;
+        if (hasCredentials) {
+            const { record } = await resolveAuthContext(userId, userKey);
+            if (!record) {
+                return { ok: false, error: "Invalid credentials" };
+            }
         }
 
         const ops = settings?.core?.ops || {};
@@ -407,12 +424,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             return { ok: false, error: "No requests" };
         }
 
-        let settings: Settings;
-        try {
-            settings = await loadUserSettings(userId, userKey);
-        } catch (e) {
-            /*return { ok: false, error: (e as Error)?.message || "Invalid credentials" };*/
+        const hasCredentials = Boolean(userId && userKey);
+        const authContext = hasCredentials ? await resolveAuthContext(userId, userKey) : { record: null, settings: undefined };
+        if (hasCredentials && !authContext.record) {
+            return { ok: false, error: "Invalid credentials" };
         }
+        const settings = authContext.settings;
 
         const ops = settings?.core?.ops || {};
         const allowUnencrypted = ops.allowUnencrypted !== false;
@@ -495,15 +512,9 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
     const featureDevicesHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
         const { userId, userKey } = request.body || {};
-        const record = await verifyUser(userId, userKey);
+        const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
 
-        let settings: Settings;
-        try {
-            settings = await loadUserSettings(userId, userKey);
-        } catch (e) {
-            settings = {} as Settings;
-        }
         const ops = settings?.core?.ops || {};
         const configuredTargets = Array.isArray((ops as any).httpTargets)
             ? (ops as any).httpTargets
@@ -527,10 +538,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const { userId, userKey, headers, targetId } = body;
         const limit = readFeatureLimit(body);
 
-        const record = await verifyUser(userId, userKey);
+        const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
-
-        const settings = await loadUserSettings(userId, userKey);
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets)
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
@@ -572,10 +581,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const { userId, userKey, headers, targetId } = body;
         const limit = readFeatureLimit(body);
 
-        const record = await verifyUser(userId, userKey);
+        const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
-
-        const settings = await loadUserSettings(userId, userKey);
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets)
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
@@ -617,11 +624,9 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const { userId, userKey, headers, targetId, text } = body;
         const message = readTextPayload(body);
 
-        const record = await verifyUser(userId, userKey);
+        const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         if (!message) return { ok: false, error: "Missing text" };
-
-        const settings = await loadUserSettings(userId, userKey);
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets)
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
@@ -839,23 +844,28 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         };
 
         const targetValue = destination.trim ? destination.trim() : destination;
-        let upstreamDispatched = false;
-        if (route === "upstream" || route === "both") {
-            const upstreamPayload = targetValue
-                ? { ...payloadEnvelope, targetId: targetValue, target: targetValue, to: targetValue }
-                : payloadEnvelope;
-            upstreamDispatched = networkContext?.sendToUpstream?.(upstreamPayload) || false;
-        }
-
-        let localDelivered = false;
-        if (route === "local" || route === "both") {
-            if (broadcast === true || !targetValue) {
-                wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
-                localDelivered = true;
-            } else {
-                localDelivered = wsHub.sendToDevice(userId, targetValue, payloadEnvelope);
+        const localDeliveryPromise = (async () => {
+            if (route === "local" || route === "both") {
+                if (broadcast === true || !targetValue) {
+                    wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
+                    return true;
+                }
+                return wsHub.sendToDevice(userId, targetValue as string, payloadEnvelope);
             }
-        }
+            return false;
+        })();
+
+        const upstreamDispatchPromise = (async () => {
+            if (route === "upstream" || route === "both") {
+                const upstreamPayload = targetValue
+                    ? { ...payloadEnvelope, targetId: targetValue, target: targetValue, to: targetValue }
+                    : payloadEnvelope;
+                return networkContext?.sendToUpstream?.(upstreamPayload) || false;
+            }
+            return false;
+        })();
+
+        const [localDelivered, upstreamDispatched] = await Promise.all([localDeliveryPromise, upstreamDispatchPromise]);
 
         return {
             ok: true,

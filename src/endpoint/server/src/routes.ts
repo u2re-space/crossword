@@ -2,7 +2,7 @@
 // HTTP Routes
 // =========================
 
-import { readClipboard, writeClipboard, setBroadcasting } from '../io/clipboard.ts';
+import { writeClipboard, setBroadcasting } from '../io/clipboard.ts';
 import config from '../config/config.ts';
 
 function setUtf8Plain(reply: any) {
@@ -37,7 +37,6 @@ export function registerRoutes(app: any) {
       return reply.code(401).send('Unauthorized');
     }
 
-    setBroadcasting(true);
     try {
       let text = '';
 
@@ -48,25 +47,21 @@ export function registerRoutes(app: any) {
       }
 
       if (!text) {
-        setBroadcasting(false);
         setUtf8Plain(reply);
         return reply.code(400).send('No text provided');
       }
 
-      const current = await readClipboard();
-      if (text !== '' && text != null && current !== text) {
-        await writeClipboard(text);
-      }
-
+      setBroadcasting(true);
+      await writeClipboard(text);
       app.log.info('Copied to clipboard');
-      setBroadcasting(false);
       setUtf8Plain(reply);
       return reply.code(200).send('OK');
     } catch (err) {
       app.log.error({ err }, 'Clipboard error');
-      setBroadcasting(false);
       setUtf8Plain(reply);
       return reply.code(500).send('Clipboard error');
+    } finally {
+      setBroadcasting(false);
     }
   });
 }

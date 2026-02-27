@@ -17,6 +17,12 @@ const clipboardUnsupportedRetryIntervalMs = Math.max(
 type ClipboardProtocol = "http" | "https";
 type ClipboardPeerTarget = { protocol: ClipboardProtocol; port: number };
 
+type ClipboardBroadcastResult = {
+    target: string;
+    ok: boolean;
+    error?: string;
+};
+
 const DEFAULT_CLIPBOARD_PEER_TARGETS: ClipboardPeerTarget[] = [
     { protocol: "https", port: 443 },
     { protocol: "https", port: 8443 },
@@ -154,6 +160,42 @@ async function sendClipboardToPeer(candidate: string, body: string, headers: Rec
     app.log.info(`[Broadcast] Sent to ${candidate}`);
 }
 
+const formatBroadcastError = (err: unknown): string =>
+    [
+        err instanceof Error ? err.message : String(err),
+        (err as any)?.code ? `code=${(err as any).code}` : "",
+        (err as any)?.response?.status ? `status=${(err as any).response.status}` : ""
+    ].filter(Boolean).join(" ");
+
+async function sendClipboardToPeerCandidates(
+    rawPeer: string,
+    body: string,
+    headers: Record<string, string>
+): Promise<ClipboardBroadcastResult> {
+    const candidates = buildClipboardPeerUrlCandidates(rawPeer);
+    if (!candidates.length) {
+        return { target: rawPeer, ok: false, error: `[Broadcast] No valid peer URL: ${rawPeer}` };
+    }
+
+    const attempts = candidates.map(async (candidate) => {
+        try {
+            await sendClipboardToPeer(candidate, body, headers);
+            return { ok: true, candidate };
+        } catch (err: any) {
+            return { ok: false, candidate, error: formatBroadcastError(err) };
+        }
+    });
+
+    const settled = await Promise.all(attempts);
+    const firstSuccess = settled.find((item) => item.ok);
+    if (firstSuccess?.ok) {
+        return { target: rawPeer, ok: true };
+    }
+
+    const lastError = settled[settled.length - 1]?.error || "unknown error";
+    return { target: rawPeer, ok: false, error: `[Broadcast] Failed to send to ${rawPeer}: ${lastError}` };
+}
+
 function isClipboardUnavailableError(err: unknown): boolean {
     const message = String((err as any)?.message || '');
     const fallbackMessage = String((err as any)?.fallbackError?.message || '');
@@ -212,29 +254,15 @@ async function broadcastClipboard(text: string) {
 
     app.log.info({ peers }, '[Broadcast] Sending to peers');
     isBroadcasting = true;
-    await Promise.all(
-        peers.map(async (rawUrl: string) => {
-            const candidates = buildClipboardPeerUrlCandidates(rawUrl);
-            let ok = false;
-            let lastError = "";
-
-            for (const candidate of candidates) {
-                try {
-                    await sendClipboardToPeer(candidate, body, headers);
-                    ok = true;
-                    break;
-                } catch (err: any) {
-                    const code = err?.code ? ` code=${err.code}` : "";
-                    const status = err?.response?.status ? ` status=${err.response.status}` : "";
-                    lastError = `[Broadcast] Failed to send to ${candidate}:${code}${status} ${err?.message || err}`;
-                }
-            }
-
-            if (!ok) {
-                app.log.warn(lastError || `[Broadcast] No valid peer URL: ${rawUrl}`);
-            }
-        })
+    const results = await Promise.all(
+        peers.map((rawUrl) => sendClipboardToPeerCandidates(rawUrl, body, headers))
     );
+
+    for (const result of results) {
+        if (!result.ok) {
+            app.log.warn(result.error || `[Broadcast] Failed to send to ${result.target}`);
+        }
+    }
 
     isBroadcasting = false;
 }
