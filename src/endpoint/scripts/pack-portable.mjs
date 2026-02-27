@@ -66,6 +66,7 @@ const DEFAULT_PORTABLE_CONFIG = {
         skipOutputCopy: false,
         nodeModulesMode: "none",
         includeNodeModules: false,
+        archiveRetentionCount: 1,
         preserveTargets: ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
     },
     remote: {
@@ -80,7 +81,8 @@ const DEFAULT_PORTABLE_CONFIG = {
         SOCKET_IO_ALLOWED_ORIGINS: "all",
         SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS: true,
         SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH: true,
-        CORS_ALLOW_PRIVATE_NETWORK: true
+        CORS_ALLOW_PRIVATE_NETWORK: true,
+        AIRPAD_START_MODE: "start"
     }
 };
 
@@ -129,10 +131,12 @@ const EXCLUDED_TOP_LEVEL = new Set([
 
 const nodeModulesMode = String(process.env.PORTABLE_NODE_MODULES_MODE || PORTABLE_CONFIG.build?.nodeModulesMode || "none").toLowerCase();
 const includeNodeModules = nodeModulesMode === "copy" || nodeModulesMode === "ci";
+const archiveRetentionCount = toInt(process.env.PORTABLE_ARCHIVE_RETENTION_COUNT || PORTABLE_CONFIG.build?.archiveRetentionCount, 3);
 const nowStamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
 const archiveFlavor = includeNodeModules ? `with-node_modules-${nodeModulesMode}` : "slim";
 const archiveName = `endpoint-portable-${archiveFlavor}-${nowStamp}.tar.gz`;
 const archivePath = path.resolve(PORTABLE_DIR, archiveName);
+const archivePattern = /^endpoint-portable-(with-node_modules-(?:copy|ci)|slim)-.+\.tar\.gz$/;
 
 const runOrThrow = (command, args, cwd) => {
     const result = spawnSync(command, args, {
@@ -204,14 +208,15 @@ const writeLaunchers = async () => {
     const launchCmdLines = launchEnvEntries.map(
         ([key, value]) => `if not defined ${key} set "${key}=${stringifyLauncherValue(value)}"`
     );
-    const runSh = `#!/usr/bin/env bash
+const runSh = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
 ${launchShLines.join("\n")}
+start_mode="\${AIRPAD_START_MODE:-start}"
 if command -v pm2 >/dev/null 2>&1; then
   if [ -f "ecosystem.config.cjs" ]; then
-    if pm2 describe crossword-endpoint >/dev/null 2>&1; then
-      exec pm2 restart crossword-endpoint
+    if pm2 describe cws >/dev/null 2>&1; then
+      exec pm2 restart cws
     fi
     exec pm2 start ecosystem.config.cjs
   fi
@@ -224,21 +229,27 @@ if [ ! -f "node_modules/.bin/tsx" ]; then
   echo "[portable] Installing dependencies (first run)..."
   npm ci --include=dev || npm install --include=dev
 fi
-npm run start
+if [ "$start_mode" = "watch" ] || [ "$start_mode" = "1" ] || [ "$start_mode" = "true" ] || [ "$start_mode" = "dev" ]; then
+  npm run start:watch
+else
+  npm run start
+fi
 `;
 
     const runCmd = `@echo off
 setlocal
 cd /d "%~dp0"
 ${launchCmdLines.join("\n")}
+set "AIRPAD_START_MODE=%AIRPAD_START_MODE%"
+if "%AIRPAD_START_MODE%"=="" set "AIRPAD_START_MODE=start"
 where pm2 >nul 2>&1
 if not errorlevel 1 (
   if exist ecosystem.config.cjs (
-    for /f "delims=" %%N in ('pm2 describe crossword-endpoint --no-color 2^>nul ^| findstr /C:"crossword-endpoint"') do (
+    for /f "delims=" %%N in ('pm2 describe cws --no-color 2^>nul ^| findstr /C:"cws"') do (
       set "HAS_PM2_APP=1"
     )
     if defined HAS_PM2_APP (
-      call pm2 restart crossword-endpoint --update-env
+      call pm2 restart cws --update-env
     ) else (
       call pm2 start ecosystem.config.cjs
     )
@@ -271,7 +282,11 @@ if not exist "node_modules\\.bin\\tsx.cmd" (
 )
 
 :portable_pm2_fallback
-call npm run start
+if /I "%AIRPAD_START_MODE%"=="watch" (
+  call npm run start:watch
+) else (
+  call npm run start
+)
 set EXIT_CODE=%ERRORLEVEL%
 if not "%EXIT_CODE%"=="0" (
   echo [portable] Endpoint exited with code %EXIT_CODE%.
@@ -306,6 +321,8 @@ ${installNote}
 - Launcher starts \`npm run start\` (\`server/index.ts\`) to preserve full legacy WS/Socket.IO control stack.
 - Default launcher environment:
 ${launcherEnvNotes}
+- Set \`AIRPAD_START_MODE=watch\` to run auto-restart on file changes from the launcher (\`start:watch\`).
+- Archive retention is controlled by \`PORTABLE_ARCHIVE_RETENTION_COUNT\` (default: ${archiveRetentionCount}) in build mode.
 - If clipboard backend is unavailable on Linux headless environments, endpoint still starts.
 `;
 
@@ -322,6 +339,33 @@ ${launcherEnvNotes}
 const createArchive = () => {
     console.log(`[portable] Creating archive: ${archivePath}`);
     runOrThrow("tar", ["-czf", archivePath, "endpoint-portable"], PORTABLE_DIR);
+};
+
+const prunePortableArchives = async (targetDir) => {
+    if (!Number.isFinite(archiveRetentionCount) || archiveRetentionCount <= 0) return;
+    const limit = Math.max(1, Math.floor(archiveRetentionCount));
+    const entries = await readdir(targetDir, { withFileTypes: true }).catch(() => []);
+    const archived = [];
+    for (const entry of entries || []) {
+        if (!entry.isFile() || !archivePattern.test(entry.name)) continue;
+        try {
+            const fullPath = path.resolve(targetDir, entry.name);
+            const info = await stat(fullPath);
+            archived.push({ fullPath, mtime: info.mtimeMs });
+        } catch {
+            continue;
+        }
+    }
+    archived.sort((a, b) => b.mtime - a.mtime);
+    const removals = archived.slice(limit);
+    for (const item of removals) {
+        try {
+            await rm(item.fullPath, { force: true });
+            console.log(`[portable] Removed old archive: ${item.fullPath}`);
+        } catch {
+            // best effort cleanup
+        }
+    }
 };
 
 const normalizeWindowsPath = (value) => String(value || "").trim();
@@ -542,6 +586,7 @@ const copyToConfiguredOutput = async () => {
                 await cp(sourceEntry, targetEntry, { recursive: true });
             }
             await cp(archivePath, outputArchive, { force: true });
+            await prunePortableArchives(path.dirname(outputArchive));
             console.log(`[portable] Local mirror complete: ${outputBundleDir}`);
             console.log(`[portable] Local archive mirrored: ${outputArchive}`);
             return;
@@ -591,6 +636,7 @@ const main = async () => {
     await installNodeModules();
     await writeLaunchers();
     createArchive();
+    await prunePortableArchives(PORTABLE_DIR);
     await copyToConfiguredOutput();
 
     console.log(`[portable] Done: ${BUNDLE_DIR}`);

@@ -11,7 +11,7 @@ HOST_LINUX="u2re-dev@192.168.0.200"
 HOST_WINDOWS="U2RE@192.168.0.110"
 LINUX_ROOT="/home/u2re-dev/U2RE.space/apps/CrossWord/src/endpoint"
 WINDOWS_ROOT="C:/Users/U2RE/endpoint-portable"
-PM2_APP_NAME="crossword-endpoint"
+PM2_APP_NAME="cws"
 
 ACTION="${1:-status}"
 TARGET="${2:-both}"

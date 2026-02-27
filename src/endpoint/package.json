@@ -1,5 +1,5 @@
 {
-    "name": "crossword-endpoint",
+    "name": "cws",
     "version": "1.0.0",
     "description": "Unified IO Backend combining CrossWord backend, dependencies, and main server functionality",
     "main": "server/index.ts",
@@ -10,7 +10,10 @@
     "scripts": {
         "start:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
         "start": "npm run start:with-env",
+        "start:with-env:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/index.ts",
+        "start:watch": "npm run start:with-env:watch",
         "start:fastify": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/fastify-server.ts",
+        "start:fastify:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/fastify-server.ts",
         "dev:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
         "dev": "npm run dev:with-env",
         "pack:portable": "PORTABLE_NODE_MODULES_MODE=none node ./scripts/pack-portable.mjs",

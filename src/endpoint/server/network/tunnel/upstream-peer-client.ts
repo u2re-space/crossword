@@ -164,6 +164,27 @@ const formatCloseReason = (reason: Buffer | string | undefined): string => {
     }
 };
 
+const parseEnvBoolean = (value: string | undefined): boolean | undefined => {
+    if (value === undefined) return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (["1", "true", "yes", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "off"].includes(normalized)) return false;
+    return undefined;
+};
+
+const parseEnvNumber = (value: string | undefined, fallback: number): number => {
+    if (value === undefined) return fallback;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseEnvEndpointList = (value: string | undefined): string[] => {
+    return String(value || "")
+        .split(/[;,]/)
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+};
+
 let invalidCredentialBlockUntil = 0;
 
 const formatHintForInvalidCredentials = (userId?: string, deviceId?: string, endpoint?: string) => {
@@ -265,22 +286,33 @@ const decodeServerPayload = (rawText: string, cfg: Required<UpstreamPeerConfig>)
 
 const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerConfig> | null => {
     const upstream = config?.upstream || {};
-    const enabled = upstream.enabled === true;
-    const endpointEntries = Array.isArray(upstream.endpoints)
-        ? upstream.endpoints
-        : typeof upstream.endpointUrl === "string"
-            ? [upstream.endpointUrl]
+    const envUpstreamEnabled = parseEnvBoolean(process.env.AIRPAD_UPSTREAM_ENABLED);
+    const envEndpointUrl = String(process.env.AIRPAD_UPSTREAM_ENDPOINT_URL ?? "").trim();
+    const envEndpoints = parseEnvEndpointList(process.env.AIRPAD_UPSTREAM_ENDPOINTS);
+    const envUserId = String(process.env.AIRPAD_UPSTREAM_USER_ID ?? "").trim();
+    const envUserKey = String(process.env.AIRPAD_UPSTREAM_USER_KEY ?? "").trim();
+    const envDeviceId = String(process.env.AIRPAD_UPSTREAM_DEVICE_ID ?? "").trim();
+    const envNamespace = String(process.env.AIRPAD_UPSTREAM_NAMESPACE ?? "").trim();
+    const envReconnectMs = parseEnvNumber(process.env.AIRPAD_UPSTREAM_RECONNECT_MS, 0);
+
+    const enabled = envUpstreamEnabled === undefined ? upstream.enabled === true : envUpstreamEnabled;
+    const endpointEntries = envEndpoints.length
+        ? envEndpoints
+        : Array.isArray(upstream.endpoints)
+            ? upstream.endpoints
+            : typeof upstream.endpointUrl === "string"
+                ? [upstream.endpointUrl]
             : [];
     const normalizedEndpoints = endpointEntries
         .map((item) => String(item ?? "").trim())
         .filter((item) => !!item);
     const uniqueEndpoints = Array.from(new Set(normalizedEndpoints));
 
-    const endpointUrl = typeof upstream.endpointUrl === "string"
+    const endpointUrl = envEndpointUrl || (typeof upstream.endpointUrl === "string"
         ? upstream.endpointUrl.trim()
-        : uniqueEndpoints[0] || "";
-    const userId = typeof upstream.userId === "string" ? upstream.userId.trim() : "";
-    const userKey = typeof upstream.userKey === "string" ? upstream.userKey.trim() : "";
+        : uniqueEndpoints[0] || "");
+    const userId = envUserId || (typeof upstream.userId === "string" ? upstream.userId.trim() : "");
+    const userKey = envUserKey || (typeof upstream.userKey === "string" ? upstream.userKey.trim() : "");
     if (!enabled) {
         if (isTunnelDebug) {
             console.info(
@@ -318,13 +350,13 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
         endpointUrl,
         userId,
         userKey,
-        deviceId: typeof upstream.deviceId === "string" && upstream.deviceId.trim()
+        deviceId: envDeviceId || (typeof upstream.deviceId === "string" && upstream.deviceId.trim()
             ? upstream.deviceId.trim()
-            : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`,
-        namespace: typeof upstream.namespace === "string" && upstream.namespace.trim()
+            : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`),
+        namespace: envNamespace || (typeof upstream.namespace === "string" && upstream.namespace.trim()
             ? upstream.namespace.trim()
-            : "default",
-        reconnectMs: Number.isFinite(reconnectMs) && reconnectMs > 0 ? reconnectMs : 5000
+            : "default"),
+        reconnectMs: Number.isFinite(envReconnectMs) && envReconnectMs > 0 ? envReconnectMs : (Number.isFinite(reconnectMs) && reconnectMs > 0 ? reconnectMs : 5000)
     };
 };
 

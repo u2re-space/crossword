@@ -11,16 +11,19 @@
     ],
     "upstream": {
       "enabled": true,
-      "endpointUrl": "45.147.121.152:8443",
+      "endpointUrl": "192.168.0.200:8443",
       "userId": "U2RE",
       "userKey": "n3v3rm1nd",
       "upstreamMasterKey": "n3v3rm1nd",
       "upstreamSigningPrivateKeyPem": "",
       "upstreamPeerPublicKeyPem": "",
-      "deviceId": "L-192.168.0.200",
+      "deviceId": "",
       "namespace": "default",
       "reconnectMs": 5000,
-      "endpoints": []
+      "endpoints": [
+        "192.168.0.200:8443",
+        "45.147.121.152:8443"
+      ]
     }
   },
   "endpointRuntimeDefaults": {
@@ -39,8 +42,7 @@
     "clipboardPeerTargets": [
       "https:443",
       "https:8443",
-      "http:8080",
-      "http:80"
+      "http:8080"
     ],
     "pollInterval": 100,
     "httpTimeoutMs": 10000,
@@ -52,6 +54,7 @@
     "skipOutputCopy": false,
     "nodeModulesMode": "none",
     "includeNodeModules": false,
+    "archiveRetentionCount": 1,
     "preserveTargets": [
       "node_modules",
       ".data",
@@ -79,6 +82,12 @@
     "SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS": true,
     "SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH": true,
     "CORS_ALLOW_PRIVATE_NETWORK": true,
-    "AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED": false
+    "AIRPAD_UPSTREAM_ENDPOINT_URL": "192.168.0.200:8443",
+    "AIRPAD_UPSTREAM_ENDPOINTS": "192.168.0.200:8443,45.147.121.152:8443",
+    "AIRPAD_UPSTREAM_ENABLED": true,
+    "AIRPAD_UPSTREAM_USER_ID": "U2RE",
+    "AIRPAD_UPSTREAM_USER_KEY": "n3v3rm1nd",
+    "AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED": false,
+    "AIRPAD_START_MODE": "start"
   }
 }
