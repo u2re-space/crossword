@@ -516,6 +516,10 @@
         justify-content: center;
         z-index: 1000;
         padding: var(--space-4);
+        overflow: hidden;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+        scrollbar-color: transparent transparent;
 
         &.flex {
             display: flex;
@@ -526,11 +530,28 @@
         background: var(--surface-container-high);
         border: 1px solid var(--outline-variant);
         border-radius: var(--radius-2xl);
-        padding: var(--space-6);
-        max-inline-size: 28rem;
-        inline-size: calc(100vw - var(--space-8));
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-1, 4px);
+        min-inline-size: min(28rem, 100cqi, 100%);
+        max-inline-size: max-content;
+        max-block-size: min(80cqb, 48rem, 80dvb) !important;
+        inline-size: min(calc(min(100cqi, 100%) - var(--space-8)), min(28rem, 100cqi, 100%));
+        min-block-size: 0px;
+        block-size: min(80cqb, 48rem, 80dvb) !important;
+        overflow: hidden;
         box-shadow: var(--elevation-5);
         animation: scaleIn 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        overscroll-behavior: contain;
+        flex-grow: 0;
+        flex-shrink: 1;
+        flex-basis: auto;
+        contain: strict !important;
+        container-type: size !important;
+        container-name: config-panel !important;
+        pointer-events: auto;
+        touch-action: pan-y;
+        user-select: none;
 
         h3 {
             margin: 0 0 var(--space-6) 0;
@@ -538,12 +559,30 @@
             font-weight: var(--font-weight-semibold);
             color: var(--on-surface);
             line-height: var(--line-height-tight);
+            margin-block-start: var(--space-4, 16px);
+            text-align: center;
         }
     }
 
+    .config-panel__body {
+        flex: 1;
+        min-block-size: 0;
+        overflow-block: auto;
+        overflow-inline: visible;
+        padding-inline: 0px;
+        box-sizing: border-box;
+        overscroll-behavior: contain;
+        inline-size: stretch;
+        block-size: stretch;
+        scrollbar-width: thin;
+        scrollbar-color: var(--outline-variant) transparent;
+        contain: strict !important;
+    }
 
     .config-group {
         margin-block-end: var(--space-5);
+        padding-inline: var(--space-4, 16px);
+        overflow: visible;
 
         label {
             display: block;

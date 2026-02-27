@@ -13,6 +13,8 @@ const clipboardUnsupportedRetryIntervalMs = Math.max(
     5000,
     Number((config as any)?.clipboardUnsupportedRetryIntervalMs ?? 60000)
 );
+const clipboardFeatureEnabled = String(process.env.CLIPBOARD_ENABLED ?? "").toLowerCase() !== "false";
+const stopClipboardRetryOnUnsupported = String(process.env.CLIPBOARD_STOP_ON_UNSUPPORTED || "true").toLowerCase() !== "false";
 
 type ClipboardProtocol = "http" | "https";
 type ClipboardPeerTarget = { protocol: ClipboardProtocol; port: number };
@@ -66,6 +68,7 @@ let app: any = null;
 let clipboardUnsupported = false;
 let lastClipboardErrorLogAt = 0;
 let pollingTimer: NodeJS.Timeout | null = null;
+let clipboardUnavailableNotified = false;
 
 type ClipboardChangeSource = 'local' | 'network';
 type ClipboardListener = (text: string, meta: { source: ClipboardChangeSource }) => void;
@@ -196,7 +199,7 @@ async function sendClipboardToPeerCandidates(
     return { target: rawPeer, ok: false, error: `[Broadcast] Failed to send to ${rawPeer}: ${lastError}` };
 }
 
-function isClipboardUnavailableError(err: unknown): boolean {
+export function isClipboardUnavailableError(err: unknown): boolean {
     const message = String((err as any)?.message || '');
     const fallbackMessage = String((err as any)?.fallbackError?.message || '');
     const stack = String((err as any)?.stack || '');
@@ -209,9 +212,18 @@ function isClipboardUnavailableError(err: unknown): boolean {
     );
 }
 
+function markClipboardUnavailable(err: unknown): void {
+    if (!isClipboardUnavailableError(err)) return;
+    clipboardUnsupported = true;
+}
+
 async function readClipboardWithTimeout(): Promise<string> {
+    if (!clipboardFeatureEnabled) return "";
     return await Promise.race<string>([
-        clipboardy.read(),
+        clipboardy.read().catch((err) => {
+            markClipboardUnavailable(err);
+            throw err;
+        }),
         new Promise<string>((_, reject) => {
             setTimeout(() => reject(new Error(`Clipboard read timeout (${clipboardReadTimeoutMs}ms)`)), clipboardReadTimeoutMs);
         })
@@ -268,7 +280,7 @@ async function broadcastClipboard(text: string) {
 }
 
 async function pollClipboard() {
-    if (clipboardUnsupported) return;
+    if (clipboardUnsupported || !clipboardFeatureEnabled) return;
     try {
         const current = normalizeText(await readClipboardWithTimeout());
 
@@ -296,10 +308,10 @@ async function pollClipboard() {
     } catch (err) {
         if (isClipboardUnavailableError(err)) {
             clipboardUnsupported = true;
-            app?.log?.warn?.(
-                { err },
-                '[Poll] Clipboard backend is unavailable. Polling is temporarily disabled and will retry later.'
-            );
+            if (!clipboardUnavailableNotified) {
+                app?.log?.warn?.('[Poll] Clipboard backend is unavailable; polling is temporarily disabled.');
+                clipboardUnavailableNotified = true;
+            }
             return;
         }
         if (shouldLogClipboardErrorNow()) {
@@ -309,6 +321,9 @@ async function pollClipboard() {
 }
 
 export function startClipboardPolling() {
+    if (!clipboardFeatureEnabled) {
+        return;
+    }
     if (pollingTimer) return;
     const intervalMs = Math.max(10, Number(pollInterval) || 100);
     const loop = () => {
@@ -320,8 +335,15 @@ export function startClipboardPolling() {
                     clipboardUnsupported = false;
                     app?.log?.info?.('[Poll] Clipboard backend became available again; polling resumed.');
                 } catch (err) {
-                    if (shouldLogClipboardErrorNow()) {
-                        app?.log?.warn?.({ err }, '[Poll] Clipboard backend still unavailable.');
+                    if (isClipboardUnavailableError(err)) {
+                        if (stopClipboardRetryOnUnsupported) {
+                            return;
+                        }
+                        if (shouldLogClipboardErrorNow()) {
+                            app?.log?.warn?.('[Poll] Clipboard backend still unavailable.');
+                        }
+                    } else if (shouldLogClipboardErrorNow()) {
+                        app?.log?.warn?.('[Poll] Clipboard backend still unavailable.');
                     }
                     loop();
                     return;
@@ -335,12 +357,25 @@ export function startClipboardPolling() {
 }
 
 export async function readClipboard(): Promise<string> {
-    return await clipboardy.read();
+    if (!clipboardFeatureEnabled) return "";
+    try {
+        return await clipboardy.read();
+    } catch (err) {
+        markClipboardUnavailable(err);
+        return "";
+    }
 }
 
-export async function writeClipboard(text: string): Promise<void> {
-    await clipboardy.write(text);
+export async function writeClipboard(text: string): Promise<boolean> {
+    if (!clipboardFeatureEnabled) return false;
+    try {
+        await clipboardy.write(text);
+    } catch (err) {
+        markClipboardUnavailable(err);
+        return false;
+    }
     lastNetworkClipboard = text;
     lastClipboard = text;
     emitClipboardChange(text, 'network');
+    return true;
 }

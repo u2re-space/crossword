@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import config from "../config/config.ts";
 
 type RobotButton = 'left' | 'right' | 'middle';
 type RobotToggleState = 'down' | 'up';
@@ -19,10 +20,49 @@ const require = createRequire(import.meta.url);
 let robotInstance: RobotLike | null = null;
 let triedLoading = false;
 let warnedUnavailable = false;
+const parseBooleanValue = (value: unknown): boolean | undefined => {
+    if (typeof value === "boolean") return value;
+    if (typeof value !== "string") return undefined;
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (["0", "false", "off", "no", "disabled"].includes(normalized)) return false;
+    if (["1", "true", "on", "yes", "enabled"].includes(normalized)) return true;
+    return true;
+};
+
+const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
+    for (const item of candidates) {
+        const parsed = parseBooleanValue(item);
+        if (typeof parsed === "boolean") return parsed;
+    }
+    return undefined;
+};
+
+const robotJsEnv = pickConfigFlag(
+    process.env.AIRPAD_ROBOTJS_ENABLED,
+    process.env.ENDPOINT_ROBOTJS_ENABLED,
+    process.env.ROBOTJS_ENABLED
+);
+const robotJsConfig = pickConfigFlag(
+    (config as any)?.core?.robotJsEnabled,
+    (config as any)?.core?.robotjsEnabled,
+    (config as any)?.airpad?.robotJsEnabled,
+    (config as any)?.airpad?.robotjsEnabled,
+    (config as any)?.robotJsEnabled,
+    (config as any)?.robotjsEnabled,
+    (config as any)?.robotEnabled
+);
+const defaultRobotJsEnabled = process.platform === "win32";
+const robotJsEnabled = robotJsEnv ?? robotJsConfig ?? defaultRobotJsEnabled;
 
 function loadRobot(): RobotLike | null {
     if (triedLoading) return robotInstance;
     triedLoading = true;
+    if (!robotJsEnabled) {
+        robotInstance = null;
+        return robotInstance;
+    }
 
     try {
         robotInstance = require('robotjs') as RobotLike;

@@ -5,6 +5,8 @@
 import {
     getRemoteHost,
     setRemoteHost,
+    getRemoteTunnelHost,
+    setRemoteTunnelHost,
     getRemotePort,
     setRemotePort,
     getRemoteProtocol,
@@ -34,47 +36,53 @@ export function createConfigUI(): HTMLElement {
     overlay.innerHTML = `
         <div class="config-panel">
             <h3>Airpad Configuration</h3>
+            <div class="config-panel__body">
+                <div class="config-group">
+                    <label for="remoteHost">Remote Host/IP:</label>
+                    <input type="text" id="remoteHost" />
+                </div>
 
-            <div class="config-group">
-                <label for="remoteHost">Remote Host/IP:</label>
-                <input type="text" id="remoteHost" />
-            </div>
+                <div class="config-group">
+                    <label for="remoteTunnelHost">Tunnel/DMZ Host (optional):</label>
+                    <input type="text" id="remoteTunnelHost" placeholder="public-host-or-ip[:port]" />
+                </div>
 
-            <div class="config-group">
-                <label for="remotePort">Remote Port:</label>
-                <input type="text" id="remotePort" />
-            </div>
+                <div class="config-group">
+                    <label for="remotePort">Remote Port:</label>
+                    <input type="text" id="remotePort" />
+                </div>
 
-            <div class="config-group">
-                <label for="remoteProtocol">Remote Protocol:</label>
-                <select id="remoteProtocol">
-                    <option value="auto">Auto (recommended)</option>
-                    <option value="https">HTTPS / WSS</option>
-                    <option value="http">HTTP / WS</option>
-                </select>
-            </div>
-            <div class="config-group">
-                <label for="airpadTransportMode">Transport:</label>
-                <select id="airpadTransportMode">
-                    <option value="plaintext">Plaintext</option>
-                    <option value="secure">Secure (signed envelope)</option>
-                </select>
-            </div>
-            <div class="config-group">
-                <label for="airpadAuthToken">Airpad Auth Token:</label>
-                <input type="text" id="airpadAuthToken" />
-            </div>
-            <div class="config-group">
-                <label for="airpadClientId">Airpad Client ID:</label>
-                <input type="text" id="airpadClientId" />
-            </div>
-            <div class="config-group">
-                <label for="airpadTransportSecret">Secure Transport Secret:</label>
-                <input type="text" id="airpadTransportSecret" />
-            </div>
-            <div class="config-group">
-                <label for="airpadSigningSecret">Signing Secret (HMAC):</label>
-                <input type="password" id="airpadSigningSecret" />
+                <div class="config-group">
+                    <label for="remoteProtocol">Remote Protocol:</label>
+                    <select id="remoteProtocol">
+                        <option value="auto">Auto (recommended)</option>
+                        <option value="https">HTTPS / WSS</option>
+                        <option value="http">HTTP / WS</option>
+                    </select>
+                </div>
+                <div class="config-group">
+                    <label for="airpadTransportMode">Transport:</label>
+                    <select id="airpadTransportMode">
+                        <option value="plaintext">Plaintext</option>
+                        <option value="secure">Secure (signed envelope)</option>
+                    </select>
+                </div>
+                <div class="config-group">
+                    <label for="airpadAuthToken">Airpad Auth Token:</label>
+                    <input type="text" id="airpadAuthToken" />
+                </div>
+                <div class="config-group">
+                    <label for="airpadClientId">Airpad Client ID:</label>
+                    <input type="text" id="airpadClientId" />
+                </div>
+                <div class="config-group">
+                    <label for="airpadTransportSecret">Secure Transport Secret:</label>
+                    <input type="text" id="airpadTransportSecret" />
+                </div>
+                <div class="config-group">
+                    <label for="airpadSigningSecret">Signing Secret (HMAC):</label>
+                    <input type="password" id="airpadSigningSecret" />
+                </div>
             </div>
 
             <div class="config-actions">
@@ -86,6 +94,7 @@ export function createConfigUI(): HTMLElement {
 
     // Add event listeners
     const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement;
+    const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement;
     const portInput = overlay.querySelector('#remotePort') as HTMLInputElement;
     const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement;
     const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement;
@@ -97,6 +106,7 @@ export function createConfigUI(): HTMLElement {
     const cancelButton = overlay.querySelector('#cancelConfig') as HTMLButtonElement;
 
     hostInput.value = getRemoteHost();
+    tunnelHostInput.value = getRemoteTunnelHost();
     portInput.value = getRemotePort();
     protocolInput.value = getRemoteProtocol();
     transportModeInput.value = getAirPadTransportMode();
@@ -107,6 +117,7 @@ export function createConfigUI(): HTMLElement {
 
     saveButton.addEventListener('click', () => {
         setRemoteHost(hostInput.value);
+        setRemoteTunnelHost(tunnelHostInput.value);
         setRemotePort(portInput.value);
         setRemoteProtocol(protocolInput.value);
         setAirPadTransportMode(transportModeInput.value);
@@ -155,6 +166,7 @@ export function showConfigUI(): void {
         host.appendChild(overlay);
     } else {
         const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement | null;
+        const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement | null;
         const portInput = overlay.querySelector('#remotePort') as HTMLInputElement | null;
         const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement | null;
         const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement | null;
@@ -163,6 +175,7 @@ export function showConfigUI(): void {
         const transportSecretInput = overlay.querySelector('#airpadTransportSecret') as HTMLInputElement | null;
         const signingSecretInput = overlay.querySelector('#airpadSigningSecret') as HTMLInputElement | null;
         if (hostInput) hostInput.value = getRemoteHost();
+        if (tunnelHostInput) tunnelHostInput.value = getRemoteTunnelHost();
         if (portInput) portInput.value = getRemotePort();
         if (protocolInput) protocolInput.value = getRemoteProtocol();
         if (transportModeInput) transportModeInput.value = getAirPadTransportMode();

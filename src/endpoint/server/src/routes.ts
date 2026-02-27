@@ -52,8 +52,14 @@ export function registerRoutes(app: any) {
       }
 
       setBroadcasting(true);
-      await writeClipboard(text);
-      app.log.info('Copied to clipboard');
+      const written = await writeClipboard(text);
+      if (written) {
+        app.log.info('Copied to clipboard');
+      } else {
+        app.log.warn('Clipboard backend unavailable, request accepted without local write');
+        setUtf8Plain(reply);
+        return reply.code(204).send('Clipboard unavailable');
+      }
       setUtf8Plain(reply);
       return reply.code(200).send('OK');
     } catch (err) {

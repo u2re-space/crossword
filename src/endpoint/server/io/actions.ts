@@ -3,6 +3,7 @@
 // =========================
 
 import clipboardy from 'clipboardy';
+import config from "../config/config.ts";
 import { ahkService } from './ahk-service.ts';
 import { getRobot } from './robot-adapter.ts';
 
@@ -10,6 +11,42 @@ let useAHK = false;
 let ahkInitialized = false;
 let ahkInitPromise: Promise<boolean> | null = null;
 const preferAhkMouse = process.env.ENDPOINT_USE_AHK_MOUSE === '1';
+const parseBooleanValue = (value: unknown): boolean | undefined => {
+    if (typeof value === "boolean") return value;
+    if (typeof value !== "string") return undefined;
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (["0", "false", "off", "no", "disabled"].includes(normalized)) return false;
+    if (["1", "true", "on", "yes", "enabled"].includes(normalized)) return true;
+    return true;
+};
+
+const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
+    for (const item of candidates) {
+        const parsed = parseBooleanValue(item);
+        if (typeof parsed === "boolean") return parsed;
+    }
+    return undefined;
+};
+
+const nativeActionsEnv = pickConfigFlag(
+    process.env.AIRPAD_NATIVE_ACTIONS,
+    process.env.ENDPOINT_NATIVE_ACTIONS,
+    process.env.ENDPOINT_ENABLE_NATIVE_ACTIONS
+);
+const nativeActionsConfig = pickConfigFlag(
+    (config as any)?.core?.nativeActionsEnabled,
+    (config as any)?.core?.airpadNativeActions,
+    (config as any)?.core?.airpad?.nativeActionsEnabled,
+    (config as any)?.airpad?.nativeActionsEnabled,
+    (config as any)?.airpad?.nativeActions,
+    (config as any)?.nativeActionsEnabled,
+    (config as any)?.airpadNativeActions,
+    (config as any)?.nativeActions
+);
+const defaultNativeActionsEnabled = process.platform === "win32";
+const nativeActionsEnabled = nativeActionsEnv ?? nativeActionsConfig ?? defaultNativeActionsEnabled;
 
 // Очередь для последовательной обработки символов
 interface CharTask {
@@ -29,6 +66,7 @@ const KEYBOARD_DUPLICATE_WINDOW_MS = 20;
 // =========================
 
 async function initAHKService(): Promise<boolean> {
+    if (!nativeActionsEnabled) return false;
     if (ahkInitialized) return useAHK;
     if (ahkInitPromise) return ahkInitPromise;
 
@@ -59,23 +97,23 @@ function shutdownAHKService() {
 }
 
 function ensureAHKInitialized() {
+    if (!nativeActionsEnabled) return;
     if (!ahkInitialized) {
         void initAHKService();
     }
 }
 
 function canUseAHKMouse(robotAvailable: boolean): boolean {
+    if (!nativeActionsEnabled) return false;
     return useAHK && ahkService.isReady() && (preferAhkMouse || !robotAvailable);
 }
-
-// Try AHK first by default, but never block startup when unavailable.
-void initAHKService();
 
 // =========================
 // Mouse Functions
 // =========================
 
 function executeMouseMove(dx: number, dy: number) {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
     if (canUseAHKMouse(Boolean(robot))) {
@@ -88,6 +126,7 @@ function executeMouseMove(dx: number, dy: number) {
 }
 
 function executeMouseClick(button: 'left' | 'right' | 'middle' = 'left', double: boolean = false) {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
     if (canUseAHKMouse(Boolean(robot))) {
@@ -99,6 +138,7 @@ function executeMouseClick(button: 'left' | 'right' | 'middle' = 'left', double:
 }
 
 function executeMouseToggle(state: 'down' | 'up', button: 'left' | 'right' | 'middle' = 'left') {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
     if (canUseAHKMouse(Boolean(robot))) {
@@ -114,6 +154,7 @@ function executeMouseToggle(state: 'down' | 'up', button: 'left' | 'right' | 'mi
 // =========================
 
 function executeScroll(dx: number, dy: number) {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
     if (canUseAHKMouse(Boolean(robot))) {
@@ -149,6 +190,7 @@ async function processCharQueue() {
 
 // Внутренняя функция выполнения
 async function executeKeyboardCharInternal(charCode: number, flags: number): Promise<void> {
+    if (!nativeActionsEnabled) return;
     // Специальные клавиши
     if (flags === 1) {
         // Backspace
@@ -224,6 +266,7 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
 
 // Fallback вставка через буфер обмена
 async function pasteViaClipboard(text: string): Promise<void> {
+    if (!nativeActionsEnabled) return;
     const robot = getRobot();
     if (!robot) return;
 
@@ -246,6 +289,7 @@ async function pasteViaClipboard(text: string): Promise<void> {
 
 // Публичная функция для отправки символа
 function executeKeyboardChar(charCode: number, flags: number): Promise<void> {
+    if (!nativeActionsEnabled) return Promise.resolve();
     const now = Date.now();
     if (
         lastKeyboardEvent.charCode === charCode &&
@@ -273,6 +317,7 @@ function executeKeyboardChar(charCode: number, flags: number): Promise<void> {
 
 // Отправка строки целиком (оптимизация для paste)
 async function executeKeyboardString(text: string): Promise<void> {
+    if (!nativeActionsEnabled) return;
     if (!ahkInitialized) {
         await initAHKService();
     }
@@ -301,6 +346,7 @@ async function executeActions(actions: any[], appLogger?: any) {
     if (!Array.isArray(actions)) return;
 
     for (const action of actions) {
+        if (!nativeActionsEnabled) continue;
         switch (action.action) {
             case 'move_mouse': {
                 const dx = action.dx || 0;
@@ -407,6 +453,7 @@ export {
 // =========================
 
 function executeCopyHotkey() {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
         void ahkService.sendKey('^c').catch(() => { });
@@ -418,6 +465,7 @@ function executeCopyHotkey() {
 }
 
 function executeCutHotkey() {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
         void ahkService.sendKey('^x').catch(() => { });
@@ -429,6 +477,7 @@ function executeCutHotkey() {
 }
 
 function executePasteHotkey() {
+    if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
         void ahkService.sendKey('^v').catch(() => { });

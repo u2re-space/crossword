@@ -10,6 +10,7 @@ interface StoredRemoteConfig {
     host?: string;
     port?: string;
     protocol?: RemoteProtocol;
+    tunnelHost?: string;
     transportMode?: AirpadTransportMode;
     authToken?: string;
     clientId?: string;
@@ -49,6 +50,7 @@ function persistRemoteConfig(): void {
             host: remoteHost,
             port: remotePort,
             protocol: remoteProtocol,
+            tunnelHost: remoteTunnelHost,
             transportMode: remoteConfig.transportMode,
             authToken: remoteConfig.authToken,
             clientId: remoteConfig.clientId,
@@ -68,6 +70,11 @@ export let remoteProtocol: RemoteProtocol =
     stored.protocol === 'http' || stored.protocol === 'https' || stored.protocol === 'auto'
         ? stored.protocol
         : 'auto';
+export let remoteTunnelHost = (
+    stored.tunnelHost ||
+    readGlobalAirpadValue(["AIRPAD_TUNNEL_HOST"]) ||
+    ''
+).trim();
 const remoteConfig: {
     transportMode: AirpadTransportMode;
     authToken: string;
@@ -89,6 +96,13 @@ export function getRemoteHost(): string {
 
 export function setRemoteHost(host: string): void {
     remoteHost = (host || '').trim();
+    persistRemoteConfig();
+}
+export function getRemoteTunnelHost(): string {
+    return remoteTunnelHost;
+}
+export function setRemoteTunnelHost(host: string): void {
+    remoteTunnelHost = (host || '').trim();
     persistRemoteConfig();
 }
 

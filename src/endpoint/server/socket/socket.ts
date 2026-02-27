@@ -3,7 +3,7 @@
 // =========================
 
 import { Server } from 'socket.io';
-import { registerAirpadSocketHandlers, setupAirpadClipboardBroadcast } from './socket-airpad.ts';
+import { registerAirpadSocketHandlers } from './socket-airpad.ts';
 import { buildSocketIoOptions, describeHandshake } from './socketio-security.ts';
 
 export function setupSocketIO(server: any, logger?: any) {
@@ -45,10 +45,6 @@ export function setupSocketIO(server: any, logger?: any) {
             '[socket.io] Engine connection error'
         );
     });
-
-    // Broadcast clipboard updates to all clients connected to this Socket.IO server instance.
-    // (Receive.ts creates 2 Socket.IO instances: HTTP and HTTPS; clients connect to one of them.)
-    setupAirpadClipboardBroadcast(io as any);
 
     io.on('connection', (socket: any) => {
         logger?.info?.(

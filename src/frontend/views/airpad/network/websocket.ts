@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import { log, getWsStatusEl, getVoiceTextEl } from '../utils/utils';
 import {
     getRemoteHost,
+    getRemoteTunnelHost,
     getRemotePort,
     getRemoteProtocol,
     getAirPadAuthToken,
@@ -21,7 +22,21 @@ let isConnecting = false;
 let btnEl: HTMLElement | null = null;
 let connectAttemptId = 0;
 let activeProbeSocket: Socket | null = null;
+let manualDisconnectRequested = false;
+let autoReconnectAttempts = 0;
+type WSConnectCandidate = {
+    url: string;
+    protocol: 'http' | 'https';
+    host: string;
+    source: 'tunnel' | 'remote' | 'page';
+    port: string;
+    useWebSocketOnly: boolean;
+};
+let lastWsCandidates: WSConnectCandidate[] = [];
+let nextWsCandidateOffset = 0;
 const localNetworkPermissionProbeDone = new Set<string>();
+const AUTO_RECONNECT_MAX_ATTEMPTS = 3;
+const AUTO_RECONNECT_BASE_DELAY_MS = 800;
 type WSConnectionHandler = (connected: boolean) => void;
 const wsConnectionHandlers = new Set<WSConnectionHandler>();
 
@@ -137,6 +152,25 @@ const toSafeObject = (value: unknown): any => {
     } catch {
         return null;
     }
+};
+
+const shouldAutoReconnectAfterDisconnect = (reason?: string): boolean => {
+    if (!reason) {
+        return true;
+    }
+    if (reason === "io server disconnect") {
+        return false;
+    }
+    if (reason === "io client disconnect" || reason === "forced close") {
+        return false;
+    }
+    return true;
+};
+
+const shouldRotateCandidateOnDisconnect = (reason?: string): boolean => {
+    if (!reason) return true;
+    if (reason === "io server disconnect" || reason === "io client disconnect") return false;
+    return true;
 };
 
 const getSecret = (): string => (getAirPadTransportSecret() || "").trim();
@@ -512,10 +546,13 @@ function handleServerMessage(msg: any) {
 export function connectWS() {
     if (isConnecting) return;
     if (socket && (socket.connected || (socket as any).connecting)) return;
+    if (activeProbeSocket) return;
     connectAttemptId += 1;
     const attemptId = connectAttemptId;
+    manualDisconnectRequested = false;
 
     const remoteHost = getRemoteHost() || location.hostname;
+    const remoteTunnelHost = getRemoteTunnelHost().trim();
     const remotePort = getRemotePort().trim();
     const remoteProtocol = getRemoteProtocol();
     const isPrivateIp = (host: string): boolean => {
@@ -527,6 +564,26 @@ export function connectWS() {
             /^172\.(1[6-9]|2\d|3[01])\./.test(host)
         );
     };
+
+    const isLikelyPort = (value: string): boolean => /^\d{1,5}$/.test(value);
+    const stripProtocol = (value: string): string => {
+        const trimmed = value.trim();
+        return trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").split("/")[0];
+    };
+    const parseHostAndPort = (value: string): { host: string; port?: string } | null => {
+        const hostSpec = stripProtocol(value).trim();
+        if (!hostSpec) return null;
+        const at = hostSpec.lastIndexOf(":");
+        if (at <= 0) {
+            return { host: hostSpec };
+        }
+        const host = hostSpec.slice(0, at);
+        const port = hostSpec.slice(at + 1);
+        if (!host || !isLikelyPort(port)) return { host: hostSpec };
+        return { host, port };
+    };
+
+    const tunnelHostSpec = parseHostAndPort(remoteTunnelHost);
     const pageHost = location.hostname || "";
     const isLocalPageHost = /^(localhost|127\.0\.0\.1)$/.test(pageHost) || (
         /^\d{1,3}(?:\.\d{1,3}){3}$/.test(pageHost) &&
@@ -551,10 +608,15 @@ export function connectWS() {
         return location.protocol === 'https:' ? 'https' : 'http';
     };
 
+    const remoteHostSpec = parseHostAndPort(remoteHost);
+    const parsedRemoteHost = remoteHostSpec?.host || remoteHost;
+    const parsedRemotePort = remoteHostSpec?.port;
+
     const primaryProtocol = inferProtocol();
+    const probeHost = parsedRemoteHost || remoteHost;
     const probePort = remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
-    const probeOrigin = `${primaryProtocol}://${remoteHost}:${probePort}`;
-    void tryRequestLocalNetworkPermission(probeOrigin, remoteHost);
+    const probeOrigin = `${primaryProtocol}://${probeHost}:${probePort}`;
+    void tryRequestLocalNetworkPermission(probeOrigin, probeHost);
     const fallbackProtocol = primaryProtocol === 'https' ? 'http' : 'https';
     const defaultPortByProtocol = {
         http: '8080',
@@ -571,9 +633,12 @@ export function connectWS() {
     const isLikelyHttpsPort = (port: string): boolean => port === '443' || port === '8443';
     const isLikelyHttpPort = (port: string): boolean => port === '80' || port === '8080';
 
-    const getPortsForProtocol = (protocol: 'http' | 'https') => {
+    const getPortsForProtocol = (protocol: 'http' | 'https', preferredPort?: string) => {
         const ports: string[] = [];
         // Keep user-provided port only when it matches protocol expectations.
+        if (preferredPort && isLikelyPort(preferredPort) && !ports.includes(preferredPort)) {
+            ports.push(preferredPort);
+        }
         if (remotePort) {
             if (protocol === 'https' && isLikelyHttpsPort(remotePort)) ports.push(remotePort);
             if (protocol === 'http' && isLikelyHttpPort(remotePort)) ports.push(remotePort);
@@ -585,25 +650,83 @@ export function connectWS() {
         return ports.filter((port, idx) => ports.indexOf(port) === idx);
     };
 
-    const fallbackHost = location.hostname && location.hostname !== remoteHost ? location.hostname : undefined;
-    const candidateHosts = [remoteHost, ...(fallbackHost ? [fallbackHost] : [])];
-    const candidates: Array<{ url: string; protocol: 'http' | 'https'; host: string; useWebSocketOnly: boolean }> = [];
+    const hostEntries: Array<{ host: string; source: WSConnectCandidate['source']; preferPort?: string }> = [];
+    if (tunnelHostSpec?.host) {
+        hostEntries.push({
+            host: tunnelHostSpec.host,
+            source: "tunnel",
+            preferPort: tunnelHostSpec.port
+        });
+    }
+    if (parsedRemoteHost) {
+        hostEntries.push({
+            host: parsedRemoteHost,
+            source: "remote",
+            preferPort: parsedRemotePort
+        });
+    } else if (remoteHost) {
+        hostEntries.push({
+            host: remoteHost,
+            source: "remote"
+        });
+    }
+    if (location.hostname) {
+        hostEntries.push({
+            host: location.hostname,
+            source: "page"
+        });
+    }
+    const uniqueHostEntries = new Map<string, { host: string; source: WSConnectCandidate['source']; preferPort?: string }>();
+    for (const entry of hostEntries) {
+        if (entry.host && !uniqueHostEntries.has(entry.host)) {
+            uniqueHostEntries.set(entry.host, entry);
+        }
+    }
+    const candidateHostEntries = Array.from(uniqueHostEntries.values());
+
+    const candidates: WSConnectCandidate[] = [];
     for (const protocol of protocolOrder) {
         // Browsers block active mixed content from HTTPS pages to HTTP endpoints.
         if (location.protocol === 'https:' && protocol === 'http') continue;
-        for (const host of candidateHosts) {
-            for (const port of getPortsForProtocol(protocol)) {
+        for (const hostEntry of candidateHostEntries) {
+            const { host, source, preferPort } = hostEntry;
+            const hostPortOverride = preferPort;
+            for (const port of getPortsForProtocol(protocol, hostPortOverride)) {
                 const useWebSocketOnly = location.protocol === "https:" && isPrivateIp(host) && !isLocalPageHost;
                 candidates.push({
                     url: `${protocol}://${host}:${port}`,
                     protocol,
                     host,
+                    source,
+                    port,
                     useWebSocketOnly
                 });
             }
         }
     }
-    const uniqueCandidates = candidates.filter((item, idx) => candidates.findIndex((x) => x.url === item.url) === idx);
+    const deduplicatedCandidates = candidates.filter((item, idx) => candidates.findIndex((x) => x.url === item.url) === idx);
+    if (deduplicatedCandidates.length === 0) {
+        isConnecting = false;
+        setWsStatus(false);
+        updateButtonLabel();
+        return;
+    }
+
+    const normalizedOffset = deduplicatedCandidates.length > 0 ? nextWsCandidateOffset % deduplicatedCandidates.length : 0;
+    const uniqueCandidates = deduplicatedCandidates
+        .slice(normalizedOffset)
+        .concat(deduplicatedCandidates.slice(0, normalizedOffset));
+    nextWsCandidateOffset = normalizedOffset;
+    lastWsCandidates = uniqueCandidates;
+    if (lastWsCandidates.length <= 1) {
+        nextWsCandidateOffset = 0;
+    }
+
+    const rotateCandidate = () => {
+        if (lastWsCandidates.length > 1) {
+            nextWsCandidateOffset = (nextWsCandidateOffset + 1) % lastWsCandidates.length;
+        }
+    };
 
     isConnecting = true;
     updateButtonLabel();
@@ -628,7 +751,9 @@ export function connectWS() {
 
         const candidate = uniqueCandidates[index];
         const url = candidate.url;
-        log(`Connecting Socket.IO: ${url} (page=${location.protocol}//${location.host})`);
+        const targetHost = parsedRemoteHost || remoteHost;
+        const targetPort = parsedRemotePort || remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
+        log(`Connecting Socket.IO: ${url} via ${candidate.source} (${candidate.host}:${candidate.port}) target=${targetHost}:${targetPort}`);
         const authToken = getAirPadAuthToken().trim();
         const clientId = getAirPadClientId().trim();
         const handshakeAuth: Record<string, string> = {};
@@ -640,8 +765,26 @@ export function connectWS() {
             handshakeAuth.clientId = clientId;
         }
 
+        const queryParams: Record<string, string> = {};
+        const cleanedClientId = clientId.trim();
+        if (authToken) {
+            queryParams.token = authToken;
+            queryParams.airpadToken = authToken;
+        }
+        if (cleanedClientId) {
+            queryParams.clientId = cleanedClientId;
+        }
+        queryParams.__airpad_hop = candidate.host || remoteHost || 'unknown';
+        queryParams.__airpad_host = candidate.host || remoteHost || '';
+        queryParams.__airpad_target = targetHost || '';
+        queryParams.__airpad_via = candidate.source || 'unknown';
+        queryParams.__airpad_target_port = targetPort;
+        queryParams.__airpad_via_port = candidate.port || '';
+        queryParams.__airpad_protocol = candidate.protocol || 'https';
+
         const probeSocket = io(url, {
             auth: handshakeAuth,
+            query: queryParams,
             // For public->private HTTPS (PNA), polling triggers fetch preflight restrictions.
             // Prefer WS-only in that scenario.
             transports: candidate.useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
@@ -664,13 +807,52 @@ export function connectWS() {
             socket = probeSocket;
             log('Socket.IO connected: ' + url);
             isConnecting = false;
+        autoReconnectAttempts = 0;
             setWsStatus(true);
+            socket.emit('hello', { id: getClientId() });
 
-            socket.on('disconnect', () => {
-                log('Socket.IO disconnected');
+            socket.on('disconnect', (reason?: string) => {
+                log('Socket.IO disconnected' + (reason ? `: ${reason}` : ''));
                 isConnecting = false;
                 setWsStatus(false);
-                updateButtonLabel();
+            updateButtonLabel();
+
+            const manual = manualDisconnectRequested;
+            manualDisconnectRequested = false;
+            socket = null;
+            if (manual) {
+                autoReconnectAttempts = 0;
+                return;
+            }
+
+            if (shouldRotateCandidateOnDisconnect(reason)) {
+                rotateCandidate();
+                if (lastWsCandidates.length > 1) {
+                    log(`Socket.IO disconnect reason "${reason || 'unknown'}", trying next candidate on reconnect`);
+                }
+            }
+
+            const attempt = autoReconnectAttempts + 1;
+            if (!shouldAutoReconnectAfterDisconnect(reason) || attempt > AUTO_RECONNECT_MAX_ATTEMPTS) {
+                return;
+            }
+
+            autoReconnectAttempts = attempt;
+            const delay = AUTO_RECONNECT_BASE_DELAY_MS * attempt;
+            setTimeout(() => {
+                if (isConnecting || wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
+                    return;
+                }
+                log(`Socket.IO auto-reconnect attempt ${attempt}/${AUTO_RECONNECT_MAX_ATTEMPTS} after ${reason || "unknown reason"}`);
+                connectWS();
+            }, delay);
+            });
+
+            socket.on('hello-ack', (data: any) => {
+                if (data?.id) {
+                    const id = String(data.id);
+                    log(`Socket.IO hello ack: ${id}`);
+                }
             });
 
             socket.on('connect_error', (error) => {
@@ -746,6 +928,7 @@ export function connectWS() {
 
 export function disconnectWS() {
     connectAttemptId += 1;
+    manualDisconnectRequested = true;
     if (activeProbeSocket) {
         activeProbeSocket.removeAllListeners();
         activeProbeSocket.close();

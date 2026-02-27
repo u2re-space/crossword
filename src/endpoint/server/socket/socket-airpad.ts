@@ -1,4 +1,4 @@
-import type { Server as SocketIOServer, Socket } from "socket.io";
+import type { Socket } from "socket.io";
 
 import { parseBinaryMessage, buttonFromFlags } from "../io/message.ts";
 import {
@@ -22,10 +22,12 @@ import {
     executePasteHotkey,
 } from "../io/actions.ts";
 import { sendVoiceToPython, removePythonSubscriber } from "../gpt/python.ts";
-import { readClipboard, writeClipboard, onClipboardChange } from "../io/clipboard.ts";
+import clipboardy from "clipboardy";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;
+type AirpadClipboardSource = "local" | "network";
+const airpadClipboardEnabled = String(process.env.AIRPAD_CLIPBOARD_ENABLED ?? process.env.CLIPBOARD_ENABLED ?? "").toLowerCase() !== "false";
 
 export interface AirpadSocketHandlerOptions {
     logger?: any;
@@ -35,6 +37,37 @@ export interface AirpadSocketHandlerOptions {
 
 function sleep(ms: number) {
     return new Promise((r) => setTimeout(r, ms));
+}
+
+const airpadSockets = new Set<Socket>();
+
+function emitClipboardUpdate(text: string, source: AirpadClipboardSource): void {
+    const payload = { text, source };
+    for (const client of airpadSockets) {
+        if (!client || client.disconnected) continue;
+        client.emit("clipboard:update", payload);
+    }
+}
+
+async function readAirpadClipboard(): Promise<string> {
+    if (!airpadClipboardEnabled) return "";
+    try {
+        const text = await clipboardy.read();
+        return String(text ?? "");
+    } catch (_err) {
+        return "";
+    }
+}
+
+async function writeAirpadClipboard(text: string): Promise<void> {
+    if (!airpadClipboardEnabled) return;
+    const value = String(text ?? "");
+    if (!value) return;
+    try {
+        await clipboardy.write(value);
+    } catch (_err) {
+        return;
+    }
 }
 
 function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array): void {
@@ -81,16 +114,11 @@ function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array): vo
     }
 }
 
-export function setupAirpadClipboardBroadcast(io: SocketIOServer): void {
-    onClipboardChange((text, meta) => {
-        io.emit("clipboard:update", { text, source: meta.source });
-    });
-}
-
 export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSocketHandlerOptions = {}): void {
     const { logger, onObjectMessage, onDisconnect } = options;
+    airpadSockets.add(socket);
 
-    readClipboard()
+    readAirpadClipboard()
         .then((text) => socket.emit("clipboard:update", { text, source: "local" }))
         .catch(() => { });
 
@@ -128,7 +156,7 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
 
     socket.on("clipboard:get", async (ack?: any) => {
         try {
-            const text = await readClipboard();
+            const text = await readAirpadClipboard();
             const payload = { ok: true, text };
             if (typeof ack === "function") ack(payload);
             socket.emit("clipboard:update", { text, source: "local" });
@@ -141,10 +169,10 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         try {
             executeCopyHotkey();
             await sleep(60);
-            const text = await readClipboard();
+            const text = await readAirpadClipboard();
             const payload = { ok: true, text };
             if (typeof ack === "function") ack(payload);
-            socket.emit("clipboard:update", { text, source: "local" });
+            emitClipboardUpdate(text, "local");
         } catch (err: any) {
             if (typeof ack === "function") ack({ ok: false, error: err?.message || String(err) });
         }
@@ -154,10 +182,10 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         try {
             executeCutHotkey();
             await sleep(60);
-            const text = await readClipboard();
+            const text = await readAirpadClipboard();
             const payload = { ok: true, text };
             if (typeof ack === "function") ack(payload);
-            socket.emit("clipboard:update", { text, source: "local" });
+            emitClipboardUpdate(text, "local");
         } catch (err: any) {
             if (typeof ack === "function") ack({ ok: false, error: err?.message || String(err) });
         }
@@ -167,7 +195,8 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         try {
             const text = typeof data?.text === "string" ? data.text : "";
             if (text) {
-                await writeClipboard(text);
+                await writeAirpadClipboard(text);
+                emitClipboardUpdate(text, "local");
                 await sleep(20);
             }
             executePasteHotkey();
@@ -179,6 +208,7 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
 
     socket.on("disconnect", async (reason: string) => {
         removePythonSubscriber(socket as any);
+        airpadSockets.delete(socket);
         await onDisconnect?.(reason, socket);
     });
 }

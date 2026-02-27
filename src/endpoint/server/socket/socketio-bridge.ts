@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 
 import { parsePayload, verifyWithoutDecrypt } from "../src/crypto-utils.ts";
-import { registerAirpadSocketHandlers, setupAirpadClipboardBroadcast } from "./socket-airpad.ts";
+import { registerAirpadSocketHandlers } from "./socket-airpad.ts";
 import { buildSocketIoOptions, describeHandshake } from "./socketio-security.ts";
 
 type ClipHistoryEntry = {
@@ -75,6 +75,31 @@ const logMsg = (prefix: string, msg: any): void => {
     console.log(
         `[${new Date().toISOString()}] ${prefix} type=${msg?.type} from=${msg?.from} to=${msg?.to} mode=${msg?.mode || "blind"} action=${msg?.action || "N/A"} payloadLen=${payloadLen}`
     );
+};
+
+const describeAirPadConnectionMeta = (socket: Socket): Record<string, unknown> => {
+    const headers: Record<string, unknown> = (socket as any).handshake?.headers || {};
+    const query: Record<string, unknown> = (socket as any).handshake?.query || {};
+    const remoteAddress =
+        (socket.handshake as any)?.address ||
+        (socket as any)?.request?.socket?.remoteAddress;
+    const remotePort = (socket as any)?.request?.socket?.remotePort;
+    return {
+        remoteAddress,
+        remotePort,
+        hopHint: query.__airpad_hop,
+        hostHint: query.__airpad_host,
+        targetHost: query.__airpad_target,
+        targetPort: query.__airpad_target_port,
+        routeHint: query.__airpad_via,
+        viaPort: query.__airpad_via_port,
+        protocolHint: query.__airpad_protocol,
+        xForwardedFor: (headers["x-forwarded-for"] || headers["X-Forwarded-For"]),
+        xForwardedHost: (headers["x-forwarded-host"] || headers["X-Forwarded-Host"]),
+        xForwardedProto: (headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"]),
+        xRealIp: (headers["x-real-ip"] || headers["X-Real-IP"]),
+        xRealHost: (headers["x-real-host"] || headers["X-Real-Host"])
+    };
 };
 
 const processHooks = (hooks: MessageHook[], msg: any, socket: Socket): any | null => {
@@ -151,8 +176,6 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
     // Message hooks for translation/routing
     const messageHooks: MessageHook[] = [];
 
-    setupAirpadClipboardBroadcast(io as any);
-
     const routeMessage = (sourceSocket: Socket, msg: any): void => {
         const normalized = normalizeControlMessage(msg, sourceSocket.id);
         const processed = processHooks(messageHooks, normalized, sourceSocket);
@@ -211,7 +234,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts?: { maxHistory?:
             {
                 socketId: socket.id,
                 transport: socket?.conn?.transport?.name,
-                handshake: describeHandshake(socket.request)
+                handshake: {
+                    ...describeHandshake(socket.request),
+                    ...describeAirPadConnectionMeta(socket)
+                }
             },
             "[socket.io] New connection"
         );

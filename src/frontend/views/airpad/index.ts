@@ -42,7 +42,6 @@ export class AirpadView implements View {
         },
         onHide: () => {
             setRemoteKeyboardEnabled(false);
-            disconnectWS();
             this.unlockOrientationForAirpad();
             removeAdopted(this._sheet);
         },
