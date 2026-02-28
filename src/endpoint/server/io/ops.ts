@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { SocketIoBridge } from "../network/socket/socketio-bridge.ts";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import type { WsHub } from "./websocket.ts";
@@ -13,7 +15,9 @@ import { Settings } from "@rs-server/lib/settings.ts";
 import config from "../config/config.ts";
 import {
     inferNetworkSurface,
+    normalizeNetworkAliasMap,
     makeTargetTokenSet,
+    resolveNetworkAlias,
     resolveDispatchAudience,
     resolveDispatchPlan,
     type DispatchRouteDecision
@@ -121,9 +125,28 @@ type NetworkDispatchBody = {
     broadcast?: boolean;
     targets?: string[];
 };
+type NetworkFetchBody = {
+    userId: string;
+    userKey: string;
+    route?: "auto" | "local" | "upstream" | "both";
+    target?: string;
+    targetId?: string;
+    deviceId?: string;
+    peerId?: string;
+    namespace?: string;
+    ns?: string;
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    data?: any;
+    payload?: any;
+    body?: string;
+    timeoutMs?: number;
+};
 
 const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
 const BROADCAST_PROTO_RE = /^https?:\/\//i;
+const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
 
 const hasProtocol = (value: string): boolean => BROADCAST_PROTO_RE.test(value);
 
@@ -136,6 +159,15 @@ const looksLikeAliasedHostTarget = (value: string): boolean => {
     if (/^[a-zA-Z0-9._-]+(?::\d{1,5})?$/.test(trimmed)) return true;
     return false;
 };
+const NETWORK_ALIAS_MAP = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
+const DEFAULT_NETWORK_FETCH_TIMEOUT_MS = 15000;
+
+const resolveDispatchTarget = (input: string): string => {
+    const trimmed = input.trim();
+    if (!trimmed) return "";
+    const withPrefixStripped = stripAliasPrefix(trimmed);
+    return resolveNetworkAlias(NETWORK_ALIAS_MAP, withPrefixStripped) || withPrefixStripped;
+};
 
 const stripAliasPrefix = (value: string): string => {
     const trimmed = value.trim();
@@ -144,8 +176,73 @@ const stripAliasPrefix = (value: string): string => {
     const match = trimmed.match(/^([A-Za-z][A-Za-z0-9_-]*):(.*)$/);
     if (!match) return trimmed;
 
+    const prefix = match[1].toLowerCase();
+    const prefixMapped = resolveNetworkAlias(NETWORK_ALIAS_MAP, prefix);
+    if (prefixMapped) return prefixMapped;
+
     const aliasTarget = match[2].trim();
-    return looksLikeAliasedHostTarget(aliasTarget) ? aliasTarget : trimmed;
+    if (looksLikeAliasedHostTarget(aliasTarget)) return aliasTarget;
+    return resolveNetworkAlias(NETWORK_ALIAS_MAP, trimmed) || trimmed;
+};
+
+const normalizeNetworkFetchResponse = (
+    requestId: string,
+    response: any
+): { ok: boolean; status: number; statusText?: string; body?: string; headers?: Record<string, string>; requestId?: string; error?: string; raw: any } => {
+    if (response == null) {
+        return {
+            ok: false,
+            status: 504,
+            statusText: "No response",
+            requestId,
+            body: "No response",
+            raw: response
+        };
+    }
+
+    if (typeof response !== "object") {
+        return {
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            requestId,
+            body: typeof response === "string" ? response : JSON.stringify(response),
+            raw: response
+        };
+    }
+
+    const responseRequestId = typeof response?.requestId === "string" && response.requestId
+        ? String(response.requestId)
+        : requestId;
+    const normalizedHeaders = (() => {
+        const source = response?.headers;
+        if (!source || typeof source !== "object") return undefined;
+        if (Array.isArray(source)) return undefined;
+        return Object.entries(source as Record<string, unknown>).reduce(
+            (acc, [headerName, headerValue]) => {
+                if (typeof headerValue === "string" || typeof headerValue === "number") {
+                    acc[headerName] = String(headerValue);
+                } else if (Array.isArray(headerValue) && headerValue.every((item) => typeof item === "string")) {
+                    acc[headerName] = headerValue.join(", ");
+                }
+                return acc;
+            },
+            {} as Record<string, string>
+        );
+    })();
+
+    const status = typeof response.status === "number" ? response.status : undefined;
+    const bodySource = response.body ?? response.data ?? response.text ?? response.payload ?? response.response;
+    return {
+        ok: response.ok !== undefined ? Boolean(response.ok) : status === undefined || (status >= 200 && status < 400),
+        status: typeof status === "number" ? status : 200,
+        statusText: typeof response.statusText === "string" ? response.statusText : response.error ? "Error" : "OK",
+        headers: normalizedHeaders,
+        body: typeof bodySource === "string" ? bodySource : (bodySource == null ? undefined : JSON.stringify(bodySource)),
+        requestId: responseRequestId,
+        error: typeof response.error === "string" ? response.error : undefined,
+        raw: response
+    };
 };
 
 const normalizeBroadcastTarget = (target: string): { normalized: string; hasExplicitProtocol: boolean } | undefined => {
@@ -281,7 +378,7 @@ const readTextPayload = (body: DeviceFeatureRequestBody): string => {
 };
 
 const resolveFeatureTarget = (body: DeviceFeatureRequestBody) => (
-    body.targetDeviceId?.trim() || body.targetId?.trim() || body.deviceId?.trim()
+    resolveDispatchTarget(body.targetDeviceId?.trim() || body.targetId?.trim() || body.deviceId?.trim())
 );
 
 const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<string, string | number | undefined>) => {
@@ -317,7 +414,7 @@ const resolveAuthContext = async (userId: string, userKey: string): Promise<Auth
     return { record, settings };
 };
 
-const toTargetUrl = (
+    const toTargetUrl = (
     body: HttpRequestBody,
     targetUrlFromSettings?: string,
     forceHttps = false
@@ -337,7 +434,9 @@ const toTargetUrl = (
         return targetUrlFromSettings;
     }
 
-    const host = body.ip?.trim() || body.address?.trim() || body.host?.trim();
+    const host = resolveDispatchTarget(
+        body.ip?.trim() || body.address?.trim() || body.host?.trim() || ""
+    );
     if (!host) return undefined;
     if (/^https?:\/\//i.test(host)) {
         return forceHttps && host.startsWith("http://")
@@ -354,7 +453,12 @@ const toTargetUrl = (
     return `${protocol}://${host}${port}${normalizedPath}`;
 };
 
-export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, networkContext?: NetworkContextProvider) => {
+export const registerOpsRoutes = async (
+    app: FastifyInstance,
+    wsHub: WsHub,
+    networkContext?: NetworkContextProvider,
+    socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">
+) => {
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
         const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
@@ -372,10 +476,13 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
         const ops = settings?.core?.ops || {};
         const httpTargets = ops.httpTargets || [];
-        const target = httpTargets.find((t) => t.id === targetId);
+        const resolvedTargetId = targetId?.trim() ? resolveDispatchTarget(targetId) : targetId;
+        const target = targetId?.trim() ? httpTargets.find((t) => t.id === targetId || t.id === resolvedTargetId) : undefined;
         const resolvedUrl = toTargetUrl(payload, target?.url, forceHttpsRoute);
 
-        const reverseTarget = targetDeviceId || (payload as any).deviceId || targetId;
+        const reverseTarget = resolveDispatchTarget(
+            targetDeviceId || (payload as any).deviceId || targetId || ""
+        );
         if (!resolvedUrl && reverseTarget && typeof reverseTarget === "string" && reverseTarget.trim()) {
             const delivered = wsHub.sendToDevice(userId, reverseTarget, {
                 type: (payload as any).type || "dispatch",
@@ -488,6 +595,182 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const failed = results.find((r) => !r.ok);
         return { ok: !failed, results };
     };
+
+    const networkFetchHandler = async (request: FastifyRequest<{ Body: NetworkFetchBody }>) => {
+        const {
+            userId,
+            userKey,
+            route = "auto",
+            target,
+            targetId,
+            deviceId,
+            peerId,
+            namespace,
+            ns,
+            method,
+            url,
+            headers,
+            data,
+            payload,
+            body,
+            timeoutMs
+        } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const destination = resolveDispatchTarget(targetId || deviceId || peerId || target || "");
+        const requestTarget = typeof destination === "string" ? destination.trim() : "";
+        if (!requestTarget) return { ok: false, error: "Missing target" };
+        const effectiveTimeoutMs = Number.isFinite(Number(timeoutMs))
+            ? Math.max(250, Number(timeoutMs))
+            : undefined;
+        const normalizedNamespace = typeof namespace === "string" && namespace.trim()
+            ? namespace.trim()
+            : typeof ns === "string" && ns.trim()
+                ? ns.trim()
+                : undefined;
+
+        const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
+        const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
+        const localLabels = makeTargetTokenSet(peerProfiles.map((peer) => peer.label));
+        const localIds = makeTargetTokenSet(peerProfiles.map((peer) => peer.id));
+        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds]);
+        const isLocalTarget = (value: string) => allLocalTargets.has(value.trim().toLowerCase());
+        const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
+        const plan = resolveDispatchPlan({
+            route,
+            target: requestTarget,
+            hasUpstreamTransport: Boolean(networkContext?.sendToUpstream),
+            isLocalTarget,
+            surface
+        });
+        if (!plan.local && !plan.upstream) {
+            return { ok: false, error: "Target unknown and no available route", route: "none", target: requestTarget };
+        }
+
+        const requestId = randomUUID();
+        const requestPayload = {
+            type: "network.fetch",
+            requestId,
+            from: userId,
+            to: requestTarget,
+            namespace: normalizedNamespace,
+            method: (method || "GET").toUpperCase(),
+            url: typeof url === "string" ? url.trim() : undefined,
+            headers: headers || {},
+            body: payload ?? data ?? body
+        };
+
+        const requestPayloadWithTimeout = requestPayload;
+        const unifiedResult = async () => {
+            if (plan.local) {
+                if (wsHub.requestToDevice) {
+                    try {
+                        const response = await wsHub.requestToDevice(
+                            userId,
+                            requestTarget,
+                            requestPayloadWithTimeout,
+                            effectiveTimeoutMs
+                        );
+                        if (response !== undefined) {
+                            return {
+                                ok: true,
+                                route: plan.route,
+                                requestId,
+                                target: requestTarget,
+                                result: normalizeNetworkFetchResponse(requestId, response)
+                            };
+                        }
+                    } catch (error) {
+                        if (isTunnelDebug) {
+                            console.log(
+                                `[ops] wsHub network.fetch error`,
+                                `user=${userId}`,
+                                `target=${requestTarget}`,
+                                `error=${String((error as any)?.message || error || "")}`
+                            );
+                        }
+                    }
+                }
+
+                if (socketIoBridge?.requestToDevice) {
+                    try {
+                        const response = await socketIoBridge.requestToDevice(
+                            userId,
+                            requestTarget,
+                            requestPayloadWithTimeout,
+                            effectiveTimeoutMs ?? DEFAULT_NETWORK_FETCH_TIMEOUT_MS
+                        );
+                        if (response !== undefined) {
+                            return {
+                                ok: true,
+                                route: plan.route,
+                                requestId,
+                                target: requestTarget,
+                                result: normalizeNetworkFetchResponse(requestId, response)
+                            };
+                        }
+                    } catch (error) {
+                        if (isTunnelDebug) {
+                            console.log(
+                                `[ops] socketio network.fetch error`,
+                                `user=${userId}`,
+                                `target=${requestTarget}`,
+                                `error=${String((error as any)?.message || error || "")}`
+                            );
+                        }
+                    }
+                }
+
+                const delivered = wsHub.sendToDevice(userId, requestTarget, requestPayloadWithTimeout)
+                    || socketIoBridge?.sendToDevice?.(userId, requestTarget, requestPayloadWithTimeout);
+                return {
+                    ok: !!delivered,
+                    requestId,
+                    route: plan.route,
+                    target: requestTarget,
+                    mode: delivered ? "fallback-one-way" : "local-delivery-missing",
+                    delivered: delivered ? "ws-reverse" : "ws-reverse-missing"
+                };
+            }
+
+            return undefined;
+        };
+
+        const localResult = await unifiedResult();
+        if (localResult) return localResult;
+
+        if (plan.upstream && networkContext?.sendToUpstream) {
+            const upstreamPayload = {
+                ...requestPayload,
+                to: requestTarget,
+                target: requestTarget,
+                targetId: requestTarget,
+                route,
+                namespace: normalizedNamespace
+            };
+            const sent = networkContext.sendToUpstream(upstreamPayload);
+            return {
+                ok: Boolean(sent),
+                route: plan.route,
+                requestId,
+                target: requestTarget,
+                mode: sent ? "upstream-fire-and-forget" : "upstream-not-available"
+            };
+        }
+
+        const delivered = wsHub.sendToDevice(userId, requestTarget, requestPayload);
+        return {
+            ok: !!delivered,
+            route: plan.route,
+            requestId,
+            target: requestTarget,
+            mode: delivered ? "legacy-forward" : "missing-target",
+            delivered: delivered ? "ws-reverse" : "ws-reverse-missing"
+        };
+    };
+
+    const legacyNetworkFetchAlias = async (request: FastifyRequest<{ Body: NetworkFetchBody }>) => networkFetchHandler(request);
 
     const wsSendHandler = async (request: FastifyRequest<{ Body: WsSendBody }>) => {
         const { userId, userKey, namespace, type, data } = request.body || {};
@@ -841,7 +1124,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         if (!record) return { ok: false, error: "Invalid credentials" };
 
         const messagePayload = payload ?? data ?? {};
-        const destination = targetId || deviceId || peerId || target || "";
+        const destination = resolveDispatchTarget(targetId || deviceId || peerId || target || "");
+        const normalizedTargets = Array.isArray(targets)
+            ? targets.map((item) => resolveDispatchTarget(String(item || "").trim())).filter(Boolean)
+            : [];
         const normalizedNamespace = typeof namespace === "string" && namespace.trim()
             ? namespace.trim()
             : typeof ns === "string" && ns.trim()
@@ -856,11 +1142,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const isLocalTarget = (value: string) => allLocalTargets.has(value.trim().toLowerCase());
         const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
         const configuredBroadcastTargets = Array.isArray((config as any)?.broadcastTargets)
-            ? (config as any).broadcastTargets
+            ? (config as any).broadcastTargets.map((entry: any) => resolveDispatchTarget(String(entry || "")))
             : [];
         const audience = resolveDispatchAudience({
             target: destination,
-            targets,
+            targets: normalizedTargets,
             broadcast,
             implicitTargets: configuredBroadcastTargets
         });
@@ -1029,6 +1315,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
     app.post("/api/network/topology", topologyHandler);
     app.post("/core/network/dispatch", networkDispatchHandler);
     app.post("/api/network/dispatch", networkDispatchHandler);
+    app.post("/core/network/fetch", networkFetchHandler);
+    app.post("/api/network/fetch", networkFetchHandler);
+    app.post("/core/request/fetch", legacyNetworkFetchAlias);
+    app.post("/api/request/fetch", legacyNetworkFetchAlias);
 
     app.post("/core/ops/notify", notifyHandler);
     app.post("/api/action", actionHandler);

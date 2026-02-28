@@ -31,6 +31,13 @@ Current structure:
   - single destination,
   - explicit multi-destination `targets` fanout,
   - implicit fanout via `broadcastTargets` config fallback.
+- Address aliases are now supported in dispatch/fetch flows through `networkAliases` configuration,
+  and can be used by both socket-based and hostname-like targets.
+
+Operational server-side fetch:
+
+- `/api/network/fetch` (and compatibility alias routes) provides a virtual request envelope
+  over connected reverse peers (best effort synchronous response with timeout, otherwise ack/fallback mode).
 
 ## New routing intents for networking scenarios
 

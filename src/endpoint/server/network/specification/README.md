@@ -46,6 +46,16 @@ Normalization:
 - Reverse bridge client in `tunnel/upstream-peer-client.ts` reconnects across configured endpoints.
 - Upstream frames are normalized before dispatch into local Hub logic.
 
+### Virtual request-response over keep-alive links
+
+- `POST /api/network/fetch` (and compatibility `/api/request/fetch`) enables server-initiated virtual requests to reverse-connected peers.
+- Payload uses the same frame semantics as existing dispatch frames but adds request metadata (`method`, `url`, `headers`, `body`, `timeoutMs`) and `requestId`.
+- Current implementation is transport-native:
+  - local route: server sends `type: network.fetch` to reverse device map (`sendToDevice`);
+  - if the reverse client responds with `requestId` in its WS reply, result is returned as a synchronous response;
+  - if no response arrives before timeout, the transport returns the transport outcome (ack/targeting metadata).
+- Upstream-only route remains fire-and-forget until remote responder support is implemented on that hop.
+
 ## 3) Compatibility layer
 
 - `routing/*` re-exports are compatibility wrappers.
@@ -72,5 +82,13 @@ Normalization:
 - `/api/network/topology` reflects gateway roles and peer links:
   - `gateway` node when upstream transport is active/available
   - `link:user->gateway` and `peer` links for reverse clients
+
+### 5) Address aliases and socket-native identifiers
+
+- Routing now supports token alias expansion before route resolution.
+- Configure alias map via endpoint config:
+  - `networkAliases` (object): `"alias": "target"` pairs.
+  - `networkAliasMap` (object alias): legacy alias key compatibility.
+- Alias resolution is applied to explicit dispatch/fetch targets and broadcast target normalizers.
 
 ---

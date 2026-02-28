@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
+import { randomUUID } from "node:crypto";
 
 import { buildSocketIoOptions, describeHandshake }  from "./socketio-security.ts";
 import {
@@ -21,6 +22,13 @@ export type SocketIoBridge = {
     addMessageHook: (hook: SocketMessageHook) => void;
     getConnectedDevices: () => string[];
     getClipboardHistory: (limit?: number) => ClipHistoryEntry[];
+    sendToDevice: (userId: string, deviceId: string, payload: any) => boolean;
+    requestToDevice?: (
+        userId: string,
+        deviceId: string,
+        payload: any,
+        waitMs?: number
+    ) => Promise<any>;
     io: SocketIOServer;
 };
 
@@ -46,6 +54,13 @@ const logMsg = (prefix: string, msg: any): void => {
     );
 };
 const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const NETWORK_FETCH_TIMEOUT_MS = Math.max(
+    500,
+    (() => {
+        const configured = Number(process.env.AIRPAD_NETWORK_FETCH_TIMEOUT_MS || 15000);
+        return Number.isFinite(configured) ? configured : 15000;
+    })()
+);
 
 const mapHookPayload = (hooks: SocketMessageHook[], msg: any, socket: Socket) =>
     applyMessageHooks(hooks, msg, socket);
@@ -94,11 +109,41 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const clients = new Map<string, Socket>();
     const airpadConnectionMeta = new Map<Socket, AirpadConnectionMeta>();
     const airpadTargets = new Map<string, Set<Socket>>();
+    const pendingFetchReplies = new Map<string, {
+        resolve: (value: any) => void;
+        reject: (error: any) => void;
+        timer?: ReturnType<typeof setTimeout>;
+    }>();
+    const requestToDeviceKey = (userId: string, deviceId: string, requestId: string) =>
+        `${userId}:${deviceId}:${requestId}`;
 
     const normalizeHint = (value: unknown): string => {
         if (typeof value !== "string") return "";
         const normalized = value.trim().toLowerCase();
         return normalized;
+    };
+    const removeSocketRequestPendings = (userId: string, deviceId: string): void => {
+        const normalizedUser = normalizeHint(userId);
+        const normalizedDevice = normalizeHint(deviceId);
+        for (const key of Array.from(pendingFetchReplies.keys())) {
+            if (!normalizedDevice) continue;
+            const prefixWithUser = `${normalizedUser}:${normalizedDevice}:`;
+            if (normalizedUser && key.startsWith(prefixWithUser)) {
+                const pending = pendingFetchReplies.get(key);
+                if (pending) {
+                    if (pending.timer) clearTimeout(pending.timer);
+                    pending.reject(new Error("socket disconnected"));
+                }
+                pendingFetchReplies.delete(key);
+            } else if (!normalizedUser && key.includes(`:${normalizedDevice}:`)) {
+                const pending = pendingFetchReplies.get(key);
+                if (pending) {
+                    if (pending.timer) clearTimeout(pending.timer);
+                    pending.reject(new Error("socket disconnected"));
+                }
+                pendingFetchReplies.delete(key);
+            }
+        }
     };
 
     const isBroadcastTarget = (value: string): boolean => value === "broadcast" || value === "all" || value === "*";
@@ -256,6 +301,47 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             next.add(normalizeHint(meta.hostHint));
         }
         return Array.from(next).filter(Boolean);
+    };
+
+    const sendToDevice = (_userId: string, deviceId: string, payload: any): boolean => {
+        const target = clients.get(normalizeHint(deviceId));
+        if (!target?.connected) return false;
+        try {
+            target.emit("message", payload);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = NETWORK_FETCH_TIMEOUT_MS) => {
+        const normalizedDevice = normalizeHint(deviceId);
+        if (!normalizedDevice) return undefined;
+        const targetSocket = clients.get(normalizedDevice);
+        if (!targetSocket?.connected) return undefined;
+        const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
+        const envelope = { ...payload, requestId };
+        return new Promise<any>((resolve, reject) => {
+            const key = requestToDeviceKey(normalizeHint(userId), normalizedDevice, requestId);
+            const timer = setTimeout(() => {
+                pendingFetchReplies.delete(key);
+                reject(new Error(`network.fetch timeout: ${requestId}`));
+            }, Math.max(500, Number.isFinite(waitMs) ? Number(waitMs) : NETWORK_FETCH_TIMEOUT_MS));
+            pendingFetchReplies.set(key, { resolve, reject, timer });
+            try {
+                targetSocket.emit("network.fetch", envelope, (response: any) => {
+                    const pending = pendingFetchReplies.get(key);
+                    if (!pending) return;
+                    pendingFetchReplies.delete(key);
+                    if (pending.timer) clearTimeout(pending.timer);
+                    pending.resolve(response);
+                });
+            } catch (error) {
+                pendingFetchReplies.delete(key);
+                if (timer) clearTimeout(timer);
+                reject(error);
+            }
+        });
     };
 
     const forwardToAirpadTargets = (sourceSocket: Socket, payload: any, frame: any): boolean => {
@@ -511,6 +597,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             onDisconnect: (reason) => {
                 console.log(`[Server] Disconnected: ${deviceId || socket.id}, reason: ${reason}`);
                 unregisterAirpadSocketHints(socket);
+                const currentDeviceId = normalizeHint(deviceId);
+                removeSocketRequestPendings("", currentDeviceId);
                 if (deviceId) {
                     const rawDeviceId = normalizeHint(deviceId);
                     const byId = airpadTargets.get(rawDeviceId);
@@ -526,6 +614,33 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     socket.broadcast.emit("device-disconnected", { id: deviceId });
                 }
             },
+        });
+
+        socket.on("network.fetch", (request: any, ack?: (value: any) => void) => {
+            const userId = normalizeHint(request?.userId || "");
+            const deviceId = normalizeHint(request?.to || request?.deviceId || request?.target || "");
+            const requestId = normalizeHint(String(request?.requestId || ""));
+            if (!request || typeof request !== "object" || !requestId || !deviceId) return;
+
+            let pending = pendingFetchReplies.get(requestToDeviceKey(userId, deviceId, requestId));
+            if (!pending) {
+                const fallbackKeySuffix = `:${deviceId}:${requestId}`;
+                for (const [pendingKey, pendingValue] of pendingFetchReplies.entries()) {
+                    if (pendingKey.endsWith(fallbackKeySuffix)) {
+                        pending = pendingValue;
+                        pendingFetchReplies.delete(pendingKey);
+                        break;
+                    }
+                }
+            } else {
+                pendingFetchReplies.delete(requestToDeviceKey(userId, deviceId, requestId));
+            }
+            if (!pending) return;
+            if (pending.timer) clearTimeout(pending.timer);
+            pending.resolve(request);
+            if (typeof ack === "function") {
+                ack({ ok: true, requestId: String(request?.requestId || ""), status: 200 });
+            }
         });
 
         socket.on("multicast", (data: { message: any; deviceIds?: string[] }) => {
@@ -583,7 +698,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         io,
         addMessageHook: (hook) => messageHooks.push(hook),
         getConnectedDevices: () => Array.from(clients.keys()),
-        getClipboardHistory: (limit = maxHistory) => clipHistory.slice(-limit)
+        getClipboardHistory: (limit = maxHistory) => clipHistory.slice(-limit),
+        sendToDevice,
+        requestToDevice,
     };
 };
 

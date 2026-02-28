@@ -147,6 +147,7 @@ export type WsHub = {
     notify: (userId: string, type: string, data?: any) => void;
     sendTo: (clientId: string, payload: any) => void;
     sendToDevice: (userId: string, deviceId: string, payload: any) => boolean;
+    requestToDevice?: (userId: string, deviceId: string, payload: any, waitMs?: number) => Promise<any>;
     getConnectedDevices: (userId?: string) => string[];
     getConnectedPeerProfiles: (userId?: string) => Array<{ id: string; label: string }>;
     close: () => Promise<void>;
@@ -179,8 +180,15 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const namespaces = new Map<string, Map<string, ClientInfo>>();
     const reverseClients = new Map<string, ClientInfo>();
     const reversePeerProfiles = new Map<string, Map<string, string>>();
+    const pendingFetchReplies = new Map<string, {
+        resolve: (value: any) => void;
+        reject: (error: any) => void;
+        timer?: ReturnType<typeof setTimeout>;
+    }>();
     const tcpSessions = new Map<WebSocket, Map<string, TcpSession>>();
     const reverseClientKey = (userId: string, deviceId: string) => `${userId}:${deviceId}`;
+    const requestKey = (userId: string, deviceId: string, requestId: string) =>
+        `${userId}:${deviceId}:${requestId}`;
 
     const upgradeHandler = (req: any, socket: any, head: Buffer) => {
         let pathname = "";
@@ -452,6 +460,26 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             if (handleTcpPassthroughFrame(ws, parsed as TcpPassthroughFrame, userId, info)) {
                 return;
             }
+            if (info.reverse) {
+                const requestId = String(parsed?.payload?.requestId || parsed?.requestId || "").trim();
+                if (requestId) {
+                    const key = requestKey(info.userId, info.deviceId || "", requestId);
+                    const pending = pendingFetchReplies.get(key);
+                    if (pending) {
+                        pendingFetchReplies.delete(key);
+                        if (pending.timer) clearTimeout(pending.timer);
+                        pending.resolve(parsed);
+                        return;
+                    }
+                }
+
+                const frameType = String(parsed?.type || "").trim().toLowerCase();
+                if (frameType === "pong" || frameType === "hello") {
+                    return;
+                }
+                return;
+            }
+
             const frame = normalizeSocketFrame(parsed, info.id, {
                 nodeId: info.userId,
                 peerId: info.deviceId,
@@ -459,12 +487,6 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 gatewayId: info.reverse ? "reverse-gateway" : undefined,
                 surface: info.reverse ? "external" : inferNetworkSurface(req.socket?.remoteAddress)
             });
-            if (info.reverse) {
-                if (frame.type === "pong" || frame.type === "hello") {
-                    return;
-                }
-                return;
-            }
             const type = frame.type;
             const payload = frame.payload;
             const shouldBroadcast = isBroadcast(frame);
@@ -487,6 +509,16 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             clients.delete(ws);
             namespaces.get(info.userId)?.delete(info.id);
             if (namespaces.get(info.userId)?.size === 0) namespaces.delete(info.userId);
+            for (const pendingKey of Array.from(pendingFetchReplies.keys())) {
+                if (pendingKey.startsWith(`${info.userId}:${info.deviceId || ""}:`)) {
+                    const pending = pendingFetchReplies.get(pendingKey);
+                    if (pending) {
+                        if (pending.timer) clearTimeout(pending.timer);
+                        pending.reject(new Error("device disconnected"));
+                    }
+                    pendingFetchReplies.delete(pendingKey);
+                }
+            }
             if (info.reverse && info.deviceId) {
                 reverseClients.delete(reverseClientKey(info.userId, info.deviceId));
                 const labels = reversePeerProfiles.get(info.userId);
@@ -533,6 +565,28 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         }
     };
 
+    const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = 15000) => {
+        const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
+        const envelope = { ...payload, requestId };
+        const target = reverseClients.get(reverseClientKey(userId, deviceId));
+        if (!target?.ws) return undefined;
+        return new Promise<any>((resolve, reject) => {
+            const key = requestKey(userId, deviceId, requestId);
+            const timer = setTimeout(() => {
+                pendingFetchReplies.delete(key);
+                reject(new Error(`network.fetch timeout: ${requestId}`));
+            }, Math.max(500, Number.isFinite(waitMs) ? waitMs : 15000));
+            pendingFetchReplies.set(key, { resolve, reject, timer });
+            try {
+                target.ws.send(JSON.stringify(envelope));
+            } catch (error) {
+                pendingFetchReplies.delete(key);
+                if (timer) clearTimeout(timer);
+                reject(error);
+            }
+        });
+    };
+
     const getConnectedDevices = (userId?: string): string[] => {
         const keys = Array.from(reverseClients.keys());
         if (!userId) return keys.map((key) => key.split(":")[1]);
@@ -566,6 +620,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         notify,
         sendTo,
         sendToDevice,
+        requestToDevice,
         getConnectedDevices,
         getConnectedPeerProfiles,
         close

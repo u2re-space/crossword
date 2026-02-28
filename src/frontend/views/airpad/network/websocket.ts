@@ -48,6 +48,24 @@ const clipboardHandlers = new Set<ClipboardUpdateHandler>();
 type AirPadTransportMode = "plaintext" | "secure";
 type SignedEnvelope = { cipher: string; sig: string; from?: string };
 
+type NetworkFetchRequest = {
+    requestId?: string;
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    body?: any;
+    timeoutMs?: number;
+};
+type NetworkFetchResponse = {
+    ok: boolean;
+    status?: number;
+    statusText?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    error?: string;
+    requestId?: string;
+};
+
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 let aesKeyCache = new Map<string, CryptoKey>();
@@ -330,6 +348,107 @@ function isPrivateOrLocalTarget(host: string): boolean {
         host.startsWith('127.')
     );
 }
+
+const getCurrentOriginHostname = (): string => {
+    try {
+        return String(new URL(location.href).hostname).toLowerCase();
+    } catch {
+        return "";
+    }
+};
+
+const isNetworkFetchAllowed = (rawUrl: string): boolean => {
+    if (!rawUrl || typeof rawUrl !== "string") return false;
+    let parsed: URL;
+    try {
+        parsed = new URL(rawUrl, location.href);
+    } catch {
+        return false;
+    }
+    const host = parsed.hostname.toLowerCase();
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol !== "http:" && protocol !== "https:") return false;
+    const localPageHost = getCurrentOriginHostname();
+    return isPrivateOrLocalTarget(host) || host === "localhost" || host === localPageHost;
+};
+
+const normalizeNetworkFetchHeaders = (headers?: Record<string, string>): Record<string, string> => {
+    const next: Record<string, string> = {};
+    if (!headers) return next;
+    for (const [key, value] of Object.entries(headers)) {
+        if (typeof key !== "string" || !key.trim()) continue;
+        if (typeof value !== "string") continue;
+        next[key] = value;
+    }
+    return next;
+};
+
+const responseHeadersToObject = (value: Headers): Record<string, string> => {
+    const result: Record<string, string> = {};
+    value.forEach((headerValue, headerName) => {
+        result[headerName] = headerValue;
+    });
+    return result;
+};
+
+const handleServerNetworkFetchRequest = async (request: NetworkFetchRequest): Promise<NetworkFetchResponse> => {
+    const requestId = typeof request?.requestId === "string" ? request.requestId.trim() : "";
+    const method = typeof request?.method === "string" ? request.method.toUpperCase() : "GET";
+    const url = typeof request?.url === "string" ? request.url : "";
+    const timeoutMsRaw = request && typeof request.timeoutMs === "number" ? request.timeoutMs : 12000;
+    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? Math.min(Math.max(Math.round(timeoutMsRaw), 1000), 60000) : 12000;
+    if (!requestId) {
+        return {
+            ok: false,
+            status: 400,
+            statusText: "Bad Request",
+            error: "Missing requestId",
+        };
+    }
+    if (!isNetworkFetchAllowed(url)) {
+        return {
+            requestId,
+            ok: false,
+            status: 400,
+            statusText: "Bad Request",
+            error: "URL not allowed",
+        };
+    }
+
+    const controller = new AbortController();
+    const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const headers = normalizeNetworkFetchHeaders(request?.headers as Record<string, string>);
+        const hasBody = !["GET", "HEAD"].includes(method);
+        const payload = request?.body;
+        const body = hasBody ? (typeof payload === "string" ? payload : safeJson(payload)) : undefined;
+        const response = await fetch(url, {
+            method,
+            headers,
+            body,
+            signal: controller.signal,
+        });
+        const responseBody = await response.text();
+        return {
+            requestId,
+            ok: response.ok,
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeadersToObject(response.headers),
+            body: responseBody,
+        };
+    } catch (error: unknown) {
+        return {
+            requestId,
+            ok: false,
+            status: 0,
+            statusText: "Network Error",
+            error: describeError(error),
+        };
+    } finally {
+        clearTimeout(timer);
+    }
+};
 
 async function tryRequestLocalNetworkPermission(origin: string, host: string): Promise<void> {
     if (!origin || !host) return;
@@ -905,6 +1024,12 @@ export function connectWS() {
                 const text = typeof decoded?.text === 'string' ? decoded.text : '';
                 lastServerClipboardText = text;
                 notifyClipboardHandlers(text, { source: decoded?.source });
+            });
+            socket.on("network.fetch", async (request: NetworkFetchRequest, ack?: (value: NetworkFetchResponse | Error) => void) => {
+                const response = await handleServerNetworkFetchRequest(request);
+                if (typeof ack === "function") {
+                    ack(response);
+                }
             });
 
             // Expose socket for virtual keyboard

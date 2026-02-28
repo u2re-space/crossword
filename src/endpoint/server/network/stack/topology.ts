@@ -3,6 +3,7 @@ export type PeerNodeRole = "endpoint" | "gateway" | "peer" | "upstream";
 export type DispatchRouteHint = "local" | "upstream" | "both" | "none";
 export type DispatchRouteMode = "local" | "upstream" | "both" | "auto";
 export type DispatchTargetHint = "explicit" | "implicit-config" | "implicit-local-broadcast" | "implicit-empty";
+export type NetworkAliasMap = Record<string, string>;
 
 export type DispatchAudiencePlan = {
     targets: string[];
@@ -34,6 +35,30 @@ const isPrivateV6 = (value: string): boolean => {
 };
 
 const normalizeAddress = (value: string): string => value.trim().toLowerCase();
+
+export const normalizeNetworkAliasMap = (value: unknown): NetworkAliasMap => {
+    const out: NetworkAliasMap = {};
+    if (!value || typeof value !== "object") return out;
+    for (const [alias, rawTarget] of Object.entries(value as Record<string, unknown>)) {
+        const normalizedAlias = normalizeAddress(alias);
+        const normalizedTarget = normalizeAddress(String(rawTarget || ""));
+        if (normalizedAlias && normalizedTarget) {
+            out[normalizedAlias] = normalizedTarget;
+        }
+    }
+    return out;
+};
+
+export const resolveNetworkAlias = (aliasMap: NetworkAliasMap | undefined, token: string): string => {
+    const normalizedToken = token.trim().toLowerCase();
+    if (!normalizedToken) return "";
+    const mapped = aliasMap && Object.prototype.hasOwnProperty.call(aliasMap, normalizedToken)
+        ? aliasMap[normalizedToken]
+        : undefined;
+    if (!mapped) return normalizedToken;
+    const trimmed = mapped.trim();
+    return trimmed || normalizedToken;
+};
 
 export const inferNetworkSurface = (remoteAddress?: string | null): NetworkSurface => {
     if (!remoteAddress) return "unknown";

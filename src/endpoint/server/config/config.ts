@@ -16,6 +16,7 @@ type EndpointConfig = {
     broadcastForceHttps?: boolean;
     peers?: string[];
     broadcastTargets?: string[];
+    networkAliases?: Record<string, string>;
     clipboardPeerTargets?: string[];
     pollInterval?: number;
     httpTimeoutMs?: number;
@@ -155,6 +156,80 @@ const normalizeTextField = (value: unknown, fallback: string): string => {
     return typeof value === "string" && value.trim() ? value.trim() : fallback;
 };
 
+const normalizeAliasKey = (value: string): string => value.trim().toLowerCase();
+const normalizeAliasTarget = (value: string): string => value.trim();
+
+const normalizeAliasEntries = (raw: unknown): Array<[string, string]> => {
+    const out: Array<[string, string]> = [];
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed) return out;
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                for (const [rawAlias, rawTarget] of Object.entries(parsed as Record<string, unknown>)) {
+                    const alias = normalizeAliasKey(String(rawAlias || ""));
+                    const target = normalizeAliasTarget(String(rawTarget || ""));
+                    if (alias && target) out.push([alias, target]);
+                }
+                return out;
+            }
+        } catch {
+            // fallthrough to text parser
+        }
+        const parts = trimmed.split(/[;,]/);
+        for (const part of parts) {
+            const idxEq = part.indexOf("=");
+            const idxColon = part.indexOf(":");
+            const idx = idxEq >= 0 && (idxColon < 0 || idxEq < idxColon) ? idxEq : idxColon;
+            if (idx <= 0) continue;
+            const alias = normalizeAliasKey(part.slice(0, idx));
+            const target = normalizeAliasTarget(part.slice(idx + 1));
+            if (alias && target) out.push([alias, target]);
+        }
+        return out;
+    }
+
+    if (Array.isArray(raw)) {
+        for (const row of raw) {
+            if (typeof row === "string") {
+                const idxEq = row.indexOf("=");
+                const idxColon = row.indexOf(":");
+                const idx = idxEq >= 0 && (idxColon < 0 || idxEq < idxColon) ? idxEq : idxColon;
+                if (idx <= 0) continue;
+                const alias = normalizeAliasKey(row.slice(0, idx));
+                const target = normalizeAliasTarget(row.slice(idx + 1));
+                if (alias && target) out.push([alias, target]);
+                continue;
+            }
+            if (row && typeof row === "object") {
+                const entry = row as Record<string, unknown>;
+                const alias = normalizeAliasKey(String(entry.alias || entry.id || ""));
+                const target = normalizeAliasTarget(String(entry.target || ""));
+                if (alias && target) out.push([alias, target]);
+            }
+        }
+        return out;
+    }
+
+    if (raw && typeof raw === "object") {
+        for (const [aliasKey, rawTarget] of Object.entries(raw as Record<string, unknown>)) {
+            const alias = normalizeAliasKey(aliasKey);
+            const target = normalizeAliasTarget(String(rawTarget || ""));
+            if (alias && target) out.push([alias, target]);
+        }
+    }
+
+    return out;
+};
+
+const normalizeNetworkAliases = (raw: unknown): Record<string, string> => {
+    const entries = normalizeAliasEntries(raw);
+    const out: Record<string, string> = {};
+    for (const [alias, target] of entries) out[alias] = target;
+    return out;
+};
+
 const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
     const source = (value && typeof value === "object") ? value : {};
     const coreSource = (source.core && typeof source.core === "object") ? (source.core as Record<string, any>) : {};
@@ -193,6 +268,14 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
         ...(defaultConfig as Record<string, any>),
         ...source,
         ...coreSource,
+        networkAliases: normalizeNetworkAliases(
+            source.networkAliases ??
+            source.networkAliasMap ??
+            process.env.NETWORK_ALIAS_MAP ??
+            process.env.NETWORK_ALIASES ??
+            (coreSource as Record<string, any>).networkAliases ??
+            (coreSource as Record<string, any>).networkAliasMap
+        ),
         peers: normalizeUrlList(
             source.peers ?? coreSource.peers ?? normalizePeerSource(process.env.CLIPBOARD_PEERS)
         ) ?? defaultConfig.peers,

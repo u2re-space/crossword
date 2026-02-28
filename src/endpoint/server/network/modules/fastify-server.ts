@@ -11,6 +11,7 @@ import { createSocketIoBridge } from "../socket/socketio-bridge.ts";
 import { registerOpsRoutes } from "../../io/ops.ts";
 import { startUpstreamPeerClient } from "../stack/upstream.ts";
 import { resolveTunnelTarget } from "../stack/messages.ts";
+import { normalizeNetworkAliasMap, resolveNetworkAlias } from "../stack/topology.ts";
 import config from "../../config/config.ts";
 import { registerRoutes } from "../../routing/routes.ts";
 import { registerApiFallback, registerCoreApp } from "../../routing/core-app.ts";
@@ -176,12 +177,15 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 };
 
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
+    const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
     const defaultUserId = fallbackUserId || "";
     return (message: any) => {
         if (!message || typeof message !== "object") return;
         const msg = message as Record<string, unknown>;
         const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
+        const normalizedRequestedTarget = String(target ?? "");
+        const resolvedRequestedTarget = resolveNetworkAlias(upstreamAliasMap, normalizedRequestedTarget.trim()) || normalizedRequestedTarget.trim();
         const userId =
             typeof msg.userId === "string" && msg.userId.trim()
                 ? (msg.userId as string).trim()
@@ -197,7 +201,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                 `[upstream] IN`,
                 `userId=${userId}`,
                 `from=${String(msg.from || defaultUserId)}`,
-                `target=${target ? String(target) : "-"}`,
+                `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`,
                 `type=${String(msg.type || msg.action || "dispatch")}`,
                 `kind=${payloadKeys}`
             );
@@ -216,8 +220,8 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             ts: Number.isFinite(Number(msg.ts)) ? Number(msg.ts) : Date.now()
         };
 
-        if (typeof target === "string" && target.trim()) {
-            const requestedTarget = target.trim();
+        if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
+            const requestedTarget = resolvedRequestedTarget.trim();
             const resolvedTargetHint = resolveTunnelTarget(hub.getConnectedPeerProfiles(userId), requestedTarget);
             const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
             const resolvedKind = resolvedTargetHint?.source;
@@ -237,7 +241,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                 app.log?.warn?.(
                     {
                         userId,
-                        target: target.trim(),
+                        target: resolvedRequestedTarget,
                         matchedLabel: resolvedTargetHint?.profile.label,
                         resolutionKind: resolvedKind,
                         resolvedTarget,
@@ -272,7 +276,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             }
             app.log?.debug?.({
                 delivered,
-                target: target.trim(),
+                target: resolvedRequestedTarget,
                 userId,
                 knownPeers: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`)
             }, "[upstream] routed command to device");
@@ -318,16 +322,14 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
         app.log?.info?.("Upstream peer bridge started");
     }
 
-    await registerOpsRoutes(app, wsHub, networkContext);
-    registerApiFallback(app);
-
-    // Socket.IO bridge for legacy/native clients (merged from server-old.ts concepts)
-    createSocketIoBridge(app, {
+    const socketIoBridge = createSocketIoBridge(app, {
         networkContext: networkContext ? {
             sendToUpstream: networkContext.sendToUpstream,
             upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
         } : undefined
     });
+    await registerOpsRoutes(app, wsHub, networkContext, socketIoBridge);
+    registerApiFallback(app);
 
     return app;
 };
@@ -364,14 +366,14 @@ export const buildCoreServers = async (
             upstreamClient.stop();
         });
     }
-    await registerOpsRoutes(http, unifiedHub, networkContext);
-    registerApiFallback(http);
-    createSocketIoBridge(http, {
+    const httpSocketIoBridge = createSocketIoBridge(http, {
         networkContext: networkContext ? {
             sendToUpstream: networkContext.sendToUpstream,
             upstreamUserId: networkContext.getNodeId() || fallbackUserId
         } : undefined
     });
+    await registerOpsRoutes(http, unifiedHub, networkContext, httpSocketIoBridge);
+    registerApiFallback(http);
 
     if (!httpsOptions) return { http };
     const httpsWsHub = createWsServer(https);
@@ -383,14 +385,14 @@ export const buildCoreServers = async (
             upstreamClient.stop();
         });
     }
-    await registerOpsRoutes(https, unifiedHub, networkContext);
-    registerApiFallback(https);
-    createSocketIoBridge(https, {
+    const httpsSocketIoBridge = createSocketIoBridge(https, {
         networkContext: networkContext ? {
             sendToUpstream: networkContext.sendToUpstream,
             upstreamUserId: networkContext.getNodeId() || fallbackUserId
         } : undefined
     });
+    await registerOpsRoutes(https, unifiedHub, networkContext, httpsSocketIoBridge);
+    registerApiFallback(https);
 
     return { http, https };
 };
