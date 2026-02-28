@@ -9,12 +9,12 @@ import { createWsServer } from "../socket/websocket.ts";
 import type { WsHub } from "../socket/websocket.ts";
 import { createSocketIoBridge } from "../socket/socketio-bridge.ts";
 import { registerOpsRoutes } from "../../io/ops.ts";
-import { startUpstreamPeerClient } from "../tunnel/upstream-peer-client.ts";
-import { resolveTunnelTarget } from "../routing/index.ts";
+import { startUpstreamPeerClient } from "../stack/upstream.ts";
+import { resolveTunnelTarget } from "../stack/messages.ts";
 import config from "../../config/config.ts";
 import { registerRoutes } from "../../routing/routes.ts";
 import { registerApiFallback, registerCoreApp } from "../../routing/core-app.ts";
-import { createHttpClient } from "./https.ts";
+import { createHttpClient } from "../stack/https.ts";
 import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from "../../io/clipboard.ts";
 import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
@@ -172,7 +172,7 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
         close: async () => {
             await Promise.all(hubs.map((hub) => hub.close()));
         }
-    };
+    } as any;
 };
 
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {

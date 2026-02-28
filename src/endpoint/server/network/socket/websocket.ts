@@ -4,8 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { connect as createTcpConnection, type Socket as NetSocket } from "node:net";
 
 import { loadUserSettings } from "../../lib/users.ts";
-import { isBroadcast, normalizeSocketFrame } from "../routing/index.ts";
-import { inferNetworkSurface } from "../topology.ts";
+import { isBroadcast, normalizeSocketFrame } from "../stack/messages.ts";
+import { inferNetworkSurface } from "../stack/topology.ts";
 
 type TcpPassthroughFrame = {
     type: string;

@@ -1,7 +1,7 @@
 import type { Socket } from "socket.io";
 
-import { parsePayload, verifyWithoutDecrypt } from "../utils/crypto-utils.ts";
-import { normalizeSocketFrame } from "./message.ts";
+import { parsePayload, verifyWithoutDecrypt } from "../stack/crypto-utils.ts";
+import { normalizeSocketFrame } from "../stack/messages.ts";
 
 export type AirpadClipHistoryEntry = {
     from: string;

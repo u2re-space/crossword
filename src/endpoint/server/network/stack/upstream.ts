@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { createDecipheriv, createHash, createVerify, randomUUID } from "node:crypto";
 import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
-import { normalizeTunnelRoutingFrame } from "../routing/index.ts";
+import { normalizeTunnelRoutingFrame } from "./messages.ts";
 
 type UpstreamPeerConfig = {
     enabled?: boolean;

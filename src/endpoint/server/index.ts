@@ -1,4 +1,4 @@
-import { startCoreBackend } from "./fastify-server.ts";
+import { startCoreBackend } from "./network/modules/fastify-server.ts";
 
 startCoreBackend().catch((err: Error) => {
     console.error(err);

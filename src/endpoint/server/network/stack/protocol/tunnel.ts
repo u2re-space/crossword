@@ -1,4 +1,4 @@
-import { type NetworkFrame, type NormalizedNetworkFrame, normalizeFrame } from "./protocol.ts";
+import { NetworkFrame, NormalizedNetworkFrame,normalizeFrame } from "../protocol.ts";
 
 export interface TunnelFrame extends NetworkFrame {
     transport?: "tunnel";

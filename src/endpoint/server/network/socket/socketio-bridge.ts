@@ -1,21 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 
-import { buildSocketIoOptions, describeHandshake } from "./socketio-security.ts";
+import { buildSocketIoOptions, describeHandshake }  from "./socketio-security.ts";
 import {
     applyMessageHooks,
-    createAirpadObjectMessageHandler,
-    describeAirPadConnectionMeta,
-    isAirPadAuthorized,
     isBroadcast,
     normalizeSocketFrame,
-    type AirpadClipHistoryEntry,
-    type AirpadConnectionMeta,
     type SocketMessageHook
-} from "../routing/index.ts";
+} from "../stack/messages.ts";
 import { registerAirpadSocketHandlers } from "../../routing/socket-airpad.ts";
-import { requiresAirpadMessageAuth } from "../routing/airpad.ts";
-
+import { AirpadClipHistoryEntry,
+AirpadConnectionMeta,
+describeAirPadConnectionMeta,
+isAirPadAuthorized,
+requiresAirpadMessageAuth } from "../modules/airpad.ts";
+import { createAirpadObjectMessageHandler } from "../modules/airpad.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {

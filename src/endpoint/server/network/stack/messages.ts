@@ -1,4 +1,5 @@
-import { normalizeTunnelFrame, isBroadcastFrame, normalizeFrame, type NormalizedNetworkFrame } from "../protocol/index.ts";
+import { isBroadcastFrame, NormalizedNetworkFrame,normalizeFrame } from "./protocol.ts";
+import { normalizeTunnelFrame } from "./protocol/tunnel.ts";
 
 export type SocketMessageHook = (msg: NormalizedNetworkFrame, ctx?: any) => unknown | null | undefined;
 type SocketRoutingContext = {

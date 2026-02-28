@@ -3,8 +3,8 @@
 // =========================
 
 import { Server } from 'socket.io';
-import { registerAirpadSocketHandlers } from '../routing/socket-airpad.ts';
-import { buildSocketIoOptions, describeHandshake } from './socketio-security.ts';
+import { registerAirpadSocketHandlers } from '../../routing/socket-airpad.ts';
+import { buildSocketIoOptions, describeHandshake } from '../socket/socketio-security.ts';
 
 export function setupSocketIO(server: any, logger?: any) {
     const io = new Server(server, buildSocketIoOptions(logger));

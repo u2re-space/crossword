@@ -1,4 +1,4 @@
-import { type NetworkFrame, type NormalizedNetworkFrame, normalizeFrame } from "./protocol.ts";
+import { type NetworkFrame, type NormalizedNetworkFrame, normalizeFrame } from "../protocol.ts";
 
 export interface WsFrame extends NetworkFrame {
     transport?: "ws";

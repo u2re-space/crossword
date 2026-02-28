@@ -17,7 +17,7 @@ import {
     resolveDispatchAudience,
     resolveDispatchPlan,
     type DispatchRouteDecision
-} from "../network/topology.ts";
+} from "../network/index.ts";
 
 type HttpDispatchRequest = {
     url?: string;
