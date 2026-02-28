@@ -77,12 +77,12 @@ const DEFAULT_PORTABLE_CONFIG = {
         preserveTargets: ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
     },
     launcherEnv: {
-        AIRPAD_TUNNEL_DEBUG: true,
+        CWS_TUNNEL_DEBUG: true,
         SOCKET_IO_ALLOWED_ORIGINS: "all",
         SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS: true,
         SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH: true,
         CORS_ALLOW_PRIVATE_NETWORK: true,
-        AIRPAD_START_MODE: "start"
+        CWS_START_MODE: "start"
     }
 };
 
@@ -212,7 +212,7 @@ const runSh = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
 ${launchShLines.join("\n")}
-start_mode="\${AIRPAD_START_MODE:-start}"
+start_mode="\${CWS_START_MODE:-\${CWS_START_MODE:-\${AIRPAD_START_MODE:-start\}}}"
 if command -v pm2 >/dev/null 2>&1; then
   if [ -f "ecosystem.config.cjs" ]; then
     if pm2 describe cws >/dev/null 2>&1; then
@@ -240,8 +240,9 @@ fi
 setlocal
 cd /d "%~dp0"
 ${launchCmdLines.join("\n")}
-set "AIRPAD_START_MODE=%AIRPAD_START_MODE%"
-if "%AIRPAD_START_MODE%"=="" set "AIRPAD_START_MODE=start"
+set "CWS_START_MODE=%CWS_START_MODE%"
+if "%CWS_START_MODE%"=="" if "%CWS_START_MODE%"=="" set "CWS_START_MODE=start"
+if "%CWS_START_MODE%"=="" set "CWS_START_MODE=%CWS_START_MODE%"
 where pm2 >nul 2>&1
 if not errorlevel 1 (
   if exist ecosystem.config.cjs (
@@ -282,7 +283,7 @@ if not exist "node_modules\\.bin\\tsx.cmd" (
 )
 
 :portable_pm2_fallback
-if /I "%AIRPAD_START_MODE%"=="watch" (
+if /I "%CWS_START_MODE%"=="watch" (
   call npm run start:watch
 ) else (
   call npm run start
@@ -321,7 +322,7 @@ ${installNote}
 - Launcher starts \`npm run start\` (\`server/index.ts\`) to preserve full legacy WS/Socket.IO control stack.
 - Default launcher environment:
 ${launcherEnvNotes}
-- Set \`AIRPAD_START_MODE=watch\` to run auto-restart on file changes from the launcher (\`start:watch\`).
+- Set \`CWS_START_MODE=watch\` (or legacy \`AIRPAD_START_MODE=watch\`) to run auto-restart on file changes from the launcher (\`start:watch\`).
 - Archive retention is controlled by \`PORTABLE_ARCHIVE_RETENTION_COUNT\` (default: ${archiveRetentionCount}) in build mode.
 - If clipboard backend is unavailable on Linux headless environments, endpoint still starts.
 `;

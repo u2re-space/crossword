@@ -60,10 +60,12 @@ export const isAirPadAuthorized = (socket: Socket) => {
 
 export type AirpadConnectionMeta = {
     clientId?: string;
+    sourceId?: string;
     remoteAddress?: string;
     remotePort?: number;
     hopHint?: string;
     hostHint?: string;
+    routeTarget?: string;
     targetHost?: string;
     targetPort?: string;
     routeHint?: string;
@@ -100,11 +102,33 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
         remoteAddress: pickString(remoteAddress),
         remotePort: typeof remotePort === "number" ? remotePort : undefined,
         clientId: pickString(auth.clientId) || pickString(query.clientId),
+        sourceId: (
+            pickString(query.__airpad_src) ||
+            pickString(query.__airpad_source) ||
+            pickString(query.sourceId) ||
+            pickString(query.source) ||
+            pickString(query.peerId) ||
+            pickString(auth.clientId) ||
+            pickString(query.clientId)
+        ),
         hopHint: pickString(query.__airpad_hop),
         hostHint: pickString(query.__airpad_host),
         targetHost: pickString(query.__airpad_target),
         targetPort: pickString(query.__airpad_target_port),
         routeHint: pickString(query.__airpad_via),
+        routeTarget: (
+            pickString(query.__airpad_route) ||
+            pickString(query.__airpad_route_target) ||
+            pickString(query.routeTarget) ||
+            pickString(query.__airpad_peer) ||
+            pickString(query.__airpad_device) ||
+            pickString(query.__airpad_client) ||
+            pickString(query.to) ||
+            pickString(query.target) ||
+            pickString(query.targetId) ||
+            pickString(query.deviceId) ||
+            pickString(query.peerId)
+        ),
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
         xForwardedFor: (headers["x-forwarded-for"] || headers["X-Forwarded-For"]),

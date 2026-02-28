@@ -26,6 +26,11 @@
       ]
     }
   },
+  "endpointTopology": {
+    "enabled": true,
+    "nodes": [],
+    "links": []
+  },
   "endpointRuntimeDefaults": {
     "listenPort": 8443,
     "httpPort": 8080,
@@ -77,17 +82,19 @@
     ]
   },
   "launcherEnv": {
-    "AIRPAD_TUNNEL_DEBUG": true,
+    "CWS_TUNNEL_DEBUG": true,
     "SOCKET_IO_ALLOWED_ORIGINS": "all",
     "SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS": true,
     "SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH": true,
     "CORS_ALLOW_PRIVATE_NETWORK": true,
-    "AIRPAD_UPSTREAM_ENDPOINT_URL": "192.168.0.200:8443",
-    "AIRPAD_UPSTREAM_ENDPOINTS": "192.168.0.200:8443,45.147.121.152:8443",
-    "AIRPAD_UPSTREAM_ENABLED": true,
-    "AIRPAD_UPSTREAM_USER_ID": "U2RE",
-    "AIRPAD_UPSTREAM_USER_KEY": "n3v3rm1nd",
-    "AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED": false,
-    "AIRPAD_START_MODE": "start"
+    "CWS_UPSTREAM_ENDPOINT_URL": "192.168.0.200:8443",
+    "CWS_UPSTREAM_ENDPOINTS": "192.168.0.200:8443,45.147.121.152:8443",
+    "CWS_UPSTREAM_ENABLED": true,
+    "CWS_UPSTREAM_USER_ID": "U2RE",
+    "CWS_UPSTREAM_USER_KEY": "n3v3rm1nd",
+    "CWS_UPSTREAM_CLIENT_ID": "L-192.168.0.200",
+    "CWS_UPSTREAM_DEVICE_ID": "L-192.168.0.200",
+    "CWS_UPSTREAM_REJECT_UNAUTHORIZED": false,
+    "CWS_START_MODE": "start"
   }
 }

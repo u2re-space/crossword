@@ -11,6 +11,8 @@ import {
     setRemotePort,
     getRemoteProtocol,
     setRemoteProtocol,
+    getRemoteRouteTarget,
+    setRemoteRouteTarget,
     getAirPadTransportMode,
     setAirPadTransportMode,
     getAirPadAuthToken,
@@ -38,7 +40,10 @@ export function createConfigUI(): HTMLElement {
             <h3>Airpad Configuration</h3>
             <div class="config-panel__body">
                 <div class="config-group">
-                    <label for="remoteHost">Remote Host/IP:</label>
+                    <strong>Connect URL</strong>
+                </div>
+                <div class="config-group">
+                    <label for="remoteHost">Connect URL (host/IP):</label>
                     <input type="text" id="remoteHost" />
                 </div>
 
@@ -48,8 +53,17 @@ export function createConfigUI(): HTMLElement {
                 </div>
 
                 <div class="config-group">
-                    <label for="remotePort">Remote Port:</label>
+                    <label for="remoteRouteTarget">Remote Host [optional] (peerId/deviceId/alias/IP):</label>
+                    <input type="text" id="remoteRouteTarget" placeholder="optional target after connect" />
+                </div>
+
+                <div class="config-group">
+                    <label for="remotePort">Connect URL Port:</label>
                     <input type="text" id="remotePort" />
+                </div>
+
+                <div class="config-group">
+                    <strong>Routing / identifiers</strong>
                 </div>
 
                 <div class="config-group">
@@ -95,6 +109,7 @@ export function createConfigUI(): HTMLElement {
     // Add event listeners
     const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement;
     const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement;
+    const routeTargetInput = overlay.querySelector('#remoteRouteTarget') as HTMLInputElement;
     const portInput = overlay.querySelector('#remotePort') as HTMLInputElement;
     const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement;
     const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement;
@@ -107,6 +122,7 @@ export function createConfigUI(): HTMLElement {
 
     hostInput.value = getRemoteHost();
     tunnelHostInput.value = getRemoteTunnelHost();
+    routeTargetInput.value = getRemoteRouteTarget();
     portInput.value = getRemotePort();
     protocolInput.value = getRemoteProtocol();
     transportModeInput.value = getAirPadTransportMode();
@@ -118,6 +134,7 @@ export function createConfigUI(): HTMLElement {
     saveButton.addEventListener('click', () => {
         setRemoteHost(hostInput.value);
         setRemoteTunnelHost(tunnelHostInput.value);
+        setRemoteRouteTarget(routeTargetInput.value);
         setRemotePort(portInput.value);
         setRemoteProtocol(protocolInput.value);
         setAirPadTransportMode(transportModeInput.value);
@@ -167,6 +184,7 @@ export function showConfigUI(): void {
     } else {
         const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement | null;
         const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement | null;
+        const routeTargetInput = overlay.querySelector('#remoteRouteTarget') as HTMLInputElement | null;
         const portInput = overlay.querySelector('#remotePort') as HTMLInputElement | null;
         const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement | null;
         const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement | null;
@@ -176,6 +194,7 @@ export function showConfigUI(): void {
         const signingSecretInput = overlay.querySelector('#airpadSigningSecret') as HTMLInputElement | null;
         if (hostInput) hostInput.value = getRemoteHost();
         if (tunnelHostInput) tunnelHostInput.value = getRemoteTunnelHost();
+        if (routeTargetInput) routeTargetInput.value = getRemoteRouteTarget();
         if (portInput) portInput.value = getRemotePort();
         if (protocolInput) protocolInput.value = getRemoteProtocol();
         if (transportModeInput) transportModeInput.value = getAirPadTransportMode();

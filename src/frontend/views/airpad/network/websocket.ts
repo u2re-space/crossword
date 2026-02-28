@@ -9,6 +9,7 @@ import {
     getRemoteTunnelHost,
     getRemotePort,
     getRemoteProtocol,
+    getRemoteRouteTarget,
     getAirPadAuthToken,
     getAirPadTransportMode,
     getAirPadTransportSecret,
@@ -887,6 +888,8 @@ export function connectWS() {
         const url = candidate.url;
         const targetHost = parsedRemoteHost || remoteHost;
         const targetPort = parsedRemotePort || remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
+        const routeTarget = getRemoteRouteTarget().trim();
+        const resolvedRouteTarget = routeTarget || targetHost || "";
         log(`Connecting Socket.IO: ${url} via ${candidate.source} (${candidate.host}:${candidate.port}) target=${targetHost}:${targetPort}`);
         const authToken = getAirPadAuthToken().trim();
         const clientId = getAirPadClientId().trim();
@@ -907,6 +910,8 @@ export function connectWS() {
         }
         if (cleanedClientId) {
             queryParams.clientId = cleanedClientId;
+            queryParams.__airpad_src = cleanedClientId;
+            queryParams.__airpad_client = cleanedClientId;
         }
         queryParams.__airpad_hop = candidate.host || remoteHost || 'unknown';
         queryParams.__airpad_host = candidate.host || remoteHost || '';
@@ -915,6 +920,12 @@ export function connectWS() {
         queryParams.__airpad_target_port = targetPort;
         queryParams.__airpad_via_port = candidate.port || '';
         queryParams.__airpad_protocol = candidate.protocol || 'https';
+        if (resolvedRouteTarget) {
+            queryParams.__airpad_route = resolvedRouteTarget;
+            if (!routeTarget) {
+                queryParams.__airpad_route_target = targetHost || "";
+            }
+        }
 
         const probeSocket = io(url, {
             auth: handshakeAuth,

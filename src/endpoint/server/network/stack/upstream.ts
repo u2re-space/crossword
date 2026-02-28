@@ -4,8 +4,17 @@ import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "./messages.ts";
 
-type UpstreamPeerConfig = {
+type UpstreamConnectorConfig = {
     enabled?: boolean;
+    mode?: "active" | "passive";
+    origin?: {
+        originId?: string;
+        originHosts?: string[];
+        originDomains?: string[];
+        originMasks?: string[];
+        surface?: string;
+    };
+    clientId?: string;
     endpointUrl?: string;
     endpoints?: string[];
     userId?: string;
@@ -20,7 +29,7 @@ type UpstreamPeerConfig = {
 
 type EndpointConfig = {
     roles?: string[];
-    upstream?: UpstreamPeerConfig;
+    upstream?: UpstreamConnectorConfig;
 };
 
 type RunningClient = {
@@ -31,6 +40,17 @@ type RunningClient = {
         running: boolean;
         connected: boolean;
         upstreamEnabled: boolean;
+        upstreamMode?: "active" | "passive";
+        upstreamPeerId?: string;
+        upstreamClientId?: string;
+        upstreamRole: "active-connector" | "passive-connector";
+        origin?: {
+            originId?: string;
+            originHosts?: string[];
+            originDomains?: string[];
+            originMasks?: string[];
+            surface?: string;
+        };
         endpointUrl?: string;
         upstreamEndpoints?: string[];
         activeEndpoint?: string;
@@ -40,7 +60,7 @@ type RunningClient = {
     };
 };
 
-type UpstreamMessageHandler = (message: any, rawText: string, cfg: UpstreamPeerConfig) => void;
+type UpstreamMessageHandler = (message: any, rawText: string, cfg: UpstreamConnectorConfig) => void;
 
 type UpstreamClientOptions = {
     onMessage?: UpstreamMessageHandler;
@@ -63,11 +83,11 @@ type EnvelopePayload = {
     [key: string]: any;
 };
 
-const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
-const shouldRejectUnauthorized = String(process.env.AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED ?? "true").toLowerCase() !== "false";
+const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const shouldRejectUnauthorized = String(process.env.CWS_UPSTREAM_REJECT_UNAUTHORIZED || process.env.AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED || "true").toLowerCase() !== "false";
 const invalidCredentialsRetryMs = Math.max(
     1000,
-    Number(process.env.AIRPAD_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS ?? "30000") || 30000
+    Number(process.env.CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS || process.env.AIRPAD_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS || "30000") || 30000
 );
 const TLS_VERIFY_ERRORS = [
     "unable to verify the first certificate",
@@ -177,6 +197,22 @@ const parseEnvNumber = (value: string | undefined, fallback: number): number => 
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
 };
+const normalizeOriginList = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || "").trim()).filter(Boolean);
+    }
+    if (typeof value === "string") {
+        return value.split(/[;,]/).map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+};
+const parseUpstreamMode = (value: unknown): "active" | "passive" | undefined => {
+    if (typeof value !== "string") return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "active" || normalized === "keepalive") return "active";
+    if (normalized === "passive") return "passive";
+    return undefined;
+};
 
 const parseEnvEndpointList = (value: string | undefined): string[] => {
     return String(value || "")
@@ -202,7 +238,12 @@ const normalizeRoleSet = (roles: unknown): Set<string> => {
     );
 };
 
-const isClientRoleEnabled = (config: EndpointConfig): boolean => {
+/**
+ * Endpoint role model is split into:
+ * - upstream connector (this process): starts reverse WS/WebSocket client and pushes frames to upstream gateway
+ * - upstream gateway/origin (remote endpoint): accepts reverse socket and proxies/reroutes messages for peers/DMZ clients
+ */
+const isConnectorRoleEnabled = (config: EndpointConfig): boolean => {
     const roles = normalizeRoleSet(config.roles);
     if (roles.size === 0) return true;
     return roles.has("client") || roles.has("peer") || roles.has("node") || roles.has("hub");
@@ -248,7 +289,7 @@ const parseBase64Envelope = (rawText: string): any | null => {
     }
 };
 
-const decodeServerPayload = (rawText: string, cfg: Required<UpstreamPeerConfig>): EnvelopePayload | null => {
+const decodeServerPayload = (rawText: string, cfg: Required<UpstreamConnectorConfig>): EnvelopePayload | null => {
     if (!cfg.upstreamMasterKey?.trim()) {
         return parseJson(rawText);
     }
@@ -284,18 +325,38 @@ const decodeServerPayload = (rawText: string, cfg: Required<UpstreamPeerConfig>)
     return parseJson(rawText);
 };
 
-const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerConfig> | null => {
+const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConnectorConfig> | null => {
     const upstream = config?.upstream || {};
-    const envUpstreamEnabled = parseEnvBoolean(process.env.AIRPAD_UPSTREAM_ENABLED);
-    const envEndpointUrl = String(process.env.AIRPAD_UPSTREAM_ENDPOINT_URL ?? "").trim();
-    const envEndpoints = parseEnvEndpointList(process.env.AIRPAD_UPSTREAM_ENDPOINTS);
-    const envUserId = String(process.env.AIRPAD_UPSTREAM_USER_ID ?? "").trim();
-    const envUserKey = String(process.env.AIRPAD_UPSTREAM_USER_KEY ?? "").trim();
-    const envDeviceId = String(process.env.AIRPAD_UPSTREAM_DEVICE_ID ?? "").trim();
-    const envNamespace = String(process.env.AIRPAD_UPSTREAM_NAMESPACE ?? "").trim();
-    const envReconnectMs = parseEnvNumber(process.env.AIRPAD_UPSTREAM_RECONNECT_MS, 0);
+    const envUpstreamEnabled = parseEnvBoolean(process.env.CWS_UPSTREAM_ENABLED || process.env.AIRPAD_UPSTREAM_ENABLED);
+    const envUpstreamMode = parseUpstreamMode(process.env.CWS_UPSTREAM_MODE || process.env.AIRPAD_UPSTREAM_MODE);
+    const envUpstreamClientId = String(process.env.CWS_UPSTREAM_CLIENT_ID || process.env.AIRPAD_UPSTREAM_CLIENT_ID || "").trim();
+    const envEndpointUrl = String(process.env.CWS_UPSTREAM_ENDPOINT_URL || process.env.AIRPAD_UPSTREAM_ENDPOINT_URL || "").trim();
+    const envEndpoints = parseEnvEndpointList(process.env.CWS_UPSTREAM_ENDPOINTS || process.env.AIRPAD_UPSTREAM_ENDPOINTS || "");
+    const envUserId = String(process.env.CWS_UPSTREAM_USER_ID || process.env.AIRPAD_UPSTREAM_USER_ID || "").trim();
+    const envUserKey = String(process.env.CWS_UPSTREAM_USER_KEY || process.env.AIRPAD_UPSTREAM_USER_KEY || "").trim();
+    const envDeviceId = String(process.env.CWS_UPSTREAM_DEVICE_ID || process.env.AIRPAD_UPSTREAM_DEVICE_ID || "").trim();
+    const envNamespace = String(process.env.CWS_UPSTREAM_NAMESPACE || process.env.AIRPAD_UPSTREAM_NAMESPACE || "").trim();
+    const envReconnectMs = parseEnvNumber(process.env.CWS_UPSTREAM_RECONNECT_MS || process.env.AIRPAD_UPSTREAM_RECONNECT_MS, 0);
 
     const enabled = envUpstreamEnabled === undefined ? upstream.enabled === true : envUpstreamEnabled;
+    const mode = envUpstreamMode || parseUpstreamMode(upstream.mode) || "active";
+    const originConfig = (upstream as Record<string, any>).origin || {};
+    const normalizeOriginToken = (value: unknown) => {
+        return String(value || "").trim();
+    };
+    const origin = {
+        originId: normalizeOriginToken((upstream as Record<string, any>).originId || originConfig.originId),
+        originHosts: normalizeOriginList(
+            originConfig.hosts || originConfig.host || (upstream as Record<string, any>).originHosts
+        ),
+        originDomains: normalizeOriginList(
+            originConfig.domains || (upstream as Record<string, any>).originDomains
+        ),
+        originMasks: normalizeOriginList(
+            originConfig.masks || (upstream as Record<string, any>).originMasks
+        ),
+        surface: normalizeOriginToken(originConfig.surface || (upstream as Record<string, any>).originSurface).toLowerCase() || "external"
+    };
     const endpointEntries = envEndpoints.length
         ? envEndpoints
         : Array.isArray(upstream.endpoints)
@@ -313,10 +374,11 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
         : uniqueEndpoints[0] || "");
     const userId = envUserId || (typeof upstream.userId === "string" ? upstream.userId.trim() : "");
     const userKey = envUserKey || (typeof upstream.userKey === "string" ? upstream.userKey.trim() : "");
+    const clientId = envUpstreamClientId || (typeof upstream.clientId === "string" ? upstream.clientId.trim() : "");
     if (!enabled) {
         if (isTunnelDebug) {
             console.info(
-                `[upstream] disabled: enabled=false`,
+                `[upstream.connector] disabled: enabled=false`,
                 `roles=${formatEndpointList(Array.isArray(config.roles) ? config.roles : [])}`,
                 `endpointUrl=${endpointUrl || "-"}`,
                 `userId=${maskValue(userId)}`,
@@ -325,13 +387,13 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
         }
         return null;
     }
-    if (!endpointUrl || !userId || !userKey) {
+    if (mode === "active" && (!endpointUrl || !userId || !userKey)) {
         const missing: string[] = [];
         if (!endpointUrl) missing.push("endpointUrl");
         if (!userId) missing.push("userId");
         if (!userKey) missing.push("userKey");
         console.warn(
-            `[upstream] disabled: missing required fields`,
+            `[upstream.connector] disabled: active mode requires credentials and endpoint`,
             `missing=${missing.join(",") || "none"}`,
             `endpointUrl=${endpointUrl || "-"}`,
             `userId=${userId ? "***" : "-"}`,
@@ -343,13 +405,22 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
     const reconnectMs = Number(upstream.reconnectMs);
     return {
         enabled: true,
+        mode,
         upstreamMasterKey: upstream.upstreamMasterKey,
         upstreamSigningPrivateKeyPem: upstream.upstreamSigningPrivateKeyPem,
         upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
+        origin: {
+            originId: origin.originId || normalizeOriginToken(upstream.deviceId || upstream.userId),
+            originHosts: origin.originHosts,
+            originDomains: origin.originDomains,
+            originMasks: origin.originMasks,
+            surface: origin.surface || "external"
+        },
         endpoints: uniqueEndpoints,
         endpointUrl,
         userId,
         userKey,
+        clientId,
         deviceId: envDeviceId || (typeof upstream.deviceId === "string" && upstream.deviceId.trim()
             ? upstream.deviceId.trim()
             : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`),
@@ -360,7 +431,7 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamPeerC
     };
 };
 
-const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): string | null => {
+const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>): string | null => {
     try {
         const rawEndpoint = endpointUrl.trim().replace(/\/+$/, "");
         if (!rawEndpoint) return null;
@@ -384,6 +455,10 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): str
         url.searchParams.set("userKey", cfg.userKey);
         url.searchParams.set("namespace", cfg.namespace);
         url.searchParams.set("deviceId", cfg.deviceId);
+        if (cfg.clientId?.trim()) {
+            url.searchParams.set("label", cfg.clientId.trim());
+            url.searchParams.set("clientId", cfg.clientId.trim());
+        }
         return url.toString();
     } catch {
         return null;
@@ -391,10 +466,10 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamPeerConfig>): str
 };
 
 export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: UpstreamClientOptions = {}): RunningClient | null => {
-    if (!isClientRoleEnabled(rawConfig)) {
+    if (!isConnectorRoleEnabled(rawConfig)) {
         if (isTunnelDebug) {
             console.info(
-                "[upstream] disabled: client/peer/hub role is not enabled",
+            "[upstream.connector] disabled: client/peer/hub role is not enabled",
                 `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`
             );
         }
@@ -403,15 +478,54 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
 
     const cfg = normalizeUpstreamConfig(rawConfig);
     if (!cfg) return null;
+    if (cfg.mode === "passive") {
+        if (isTunnelDebug) {
+            console.info(
+                "[upstream.connector] passive mode: skip reverse connector startup",
+                `mode=${cfg.mode}`,
+                `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`,
+                `gatewayCandidates=${formatEndpointList(cfg.endpoints)}`
+            );
+        }
+        let stopped = false;
+        return {
+            stop: () => {
+                if (isTunnelDebug) {
+                    console.info("[upstream.connector] passive stop");
+                }
+                stopped = true;
+            },
+            send: () => false,
+            isRunning: () => !stopped,
+            getStatus: () => ({
+                running: !stopped,
+                connected: false,
+                upstreamEnabled: cfg.enabled,
+                upstreamRole: "passive-connector",
+                upstreamMode: cfg.mode,
+                upstreamPeerId: cfg.clientId || cfg.deviceId,
+                upstreamClientId: cfg.clientId,
+                endpointUrl: "",
+                upstreamEndpoints: cfg.endpoints,
+                activeEndpoint: "",
+                userId: cfg.userId,
+                deviceId: cfg.deviceId,
+                namespace: cfg.namespace,
+                origin: cfg.origin
+            })
+        };
+    }
     if (isTunnelDebug) {
         console.info(
-            "[upstream] config accepted",
+            "[upstream.connector] config accepted",
             `enabled=${cfg.enabled}`,
+            `mode=${cfg.mode}`,
             `userId=${maskValue(cfg.userId)}`,
             `endpoint=${cfg.endpointUrl}`,
             `endpoints=${formatEndpointList(cfg.endpoints)}`,
             `namespace=${cfg.namespace}`,
-            `deviceId=${cfg.deviceId}`
+            `deviceId=${cfg.deviceId}`,
+            `clientId=${cfg.clientId || cfg.deviceId}`
         );
     }
 
@@ -422,14 +536,14 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         if (!item) return;
         if (isSelfLoopCandidate(item, localHosts)) {
             if (isTunnelDebug) {
-                console.info("[upstream] skip self endpoint candidate", `candidate=${item}`);
+                console.info("[upstream.connector] skip self endpoint candidate", `candidate=${item}`);
             }
             return;
         }
         const signature = normalizeEndpointSignature(item);
         if (signature && seenSignatures.has(signature)) {
             if (isTunnelDebug) {
-                console.info("[upstream] skip duplicate endpoint candidate", `candidate=${item}`, `signature=${signature}`);
+                console.info("[upstream.connector] skip duplicate endpoint candidate", `candidate=${item}`, `signature=${signature}`);
             }
             return;
         }
@@ -443,14 +557,14 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         for (const item of cfg.endpoints) addCandidate(item, upstreamCandidates);
     } else if (!cfg.endpointUrl) {
         if (isTunnelDebug) {
-            console.warn("[upstream] disabled: no explicit endpoint candidates", `endpoints=${formatEndpointList(cfg.endpoints)}`, `endpointUrl=${cfg.endpointUrl || "-"}`);
+            console.warn("[upstream.connector] disabled: no explicit endpoint candidates", `endpoints=${formatEndpointList(cfg.endpoints)}`, `endpointUrl=${cfg.endpointUrl || "-"}`);
         }
     }
 
 
     if (!upstreamCandidates.length) {
         if (isTunnelDebug) {
-            console.warn("[upstream] disabled: all candidates are local/self endpoints", `host=${Array.from(localHosts).join("|")}`);
+            console.warn("[upstream.connector] disabled: all candidates are local/self endpoints", `host=${Array.from(localHosts).join("|")}`);
         }
         return null;
     }
@@ -507,7 +621,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         if (invalidCredentialBlockUntil > Date.now()) {
             const waitMs = Math.max(0, invalidCredentialBlockUntil - Date.now());
             if (isTunnelDebug) {
-                console.warn("[upstream] skip reconnect: credentials rejected, waiting", `endpoint=${cfg.endpointUrl}`, `waitMs=${waitMs}`);
+                console.warn("[upstream.connector] skip reconnect: credentials rejected, waiting", `endpoint=${cfg.endpointUrl}`, `waitMs=${waitMs}`);
             }
             scheduleReconnect(waitMs);
             return;
@@ -517,7 +631,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             wsUrl = buildWsUrl(endpoint, cfg);
             if (!wsUrl) {
                 if (isTunnelDebug) {
-                    console.warn("[upstream] cannot build ws url", `candidate=${endpoint}`);
+                    console.warn("[upstream.connector] cannot build ws url", `candidate=${endpoint}`);
                 }
                 setNextEndpoint();
                 scheduleReconnect();
@@ -525,14 +639,14 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             }
             activeEndpoint = endpoint;
             if (isTunnelDebug) {
-                console.info("[upstream] connecting", `endpoint=${endpoint}`, `url=${wsUrl}`);
+                console.info("[upstream.connector] connecting", `endpoint=${endpoint}`, `url=${wsUrl}`);
             }
             socket = new WebSocket(wsUrl, {
                 rejectUnauthorized: shouldRejectUnauthorized
             });
         } catch {
             if (isTunnelDebug) {
-                console.error("[upstream] connection setup failed", `candidate=${upstreamCandidates[candidateIndex]}`);
+                console.error("[upstream.connector] connection setup failed", `candidate=${upstreamCandidates[candidateIndex]}`);
             }
             setNextEndpoint();
             scheduleReconnect();
@@ -550,7 +664,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         socket.on("open", () => {
             invalidCredentialBlockUntil = 0;
             if (isTunnelDebug) {
-                console.info("[upstream] connected", `endpoint=${activeEndpoint}`);
+                console.info("[upstream.connector] connected", `endpoint=${activeEndpoint}`);
             }
             clearConnectTimeout();
             clearReconnect();
@@ -590,10 +704,10 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
                 const active = upstreamCandidates[candidateIndex] || cfg.endpointUrl;
                 const reasonText = formatCloseReason(reason);
                 const normalizedReason = reasonText.toLowerCase();
-                console.warn("[upstream] closed", `endpoint=${active}`, `code=${code}`, reasonText ? `reason=${reasonText}` : "");
+                console.warn("[upstream.connector] closed", `endpoint=${active}`, `code=${code}`, reasonText ? `reason=${reasonText}` : "");
                 if (code === 4001 && normalizedReason.includes("invalid credentials")) {
                     invalidCredentialBlockUntil = Date.now() + invalidCredentialsRetryMs;
-                    console.error("[upstream] rejected by target", formatHintForInvalidCredentials(cfg.userId, cfg.deviceId, active));
+                    console.error("[upstream.connector] rejected by gateway", formatHintForInvalidCredentials(cfg.userId, cfg.deviceId, active));
                 }
             }
             clearConnectTimeout();
@@ -607,9 +721,9 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         socket.on("error", (error) => {
             const message = error instanceof Error ? error.message : String(error);
             if (isTunnelDebug) {
-                console.error("[upstream] socket error", message);
+                console.error("[upstream.connector] socket error", message);
                 if (isTlsVerifyError(message)) {
-                    console.warn("[upstream] tls verify error", `endpoint=${upstreamCandidates[candidateIndex] || cfg.endpointUrl}`, `use AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false if certificate is self-signed`);
+                    console.warn("[upstream.connector] tls verify error", `endpoint=${upstreamCandidates[candidateIndex] || cfg.endpointUrl}`, `use CWS_UPSTREAM_REJECT_UNAUTHORIZED=false (or AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED for legacy) if certificate is self-signed`);
                 }
             }
             socket?.close(4001, "upstream-error");
@@ -621,7 +735,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
     return {
         stop: () => {
             if (isTunnelDebug) {
-                console.info("[upstream] stopping");
+                console.info("[upstream.connector] stopping");
             }
             stopped = true;
             clearReconnect();
@@ -639,7 +753,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
                     if (now - lastSendWarnAt > 5000) {
                         lastSendWarnAt = now;
                         console.warn(
-                            "[upstream] send blocked",
+                            "[upstream.connector] send blocked",
                             `state=${socket ? String(socket.readyState) : "null"}`,
                             `endpoint=${activeEndpoint}`
                         );
@@ -660,6 +774,11 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             running: !stopped,
             connected: !!(socket && socket.readyState === WebSocket.OPEN),
             upstreamEnabled: cfg.enabled,
+            upstreamRole: "active-connector",
+            upstreamPeerId: cfg.clientId || cfg.deviceId,
+            upstreamMode: cfg.mode,
+            origin: cfg.origin,
+            upstreamClientId: cfg.clientId,
             endpointUrl: wsUrl,
             upstreamEndpoints: upstreamCandidates,
             activeEndpoint,

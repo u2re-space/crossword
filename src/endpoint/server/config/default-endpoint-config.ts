@@ -32,6 +32,12 @@ const FALLBACK_RUNTIME_DEFAULTS = {
     secret: ""
 };
 
+const FALLBACK_TOPOLOGY = {
+    enabled: true,
+    nodes: [],
+    links: []
+} as const;
+
 const toStringArray = (value: unknown): string[] | undefined => {
     if (!Array.isArray(value)) return undefined;
     const list = value.map((item) => String(item ?? "").trim()).filter(Boolean);
@@ -99,6 +105,20 @@ const portableUpstreamEndpoints = toStringArray((portableUpstream as Record<stri
 const portablePeers = toStringArray(portableRuntimeDefaults?.peers);
 const portableBroadcastTargets = toStringArray(portableRuntimeDefaults?.broadcastTargets);
 const portableClipboardPeerTargets = toStringArray(portableRuntimeDefaults?.clipboardPeerTargets);
+const portableTopology = (portableConfig && typeof portableConfig === "object" && "endpointTopology" in portableConfig
+    ? (portableConfig as Record<string, any>).endpointTopology
+    : undefined) as unknown;
+const normalizeTopologyCollection = (value: unknown): unknown[] => {
+    if (!Array.isArray(value)) return [];
+    return value.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry));
+};
+const portableTopologyConfig = (portableTopology && typeof portableTopology === "object")
+    ? {
+        enabled: normalizeBoolean((portableTopology as Record<string, any>).enabled, true),
+        nodes: normalizeTopologyCollection((portableTopology as Record<string, any>).nodes),
+        links: normalizeTopologyCollection((portableTopology as Record<string, any>).links)
+    }
+    : undefined;
 
 export const DEFAULT_CORE_ROLES = [...(portableRoles || FALLBACK_ROLES)] as const;
 
@@ -125,4 +145,9 @@ export const DEFAULT_ENDPOINT_RUNTIME = {
     pollInterval: normalizeNumber(portableRuntimeDefaults?.pollInterval, FALLBACK_RUNTIME_DEFAULTS.pollInterval),
     httpTimeoutMs: normalizeNumber(portableRuntimeDefaults?.httpTimeoutMs, FALLBACK_RUNTIME_DEFAULTS.httpTimeoutMs),
     secret: typeof portableRuntimeDefaults?.secret === "string" ? portableRuntimeDefaults.secret : FALLBACK_RUNTIME_DEFAULTS.secret
+};
+
+export const DEFAULT_ENDPOINT_TOPOLOGY = {
+    ...FALLBACK_TOPOLOGY,
+    ...(portableTopologyConfig || {})
 };

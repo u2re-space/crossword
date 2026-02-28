@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { SETTINGS_FILE, ensureDataDirs } from "../lib/paths.ts";
-import { DEFAULT_CORE_ROLES, DEFAULT_ENDPOINT_UPSTREAM } from "./default-endpoint-config.ts";
+import { DEFAULT_CORE_ROLES, DEFAULT_ENDPOINT_TOPOLOGY, DEFAULT_ENDPOINT_UPSTREAM } from "./default-endpoint-config.ts";
 
 export type CustomInstruction = {
     id: string;
@@ -24,6 +24,14 @@ export interface CoreSettings {
     roles?: string[];
     upstream?: {
         enabled?: boolean;
+        mode?: "active" | "passive";
+        origin?: {
+            originId?: string;
+            originHosts?: string[];
+            originDomains?: string[];
+            originMasks?: string[];
+            surface?: string;
+        };
         endpointUrl?: string;
         userId?: string;
         userKey?: string;
@@ -31,9 +39,16 @@ export interface CoreSettings {
         upstreamSigningPrivateKeyPem?: string;
         upstreamPeerPublicKeyPem?: string;
         deviceId?: string;
+        clientId?: string;
         namespace?: string;
         reconnectMs?: number;
     };
+    topology?: {
+        enabled?: boolean;
+        nodes?: Array<Record<string, any>>;
+        links?: Array<Record<string, any>>;
+    };
+    endpointIDs?: Record<string, Record<string, any>>;
 }
 
 export interface AiSettings {
@@ -78,6 +93,9 @@ export interface GridSettings {
 export const DEFAULT_SETTINGS: Settings = {
     core: {
         roles: [...DEFAULT_CORE_ROLES],
+        topology: {
+            ...DEFAULT_ENDPOINT_TOPOLOGY
+        },
         upstream: {
             ...DEFAULT_ENDPOINT_UPSTREAM
         }

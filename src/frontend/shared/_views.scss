@@ -22,8 +22,7 @@
     // The shell navigation bar persists across cross-document navigations;
     // giving it a stable name lets the browser treat it as a shared element
     // rather than re-fading the whole bar on each page load.
-    [data-shell] nav[role="navigation"],
-    [data-shell] [class*="__nav"] {
+    [data-shell] nav[role="navigation"] {
         view-transition-name: shell-nav;
         contain: layout;
     }

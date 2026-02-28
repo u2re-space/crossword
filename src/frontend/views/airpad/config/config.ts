@@ -11,6 +11,7 @@ interface StoredRemoteConfig {
     port?: string;
     protocol?: RemoteProtocol;
     tunnelHost?: string;
+    routeTarget?: string;
     transportMode?: AirpadTransportMode;
     authToken?: string;
     clientId?: string;
@@ -51,6 +52,7 @@ function persistRemoteConfig(): void {
             port: remotePort,
             protocol: remoteProtocol,
             tunnelHost: remoteTunnelHost,
+        routeTarget: remoteRouteTarget,
             transportMode: remoteConfig.transportMode,
             authToken: remoteConfig.authToken,
             clientId: remoteConfig.clientId,
@@ -62,7 +64,9 @@ function persistRemoteConfig(): void {
     }
 }
 
-// Remote connection settings
+// Remote connection settings.
+// remoteHost + remotePort describe where to establish the Socket.IO transport (Connect URL).
+// remoteRouteTarget is optional and describes which peer/device to route to by default (Remote Host field).
 const stored = loadStoredRemoteConfig();
 export let remoteHost = (stored.host || location.hostname || '').trim();
 export let remotePort = (stored.port || location.port || (location.protocol === 'https:' ? '8443' : '8080')).trim();
@@ -73,6 +77,11 @@ export let remoteProtocol: RemoteProtocol =
 export let remoteTunnelHost = (
     stored.tunnelHost ||
     readGlobalAirpadValue(["AIRPAD_TUNNEL_HOST"]) ||
+    ''
+).trim();
+export let remoteRouteTarget = (
+    stored.routeTarget ||
+    readGlobalAirpadValue(["AIRPAD_ROUTE_TARGET"]) ||
     ''
 ).trim();
 const remoteConfig: {
@@ -103,6 +112,13 @@ export function getRemoteTunnelHost(): string {
 }
 export function setRemoteTunnelHost(host: string): void {
     remoteTunnelHost = (host || '').trim();
+    persistRemoteConfig();
+}
+export function getRemoteRouteTarget(): string {
+    return remoteRouteTarget;
+}
+export function setRemoteRouteTarget(target: string): void {
+    remoteRouteTarget = (target || '').trim();
     persistRemoteConfig();
 }
 

@@ -43,8 +43,11 @@ Normalization:
 
 ### Tunnel
 
-- Reverse bridge client in `tunnel/upstream-peer-client.ts` reconnects across configured endpoints.
-- Upstream frames are normalized before dispatch into local Hub logic.
+- Reverse bridge client (upstream **connector**) in `network/stack/upstream.ts` reconnects across configured endpoints and opens outbound `mode=reverse` sessions.
+- The **origin/gateway** side accepts these sessions and forwards normalized upstream frames into local Hub logic.
+- Connector modes:
+  - `active` (default): active keepalive reverse connector that auto-connects to upstream gateway.
+  - `passive`: no auto-start of reverse connector, endpoint is expected to be directly reachable on local/private path.
 
 ### Virtual request-response over keep-alive links
 
@@ -81,7 +84,8 @@ Normalization:
   - target token form (host-like targets are treated as upstream candidates)
 - `/api/network/topology` reflects gateway roles and peer links:
   - `gateway` node when upstream transport is active/available
-  - `link:user->gateway` and `peer` links for reverse clients
+  - `link:user->gateway` and `peer` links for reverse clients (connector-side topology perspective)
+  - optional static overlay can be provided in endpoint config `endpointTopology` and merged with runtime links/nodes
 
 ### 5) Address aliases and socket-native identifiers
 
@@ -90,5 +94,32 @@ Normalization:
   - `networkAliases` (object): `"alias": "target"` pairs.
   - `networkAliasMap` (object alias): legacy alias key compatibility.
 - Alias resolution is applied to explicit dispatch/fetch targets and broadcast target normalizers.
+
+### 6) Socket.IO AirPad routing hints for non-peerId clients
+
+- AirPad clients can expose a stable source and optional route target in handshake query:
+  - `__airpad_src` or `__airpad_source`: local source identifier (`sourceId`).
+  - `__airpad_route`, `__airpad_route_target`, `routeTarget`, `__airpad_peer`, `__airpad_device`, `__airpad_client`: destination hint used when no explicit target is provided in messages.
+  - `__airpad_via=tunnel`: indicates a gateway-forwarded path; tunnel routing uses these hints plus host markers (`__airpad_host`/`__airpad_target`).
+  - If no route hint is provided, routing falls back to `__airpad_target` (connection URL host), so direct endpoint URL can act as default destination.
+
+### 7) endpointIDs policy config
+
+- This layer defines peer policy and forwarding rules by normalized peer identity.
+  - `origins`: peer-associated IPs or host masks.
+  - `tokens`: peer-associated tokens that can be used for identity matching.
+  - `forward`: default target if a message has no explicit destination (`self` keeps it local).
+  - `flags`: role metadata for runtime behavior (`mobile`, `gateway`, `direct`).
+  - `allowedIncoming`: inbound policy checks (`*` allow all, `!ID`, `!IP`, `!{ID}` deny regardless of allow entries).
+  - `allowedOutcoming`: outbound policy checks with the same syntax.
+- Wildcard entry `endpointIDs["*"]` is the fallback guest/default policy.
+- Endpoint operations resolve final targets through `forward` first and then apply policy checks (`source -> target`) before WS or upstream fanout in `/api/network/request` and `/api/network/dispatch`.
+- If an explicit source hint is provided in request body (`from`/`source`/`sourceId`/`src`) but cannot be matched to any configured `endpointIDs` policy by policy id/origins/tokens, the request is rejected as unknown source (`"source-unknown"`, message: `"Unknown source. I don't know you"`).
+- Examples:
+  - If `endpointIDs` contains:
+    - `L-192.168.0.200` with `origins: ["45.147.121.152","192.168.0.200"]`
+  - then target hints `45.147.121.152` and `192.168.0.200` are resolved to `L-192.168.0.200` before forwarding.
+  - Further target `L-192.168.0.110` is used explicitly if provided; otherwise the configured `forward` value (or `self`) is applied.
+  - If a request body carries `source` / `from` / `sourceId` (or `src`) and it points to another peer (`L-192.168.0.196`), policy evaluation uses that peer as sender, so rules are checked as if the request was sent directly by that peer while still resolving target via the normal target-IP mapping.
 
 ---

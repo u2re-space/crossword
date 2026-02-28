@@ -139,6 +139,7 @@ type ClientInfo = {
     reverse: boolean;
     deviceId?: string;
     peerLabel?: string;
+    peerId?: string;
 };
 
 export type WsHub = {
@@ -179,7 +180,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const clients = new Map<WebSocket, ClientInfo>();
     const namespaces = new Map<string, Map<string, ClientInfo>>();
     const reverseClients = new Map<string, ClientInfo>();
-    const reversePeerProfiles = new Map<string, Map<string, string>>();
+    const reversePeerProfiles = new Map<string, Map<string, { label: string; peerId: string }>>();
     const pendingFetchReplies = new Map<string, {
         resolve: (value: any) => void;
         reject: (error: any) => void;
@@ -189,6 +190,19 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const reverseClientKey = (userId: string, deviceId: string) => `${userId}:${deviceId}`;
     const requestKey = (userId: string, deviceId: string, requestId: string) =>
         `${userId}:${deviceId}:${requestId}`;
+    const resolveReverseClientByTarget = (userId: string, target: string): ClientInfo | undefined => {
+        const normalizedUser = userId.toLowerCase();
+        const normalizedTarget = target.toLowerCase();
+        const direct = reverseClients.get(reverseClientKey(normalizedUser, normalizedTarget));
+        if (direct) return direct;
+        for (const entry of reverseClients.values()) {
+            if (!entry.userId) continue;
+            if (entry.userId.toLowerCase() !== normalizedUser) continue;
+            if ((entry.deviceId || "").toLowerCase() === normalizedTarget) return entry;
+            if ((entry.peerId || "").toLowerCase() === normalizedTarget) return entry;
+        }
+        return undefined;
+    };
 
     const upgradeHandler = (req: any, socket: any, head: Buffer) => {
         let pathname = "";
@@ -421,7 +435,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const deviceId = params.get("deviceId") || "";
         const isReverse = mode === "reverse";
         const settings = await verify(userId, userKey);
-        const requestedLabel = (params.get("label") || params.get("name") || "").trim();
+        const requestedLabel = (params.get("label") || params.get("name") || params.get("clientId") || "").trim();
+        const requestedPeerId = (params.get("clientId") || params.get("peerId") || requestedLabel || deviceId).trim();
         if (!settings || !userId || !userKey) {
             ws.close(4001, "Invalid credentials");
             return;
@@ -430,7 +445,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4002, "Missing deviceId");
             return;
         }
-        const peerLabel = isReverse ? normalizePeerLabel(userId || "", deviceId, requestedLabel) : undefined;
+        const peerLabel = isReverse ? normalizePeerLabel(userId || "", deviceId, requestedPeerId) : undefined;
         const info: ClientInfo = {
             userId,
             userKey,
@@ -439,17 +454,24 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             namespace: namespace || userId,
             reverse: isReverse,
             deviceId: isReverse ? deviceId : undefined,
-            peerLabel
+            peerLabel,
+            peerId: isReverse ? requestedPeerId : undefined
         };
         clients.set(ws, info);
         if (!namespaces.has(info.userId)) namespaces.set(info.userId, new Map());
         namespaces.get(info.userId)!.set(info.id, info);
         if (isReverse && deviceId) {
             reverseClients.set(reverseClientKey(info.userId, deviceId), info);
-            const labels = reversePeerProfiles.get(info.userId) ?? new Map<string, string>();
-            labels.set(deviceId, peerLabel || deviceId);
+            if (requestedPeerId && requestedPeerId !== deviceId) {
+                reverseClients.set(reverseClientKey(info.userId, requestedPeerId), info);
+            }
+            const labels = reversePeerProfiles.get(info.userId) ?? new Map<string, { label: string; peerId: string }>();
+            labels.set(deviceId, {
+                label: peerLabel || deviceId,
+                peerId: requestedPeerId
+            });
             reversePeerProfiles.set(info.userId, labels);
-            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, deviceId, peerLabel }));
+            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, deviceId, peerLabel, peerId: requestedPeerId }));
         } else {
             ws.send(JSON.stringify({ type: "welcome", id: info.id, userId }));
         }
@@ -463,13 +485,31 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             if (info.reverse) {
                 const requestId = String(parsed?.payload?.requestId || parsed?.requestId || "").trim();
                 if (requestId) {
-                    const key = requestKey(info.userId, info.deviceId || "", requestId);
-                    const pending = pendingFetchReplies.get(key);
-                    if (pending) {
-                        pendingFetchReplies.delete(key);
-                        if (pending.timer) clearTimeout(pending.timer);
-                        pending.resolve(parsed);
-                        return;
+                    const pendingKeyUser = String(info.userId || "").toLowerCase();
+                    const pendingDevice = String(info.deviceId || "").toLowerCase();
+                    const keyByDevice = requestKey(pendingKeyUser, pendingDevice, requestId);
+                    const keyByAnyTarget = Array.from(pendingFetchReplies.keys()).find((key) => {
+                        const parts = key.split(":");
+                        return parts[0] === pendingKeyUser && parts[2] === requestId;
+                    });
+                    const key = pendingFetchReplies.has(keyByDevice) ? keyByDevice : keyByAnyTarget;
+                    if (key) {
+                        const pending = pendingFetchReplies.get(key);
+                        if (pending) {
+                            pendingFetchReplies.delete(key);
+                            if (pending.timer) clearTimeout(pending.timer);
+                            pending.resolve(parsed);
+                            return;
+                        }
+                    }
+                    if (keyByAnyTarget) {
+                        const pending = pendingFetchReplies.get(keyByAnyTarget);
+                        if (pending) {
+                            pendingFetchReplies.delete(keyByAnyTarget);
+                            if (pending.timer) clearTimeout(pending.timer);
+                            pending.resolve(parsed);
+                            return;
+                        }
                     }
                 }
 
@@ -495,6 +535,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 const target = [...clients.values()].find((c) =>
                     c.id === frame.to ||
                     c.deviceId === frame.to ||
+                    c.peerId === frame.to ||
                     c.userId === frame.to
                 );
                 target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
@@ -521,6 +562,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             }
             if (info.reverse && info.deviceId) {
                 reverseClients.delete(reverseClientKey(info.userId, info.deviceId));
+                const peerAwareKey = reverseClientKey(info.userId, info.peerId || "");
+                reverseClients.delete(peerAwareKey);
                 const labels = reversePeerProfiles.get(info.userId);
                 if (labels) {
                     labels.delete(info.deviceId);
@@ -555,7 +598,9 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     };
 
     const sendToDevice = (userId: string, deviceId: string, payload: any): boolean => {
-        const target = reverseClients.get(reverseClientKey(userId, deviceId));
+        const normalizedUser = userId.toLowerCase();
+        const normalizedTarget = deviceId.toLowerCase();
+        const target = resolveReverseClientByTarget(normalizedUser, normalizedTarget);
         if (!target?.ws) return false;
         try {
             target.ws.send(JSON.stringify(payload));
@@ -568,10 +613,13 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = 15000) => {
         const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
         const envelope = { ...payload, requestId };
-        const target = reverseClients.get(reverseClientKey(userId, deviceId));
+        const normalizedUser = userId.toLowerCase();
+        const normalizedTarget = deviceId.toLowerCase();
+        const target = resolveReverseClientByTarget(normalizedUser, normalizedTarget);
         if (!target?.ws) return undefined;
+        const pendingTarget = (target.deviceId || normalizedTarget).toLowerCase();
         return new Promise<any>((resolve, reject) => {
-            const key = requestKey(userId, deviceId, requestId);
+            const key = requestKey(normalizedUser, pendingTarget, requestId);
             const timer = setTimeout(() => {
                 pendingFetchReplies.delete(key);
                 reject(new Error(`network.fetch timeout: ${requestId}`));
@@ -589,23 +637,26 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
 
     const getConnectedDevices = (userId?: string): string[] => {
         const keys = Array.from(reverseClients.keys());
-        if (!userId) return keys.map((key) => key.split(":")[1]);
+        const asDevice = (key: string) => key.split(":")[1];
+        if (!userId) return Array.from(new Set(keys.map(asDevice)));
         const prefix = `${userId}:`;
-        return keys
-            .filter((key) => key.startsWith(prefix))
-            .map((key) => key.slice(prefix.length));
+        return Array.from(new Set(
+            keys
+                .filter((key) => key.startsWith(prefix))
+                .map((key) => key.slice(prefix.length))
+        ));
     };
 
-    const getConnectedPeerProfiles = (userId?: string): Array<{ id: string; label: string }> => {
+    const getConnectedPeerProfiles = (userId?: string): Array<{ id: string; label: string; peerId?: string }> => {
         if (!userId) {
             return Array.from(reversePeerProfiles.values())
                 .flatMap((labelsByDevice) =>
-                    Array.from(labelsByDevice.entries()).map(([id, label]) => ({ id, label }))
+                    Array.from(labelsByDevice.entries()).map(([id, profile]) => ({ id, label: profile.label, peerId: profile.peerId }))
                 );
         }
         const profile = reversePeerProfiles.get(userId);
         if (!profile) return [];
-        return Array.from(profile.entries()).map(([id, label]) => ({ id, label }));
+        return Array.from(profile.entries()).map(([id, profileEntry]) => ({ id, label: profileEntry.label, peerId: profileEntry.peerId }));
     };
 
     const close = async () => {

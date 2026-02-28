@@ -20,8 +20,17 @@ import {
     resolveNetworkAlias,
     resolveDispatchAudience,
     resolveDispatchPlan,
+    resolvePeerIdentity,
+    type PeerIdentityInput,
     type DispatchRouteDecision
 } from "../network/index.ts";
+import {
+    resolveEndpointForwardTarget,
+    resolveEndpointPolicyRoute,
+    resolveEndpointIdPolicyStrict,
+    type EndpointIdPolicyMap,
+    normalizeEndpointPolicies
+} from "../network/stack/endpoint-policy.ts";
 
 type HttpDispatchRequest = {
     url?: string;
@@ -96,10 +105,22 @@ type UpstreamTopologyStatus = {
     running: boolean;
     connected: boolean;
     upstreamEnabled: boolean;
+    upstreamRole?: "active-connector" | "passive-connector" | "gateway-origin";
     endpointUrl?: string;
     userId?: string;
     deviceId?: string;
     namespace?: string;
+    upstreamMode?: "active" | "passive";
+    upstreamClientId?: string;
+    upstreamPeerId?: string;
+    surface?: string;
+    origin?: {
+        originId?: string;
+        originHosts?: string[];
+        originDomains?: string[];
+        originMasks?: string[];
+        surface?: string;
+    };
 };
 
 type NetworkContextProvider = {
@@ -146,7 +167,7 @@ type NetworkFetchBody = {
 
 const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
 const BROADCAST_PROTO_RE = /^https?:\/\//i;
-const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
 
 const hasProtocol = (value: string): boolean => BROADCAST_PROTO_RE.test(value);
 
@@ -160,6 +181,7 @@ const looksLikeAliasedHostTarget = (value: string): boolean => {
     return false;
 };
 const NETWORK_ALIAS_MAP = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
+const endpointPolicyMap: EndpointIdPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || (config as any)?.core?.endpointIDs || {});
 const DEFAULT_NETWORK_FETCH_TIMEOUT_MS = 15000;
 
 const resolveDispatchTarget = (input: string): string => {
@@ -167,6 +189,80 @@ const resolveDispatchTarget = (input: string): string => {
     if (!trimmed) return "";
     const withPrefixStripped = stripAliasPrefix(trimmed);
     return resolveNetworkAlias(NETWORK_ALIAS_MAP, withPrefixStripped) || withPrefixStripped;
+};
+
+const resolveEndpointRouteTarget = (rawTarget: string, sourceId: string): string => {
+    return resolveEndpointForwardTarget(rawTarget, sourceId, endpointPolicyMap);
+};
+
+const checkEndpointRoutePermission = (sourceId: string, targetId: string) => {
+    if (!targetId) return { allowed: true, reason: "no-target" };
+    if (!sourceId) return { allowed: true, reason: "no-source" };
+    return resolveEndpointPolicyRoute(sourceId, targetId, endpointPolicyMap);
+};
+
+type RouteSourceResolution = {
+    sourceId: string;
+    sourceHint?: string;
+    isKnown: boolean;
+};
+
+const resolveRouteSourceId = (sourceHint: string | undefined, fallbackUserId: string): RouteSourceResolution => {
+    const fallback = fallbackUserId.trim().toLowerCase();
+    if (!sourceHint || !sourceHint.trim()) return { sourceId: fallback, isKnown: true };
+
+    const trimmedHint = sourceHint.trim();
+    const lowerHint = trimmedHint.toLowerCase();
+    const policyResolved = resolveEndpointRouteTarget(trimmedHint, trimmedHint);
+    const peerIdentityResolved = resolveNetworkTargetWithPeerIdentity(trimmedHint, fallbackUserId);
+    const sourceId = (policyResolved || peerIdentityResolved || trimmedHint).trim().toLowerCase();
+    const strictPolicy = resolveEndpointIdPolicyStrict(endpointPolicyMap, lowerHint) || (sourceId ? resolveEndpointIdPolicyStrict(endpointPolicyMap, sourceId) : undefined);
+    const isKnown = Boolean(strictPolicy) || sourceId === fallback;
+    return {
+        sourceId,
+        sourceHint: trimmedHint,
+        isKnown
+    };
+};
+
+const extractRoutingSourceId = (body: Record<string, any> | undefined, fallbackUserId: string): RouteSourceResolution => {
+    if (!body) return { sourceId: fallbackUserId.trim().toLowerCase(), isKnown: true };
+    const sourceHint = body.from || body.source || body.sourceId || body.src || body.suggestedSource || body.routeSource || body._routeSource;
+    return resolveRouteSourceId(typeof sourceHint === "string" ? sourceHint : undefined, fallbackUserId);
+};
+
+const ensureKnownRoutingSource = (routeSource: RouteSourceResolution): { allowed: boolean; reason: string } => {
+    if (routeSource.sourceHint && !routeSource.isKnown) {
+        return { allowed: false, reason: "unknown source identity" };
+    }
+    return { allowed: true, reason: "" };
+};
+
+const normalizePeerProfilesForResolution = (profiles: Array<{ id: string; label: string; peerId?: string }>): Array<PeerIdentityInput> => {
+    return profiles.map((peer) => ({
+        id: peer.id,
+        label: peer.label,
+        peerId: peer.peerId
+    }));
+};
+
+const buildPeerIdentityContext = (userId: string) => {
+    const staticTopology = (config as any)?.topology;
+    const topologyEntries = Array.isArray(staticTopology?.nodes)
+        ? (staticTopology.nodes as Array<Record<string, any>>).filter((node) => node && typeof node === "object" && !Array.isArray(node))
+        : [];
+    const peers = wsHub.getConnectedPeerProfiles(userId);
+    return {
+        peers: normalizePeerProfilesForResolution(peers),
+        aliases: NETWORK_ALIAS_MAP,
+            topology: topologyEntries
+    };
+};
+
+const resolveNetworkTargetWithPeerIdentity = (input: string, userId: string): string => {
+    const resolution = resolvePeerIdentity(input, buildPeerIdentityContext(userId));
+    if (!resolution || !resolution.peerId) return resolveDispatchTarget(input);
+    return resolution.peerId;
 };
 
 const stripAliasPrefix = (value: string): string => {
@@ -377,8 +473,8 @@ const readTextPayload = (body: DeviceFeatureRequestBody): string => {
     return String(textFromBody).trim();
 };
 
-const resolveFeatureTarget = (body: DeviceFeatureRequestBody) => (
-    resolveDispatchTarget(body.targetDeviceId?.trim() || body.targetId?.trim() || body.deviceId?.trim())
+const resolveFeatureTarget = (body: DeviceFeatureRequestBody, userId: string) => (
+    resolveNetworkTargetWithPeerIdentity(body.targetDeviceId?.trim() || body.targetId?.trim() || (body as any).deviceId?.trim(), userId)
 );
 
 const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<string, string | number | undefined>) => {
@@ -476,15 +572,35 @@ export const registerOpsRoutes = async (
 
         const ops = settings?.core?.ops || {};
         const httpTargets = ops.httpTargets || [];
-        const resolvedTargetId = targetId?.trim() ? resolveDispatchTarget(targetId) : targetId;
+        const resolvedTargetId = targetId?.trim() ? resolveNetworkTargetWithPeerIdentity(targetId, userId) : targetId;
         const target = targetId?.trim() ? httpTargets.find((t) => t.id === targetId || t.id === resolvedTargetId) : undefined;
         const resolvedUrl = toTargetUrl(payload, target?.url, forceHttpsRoute);
 
-        const reverseTarget = resolveDispatchTarget(
-            targetDeviceId || (payload as any).deviceId || targetId || ""
-        );
-        if (!resolvedUrl && reverseTarget && typeof reverseTarget === "string" && reverseTarget.trim()) {
-            const delivered = wsHub.sendToDevice(userId, reverseTarget, {
+        const routeTargetHint = targetDeviceId || (payload as any).deviceId || targetId || "";
+        const reverseTarget = resolveEndpointRouteTarget(routeTargetHint, userId);
+        const reverseTargetPeer = resolveNetworkTargetWithPeerIdentity(routeTargetHint, userId);
+        const routeSource = extractRoutingSourceId(payload as any, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return {
+                ok: false,
+                error: "Unknown source. I don't know you",
+                route: "source-unknown",
+                reason: routeSourceCheck.reason
+            };
+        }
+        const routeDecision = checkEndpointRoutePermission(routeSource.sourceId, reverseTarget);
+        if (!routeDecision.allowed) {
+            return {
+                ok: false,
+                error: "Route denied by endpoint policy",
+                delivered: "policy-blocked",
+                reason: routeDecision.reason
+            };
+        }
+        const reverseTargetForSend = reverseTargetPeer || reverseTarget;
+        if (!resolvedUrl && reverseTargetForSend && typeof reverseTargetForSend === "string" && reverseTargetForSend.trim()) {
+            const delivered = wsHub.sendToDevice(userId, reverseTargetForSend, {
                 type: (payload as any).type || "dispatch",
                 data: (payload as any).data ?? payload,
             });
@@ -492,7 +608,7 @@ export const registerOpsRoutes = async (
                 ok: !!delivered,
                 delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
                 mode: "request-fallback-reverse",
-                targetDeviceId: reverseTarget
+                targetDeviceId: reverseTargetForSend
             };
         }
 
@@ -527,6 +643,16 @@ export const registerOpsRoutes = async (
     const broadcastHandler = async (request: FastifyRequest<{ Body: HttpDispatchBody }>) => {
         const body = (request.body || {}) as HttpDispatchBody;
         const { userId, userKey, targetDeviceId } = body;
+        const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return {
+                ok: false,
+                error: "Unknown source. I don't know you",
+                route: "source-unknown",
+                reason: routeSourceCheck.reason
+            };
+        }
         const defaultDeviceId = targetDeviceId && targetDeviceId.trim() ? targetDeviceId.trim() : undefined;
         const requests = normalizeDispatchRequests(body);
         // console.log(requests); // Disabled to prevent logging JSON/payload content
@@ -553,12 +679,23 @@ export const registerOpsRoutes = async (
             || (config as any)?.ops?.broadcastForceHttps
             || (config as any)?.core?.ops?.broadcastForceHttps
         );
-        const requestBroadcastForceHttps = typeof body.broadcastForceHttps === "boolean" ? body.broadcastForceHttps : undefined;
+        const requestBroadcastForceHttps = typeof (body as any).broadcastForceHttps === "boolean" ? (body as any).broadcastForceHttps : undefined;
         const forceBroadcastHttps = requestBroadcastForceHttps ?? (Boolean(ops.broadcastForceHttps) || configBroadcastForceHttps);
         const execOne = async (entry: HttpDispatchRequest) => {
             const reverseDeviceId = (entry as any).deviceId || (entry as any).targetId || defaultDeviceId;
             if (typeof reverseDeviceId === "string" && reverseDeviceId.trim()) {
-                const delivered = wsHub.sendToDevice(userId, reverseDeviceId.trim(), {
+                const resolvedReverseDeviceId = resolveEndpointRouteTarget(reverseDeviceId, userId);
+                const routeDecision = checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId);
+                if (!routeDecision.allowed) {
+                    return {
+                        target: reverseDeviceId,
+                        ok: false,
+                        delivered: "policy-blocked",
+                        mode: "reverse",
+                        reason: routeDecision.reason
+                    };
+                }
+                const delivered = wsHub.sendToDevice(userId, resolvedReverseDeviceId.trim(), {
                     type: (entry as any).type || "dispatch",
                     data: (entry as any).data ?? (entry as any).body
                 });
@@ -615,12 +752,33 @@ export const registerOpsRoutes = async (
             body,
             timeoutMs
         } = request.body || {};
+        const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return {
+                ok: false,
+                error: "Unknown source. I don't know you",
+                route: "source-unknown",
+                reason: routeSourceCheck.reason
+            };
+        }
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
 
-        const destination = resolveDispatchTarget(targetId || deviceId || peerId || target || "");
+        const rawDestination = resolveNetworkTargetWithPeerIdentity(targetId || deviceId || peerId || target || "", userId);
+        const destination = resolveEndpointRouteTarget(rawDestination, userId);
         const requestTarget = typeof destination === "string" ? destination.trim() : "";
         if (!requestTarget) return { ok: false, error: "Missing target" };
+        const routingPolicy = checkEndpointRoutePermission(routeSource.sourceId, requestTarget);
+        if (!routingPolicy.allowed) {
+            return {
+                ok: false,
+                error: "Route denied by endpoint policy",
+                route: "policy-block",
+                target: requestTarget,
+                reason: routingPolicy.reason
+            };
+        }
         const effectiveTimeoutMs = Number.isFinite(Number(timeoutMs))
             ? Math.max(250, Number(timeoutMs))
             : undefined;
@@ -634,7 +792,8 @@ export const registerOpsRoutes = async (
         const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
         const localLabels = makeTargetTokenSet(peerProfiles.map((peer) => peer.label));
         const localIds = makeTargetTokenSet(peerProfiles.map((peer) => peer.id));
-        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds]);
+        const localPeerIds = makeTargetTokenSet(peerProfiles.map((peer) => String((peer as any).peerId || peer.id)));
+        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds, ...localPeerIds]);
         const isLocalTarget = (value: string) => allLocalTargets.has(value.trim().toLowerCase());
         const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
         const plan = resolveDispatchPlan({
@@ -652,7 +811,7 @@ export const registerOpsRoutes = async (
         const requestPayload = {
             type: "network.fetch",
             requestId,
-            from: userId,
+            from: routeSource.sourceId,
             to: requestTarget,
             namespace: normalizedNamespace,
             method: (method || "GET").toUpperCase(),
@@ -749,7 +908,10 @@ export const registerOpsRoutes = async (
                 route,
                 namespace: normalizedNamespace
             };
-            const sent = networkContext.sendToUpstream(upstreamPayload);
+            const sent = networkContext.sendToUpstream({
+                ...upstreamPayload,
+                from: routeSource.sourceId
+            });
             return {
                 ok: Boolean(sent),
                 route: plan.route,
@@ -785,12 +947,22 @@ export const registerOpsRoutes = async (
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         if (!deviceId?.trim()) return { ok: false, error: "Missing deviceId" };
+        const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
+        const resolvedDeviceId = resolveEndpointRouteTarget(deviceId, userId);
+        const permission = checkEndpointRoutePermission(routeSource.sourceId, resolvedDeviceId);
+        if (!permission.allowed) {
+            return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
+        }
 
-        const delivered = wsHub.sendToDevice(userId, deviceId, {
+        const delivered = wsHub.sendToDevice(userId, resolvedDeviceId, {
             type: type || action || "dispatch",
             data,
         });
-        return { ok: !!delivered, delivered: delivered ? "ws-reverse" : "ws-reverse-missing", deviceId };
+        return { ok: !!delivered, delivered: delivered ? "ws-reverse" : "ws-reverse-missing", deviceId: resolvedDeviceId };
     };
 
     const notifyHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string; type: string; data?: any } }>) => {
@@ -828,6 +1000,11 @@ export const registerOpsRoutes = async (
         const body = (request.body || {}) as DeviceFeatureRequestBody;
         const { userId, userKey, headers, targetId } = body;
         const limit = readFeatureLimit(body);
+        const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
 
         const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -836,18 +1013,25 @@ export const registerOpsRoutes = async (
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
             : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body);
+        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
+        const permission = resolvedReverseDeviceId
+            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
+            : { allowed: true, reason: "" };
 
-        if (!resolvedBase && reverseDeviceId) {
-            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("sms", { method: "GET", limit }));
+        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
+            const delivered = wsHub.sendToDevice(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", { method: "GET", limit }));
             return {
                 ok: !!delivered,
                 delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
-                targetDeviceId: reverseDeviceId,
+                targetDeviceId: resolvedReverseDeviceId,
                 mode: "reverse",
                 feature: "sms",
                 limit
             };
+        }
+        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+            return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
         if (!resolvedBase) return { ok: false, error: "No URL" };
@@ -871,6 +1055,11 @@ export const registerOpsRoutes = async (
         const body = (request.body || {}) as DeviceFeatureRequestBody;
         const { userId, userKey, headers, targetId } = body;
         const limit = readFeatureLimit(body);
+        const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
 
         const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -879,18 +1068,25 @@ export const registerOpsRoutes = async (
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
             : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body);
+        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
+        const permission = resolvedReverseDeviceId
+            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
+            : { allowed: true, reason: "" };
 
-        if (!resolvedBase && reverseDeviceId) {
-            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("notifications", { method: "GET", limit }));
+        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
+            const delivered = wsHub.sendToDevice(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", { method: "GET", limit }));
             return {
                 ok: !!delivered,
                 delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
-                targetDeviceId: reverseDeviceId,
+                targetDeviceId: resolvedReverseDeviceId,
                 mode: "reverse",
                 feature: "notifications",
                 limit
             };
+        }
+        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+            return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
         if (!resolvedBase) return { ok: false, error: "No URL" };
@@ -914,6 +1110,11 @@ export const registerOpsRoutes = async (
         const body = (request.body || {}) as DeviceFeatureRequestBody;
         const { userId, userKey, headers, targetId, text } = body;
         const message = readTextPayload(body);
+        const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
 
         const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -923,17 +1124,24 @@ export const registerOpsRoutes = async (
             ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
             : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body);
+        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
+        const permission = resolvedReverseDeviceId
+            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
+            : { allowed: true, reason: "" };
 
-        if (!resolvedBase && reverseDeviceId) {
-            const delivered = wsHub.sendToDevice(userId, reverseDeviceId, reverseDispatchPayload("notifications.speak", { text: message }));
+        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
+            const delivered = wsHub.sendToDevice(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications.speak", { text: message }));
             return {
                 ok: !!delivered,
                 delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
-                targetDeviceId: reverseDeviceId,
+                targetDeviceId: resolvedReverseDeviceId,
                 mode: "reverse",
                 feature: "notifications.speak"
             };
+        }
+        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+            return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
         if (!resolvedBase) return { ok: false, error: "No URL" };
@@ -1037,36 +1245,133 @@ export const registerOpsRoutes = async (
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const upstreamStatus = networkContext?.getUpstreamStatus?.() || null;
         const isGateway = Boolean(upstreamStatus?.running || upstreamStatus?.connected);
-        const nodes = [
+        const configuredTopology = (config as any)?.topology;
+        const configuredEndpointIds = (config as any)?.endpointIDs;
+        const staticTopologyEnabled = Boolean(
+            configuredTopology && typeof configuredTopology === "object"
+                ? (configuredTopology as Record<string, any>).enabled !== false
+                : true
+        );
+        const staticTopologyNodes = staticTopologyEnabled
+            ? Array.isArray((configuredTopology as Record<string, any>)?.nodes)
+                ? ((configuredTopology as Record<string, any>).nodes as Array<Record<string, any>>)
+                    .filter((node) => node && typeof node === "object" && !Array.isArray(node) && typeof (node as Record<string, any>).id === "string" && (node as Record<string, any>).id.trim())
+                    .map((node) => ({
+                        ...node
+                    }))
+                : []
+            : [];
+        const normalizedStaticTopologyNodes = staticTopologyNodes.map((node) => {
+            const normalizedNode = node as Record<string, any>;
+            return {
+                ...normalizedNode,
+                peerId: String(normalizedNode.peerId || normalizedNode.id || "").trim().toLowerCase() || undefined,
+                id: String(normalizedNode.id).trim(),
+                kind: normalizedNode.kind || "node",
+                surface: normalizedNode.surface || "external"
+            };
+        });
+        const staticTopologyLinks = staticTopologyEnabled
+            ? Array.isArray((configuredTopology as Record<string, any>)?.links)
+                ? ((configuredTopology as Record<string, any>).links as Array<Record<string, any>>).filter((link) => {
+                    if (!link || typeof link !== "object" || Array.isArray(link)) return false;
+                    const source = String((link as Record<string, any>).source || "").trim();
+                    const target = String((link as Record<string, any>).target || "").trim();
+                    if (!source || !target) return false;
+                    return true;
+                })
+                    .map((link) => ({
+                        id: String((link as Record<string, any>).id || `${(link as Record<string, any>).source || "unknown"}->${(link as Record<string, any>).target || "unknown"}`),
+                        type: String((link as Record<string, any>).type || "topology-link"),
+                        ...link
+                    }))
+                : []
+            : [];
+        const endpointIdNodes = typeof configuredEndpointIds === "object" && configuredEndpointIds !== null
+            ? Object.entries(configuredEndpointIds).map(([id, entry]) => {
+                const peerPolicy = (entry && typeof entry === "object") ? (entry as Record<string, any>) : {};
+                return {
+                    id: String(id || "").trim(),
+                    kind: "peer",
+                    peerId: String(id || "").trim().toLowerCase(),
+                    role: peerPolicy?.flags?.gateway === true ? "gateway" : "endpoint-peer",
+                    surface: "external",
+                    origin: {
+                        hosts: Array.isArray(peerPolicy.origins) ? peerPolicy.origins : [],
+                        forward: typeof peerPolicy.forward === "string" ? peerPolicy.forward : "self",
+                        flags: peerPolicy.flags || {}
+                    },
+                    forward: typeof peerPolicy.forward === "string" ? peerPolicy.forward : "self",
+                    tokens: peerPolicy.tokens || [],
+                    allowedIncoming: peerPolicy.allowedIncoming || ["*"],
+                    allowedOutcoming: peerPolicy.allowedOutcoming || ["*"]
+                };
+            })
+            : [];
+
+        const localNodes = [
             {
-                id: userId,
+                id: `${userId}`,
                 kind: "node",
                 role: isGateway ? "gateway+endpoint" : "endpoint",
-                peers: peers.length
+                peers: peers.length,
+                peerId: userId,
+                surface: "local",
+                origin: undefined
             },
             ...peerProfiles.map((peer) => ({
                 id: `${userId}:${peer.id}`,
+                peerId: (peer as any).peerId || peer.id,
                 kind: "peer",
-                parent: userId,
+                parent: `${userId}`,
                 deviceId: peer.id,
-                label: peer.label
+                label: peer.label,
+                surface: "local",
+                origin: undefined
             }))
         ];
 
+        const staticNodeKeys = new Set(normalizedStaticTopologyNodes.map((node) => String(node.peerId || node.id || "").trim().toLowerCase()));
+        for (const endpointNode of endpointIdNodes) {
+            const key = String(endpointNode.peerId || endpointNode.id || "").trim().toLowerCase();
+            if (!key) continue;
+            if (!staticNodeKeys.has(key)) {
+                staticNodeKeys.add(key);
+                normalizedStaticTopologyNodes.push(endpointNode);
+            }
+        }
+        const mergedTopologyNodes: Array<Record<string, any>> = [...normalizedStaticTopologyNodes];
+        for (const node of localNodes) {
+            const key = String(node.peerId || node.id || "").trim().toLowerCase();
+            if (!key) continue;
+            if (!staticNodeKeys.has(key)) {
+                mergedTopologyNodes.push(node);
+                staticNodeKeys.add(key);
+            }
+        }
+
         if (upstreamStatus) {
-            nodes.push({
-                id: `upstream:${upstreamStatus.userId || "default"}`,
+            const upstreamKey = upstreamStatus.upstreamClientId || upstreamStatus.upstreamPeerId || upstreamStatus.userId || `upstream:${userId}`;
+            mergedTopologyNodes.push({
+                id: `upstream:${upstreamKey}`,
                 kind: "node",
-                role: upstreamStatus.connected ? "gateway" : "gateway-offline",
-                parent: isGateway ? userId : undefined,
-                connected: upstreamStatus.connected
+                role: upstreamStatus.connected ? "gateway" : upstreamStatus.running ? "gateway-passive" : "gateway-offline",
+                parent: isGateway ? `${userId}` : undefined,
+                connected: upstreamStatus.connected,
+                peerId: upstreamStatus.upstreamPeerId || upstreamStatus.userId || upstreamKey,
+                upstreamMode: upstreamStatus.upstreamMode || undefined,
+                upstreamRole: upstreamStatus.upstreamRole,
+                origin: upstreamStatus.origin || {
+                    originId: upstreamStatus.upstreamClientId || upstreamStatus.userId
+                },
+                surface: upstreamStatus.upstreamMode === "passive" ? "local" : "external"
             });
         }
 
         const links = [
             ...peerProfiles.map((peer) => ({
                 id: `link:${userId}:${peer.id}`,
-                source: userId,
+                source: `${userId}`,
                 target: `${userId}:${peer.id}`,
                 type: "ws-peer"
             }))
@@ -1075,16 +1380,29 @@ export const registerOpsRoutes = async (
         if (upstreamStatus && (upstreamStatus.connected || upstreamStatus.running || upstreamStatus.upstreamEnabled)) {
             links.push({
                 id: `link:${userId}:upstream`,
-                source: userId,
-                target: `upstream:${upstreamStatus.userId || "default"}`,
+                source: `${userId}`,
+                target: `upstream:${upstreamStatus.upstreamClientId || upstreamStatus.upstreamPeerId || upstreamStatus.userId || "default"}`,
                 type: "upstream-client"
             });
         }
 
+        const staticLinkIds = new Set(staticTopologyLinks.map((link) => String(link.id).toLowerCase()));
+        for (const link of links) {
+            if (!staticLinkIds.has(String(link.id).toLowerCase())) {
+                staticTopologyLinks.push(link);
+            }
+        }
+
         return {
             ok: true,
-            nodes,
-            links,
+            nodes: mergedTopologyNodes,
+            links: staticTopologyLinks,
+            topology: {
+                enabled: staticTopologyEnabled,
+                nodes: Array.isArray(mergedTopologyNodes) ? mergedTopologyNodes.length : 0,
+                links: Array.isArray(staticTopologyLinks) ? staticTopologyLinks.length : 0,
+                source: "config+runtime"
+            },
             peers,
             units: [
                 {
@@ -1120,13 +1438,20 @@ export const registerOpsRoutes = async (
             broadcast,
             targets
         } = request.body || {};
+        const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
 
         const messagePayload = payload ?? data ?? {};
-        const destination = resolveDispatchTarget(targetId || deviceId || peerId || target || "");
+        const destination = resolveEndpointRouteTarget(targetId || deviceId || peerId || target || "", userId);
         const normalizedTargets = Array.isArray(targets)
-            ? targets.map((item) => resolveDispatchTarget(String(item || "").trim())).filter(Boolean)
+            ? targets
+                .map((item) => resolveEndpointRouteTarget(String(item || "").trim(), userId))
+                .filter(Boolean)
             : [];
         const normalizedNamespace = typeof namespace === "string" && namespace.trim()
             ? namespace.trim()
@@ -1138,7 +1463,8 @@ export const registerOpsRoutes = async (
         const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
         const localLabels = makeTargetTokenSet(peerProfiles.map((peer) => peer.label));
         const localIds = makeTargetTokenSet(peerProfiles.map((peer) => peer.id));
-        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds]);
+        const localPeerIds = makeTargetTokenSet(peerProfiles.map((peer) => String((peer as any).peerId || peer.id)));
+        const allLocalTargets = new Set([...localPeers, ...localLabels, ...localIds, ...localPeerIds]);
         const isLocalTarget = (value: string) => allLocalTargets.has(value.trim().toLowerCase());
         const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
         const configuredBroadcastTargets = Array.isArray((config as any)?.broadcastTargets)
@@ -1148,14 +1474,42 @@ export const registerOpsRoutes = async (
             target: destination,
             targets: normalizedTargets,
             broadcast,
-            implicitTargets: configuredBroadcastTargets
+            implicitTargets: configuredBroadcastTargets.map((target) => resolveNetworkTargetWithPeerIdentity(target, userId))
         });
 
         const requestedTargets = audience.targets.length > 0
             ? audience.targets
             : [destination];
+        const policyCheckedTargets = requestedTargets
+            .map((targetValue) => {
+                if (!targetValue) return "";
+                const resolved = resolveNetworkTargetWithPeerIdentity(targetValue, userId) || targetValue;
+                const resolvedForward = resolveEndpointRouteTarget(resolved, userId);
+                const permission = checkEndpointRoutePermission(routeSource.sourceId, resolvedForward);
+                if (!permission.allowed) {
+                    console.warn(
+                        "[network/dispatch] route denied by endpoint policy",
+                        `source=${routeSource.sourceId}`,
+                        `target=${resolvedForward}`,
+                        permission.reason
+                    );
+                    return "";
+                }
+                return resolvedForward;
+            })
+            .filter(Boolean);
+        if (requestedTargets.length > 0 && policyCheckedTargets.length === 0) {
+            return {
+                ok: false,
+                error: "Route denied by endpoint policy",
+                route: "policy-block",
+                target: (typeof destination === "string" ? destination : ""),
+                targets: requestedTargets,
+                reason: "all requested targets denied by endpoint policy"
+            };
+        }
 
-        const audienceDecisions = requestedTargets.map((resolvedTarget) => {
+        const audienceDecisions = policyCheckedTargets.map((resolvedTarget) => {
             const targetValue = typeof resolvedTarget === "string" ? resolvedTarget.trim() : "";
             return {
                 target: targetValue,
@@ -1197,7 +1551,7 @@ export const registerOpsRoutes = async (
 
         const payloadEnvelope = {
             type: String(type || action || "dispatch"),
-            from: userId,
+            from: routeSource.sourceId,
             namespace: normalizedNamespace,
             data: messagePayload
         };
@@ -1259,7 +1613,7 @@ export const registerOpsRoutes = async (
                 local: localDelivered,
                 upstream: upstreamDispatched,
                 target: targetValue || null,
-                targets: requestedTargets
+                    targets: policyCheckedTargets
             },
             routePlan: {
                 decided: aggregateRoute,

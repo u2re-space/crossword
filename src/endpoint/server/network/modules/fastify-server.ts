@@ -19,6 +19,12 @@ import { createHttpClient } from "../stack/https.ts";
 import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from "../../io/clipboard.ts";
 import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
+import { resolvePeerIdentity } from "../stack/peer-identity.ts";
+import {
+    normalizeEndpointPolicies,
+    resolveEndpointIdPolicyStrict,
+    resolveEndpointPolicyRoute
+} from "../stack/endpoint-policy.ts";
 
 const KEY_FILE_NAME = "multi.key";
 const CRT_FILE_NAME = "multi.crt";
@@ -54,8 +60,8 @@ const candidateHttpsFiles = () => {
 const defaultHttpsPaths = () => {
     const candidates = candidateHttpsFiles();
     return {
-        key: candidates.keys[0] ?? path.resolve(moduleDirname(import.meta), "./https/local/" + KEY_FILE_NAME),
-        cert: candidates.certs[0] ?? path.resolve(moduleDirname(import.meta), "./https/local/" + CRT_FILE_NAME)
+        key: candidates.keys[0] || path.resolve(moduleDirname(import.meta), "./https/local/" + KEY_FILE_NAME),
+        cert: candidates.certs[0] || path.resolve(moduleDirname(import.meta), "./https/local/" + CRT_FILE_NAME)
     };
 };
 
@@ -67,8 +73,8 @@ const loadHttpsOptions = async () => {
     const keyCandidates = envKey ? [envKey] : candidateHttpsFiles().keys;
     const certCandidates = envCert ? [envCert] : candidateHttpsFiles().certs;
     try {
-        const keyFile = keyCandidates[0] ?? keyPath;
-        const certFile = certCandidates[0] ?? certPath;
+        const keyFile = keyCandidates[0] || keyPath;
+        const certFile = certCandidates[0] || certPath;
         const [key, cert] = await Promise.all([
             readFile(keyFile),
             readFile(certFile)
@@ -176,21 +182,114 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
     } as any;
 };
 
+// Receives messages from upstream gateway/origin and dispatches them into local peer hub.
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
     const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
-    const isTunnelDebug = String(process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+    const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+    const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
     const defaultUserId = fallbackUserId || "";
+    const resolveSourceForPolicy = (msg: Record<string, unknown>, fallback: string): { sourceId: string; isKnown: boolean } => {
+        const sourceHint = (typeof msg.from === "string" && msg.from.trim())
+            ? msg.from
+            : (typeof (msg as any).source === "string" && (msg as any).source.trim()
+                ? (msg as any).source
+                : (typeof (msg as any).sourceId === "string" && (msg as any).sourceId.trim()
+                    ? (msg as any).sourceId
+                    : (typeof (msg as any).src === "string" && (msg as any).src.trim()
+                        ? (msg as any).src
+                        : fallback)));
+        const trimmed = typeof sourceHint === "string" ? sourceHint.trim() : "";
+        const fallbackSource = fallback.trim();
+        if (!trimmed) return { sourceId: fallbackSource, isKnown: true };
+        const normalizedPolicyHint = resolvePolicyTarget(trimmed);
+        const policyResolved = normalizedPolicyHint
+            ? resolveEndpointPolicyRoute(normalizedPolicyHint, normalizedPolicyHint, endpointPolicyMap).targetPolicy
+            : undefined;
+        const strictPolicy = normalizedPolicyHint ? resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedPolicyHint) : undefined;
+        const fallbackSourceId = fallback.trim();
+        const sourceId = (policyResolved?.id && policyResolved.id !== "*" ? policyResolved.id : normalizedPolicyHint) || fallbackSource;
+        const known = Boolean(strictPolicy) || sourceId === fallbackSourceId;
+        return { sourceId, isKnown: known };
+    };
+    const stripPort = (value: string): string => {
+        const trimmed = String(value || "").trim();
+        const at = trimmed.lastIndexOf(":");
+        if (at <= 0) return trimmed;
+        const candidate = trimmed.slice(at + 1);
+        if (/^\d+$/.test(candidate)) return trimmed.slice(0, at);
+        return trimmed;
+    };
+    const resolvePolicyTarget = (rawTarget: string): string => {
+        const normalized = stripPort(String(rawTarget || "").trim().toLowerCase());
+        if (!normalized) return "";
+        const directMatch = endpointPolicyMap[normalized];
+        if (directMatch && directMatch.id) return directMatch.id;
+        const policyCandidate = resolveEndpointPolicyRoute(normalized, normalized, endpointPolicyMap);
+        return policyCandidate?.targetPolicy?.id && policyCandidate.targetPolicy.id !== "*" && policyCandidate.targetPolicy.id !== normalized
+            ? policyCandidate.targetPolicy.id
+            : rawTarget.trim();
+    };
+    const resolveTargetWithPeerIdentity = (resolvedUserId: string, rawTarget: string) => {
+        const normalized = String(rawTarget || "").trim();
+        if (!normalized) return "";
+        const policyResolvedTarget = resolvePolicyTarget(normalized);
+        const aliasInput = policyResolvedTarget !== normalized ? policyResolvedTarget : normalized;
+        const aliasResolved = resolveNetworkAlias(upstreamAliasMap, aliasInput) || aliasInput;
+        const topology = (config as any)?.topology;
+        const topologyNodes = Array.isArray(topology?.nodes)
+            ? topology.nodes.filter((node: any) => node && typeof node === "object" && !Array.isArray(node))
+            : [];
+        const peers = hub.getConnectedPeerProfiles(resolvedUserId).map((peer) => ({
+            id: peer.id,
+            label: peer.label,
+            peerId: (peer as any).peerId || peer.id
+        }));
+        const resolution = resolvePeerIdentity(aliasResolved, {
+            peers,
+            aliases: upstreamAliasMap,
+            topology: topologyNodes
+        });
+        return resolution?.peerId || aliasResolved;
+    };
     return (message: any) => {
         if (!message || typeof message !== "object") return;
         const msg = message as Record<string, unknown>;
         const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
-        const normalizedRequestedTarget = String(target ?? "");
-        const resolvedRequestedTarget = resolveNetworkAlias(upstreamAliasMap, normalizedRequestedTarget.trim()) || normalizedRequestedTarget.trim();
-        const userId =
+        const resolvedUserId =
             typeof msg.userId === "string" && msg.userId.trim()
                 ? (msg.userId as string).trim()
                 : defaultUserId;
-        if (!userId) return;
+        if (!resolvedUserId) return;
+        const normalizedRequestedTarget = String(target ?? "");
+        const resolvedRequestedTarget = resolveTargetWithPeerIdentity(resolvedUserId, normalizedRequestedTarget.trim());
+        const sourceForPolicy = resolveSourceForPolicy(msg, resolvedUserId);
+        if (!sourceForPolicy.isKnown && sourceForPolicy.sourceId !== resolvedUserId) {
+            app.log?.warn?.(
+                {
+                    source: sourceForPolicy.sourceId,
+                    rawSource: msg.source || msg.sourceId || msg.from || msg.src || msg.suggestedSource || msg.routeSource || msg._routeSource,
+                    target: resolvedRequestedTarget || "-",
+                    userId: resolvedUserId
+                },
+                "[upstream] route denied by unknown source"
+            );
+            return;
+        }
+        if (normalizedRequestedTarget.trim()) {
+            const policyDecision = resolveEndpointPolicyRoute(sourceForPolicy.sourceId, resolvedRequestedTarget, endpointPolicyMap);
+            if (!policyDecision.allowed) {
+                app.log?.warn?.(
+                    {
+                        source: sourceForPolicy.sourceId,
+                        target: resolvedRequestedTarget,
+                        reason: policyDecision.reason,
+                        userId: resolvedUserId
+                    },
+                    "[upstream] route denied by endpoint policy"
+                );
+                return;
+            }
+        }
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
         if (isTunnelDebug) {
@@ -199,8 +298,8 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                 : typeof payload;
             console.info(
                 `[upstream] IN`,
-                `userId=${userId}`,
-                `from=${String(msg.from || defaultUserId)}`,
+                `userId=${resolvedUserId}`,
+                    `from=${sourceForPolicy.sourceId}`,
                 `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`,
                 `type=${String(msg.type || msg.action || "dispatch")}`,
                 `kind=${payloadKeys}`
@@ -222,30 +321,30 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
 
         if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
             const requestedTarget = resolvedRequestedTarget.trim();
-            const resolvedTargetHint = resolveTunnelTarget(hub.getConnectedPeerProfiles(userId), requestedTarget);
+            const resolvedTargetHint = resolveTunnelTarget(hub.getConnectedPeerProfiles(resolvedUserId), requestedTarget);
             const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
             const resolvedKind = resolvedTargetHint?.source;
-            const delivered = hub.sendToDevice(userId, resolvedTarget, routed);
+            const delivered = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
 
             if (!delivered) {
                 if (isTunnelDebug) {
                     console.warn(
                         `[upstream] target resolve failed`,
-                        `userId=${userId}`,
+                        `userId=${resolvedUserId}`,
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget || "-"}`,
                         `kind=${resolvedKind || "-"}`,
-                        `known=${hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`).join(",")}`
+                        `known=${hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`).join(",")}`
                     );
                 }
                 app.log?.warn?.(
                     {
-                        userId,
+                        userId: resolvedUserId,
                         target: resolvedRequestedTarget,
                         matchedLabel: resolvedTargetHint?.profile.label,
                         resolutionKind: resolvedKind,
                         resolvedTarget,
-                        knownTargets: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`),
+                        knownTargets: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`),
                         payloadType: type
                     },
                     "[upstream] failed to route command to reverse target"
@@ -253,20 +352,20 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             } else {
                 app.log?.debug?.(
                     {
-                        userId,
+                        userId: resolvedUserId,
                         requestedTarget: requestedTarget,
                         resolvedTarget,
                         matchedLabel: resolvedTargetHint?.profile.label,
                         resolutionKind: resolvedKind,
                         payloadType: type,
-                        knownTargets: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`)
+                        knownTargets: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
                     },
                     "[upstream] routed command to reverse target"
                 );
                 if (isTunnelDebug) {
                     console.info(
                         `[upstream] target resolved`,
-                        `userId=${userId}`,
+                        `userId=${resolvedUserId}`,
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget}`,
                         `kind=${resolvedKind || "-"}`,
@@ -277,22 +376,23 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             app.log?.debug?.({
                 delivered,
                 target: resolvedRequestedTarget,
-                userId,
-                knownPeers: hub.getConnectedPeerProfiles(userId).map((entry) => `${entry.label}(${entry.id})`)
+                userId: resolvedUserId,
+                knownPeers: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
             }, "[upstream] routed command to device");
             return;
         }
 
-        hub.multicast(userId, routed, namespace);
+        hub.multicast(resolvedUserId, routed, namespace);
     };
 };
 
-const buildNetworkContext = (upstreamClient: ReturnType<typeof startUpstreamPeerClient> | null) => {
-    if (!upstreamClient) return undefined;
+const buildNetworkContext = (upstreamConnector: ReturnType<typeof startUpstreamPeerClient> | null) => {
+    if (!upstreamConnector) return undefined;
     return {
-        getUpstreamStatus: () => upstreamClient.getStatus(),
-        sendToUpstream: (payload: any) => upstreamClient.send(payload),
-        getNodeId: () => String((config as any)?.upstream?.userId || "").trim() || null
+        getUpstreamStatus: () => upstreamConnector.getStatus(),
+        sendToUpstream: (payload: any) => upstreamConnector.send(payload),
+        getNodeId: () => String(((config as any)?.upstream?.clientId || (config as any)?.upstream?.userId || "").trim() || ((config as any)?.upstream?.origin?.originId || ""))
+            .trim() || null
     };
 };
 
@@ -311,13 +411,14 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     registerRoutes(app);
     await registerCoreApp(app);
     const wsHub = createWsServer(app);
-    const upstreamClient = startUpstreamPeerClient(config as any, {
+    // Upstream connector: this node opens reverse sessions to an origin/gateway.
+    const upstreamConnector = startUpstreamPeerClient(config as any, {
         onMessage: buildUpstreamRouter(app, wsHub, (config as any)?.upstream?.userId || "")
     });
-    const networkContext = buildNetworkContext(upstreamClient);
-    if (upstreamClient) {
+    const networkContext = buildNetworkContext(upstreamConnector);
+    if (upstreamConnector) {
         app.addHook("onClose", async () => {
-            upstreamClient.stop();
+            upstreamConnector.stop();
         });
         app.log?.info?.("Upstream peer bridge started");
     }
@@ -355,15 +456,16 @@ export const buildCoreServers = async (
     const httpWsHub = createWsServer(http);
     const httpWsHubs: WsHub[] = [httpWsHub];
     const unifiedHub = makeUnifiedWsHub(httpWsHubs);
-    const upstreamClient = startUpstreamPeerClient(config as any, {
+    // Upstream connector: HTTP-side bootstrap also reuses outbound reverse transport.
+    const upstreamConnector = startUpstreamPeerClient(config as any, {
         onMessage: buildUpstreamRouter(http, unifiedHub, fallbackUserId)
     });
-    const networkContext = buildNetworkContext(upstreamClient);
+    const networkContext = buildNetworkContext(upstreamConnector);
 
     await registerCoreApp(http);
-    if (upstreamClient) {
+    if (upstreamConnector) {
         http.addHook("onClose", async () => {
-            upstreamClient.stop();
+            upstreamConnector.stop();
         });
     }
     const httpSocketIoBridge = createSocketIoBridge(http, {
@@ -380,9 +482,9 @@ export const buildCoreServers = async (
     httpWsHubs.push(httpsWsHub);
     await registerCoreApp(https);
     registerRoutes(https);
-    if (upstreamClient) {
+    if (upstreamConnector) {
         https.addHook("onClose", async () => {
-            upstreamClient.stop();
+            upstreamConnector.stop();
         });
     }
     const httpsSocketIoBridge = createSocketIoBridge(https, {

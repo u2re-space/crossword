@@ -7,8 +7,23 @@ import {
     DEFAULT_CORE_ROLES,
     DEFAULT_UPSTREAM_ENDPOINTS,
     DEFAULT_ENDPOINT_UPSTREAM,
-    DEFAULT_ENDPOINT_RUNTIME
+    DEFAULT_ENDPOINT_RUNTIME,
+    DEFAULT_ENDPOINT_TOPOLOGY
 } from "./default-endpoint-config.ts";
+
+type EndpointIdPolicy = {
+    id: string;
+    origins: string[];
+    tokens: string[];
+    forward: string;
+    flags: {
+        mobile?: boolean;
+        gateway?: boolean;
+        direct?: boolean;
+    };
+    allowedIncoming: string[];
+    allowedOutcoming: string[];
+};
 
 type EndpointConfig = {
     listenPort?: number;
@@ -18,12 +33,26 @@ type EndpointConfig = {
     broadcastTargets?: string[];
     networkAliases?: Record<string, string>;
     clipboardPeerTargets?: string[];
+    topology?: {
+        enabled?: boolean;
+        nodes?: Array<Record<string, any>>;
+        links?: Array<Record<string, any>>;
+    };
+    endpointIDs?: Record<string, EndpointIdPolicy>;
     pollInterval?: number;
     httpTimeoutMs?: number;
     secret?: string;
     roles?: string[];
     upstream?: {
         enabled?: boolean;
+        mode?: "active" | "passive";
+        origin?: {
+            originId?: string;
+            originHosts?: string[];
+            originDomains?: string[];
+            originMasks?: string[];
+            surface?: string;
+        };
         endpointUrl?: string;
         endpoints?: string[];
         userId?: string;
@@ -32,6 +61,7 @@ type EndpointConfig = {
         upstreamSigningPrivateKeyPem?: string;
         upstreamPeerPublicKeyPem?: string;
         deviceId?: string;
+        clientId?: string;
         namespace?: string;
         reconnectMs?: number;
     };
@@ -72,14 +102,18 @@ const defaultConfig = {
     // Роли/режимы этого узла:
     // - endpoint: full endpoint behavior
     // - server: run local HTTP/HTTPS endpoints and WS/Socket.IO bridge
-    // - client: connect as reverse client to another endpoint/hub
+    // - client: connect as upstream connector (reverse initiator) to an upstream GATEWAY/ORIGIN
     // - peer: participate as a peer device (reverse dispatch target)
-    // - hub: act as upstream relay participant
+    // - hub: act as upstream relay participant and/or origin/gateway role
     // - node: generic aggregate role (server+client+peer)
     roles: [...DEFAULT_CORE_ROLES],
 
     // Upstream tunnel-through / be-as-device settings.
-    // Когда enabled=true, endpoint откроет reverse WS на другой точке.
+    // Connector/Client roles:
+    // - active|keepalive (default): opens outbound reverse WS и держит keepalive (CWS_UPSTREAM_ENABLED + CWS_UPSTREAM_MODE=active)
+    // - passive: no outbound WS, endpoint only consumes direct private/local/gateway traffic
+    // Gateway/Origin (куда подключается) на своей стороне выступает как reverse receiver и проксирует между peer-клиентами.
+    // Когда active: endpoint откроет reverse WS на gateway-узел.
     upstream: {
         ...(DEFAULT_SETTINGS.core?.upstream || {}),
         ...DEFAULT_ENDPOINT_UPSTREAM,
@@ -89,6 +123,10 @@ const defaultConfig = {
         endpoints: [...DEFAULT_UPSTREAM_ENDPOINTS],
         endpointUrl: DEFAULT_ENDPOINT_UPSTREAM.endpointUrl
     },
+    topology: {
+        ...DEFAULT_ENDPOINT_TOPOLOGY
+    },
+    endpointIDs: {}
 };
 
 const getConfigSources = (): string[] => {
@@ -150,6 +188,27 @@ const normalizePeerSource = (value: unknown): string[] | undefined => {
         .map((item) => item.trim())
         .filter(Boolean);
     return split.length ? split : undefined;
+};
+
+const normalizeOriginCollection = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+    if (typeof value === "string") return value.split(/[;,]/).map((entry) => entry.trim()).filter(Boolean);
+    return [];
+};
+
+const normalizeOriginConfig = (value: unknown): Record<string, any> | undefined => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const source = value as Record<string, any>;
+    const normalized: Record<string, any> = {
+        originId: typeof source.originId === "string" ? source.originId.trim() : "",
+        surface: typeof source.surface === "string" ? source.surface.trim().toLowerCase() : "external",
+        originHosts: normalizeOriginCollection(source.originHosts || source.hosts || source.host),
+        originDomains: normalizeOriginCollection(source.originDomains || source.domains || source.domain),
+        originMasks: normalizeOriginCollection(source.originMasks || source.masks || source.mask)
+    };
+    if (!normalized.originId) delete normalized.originId;
+    if (!normalized.surface) normalized.surface = "external";
+    return normalized;
 };
 
 const normalizeTextField = (value: unknown, fallback: string): string => {
@@ -230,6 +289,92 @@ const normalizeNetworkAliases = (raw: unknown): Record<string, string> => {
     return out;
 };
 
+const normalizeTopologyConfig = (raw: unknown): {
+    enabled: boolean;
+    nodes: Array<Record<string, any>>;
+    links: Array<Record<string, any>>;
+} => {
+    const topology = (raw && typeof raw === "object" ? raw as Record<string, any> : {}) as Record<string, any>;
+    const enabledRaw = topology.enabled;
+    const enabled = typeof enabledRaw === "boolean" ? enabledRaw : true;
+    const nodes = Array.isArray(topology.nodes)
+        ? topology.nodes.filter((item) => item && typeof item === "object" && !Array.isArray(item))
+            .map((item) => item as Record<string, any>)
+        : [];
+    const links = Array.isArray(topology.links)
+        ? topology.links.filter((item) => item && typeof item === "object" && !Array.isArray(item))
+            .map((item) => item as Record<string, any>)
+        : [];
+    return {
+        enabled,
+        nodes,
+        links
+    };
+};
+
+const normalizeEndpointPolicyList = (raw: unknown, preserveEmpty = true): string[] => {
+    const normalizeToken = (value: string): string => {
+        const normalized = String(value || "").trim().toLowerCase();
+        return normalized.startsWith("{") && normalized.endsWith("}") ? normalized.slice(1, -1).trim() : normalized;
+    };
+    if (raw === undefined) return preserveEmpty ? ["*"] : [];
+    if (Array.isArray(raw)) {
+        const list = raw
+            .map((entry) => normalizeToken(String(entry || "")))
+            .filter(Boolean);
+        return list.length ? list : (preserveEmpty ? [] : ["*"]);
+    }
+    if (typeof raw === "string") {
+        const list = raw
+            .split(/[;,]/)
+            .map((entry) => normalizeToken(entry))
+            .filter(Boolean);
+        return list.length ? list : (preserveEmpty ? [] : ["*"]);
+    }
+    if (raw == null) return preserveEmpty ? ["*"] : [];
+    if (raw === true) return ["*"];
+    if (raw === false) return [];
+    return preserveEmpty ? ["*"] : [];
+};
+
+const normalizeEndpointIdPolicy = (policyId: string, source: unknown): EndpointIdPolicy => {
+    const raw = source && typeof source === "object" ? source as Record<string, unknown> : {};
+    const normalizedId = String(policyId || "").trim().toLowerCase();
+    const flags = raw.flags && typeof raw.flags === "object" ? raw.flags as Record<string, unknown> : {};
+    return {
+        id: normalizedId,
+        origins: normalizeEndpointPolicyList(raw.origins, true),
+        tokens: normalizeEndpointPolicyList(raw.tokens, false),
+        forward: typeof raw.forward === "string" && raw.forward.trim()
+            ? raw.forward.trim().toLowerCase()
+            : "self",
+        flags: {
+            mobile: typeof flags.mobile === "boolean" ? flags.mobile : undefined,
+            gateway: typeof flags.gateway === "boolean" ? flags.gateway : undefined,
+            direct: typeof flags.direct === "boolean" ? flags.direct : undefined
+        },
+        allowedIncoming: normalizeEndpointPolicyList(
+            raw.allowedIncoming,
+            true
+        ),
+        allowedOutcoming: normalizeEndpointPolicyList(
+            raw.allowedOutcoming,
+            true
+        )
+    };
+};
+
+const normalizeEndpointIds = (raw: unknown): Record<string, EndpointIdPolicy> => {
+    const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const out: Record<string, EndpointIdPolicy> = {};
+    for (const [policyId, policySource] of Object.entries(source)) {
+        const normalizedId = String(policyId || "").trim().toLowerCase();
+        if (!normalizedId) continue;
+        out[normalizedId] = normalizeEndpointIdPolicy(normalizedId, policySource);
+    }
+    return out;
+};
+
 const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
     const source = (value && typeof value === "object") ? value : {};
     const coreSource = (source.core && typeof source.core === "object") ? (source.core as Record<string, any>) : {};
@@ -248,6 +393,7 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
 
     const mergedUpstreamWithFallback = {
         ...mergedUpstream,
+        origin: normalizeOriginConfig((coreSource as Record<string, any>).upstream?.origin || source?.upstream?.origin),
         userId: normalizeTextField(
             mergedUpstream.userId,
             normalizeTextField((defaultConfig.upstream as Record<string, any>).userId, "")
@@ -260,6 +406,18 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
             (coreSource.upstream?.endpoints || source.upstream?.endpoints)
         ) ?? normalizeUrlList(mergedUpstream.endpoints) ?? [],
     };
+    const mergedTopology = coreSource.topology && typeof coreSource.topology === "object"
+        ? {
+            ...DEFAULT_ENDPOINT_TOPOLOGY,
+            ...(coreSource.topology as Record<string, any>)
+        }
+        : source.topology && typeof source.topology === "object"
+            ? {
+                ...DEFAULT_ENDPOINT_TOPOLOGY,
+                ...(source.topology as Record<string, any>)
+            }
+            : DEFAULT_ENDPOINT_TOPOLOGY;
+
     if (!mergedUpstreamWithFallback.endpointUrl && mergedUpstreamWithFallback.endpoints?.length) {
         mergedUpstreamWithFallback.endpointUrl = mergedUpstreamWithFallback.endpoints[0];
     }
@@ -286,6 +444,11 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
         ) ?? defaultConfig.clipboardPeerTargets,
         roles: Array.isArray(coreSource.roles) ? coreSource.roles : source.roles ?? defaultConfig.roles,
         upstream: mergedUpstreamWithFallback,
+        topology: {
+            ...mergedTopology,
+            ...normalizeTopologyConfig(mergedTopology)
+        },
+        endpointIDs: normalizeEndpointIds(coreSource.endpointIDs ?? source.endpointIDs),
         ai: {
             ...(defaultConfig as Record<string, any>).ai,
             ...aiSource,

@@ -23,12 +23,12 @@ module.exports = {
             },
             env: {
                 NODE_ENV: "production",
-                AIRPAD_TUNNEL_DEBUG: "true",
-                AIRPAD_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS: "30000",
-                AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED: "false",
-                AIRPAD_UPSTREAM_ENDPOINT_URL: "192.168.0.200:8443",
-                AIRPAD_UPSTREAM_ENDPOINTS: "192.168.0.200:8443,45.147.121.152:8443",
-                AIRPAD_UPSTREAM_ENABLED: "true",
+                CWS_TUNNEL_DEBUG: "true",
+                CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS: "30000",
+                CWS_UPSTREAM_REJECT_UNAUTHORIZED: "false",
+                CWS_UPSTREAM_ENDPOINT_URL: "192.168.0.200:8443",
+                CWS_UPSTREAM_ENDPOINTS: "192.168.0.200:8443,45.147.121.152:8443",
+                CWS_UPSTREAM_ENABLED: "true",
                 SOCKET_IO_ALLOWED_ORIGINS: "all",
                 SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS: "true",
                 SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH: "true"

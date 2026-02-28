@@ -8,13 +8,13 @@
         "node": ">=24"
     },
     "scripts": {
-        "start:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
+        "start:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true CWS_TUNNEL_DEBUG=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
         "start": "npm run start:with-env",
-        "start:with-env:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/index.ts",
+        "start:with-env:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true CWS_TUNNEL_DEBUG=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/index.ts",
         "start:watch": "npm run start:with-env:watch",
-        "start:fastify": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/fastify-server.ts",
-        "start:fastify:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/fastify-server.ts",
-        "dev:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true AIRPAD_TUNNEL_DEBUG=true AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
+        "start:fastify": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true CWS_TUNNEL_DEBUG=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/fastify-server.ts",
+        "start:fastify:watch": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true CWS_TUNNEL_DEBUG=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false tsx watch server/fastify-server.ts",
+        "dev:with-env": "cross-env SOCKET_IO_ALLOWED_ORIGINS=all SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS=true SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH=true CWS_TUNNEL_DEBUG=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false tsx server/index.ts",
         "dev": "npm run dev:with-env",
         "pack:portable": "PORTABLE_NODE_MODULES_MODE=none node ./scripts/pack-portable.mjs",
         "pack:portable:with-modules": "PORTABLE_NODE_MODULES_MODE=copy node ./scripts/pack-portable.mjs",
