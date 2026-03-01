@@ -1,4 +1,5 @@
 const NODE_BIN = process.execPath;
+const path = require("path");
 
 module.exports = {
     apps: [
@@ -23,6 +24,7 @@ module.exports = {
             },
             env: {
                 NODE_ENV: "production",
+                CWS_PORTABLE_CONFIG_PATH: path.resolve(__dirname, "portable.config.json"),
                 CWS_ASSOCIATED_ID: "L-192.168.0.200",
                 CWS_ASSOCIATED_TOKEN: "n3v3rm1nd"
             }

@@ -28,9 +28,9 @@
         },
         "tls": {
             "enabled": true,
-            "ca": "ca.pem",
-            "cert": "cert.pem",
-            "key": "key.pem"
+            "ca": "fs:../https/local/rootCA.crt",
+            "cert": "fs:../https/local/multi.crt",
+            "key": "fs:../https/local/multi.key"
         },
         "ports": {
             "wss": [8443, 8080],
@@ -67,9 +67,9 @@
         },
         "tls": {
             "enabled": true,
-            "ca": "ca.pem",
-            "cert": "cert.pem",
-            "key": "key.pem"
+            "ca": "fs:../https/local/rootCA.crt",
+            "cert": "fs:../https/local/multi.crt",
+            "key": "fs:../https/local/multi.key"
         },
         "protocols": {
             "websocket": {
@@ -111,9 +111,9 @@
         "forward": ["self"],
         "tls": {
             "enabled": true,
-            "ca": "ca.pem",
-            "cert": "cert.pem",
-            "key": "key.pem"
+            "ca": "fs:../https/local/rootCA.crt",
+            "cert": "fs:../https/local/multi.crt",
+            "key": "fs:../https/local/multi.key"
         },
         "ports": {
             "wss": [8443, 8080],

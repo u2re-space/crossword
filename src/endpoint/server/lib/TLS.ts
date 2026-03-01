@@ -77,29 +77,47 @@ export const resolveHttpsPaths = (moduleDir: string, cwd = process.cwd()) => {
     };
 };
 
-const resolveHttpsConfigValue = (source: Record<string, any>, sourceKeys: string[], envCandidates: string[], fallback?: string) => {
+const resolveHttpsConfigValue = (source: Record<string, any>, sourceKeys: string[], envCandidates: string[], fallback?: string, baseDir = process.cwd()) => {
     for (const name of envCandidates) {
         const value = process.env[name];
-        if (typeof value === "string" && value.trim()) return resolvePortableTextValue(value);
+        if (typeof value === "string" && value.trim()) return resolvePortableTextValue(value, baseDir);
     }
     for (const key of sourceKeys) {
         const value = source[key];
-        if (typeof value === "string" && value.trim()) return resolvePortableTextValue(String(value));
+        if (typeof value === "string" && value.trim()) return resolvePortableTextValue(String(value), baseDir);
     }
     return fallback;
 };
 
 export const loadHttpsOptions = async (params: { httpsConfig: Record<string, any>; moduleDir: string; cwd?: string }) => {
     const { httpsConfig, moduleDir, cwd = process.cwd() } = params;
-    const enabledCandidate = process.env.CWS_HTTPS_ENABLED ?? process.env.HTTPS_ENABLED ?? (httpsConfig.enabled ? "true" : "false");
-    const enabled = resolveMaybeTextBoolean(enabledCandidate);
-    if (enabled === false) return undefined;
+    const envEnabled = process.env.CWS_HTTPS_ENABLED ?? process.env.HTTPS_ENABLED;
+    if (typeof envEnabled === "string" && resolveMaybeTextBoolean(envEnabled) === false) return undefined;
+    if (httpsConfig.enabled === false) return undefined;
 
     const defaultHttpsPaths = resolveHttpsPaths(moduleDir, cwd);
     const { key: keyPath, cert: certPath, candidates } = defaultHttpsPaths;
-    const keySource = resolveHttpsConfigValue(httpsConfig, ["key", "keyFile", "keyPath"], ["CWS_HTTPS_KEY", "CWS_HTTPS_KEY_FILE", "HTTPS_KEY", "HTTPS_KEY_FILE"], keyPath);
-    const certSource = resolveHttpsConfigValue(httpsConfig, ["cert", "certFile", "certPath"], ["CWS_HTTPS_CERT", "CWS_HTTPS_CERT_FILE", "HTTPS_CERT", "HTTPS_CERT_FILE"], certPath);
-    const caSource = resolveHttpsConfigValue(httpsConfig, ["ca", "caFile", "caPath"], ["CWS_HTTPS_CA", "CWS_HTTPS_CA_FILE", "HTTPS_CA", "HTTPS_CA_FILE"]);
+    const keySource = resolveHttpsConfigValue(
+        httpsConfig,
+        ["key", "keyFile", "keyPath"],
+        ["CWS_HTTPS_KEY", "CWS_HTTPS_KEY_FILE", "HTTPS_KEY", "HTTPS_KEY_FILE"],
+        keyPath,
+        moduleDir
+    );
+    const certSource = resolveHttpsConfigValue(
+        httpsConfig,
+        ["cert", "certFile", "certPath"],
+        ["CWS_HTTPS_CERT", "CWS_HTTPS_CERT_FILE", "HTTPS_CERT", "HTTPS_CERT_FILE"],
+        certPath,
+        moduleDir
+    );
+    const caSource = resolveHttpsConfigValue(
+        httpsConfig,
+        ["ca", "caFile", "caPath"],
+        ["CWS_HTTPS_CA", "CWS_HTTPS_CA_FILE", "HTTPS_CA", "HTTPS_CA_FILE"],
+        undefined,
+        moduleDir
+    );
 
     const keyCandidates = [keySource, ...candidates.keys];
     const certCandidates = [certSource, ...candidates.certs];
@@ -116,9 +134,17 @@ export const loadHttpsOptions = async (params: { httpsConfig: Record<string, any
             throw new Error("[core-backend] HTTPS disabled: missing key or cert material");
         }
 
-        const requestClientCerts = parsePortableBoolean(process.env.CWS_HTTPS_REQUEST_CLIENT_CERTS ?? process.env.HTTPS_REQUEST_CLIENT_CERTS ?? resolvePortableTextValue(String(httpsConfig.requestClientCerts ?? "false"), cwd)) ?? false;
+        const requestClientCerts = parsePortableBoolean(
+            process.env.CWS_HTTPS_REQUEST_CLIENT_CERTS ??
+            process.env.HTTPS_REQUEST_CLIENT_CERTS ??
+            resolvePortableTextValue(String(httpsConfig.requestClientCerts ?? "false"), moduleDir)
+        ) ?? false;
 
-        const allowUntrustedClientCerts = parsePortableBoolean(process.env.CWS_HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ?? process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ?? resolvePortableTextValue(String(httpsConfig.allowUntrustedClientCerts ?? "false"), cwd)) ?? false;
+        const allowUntrustedClientCerts = parsePortableBoolean(
+            process.env.CWS_HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ??
+            process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ??
+            resolvePortableTextValue(String(httpsConfig.allowUntrustedClientCerts ?? "false"), moduleDir)
+        ) ?? false;
 
         return {
             key,

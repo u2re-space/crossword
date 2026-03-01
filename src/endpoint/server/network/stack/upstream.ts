@@ -4,7 +4,7 @@ import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "./messages.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
-import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
+import { parsePortableInteger, resolvePortableTextValue, safeJsonParse } from "../../lib/parsing.ts";
 
 type UpstreamConnectorConfig = {
     enabled?: boolean;
@@ -183,6 +183,30 @@ const normalizeOriginList = (value: unknown): string[] => {
     }
     return [];
 };
+
+const normalizeUpstreamTextValue = (value: unknown): string => {
+    if (typeof value !== "string") return "";
+    return resolvePortableTextValue(value).trim();
+};
+
+const pickUpstreamPolicyToken = (policies: unknown, userId: string): string => {
+    if (!policies || typeof policies !== "object" || !userId) return "";
+    const source = policies as Record<string, unknown>;
+    const candidates = [userId, userId.toLowerCase()];
+    const policy = candidates.map((candidate) => source[candidate]).find((item) => item && typeof item === "object") as Record<string, unknown> | undefined;
+    if (!policy) return "";
+    const rawTokens = policy.tokens;
+    if (Array.isArray(rawTokens)) {
+        for (const token of rawTokens) {
+            const resolved = normalizeUpstreamTextValue(String(token || ""));
+            if (resolved && resolved !== "*") return resolved;
+        }
+    } else if (typeof rawTokens === "string") {
+        const resolved = normalizeUpstreamTextValue(rawTokens);
+        if (resolved && resolved !== "*") return resolved;
+    }
+    return "";
+};
 const parseUpstreamMode = (value: unknown): "active" | "passive" | undefined => {
     if (typeof value !== "string") return undefined;
     const normalized = value.trim().toLowerCase();
@@ -311,14 +335,20 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         originMasks: normalizeOriginList(originConfig.masks || (upstream as Record<string, any>).originMasks),
         surface: normalizeOriginToken(originConfig.surface || (upstream as Record<string, any>).originSurface).toLowerCase() || "external"
     };
-    const endpointEntries = envEndpoints.length ? envEndpoints : Array.isArray(upstream.endpoints) ? upstream.endpoints : typeof upstream.endpointUrl === "string" ? [upstream.endpointUrl] : [];
+    const resolvedEndpointUrl = normalizeUpstreamTextValue(upstream.endpointUrl);
+    const resolvedClientId = normalizeUpstreamTextValue(upstream.clientId);
+    const resolvedUserId = normalizeUpstreamTextValue(upstream.userId);
+    const resolvedUserKey = normalizeUpstreamTextValue(upstream.userKey);
+    const resolvedDeviceId = normalizeUpstreamTextValue(upstream.deviceId);
+    const resolvedNamespace = normalizeUpstreamTextValue(upstream.namespace);
+    const endpointEntries = envEndpoints.length ? envEndpoints : resolvedEndpointUrl ? [resolvedEndpointUrl] : Array.isArray(upstream.endpoints) ? upstream.endpoints : [];
     const normalizedEndpoints = endpointEntries.map((item) => String(item ?? "").trim()).filter((item) => !!item);
     const uniqueEndpoints = Array.from(new Set(normalizedEndpoints));
 
-    const endpointUrl = envEndpointUrl || (typeof upstream.endpointUrl === "string" ? upstream.endpointUrl.trim() : uniqueEndpoints[0] || "");
-    const userId = envUserId || (typeof upstream.userId === "string" ? upstream.userId.trim() : "");
-    const userKey = envUserKey || (typeof upstream.userKey === "string" ? upstream.userKey.trim() : "");
-    const clientId = envUpstreamClientId || (typeof upstream.clientId === "string" ? upstream.clientId.trim() : "");
+    const endpointUrl = normalizeUpstreamTextValue(envEndpointUrl) || resolvedEndpointUrl || uniqueEndpoints[0] || "";
+    const userId = envUserId || resolvedUserId || resolvedClientId || resolvedDeviceId;
+    const userKey = envUserKey || resolvedUserKey || pickUpstreamPolicyToken((config as Record<string, any>).endpointIDs, userId);
+    const clientId = envUpstreamClientId || resolvedClientId || resolvedUserId || resolvedDeviceId;
     if (!enabled) {
         if (isTunnelDebug) {
             console.info(`[upstream.connector] disabled: enabled=false`, `roles=${formatEndpointList(Array.isArray(config.roles) ? config.roles : [])}`, `endpointUrl=${endpointUrl || "-"}`, `userId=${maskValue(userId)}`, `userKey=${maskValue(userKey)}`);
@@ -340,9 +370,9 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         mode,
         upstreamMasterKey: upstream.upstreamMasterKey,
         upstreamSigningPrivateKeyPem: upstream.upstreamSigningPrivateKeyPem,
-        upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
+                upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
         origin: {
-            originId: origin.originId || normalizeOriginToken(upstream.deviceId || upstream.userId),
+            originId: origin.originId || normalizeOriginToken(origin.originId || resolvedDeviceId || resolvedUserId),
             originHosts: origin.originHosts,
             originDomains: origin.originDomains,
             originMasks: origin.originMasks,
@@ -353,8 +383,8 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         userId,
         userKey,
         clientId,
-        deviceId: envDeviceId || (typeof upstream.deviceId === "string" && upstream.deviceId.trim() ? upstream.deviceId.trim() : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`),
-        namespace: envNamespace || (typeof upstream.namespace === "string" && upstream.namespace.trim() ? upstream.namespace.trim() : "default"),
+        deviceId: envDeviceId || resolvedDeviceId || `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+        namespace: envNamespace || resolvedNamespace || "default",
         reconnectMs: envReconnectMs > 0 ? envReconnectMs : reconnectMs > 0 ? reconnectMs : 5000
     };
 };

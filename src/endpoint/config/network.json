@@ -1,6 +1,6 @@
 {
     "version": 2,
-    "endpoints": "fs:./endpoints.json",
+    "endpoints": ["https://45.147.121.152:8443/", "https://192.168.0.200:8443/"],
     "protocols": {
         "websocket": {
             "timeoutMs": 10000,

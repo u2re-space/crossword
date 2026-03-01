@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 export type PortableTextValue = string;
 
@@ -93,6 +94,72 @@ const decodeDataValue = (value: string): string => {
     }
 };
 
+const resolveUserPath = (value: string): string => {
+    const trimmed = trimOptional(value);
+    if (!trimmed) return "";
+    if (trimmed === "~" || /^~[\\/]/.test(trimmed)) {
+        const home = os.homedir();
+        if (!home) return trimmed;
+        const suffix = trimmed.slice(1).replace(/^[/\\]+/, "");
+        return suffix ? path.join(home, suffix) : home;
+    }
+    return trimmed;
+};
+
+const isAbsolutePathLike = (value: string): boolean => {
+    if (path.isAbsolute(value)) return true;
+    if (/^[a-zA-Z]:[\\/]/.test(value)) return true;
+    return /^\\\\/.test(value);
+};
+
+const resolvePortablePathReference = (rawPath: string, baseDir = process.cwd()): string => {
+    const expanded = resolveUserPath(rawPath);
+    if (!expanded) return "";
+    if (isAbsolutePathLike(expanded)) return expanded;
+    const fromModule = path.resolve(baseDir, expanded);
+    if (readTextFile(fromModule) !== undefined) return fromModule;
+    const fromCwd = path.resolve(process.cwd(), expanded);
+    if (readTextFile(fromCwd) !== undefined) return fromCwd;
+    return fromModule;
+};
+
+const resolvePortablePrefixValue = (value: PortableTextValue): string => {
+    const envExpanded = value.replace(/\$\{env:([^}]+)\}/g, (_, envName) => process.env[envName.trim()] ?? "");
+    const trimmed = envExpanded.trim();
+    if (!trimmed) return "";
+    const sep = trimmed.indexOf(":");
+    if (sep <= 0) return trimmed;
+    const prefix = trimmed.slice(0, sep).toLowerCase();
+    const payload = unquotePortableValue(trimmed.slice(sep + 1));
+    if (prefix === "env") return process.env[payload] ?? "";
+    if (prefix === "inline") return payload;
+    if (prefix === "data") return decodeDataValue(payload);
+    return trimmed;
+};
+
+export const resolvePortableTextValuePath = (raw: PortableTextValue, baseDir = process.cwd()): string => {
+    const envExpanded = raw.replace(/\$\{env:([^}]+)\}/g, (_, envName) => process.env[envName.trim()] ?? "");
+    const trimmed = envExpanded.trim();
+    if (!trimmed) return "";
+
+    const sep = trimmed.indexOf(":");
+    if (sep <= 0) return trimmed;
+
+    const prefix = trimmed.slice(0, sep).toLowerCase();
+    const payload = unquotePortableValue(trimmed.slice(sep + 1));
+
+    if (prefix === "env") return process.env[payload] ?? "";
+    if (prefix === "inline") return payload;
+    if (prefix === "data") return decodeDataValue(payload);
+    if (prefix === "fs" || prefix === "file") {
+        if (!payload) return "";
+        const resolvedPayload = resolvePortablePathReference(resolvePortablePrefixValue(payload), baseDir);
+        return resolvedPayload;
+    }
+
+    return trimmed;
+};
+
 export const resolvePortableTextValue = (raw: PortableTextValue, baseDir = process.cwd()): string => {
     const envExpanded = raw.replace(/\$\{env:([^}]+)\}/g, (_, envName) => process.env[envName.trim()] ?? "");
     const trimmed = envExpanded.trim();
@@ -108,7 +175,11 @@ export const resolvePortableTextValue = (raw: PortableTextValue, baseDir = proce
     if (prefix === "inline") return payload;
     if (prefix === "data") return decodeDataValue(payload);
     if (prefix === "fs" || prefix === "file") {
-        return payload ? (readTextFile(path.resolve(baseDir, payload)) ?? "") : "";
+        const filePath = resolvePortableTextValuePath(raw, baseDir);
+        if (!filePath) return "";
+        const fileContent = readTextFile(filePath);
+        if (fileContent !== undefined) return fileContent;
+        return "";
     }
 
     return trimmed;
@@ -126,8 +197,9 @@ export const resolvePortablePayload = (value: unknown, baseDir: string, seen: Se
         const payload = unquotePortableValue(trimmed.slice(sep + 1));
         if (prefix === "fs" || prefix === "file") {
             if (!payload) return "";
-            const resolvedPathValue = resolvePortableTextValue(payload);
-            const resolvedPath = path.resolve(baseDir, typeof resolvedPathValue === "string" ? resolvedPathValue : "");
+            const resolvedPathValue = resolvePortableTextValuePath(payload, baseDir);
+            if (!resolvedPathValue) return {};
+            const resolvedPath = resolvePortablePathReference(resolvedPathValue, baseDir);
             if (seen.has(resolvedPath)) return {};
             const rawPayload = readTextFile(resolvedPath);
             if (!rawPayload) return {};

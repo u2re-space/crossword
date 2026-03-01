@@ -25,7 +25,7 @@ import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpoi
 
 const resolvePortableConfigBoolean = (value: string | undefined): boolean | undefined => {
     if (typeof value === "undefined") return undefined;
-    return parsePortableBoolean(resolvePortableTextValue(value));
+    return parsePortableBoolean(resolvePortableTextValue(value, moduleDirname(import.meta)));
 };
 
 const loadHttpsOptions = async () => {
