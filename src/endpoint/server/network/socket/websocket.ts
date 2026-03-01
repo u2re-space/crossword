@@ -6,7 +6,8 @@ import { connect as createTcpConnection, type Socket as NetSocket } from "node:n
 import { loadUserSettings } from "../../lib/users.ts";
 import { isBroadcast, normalizeSocketFrame } from "../stack/messages.ts";
 import { inferNetworkSurface } from "../stack/topology.ts";
-import { pickEnvBool, pickEnvString } from "../../lib/env.ts";
+import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
+import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
 
 type TcpPassthroughFrame = {
     type: string;
@@ -29,7 +30,9 @@ type TcpSession = {
 };
 
 const parsePrivateNetworkHosts = (): Set<string> => {
-    const raw = pickEnvString(["CWS_WS_TCP_ALLOW_HOSTS", "WS_TCP_ALLOW_HOSTS"], { allowEmpty: true }) || "";
+    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ??
+        pickEnvStringLegacy("WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ||
+        "";
     if (!raw.trim()) return new Set<string>();
     return new Set(
         raw.split(",")
@@ -47,8 +50,8 @@ const isPrivateIpv4 = (value: string): boolean => {
     if (value.startsWith("10.")) return true;
     if (value.startsWith("192.168.")) return true;
     if (value.startsWith("172.")) {
-        const second = Number(value.split(".")[1] || 0);
-        return Number.isFinite(second) && second >= 16 && second <= 31;
+        const second = parsePortableInteger(value.split(".")[1] || 0);
+        return second !== undefined && second >= 16 && second <= 31;
     }
     return false;
 };
@@ -62,10 +65,9 @@ const isIpAddress = (value: string): boolean => {
 };
 
 const parsePort = (raw?: unknown): number | undefined => {
-    if (typeof raw === "number" && Number.isFinite(raw)) return raw > 0 && raw <= 65535 ? Math.trunc(raw) : undefined;
-    if (typeof raw === "string") {
-        const parsed = Number(raw);
-        return Number.isFinite(parsed) && parsed > 0 && parsed <= 65535 ? Math.trunc(parsed) : undefined;
+    if (typeof raw === "number" || typeof raw === "string") {
+        const parsed = parsePortableInteger(raw);
+        return parsed !== undefined && parsed > 0 && parsed <= 65535 ? parsed : undefined;
     }
     return undefined;
 };
@@ -99,7 +101,7 @@ const isTcpTargetAllowed = (host: string, explicitPort: number | undefined): boo
     if (explicitAllowed.has(host)) return true;
     if (explicitAllowed.has(host.replace(/^www\./, ""))) return true;
 
-    if (pickEnvBool(["CWS_WS_TCP_ALLOW_ALL", "WS_TCP_ALLOW_ALL"], false) === true) return true;
+    if (pickEnvBoolLegacy("CWS_WS_TCP_ALLOW_ALL", false) === true || pickEnvBoolLegacy("WS_TCP_ALLOW_ALL", false) === true) return true;
 
     if (isLocalHost(host) || isPrivateIpv4(host) || isPrivateIpv6(host)) return true;
     if (isIpAddress(host)) return false;
@@ -111,7 +113,9 @@ const isTcpTargetAllowed = (host: string, explicitPort: number | undefined): boo
 
 const explicitPortHostOverride = (host: string, explicitPort?: number): boolean => {
     if (!explicitPort) return false;
-    const raw = pickEnvString(["CWS_WS_TCP_ALLOWED_HOSTS_WITH_PORT", "WS_TCP_ALLOWED_HOSTS_WITH_PORT"], { allowEmpty: true }) || "";
+    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ??
+        pickEnvStringLegacy("WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ||
+        "";
     const entries = raw
         .split(",")
         .map((value) => value.trim().toLowerCase())
@@ -370,7 +374,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 });
                 closeTcpSession(socket, sessionId);
             });
-            remoteSocket.setTimeout(Number.isFinite(Number(frame.timeoutMs)) && Number(frame.timeoutMs) > 0 ? Number(frame.timeoutMs) : 120_000);
+            remoteSocket.setTimeout(Math.max(120_000, parsePortableInteger(frame.timeoutMs) ?? 120_000));
             return true;
         }
 
@@ -479,7 +483,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
 
         ws.on("message", async (data) => {
             let parsed: any;
-            try { parsed = JSON.parse(data.toString()); } catch { return; }
+            parsed = safeJsonParse<Record<string, any>>(data.toString());
+            if (!parsed) return;
             if (handleTcpPassthroughFrame(ws, parsed as TcpPassthroughFrame, userId, info)) {
                 return;
             }
@@ -618,10 +623,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const pendingTarget = (target.deviceId || normalizedTarget).toLowerCase();
         return new Promise<any>((resolve, reject) => {
             const key = requestKey(normalizedUser, pendingTarget, requestId);
+            const timeout = parsePortableInteger(waitMs) ?? 15000;
             const timer = setTimeout(() => {
                 pendingFetchReplies.delete(key);
                 reject(new Error(`network.fetch timeout: ${requestId}`));
-            }, Math.max(500, Number.isFinite(waitMs) ? waitMs : 15000));
+            }, Math.max(500, timeout));
             pendingFetchReplies.set(key, { resolve, reject, timer });
             try {
                 target.ws.send(JSON.stringify(envelope));

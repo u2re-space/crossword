@@ -12,7 +12,37 @@ Config entry-point for this subsystem is the server portable config pipeline (`s
 - `portable-endpoint.json` usually routes endpoint runtime loading to the same `network.json` file (`"endpoint": "fs:./network.json"`).
 - `network.json` provides shared transport defaults and aliases consumed by the networking layer (for example `allowedOrigins`, protocol timeouts, and optional upstream endpoint lists).
 
-The config loader also supports compact value prefixes (`fs:`, `inline:`, `env:`) and keeps `AIRPAD_*` variables for compatibility while preferring `CWS_*`.
+The config loader also supports compact value prefixes:
+
+- `fs:<path>` / `file:<path>` — read text from file path (relative to current config directory for portable files, or current process for runtime env values)
+- `inline:<value>` — raw inline string
+- `inline:'<value>'` or `inline:"<value>"` — inline string with spaces and escaped characters
+- `env:<NAME>` — evaluate environment variable at startup
+- `data:<...>` — URI-like inline payload (including `;base64,` payloads)
+- `http://` / `https://` payloads are passed through as plain strings if provided
+
+`AIRPAD_*` variables are still understood for compatibility where explicit compatibility mapping is used, while `CWS_*` is preferred.
+
+Пример `portable.config.json` / `portable-endpoint.json`:
+
+```json
+{
+  "core": "fs:./portable-core.json",
+  "endpoint": "fs:./portable-endpoint.json",
+  "endpointRuntime": {
+    "https": {
+      "enabled": "env:CWS_HTTPS_ENABLED",
+      "key": "fs:${env:CWS_HTTPS_KEY_PATH}",
+      "cert": "inline:'-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----'",
+      "ca": "data:text/plain;base64,LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg...",
+      "requestClientCerts": "inline:true",
+      "allowUntrustedClientCerts": "inline:false"
+    }
+  }
+}
+```
+
+Если в `key/cert/ca` отсутствуют PEM-блоки `BEGIN/END`, движок добавляет их автоматически (`PRIVATE KEY` для `key`, `CERTIFICATE` для `cert`/`ca`).
 
 The subsystem reads environment settings through the new `CWS_*` naming.
 Legacy `AIRPAD_*` variables are still read for compatibility where explicitly noted.

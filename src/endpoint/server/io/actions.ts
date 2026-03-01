@@ -7,25 +7,16 @@ import config from "../config/config.ts";
 import { ahkService } from './ahk-service.ts';
 import { getRobot } from './robot-adapter.ts';
 import { pickEnvBoolLegacy } from "../lib/env.ts";
+import { parsePortableBooleanLoose } from "../lib/parsing.ts";
 
 let useAHK = false;
 let ahkInitialized = false;
 let ahkInitPromise: Promise<boolean> | null = null;
-const preferAhkMouse = process.env.ENDPOINT_USE_AHK_MOUSE === '1';
-const parseBooleanValue = (value: unknown): boolean | undefined => {
-    if (typeof value === "boolean") return value;
-    if (typeof value !== "string") return undefined;
-
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return undefined;
-    if (["0", "false", "off", "no", "disabled"].includes(normalized)) return false;
-    if (["1", "true", "on", "yes", "enabled"].includes(normalized)) return true;
-    return true;
-};
+const preferAhkMouse = pickEnvBoolLegacy("CWS_ENDPOINT_USE_AHK_MOUSE", false) === true;
 
 const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
     for (const item of candidates) {
-        const parsed = parseBooleanValue(item);
+        const parsed = parsePortableBooleanLoose(item);
         if (typeof parsed === "boolean") return parsed;
     }
     return undefined;
@@ -117,7 +108,7 @@ function executeMouseMove(dx: number, dy: number) {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
-    if (canUseAHKMouse(Boolean(robot))) {
+    if (canUseAHKMouse(robot != null)) {
         void ahkService.moveMouseBy(dx, dy).catch(() => { });
         return;
     }
@@ -130,7 +121,7 @@ function executeMouseClick(button: 'left' | 'right' | 'middle' = 'left', double:
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
-    if (canUseAHKMouse(Boolean(robot))) {
+    if (canUseAHKMouse(robot != null)) {
         void ahkService.mouseClick(button, double).catch(() => { });
         return;
     }
@@ -142,7 +133,7 @@ function executeMouseToggle(state: 'down' | 'up', button: 'left' | 'right' | 'mi
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
-    if (canUseAHKMouse(Boolean(robot))) {
+    if (canUseAHKMouse(robot != null)) {
         void ahkService.mouseToggle(state, button).catch(() => { });
         return;
     }
@@ -158,7 +149,7 @@ function executeScroll(dx: number, dy: number) {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
-    if (canUseAHKMouse(Boolean(robot))) {
+    if (canUseAHKMouse(robot != null)) {
         void ahkService.scrollMouse(dx, dy).catch(() => { });
         return;
     }

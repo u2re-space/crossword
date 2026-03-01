@@ -24,6 +24,7 @@ import {
 import { sendVoiceToPython, removePythonSubscriber } from "../gpt/python.ts";
 import clipboardy from "clipboardy";
 import { pickEnvBoolLegacy } from "../lib/env.ts";
+import { safeJsonParse } from "../lib/parsing.ts";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;
@@ -137,22 +138,18 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         }
 
         if (typeof data === "string") {
-            try {
-                const jsonData = JSON.parse(data);
-                if (jsonData?.type === "voice_command") {
-                    const text = jsonData.text || "";
-                    logger?.info?.("Voice command");
-                    await sendVoiceToPython(socket as any, text).catch((err: any) => {
-                        logger?.error?.({ err }, "Failed to send voice command to python");
-                        socket.emit("voice_result", {
-                            type: "voice_error",
-                            error: err?.message || String(err),
-                        });
+            const jsonData = safeJsonParse<Record<string, unknown>>(data);
+            if (jsonData?.type === "voice_command") {
+                const text = String(jsonData.text || "");
+                logger?.info?.("Voice command");
+                await sendVoiceToPython(socket as any, text).catch((err: any) => {
+                    logger?.error?.({ err }, "Failed to send voice command to python");
+                    socket.emit("voice_result", {
+                        type: "voice_error",
+                        error: err?.message || String(err),
                     });
-                    return;
-                }
-            } catch {
-                // keep compatibility: non-JSON payloads are ignored here
+                });
+                return;
             }
             return;
         }

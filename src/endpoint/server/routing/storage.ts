@@ -4,6 +4,7 @@ import { readdir, stat, rm } from "node:fs/promises";
 
 import { ensureUserDir, readUserFile, verifyUser, writeUserFile } from "../lib/users.ts";
 import { safeJoin } from "../lib/paths.ts";
+import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../lib/env.ts";
 
 export const registerStorageRoutes = async (app: FastifyInstance) => {
     type Operation = "list" | "get" | "put" | "delete";
@@ -109,10 +110,10 @@ export const registerStorageRoutes = async (app: FastifyInstance) => {
 
     const resolveWebdavConfig = (body: SyncRequest) => {
         const envConfig = {
-            url: process.env.WEBDAV_SYNC_URL || process.env.WEBDAV_URL,
-            username: process.env.WEBDAV_SYNC_USERNAME || process.env.WEBDAV_USERNAME,
-            password: process.env.WEBDAV_SYNC_PASSWORD || process.env.WEBDAV_PASSWORD,
-            token: process.env.WEBDAV_SYNC_TOKEN || process.env.WEBDAV_TOKEN
+            url: pickEnvStringLegacy("WEBDAV_SYNC_URL") || pickEnvStringLegacy("WEBDAV_URL"),
+            username: pickEnvStringLegacy("WEBDAV_SYNC_USERNAME") || pickEnvStringLegacy("WEBDAV_USERNAME"),
+            password: pickEnvStringLegacy("WEBDAV_SYNC_PASSWORD") || pickEnvStringLegacy("WEBDAV_PASSWORD"),
+            token: pickEnvStringLegacy("WEBDAV_SYNC_TOKEN") || pickEnvStringLegacy("WEBDAV_TOKEN")
         };
         return {
             url: body.webdav?.url ?? envConfig.url,
@@ -120,9 +121,7 @@ export const registerStorageRoutes = async (app: FastifyInstance) => {
             password: body.webdav?.password ?? envConfig.password,
             token: body.webdav?.token ?? envConfig.token,
             allowInsecureTls:
-                body.webdav?.allowInsecureTls === true ||
-                process.env.WEBDAV_ALLOW_INSECURE === "true" ||
-                process.env.WEBDAV_ALLOW_INSECURE === "1"
+                body.webdav?.allowInsecureTls === true || pickEnvBoolLegacy("WEBDAV_ALLOW_INSECURE") === true
         };
     };
 

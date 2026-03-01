@@ -1,4 +1,5 @@
 import type { Socket } from "socket.io";
+import type { IncomingMessage } from "node:http";
 
 import { parsePayload, verifyWithoutDecrypt } from "../stack/crypto-utils.ts";
 import { normalizeSocketFrame } from "../stack/messages.ts";
@@ -33,6 +34,56 @@ export const getAirPadTokens = () =>
         .split(",")
         .map((token) => token.trim())
         .filter(Boolean);
+
+const extractTokenFromRequestQuery = (rawUrl: string | undefined): string => {
+    if (!rawUrl) return "";
+    if (!rawUrl.includes("?")) return "";
+    const queryIndex = rawUrl.indexOf("?");
+    const query = rawUrl.slice(queryIndex + 1);
+    try {
+        const params = new URLSearchParams(query);
+        return (
+            params.get("token")?.trim() ||
+            params.get("airpadToken")?.trim() ||
+            ""
+        );
+    } catch {
+        return "";
+    }
+};
+
+const readRequestHeaderToken = (value: string | string[] | undefined): string => {
+    if (!value) return "";
+    const raw = Array.isArray(value) ? value[0] : value;
+    return typeof raw === "string" ? raw.trim() : "";
+};
+
+const extractAirPadTokenFromRequestHeaders = (headers: IncomingMessage["headers"]): string => {
+    const rawAuthorization = readRequestHeaderToken(headers.authorization);
+    if (rawAuthorization.toLowerCase().startsWith("bearer ")) {
+        return rawAuthorization.slice(7).trim();
+    }
+
+    return (
+        readRequestHeaderToken(headers["x-airpad-token"]) ||
+        readRequestHeaderToken(headers["x-airpad-client-token"]) ||
+        ""
+    );
+};
+
+export const getAirPadTokenFromRequest = (request?: IncomingMessage): string => {
+    if (!request) return "";
+    const tokenFromQuery = extractTokenFromRequestQuery(request.url);
+    if (tokenFromQuery) return tokenFromQuery;
+    return extractAirPadTokenFromRequestHeaders(request.headers as IncomingMessage["headers"]);
+};
+
+export const isAirPadRequestAuthorized = (request?: IncomingMessage): boolean => {
+    const tokens = getAirPadTokens();
+    if (!tokens.length) return true;
+    const token = getAirPadTokenFromRequest(request);
+    return !!token && tokens.includes(token);
+};
 
 export const getAirPadTokenFromSocket = (socket: Socket) => {
     const handshake: any = (socket as any).handshake || {};

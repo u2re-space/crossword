@@ -65,12 +65,12 @@ export const resolveTunnelTarget = (
     const exactLabel = peers?.find((peer) => peer.label && peer.label.toLowerCase() === target.toLowerCase());
     if (exactLabel) return { profile: exactLabel, source: "exactLabel" };
 
-    const containsLabel = peers?.find((peer) =>
-        Boolean(peer.label && (
-            peer.label.toLowerCase().includes(target.toLowerCase()) ||
-            target.toLowerCase().includes(peer.label.toLowerCase())
-        ))
-    );
+    const containsLabel = peers?.find((peer) => {
+        if (typeof peer.label !== "string") return false;
+        const peerLabel = peer.label.toLowerCase();
+        const targetLabel = target.toLowerCase();
+        return peerLabel.includes(targetLabel) || targetLabel.includes(peerLabel);
+    });
     if (containsLabel) return { profile: containsLabel, source: "containsLabel" };
 
     return undefined;

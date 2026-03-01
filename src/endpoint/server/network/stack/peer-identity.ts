@@ -202,7 +202,7 @@ export const resolvePeerIdentity = (rawInput: string, context: PeerIdentityResol
 
     const containsLabel = peers.find((peer) => {
         const label = normalizeToken(peer.label || "");
-        return Boolean(label && (label.includes(normalized) || normalized.includes(label)));
+        return typeof label === "string" && label.length > 0 && (label.includes(normalized) || normalized.includes(label));
     });
     if (containsLabel) {
         const peerId = normalizeToken((containsLabel.peerId || containsLabel.id || "").trim());

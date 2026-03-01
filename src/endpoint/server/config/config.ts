@@ -4,6 +4,8 @@ import { DEFAULT_SETTINGS } from "./settings.ts";
 import { fileURLToPath } from "node:url";
 import { SETTINGS_FILE } from "../lib/paths.ts";
 import { DEFAULT_CORE_ROLES, DEFAULT_UPSTREAM_ENDPOINTS, DEFAULT_ENDPOINT_UPSTREAM, DEFAULT_ENDPOINT_RUNTIME, DEFAULT_ENDPOINT_TOPOLOGY } from "./default-endpoint-config.ts";
+import { parsePortableBoolean, parsePortableInteger, safeJsonParse, resolvePortablePayload, resolvePortableTextValue } from "../lib/parsing.ts";
+import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../lib/env.ts";
 
 type EndpointIdPolicy = {
     id: string;
@@ -25,6 +27,20 @@ type EndpointConfig = {
     broadcastForceHttps?: boolean;
     peers?: string[];
     broadcastTargets?: string[];
+    https?: {
+        enabled?: boolean;
+        key?: string;
+        cert?: string;
+        ca?: string;
+        keyFile?: string;
+        keyPath?: string;
+        certFile?: string;
+        certPath?: string;
+        caFile?: string;
+        caPath?: string;
+        requestClientCerts?: boolean;
+        allowUntrustedClientCerts?: boolean;
+    };
     networkAliases?: Record<string, string>;
     clipboardPeerTargets?: string[];
     topology?: {
@@ -77,6 +93,7 @@ type PortableConfigSeed = {
     roles?: unknown;
     peers?: unknown;
     broadcastTargets?: unknown;
+    https?: unknown;
     clipboardPeerTargets?: unknown;
     listenPort?: unknown;
     httpPort?: unknown;
@@ -95,60 +112,15 @@ const asRecord = (value: unknown): Record<string, any> => {
 const readJsonFile = (filePath: string): Record<string, any> | undefined => {
     try {
         const raw = fs.readFileSync(filePath, "utf-8");
-        const parsed = JSON.parse(raw);
+        const parsed = safeJsonParse<Record<string, any>>(raw);
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, any>) : undefined;
     } catch {
         return undefined;
     }
 };
 
-const resolvePortableTextValue = (raw: string): string => {
-    const trimmed = raw.trim();
-    if (!trimmed) return "";
-    const sep = trimmed.indexOf(":");
-    if (sep <= 0) return trimmed;
-    const prefix = trimmed.slice(0, sep).toLowerCase();
-    const value = trimmed.slice(sep + 1);
-    if (prefix === "env") return process.env[value] ?? "";
-    if (prefix === "inline") return value;
-    return trimmed;
-};
-
-const resolvePortablePayload = (value: unknown, baseDir: string, seen: Set<string> = new Set()): unknown => {
-    if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (!trimmed) return "";
-
-        const sep = trimmed.indexOf(":");
-        if (sep <= 0) return resolvePortableTextValue(trimmed);
-
-        const prefix = trimmed.slice(0, sep).toLowerCase();
-        const payload = trimmed.slice(sep + 1);
-        if (prefix === "fs" || prefix === "file") {
-            if (!payload) return "";
-            const resolvedPath = path.resolve(baseDir, payload);
-            if (seen.has(resolvedPath)) return {};
-            const loaded = readJsonFile(resolvedPath);
-            if (!loaded) return {};
-            seen.add(resolvedPath);
-            return resolvePortablePayload(loaded, path.dirname(resolvedPath), seen);
-        }
-
-        return resolvePortableTextValue(trimmed);
-    }
-
-    if (Array.isArray(value)) {
-        return value.map((entry) => resolvePortablePayload(entry, baseDir, seen));
-    }
-
-    if (!value || typeof value !== "object") return value;
-
-    const source = value as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(source)) {
-        out[key] = resolvePortablePayload(entry, baseDir, seen);
-    }
-    return out;
+const resolvePortablePayloadWithBase = (value: unknown, baseDir: string, seen: Set<string> = new Set()): unknown => {
+    return resolvePortablePayload(value, baseDir, seen);
 };
 
 const mergePortableConfigPayload = (base: Record<string, any>, patch?: Record<string, any>): Record<string, any> => {
@@ -262,12 +234,12 @@ const loadLegacyEndpointIds = (): Record<string, any> => {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     const cwd = process.cwd();
     const candidates = [
-        process.env.CWS_CLIENTS_JSON_PATH,
-        process.env.ENDPOINT_CLIENTS_JSON_PATH,
-        process.env.CLIENTS_JSON_PATH,
-        process.env.CWS_GATEWAYS_JSON_PATH,
-        process.env.ENDPOINT_GATEWAYS_JSON_PATH,
-        process.env.GATEWAYS_JSON_PATH,
+        pickEnvStringLegacy("CWS_CLIENTS_JSON_PATH"),
+        pickEnvStringLegacy("ENDPOINT_CLIENTS_JSON_PATH"),
+        pickEnvStringLegacy("CLIENTS_JSON_PATH"),
+        pickEnvStringLegacy("CWS_GATEWAYS_JSON_PATH"),
+        pickEnvStringLegacy("ENDPOINT_GATEWAYS_JSON_PATH"),
+        pickEnvStringLegacy("GATEWAYS_JSON_PATH"),
         path.resolve(cwd, "./config/clients.json"),
         path.resolve(cwd, "./config/gateways.json"),
         path.resolve(moduleDir, "../config/clients.json"),
@@ -289,7 +261,9 @@ const loadLegacyEndpointIds = (): Record<string, any> => {
 const legacyEndpointIDs = loadLegacyEndpointIds();
 
 const collectPortableConfigSources = (): string[] => {
-    const explicit = process.env.CWS_PORTABLE_CONFIG_PATH || process.env.ENDPOINT_CONFIG_JSON_PATH || process.env.PORTABLE_CONFIG_PATH;
+    const explicit = pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH")
+        || pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH")
+        || pickEnvStringLegacy("PORTABLE_CONFIG_PATH");
     const cwd = process.cwd();
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -300,15 +274,15 @@ const loadPortableEndpointSeed = (): PortableConfigSeed => {
     for (const candidate of collectPortableConfigSources()) {
         const base = readJsonFile(candidate);
         if (!base) continue;
-        const merged = collectPortableModules(resolvePortablePayload(base, path.dirname(candidate)) as Record<string, any>, path.dirname(candidate)).reduce(
+        const merged = collectPortableModules(resolvePortablePayloadWithBase(base, path.dirname(candidate)) as Record<string, any>, path.dirname(candidate)).reduce(
             (seed, modulePath) => {
                 const modulePayload = readJsonFile(modulePath);
-                const resolvedPayload = modulePayload ? resolvePortablePayload(modulePayload, path.dirname(modulePath)) : undefined;
+                const resolvedPayload = modulePayload ? resolvePortablePayloadWithBase(modulePayload, path.dirname(modulePath)) : undefined;
                 return resolvedPayload ? mergePortableConfigPayload(seed, resolvedPayload as Record<string, any>) : seed;
             },
-            resolvePortablePayload(base, path.dirname(candidate)) as Record<string, any>
+            resolvePortablePayloadWithBase(base, path.dirname(candidate)) as Record<string, any>
         ) as Record<string, any>;
-        const normalized = resolvePortablePayload(merged, path.dirname(candidate)) as Record<string, any>;
+        const normalized = resolvePortablePayloadWithBase(merged, path.dirname(candidate)) as Record<string, any>;
         if (!normalized || !Object.keys(normalized).length) continue;
         const normalizedCore = asRecord(normalized.core);
         const normalizedNetwork = asRecord(normalized.network || normalizedCore.network);
@@ -409,10 +383,10 @@ const defaultConfig = {
 };
 
 const getConfigSources = (): string[] => {
-    const explicit = process.env.CWS_CONFIG_JSON_PATH || process.env.ENDPOINT_CONFIG_JSON_PATH;
+    const explicit = pickEnvStringLegacy("CWS_CONFIG_JSON_PATH") || pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH");
     const cwd = process.cwd();
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-    const npmPackageJson = process.env.npm_package_json;
+    const npmPackageJson = pickEnvStringLegacy("npm_package_json");
     const npmPackageRoot = npmPackageJson ? path.dirname(npmPackageJson) : undefined;
 
     return [
@@ -436,7 +410,7 @@ const getConfigSources = (): string[] => {
 const loadJsonFile = (filePath: string): Record<string, any> | undefined => {
     try {
         const raw = fs.readFileSync(filePath, "utf-8");
-        return JSON.parse(raw);
+        return safeJsonParse<Record<string, any>>(raw);
     } catch {
         return undefined;
     }
@@ -520,7 +494,7 @@ const normalizeAliasEntries = (raw: unknown): Array<[string, string]> => {
         const trimmed = raw.trim();
         if (!trimmed) return out;
         try {
-            const parsed = JSON.parse(trimmed);
+            const parsed = safeJsonParse<Record<string, any>>(trimmed);
             if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
                 for (const [rawAlias, rawTarget] of Object.entries(parsed as Record<string, unknown>)) {
                     const alias = normalizeAliasKey(String(rawAlias || ""));
@@ -731,9 +705,9 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
         mergedUpstreamWithFallback.endpointUrl = mergedUpstreamWithFallback.endpoints[0];
     }
 
-    const envPeers = normalizePeerSource(process.env.CWS_PEERS ?? process.env.CLIPBOARD_PEERS);
+    const envPeers = normalizePeerSource(pickEnvStringLegacy("CWS_PEERS") || pickEnvStringLegacy("CLIPBOARD_PEERS") || "");
     const envRoles = (() => {
-        const raw = process.env.CWS_ROLES;
+        const raw = pickEnvStringLegacy("CWS_ROLES");
         if (!raw) return undefined;
         if (typeof raw === "string") {
             const list = raw
@@ -744,24 +718,56 @@ const sanitizeConfig = (value: Record<string, any>): EndpointConfig => {
         }
         return undefined;
     })();
+    const envBroadcastForceHttps = pickEnvBoolLegacy("CWS_BROADCAST_FORCE_HTTPS");
+    const envHttpsEnabled = parsePortableBoolean(pickEnvStringLegacy("CWS_HTTPS_ENABLED") ?? pickEnvStringLegacy("HTTPS_ENABLED"));
+    const envHttpsKey = pickEnvStringLegacy("CWS_HTTPS_KEY") || pickEnvStringLegacy("CWS_HTTPS_KEY_FILE") || pickEnvStringLegacy("HTTPS_KEY") || pickEnvStringLegacy("HTTPS_KEY_FILE");
+    const envHttpsCert = pickEnvStringLegacy("CWS_HTTPS_CERT") || pickEnvStringLegacy("CWS_HTTPS_CERT_FILE") || pickEnvStringLegacy("HTTPS_CERT") || pickEnvStringLegacy("HTTPS_CERT_FILE");
+    const envHttpsCa = pickEnvStringLegacy("CWS_HTTPS_CA") || pickEnvStringLegacy("CWS_HTTPS_CA_FILE") || pickEnvStringLegacy("HTTPS_CA") || pickEnvStringLegacy("HTTPS_CA_FILE");
+    const envRequestClientCerts = pickEnvBoolLegacy("CWS_HTTPS_REQUEST_CLIENT_CERTS");
+    const envAllowUntrusted = pickEnvBoolLegacy("CWS_HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS");
+    const envNetworkAliases = pickEnvStringLegacy("CWS_NETWORK_ALIAS_MAP")
+        || pickEnvStringLegacy("CWS_NETWORK_ALIASES")
+        || pickEnvStringLegacy("NETWORK_ALIAS_MAP")
+        || pickEnvStringLegacy("NETWORK_ALIASES");
+    const envBroadcastTargets = pickEnvStringLegacy("CWS_BROADCAST_TARGETS");
+    const envClipboardPeerTargets = pickEnvStringLegacy("CWS_CLIPBOARD_PEER_TARGETS") || pickEnvStringLegacy("CLIPBOARD_PEER_TARGETS");
+    const envListenPort = pickEnvNumberLegacy("CWS_LISTEN_PORT");
+    const envHttpPort = pickEnvNumberLegacy("CWS_HTTP_PORT");
+    const envPollInterval = pickEnvNumberLegacy("CWS_POLL_INTERVAL");
+    const envHttpTimeoutMs = pickEnvNumberLegacy("CWS_HTTP_TIMEOUT_MS");
+    const envSecret = pickEnvStringLegacy("CWS_SECRET");
+    const sourceHttps = asRecord(source.https);
+    const networkSourceHttps = asRecord(sourceNetwork.https);
+    const coreSourceHttps = asRecord(coreSource.https);
+    const seedHttps = asRecord(seedEndpointConfig.https || seedEndpointDefaults.https || (source as Record<string, any>).https || coreSource.https || sourceNetwork.https || seedNetwork.https || seedCore.https);
 
     return {
         ...(defaultConfig as Record<string, any>),
         ...source,
         ...coreSource,
-        networkAliases: normalizeNetworkAliases(source.networkAliases ?? source.networkAliasMap ?? process.env.CWS_NETWORK_ALIAS_MAP ?? process.env.CWS_NETWORK_ALIASES ?? process.env.NETWORK_ALIAS_MAP ?? process.env.NETWORK_ALIASES ?? seedEndpointConfig.networkAliases ?? seedEndpointConfig.networkAliasMap ?? (coreSource as Record<string, any>).networkAliases ?? (coreSource as Record<string, any>).networkAliasMap),
-        peers: normalizeUrlList(source.peers ?? coreSource.peers ?? sourceNetwork.peers ?? coreNetwork.peers ?? seedNetwork.peers ?? seedEndpointConfig.peers ?? envPeers ?? process.env.CWS_PEERS ?? normalizePeerSource(process.env.CLIPBOARD_PEERS)) ?? defaultConfig.peers,
-        broadcastTargets: normalizeUrlList(source.broadcastTargets ?? coreSource.broadcastTargets ?? sourceNetwork.broadcastTargets ?? coreNetwork.broadcastTargets ?? seedNetwork.broadcastTargets ?? seedEndpointConfig.broadcastTargets ?? process.env.CWS_BROADCAST_TARGETS) ?? defaultConfig.broadcastTargets,
-        clipboardPeerTargets: normalizePeerTargets(source.clipboardPeerTargets ?? coreSource.clipboardPeerTargets ?? sourceNetwork.clipboardPeerTargets ?? coreNetwork.clipboardPeerTargets ?? seedNetwork.clipboardPeerTargets ?? seedEndpointConfig.clipboardPeerTargets ?? (seedEndpointDefaults as Record<string, any>).clipboardPeerTargets ?? process.env.CWS_CLIPBOARD_PEER_TARGETS ?? process.env.CLIPBOARD_PEER_TARGETS) ?? defaultConfig.clipboardPeerTargets,
-        listenPort: Number.isFinite(Number(process.env.CWS_LISTEN_PORT)) ? Number(process.env.CWS_LISTEN_PORT) : (source.listenPort ?? coreSource.listenPort ?? sourceNetwork.listenPort ?? coreNetwork.listenPort ?? seedEndpointConfig.listenPort ?? defaultConfig.listenPort),
-        httpPort: Number.isFinite(Number(process.env.CWS_HTTP_PORT)) ? Number(process.env.CWS_HTTP_PORT) : (source.httpPort ?? coreSource.httpPort ?? sourceNetwork.httpPort ?? coreNetwork.httpPort ?? seedEndpointConfig.httpPort ?? defaultConfig.httpPort),
-        broadcastForceHttps:
-            typeof process.env.CWS_BROADCAST_FORCE_HTTPS === "string"
-                ? process.env.CWS_BROADCAST_FORCE_HTTPS.trim().toLowerCase() === "true" || process.env.CWS_BROADCAST_FORCE_HTTPS.trim() === "1" || process.env.CWS_BROADCAST_FORCE_HTTPS.trim().toLowerCase() === "yes"
-                : (source.broadcastForceHttps ?? coreSource.broadcastForceHttps ?? sourceNetwork.broadcastForceHttps ?? coreNetwork.broadcastForceHttps ?? seedEndpointConfig.broadcastForceHttps ?? defaultConfig.broadcastForceHttps),
-        pollInterval: Number.isFinite(Number(process.env.CWS_POLL_INTERVAL)) ? Number(process.env.CWS_POLL_INTERVAL) : (source.pollInterval ?? sourceNetwork.pollInterval ?? coreNetwork.pollInterval ?? seedEndpointConfig.pollInterval ?? defaultConfig.pollInterval),
-        httpTimeoutMs: Number.isFinite(Number(process.env.CWS_HTTP_TIMEOUT_MS)) ? Number(process.env.CWS_HTTP_TIMEOUT_MS) : (source.httpTimeoutMs ?? sourceNetwork.httpTimeoutMs ?? coreNetwork.httpTimeoutMs ?? seedEndpointConfig.httpTimeoutMs ?? defaultConfig.httpTimeoutMs),
-        secret: process.env.CWS_SECRET || (source.secret ?? sourceNetwork.secret ?? coreNetwork.secret ?? seedEndpointConfig.secret ?? defaultConfig.secret),
+        networkAliases: normalizeNetworkAliases(source.networkAliases ?? source.networkAliasMap ?? envNetworkAliases ?? seedEndpointConfig.networkAliases ?? seedEndpointConfig.networkAliasMap ?? (coreSource as Record<string, any>).networkAliases ?? (coreSource as Record<string, any>).networkAliasMap),
+        peers: normalizeUrlList(source.peers ?? coreSource.peers ?? sourceNetwork.peers ?? coreNetwork.peers ?? seedNetwork.peers ?? seedEndpointConfig.peers ?? envPeers) ?? defaultConfig.peers,
+        broadcastTargets: normalizeUrlList(source.broadcastTargets ?? coreSource.broadcastTargets ?? sourceNetwork.broadcastTargets ?? coreNetwork.broadcastTargets ?? seedNetwork.broadcastTargets ?? seedEndpointConfig.broadcastTargets ?? envBroadcastTargets) ?? defaultConfig.broadcastTargets,
+        clipboardPeerTargets: normalizePeerTargets(source.clipboardPeerTargets ?? coreSource.clipboardPeerTargets ?? sourceNetwork.clipboardPeerTargets ?? coreNetwork.clipboardPeerTargets ?? seedNetwork.clipboardPeerTargets ?? seedEndpointConfig.clipboardPeerTargets ?? (seedEndpointDefaults as Record<string, any>).clipboardPeerTargets ?? envClipboardPeerTargets) ?? defaultConfig.clipboardPeerTargets,
+        listenPort: parsePortableInteger(envListenPort) ?? (source.listenPort ?? coreSource.listenPort ?? sourceNetwork.listenPort ?? coreNetwork.listenPort ?? seedEndpointConfig.listenPort ?? defaultConfig.listenPort),
+        httpPort: parsePortableInteger(envHttpPort) ?? (source.httpPort ?? coreSource.httpPort ?? sourceNetwork.httpPort ?? coreNetwork.httpPort ?? seedEndpointConfig.httpPort ?? defaultConfig.httpPort),
+        broadcastForceHttps: envBroadcastForceHttps ??
+            (source.broadcastForceHttps ?? coreSource.broadcastForceHttps ?? sourceNetwork.broadcastForceHttps ?? coreNetwork.broadcastForceHttps ?? seedEndpointConfig.broadcastForceHttps ?? defaultConfig.broadcastForceHttps),
+        https: {
+            ...(seedHttps ?? {}),
+            ...(sourceHttps ?? {}),
+            ...(coreSourceHttps ?? {}),
+            ...(networkSourceHttps ?? {}),
+            ...(envHttpsEnabled !== undefined ? { enabled: envHttpsEnabled } : {}),
+            ...(envHttpsKey ? { key: envHttpsKey } : {}),
+            ...(envHttpsCert ? { cert: envHttpsCert } : {}),
+            ...(envHttpsCa ? { ca: envHttpsCa } : {}),
+            ...(envRequestClientCerts !== undefined ? { requestClientCerts: envRequestClientCerts } : {}),
+            ...(envAllowUntrusted !== undefined ? { allowUntrustedClientCerts: envAllowUntrusted } : {})
+        },
+        pollInterval: parsePortableInteger(envPollInterval) ?? (source.pollInterval ?? sourceNetwork.pollInterval ?? coreNetwork.pollInterval ?? seedEndpointConfig.pollInterval ?? defaultConfig.pollInterval),
+        httpTimeoutMs: parsePortableInteger(envHttpTimeoutMs) ?? (source.httpTimeoutMs ?? sourceNetwork.httpTimeoutMs ?? coreNetwork.httpTimeoutMs ?? seedEndpointConfig.httpTimeoutMs ?? defaultConfig.httpTimeoutMs),
+        secret: envSecret || (source.secret ?? sourceNetwork.secret ?? coreNetwork.secret ?? seedEndpointConfig.secret ?? defaultConfig.secret),
         roles: Array.isArray(coreSource.roles) ? coreSource.roles : Array.isArray(source.roles) ? source.roles : Array.isArray(seedEndpointConfig.roles) ? seedEndpointConfig.roles : Array.isArray(seedEndpoint.roles) ? seedEndpoint.roles : envRoles ? envRoles : defaultConfig.roles,
         upstream: mergedUpstreamWithFallback,
         topology: {

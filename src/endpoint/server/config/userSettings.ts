@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { AiSettings,
 mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "./settings.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
+import { safeJsonParse } from "../lib/parsing.ts";
 
 export type HttpTarget = {
     id: string;
@@ -68,7 +69,10 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
         if (!record) return { ok: false, error: "Invalid credentials" };
         try {
             const buf = await readUserFile(userId, "settings.json", record.encrypt, userKey);
-            const parsed = JSON.parse(buf.toString("utf-8")) as StoredSettings;
+            const parsed = safeJsonParse<StoredSettings>(buf.toString("utf-8"), DEFAULT_SETTINGS as StoredSettings);
+            if (!parsed || typeof parsed !== "object") {
+                return { ok: true, settings: DEFAULT_SETTINGS, encrypt: record.encrypt };
+            }
             return { ok: true, settings: mergeSettings(DEFAULT_SETTINGS, parsed), encrypt: record.encrypt };
         } catch {
             return { ok: true, settings: DEFAULT_SETTINGS, encrypt: record.encrypt };
@@ -92,7 +96,7 @@ export const registerCoreSettingsEndpoints = async (app: FastifyInstance) => {
             ok: true,
             mode: (settings.core?.mode ?? "endpoint") as "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint",
             roles: settings.core?.roles ?? (DEFAULT_SETTINGS.core?.roles || ["server", "endpoint"]),
-            upstreamEnabled: !!settings.core?.upstream?.enabled
+            upstreamEnabled: settings.core?.upstream?.enabled === true
         };
     });
 };

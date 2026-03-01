@@ -73,3 +73,27 @@ export const pickEnvStringLegacy = (name: string, options: { allowEmpty?: boolea
 export const pickEnvListLegacy = (name: string, separatorPattern = /[;,]/): string[] | undefined => {
     return pickEnvList(expandLegacyNames(name), separatorPattern);
 };
+
+export const pickEnvEntriesByPrefix = (namePrefix: string): Record<string, string> => {
+    const prefixes = expandLegacyNames(namePrefix);
+    const result: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(process.env)) {
+        if (typeof value !== "string") continue;
+        let matchedPrefix: string | undefined;
+        for (const prefix of prefixes) {
+            if (key.startsWith(prefix)) {
+                matchedPrefix = prefix;
+                break;
+            }
+        }
+        if (!matchedPrefix) continue;
+        const tail = key.slice(matchedPrefix.length);
+        if (!tail) continue;
+        if (result[tail] === undefined) {
+            result[tail] = value;
+        }
+    }
+
+    return result;
+};

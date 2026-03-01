@@ -1,10 +1,10 @@
-import { readFile } from "node:fs/promises";
 import net from "node:net";
 
 import Fastify, { type FastifyInstance } from "fastify";
-import path from "node:path";
 
 import { isMainModule, moduleDirname, runtimeArgs } from "../../lib/runtime.ts";
+import { loadHttpsOptions as loadTlsOptions } from "../../lib/TLS.ts";
+import { parsePortableBoolean, parsePortableInteger, resolvePortableTextValue } from "../../lib/parsing.ts";
 import { createWsServer } from "../socket/websocket.ts";
 import type { WsHub } from "../socket/websocket.ts";
 import { createSocketIoBridge } from "../socket/socketio-bridge.ts";
@@ -20,84 +20,29 @@ import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from 
 import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
 import { resolvePeerIdentity } from "../stack/peer-identity.ts";
-import { pickEnvBoolLegacy } from "../../lib/env.ts";
+import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import {
     normalizeEndpointPolicies,
     resolveEndpointIdPolicyStrict,
     resolveEndpointPolicyRoute
 } from "../stack/endpoint-policy.ts";
 
-const KEY_FILE_NAME = "multi.key";
-const CRT_FILE_NAME = "multi.crt";
-const unique = (items: string[]) => [...new Set(items.map((item) => path.resolve(item)))];
-
-const candidateHttpsFiles = () => {
-    const moduleDir = moduleDirname(import.meta);
-    const cwd = process.cwd();
-    return {
-        keys: unique([
-            path.resolve(cwd, "./https/local/" + KEY_FILE_NAME),
-            path.resolve(cwd, "./" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)
-        ]),
-        certs: unique([
-            path.resolve(cwd, "./https/local/" + CRT_FILE_NAME),
-            path.resolve(cwd, "./" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)
-        ])
-    };
-};
-
-const defaultHttpsPaths = () => {
-    const candidates = candidateHttpsFiles();
-    return {
-        key: candidates.keys[0] || path.resolve(moduleDirname(import.meta), "./https/local/" + KEY_FILE_NAME),
-        cert: candidates.certs[0] || path.resolve(moduleDirname(import.meta), "./https/local/" + CRT_FILE_NAME)
-    };
+const resolvePortableConfigBoolean = (value: string | undefined): boolean | undefined => {
+    if (typeof value === "undefined") return undefined;
+    return parsePortableBoolean(resolvePortableTextValue(value));
 };
 
 const loadHttpsOptions = async () => {
-    if (process.env.HTTPS_ENABLED === "false") return undefined;
-    const { key: keyPath, cert: certPath } = defaultHttpsPaths();
-    const envKey = process.env.HTTPS_KEY_FILE;
-    const envCert = process.env.HTTPS_CERT_FILE;
-    const keyCandidates = envKey ? [envKey] : candidateHttpsFiles().keys;
-    const certCandidates = envCert ? [envCert] : candidateHttpsFiles().certs;
-    try {
-        const keyFile = keyCandidates[0] || keyPath;
-        const certFile = certCandidates[0] || certPath;
-        const [key, cert] = await Promise.all([
-            readFile(keyFile),
-            readFile(certFile)
-        ]);
-        const requestClientCerts = process.env.HTTPS_REQUEST_CLIENT_CERTS === "true";
-        const allowUntrustedClientCerts = process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS !== "false";
-        return {
-            key,
-            cert,
-            allowHTTP1: true,
-            ...(requestClientCerts
-                ? (allowUntrustedClientCerts ? { requestCert: true, rejectUnauthorized: false } : { requestCert: true })
-                : {})
-        };
-    } catch (error) {
-        const details = String((error as any)?.message || error || "unknown");
-        console.warn(
-            `[core-backend] HTTPS disabled: failed to load certificate files ` +
-            `key=${envKey || keyPath}, cert=${envCert || certPath}. ${details}`
-        );
+    const httpsConfig = ((config as any)?.https as Record<string, any>) || {};
+    const enabledCandidate = pickEnvStringLegacy("CWS_HTTPS_ENABLED")
+        ?? (httpsConfig.enabled === true ? "true" : httpsConfig.enabled === false ? "false" : undefined);
+    if (resolvePortableConfigBoolean(enabledCandidate) === false) {
         return undefined;
     }
+    return loadTlsOptions({
+        httpsConfig,
+        moduleDir: moduleDirname(import.meta)
+    });
 };
 
 const parseCli = (args: string[]) => {
@@ -107,19 +52,25 @@ const parseCli = (args: string[]) => {
         const a = args[i];
         if (a === "--port") {
             const v = eat(i);
-            if (v) out.port = Number(v);
+            const parsedPort = parsePortableInteger(v);
+            if (parsedPort !== undefined) out.port = parsedPort;
         } else if (a.startsWith("--port=")) {
-            out.port = Number(a.split("=", 2)[1]);
+            const parsedPort = parsePortableInteger(a.split("=", 2)[1]);
+            if (parsedPort !== undefined) out.port = parsedPort;
         } else if (a === "--http-port") {
             const v = eat(i);
-            if (v) out.httpPort = Number(v);
+            const parsedPort = parsePortableInteger(v);
+            if (parsedPort !== undefined) out.httpPort = parsedPort;
         } else if (a.startsWith("--http-port=")) {
-            out.httpPort = Number(a.split("=", 2)[1]);
+            const parsedPort = parsePortableInteger(a.split("=", 2)[1]);
+            if (parsedPort !== undefined) out.httpPort = parsedPort;
         } else if (a === "--https-port") {
             const v = eat(i);
-            if (v) out.httpsPort = Number(v);
+            const parsedPort = parsePortableInteger(v);
+            if (parsedPort !== undefined) out.httpsPort = parsedPort;
         } else if (a.startsWith("--https-port=")) {
-            out.httpsPort = Number(a.split("=", 2)[1]);
+            const parsedPort = parsePortableInteger(a.split("=", 2)[1]);
+            if (parsedPort !== undefined) out.httpsPort = parsedPort;
         } else if (a === "--host" || a === "--address") {
             const v = eat(i);
             if (v) out.host = v;
@@ -209,7 +160,7 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
         const strictPolicy = normalizedPolicyHint ? resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedPolicyHint) : undefined;
         const fallbackSourceId = fallback.trim();
         const sourceId = (policyResolved?.id && policyResolved.id !== "*" ? policyResolved.id : normalizedPolicyHint) || fallbackSource;
-        const known = Boolean(strictPolicy) || sourceId === fallbackSourceId;
+        const known = strictPolicy != null || sourceId === fallbackSourceId;
         return { sourceId, isKnown: known };
     };
     const stripPort = (value: string): string => {
@@ -317,7 +268,7 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
             data: payload,
             namespace,
             from: typeof msg.from === "string" ? msg.from : defaultUserId,
-            ts: Number.isFinite(Number(msg.ts)) ? Number(msg.ts) : Date.now()
+            ts: parsePortableInteger(msg.ts) ?? Date.now()
         };
 
         if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
@@ -503,37 +454,43 @@ export const buildCoreServers = async (
 export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<void> => {
     const args = parseCli(runtimeArgs());
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
-    const httpsEnabled = Boolean(httpsOptions) && process.env.HTTPS_ENABLED !== "false";
-    const httpEnabled = process.env.HTTP_ENABLED !== "false";
+    const configHttpsEnabled = (config as any)?.https?.enabled;
+    const configHttpsEnabledText = typeof configHttpsEnabled === "boolean" ? (configHttpsEnabled ? "true" : "false") : undefined;
+    const envHttpsEnabled = resolvePortableConfigBoolean(pickEnvStringLegacy("CWS_HTTPS_ENABLED") ?? configHttpsEnabledText);
+    const httpsEnabled = httpsOptions !== undefined && envHttpsEnabled !== false && configHttpsEnabled !== false;
+    const httpEnabled = resolvePortableConfigBoolean(pickEnvStringLegacy("CWS_HTTP_ENABLED")) !== false;
 
-    const host = args.host ?? process.env.HOST ?? "0.0.0.0";
+    const host = args.host ?? pickEnvStringLegacy("HOST") ?? "0.0.0.0";
     const defaultHttpsPort = 8443;
 
     // Backwards-compatible behavior:
     // - if only --port/PORT is provided:
     //   - when HTTPS is available -> treat as HTTPS port
     //   - when HTTPS is unavailable -> treat as HTTP port
-    const envPort = typeof process.env.PORT === "string" ? Number(process.env.PORT) : undefined;
-    const legacyPort = Number(args.port ?? envPort ?? NaN);
-    const hasLegacyPort = Number.isFinite(legacyPort);
+    const envPort = pickEnvNumberLegacy("PORT");
+    const legacyPort = args.port != null
+        ? parsePortableInteger(args.port)
+        : parsePortableInteger(envPort);
+    const hasLegacyPort = legacyPort !== undefined;
 
     const httpPortRaw =
         args.httpPort ??
-        process.env.HTTP_PORT ??
-        process.env.PORT_HTTP ??
+        pickEnvNumberLegacy("HTTP_PORT") ??
+        pickEnvNumberLegacy("PORT_HTTP") ??
         (!httpsEnabled && hasLegacyPort ? legacyPort : undefined);
 
-    const httpsPort = Number(
+    const httpsPort = parsePortableInteger(
         args.httpsPort ??
-            process.env.HTTPS_PORT ??
-            process.env.PORT_HTTPS ??
+            pickEnvNumberLegacy("HTTPS_PORT") ??
+            pickEnvNumberLegacy("PORT_HTTPS") ??
             (httpsEnabled && hasLegacyPort ? legacyPort : defaultHttpsPort)
-    );
+    ) ?? defaultHttpsPort;
 
     const { http, https } = await buildCoreServers({ logger: opts.logger ?? true, httpsOptions });
 
     if (httpEnabled) {
-        const httpPort = typeof httpPortRaw === "undefined" ? await pickHttpPort(host) : Number(httpPortRaw);
+        const parsedHttpPort = parsePortableInteger(httpPortRaw);
+        const httpPort = parsedHttpPort === undefined ? await pickHttpPort(host) : parsedHttpPort;
         await http.listen({ port: httpPort, host });
         console.log(`[core-backend] listening on http://${host}:${httpPort}`);
     }

@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
+import { pickEnvEntriesByPrefix, pickEnvStringLegacy } from "../lib/env.ts";
+import { safeJsonParse } from "../lib/parsing.ts";
 
 type ParsedPayload = {
     from: string;
@@ -14,14 +16,15 @@ type DenoProxyPayload = {
 
 const AES_KEY = crypto
     .createHash("sha256")
-    .update(process.env.CLIPBOARD_MASTER_KEY || "some-very-secret-key")
+    .update(pickEnvStringLegacy("CWS_CLIPBOARD_MASTER_KEY") || "some-very-secret-key")
     .digest();
 
 const PUBLIC_KEYS = (() => {
     const keys: Record<string, string> = {};
-    for (const [envName, value] of Object.entries(process.env)) {
-        if (envName.startsWith("PUBKEY_") && value) {
-            keys[envName.slice("PUBKEY_".length)] = value;
+    const entries = pickEnvEntriesByPrefix("CWS_PUBKEY_");
+    for (const [deviceId, value] of Object.entries(entries)) {
+        if (value) {
+            keys[deviceId] = value;
         }
     }
     return keys;
@@ -45,12 +48,8 @@ const isDenoProxyPayload = (payload: unknown): payload is DenoProxyPayload => {
 const tryParseDenoProxyEnvelope = (payload: unknown): DenoProxyPayload | null => {
     if (typeof payload === "string") {
         const decoded = Buffer.from(payload, "base64");
-        try {
-            const parsed = JSON.parse(decoded.toString("utf8"));
-            return isDenoProxyPayload(parsed) ? (parsed as DenoProxyPayload) : null;
-        } catch {
-            return null;
-        }
+        const parsed = safeJsonParse<Record<string, unknown>>(decoded.toString("utf8"));
+        return parsed && isDenoProxyPayload(parsed) ? (parsed as DenoProxyPayload) : null;
     }
     return isDenoProxyPayload(payload) ? (payload as DenoProxyPayload) : null;
 };
@@ -69,7 +68,10 @@ const verifySignature = (deviceId: string, cipherBlock: Buffer, sig: Buffer): bo
 };
 
 const decryptPayload = (payloadB64: string): { from: string; inner: any } => {
-    const outer = JSON.parse(payloadB64) as Record<string, unknown>;
+    const outer = safeJsonParse<Record<string, unknown>>(payloadB64);
+    if (!outer || typeof outer !== "object") {
+        throw new Error("Invalid payload format");
+    }
     const deviceId = typeof outer.from === "string" ? outer.from : "unknown";
 
     const cipherBlock = tryDecodeBase64(outer.cipher);
@@ -85,9 +87,10 @@ const decryptPayload = (payloadB64: string): { from: string; inner: any } => {
     const decipher = crypto.createDecipheriv("aes-256-gcm", AES_KEY, iv);
     decipher.setAuthTag(authTag);
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const inner = safeJsonParse<Record<string, any>>(decrypted.toString("utf8"));
     return {
         from: deviceId,
-        inner: JSON.parse(decrypted.toString("utf8"))
+        inner: inner ?? payload
     };
 };
 
@@ -111,12 +114,8 @@ export const parsePayload = (payload: unknown): ParsedPayload => {
     }
 
     if (typeof payload === "string") {
-        try {
-            const parsed = JSON.parse(payload) as Record<string, any>;
-            return parsePayload(parsed);
-        } catch {
-            return { from: "unknown", inner: payload };
-        }
+        const parsed = safeJsonParse<Record<string, any>>(payload);
+        return parsed ? parsePayload(parsed) : { from: "unknown", inner: payload };
     }
 
     return { from: "unknown", inner: payload };

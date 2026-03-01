@@ -1,18 +1,21 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { registerUser, rotateUserKey, listUsers, deleteUser, verifyUser } from "../lib/users.ts";
+import { parsePortableBoolean } from "../lib/parsing.ts";
 
 export const registerAuthRoutes = async (app: FastifyInstance) => {
     app.post("/core/auth/register", async (request: FastifyRequest<{ Body: { userId?: string; userKey?: string; encrypt?: boolean } }>) => {
         const { userId, userKey, encrypt } = request.body || {};
-        const res = await registerUser(userId, Boolean(encrypt), userKey);
+        const encrypted = parsePortableBoolean(encrypt) ?? false;
+        const res = await registerUser(userId, encrypted, userKey);
         return { ok: true, ...res };
     });
 
     app.post("/core/auth/rotate", async (request: FastifyRequest<{ Body: { userId: string; userKey: string; encrypt?: boolean } }>) => {
         const { userId, userKey, encrypt } = request.body || {};
         if (!userId || !userKey) return { ok: false, error: "Missing credentials" };
-        const res = await rotateUserKey(userId, userKey, encrypt);
+        const encrypted = parsePortableBoolean(encrypt);
+        const res = await rotateUserKey(userId, userKey, encrypted);
         if (!res) return { ok: false, error: "Invalid credentials" };
         return { ok: true, ...res };
     });

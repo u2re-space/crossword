@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parsePortableBoolean, parsePortableInteger, safeJsonParse } from "../lib/parsing.ts";
+import { pickEnvStringLegacy } from "../lib/env.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,18 +47,7 @@ const toStringArray = (value: unknown): string[] | undefined => {
 };
 
 const normalizeNumber = (value: unknown, fallback: number): number => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const normalizeBoolean = (value: unknown, fallback: boolean): boolean => {
-    if (typeof value === "boolean") return value;
-    if (typeof value === "string") {
-        if (value.trim() === "") return fallback;
-        if (["true", "1", "yes"].includes(value.trim().toLowerCase())) return true;
-        if (["false", "0", "no"].includes(value.trim().toLowerCase())) return false;
-    }
-    return fallback;
+    return parsePortableInteger(value) ?? fallback;
 };
 
 const asRecord = (value: unknown): Record<string, any> => {
@@ -67,7 +58,7 @@ const asRecord = (value: unknown): Record<string, any> => {
 const readJson = (candidate: string): Record<string, any> | undefined => {
     try {
         const raw = fs.readFileSync(candidate, "utf-8");
-        const parsed = JSON.parse(raw);
+        const parsed = safeJsonParse<Record<string, any>>(raw);
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, any>) : {};
     } catch {
         return undefined;
@@ -138,9 +129,9 @@ const collectPortableModules = (portableConfig: Record<string, any>, baseDir: st
 
 const loadPortableConfig = () => {
     const candidates = [
-        process.env.CWS_PORTABLE_CONFIG_PATH,
-        process.env.ENDPOINT_CONFIG_JSON_PATH,
-        process.env.PORTABLE_CONFIG_PATH,
+        pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH"),
+        pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH"),
+        pickEnvStringLegacy("PORTABLE_CONFIG_PATH"),
         path.resolve(process.cwd(), "portable.config.json"),
         path.resolve(__dirname, "../../portable.config.json"),
         path.resolve(__dirname, "../portable.config.json")
@@ -227,7 +218,7 @@ const normalizeTopologyCollection = (value: unknown): unknown[] => {
 };
 const portableTopologyConfig = (portableTopology && typeof portableTopology === "object")
     ? {
-        enabled: normalizeBoolean((portableTopology as Record<string, any>).enabled, true),
+        enabled: parsePortableBoolean((portableTopology as Record<string, any>).enabled) ?? true,
         nodes: normalizeTopologyCollection((portableTopology as Record<string, any>).nodes),
         links: normalizeTopologyCollection((portableTopology as Record<string, any>).links)
     }
@@ -251,7 +242,7 @@ export const DEFAULT_ENDPOINT_RUNTIME = {
     ...FALLBACK_RUNTIME_DEFAULTS,
     listenPort: normalizeNumber(portableListenPort, FALLBACK_RUNTIME_DEFAULTS.listenPort),
     httpPort: normalizeNumber(portableHttpPort, FALLBACK_RUNTIME_DEFAULTS.httpPort),
-    broadcastForceHttps: normalizeBoolean(portableBroadcastForceHttps, FALLBACK_RUNTIME_DEFAULTS.broadcastForceHttps),
+    broadcastForceHttps: parsePortableBoolean(portableBroadcastForceHttps) ?? FALLBACK_RUNTIME_DEFAULTS.broadcastForceHttps,
     peers: portablePeers || FALLBACK_RUNTIME_DEFAULTS.peers,
     broadcastTargets: portableBroadcastTargets || FALLBACK_RUNTIME_DEFAULTS.broadcastTargets,
     clipboardPeerTargets: portableClipboardPeerTargets || FALLBACK_RUNTIME_DEFAULTS.clipboardPeerTargets,

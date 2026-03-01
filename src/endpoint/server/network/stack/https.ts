@@ -7,6 +7,7 @@ import https from 'node:https';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import axios from 'axios';
 import config from '../../config/config.ts';
+import { parsePortableInteger } from "../../lib/parsing.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +37,7 @@ export function createHttpClient(httpsOptions?: any) {
         : undefined;
 
     return axios.create({
-        timeout: Number((config as any)?.httpTimeoutMs ?? 3000),
+        timeout: parsePortableInteger((config as any)?.httpTimeoutMs) ?? 3000,
         httpsAgent: agent,
     });
 }

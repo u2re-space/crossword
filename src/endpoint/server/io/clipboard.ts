@@ -5,16 +5,18 @@
 import clipboardy from 'clipboardy';
 import axios from 'axios';
 import config from '../config/config.ts';
+import { pickEnvBoolLegacy, pickEnvListLegacy } from "../lib/env.ts";
+import { parsePortableInteger } from "../lib/parsing.ts";
 
 const { peers, secret, pollInterval } = config;
-const clipboardReadTimeoutMs = Math.max(200, Number((config as any)?.clipboardReadTimeoutMs ?? 2000));
-const clipboardErrorLogIntervalMs = Math.max(1000, Number((config as any)?.clipboardErrorLogIntervalMs ?? 15000));
+const clipboardReadTimeoutMs = Math.max(200, parsePortableInteger((config as any)?.clipboardReadTimeoutMs) ?? 2000);
+const clipboardErrorLogIntervalMs = Math.max(1000, parsePortableInteger((config as any)?.clipboardErrorLogIntervalMs) ?? 15000);
 const clipboardUnsupportedRetryIntervalMs = Math.max(
     5000,
-    Number((config as any)?.clipboardUnsupportedRetryIntervalMs ?? 60000)
+    parsePortableInteger((config as any)?.clipboardUnsupportedRetryIntervalMs) ?? 60000
 );
-const clipboardFeatureEnabled = String(process.env.CLIPBOARD_ENABLED ?? "").toLowerCase() !== "false";
-const stopClipboardRetryOnUnsupported = String(process.env.CLIPBOARD_STOP_ON_UNSUPPORTED || "true").toLowerCase() !== "false";
+const clipboardFeatureEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_ENABLED", true) !== false;
+const stopClipboardRetryOnUnsupported = pickEnvBoolLegacy("CWS_CLIPBOARD_STOP_ON_UNSUPPORTED", true) !== false;
 
 type ClipboardProtocol = "http" | "https";
 type ClipboardPeerTarget = { protocol: ClipboardProtocol; port: number };
@@ -46,18 +48,19 @@ const parseClipboardPeerTargets = (value: unknown): ClipboardPeerTarget[] => {
             const [rawProtocol, rawPort] = entry.split(":").map((part) => part.trim());
             if (!rawProtocol || !rawPort) return null;
             const protocol = rawProtocol.toLowerCase() as ClipboardProtocol;
-            const port = Number(rawPort);
+            const port = parsePortableInteger(rawPort);
             if ((protocol !== "http" && protocol !== "https") || !Number.isInteger(port) || port <= 0 || port > 65535) {
                 return null;
             }
             return { protocol, port };
         })
-        .filter((entry: ClipboardPeerTarget | null): entry is ClipboardPeerTarget => Boolean(entry));
+        .filter((entry: ClipboardPeerTarget | null): entry is ClipboardPeerTarget => entry !== null);
 
     return parsed.length ? parsed : [];
 };
 
-const peerTargets = parseClipboardPeerTargets((config as any).clipboardPeerTargets ?? process.env.CLIPBOARD_PEER_TARGETS);
+const clipboardPeerTargetsFromEnv = pickEnvListLegacy("CWS_CLIPBOARD_PEER_TARGETS");
+const peerTargets = parseClipboardPeerTargets((config as any).clipboardPeerTargets ?? clipboardPeerTargetsFromEnv);
 const fallbackPeerTargets = peerTargets.length ? peerTargets : DEFAULT_CLIPBOARD_PEER_TARGETS;
 
 let lastClipboard = '';
@@ -130,8 +133,8 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
 
     const targetVariants = baseUrl.port
         ? [
-            { protocol: "https" as const, port: Number(baseUrl.port) },
-            { protocol: "http" as const, port: Number(baseUrl.port) }
+            { protocol: "https" as const, port: parsePortableInteger(baseUrl.port) ?? 443 },
+            { protocol: "http" as const, port: parsePortableInteger(baseUrl.port) ?? 80 }
         ]
         : fallbackPeerTargets;
 
@@ -325,7 +328,7 @@ export function startClipboardPolling() {
         return;
     }
     if (pollingTimer) return;
-    const intervalMs = Math.max(10, Number(pollInterval) || 100);
+    const intervalMs = Math.max(10, parsePortableInteger(pollInterval) || 100);
     const loop = () => {
         const delay = clipboardUnsupported ? clipboardUnsupportedRetryIntervalMs : intervalMs;
         pollingTimer = setTimeout(async () => {

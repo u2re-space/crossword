@@ -1,3 +1,5 @@
+import { parsePortableInteger } from "../../lib/parsing.ts";
+
 export type NetworkSurface = "local" | "private" | "public" | "external" | "unknown";
 export type PeerNodeRole = "endpoint" | "gateway" | "peer" | "upstream";
 export type DispatchRouteHint = "local" | "upstream" | "both" | "none";
@@ -24,8 +26,8 @@ const isPrivateV4 = (value: string): boolean => {
     if (value.startsWith("10.")) return true;
     if (value.startsWith("192.168.")) return true;
     if (value.startsWith("172.")) {
-        const second = Number(value.split(".")[1] || 0);
-        return Number.isFinite(second) && second >= 16 && second <= 31;
+        const second = parsePortableInteger(value.split(".")[1] || 0);
+        return second !== undefined && second >= 16 && second <= 31;
     }
     return false;
 };
@@ -89,7 +91,7 @@ export const resolveDispatchPlan = (options: {
 }): DispatchRouteDecision => {
     const route = options.route ?? "auto";
     const target = normalizeAddress(options.target ?? "");
-    const hasUpstream = Boolean(options.hasUpstreamTransport);
+    const hasUpstream = options.hasUpstreamTransport === true;
 
     if (route === "local") {
         return {
@@ -112,7 +114,7 @@ export const resolveDispatchPlan = (options: {
     }
 
     if (route === "both") {
-        const hasLocal = Boolean(target && options.isLocalTarget?.(target));
+        const hasLocal = target ? options.isLocalTarget?.(target) === true : false;
         return {
             route: hasUpstream || hasLocal ? "both" : (hasLocal ? "local" : "none"),
             local: hasLocal,

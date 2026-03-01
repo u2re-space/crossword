@@ -135,9 +135,15 @@ Normalization:
   - `allowedOutcoming`: legacy alias.
 - Wildcard entry `endpointIDs["*"]` is the fallback guest/default policy.
 - In portable JSON source files, value fields support compact prefixes:
-  - `fs:<path>` / `file:<path>`: load a JSON object from a file path relative to the current config file.
+  - `fs:<path>` / `file:<path>`: load data from a file path relative to the current config file.
   - `inline:<value>`: use raw inline text value.
+  - `inline:'<value>'` / `inline:"<value>"`: preserve spaces/escapes in inline content.
   - `env:<NAME>`: read environment variable at startup.
+  - `data:<value>`: inline data payload (`data:...,<payload>`, optional `;base64` decoding).
+- Runtime TLS values in `config.https` and `CWS_HTTPS_*` also support `inline:`, `data:`, `fs:` forms, with inline/base64 key/cert/ca text normalized automatically.
+- If PEM boundaries are missing, the loader can append them automatically:
+  - certificate/CA default tag: `CERTIFICATE`
+  - key default tag: `PRIVATE KEY`
 - Endpoint operations resolve final targets through `forward` first and then apply policy checks (`source -> target`) before WS or upstream fanout in `/api/network/request` and `/api/network/dispatch`.
 - If an explicit source hint is provided in request body (`from`/`source`/`sourceId`/`src`) but cannot be matched to any configured `endpointIDs` policy by policy id/origins/tokens, the request is rejected as unknown source (`"source-unknown"`, message: `"Unknown source. I don't know you"`).
 - Backward compatibility: if `clients.json` or `gateways.json` are still present, their entries are folded into `endpointIDs` at bootstrap so older deployments keep working without immediate manual migration.

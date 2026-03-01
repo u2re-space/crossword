@@ -4,35 +4,25 @@
 
 import { Server } from 'socket.io';
 import { registerAirpadSocketHandlers } from '../../routing/socket-airpad.ts';
-import { buildSocketIoOptions, describeHandshake } from '../socket/socketio-security.ts';
-import { pickEnvBool } from "../../lib/env.ts";
+import {
+    applySocketIoPrivateNetworkHeaders,
+    buildSocketIoOptions,
+    describeHandshake,
+    isPrivateNetworkCorsEnabled
+} from '../socket/socketio-security.ts';
 
 export function setupSocketIO(server: any, logger?: any) {
     const io = new Server(server, buildSocketIoOptions(logger));
-    const allowPrivateNetwork = pickEnvBool(["CWS_CORS_ALLOW_PRIVATE_NETWORK", "CORS_ALLOW_PRIVATE_NETWORK"], true) !== false;
-    const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
-        if (!allowPrivateNetwork) return;
-        const pnaHeader = String(req?.headers?.['access-control-request-private-network'] || '').toLowerCase();
-        if (pnaHeader !== 'true') return;
-
-        headers['Access-Control-Allow-Private-Network'] = 'true';
-        const existingVary = String(headers['Vary'] || headers['vary'] || '');
-        const varyParts = existingVary
-            .split(',')
-            .map((part) => part.trim())
-            .filter(Boolean);
-        if (!varyParts.includes('Access-Control-Request-Private-Network')) {
-            varyParts.push('Access-Control-Request-Private-Network');
-        }
-        if (varyParts.length > 0) {
-            headers['Vary'] = varyParts.join(', ');
-        }
-    };
+    const allowPrivateNetwork = isPrivateNetworkCorsEnabled();
     io.engine.on('initial_headers', (headers, req) => {
-        applyPrivateNetworkHeaders(headers as any, req);
+        if (allowPrivateNetwork) {
+            applySocketIoPrivateNetworkHeaders(headers as any, req);
+        }
     });
     io.engine.on('headers', (headers, req) => {
-        applyPrivateNetworkHeaders(headers as any, req);
+        if (allowPrivateNetwork) {
+            applySocketIoPrivateNetworkHeaders(headers as any, req);
+        }
     });
     logger?.info?.('[socket.io] Bridge initialized');
 

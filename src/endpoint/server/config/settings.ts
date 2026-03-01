@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { SETTINGS_FILE, ensureDataDirs } from "../lib/paths.ts";
 import { DEFAULT_CORE_ROLES, DEFAULT_ENDPOINT_TOPOLOGY, DEFAULT_ENDPOINT_UPSTREAM } from "./default-endpoint-config.ts";
+import { safeJsonParse } from "../lib/parsing.ts";
 
 export type CustomInstruction = {
     id: string;
@@ -149,7 +150,7 @@ export const mergeSettings = (current: Settings, patch: Partial<Settings>): Sett
 export const loadJson = async <T>(filePath: string, fallback: T): Promise<T> => {
     try {
         const raw = await readFile(filePath, "utf-8");
-        return JSON.parse(raw) as T;
+        return safeJsonParse<T>(raw, fallback);
     } catch {
         return fallback;
     }

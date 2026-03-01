@@ -4,6 +4,7 @@ import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "./messages.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
+import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
 
 type UpstreamConnectorConfig = {
     enabled?: boolean;
@@ -84,18 +85,11 @@ type EnvelopePayload = {
     [key: string]: any;
 };
 
-const pickUpstreamEnv = (name: string): string => String(pickEnvStringLegacy(name) || "");
-const pickUpstreamList = (name: string): string[] => pickEnvListLegacy(name) || [];
-const pickUpstreamBool = (name: string, defaultValue?: boolean): boolean | undefined =>
-    pickEnvBoolLegacy(name, defaultValue);
-const pickUpstreamNumber = (name: string, defaultValue?: number): number | undefined =>
-    pickEnvNumberLegacy(name, defaultValue);
-
-const isTunnelDebug = pickUpstreamBool("CWS_TUNNEL_DEBUG") === true;
-const shouldRejectUnauthorized = pickUpstreamBool("CWS_UPSTREAM_REJECT_UNAUTHORIZED", true) !== false;
+const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
+const shouldRejectUnauthorized = pickEnvBoolLegacy("CWS_UPSTREAM_REJECT_UNAUTHORIZED", true) !== false;
 const invalidCredentialsRetryMs = Math.max(
     1000,
-    pickUpstreamNumber("CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000
+    pickEnvNumberLegacy("CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000
 );
 const TLS_VERIFY_ERRORS = [
     "unable to verify the first certificate",
@@ -261,11 +255,7 @@ const verifySignedBlock = (peerPublicKeyPem: string | undefined, block: Buffer, 
 };
 
 const parseJson = (rawText: string): any | null => {
-    try {
-        return JSON.parse(rawText);
-    } catch {
-        return null;
-    }
+    return safeJsonParse<Record<string, any>>(rawText, null);
 };
 
 const parseBase64Envelope = (rawText: string): any | null => {
@@ -315,16 +305,16 @@ const decodeServerPayload = (rawText: string, cfg: Required<UpstreamConnectorCon
 
 const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConnectorConfig> | null => {
     const upstream = config?.upstream || {};
-    const envUpstreamEnabled = pickUpstreamBool("CWS_UPSTREAM_ENABLED");
-    const envUpstreamMode = parseUpstreamMode(pickUpstreamEnv("CWS_UPSTREAM_MODE"));
-    const envUpstreamClientId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_CLIENT_ID");
-    const envEndpointUrl = pickUpstreamEnv("CWS_UPSTREAM_ENDPOINT_URL");
-    const envEndpoints = pickUpstreamList("CWS_UPSTREAM_ENDPOINTS");
-    const envUserId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_USER_ID") || pickUpstreamEnv("CWS_UPSTREAM_CLIENT_ID");
-    const envUserKey = pickUpstreamEnv("CWS_ASSOCIATED_TOKEN") || pickUpstreamEnv("CWS_UPSTREAM_USER_KEY");
-    const envDeviceId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_DEVICE_ID");
-    const envNamespace = pickUpstreamEnv("CWS_UPSTREAM_NAMESPACE");
-    const envReconnectMs = pickUpstreamNumber("CWS_UPSTREAM_RECONNECT_MS", 0);
+    const envUpstreamEnabled = pickEnvBoolLegacy("CWS_UPSTREAM_ENABLED");
+    const envUpstreamMode = parseUpstreamMode(pickEnvStringLegacy("CWS_UPSTREAM_MODE") || "");
+    const envUpstreamClientId = pickEnvStringLegacy("CWS_ASSOCIATED_ID") || pickEnvStringLegacy("CWS_UPSTREAM_CLIENT_ID") || "";
+    const envEndpointUrl = pickEnvStringLegacy("CWS_UPSTREAM_ENDPOINT_URL") || "";
+    const envEndpoints = pickEnvListLegacy("CWS_UPSTREAM_ENDPOINTS") || [];
+    const envUserId = pickEnvStringLegacy("CWS_ASSOCIATED_ID") || pickEnvStringLegacy("CWS_UPSTREAM_USER_ID") || pickEnvStringLegacy("CWS_UPSTREAM_CLIENT_ID") || "";
+    const envUserKey = pickEnvStringLegacy("CWS_ASSOCIATED_TOKEN") || pickEnvStringLegacy("CWS_UPSTREAM_USER_KEY") || "";
+    const envDeviceId = pickEnvStringLegacy("CWS_ASSOCIATED_ID") || pickEnvStringLegacy("CWS_UPSTREAM_DEVICE_ID") || "";
+    const envNamespace = pickEnvStringLegacy("CWS_UPSTREAM_NAMESPACE") || "";
+    const envReconnectMs = pickEnvNumberLegacy("CWS_UPSTREAM_RECONNECT_MS", 0);
 
     const enabled = envUpstreamEnabled === undefined ? upstream.enabled === true : envUpstreamEnabled;
     const mode = envUpstreamMode || parseUpstreamMode(upstream.mode) || "active";
@@ -390,7 +380,7 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         return null;
     }
 
-    const reconnectMs = Number(upstream.reconnectMs);
+    const reconnectMs = parsePortableInteger(upstream.reconnectMs);
     return {
         enabled: true,
         mode,
@@ -415,7 +405,7 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         namespace: envNamespace || (typeof upstream.namespace === "string" && upstream.namespace.trim()
             ? upstream.namespace.trim()
             : "default"),
-        reconnectMs: Number.isFinite(envReconnectMs) && envReconnectMs > 0 ? envReconnectMs : (Number.isFinite(reconnectMs) && reconnectMs > 0 ? reconnectMs : 5000)
+        reconnectMs: envReconnectMs > 0 ? envReconnectMs : (reconnectMs > 0 ? reconnectMs : 5000)
     };
 };
 
@@ -586,10 +576,11 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
     const scheduleReconnect = (delayMs?: number) => {
         if (stopped) return;
         clearReconnect();
+        const normalizedDelay = parsePortableInteger(delayMs);
         reconnectHandle = setTimeout(() => {
             reconnectHandle = null;
             connect();
-        }, Number.isFinite(delayMs) && delayMs && delayMs > 0 ? delayMs : cfg.reconnectMs);
+        }, normalizedDelay && normalizedDelay > 0 ? normalizedDelay : cfg.reconnectMs);
     };
 
     const setNextEndpoint = () => {

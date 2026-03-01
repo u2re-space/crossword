@@ -13,6 +13,8 @@ import { registerStorageRoutes } from "./storage.ts";
 import { registerGptRoutes } from "../gpt/index.ts";
 import { loadEndpointDotenv } from "../gpt/provider.ts";
 import { registerCoreSettingsEndpoints, registerCoreSettingsRoutes } from "../config/userSettings.ts";
+import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../lib/env.ts";
+import { parsePortableInteger } from "../lib/parsing.ts";
 
 const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
 type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];
@@ -85,7 +87,8 @@ const sendAdminIcon = (reply: FastifyReply) => {
         .send(ADMIN_FALLBACK_ICON);
 };
 
-const debugRequestLoggingEnabled = (): boolean => process.env.REQUEST_DEBUG_LOGGING !== "false";
+const debugRequestLoggingEnabled = (): boolean =>
+    pickEnvBoolLegacy("REQUEST_DEBUG_LOGGING", true) !== false;
 
 const safeBodyPreview = (body: unknown, maxChars: number): string | undefined => {
     if (typeof body === "undefined") return undefined;
@@ -116,7 +119,9 @@ const safeBodyPreview = (body: unknown, maxChars: number): string | undefined =>
 
 const registerDebugRequestLogging = async (app: FastifyInstance): Promise<void> => {
     if (!debugRequestLoggingEnabled()) return;
-    const maxChars = Math.max(256, Math.min(1024 * 1024, Number(process.env.REQUEST_DEBUG_LOG_BODY_MAX_CHARS || 64 * 1024)));
+        const configuredMaxChars = pickEnvNumberLegacy("REQUEST_DEBUG_LOG_BODY_MAX_CHARS", 64 * 1024);
+        const resolvedMaxChars = parsePortableInteger(configuredMaxChars) ?? 64 * 1024;
+        const maxChars = Math.max(256, Math.min(1024 * 1024, resolvedMaxChars));
 
     app.addHook("preHandler", async (req: FastifyRequest, _reply) => {
         const socket: any = (req as any).socket;
@@ -144,7 +149,7 @@ export const registerCoreApp = async (app: FastifyInstance): Promise<void> => {
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     });
     app.addHook("onSend", async (req, reply, payload) => {
-        const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== "false";
+        const allowPrivateNetwork = pickEnvBoolLegacy("CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
         if (!allowPrivateNetwork) return payload;
 
         const pnaHeader = String(req.headers["access-control-request-private-network"] || "").toLowerCase();

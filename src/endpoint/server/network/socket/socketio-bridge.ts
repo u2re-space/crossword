@@ -2,7 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 import { randomUUID } from "node:crypto";
 
-import { buildSocketIoOptions, describeHandshake }  from "./socketio-security.ts";
+import {
+    applySocketIoPrivateNetworkHeaders,
+    buildSocketIoOptions,
+    describeHandshake,
+    isPrivateNetworkCorsEnabled
+} from "./socketio-security.ts";
 import {
     applyMessageHooks,
     isBroadcast,
@@ -17,6 +22,7 @@ isAirPadAuthorized,
 requiresAirpadMessageAuth } from "../modules/airpad.ts";
 import { createAirpadObjectMessageHandler } from "../modules/airpad.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
+import { parsePortableInteger } from "../../lib/parsing.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {
@@ -59,7 +65,7 @@ const NETWORK_FETCH_TIMEOUT_MS = Math.max(
     500,
     (() => {
         const configured = pickEnvNumberLegacy("CWS_NETWORK_FETCH_TIMEOUT_MS", 15000);
-        return Number.isFinite(configured) ? configured : 15000;
+        return parsePortableInteger(configured) ?? 15000;
     })()
 );
 
@@ -70,24 +76,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
     const networkContext = opts.networkContext;
     const io = new SocketIOServer(app.server, buildSocketIoOptions(app.log as any));
-    const allowPrivateNetwork = pickEnvBoolLegacy("CWS_CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
+    const allowPrivateNetwork = isPrivateNetworkCorsEnabled();
     const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
-        if (!allowPrivateNetwork) return;
-        const pnaHeader = String(req?.headers?.["access-control-request-private-network"] || "").toLowerCase();
-        if (pnaHeader !== "true") return;
-
-        headers["Access-Control-Allow-Private-Network"] = "true";
-        const existingVary = String(headers["Vary"] || headers["vary"] || "");
-        const varyParts = existingVary
-            .split(",")
-            .map((part) => part.trim())
-            .filter(Boolean);
-        if (!varyParts.includes("Access-Control-Request-Private-Network")) {
-            varyParts.push("Access-Control-Request-Private-Network");
-        }
-        if (varyParts.length > 0) {
-            headers["Vary"] = varyParts.join(", ");
-        }
+        if (allowPrivateNetwork) applySocketIoPrivateNetworkHeaders(headers as any, req);
     };
     io.engine.on("initial_headers", (headers, req) => {
         applyPrivateNetworkHeaders(headers as any, req);
@@ -354,10 +345,11 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const envelope = { ...payload, requestId };
         return new Promise<any>((resolve, reject) => {
             const key = requestToDeviceKey(normalizeHint(userId), normalizedDevice, requestId);
+            const timeout = parsePortableInteger(waitMs) ?? NETWORK_FETCH_TIMEOUT_MS;
             const timer = setTimeout(() => {
                 pendingFetchReplies.delete(key);
                 reject(new Error(`network.fetch timeout: ${requestId}`));
-            }, Math.max(500, Number.isFinite(waitMs) ? Number(waitMs) : NETWORK_FETCH_TIMEOUT_MS));
+            }, Math.max(500, timeout));
             pendingFetchReplies.set(key, { resolve, reject, timer });
             try {
                 targetSocket.emit("network.fetch", envelope, (response: any) => {
@@ -631,7 +623,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     console.warn(
                         `[Router] Binary tunnel target not found for ${sourceSocket.id}`,
                         `target=${tunnelTargets.join("|")}`,
-                        `upstreamEnabled=${Boolean(networkContext?.sendToUpstream)}`
+                        `upstreamEnabled=${networkContext?.sendToUpstream === true}`
                     );
                 }
                 if (!isTunnelDebug) {
@@ -719,7 +711,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         });
         return {
             ok: true,
-            upstreamConnected: Boolean(networkContext?.sendToUpstream),
+            upstreamConnected: networkContext?.sendToUpstream != null,
             upstreamUserId: networkContext?.upstreamUserId,
             connectedCount: devices.length,
             devices,
@@ -727,7 +719,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         };
     });
     app.get("/core/bridge/history", async (req: any) => {
-        const limit = Math.max(1, Math.min(500, Number(req?.query?.limit || maxHistory)));
+        const limit = Math.max(1, Math.min(500, parsePortableInteger(req?.query?.limit) ?? maxHistory));
         return { ok: true, limit, entries: clipHistory.slice(-limit) };
     });
 

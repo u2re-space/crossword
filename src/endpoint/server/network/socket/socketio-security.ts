@@ -1,7 +1,9 @@
 import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
 import config from "../../config/config.ts";
-import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
+import { pickEnvBoolLegacy, pickEnvListLegacy } from "../../lib/env.ts";
+import { getAirPadTokens, isAirPadRequestAuthorized } from "../modules/airpad.ts";
+import { parsePortableInteger } from "../../lib/parsing.ts";
 
 type LoggerLike = {
     info?: (obj: any, msg?: string) => void;
@@ -10,74 +12,16 @@ type LoggerLike = {
 };
 
 const parseAllowedOrigins = (): string[] => {
-    const raw = (pickEnvStringLegacy("CWS_SOCKET_IO_ALLOWED_ORIGINS") || "").trim();
-    if (!raw) return [];
-    const values = raw.split(",").map((x) => x.trim()).filter(Boolean);
+    const values = pickEnvListLegacy("CWS_SOCKET_IO_ALLOWED_ORIGINS") || [];
     const allowAll = values.some((value) => value === "*" || value.toLowerCase() === "all");
     return allowAll ? ["*"] : values;
 };
 
 const normalizePort = (value: string | undefined): number | undefined => {
     if (!value) return undefined;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
+    return parsePortableInteger(value);
 };
 
-const getAirPadTokens = () =>
-    (pickEnvStringLegacy("CWS_AIRPAD_AUTH_TOKENS", { allowEmpty: true }) || pickEnvStringLegacy("CWS_AIRPAD_TOKENS", { allowEmpty: true }) || "")
-        .split(",")
-        .map((token) => token.trim())
-        .filter(Boolean);
-
-const extractTokenFromQuery = (rawUrl: string | undefined): string => {
-    if (!rawUrl) return "";
-    if (!rawUrl.includes("?")) return "";
-    const questionIndex = rawUrl.indexOf("?");
-    const query = rawUrl.slice(questionIndex + 1);
-    try {
-        const params = new URLSearchParams(query);
-        return (
-            params.get("token")?.trim() ||
-            params.get("airpadToken")?.trim() ||
-            ""
-        );
-    } catch {
-        return "";
-    }
-};
-
-const extractTokenFromHeaders = (headers: IncomingMessage["headers"]): string => {
-    const readHeader = (value: string | string[] | undefined): string => {
-        if (!value) return "";
-        const raw = Array.isArray(value) ? value[0] : value;
-        return typeof raw === "string" ? raw.trim() : "";
-    };
-
-    const rawAuthorization = readHeader(headers.authorization);
-    if (rawAuthorization.toLowerCase().startsWith("bearer ")) {
-        return rawAuthorization.slice(7).trim();
-    }
-
-    return (
-        readHeader(headers["x-airpad-token"]) ||
-        readHeader(headers["x-airpad-client-token"]) ||
-        ""
-    );
-};
-
-const extractTokenFromRequest = (req: IncomingMessage | undefined): string => {
-    if (!req) return "";
-    const queryToken = extractTokenFromQuery(req.url);
-    if (queryToken) return queryToken;
-    return extractTokenFromHeaders(req.headers);
-};
-
-const isAuthorizedByAirPadToken = (req: IncomingMessage | undefined): boolean => {
-    const tokens = getAirPadTokens();
-    if (!tokens.length) return true;
-    const token = extractTokenFromRequest(req);
-    return !!token && tokens.includes(token);
-};
 
 const parseOrigin = (value: string): { protocol: string; hostname: string; port: string } | null => {
     try {
@@ -155,9 +99,31 @@ const isAllowedOrigin = (parsedOrigin: ReturnType<typeof parseOrigin>, item: str
     return false;
 };
 
+export const isPrivateNetworkCorsEnabled = (): boolean =>
+    pickEnvBoolLegacy("CWS_CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
+
+export const applySocketIoPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
+    if (!isPrivateNetworkCorsEnabled()) return;
+    const pnaHeader = String(req?.headers?.["access-control-request-private-network"] || "").toLowerCase();
+    if (pnaHeader !== "true") return;
+
+    headers["Access-Control-Allow-Private-Network"] = "true";
+    const existingVary = String(headers["Vary"] || headers["vary"] || "");
+    const varyParts = existingVary
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+    if (!varyParts.includes("Access-Control-Request-Private-Network")) {
+        varyParts.push("Access-Control-Request-Private-Network");
+    }
+    if (varyParts.length > 0) {
+        headers["Vary"] = varyParts.join(", ");
+    }
+};
+
 const getDefaultAllowedOrigins = (): string[] => {
-    const httpsPort = Number((config as any)?.listenPort ?? 8443);
-    const httpPort = Number((config as any)?.httpPort ?? 8080);
+    const httpsPort = parsePortableInteger((config as any)?.listenPort) ?? 8443;
+    const httpPort = parsePortableInteger((config as any)?.httpPort) ?? 8080;
     const hosts = ["localhost", "127.0.0.1", "u2re.space", "www.u2re.space"];
     const values = new Set<string>();
     for (const host of hosts) {
@@ -205,7 +171,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false
         && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
     const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
-    const hasAirPadAuthTokens = getAirPadTokens().length > 0;
+        const hasAirPadAuthTokens = getAirPadTokens().length > 0;
     const allowUnknownOriginWithAirPadAuth = (
         pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", undefined) ??
         pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)
@@ -261,7 +227,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                 callback(null, true);
                 return;
             }
-            if (isAuthorizedByAirPadToken(req)) {
+            if (isAirPadRequestAuthorized(req)) {
                 callback(null, true);
                 return;
             }
@@ -295,7 +261,7 @@ export const describeHandshake = (req?: IncomingMessage): Record<string, unknown
     const hostHeader = typeof headers.host === "string" ? headers.host : undefined;
     const originHeader = typeof headers.origin === "string" ? headers.origin : undefined;
     const forwardedProto = typeof headers["x-forwarded-proto"] === "string" ? headers["x-forwarded-proto"] : undefined;
-    const encrypted = Boolean((req?.socket as any)?.encrypted);
+    const encrypted = (req?.socket as any)?.encrypted === true;
     const protocol = forwardedProto || (encrypted ? "https" : "http");
     const host = hostHeader?.split(":")[0];
     const hostPort = hostHeader?.includes(":") ? normalizePort(hostHeader.split(":")[1]) : undefined;
