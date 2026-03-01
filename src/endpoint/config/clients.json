@@ -68,6 +68,7 @@
                 "allowed": ["L-192.168.0.196", "L-192.168.0.200", "self"]
             }],
             "clipboard": ["ahk-used", "write-allowed", "read-allowed", "tunnel-allowed", {
+                "pollInterval": 1000,
                 "shareTo": ["L-192.168.0.196", "L-192.168.0.200"],
                 "acceptFrom": ["L-192.168.0.196", "L-192.168.0.200"]
             }],
@@ -113,6 +114,7 @@
         "modules": {
             "mouse": ["client-only"],
             "clipboard": ["write-allowed", "read-allowed", "tunnel-allowed", {
+                "pollInterval": 1000,
                 "shareTo": ["L-192.168.0.110", "L-192.168.0.200"],
                 "acceptFrom": ["L-192.168.0.110", "L-192.168.0.200"]
             }],

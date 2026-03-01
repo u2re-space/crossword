@@ -1,7 +1,19 @@
 {
-    "httpTimeoutMs": 10000,
     "broadcastForceHttps": true,
-    "pollInterval": 100,
     "secret": "",
-    "endpoints": "fs:./endpoints.json"
+    "endpoints": "fs:./endpoints.json",
+    "protocols": {
+        "websocket": {
+            "timeoutMs": 10000,
+            "maxConnections": 100
+        },
+        "http": {
+            "timeoutMs": 10000,
+            "maxConnections": 100
+        }
+    },
+    "allowedOrigins": ["*"],
+    "allowedInsecureOrigins": ["*"],
+    "allowedInvalidCredentials": true,
+    "allowedInvalidTls": true
 }
