@@ -229,7 +229,7 @@ const normalizeRoleSet = (roles: unknown): Set<string> => {
 /**
  * Endpoint role model is split into:
  * - upstream connector (this process): starts reverse WS/WebSocket client and pushes frames to upstream gateway
- * - upstream gateway/origin (remote endpoint): accepts reverse socket and proxies/reroutes messages for peers/DMZ clients
+ * - upstream gateway/origin (remote endpoint): accepts reverse socket and proxies/reroutes messages for peers and connected clients
  */
 const isConnectorRoleEnabled = (config: EndpointConfig): boolean => {
     const roles = normalizeRoleSet(config.roles);

@@ -53,7 +53,7 @@ Current structure:
 ## Upstream terminology (explicit split)
 
 - **Upstream connector (reverse client)**: current endpoint instance that actively opens outbound connection to another node (`mode=reverse`) and can relay commands outward or to peers.
-- **Upstream gateway / origin**: remote node that accepts these reverse connections, proxies/reroutes payloads and can expose a DMZ/edge role.
+- **Upstream gateway / origin**: remote node that accepts these reverse connections, proxies/reroutes payloads, and coordinates relay pathways.
 - **Where to look in runtime**:
   - connector: `network/stack/upstream.ts` (`startUpstreamPeerClient`, reverse client lifecycle, reconnect, send/receive)
   - gateway/origin side: `/ws` entry (`mode=reverse`) and `network/socket/websocket.ts` where reverse clients are registered as `reverse` transport entries.
