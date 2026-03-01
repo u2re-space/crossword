@@ -82,7 +82,6 @@ module.exports = {
                 CWS_PORTABLE_CONFIG_PATH: path.resolve(__dirname, "portable.config.json"),
                 CWS_ASSOCIATED_ID: "L-192.168.0.200",
                 CWS_ASSOCIATED_TOKEN: "n3v3rm1nd",
-                CWS_UPSTREAM_ENABLED: "true",
                 CWS_UPSTREAM_MODE: "active",
                 CWS_UPSTREAM_ENDPOINT_URL: "https://45.147.121.152:8443/",
                 CWS_UPSTREAM_USER_ID: "L-192.168.0.200",

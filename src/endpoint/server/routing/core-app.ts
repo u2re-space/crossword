@@ -89,6 +89,14 @@ const sendAdminIcon = (reply: FastifyReply) => {
 
 const debugRequestLoggingEnabled = (): boolean =>
     pickEnvBoolLegacy("REQUEST_DEBUG_LOGGING", true) !== false;
+const clipboardDebugLoggingEnabled = (): boolean =>
+    pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
+
+const maskClipboardBody = (req: FastifyRequest, maxChars: number): string | undefined => {
+    if (req?.url !== "/clipboard" && (req as any).url !== "/clipboard") return safeBodyPreview((req as any).body, maxChars);
+    if (clipboardDebugLoggingEnabled()) return safeBodyPreview((req as any).body, maxChars);
+    return "<omitted>";
+};
 
 const safeBodyPreview = (body: unknown, maxChars: number): string | undefined => {
     if (typeof body === "undefined") return undefined;
@@ -128,7 +136,7 @@ const registerDebugRequestLogging = async (app: FastifyInstance): Promise<void> 
         const proto = socket?.encrypted ? "https" : "http";
         const localPort = socket?.localPort;
         const remoteAddr = (req as any).ip || socket?.remoteAddress;
-        const bodyPreview = safeBodyPreview((req as any).body, maxChars);
+        const bodyPreview = maskClipboardBody(req as any, maxChars);
 
         const msg =
             bodyPreview !== undefined

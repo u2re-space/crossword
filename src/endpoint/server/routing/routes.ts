@@ -4,6 +4,7 @@
 
 import { writeClipboard, setBroadcasting } from "../io/clipboard.ts";
 import config from "../config/config.ts";
+import { pickEnvBoolLegacy } from "../lib/env.ts";
 
 function setUtf8Plain(reply: any) {
     reply.header("Content-Type", "text/plain; charset=utf-8");
@@ -25,6 +26,10 @@ function isAuthorized(request: any): boolean {
 
     return false;
 }
+
+const isClipboardLoggingEnabled = () => {
+    return pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
+};
 
 export function registerRoutes(app: any) {
     // POST /clipboard  (Fastify-style)
@@ -51,16 +56,22 @@ export function registerRoutes(app: any) {
             setBroadcasting(true);
             const written = await writeClipboard(text);
             if (written) {
-                app.log.info("Copied to clipboard");
+                if (isClipboardLoggingEnabled()) {
+                    app.log.info("Copied to clipboard");
+                }
             } else {
-                app.log.warn("Clipboard backend unavailable, request accepted without local write");
+                if (isClipboardLoggingEnabled()) {
+                    app.log.warn("Clipboard backend unavailable, request accepted without local write");
+                }
                 setUtf8Plain(reply);
                 return reply.code(204).send("Clipboard unavailable");
             }
             setUtf8Plain(reply);
             return reply.code(200).send("OK");
         } catch (err) {
-            app.log.error({ err }, "Clipboard error");
+            if (isClipboardLoggingEnabled()) {
+                app.log.error({ err }, "Clipboard error");
+            }
             setUtf8Plain(reply);
             return reply.code(500).send("Clipboard error");
         } finally {

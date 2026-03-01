@@ -21,12 +21,12 @@
         "preserveTargets": ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
     },
     "launcherEnv": {
+        "CWS_UPSTREAM_ENABLED": true,
         "CWS_PORTABLE_CONFIG_PATH": "portable.config.json",
         "CWS_TUNNEL_DEBUG": true,
         "CWS_ASSOCIATED_ID": "L-192.168.0.200",
         "CWS_ASSOCIATED_TOKEN": "n3v3rm1nd",
         "CWS_UPSTREAM_MODE": "active",
-        "CWS_UPSTREAM_ENABLED": true,
         "CWS_AIRPAD_NATIVE_ACTIONS": "true",
         "CWS_AIRPAD_ROBOTJS_ENABLED": "true",
         "CWS_UPSTREAM_REJECT_UNAUTHORIZED": "false",
