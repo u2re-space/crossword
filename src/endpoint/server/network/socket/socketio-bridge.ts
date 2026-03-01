@@ -179,9 +179,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const upstreamTarget = normalizeHint(target);
         if (!upstreamTarget || isBroadcastTarget(upstreamTarget)) return false;
 
+        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
+        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
         const upstreamPayload = {
             type: "dispatch",
-            from: normalizeHint((sourceSocket as any).userId) || sourceSocket.id,
+            from: upstreamFrom,
             to: upstreamTarget,
             target: upstreamTarget,
             targetId: upstreamTarget,
@@ -192,7 +195,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 encoding: "base64",
                 data: encodeBinaryForTunnel(raw)
             },
-            userId: normalizeHint(networkContext.upstreamUserId) || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint),
+            userId: upstreamUser,
+            routeTarget: normalizeHint(meta?.routeTarget) || upstreamTarget,
             via: normalizeHint(meta?.routeHint),
             surface: "socketio"
         };
@@ -250,15 +254,21 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const frameTarget = normalizeHint(frame?.to);
         if (frameTarget && !isBroadcastTarget(frameTarget)) {
             next.add(frameTarget);
+            return Array.from(next).filter(Boolean);
         }
-        if (meta?.targetHost) {
-            next.add(normalizeHint(meta.targetHost));
-        }
-        if (meta?.hostHint) {
-            next.add(normalizeHint(meta.hostHint));
-        }
-        if (meta?.routeTarget) {
-            next.add(normalizeHint(meta.routeTarget));
+        if (!frameTarget || isBroadcastTarget(frameTarget)) {
+            const routeTarget = normalizeHint(meta?.routeTarget);
+            if (routeTarget) {
+                next.add(routeTarget);
+                return Array.from(next).filter(Boolean);
+            }
+            if (meta?.targetHost) {
+                next.add(normalizeHint(meta.targetHost));
+            }
+            if (meta?.hostHint) {
+                next.add(normalizeHint(meta.hostHint));
+            }
+            return Array.from(next).filter(Boolean);
         }
         return Array.from(next).filter(Boolean);
     };
@@ -351,12 +361,17 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (routeHint !== "tunnel" && routeHint !== "remote") return false;
         const rawTarget = normalizeHint(frame.to);
         if (!rawTarget || isBroadcastTarget(rawTarget)) return false;
+        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
+        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
         const accepted = networkContext.sendToUpstream({
             ...frame,
-            userId: normalizeHint(networkContext.upstreamUserId) || meta?.targetHost || meta?.hostHint,
+            from: upstreamFrom,
+            userId: upstreamUser,
             target: rawTarget,
             targetId: rawTarget,
-            to: rawTarget
+            to: rawTarget,
+            routeTarget: normalizeHint(meta?.routeTarget) || rawTarget
         });
         if (!accepted && isTunnelDebug) {
             console.log(`[Router] Tunnel upstream rejected`, `socket=${sourceSocket.id}`, `to=${rawTarget}`);

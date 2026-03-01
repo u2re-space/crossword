@@ -123,6 +123,17 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
             }
             return Array.from(set);
         },
+        getConnectedPeerProfiles: (userId) => {
+            const seen = new Map<string, { id: string; label: string }>();
+            for (const hub of hubs) {
+                const peerProfiles = hub.getConnectedPeerProfiles(userId);
+                for (const peer of peerProfiles) {
+                    const key = peer.id;
+                    if (!seen.has(key)) seen.set(key, { id: peer.id, label: peer.label });
+                }
+            }
+            return Array.from(seen.values());
+        },
         close: async () => {
             await Promise.all(hubs.map((hub) => hub.close()));
         }
@@ -192,8 +203,9 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         if (!message || typeof message !== "object") return;
         const msg = message as Record<string, unknown>;
         const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
-        const resolvedUserId = typeof msg.userId === "string" && msg.userId.trim() ? (msg.userId as string).trim() : defaultUserId;
-        if (!resolvedUserId) return;
+        const resolvedUserIdRaw = typeof msg.userId === "string" && msg.userId.trim() ? (msg.userId as string).trim() : defaultUserId;
+        if (!resolvedUserIdRaw) return;
+        const resolvedUserId = resolvedUserIdRaw.toLowerCase();
         const normalizedRequestedTarget = String(target ?? "");
         const resolvedRequestedTarget = resolveTargetWithPeerIdentity(resolvedUserId, normalizedRequestedTarget.trim());
         const sourceForPolicy = resolveSourceForPolicy(msg, resolvedUserId);
@@ -236,16 +248,41 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             type,
             data: payload,
             namespace,
-            from: typeof msg.from === "string" ? msg.from : defaultUserId,
+            from: typeof msg.from === "string" ? msg.from.toLowerCase().trim() : resolvedUserId,
             ts: parsePortableInteger(msg.ts) ?? Date.now()
         };
+        if (type.toLowerCase() === "welcome") {
+            if (isTunnelDebug) {
+                app.log?.debug?.(
+                    {
+                        userId: resolvedUserId,
+                        target: resolvedRequestedTarget,
+                        from: sourceForPolicy.sourceId
+                    },
+                    "[upstream] ignored welcome event from upstream"
+                );
+            }
+            return;
+        }
 
         if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
             const requestedTarget = resolvedRequestedTarget.trim();
-            const resolvedTargetHint = resolveTunnelTarget(hub.getConnectedPeerProfiles(resolvedUserId), requestedTarget);
+            const peerProfiles = hub.getConnectedPeerProfiles(resolvedUserId);
+            const resolvedTargetHint = resolveTunnelTarget(peerProfiles, requestedTarget);
             const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
             const resolvedKind = resolvedTargetHint?.source;
-            const delivered = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
+            const resolved = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
+            const fallbackTarget =
+                requestedTarget.toLowerCase() === "self" || requestedTarget.toLowerCase() === resolvedUserId.toLowerCase();
+            const fallbackSent =
+                !resolved && peerProfiles.length > 0 && fallbackTarget
+                    ? (() => {
+                          hub.multicast(resolvedUserId, routed, namespace);
+                          return true;
+                      })()
+                    : false;
+            const delivered = resolved || fallbackSent;
+            const knownPeers = peerProfiles.map((entry) => `${entry.label}(${entry.id})`);
 
             if (!delivered) {
                 if (isTunnelDebug) {
@@ -255,10 +292,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget || "-"}`,
                         `kind=${resolvedKind || "-"}`,
-                        `known=${hub
-                            .getConnectedPeerProfiles(resolvedUserId)
-                            .map((entry) => `${entry.label}(${entry.id})`)
-                            .join(",")}`
+                        `known=${knownPeers.join(",")}`
                     );
                 }
                 app.log?.warn?.(
@@ -268,7 +302,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         matchedLabel: resolvedTargetHint?.profile.label,
                         resolutionKind: resolvedKind,
                         resolvedTarget,
-                        knownTargets: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`),
+                        knownTargets: knownPeers,
                         payloadType: type
                     },
                     "[upstream] failed to route command to reverse target"
@@ -282,12 +316,22 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         matchedLabel: resolvedTargetHint?.profile.label,
                         resolutionKind: resolvedKind,
                         payloadType: type,
-                        knownTargets: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
+                        knownTargets: knownPeers,
+                        fallbackToSelf: fallbackSent,
+                        resolvedUserId
                     },
                     "[upstream] routed command to reverse target"
                 );
                 if (isTunnelDebug) {
-                    console.info(`[upstream] target resolved`, `userId=${resolvedUserId}`, `requested=${requestedTarget}`, `resolved=${resolvedTarget}`, `kind=${resolvedKind || "-"}`, `delivered=${delivered}`);
+                    console.info(
+                        `[upstream] target resolved`,
+                        `userId=${resolvedUserId}`,
+                        `requested=${requestedTarget}`,
+                        `resolved=${resolvedTarget}`,
+                        `kind=${resolvedKind || "-"}`,
+                        `delivered=${delivered}`,
+                        `fallback=${fallbackSent}`
+                    );
                 }
             }
             app.log?.debug?.(

@@ -149,6 +149,7 @@ type NetworkFetchBody = {
 const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
 const BROADCAST_PROTO_RE = /^https?:\/\//i;
 const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
+let resolvePeerIdentityHub: WsHub | null = null;
 
 const hasProtocol = (value: string): boolean => BROADCAST_PROTO_RE.test(value);
 
@@ -380,7 +381,7 @@ const normalizePeerProfilesForResolution = (profiles: Array<{ id: string; label:
 const buildPeerIdentityContext = (userId: string) => {
     const staticTopology = (config as any)?.topology;
     const topologyEntries = Array.isArray(staticTopology?.nodes) ? (staticTopology.nodes as Array<Record<string, any>>).filter((node) => node && typeof node === "object" && !Array.isArray(node)) : [];
-    const peers = wsHub.getConnectedPeerProfiles(userId);
+    const peers = resolvePeerIdentityHub?.getConnectedPeerProfiles(userId) ?? [];
     return {
         peers: normalizePeerProfilesForResolution(peers),
         aliases: NETWORK_ALIAS_MAP,
@@ -660,6 +661,8 @@ const toTargetUrl = (body: HttpRequestBody, targetUrlFromSettings?: string, forc
 };
 
 export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, networkContext?: NetworkContextProvider, socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">) => {
+    resolvePeerIdentityHub = wsHub;
+
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
         const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
@@ -1485,14 +1488,18 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         }
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
+        const dispatchHub = wsHub;
+        if (!dispatchHub || typeof dispatchHub.getConnectedPeerProfiles !== "function" || typeof dispatchHub.multicast !== "function") {
+            return { ok: false, error: "Internal server error: wsHub unavailable" };
+        }
 
         const messagePayload = payload ?? data ?? {};
         const destination = resolveEndpointRouteTarget(targetId || deviceId || peerId || target || "", userId);
         const normalizedTargets = Array.isArray(targets) ? targets.map((item) => resolveEndpointRouteTarget(String(item || "").trim(), userId)).filter(Boolean) : [];
         const normalizedNamespace = typeof namespace === "string" && namespace.trim() ? namespace.trim() : typeof ns === "string" && ns.trim() ? ns.trim() : undefined;
 
-        const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
-        const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
+        const peerProfiles = dispatchHub.getConnectedPeerProfiles(userId);
+        const localPeers = makeTargetTokenSet(dispatchHub.getConnectedDevices(userId));
         const localLabels = makeTargetTokenSet(peerProfiles.map((peer) => peer.label));
         const localIds = makeTargetTokenSet(peerProfiles.map((peer) => peer.id));
         const localPeerIds = makeTargetTokenSet(peerProfiles.map((peer) => String((peer as any).peerId || peer.id)));
@@ -1582,11 +1589,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             const localDecisionEntries = audienceDecisions.filter((entry) => entry.plan.local && entry.target);
 
             if (shouldBroadcastLocally || localDecisionEntries.length === 0) {
-                wsHub.multicast(userId, payloadEnvelope, normalizedNamespace);
+                dispatchHub.multicast(userId, payloadEnvelope, normalizedNamespace);
                 return true;
             }
 
-            const results = await Promise.all(localDecisionEntries.map((entry) => sendToTargetsWithFallback(userId, entry.target, payloadEnvelope, { mode: "dispatch" }, { wsHub, socketIoBridge })));
+            const results = await Promise.all(localDecisionEntries.map((entry) => sendToTargetsWithFallback(userId, entry.target, payloadEnvelope, { mode: "dispatch" }, { wsHub: dispatchHub, socketIoBridge })));
             return results.some((result) => result.delivered);
         })();
 

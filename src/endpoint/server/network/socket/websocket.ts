@@ -130,6 +130,7 @@ const decodeTcpData = (payload: unknown): Buffer | null => {
 
 type ClientInfo = {
     userId: string;
+    userIdKey: string;
     userKey: string;
     ws: WebSocket;
     id: string;
@@ -157,6 +158,8 @@ const isIpLike = (value: string): boolean => {
 };
 
 const hashSuffix = (value: string): string => createHash("sha1").update(value).digest("hex").slice(0, 8);
+const normalizeSocketUser = (value: string | undefined): string => String(value || "").trim().toLowerCase();
+const normalizeSocketPeer = (value: string | undefined): string => String(value || "").trim().toLowerCase();
 
 const normalizePeerLabel = (userId: string, rawDeviceId: string, rawLabel: string | null): string => {
     const userPart = (userId || "user").trim().slice(0, 16);
@@ -191,15 +194,15 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const reverseClientKey = (userId: string, deviceId: string) => `${userId}:${deviceId}`;
     const requestKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
     const resolveReverseClientByTarget = (userId: string, target: string): ClientInfo | undefined => {
-        const normalizedUser = userId.toLowerCase();
-        const normalizedTarget = target.toLowerCase();
+        const normalizedUser = normalizeSocketUser(userId);
+        const normalizedTarget = normalizeSocketPeer(target);
         const direct = reverseClients.get(reverseClientKey(normalizedUser, normalizedTarget));
         if (direct) return direct;
         for (const entry of reverseClients.values()) {
             if (!entry.userId) continue;
-            if (entry.userId.toLowerCase() !== normalizedUser) continue;
-            if ((entry.deviceId || "").toLowerCase() === normalizedTarget) return entry;
-            if ((entry.peerId || "").toLowerCase() === normalizedTarget) return entry;
+            if (normalizeSocketUser(entry.userId) !== normalizedUser) continue;
+            if (normalizeSocketPeer(entry.deviceId) === normalizedTarget) return entry;
+            if (normalizeSocketPeer(entry.peerId) === normalizedTarget) return entry;
         }
         return undefined;
     };
@@ -432,9 +435,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const mode = params.get("mode") || "push";
         const deviceId = params.get("deviceId") || "";
         const isReverse = mode === "reverse";
+        const userIdKey = normalizeSocketUser(userId);
+        const normalizedDeviceId = normalizeSocketPeer(deviceId);
         const settings = await verify(userId, userKey);
         const requestedLabel = (params.get("label") || params.get("name") || params.get("clientId") || "").trim();
-        const requestedPeerId = (params.get("clientId") || params.get("peerId") || requestedLabel || deviceId).trim();
+        const requestedPeerId = normalizeSocketPeer(params.get("clientId") || params.get("peerId") || requestedLabel || deviceId);
         if (!settings || !userId || !userKey) {
             ws.close(4001, "Invalid credentials");
             return;
@@ -443,32 +448,33 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4002, "Missing deviceId");
             return;
         }
-        const peerLabel = isReverse ? normalizePeerLabel(userId || "", deviceId, requestedPeerId) : undefined;
+        const peerLabel = isReverse ? normalizePeerLabel(userId || "", normalizedDeviceId, requestedPeerId) : undefined;
         const info: ClientInfo = {
             userId,
+            userIdKey,
             userKey,
             ws,
             id: randomUUID(),
-            namespace: namespace || userId,
+            namespace: normalizeSocketUser(namespace || userId),
             reverse: isReverse,
-            deviceId: isReverse ? deviceId : undefined,
+            deviceId: isReverse ? normalizedDeviceId : undefined,
             peerLabel,
             peerId: isReverse ? requestedPeerId : undefined
         };
         clients.set(ws, info);
-        if (!namespaces.has(info.userId)) namespaces.set(info.userId, new Map());
-        namespaces.get(info.userId)!.set(info.id, info);
-        if (isReverse && deviceId) {
-            reverseClients.set(reverseClientKey(info.userId, deviceId), info);
-            if (requestedPeerId && requestedPeerId !== deviceId) {
-                reverseClients.set(reverseClientKey(info.userId, requestedPeerId), info);
+        if (!namespaces.has(info.userIdKey)) namespaces.set(info.userIdKey, new Map());
+        namespaces.get(info.userIdKey)!.set(info.id, info);
+        if (isReverse && normalizedDeviceId) {
+            reverseClients.set(reverseClientKey(info.userIdKey, normalizedDeviceId), info);
+            if (requestedPeerId && requestedPeerId !== normalizedDeviceId) {
+                reverseClients.set(reverseClientKey(info.userIdKey, requestedPeerId), info);
             }
-            const labels = reversePeerProfiles.get(info.userId) ?? new Map<string, { label: string; peerId: string }>();
-            labels.set(deviceId, {
+            const labels = reversePeerProfiles.get(info.userIdKey) ?? new Map<string, { label: string; peerId: string }>();
+            labels.set(normalizedDeviceId, {
                 label: peerLabel || deviceId,
                 peerId: requestedPeerId
             });
-            reversePeerProfiles.set(info.userId, labels);
+            reversePeerProfiles.set(info.userIdKey, labels);
             ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, deviceId, peerLabel, peerId: requestedPeerId }));
         } else {
             ws.send(JSON.stringify({ type: "welcome", id: info.id, userId }));
@@ -530,21 +536,22 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             const shouldBroadcast = isBroadcast(frame);
             // Simple forwarding: if targetId matches a client, relay
             if (!shouldBroadcast) {
-                const target = [...clients.values()].find((c) => c.id === frame.to || c.deviceId === frame.to || c.peerId === frame.to || c.userId === frame.to);
+                const normalizedFrameTo = normalizeSocketPeer(frame.to);
+                const target = [...clients.values()].find((c) => c.id === frame.to || normalizeSocketPeer(c.deviceId) === normalizedFrameTo || normalizeSocketPeer(c.peerId) === normalizedFrameTo || normalizeSocketUser(c.userId) === normalizedFrameTo);
                 target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
             } else {
                 // broadcast to same userId
-                multicast(info.userId, { type, payload, from: frame.from }, frame.namespace || info.namespace, info.id);
+                multicast(info.userIdKey, { type, payload, from: frame.from }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
             }
         });
 
         ws.on("close", () => {
             closeAllTcpSessions(ws);
             clients.delete(ws);
-            namespaces.get(info.userId)?.delete(info.id);
-            if (namespaces.get(info.userId)?.size === 0) namespaces.delete(info.userId);
+            namespaces.get(info.userIdKey)?.delete(info.id);
+            if (namespaces.get(info.userIdKey)?.size === 0) namespaces.delete(info.userIdKey);
             for (const pendingKey of Array.from(pendingFetchReplies.keys())) {
-                if (pendingKey.startsWith(`${info.userId}:${info.deviceId || ""}:`)) {
+                if (pendingKey.startsWith(`${info.userIdKey}:${info.deviceId || ""}:`)) {
                     const pending = pendingFetchReplies.get(pendingKey);
                     if (pending) {
                         if (pending.timer) clearTimeout(pending.timer);
@@ -554,13 +561,13 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 }
             }
             if (info.reverse && info.deviceId) {
-                reverseClients.delete(reverseClientKey(info.userId, info.deviceId));
-                const peerAwareKey = reverseClientKey(info.userId, info.peerId || "");
+                reverseClients.delete(reverseClientKey(info.userIdKey, info.deviceId));
+                const peerAwareKey = reverseClientKey(info.userIdKey, normalizeSocketPeer(info.peerId));
                 reverseClients.delete(peerAwareKey);
-                const labels = reversePeerProfiles.get(info.userId);
+                const labels = reversePeerProfiles.get(info.userIdKey);
                 if (labels) {
                     labels.delete(info.deviceId);
-                    if (labels.size === 0) reversePeerProfiles.delete(info.userId);
+                    if (labels.size === 0) reversePeerProfiles.delete(info.userIdKey);
                 }
             }
         });
@@ -568,10 +575,10 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
 
     const multicast = (userId: string, payload: any, namespace?: string, excludeId?: string) => {
         const targetNamespace = namespace || userId;
-        const byUser = namespaces.get(userId);
+        const byUser = namespaces.get(normalizeSocketUser(userId));
         if (!byUser) return;
         byUser.forEach((client) => {
-            if (client.namespace === targetNamespace && client.id !== excludeId) {
+            if ((client.namespace || "").toLowerCase() === normalizeSocketUser(targetNamespace) && client.id !== excludeId) {
                 client.ws.send(JSON.stringify(payload));
             }
         });
@@ -591,8 +598,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     };
 
     const sendToDevice = (userId: string, deviceId: string, payload: any): boolean => {
-        const normalizedUser = userId.toLowerCase();
-        const normalizedTarget = deviceId.toLowerCase();
+        const normalizedUser = normalizeSocketUser(userId);
+        const normalizedTarget = normalizeSocketPeer(deviceId);
         const target = resolveReverseClientByTarget(normalizedUser, normalizedTarget);
         if (!target?.ws) return false;
         try {
@@ -606,11 +613,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = 15000) => {
         const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
         const envelope = { ...payload, requestId };
-        const normalizedUser = userId.toLowerCase();
-        const normalizedTarget = deviceId.toLowerCase();
+        const normalizedUser = normalizeSocketUser(userId);
+        const normalizedTarget = normalizeSocketPeer(deviceId);
         const target = resolveReverseClientByTarget(normalizedUser, normalizedTarget);
         if (!target?.ws) return undefined;
-        const pendingTarget = (target.deviceId || normalizedTarget).toLowerCase();
+        const pendingTarget = normalizeSocketPeer(target.deviceId || normalizedTarget);
         return new Promise<any>((resolve, reject) => {
             const key = requestKey(normalizedUser, pendingTarget, requestId);
             const timeout = parsePortableInteger(waitMs) ?? 15000;
@@ -636,7 +643,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const keys = Array.from(reverseClients.keys());
         const asDevice = (key: string) => key.split(":")[1];
         if (!userId) return Array.from(new Set(keys.map(asDevice)));
-        const prefix = `${userId}:`;
+        const prefix = `${normalizeSocketUser(userId)}:`;
         return Array.from(new Set(keys.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length))));
     };
 
@@ -644,7 +651,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         if (!userId) {
             return Array.from(reversePeerProfiles.values()).flatMap((labelsByDevice) => Array.from(labelsByDevice.entries()).map(([id, profile]) => ({ id, label: profile.label, peerId: profile.peerId })));
         }
-        const profile = reversePeerProfiles.get(userId);
+        const profile = reversePeerProfiles.get(normalizeSocketUser(userId));
         if (!profile) return [];
         return Array.from(profile.entries()).map(([id, profileEntry]) => ({ id, label: profileEntry.label, peerId: profileEntry.peerId }));
     };
