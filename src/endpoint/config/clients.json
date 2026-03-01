@@ -1,0 +1,133 @@
+{
+    "L-192.168.0.200": {
+        "origins": ["192.168.0.200", "45.147.121.152"],
+        "tokens": [],
+        "forward": [{
+            "id": "L-192.168.0.110",
+            "conditions": ["airpad", "mouse", "keyboard"]
+        }, "self"],
+        "broadcast": [{
+            "targets": ["L-192.168.0.196", "L-192.168.0.110"],
+            "conditions": ["clipboard-tunnel", "clipboard-write", "clipboard-read"]
+        }],
+        "flags": {
+            "mobile": true,
+            "gateway": true,
+            "direct": true
+        },
+        "tls": {
+            "enabled": true,
+            "ca": "ca.pem",
+            "cert": "cert.pem",
+            "key": "key.pem"
+        },
+        "ports": {
+            "wss": [8443, 8080],
+            "ws": [8080],
+            "http": [8080],
+            "https": [8443, 8080]
+        },
+        "allowedForwards": ["L-192.168.0.110", "self"],
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": ["*"],
+        "modules": {
+            "mouse": ["tunnel-only"],
+            "clipboard": ["tunnel-allowed", "write-allowed", "read-allowed",{
+                "shareTo": ["L-192.168.0.196", "L-192.168.0.110"],
+                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.110"]
+            }],
+            "keyboard": ["tunnel-only"]
+        }
+    },
+    "L-192.168.0.110": {
+        "origins": ["192.168.0.110"],
+        "tokens": [],
+        "flags": {
+            "mobile": true,
+            "gateway": false,
+            "direct": true
+        },
+        "forward": ["self"],
+        "ports": {
+            "wss": [8443, 8080],
+            "ws": [8080],
+            "http": [8080],
+            "https": [8443, 8080]
+        },
+        "tls": {
+            "enabled": true,
+            "ca": "ca.pem",
+            "cert": "cert.pem",
+            "key": "key.pem"
+        },
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": ["*"],
+        "modules": {
+            "mouse": ["ahk-used", "tunnel-allowed", "airpad-allowed", {
+                "mode": "relative",
+                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "self"]
+            }],
+            "clipboard": ["ahk-used", "write-allowed", "read-allowed", "tunnel-allowed", {
+                "shareTo": ["L-192.168.0.196", "L-192.168.0.200"],
+                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.200"]
+            }],
+            "keyboard": ["ahk-used", "tunnel-allowed", {
+                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "self"],
+                "clipboard": true
+            }]
+        }
+    },
+    "L-192.168.0.196": {
+        "origins": ["192.168.0.196"],
+        "tokens": ["inline:n3v3rm1nd", "env:CWS_UPSTREAM_USER_KEY"],
+        "flags": {
+            "mobile": true,
+            "gateway": false,
+            "direct": false
+        },
+        "forward": ["self"],
+        "tls": {
+            "enabled": true,
+            "ca": "ca.pem",
+            "cert": "cert.pem",
+            "key": "key.pem"
+        },
+        "ports": {
+            "wss": [8443, 8080],
+            "ws": [8080],
+            "http": [8080],
+            "https": [8443, 8080]
+        },
+        "protocols": {
+            "websocket": {
+                "client": true,
+                "reverse": true,
+                "server": true
+            },
+            "http": {
+                "enabled": false
+            }
+        },
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": ["*"],
+        "modules": {
+            "mouse": ["client-only"],
+            "clipboard": ["write-allowed", "read-allowed", "tunnel-allowed", {
+                "shareTo": ["L-192.168.0.110", "L-192.168.0.200"],
+                "acceptFrom": ["L-192.168.0.110", "L-192.168.0.200"]
+            }],
+            "keyboard": ["client-only"]
+        }
+    },
+    "*": {
+        "origins": ["*"],
+        "tokens": ["*"],
+        "flags": {
+            "mobile": true,
+            "gateway": true,
+            "direct": false
+        },
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": []
+    }
+}

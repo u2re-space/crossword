@@ -1,0 +1,58 @@
+{
+    "L-192.168.0.200": {
+        "origins": ["192.168.0.200", "45.147.121.152"],
+        "clients": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.200", "*"],
+        "tokens": [],
+        "acceptance": {
+            "direct": true,
+            "reverse": true,
+            "tunnel": true
+        },
+        "forward": [{
+            "id": "L-192.168.0.110",
+            "conditions": ["airpad", "mouse", "keyboard"]
+        }, "self"],
+        "broadcast": [{
+            "targets": ["L-192.168.0.196", "L-192.168.0.110"],
+            "conditions": ["clipboard-tunnel", "clipboard-write", "clipboard-read"]
+        }],
+        "ports": {
+            "wss": [8443, 8080],
+            "ws": [8080],
+            "http": [8080],
+            "https": [8443, 8080]
+        },
+        "allowedForwards": ["*"],
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": ["*"],
+        "admin": {
+            "userId": "U2RE",
+            "userKey": "n3v3rm1nd",
+            "encrypt": true,
+            "restApi": true,
+            "controlCenter": true,
+            "requireAuth": true
+        },
+        "tls": {
+            "enabled": true,
+            "ca": "ca.pem",
+            "cert": "cert.pem",
+            "key": "key.pem"
+        },
+        "protocols": {
+            "websocket": {
+                "timeoutMs": 10000,
+                "maxConnections": 100
+            },
+            "http": {
+                "timeoutMs": 10000,
+                "maxConnections": 100,
+                "forceHttps": true,
+                "allowedOrigins": ["*"],
+                "allowedInsecureOrigins": ["*"],
+                "allowedInvalidCredentials": true,
+                "allowedInvalidTls": true
+            }
+        }
+    }
+}
