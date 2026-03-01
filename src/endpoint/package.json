@@ -8,13 +8,13 @@
         "node": ">=24"
     },
     "scripts": {
-        "start:with-env": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd tsx server/index.ts",
+        "start:with-env": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx server/index.ts",
         "start": "npm run start:with-env",
-        "start:with-env:watch": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd tsx watch server/index.ts",
+        "start:with-env:watch": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx watch server/index.ts",
         "start:watch": "npm run start:with-env:watch",
-        "start:fastify": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd tsx server/fastify-server.ts",
-        "start:fastify:watch": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd tsx watch server/fastify-server.ts",
-        "dev:with-env": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd tsx server/index.ts",
+        "start:fastify": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json  CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx server/fastify-server.ts",
+        "start:fastify:watch": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json  CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx watch server/fastify-server.ts",
+        "dev:with-env": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json  CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx server/index.ts",
         "dev": "npm run dev:with-env",
         "pack:portable": "PORTABLE_NODE_MODULES_MODE=none node ./scripts/pack-portable.mjs",
         "pack:portable:with-modules": "PORTABLE_NODE_MODULES_MODE=copy node ./scripts/pack-portable.mjs",

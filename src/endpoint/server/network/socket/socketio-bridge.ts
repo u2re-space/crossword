@@ -245,7 +245,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const next = new Set<string>();
         const meta = airpadConnectionMeta.get(sourceSocket);
         const routeHint = normalizeHint(meta?.routeHint);
-        if (routeHint !== "tunnel") return [];
+        if (routeHint !== "tunnel" && routeHint !== "remote") return [];
 
         const frameTarget = normalizeHint(frame?.to);
         if (frameTarget && !isBroadcastTarget(frameTarget)) {
@@ -347,7 +347,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
         if (!frame || typeof frame !== "object") return false;
         const meta = airpadConnectionMeta.get(sourceSocket);
-        if (normalizeHint(meta?.routeHint) !== "tunnel") return false;
+        const routeHint = normalizeHint(meta?.routeHint);
+        if (routeHint !== "tunnel" && routeHint !== "remote") return false;
         const rawTarget = normalizeHint(frame.to);
         if (!rawTarget || isBroadcastTarget(rawTarget)) return false;
         const accepted = networkContext.sendToUpstream({
@@ -543,7 +544,11 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     console.log(`[Router] Binary tunnel attempt`, `socket=${sourceSocket.id}`, `forwarded=false`, `target=${tunnelTargets.join("|")}`, `known=${knownTunnelTargets.join(",")}`);
                 }
                 if (isTunnelDebug) {
-                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `upstreamEnabled=${networkContext?.sendToUpstream === true}`);
+                    const upstreamEnabled = networkContext?.sendToUpstream instanceof Function;
+                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `upstreamEnabled=${upstreamEnabled}`);
+                    if (!upstreamEnabled) {
+                        console.warn(`[Router] Binary tunnel dropped`, `reason=no upstream connector available`, `socket=${sourceSocket.id}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
+                    }
                 }
                 if (!isTunnelDebug) {
                     console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`);

@@ -14,6 +14,22 @@ const clipboardErrorLogIntervalMs = Math.max(1000, parsePortableInteger((config 
 const clipboardUnsupportedRetryIntervalMs = Math.max(5000, parsePortableInteger((config as any)?.clipboardUnsupportedRetryIntervalMs) ?? 60000);
 const clipboardFeatureEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_ENABLED", true) !== false;
 const stopClipboardRetryOnUnsupported = pickEnvBoolLegacy("CWS_CLIPBOARD_STOP_ON_UNSUPPORTED", true) !== false;
+const clipboardLoggingEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
+const logClipboard = (level: "info" | "warn" | "error" | "debug", ...args: any[]) => {
+    if (!clipboardLoggingEnabled) return;
+    const logger = (app as any)?.log;
+    if (typeof logger?.[level] === "function") {
+        logger[level](...args);
+        return;
+    }
+    if (level === "error") {
+        console.error(...args);
+    } else if (level === "warn") {
+        console.warn(...args);
+    } else {
+        console.log(...args);
+    }
+};
 
 type ClipboardProtocol = "http" | "https";
 type ClipboardPeerTarget = { protocol: ClipboardProtocol; port: number };
@@ -108,7 +124,7 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
     if (hasProtocol) {
         const parsed = parseWithProtocol(trimmed);
         if (!parsed) {
-            app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+            logClipboard("warn", `[Clipboard] Invalid peer URL: ${trimmed}`);
             return [];
         }
         if (!parsed.pathname || parsed.pathname === "/") {
@@ -120,7 +136,7 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
 
     const baseUrl = parseWithProtocol(`https://${trimmed}`);
     if (!baseUrl) {
-        app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+        logClipboard("warn", `[Clipboard] Invalid peer URL: ${trimmed}`);
         return [];
     }
 
@@ -145,7 +161,7 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
                 normalized.push(normalizedUrl);
             }
         } catch (_: unknown) {
-            app?.log?.warn?.(`[Clipboard] Invalid peer URL: ${trimmed}`);
+            logClipboard("warn", `[Clipboard] Invalid peer URL: ${trimmed}`);
         }
     }
 
@@ -155,7 +171,7 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
 async function sendClipboardToPeer(candidate: string, body: string, headers: Record<string, string>): Promise<void> {
     const client = httpClient || axios;
     await client.post(candidate, body, { headers });
-    app.log.info(`[Broadcast] Sent to ${candidate}`);
+    logClipboard("info", `[Broadcast] Sent to ${candidate}`);
 }
 
 const formatBroadcastError = (err: unknown): string => [err instanceof Error ? err.message : String(err), (err as any)?.code ? `code=${(err as any).code}` : "", (err as any)?.response?.status ? `status=${(err as any).response.status}` : ""].filter(Boolean).join(" ");
@@ -223,7 +239,7 @@ function emitClipboardChange(text: string, source: ClipboardChangeSource) {
         try {
             listener(text, { source });
         } catch (err) {
-            app?.log?.warn?.({ err }, "[Clipboard] listener error");
+            logClipboard("warn", "[Clipboard] listener error", { err });
         }
     }
 }
@@ -245,13 +261,13 @@ async function broadcastClipboard(text: string) {
         headers["x-auth-token"] = secret;
     }
 
-    app.log.info({ peers }, "[Broadcast] Sending to peers");
+    logClipboard("info", "[Broadcast] Sending to peers", { peers });
     isBroadcasting = true;
     const results = await Promise.all(peers.map((rawUrl) => sendClipboardToPeerCandidates(rawUrl, body, headers)));
 
     for (const result of results) {
         if (!result.ok) {
-            app.log.warn(result.error || `[Broadcast] Failed to send to ${result.target}`);
+            logClipboard("warn", result.error || `[Broadcast] Failed to send to ${result.target}`);
         }
     }
 
@@ -267,17 +283,17 @@ async function pollClipboard() {
             return;
         }
 
-        app.log.info("[Local] Clipboard changed");
+        logClipboard("info", "[Local] Clipboard changed");
         lastClipboard = current;
 
         if (current === lastNetworkClipboard) {
-            app.log.info("[Local] Change is from network, no broadcast.");
+            logClipboard("info", "[Local] Change is from network, no broadcast.");
             emitClipboardChange(current, "network");
             return;
         }
 
         if (isBroadcasting) {
-            app.log.info("[Local] Currently broadcasting, skip this change.");
+            logClipboard("info", "[Local] Currently broadcasting, skip this change.");
             emitClipboardChange(current, "local");
             return;
         }
@@ -288,13 +304,13 @@ async function pollClipboard() {
         if (isClipboardUnavailableError(err)) {
             clipboardUnsupported = true;
             if (!clipboardUnavailableNotified) {
-                app?.log?.warn?.("[Poll] Clipboard backend is unavailable; polling is temporarily disabled.");
+                logClipboard("warn", "[Poll] Clipboard backend is unavailable; polling is temporarily disabled.");
                 clipboardUnavailableNotified = true;
             }
             return;
         }
         if (shouldLogClipboardErrorNow()) {
-            app?.log?.error?.({ err }, "[Poll] Error reading clipboard");
+            logClipboard("error", "[Poll] Error reading clipboard", { err });
         }
     }
 }
@@ -312,17 +328,17 @@ export function startClipboardPolling() {
                 try {
                     await readClipboardWithTimeout();
                     clipboardUnsupported = false;
-                    app?.log?.info?.("[Poll] Clipboard backend became available again; polling resumed.");
+                    logClipboard("info", "[Poll] Clipboard backend became available again; polling resumed.");
                 } catch (err) {
                     if (isClipboardUnavailableError(err)) {
                         if (stopClipboardRetryOnUnsupported) {
                             return;
                         }
                         if (shouldLogClipboardErrorNow()) {
-                            app?.log?.warn?.("[Poll] Clipboard backend still unavailable.");
+                            logClipboard("warn", "[Poll] Clipboard backend still unavailable.");
                         }
                     } else if (shouldLogClipboardErrorNow()) {
-                        app?.log?.warn?.("[Poll] Clipboard backend still unavailable.");
+                        logClipboard("warn", "[Poll] Clipboard backend still unavailable.");
                     }
                     loop();
                     return;
