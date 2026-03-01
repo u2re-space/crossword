@@ -16,6 +16,7 @@ describeAirPadConnectionMeta,
 isAirPadAuthorized,
 requiresAirpadMessageAuth } from "../modules/airpad.ts";
 import { createAirpadObjectMessageHandler } from "../modules/airpad.ts";
+import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {
@@ -53,11 +54,11 @@ const logMsg = (prefix: string, msg: any): void => {
         `[${new Date().toISOString()}] ${prefix} type=${msg?.type} from=${msg?.from} to=${msg?.to} mode=${msg?.mode || "blind"} action=${msg?.action || "N/A"} payloadLen=${payloadLen}`
     );
 };
-const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 const NETWORK_FETCH_TIMEOUT_MS = Math.max(
     500,
     (() => {
-        const configured = Number(process.env.CWS_NETWORK_FETCH_TIMEOUT_MS || process.env.AIRPAD_NETWORK_FETCH_TIMEOUT_MS || 15000);
+        const configured = pickEnvNumberLegacy("CWS_NETWORK_FETCH_TIMEOUT_MS", 15000);
         return Number.isFinite(configured) ? configured : 15000;
     })()
 );
@@ -69,7 +70,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
     const networkContext = opts.networkContext;
     const io = new SocketIOServer(app.server, buildSocketIoOptions(app.log as any));
-    const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== "false";
+    const allowPrivateNetwork = pickEnvBoolLegacy("CWS_CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
     const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
         if (!allowPrivateNetwork) return;
         const pnaHeader = String(req?.headers?.["access-control-request-private-network"] || "").toLowerCase();

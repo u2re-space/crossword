@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import config from "../config/config.ts";
+import { pickEnvBoolLegacy } from "../lib/env.ts";
 
 type RobotButton = 'left' | 'right' | 'middle';
 type RobotToggleState = 'down' | 'up';
@@ -40,9 +41,9 @@ const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
 };
 
 const robotJsEnv = pickConfigFlag(
-    process.env.AIRPAD_ROBOTJS_ENABLED,
-    process.env.ENDPOINT_ROBOTJS_ENABLED,
-    process.env.ROBOTJS_ENABLED
+    pickEnvBoolLegacy("CWS_AIRPAD_ROBOTJS_ENABLED", false),
+    pickEnvBoolLegacy("CWS_ENDPOINT_ROBOTJS_ENABLED", false),
+    pickEnvBoolLegacy("CWS_ROBOTJS_ENABLED", false)
 );
 const robotJsConfig = pickConfigFlag(
     (config as any)?.core?.robotJsEnabled,

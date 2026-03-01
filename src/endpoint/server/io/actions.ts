@@ -6,6 +6,7 @@ import clipboardy from 'clipboardy';
 import config from "../config/config.ts";
 import { ahkService } from './ahk-service.ts';
 import { getRobot } from './robot-adapter.ts';
+import { pickEnvBoolLegacy } from "../lib/env.ts";
 
 let useAHK = false;
 let ahkInitialized = false;
@@ -31,9 +32,9 @@ const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
 };
 
 const nativeActionsEnv = pickConfigFlag(
-    process.env.AIRPAD_NATIVE_ACTIONS,
-    process.env.ENDPOINT_NATIVE_ACTIONS,
-    process.env.ENDPOINT_ENABLE_NATIVE_ACTIONS
+    pickEnvBoolLegacy("CWS_AIRPAD_NATIVE_ACTIONS", false),
+    pickEnvBoolLegacy("CWS_ENDPOINT_NATIVE_ACTIONS", false),
+    pickEnvBoolLegacy("CWS_ENDPOINT_ENABLE_NATIVE_ACTIONS", false)
 );
 const nativeActionsConfig = pickConfigFlag(
     (config as any)?.core?.nativeActionsEnabled,

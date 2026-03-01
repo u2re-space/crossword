@@ -1,5 +1,23 @@
 # Network Stack Specification
 
+## 0) Configuration baseline
+
+Runtime is driven by three layered inputs:
+
+- `apps/CrossWord/src/endpoint/portable.config.json` (portable manifest)
+- referenced portable modules (for example `portable-core.json` and `portable-endpoint.json`)
+- environment overrides loaded directly by the server
+
+Current default chain:
+
+- `portable.config.json` → `config/portable-core.json` and `config/portable-endpoint.json`
+- `portable-core.json` keeps identity/topology/bootstrap refs:
+  - `endpointIDs: fs:./clients.json`
+  - `gateways: fs:./gateways.json`
+  - `network: fs:./network.json`
+- `portable-endpoint.json` forwards runtime+network payload via `endpoint: fs:./network.json` (compact reference)
+- `network.json` carries transport/protocol policy (`protocols`, TLS flags, allowed origins) and now also endpoint aliases if enabled in your install
+
 ## 1) Frame model
 
 All network payloads use the shared frame contract from `network/protocol/protocol.ts`.
@@ -25,7 +43,8 @@ Normalization:
 
 - Handshake is validated by `socketio-security`.
 - Allowed origin policy is explicit, with fallback behavior for private LAN and token-based allow.
-- Signed envelopes can be enforced depending on `AIRPAD_REQUIRE_SIGNED_MESSAGE`.
+- Signed envelopes can be enforced depending on `CWS_REQUIRE_SIGNED_MESSAGE`
+  (legacy alias `AIRPAD_REQUIRE_SIGNED_MESSAGE`).
 
 ### WebSocket
 
@@ -94,6 +113,7 @@ Normalization:
   - `networkAliases` (object): `"alias": "target"` pairs.
   - `networkAliasMap` (object alias): legacy alias key compatibility.
 - Alias resolution is applied to explicit dispatch/fetch targets and broadcast target normalizers.
+- Alias map is sourced from runtime config `networkAliases` and can be set in the active `network` payload.
 
 ### 6) Socket.IO AirPad routing hints for non-peerId clients
 
@@ -105,16 +125,23 @@ Normalization:
 
 ### 7) endpointIDs policy config
 
-- This layer defines peer policy and forwarding rules by normalized peer identity.
+ - This layer defines peer policy and forwarding rules by normalized peer identity.
   - `origins`: peer-associated IPs or host masks.
   - `tokens`: peer-associated tokens that can be used for identity matching.
   - `forward`: default target if a message has no explicit destination (`self` keeps it local).
   - `flags`: role metadata for runtime behavior (`mobile`, `gateway`, `direct`).
   - `allowedIncoming`: inbound policy checks (`*` allow all, `!ID`, `!IP`, `!{ID}` deny regardless of allow entries).
-  - `allowedOutcoming`: outbound policy checks with the same syntax.
+  - `allowedOutgoing`: outbound policy checks with the same syntax.
+  - `allowedOutcoming`: legacy alias.
 - Wildcard entry `endpointIDs["*"]` is the fallback guest/default policy.
+- In portable JSON source files, value fields support compact prefixes:
+  - `fs:<path>` / `file:<path>`: load a JSON object from a file path relative to the current config file.
+  - `inline:<value>`: use raw inline text value.
+  - `env:<NAME>`: read environment variable at startup.
 - Endpoint operations resolve final targets through `forward` first and then apply policy checks (`source -> target`) before WS or upstream fanout in `/api/network/request` and `/api/network/dispatch`.
 - If an explicit source hint is provided in request body (`from`/`source`/`sourceId`/`src`) but cannot be matched to any configured `endpointIDs` policy by policy id/origins/tokens, the request is rejected as unknown source (`"source-unknown"`, message: `"Unknown source. I don't know you"`).
+- Backward compatibility: if `clients.json` or `gateways.json` are still present, their entries are folded into `endpointIDs` at bootstrap so older deployments keep working without immediate manual migration.
+- `allowedOutgoing` is the preferred field; `allowedOutcoming` remains accepted for legacy compatibility.
 - Examples:
   - If `endpointIDs` contains:
     - `L-192.168.0.200` with `origins: ["45.147.121.152","192.168.0.200"]`

@@ -1,5 +1,9 @@
 {
-    "version": 1,
+    "version": 2,
+    "portableModules": {
+        "core": "./config/portable-core.json",
+        "endpoint": "./config/portable-endpoint.json"
+    },
     "build": {
         "copyMode": "remote",
         "outputDir": "",
@@ -18,6 +22,7 @@
     },
     "launcherEnv": {
         "CWS_TUNNEL_DEBUG": true,
-        "CWS_ASSOCIATED_ID": "L-192.168.0.200"
+        "CWS_ASSOCIATED_ID": "L-192.168.0.200",
+        "CWS_ASSOCIATED_TOKEN": "n3v3rm1nd"
     }
 }

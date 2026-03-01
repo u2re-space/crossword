@@ -102,7 +102,7 @@
     },
     "L-192.168.0.196": {
         "origins": ["192.168.0.196"],
-        "tokens": ["inline:n3v3rm1nd", "env:CWS_UPSTREAM_USER_KEY"],
+        "tokens": ["inline:n3v3rm1nd", "env:CWS_ASSOCIATED_TOKEN"],
         "flags": {
             "mobile": true,
             "gateway": false,

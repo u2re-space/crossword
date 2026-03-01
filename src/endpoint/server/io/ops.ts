@@ -31,6 +31,7 @@ import {
     type EndpointIdPolicyMap,
     normalizeEndpointPolicies
 } from "../network/stack/endpoint-policy.ts";
+import { pickEnvBoolLegacy } from "../lib/env.ts";
 
 type HttpDispatchRequest = {
     url?: string;
@@ -167,7 +168,7 @@ type NetworkFetchBody = {
 
 const BROADCAST_HTTPS_PORTS = new Set(["443", "8443"]);
 const BROADCAST_PROTO_RE = /^https?:\/\//i;
-const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 
 const hasProtocol = (value: string): boolean => BROADCAST_PROTO_RE.test(value);
 

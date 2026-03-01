@@ -1,6 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
 import config from "../../config/config.ts";
+import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 
 type LoggerLike = {
     info?: (obj: any, msg?: string) => void;
@@ -9,7 +10,7 @@ type LoggerLike = {
 };
 
 const parseAllowedOrigins = (): string[] => {
-    const raw = (process.env.SOCKET_IO_ALLOWED_ORIGINS || "").trim();
+    const raw = (pickEnvStringLegacy("CWS_SOCKET_IO_ALLOWED_ORIGINS") || "").trim();
     if (!raw) return [];
     const values = raw.split(",").map((x) => x.trim()).filter(Boolean);
     const allowAll = values.some((value) => value === "*" || value.toLowerCase() === "all");
@@ -23,7 +24,7 @@ const normalizePort = (value: string | undefined): number | undefined => {
 };
 
 const getAirPadTokens = () =>
-    (process.env.AIRPAD_AUTH_TOKENS || process.env.AIRPAD_TOKENS || "")
+    (pickEnvStringLegacy("CWS_AIRPAD_AUTH_TOKENS", { allowEmpty: true }) || pickEnvStringLegacy("CWS_AIRPAD_TOKENS", { allowEmpty: true }) || "")
         .split(",")
         .map((token) => token.trim())
         .filter(Boolean);
@@ -185,9 +186,9 @@ const matchesAllowedOrigin = (origin: string, allowed: string[]): boolean => {
         }
     }
 
-    const allowPrivateRfc1918 = process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false"
-        && process.env.SOCKET_IO_ALLOW_PRIVATE_192 !== "false";
-    const allowPrivateNetworkOrigins = process.env.SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS === "true";
+    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false
+        && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
+    const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
     if (!allowPrivateRfc1918 && !allowPrivateNetworkOrigins) return false;
 
     const host = parsedOrigin.hostname;
@@ -201,15 +202,20 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const defaults = getDefaultAllowedOrigins();
     const effectiveAllowedOrigins = allowedOrigins.length ? allowedOrigins : defaults;
     const allowAllOrigins = effectiveAllowedOrigins.includes("*");
-    const allowPrivateNetworkOrigins = process.env.SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS === "true";
+    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false
+        && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
+    const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
     const hasAirPadAuthTokens = getAirPadTokens().length > 0;
-    const allowUnknownOriginWithAirPadAuth = process.env.SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH !== "false" && hasAirPadAuthTokens;
+    const allowUnknownOriginWithAirPadAuth = (
+        pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", undefined) ??
+        pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)
+    ) !== false && hasAirPadAuthTokens;
 
     logger?.info?.(
         {
             allowedOrigins: effectiveAllowedOrigins,
-            source: allowedOrigins.length ? "SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins",
-            allowPrivateRfc1918: process.env.SOCKET_IO_ALLOW_PRIVATE_RFC1918 !== "false",
+            source: allowedOrigins.length ? "CWS_SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins",
+            allowPrivateRfc1918: allowPrivateRfc1918,
             allowPrivateNetworkOrigins,
             allowUnknownOriginWithAirPadAuth
         },

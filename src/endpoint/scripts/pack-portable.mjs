@@ -59,7 +59,11 @@ const mergePortableConfig = (base, patch) => {
 };
 
 const DEFAULT_PORTABLE_CONFIG = {
-    version: 1,
+    version: 2,
+    portableModules: {
+        core: "./config/portable-core.json",
+        endpoint: "./config/portable-endpoint.json"
+    },
     build: {
         copyMode: "auto",
         outputDir: "",
@@ -78,10 +82,10 @@ const DEFAULT_PORTABLE_CONFIG = {
     },
     launcherEnv: {
         CWS_TUNNEL_DEBUG: true,
-        SOCKET_IO_ALLOWED_ORIGINS: "all",
-        SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS: true,
-        SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH: true,
-        CORS_ALLOW_PRIVATE_NETWORK: true,
+        CWS_SOCKET_IO_ALLOWED_ORIGINS: "all",
+        CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS: true,
+        CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH: true,
+        CWS_CORS_ALLOW_PRIVATE_NETWORK: true,
         CWS_START_MODE: "start"
     }
 };
@@ -212,7 +216,7 @@ const runSh = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
 ${launchShLines.join("\n")}
-start_mode="\${CWS_START_MODE:-\${CWS_START_MODE:-\${AIRPAD_START_MODE:-start\}}}"
+start_mode="\${CWS_START_MODE:-start}"
 if command -v pm2 >/dev/null 2>&1; then
   if [ -f "ecosystem.config.cjs" ]; then
     if pm2 describe cws >/dev/null 2>&1; then
@@ -322,7 +326,7 @@ ${installNote}
 - Launcher starts \`npm run start\` (\`server/index.ts\`) to preserve full legacy WS/Socket.IO control stack.
 - Default launcher environment:
 ${launcherEnvNotes}
-- Set \`CWS_START_MODE=watch\` (or legacy \`AIRPAD_START_MODE=watch\`) to run auto-restart on file changes from the launcher (\`start:watch\`).
+- Set \`CWS_START_MODE=watch\` to run auto-restart on file changes from the launcher (\`start:watch\`).
 - Archive retention is controlled by \`PORTABLE_ARCHIVE_RETENTION_COUNT\` (default: ${archiveRetentionCount}) in build mode.
 - If clipboard backend is unavailable on Linux headless environments, endpoint still starts.
 `;

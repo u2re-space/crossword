@@ -3,6 +3,7 @@ import { createDecipheriv, createHash, createVerify, randomUUID } from "node:cry
 import { networkInterfaces, hostname as getHostName } from "node:os";
 import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "./messages.ts";
+import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 
 type UpstreamConnectorConfig = {
     enabled?: boolean;
@@ -83,11 +84,18 @@ type EnvelopePayload = {
     [key: string]: any;
 };
 
-const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
-const shouldRejectUnauthorized = String(process.env.CWS_UPSTREAM_REJECT_UNAUTHORIZED || process.env.AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED || "true").toLowerCase() !== "false";
+const pickUpstreamEnv = (name: string): string => String(pickEnvStringLegacy(name) || "");
+const pickUpstreamList = (name: string): string[] => pickEnvListLegacy(name) || [];
+const pickUpstreamBool = (name: string, defaultValue?: boolean): boolean | undefined =>
+    pickEnvBoolLegacy(name, defaultValue);
+const pickUpstreamNumber = (name: string, defaultValue?: number): number | undefined =>
+    pickEnvNumberLegacy(name, defaultValue);
+
+const isTunnelDebug = pickUpstreamBool("CWS_TUNNEL_DEBUG") === true;
+const shouldRejectUnauthorized = pickUpstreamBool("CWS_UPSTREAM_REJECT_UNAUTHORIZED", true) !== false;
 const invalidCredentialsRetryMs = Math.max(
     1000,
-    Number(process.env.CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS || process.env.AIRPAD_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS || "30000") || 30000
+    pickUpstreamNumber("CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000
 );
 const TLS_VERIFY_ERRORS = [
     "unable to verify the first certificate",
@@ -184,19 +192,6 @@ const formatCloseReason = (reason: Buffer | string | undefined): string => {
     }
 };
 
-const parseEnvBoolean = (value: string | undefined): boolean | undefined => {
-    if (value === undefined) return undefined;
-    const normalized = value.trim().toLowerCase();
-    if (["1", "true", "yes", "on"].includes(normalized)) return true;
-    if (["0", "false", "no", "off"].includes(normalized)) return false;
-    return undefined;
-};
-
-const parseEnvNumber = (value: string | undefined, fallback: number): number => {
-    if (value === undefined) return fallback;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-};
 const normalizeOriginList = (value: unknown): string[] => {
     if (Array.isArray(value)) {
         return value.map((item) => String(item || "").trim()).filter(Boolean);
@@ -212,13 +207,6 @@ const parseUpstreamMode = (value: unknown): "active" | "passive" | undefined => 
     if (normalized === "active" || normalized === "keepalive") return "active";
     if (normalized === "passive") return "passive";
     return undefined;
-};
-
-const parseEnvEndpointList = (value: string | undefined): string[] => {
-    return String(value || "")
-        .split(/[;,]/)
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0);
 };
 
 let invalidCredentialBlockUntil = 0;
@@ -327,16 +315,16 @@ const decodeServerPayload = (rawText: string, cfg: Required<UpstreamConnectorCon
 
 const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConnectorConfig> | null => {
     const upstream = config?.upstream || {};
-    const envUpstreamEnabled = parseEnvBoolean(process.env.CWS_UPSTREAM_ENABLED || process.env.AIRPAD_UPSTREAM_ENABLED);
-    const envUpstreamMode = parseUpstreamMode(process.env.CWS_UPSTREAM_MODE || process.env.AIRPAD_UPSTREAM_MODE);
-    const envUpstreamClientId = String(process.env.CWS_UPSTREAM_CLIENT_ID || process.env.AIRPAD_UPSTREAM_CLIENT_ID || "").trim();
-    const envEndpointUrl = String(process.env.CWS_UPSTREAM_ENDPOINT_URL || process.env.AIRPAD_UPSTREAM_ENDPOINT_URL || "").trim();
-    const envEndpoints = parseEnvEndpointList(process.env.CWS_UPSTREAM_ENDPOINTS || process.env.AIRPAD_UPSTREAM_ENDPOINTS || "");
-    const envUserId = String(process.env.CWS_UPSTREAM_USER_ID || process.env.AIRPAD_UPSTREAM_USER_ID || "").trim();
-    const envUserKey = String(process.env.CWS_UPSTREAM_USER_KEY || process.env.AIRPAD_UPSTREAM_USER_KEY || "").trim();
-    const envDeviceId = String(process.env.CWS_UPSTREAM_DEVICE_ID || process.env.AIRPAD_UPSTREAM_DEVICE_ID || "").trim();
-    const envNamespace = String(process.env.CWS_UPSTREAM_NAMESPACE || process.env.AIRPAD_UPSTREAM_NAMESPACE || "").trim();
-    const envReconnectMs = parseEnvNumber(process.env.CWS_UPSTREAM_RECONNECT_MS || process.env.AIRPAD_UPSTREAM_RECONNECT_MS, 0);
+    const envUpstreamEnabled = pickUpstreamBool("CWS_UPSTREAM_ENABLED");
+    const envUpstreamMode = parseUpstreamMode(pickUpstreamEnv("CWS_UPSTREAM_MODE"));
+    const envUpstreamClientId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_CLIENT_ID");
+    const envEndpointUrl = pickUpstreamEnv("CWS_UPSTREAM_ENDPOINT_URL");
+    const envEndpoints = pickUpstreamList("CWS_UPSTREAM_ENDPOINTS");
+    const envUserId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_USER_ID") || pickUpstreamEnv("CWS_UPSTREAM_CLIENT_ID");
+    const envUserKey = pickUpstreamEnv("CWS_ASSOCIATED_TOKEN") || pickUpstreamEnv("CWS_UPSTREAM_USER_KEY");
+    const envDeviceId = pickUpstreamEnv("CWS_ASSOCIATED_ID") || pickUpstreamEnv("CWS_UPSTREAM_DEVICE_ID");
+    const envNamespace = pickUpstreamEnv("CWS_UPSTREAM_NAMESPACE");
+    const envReconnectMs = pickUpstreamNumber("CWS_UPSTREAM_RECONNECT_MS", 0);
 
     const enabled = envUpstreamEnabled === undefined ? upstream.enabled === true : envUpstreamEnabled;
     const mode = envUpstreamMode || parseUpstreamMode(upstream.mode) || "active";
@@ -723,7 +711,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             if (isTunnelDebug) {
                 console.error("[upstream.connector] socket error", message);
                 if (isTlsVerifyError(message)) {
-                    console.warn("[upstream.connector] tls verify error", `endpoint=${upstreamCandidates[candidateIndex] || cfg.endpointUrl}`, `use CWS_UPSTREAM_REJECT_UNAUTHORIZED=false (or AIRPAD_UPSTREAM_REJECT_UNAUTHORIZED for legacy) if certificate is self-signed`);
+                    console.warn("[upstream.connector] tls verify error", `endpoint=${upstreamCandidates[candidateIndex] || cfg.endpointUrl}`, "set CWS_UPSTREAM_REJECT_UNAUTHORIZED=false if certificate is self-signed");
                 }
             }
             socket?.close(4001, "upstream-error");

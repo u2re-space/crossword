@@ -5,10 +5,11 @@
 import { Server } from 'socket.io';
 import { registerAirpadSocketHandlers } from '../../routing/socket-airpad.ts';
 import { buildSocketIoOptions, describeHandshake } from '../socket/socketio-security.ts';
+import { pickEnvBool } from "../../lib/env.ts";
 
 export function setupSocketIO(server: any, logger?: any) {
     const io = new Server(server, buildSocketIoOptions(logger));
-    const allowPrivateNetwork = process.env.CORS_ALLOW_PRIVATE_NETWORK !== 'false';
+    const allowPrivateNetwork = pickEnvBool(["CWS_CORS_ALLOW_PRIVATE_NETWORK", "CORS_ALLOW_PRIVATE_NETWORK"], true) !== false;
     const applyPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
         if (!allowPrivateNetwork) return;
         const pnaHeader = String(req?.headers?.['access-control-request-private-network'] || '').toLowerCase();

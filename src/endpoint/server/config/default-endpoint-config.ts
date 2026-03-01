@@ -59,8 +59,87 @@ const normalizeBoolean = (value: unknown, fallback: boolean): boolean => {
     return fallback;
 };
 
+const asRecord = (value: unknown): Record<string, any> => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return value as Record<string, any>;
+};
+
+const readJson = (candidate: string): Record<string, any> | undefined => {
+    try {
+        const raw = fs.readFileSync(candidate, "utf-8");
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, any>) : {};
+    } catch {
+        return undefined;
+    }
+};
+
+const mergePortableConfigPayload = (base: Record<string, any>, patch?: Record<string, any>): Record<string, any> => {
+    if (!patch) return { ...base };
+    const result = { ...base };
+    for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) continue;
+        if (Array.isArray(value)) {
+            result[key] = [...value];
+            continue;
+        }
+        if (value && typeof value === "object" && typeof base?.[key] === "object" && !Array.isArray(base[key])) {
+            result[key] = mergePortableConfigPayload(base[key], value as Record<string, any>);
+            continue;
+        }
+        result[key] = value;
+    }
+    return result;
+};
+
+const collectPortableModules = (portableConfig: Record<string, any>, baseDir: string): string[] => {
+    const out: string[] = [];
+    const modulesValue = portableConfig.portableModules ?? portableConfig.configModules;
+    const pushModule = (value: unknown) => {
+        if (typeof value === "string" && value.trim()) {
+            out.push(path.resolve(baseDir, value.trim()));
+        }
+        if (Array.isArray(value)) {
+            for (const entry of value) {
+                if (typeof entry === "string" && entry.trim()) {
+                    out.push(path.resolve(baseDir, entry.trim()));
+                }
+            }
+        }
+    };
+
+    if (Array.isArray(modulesValue)) {
+        pushModule(modulesValue);
+    } else if (typeof modulesValue === "string") {
+        pushModule(modulesValue);
+    } else if (modulesValue && typeof modulesValue === "object") {
+        for (const rawPath of Object.values(modulesValue)) {
+            pushModule(rawPath);
+        }
+    }
+
+    const legacyModuleMap = asRecord(portableConfig.portableModulePaths);
+    for (const rawPath of Object.values(legacyModuleMap)) {
+        pushModule(rawPath);
+    }
+
+    const legacyFlatKeys = [
+        "portableCorePath",
+        "portableEndpointPath",
+        "portableTopologyPath",
+        "portableRuntimePath",
+        "portableRolesPath",
+        "portableUpstreamPath"
+    ];
+    for (const key of legacyFlatKeys) pushModule(portableConfig[key]);
+
+    return out;
+};
+
 const loadPortableConfig = () => {
     const candidates = [
+        process.env.CWS_PORTABLE_CONFIG_PATH,
+        process.env.ENDPOINT_CONFIG_JSON_PATH,
         process.env.PORTABLE_CONFIG_PATH,
         path.resolve(process.cwd(), "portable.config.json"),
         path.resolve(__dirname, "../../portable.config.json"),
@@ -68,24 +147,41 @@ const loadPortableConfig = () => {
     ].filter(Boolean);
 
     for (const candidate of candidates) {
-        try {
-            const raw = fs.readFileSync(candidate, "utf-8");
-            return JSON.parse(raw);
-        } catch {
-            // ignore and try next
-        }
+        const baseDir = path.dirname(candidate);
+        const base = readJson(candidate);
+        if (!base || Object.keys(base).length === 0) continue;
+        const merged = collectPortableModules(base, baseDir).reduce((seed, modulePath) => {
+            const modulePayload = readJson(modulePath);
+            return modulePayload ? mergePortableConfigPayload(seed, modulePayload) : seed;
+        }, base);
+        return merged;
     }
+
     return {};
 };
 
 const portableConfig = loadPortableConfig();
-const portableEndpointDefaults = (portableConfig && typeof portableConfig === "object" && "endpointDefaults" in portableConfig ? portableConfig.endpointDefaults : undefined) as
+const portableCoreSection = asRecord(portableConfig && typeof portableConfig === "object" ? (portableConfig as Record<string, any>).core : undefined);
+const portableEndpointSection = asRecord(portableConfig && typeof portableConfig === "object" ? (portableConfig as Record<string, any>).endpoint : undefined);
+const portableEndpointDefaults = asRecord(
+    portableConfig && typeof portableConfig === "object" &&
+        "endpointDefaults" in portableConfig
+        ? (portableConfig as Record<string, any>).endpointDefaults
+        : undefined
+) as
     | {
           roles?: unknown;
           upstream?: unknown;
       }
     | undefined;
-const portableRuntimeDefaults = (portableConfig && typeof portableConfig === "object" && "endpointRuntimeDefaults" in portableConfig ? portableConfig.endpointRuntimeDefaults : undefined) as
+const portableRuntimeDefaults = asRecord(
+    portableConfig && typeof portableConfig === "object"
+        ? ((portableConfig as Record<string, any>).endpointRuntimeDefaults ??
+            (portableConfig as Record<string, any>).endpointRuntime ??
+            (portableEndpointSection as Record<string, any>).runtime ??
+            (portableCoreSection as Record<string, any>).runtime)
+        : undefined
+) as
     | {
           listenPort?: unknown;
           httpPort?: unknown;
@@ -96,18 +192,35 @@ const portableRuntimeDefaults = (portableConfig && typeof portableConfig === "ob
           pollInterval?: unknown;
           httpTimeoutMs?: unknown;
           secret?: unknown;
-      }
-    | undefined;
+      };
 
-const portableRoles = toStringArray(portableEndpointDefaults?.roles);
-const portableUpstream = (portableEndpointDefaults && typeof portableEndpointDefaults === "object" ? (portableEndpointDefaults as Record<string, any>).upstream : undefined) || {};
-const portableUpstreamEndpoints = toStringArray((portableUpstream as Record<string, any>)?.endpoints) || toStringArray(FALLBACK_UPSTREAM_ENDPOINTS);
-const portablePeers = toStringArray(portableRuntimeDefaults?.peers);
-const portableBroadcastTargets = toStringArray(portableRuntimeDefaults?.broadcastTargets);
-const portableClipboardPeerTargets = toStringArray(portableRuntimeDefaults?.clipboardPeerTargets);
 const portableTopology = (portableConfig && typeof portableConfig === "object" && "endpointTopology" in portableConfig
     ? (portableConfig as Record<string, any>).endpointTopology
-    : undefined) as unknown;
+    : (portableConfig && typeof portableConfig === "object" && "topology" in portableConfig
+        ? (portableConfig as Record<string, any>).topology
+        : undefined) ) ||
+    (portableEndpointSection as Record<string, any>).topology ||
+    (portableCoreSection as Record<string, any>).topology;
+const portableRoles = toStringArray(portableEndpointDefaults?.roles) ||
+    toStringArray(portableCoreSection.roles) ||
+    toStringArray(portableEndpointSection.roles);
+const portableUpstream =
+    (portableEndpointSection as Record<string, any>).upstream ||
+    (portableCoreSection as Record<string, any>).upstream ||
+    (portableEndpointDefaults as Record<string, any>).upstream ||
+    {};
+const portableUpstreamEndpoints = toStringArray((portableUpstream as Record<string, any>)?.endpoints) || toStringArray(FALLBACK_UPSTREAM_ENDPOINTS);
+const portablePeers = toStringArray((portableRuntimeDefaults as Record<string, any>).peers) || toStringArray((portableEndpointSection as Record<string, any>).peers);
+const portableBroadcastTargets = toStringArray((portableRuntimeDefaults as Record<string, any>).broadcastTargets) ||
+    toStringArray((portableEndpointSection as Record<string, any>).broadcastTargets);
+const portableClipboardPeerTargets = toStringArray((portableRuntimeDefaults as Record<string, any>).clipboardPeerTargets) ||
+    toStringArray((portableEndpointSection as Record<string, any>).clipboardPeerTargets);
+const portableListenPort = (portableRuntimeDefaults as Record<string, any>)?.listenPort;
+const portableHttpPort = (portableRuntimeDefaults as Record<string, any>)?.httpPort;
+const portableBroadcastForceHttps = (portableRuntimeDefaults as Record<string, any>)?.broadcastForceHttps;
+const portablePollInterval = (portableRuntimeDefaults as Record<string, any>)?.pollInterval;
+const portableHttpTimeoutMs = (portableRuntimeDefaults as Record<string, any>)?.httpTimeoutMs;
+const portableSecret = (portableRuntimeDefaults as Record<string, any>)?.secret;
 const normalizeTopologyCollection = (value: unknown): unknown[] => {
     if (!Array.isArray(value)) return [];
     return value.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry));
@@ -136,15 +249,15 @@ export const DEFAULT_ENDPOINT_UPSTREAM = {
 
 export const DEFAULT_ENDPOINT_RUNTIME = {
     ...FALLBACK_RUNTIME_DEFAULTS,
-    listenPort: normalizeNumber(portableRuntimeDefaults?.listenPort, FALLBACK_RUNTIME_DEFAULTS.listenPort),
-    httpPort: normalizeNumber(portableRuntimeDefaults?.httpPort, FALLBACK_RUNTIME_DEFAULTS.httpPort),
-    broadcastForceHttps: normalizeBoolean(portableRuntimeDefaults?.broadcastForceHttps, FALLBACK_RUNTIME_DEFAULTS.broadcastForceHttps),
+    listenPort: normalizeNumber(portableListenPort, FALLBACK_RUNTIME_DEFAULTS.listenPort),
+    httpPort: normalizeNumber(portableHttpPort, FALLBACK_RUNTIME_DEFAULTS.httpPort),
+    broadcastForceHttps: normalizeBoolean(portableBroadcastForceHttps, FALLBACK_RUNTIME_DEFAULTS.broadcastForceHttps),
     peers: portablePeers || FALLBACK_RUNTIME_DEFAULTS.peers,
     broadcastTargets: portableBroadcastTargets || FALLBACK_RUNTIME_DEFAULTS.broadcastTargets,
     clipboardPeerTargets: portableClipboardPeerTargets || FALLBACK_RUNTIME_DEFAULTS.clipboardPeerTargets,
-    pollInterval: normalizeNumber(portableRuntimeDefaults?.pollInterval, FALLBACK_RUNTIME_DEFAULTS.pollInterval),
-    httpTimeoutMs: normalizeNumber(portableRuntimeDefaults?.httpTimeoutMs, FALLBACK_RUNTIME_DEFAULTS.httpTimeoutMs),
-    secret: typeof portableRuntimeDefaults?.secret === "string" ? portableRuntimeDefaults.secret : FALLBACK_RUNTIME_DEFAULTS.secret
+    pollInterval: normalizeNumber(portablePollInterval, FALLBACK_RUNTIME_DEFAULTS.pollInterval),
+    httpTimeoutMs: normalizeNumber(portableHttpTimeoutMs, FALLBACK_RUNTIME_DEFAULTS.httpTimeoutMs),
+    secret: typeof portableSecret === "string" ? portableSecret : FALLBACK_RUNTIME_DEFAULTS.secret
 };
 
 export const DEFAULT_ENDPOINT_TOPOLOGY = {

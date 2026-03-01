@@ -2,6 +2,7 @@ import type { Socket } from "socket.io";
 
 import { parsePayload, verifyWithoutDecrypt } from "../stack/crypto-utils.ts";
 import { normalizeSocketFrame } from "../stack/messages.ts";
+import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 
 export type AirpadClipHistoryEntry = {
     from: string;
@@ -28,7 +29,7 @@ const extractPayload = (payload: unknown, requiresSecureEnvelope: boolean): unkn
 };
 
 export const getAirPadTokens = () =>
-    (process.env.AIRPAD_AUTH_TOKENS || process.env.AIRPAD_TOKENS || "")
+    (pickEnvStringLegacy("CWS_AIRPAD_AUTH_TOKENS", { allowEmpty: true }) || pickEnvStringLegacy("CWS_AIRPAD_TOKENS", { allowEmpty: true }) || "")
         .split(",")
         .map((token) => token.trim())
         .filter(Boolean);
@@ -139,7 +140,7 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
     };
 };
 
-export const isAirPadMessageAuthRequired = () => process.env.AIRPAD_REQUIRE_SIGNED_MESSAGE === "true";
+export const isAirPadMessageAuthRequired = () => pickEnvBoolLegacy("CWS_REQUIRE_SIGNED_MESSAGE") ?? false;
 
 export type AirpadObjectMessageDeps = {
     routeMessage: (sourceSocket: Socket, msg: any) => void;

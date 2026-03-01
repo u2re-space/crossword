@@ -2,6 +2,21 @@
 
 This folder keeps the dedicated network subsystem for the endpoint server.
 
+Config entry-point for this subsystem is the server portable config pipeline (`server/config/config.ts`):
+
+- `portable.config.json` references modular config files through `portableModules`.
+- `portable-core.json` usually points identity/network sources:
+  - `endpointIDs: fs:./clients.json`
+  - `gateways: fs:./gateways.json`
+  - `network: fs:./network.json`
+- `portable-endpoint.json` usually routes endpoint runtime loading to the same `network.json` file (`"endpoint": "fs:./network.json"`).
+- `network.json` provides shared transport defaults and aliases consumed by the networking layer (for example `allowedOrigins`, protocol timeouts, and optional upstream endpoint lists).
+
+The config loader also supports compact value prefixes (`fs:`, `inline:`, `env:`) and keeps `AIRPAD_*` variables for compatibility while preferring `CWS_*`.
+
+The subsystem reads environment settings through the new `CWS_*` naming.
+Legacy `AIRPAD_*` variables are still read for compatibility where explicitly noted.
+
 Goals:
 
 - single protocol vocabulary across all transports (WebSocket, Socket.IO, HTTP control, and tunnel)
@@ -31,6 +46,7 @@ Current structure:
   - single destination,
   - explicit multi-destination `targets` fanout,
   - implicit fanout via `broadcastTargets` config fallback.
+- Since `portable-endpoint.json` is now commonly a pointer to `network.json`, avoid duplicating endpoint runtime knobs in multiple json files.
 - Address aliases are now supported in dispatch/fetch flows through `networkAliases` configuration,
   and can be used by both socket-based and hostname-like targets.
 
@@ -44,9 +60,12 @@ Current structure:
 - **Connector modes**:
 - **active (keepalive)**: opens outbound WS session to gateway (`CWS_UPSTREAM_MODE=active` or default), useful behind NAT/DHCP/mobile.
 - **passive**: does not open outbound reverse link (`CWS_UPSTREAM_MODE=passive`), endpoint is expected to be reachable directly by local/private route.
-- For upstream connector identity you can now set both identifiers from environment:
-  - `CWS_UPSTREAM_DEVICE_ID` (legacy, already supported via AIRPAD_UPSTREAM_DEVICE_ID)
-  - `CWS_UPSTREAM_CLIENT_ID` (used as a human-friendly peer label)
+- For upstream connector identity, use:
+  - `CWS_ASSOCIATED_ID` (also maps to `deviceId` and `clientId`)
+  - `CWS_ASSOCIATED_TOKEN` (auth token/key for upstream and policy checks)
+- Also accepted for compatibility:
+  - `CWS_UPSTREAM_DEVICE_ID`, `CWS_UPSTREAM_CLIENT_ID`, `CWS_UPSTREAM_USER_ID`
+  - `CWS_UPSTREAM_USER_KEY` (`AIRPAD_*` aliases remain supported too)
 - If both are omitted:
   - `deviceId` is auto-generated.
   - `clientId` falls back to `deviceId` unless explicitly provided.

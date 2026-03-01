@@ -20,6 +20,7 @@ import { setApp as setClipboardApp, setHttpClient, startClipboardPolling } from 
 import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
 import { resolvePeerIdentity } from "../stack/peer-identity.ts";
+import { pickEnvBoolLegacy } from "../../lib/env.ts";
 import {
     normalizeEndpointPolicies,
     resolveEndpointIdPolicyStrict,
@@ -186,7 +187,7 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
     const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
-    const isTunnelDebug = String(process.env.CWS_TUNNEL_DEBUG || process.env.AIRPAD_TUNNEL_DEBUG || "").toLowerCase() === "true";
+const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
     const defaultUserId = fallbackUserId || "";
     const resolveSourceForPolicy = (msg: Record<string, unknown>, fallback: string): { sourceId: string; isKnown: boolean } => {
         const sourceHint = (typeof msg.from === "string" && msg.from.trim())

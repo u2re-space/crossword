@@ -23,12 +23,16 @@ import {
 } from "../io/actions.ts";
 import { sendVoiceToPython, removePythonSubscriber } from "../gpt/python.ts";
 import clipboardy from "clipboardy";
+import { pickEnvBoolLegacy } from "../lib/env.ts";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;
 type AirpadBinaryMessageHandler = (data: Buffer | Uint8Array, socket: Socket) => boolean | Promise<boolean>;
 type AirpadClipboardSource = "local" | "network";
-const airpadClipboardEnabled = String(process.env.AIRPAD_CLIPBOARD_ENABLED ?? process.env.CLIPBOARD_ENABLED ?? "").toLowerCase() !== "false";
+const airpadClipboardEnabled =
+    pickEnvBoolLegacy("CWS_AIRPAD_CLIPBOARD_ENABLED", true) ??
+    pickEnvBoolLegacy("CWS_CLIPBOARD_ENABLED", true) ??
+    true;
 
 export interface AirpadSocketHandlerOptions {
     logger?: any;
