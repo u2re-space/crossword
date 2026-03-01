@@ -513,14 +513,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                         }
                     }
                 }
-
-                const frameType = String(parsed?.type || "").trim().toLowerCase();
-                if (frameType === "pong" || frameType === "hello") {
-                    return;
-                }
+            }
+            const frameType = String(parsed?.type || "").trim().toLowerCase();
+            if (frameType === "pong" || frameType === "hello") {
                 return;
             }
-
             const frame = normalizeSocketFrame(parsed, info.id, {
                 nodeId: info.userId,
                 peerId: info.deviceId,

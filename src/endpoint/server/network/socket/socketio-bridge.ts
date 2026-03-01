@@ -138,6 +138,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const existing = airpadTargets.get(normalized) || new Set<Socket>();
         existing.add(socket);
         airpadTargets.set(normalized, existing);
+        const aliases = socketAliases.get(socket) ?? new Set<string>();
+        aliases.add(normalized);
+        socketAliases.set(socket, aliases);
     };
     const removeSocketAliases = (socket: Socket): void => {
         const aliases = socketAliases.get(socket);
@@ -268,7 +271,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (meta.clientId) addTunnelAlias(socket, meta.clientId);
         if (meta.clientId) addClientAlias(socket, meta.clientId);
         if (meta.sourceId) addClientAlias(socket, meta.sourceId);
+        if (meta.sourceId) addTunnelAlias(socket, meta.sourceId);
         if (meta.routeTarget) addClientAlias(socket, meta.routeTarget);
+        if (meta.routeTarget) addTunnelAlias(socket, meta.routeTarget);
     };
 
     const unregisterAirpadSocketHints = (socket: Socket): void => {

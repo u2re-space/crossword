@@ -8,9 +8,7 @@ const STORAGE_KEY = 'airpad.remote.connection.v1';
 
 interface StoredRemoteConfig {
     host?: string;
-    port?: string;
     protocol?: RemoteProtocol;
-    tunnelHost?: string;
     routeTarget?: string;
     transportMode?: AirpadTransportMode;
     authToken?: string;
@@ -18,13 +16,70 @@ interface StoredRemoteConfig {
     transportSecret?: string;
     signingSecret?: string;
 }
+interface MigratedRemoteConfig extends StoredRemoteConfig {
+    _legacyMigrated?: boolean;
+}
 
-function loadStoredRemoteConfig(): StoredRemoteConfig {
+const toTrimmedString = (value: unknown): string => {
+    if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+    return typeof value === "string" ? value.trim() : "";
+};
+const hasExplicitPort = (value: string): boolean => {
+    const valueTrimmed = value.trim();
+    if (!valueTrimmed) return false;
+    const hostSpec = valueTrimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").split("/")[0];
+    const at = hostSpec.lastIndexOf(":");
+    if (at <= 0) return false;
+    const port = hostSpec.slice(at + 1);
+    return /^\d{1,5}$/.test(port);
+};
+const appendPort = (value: string, port: string): string => {
+    const valueTrimmed = value.trim();
+    if (!valueTrimmed) return "";
+    const portTrimmed = port.trim();
+    if (!portTrimmed) return valueTrimmed;
+    if (hasExplicitPort(valueTrimmed)) return valueTrimmed;
+    return `${valueTrimmed}:${portTrimmed}`;
+};
+
+function loadStoredRemoteConfig(): MigratedRemoteConfig {
     try {
         const raw = globalThis?.localStorage?.getItem?.(STORAGE_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw) as StoredRemoteConfig;
-        return parsed && typeof parsed === 'object' ? parsed : {};
+        if (!parsed || typeof parsed !== "object") return {};
+
+        const source = parsed as Record<string, unknown>;
+        const sourceHost = toTrimmedString(source.host);
+        const sourceTunnelHost = toTrimmedString((source as { tunnelHost?: unknown }).tunnelHost);
+        const sourcePort = toTrimmedString((source as { port?: unknown }).port);
+
+        const hasLegacyConfig = sourcePort !== "" || sourceTunnelHost !== "";
+        if (!hasLegacyConfig) {
+            return parsed;
+        }
+
+        const hostParts: string[] = [];
+        const seen = new Set<string>();
+        const addHostPart = (hostValue: string): void => {
+            const merged = sourcePort ? appendPort(hostValue, sourcePort) : hostValue;
+            const normalized = merged.trim();
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            hostParts.push(normalized);
+        };
+
+        if (sourceHost) addHostPart(sourceHost);
+        if (sourceTunnelHost) addHostPart(sourceTunnelHost);
+        if (!sourceHost && !sourceTunnelHost && sourcePort && location?.hostname) {
+            addHostPart(`${location.hostname}:${sourcePort}`);
+        }
+
+        return {
+            ...parsed,
+            host: hostParts.join(", "),
+            _legacyMigrated: true,
+        };
     } catch {
         return {};
     }
@@ -49,10 +104,8 @@ function persistRemoteConfig(): void {
     try {
         globalThis?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify({
             host: remoteHost,
-            port: remotePort,
             protocol: remoteProtocol,
-            tunnelHost: remoteTunnelHost,
-        routeTarget: remoteRouteTarget,
+            routeTarget: remoteRouteTarget,
             transportMode: remoteConfig.transportMode,
             authToken: remoteConfig.authToken,
             clientId: remoteConfig.clientId,
@@ -65,20 +118,14 @@ function persistRemoteConfig(): void {
 }
 
 // Remote connection settings.
-// remoteHost + remotePort describe where to establish the Socket.IO transport (Connect URL).
+// remoteHost describes where to establish the Socket.IO transport (Connect URL).
 // remoteRouteTarget is optional and describes which peer/device to route to by default (Remote Host field).
 const stored = loadStoredRemoteConfig();
 export let remoteHost = (stored.host || location.hostname || '').trim();
-export let remotePort = (stored.port || location.port || (location.protocol === 'https:' ? '8443' : '8080')).trim();
 export let remoteProtocol: RemoteProtocol =
     stored.protocol === 'http' || stored.protocol === 'https' || stored.protocol === 'auto'
         ? stored.protocol
         : 'auto';
-export let remoteTunnelHost = (
-    stored.tunnelHost ||
-    readGlobalAirpadValue(["AIRPAD_TUNNEL_HOST"]) ||
-    ''
-).trim();
 export let remoteRouteTarget = (
     stored.routeTarget ||
     readGlobalAirpadValue(["AIRPAD_ROUTE_TARGET"]) ||
@@ -97,6 +144,9 @@ const remoteConfig: {
     transportSecret: stored.transportSecret || "",
     signingSecret: stored.signingSecret || "",
 };
+if ((stored as MigratedRemoteConfig)._legacyMigrated === true) {
+    persistRemoteConfig();
+}
 
 // Configuration getters and setters
 export function getRemoteHost(): string {
@@ -107,27 +157,11 @@ export function setRemoteHost(host: string): void {
     remoteHost = (host || '').trim();
     persistRemoteConfig();
 }
-export function getRemoteTunnelHost(): string {
-    return remoteTunnelHost;
-}
-export function setRemoteTunnelHost(host: string): void {
-    remoteTunnelHost = (host || '').trim();
-    persistRemoteConfig();
-}
 export function getRemoteRouteTarget(): string {
     return remoteRouteTarget;
 }
 export function setRemoteRouteTarget(target: string): void {
     remoteRouteTarget = (target || '').trim();
-    persistRemoteConfig();
-}
-
-export function getRemotePort(): string {
-    return remotePort;
-}
-
-export function setRemotePort(port: string): void {
-    remotePort = (port || '').trim();
     persistRemoteConfig();
 }
 

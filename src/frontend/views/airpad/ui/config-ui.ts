@@ -5,10 +5,6 @@
 import {
     getRemoteHost,
     setRemoteHost,
-    getRemoteTunnelHost,
-    setRemoteTunnelHost,
-    getRemotePort,
-    setRemotePort,
     getRemoteProtocol,
     setRemoteProtocol,
     getRemoteRouteTarget,
@@ -43,23 +39,13 @@ export function createConfigUI(): HTMLElement {
                     <strong>Connect URL</strong>
                 </div>
                 <div class="config-group">
-                    <label for="remoteHost">Connect URL (host/IP):</label>
+                    <label for="remoteHost">Connect URL / Relay Host (optional, comma separated):</label>
                     <input type="text" id="remoteHost" />
-                </div>
-
-                <div class="config-group">
-                    <label for="remoteTunnelHost">Tunnel/DMZ Host (optional):</label>
-                    <input type="text" id="remoteTunnelHost" placeholder="public-host-or-ip[:port]" />
                 </div>
 
                 <div class="config-group">
                     <label for="remoteRouteTarget">Remote Host [optional] (peerId/deviceId/alias/IP):</label>
                     <input type="text" id="remoteRouteTarget" placeholder="optional target after connect" />
-                </div>
-
-                <div class="config-group">
-                    <label for="remotePort">Connect URL Port:</label>
-                    <input type="text" id="remotePort" />
                 </div>
 
                 <div class="config-group">
@@ -108,9 +94,7 @@ export function createConfigUI(): HTMLElement {
 
     // Add event listeners
     const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement;
-    const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement;
     const routeTargetInput = overlay.querySelector('#remoteRouteTarget') as HTMLInputElement;
-    const portInput = overlay.querySelector('#remotePort') as HTMLInputElement;
     const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement;
     const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement;
     const authTokenInput = overlay.querySelector('#airpadAuthToken') as HTMLInputElement;
@@ -119,11 +103,8 @@ export function createConfigUI(): HTMLElement {
     const signingSecretInput = overlay.querySelector('#airpadSigningSecret') as HTMLInputElement;
     const saveButton = overlay.querySelector('#saveConfig') as HTMLButtonElement;
     const cancelButton = overlay.querySelector('#cancelConfig') as HTMLButtonElement;
-
     hostInput.value = getRemoteHost();
-    tunnelHostInput.value = getRemoteTunnelHost();
     routeTargetInput.value = getRemoteRouteTarget();
-    portInput.value = getRemotePort();
     protocolInput.value = getRemoteProtocol();
     transportModeInput.value = getAirPadTransportMode();
     authTokenInput.value = getAirPadAuthToken();
@@ -133,9 +114,7 @@ export function createConfigUI(): HTMLElement {
 
     saveButton.addEventListener('click', () => {
         setRemoteHost(hostInput.value);
-        setRemoteTunnelHost(tunnelHostInput.value);
         setRemoteRouteTarget(routeTargetInput.value);
-        setRemotePort(portInput.value);
         setRemoteProtocol(protocolInput.value);
         setAirPadTransportMode(transportModeInput.value);
         setAirPadAuthToken(authTokenInput.value);
@@ -183,9 +162,7 @@ export function showConfigUI(): void {
         host.appendChild(overlay);
     } else {
         const hostInput = overlay.querySelector('#remoteHost') as HTMLInputElement | null;
-        const tunnelHostInput = overlay.querySelector('#remoteTunnelHost') as HTMLInputElement | null;
         const routeTargetInput = overlay.querySelector('#remoteRouteTarget') as HTMLInputElement | null;
-        const portInput = overlay.querySelector('#remotePort') as HTMLInputElement | null;
         const protocolInput = overlay.querySelector('#remoteProtocol') as HTMLSelectElement | null;
         const transportModeInput = overlay.querySelector('#airpadTransportMode') as HTMLSelectElement | null;
         const authTokenInput = overlay.querySelector('#airpadAuthToken') as HTMLInputElement | null;
@@ -193,9 +170,7 @@ export function showConfigUI(): void {
         const transportSecretInput = overlay.querySelector('#airpadTransportSecret') as HTMLInputElement | null;
         const signingSecretInput = overlay.querySelector('#airpadSigningSecret') as HTMLInputElement | null;
         if (hostInput) hostInput.value = getRemoteHost();
-        if (tunnelHostInput) tunnelHostInput.value = getRemoteTunnelHost();
         if (routeTargetInput) routeTargetInput.value = getRemoteRouteTarget();
-        if (portInput) portInput.value = getRemotePort();
         if (protocolInput) protocolInput.value = getRemoteProtocol();
         if (transportModeInput) transportModeInput.value = getAirPadTransportMode();
         if (authTokenInput) authTokenInput.value = getAirPadAuthToken();

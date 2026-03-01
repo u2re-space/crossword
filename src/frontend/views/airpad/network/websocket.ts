@@ -6,8 +6,6 @@ import { io, Socket } from 'socket.io-client';
 import { log, getWsStatusEl, getVoiceTextEl } from '../utils/utils';
 import {
     getRemoteHost,
-    getRemoteTunnelHost,
-    getRemotePort,
     getRemoteProtocol,
     getRemoteRouteTarget,
     getAirPadAuthToken,
@@ -29,7 +27,7 @@ type WSConnectCandidate = {
     url: string;
     protocol: 'http' | 'https';
     host: string;
-    source: 'tunnel' | 'remote' | 'page';
+    source: 'remote' | 'page';
     port: string;
     useWebSocketOnly: boolean;
 };
@@ -686,9 +684,8 @@ export function connectWS() {
     const attemptId = connectAttemptId;
     manualDisconnectRequested = false;
 
-    const remoteHost = getRemoteHost() || location.hostname;
-    const remoteTunnelHost = getRemoteTunnelHost().trim();
-    const remotePort = getRemotePort().trim();
+    const remoteHost = getRemoteHost().trim();
+    const resolvedRemoteHost = remoteHost || location.hostname;
     const remoteProtocol = getRemoteProtocol();
     const isPrivateIp = (host: string): boolean => {
         if (!host) return false;
@@ -717,8 +714,17 @@ export function connectWS() {
         if (!host || !isLikelyPort(port)) return { host: hostSpec };
         return { host, port };
     };
+    const splitHostList = (value: string): string[] =>
+        value
+            .split(/[;,]/)
+            .map((item) => item.trim())
+            .filter(Boolean);
 
-    const tunnelHostSpec = parseHostAndPort(remoteTunnelHost);
+    const remoteHostSpecs = splitHostList(remoteHost)
+        .map((entry) => parseHostAndPort(entry))
+        .filter((entry): entry is { host: string; port?: string } => !!entry && !!entry.host);
+    const firstExplicitPort = (remoteHostSpecs[0]?.port || '').trim();
+    const remotePort = firstExplicitPort;
     const pageHost = location.hostname || "";
     const isLocalPageHost = /^(localhost|127\.0\.0\.1)$/.test(pageHost) || (
         /^\d{1,3}(?:\.\d{1,3}){3}$/.test(pageHost) &&
@@ -743,12 +749,12 @@ export function connectWS() {
         return location.protocol === 'https:' ? 'https' : 'http';
     };
 
-    const remoteHostSpec = parseHostAndPort(remoteHost);
-    const parsedRemoteHost = remoteHostSpec?.host || remoteHost;
+    const remoteHostSpec = remoteHostSpecs[0];
+    const parsedRemoteHost = remoteHostSpec?.host || resolvedRemoteHost;
     const parsedRemotePort = remoteHostSpec?.port;
 
     const primaryProtocol = inferProtocol();
-    const probeHost = parsedRemoteHost || remoteHost;
+    const probeHost = parsedRemoteHost || resolvedRemoteHost;
     const probePort = remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
     const probeOrigin = `${primaryProtocol}://${probeHost}:${probePort}`;
     void tryRequestLocalNetworkPermission(probeOrigin, probeHost);
@@ -786,20 +792,14 @@ export function connectWS() {
     };
 
     const hostEntries: Array<{ host: string; source: WSConnectCandidate['source']; preferPort?: string }> = [];
-    if (tunnelHostSpec?.host) {
+    for (const remoteHostSpecEntry of remoteHostSpecs) {
         hostEntries.push({
-            host: tunnelHostSpec.host,
-            source: "tunnel",
-            preferPort: tunnelHostSpec.port
+            host: remoteHostSpecEntry.host,
+            source: "remote",
+            preferPort: remoteHostSpecEntry.port
         });
     }
-    if (parsedRemoteHost) {
-        hostEntries.push({
-            host: parsedRemoteHost,
-            source: "remote",
-            preferPort: parsedRemotePort
-        });
-    } else if (remoteHost) {
+    if (remoteHostSpecs.length === 0 && remoteHost) {
         hostEntries.push({
             host: remoteHost,
             source: "remote"
