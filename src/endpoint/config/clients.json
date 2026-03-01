@@ -10,6 +10,17 @@
             "targets": ["L-192.168.0.196", "L-192.168.0.110"],
             "conditions": ["clipboard-tunnel", "clipboard-write", "clipboard-read"]
         }],
+        "protocols": {
+            "websocket": {
+                "client": true,
+                "server": true,
+                "tunnel": true
+            },
+            "http": {
+                "enabled": true,
+                "direction": ["accept", "request"]
+            }
+        },
         "flags": {
             "mobile": true,
             "gateway": true,
@@ -60,6 +71,17 @@
             "cert": "cert.pem",
             "key": "key.pem"
         },
+        "protocols": {
+            "websocket": {
+                "client": true,
+                "server": true,
+                "tunnel": true
+            },
+            "http": {
+                "enabled": true,
+                "direction": ["accept", "request"]
+            }
+        },
         "allowedIncoming": ["*"],
         "allowedOutgoing": ["*"],
         "modules": {
@@ -103,10 +125,12 @@
             "websocket": {
                 "client": true,
                 "reverse": true,
-                "server": true
+                "keepalive": true
             },
             "http": {
-                "enabled": false
+                "enabled": true,
+                "keepalive": true,
+                "direction": ["request-only"]
             }
         },
         "allowedIncoming": ["*"],
