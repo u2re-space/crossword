@@ -2,10 +2,10 @@
 // Robot Actions Execution
 // =========================
 
-import clipboardy from 'clipboardy';
+import clipboardy from "clipboardy";
 import config from "../config/config.ts";
-import { ahkService } from './ahk-service.ts';
-import { getRobot } from './robot-adapter.ts';
+import { ahkService } from "./ahk-service.ts";
+import { getRobot } from "./robot-adapter.ts";
 import { pickEnvBoolLegacy } from "../lib/env.ts";
 import { parsePortableBooleanLoose } from "../lib/parsing.ts";
 
@@ -22,21 +22,8 @@ const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
     return undefined;
 };
 
-const nativeActionsEnv = pickConfigFlag(
-    pickEnvBoolLegacy("CWS_AIRPAD_NATIVE_ACTIONS", false),
-    pickEnvBoolLegacy("CWS_ENDPOINT_NATIVE_ACTIONS", false),
-    pickEnvBoolLegacy("CWS_ENDPOINT_ENABLE_NATIVE_ACTIONS", false)
-);
-const nativeActionsConfig = pickConfigFlag(
-    (config as any)?.core?.nativeActionsEnabled,
-    (config as any)?.core?.airpadNativeActions,
-    (config as any)?.core?.airpad?.nativeActionsEnabled,
-    (config as any)?.airpad?.nativeActionsEnabled,
-    (config as any)?.airpad?.nativeActions,
-    (config as any)?.nativeActionsEnabled,
-    (config as any)?.airpadNativeActions,
-    (config as any)?.nativeActions
-);
+const nativeActionsEnv = pickConfigFlag(pickEnvBoolLegacy("CWS_AIRPAD_NATIVE_ACTIONS", false), pickEnvBoolLegacy("CWS_ENDPOINT_NATIVE_ACTIONS", false), pickEnvBoolLegacy("CWS_ENDPOINT_ENABLE_NATIVE_ACTIONS", false));
+const nativeActionsConfig = pickConfigFlag((config as any)?.core?.nativeActionsEnabled, (config as any)?.core?.airpadNativeActions, (config as any)?.core?.airpad?.nativeActionsEnabled, (config as any)?.airpad?.nativeActionsEnabled, (config as any)?.airpad?.nativeActions, (config as any)?.nativeActionsEnabled, (config as any)?.airpadNativeActions, (config as any)?.nativeActions);
 const defaultNativeActionsEnabled = process.platform === "win32";
 const nativeActionsEnabled = nativeActionsEnv ?? nativeActionsConfig ?? defaultNativeActionsEnabled;
 
@@ -67,10 +54,10 @@ async function initAHKService(): Promise<boolean> {
         try {
             await ahkService.start();
             useAHK = true;
-            console.log('AHK service started successfully');
+            console.log("AHK service started successfully");
             return true;
         } catch (err) {
-            console.warn('AHK not available, using fallback:', (err as Error).message);
+            console.warn("AHK not available, using fallback:", (err as Error).message);
             useAHK = false;
             return false;
         } finally {
@@ -117,7 +104,7 @@ function executeMouseMove(dx: number, dy: number) {
     robot.moveMouse(pos.x + dx, pos.y + dy);
 }
 
-function executeMouseClick(button: 'left' | 'right' | 'middle' = 'left', double: boolean = false) {
+function executeMouseClick(button: "left" | "right" | "middle" = "left", double: boolean = false) {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
@@ -129,7 +116,7 @@ function executeMouseClick(button: 'left' | 'right' | 'middle' = 'left', double:
     robot.mouseClick(button, double);
 }
 
-function executeMouseToggle(state: 'down' | 'up', button: 'left' | 'right' | 'middle' = 'left') {
+function executeMouseToggle(state: "down" | "up", button: "left" | "right" | "middle" = "left") {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     const robot = getRobot();
@@ -187,11 +174,11 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
     if (flags === 1) {
         // Backspace
         if (useAHK && ahkService.isReady()) {
-            await ahkService.sendKey('{Backspace}');
+            await ahkService.sendKey("{Backspace}");
         } else {
             const robot = getRobot();
             if (!robot) return;
-            robot.keyTap('backspace');
+            robot.keyTap("backspace");
         }
         return;
     }
@@ -199,11 +186,11 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
     if (flags === 2) {
         // Enter
         if (useAHK && ahkService.isReady()) {
-            await ahkService.sendKey('{Enter}');
+            await ahkService.sendKey("{Enter}");
         } else {
             const robot = getRobot();
             if (!robot) return;
-            robot.keyTap('enter');
+            robot.keyTap("enter");
         }
         return;
     }
@@ -211,11 +198,11 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
     if (flags === 3) {
         // Space
         if (useAHK && ahkService.isReady()) {
-            await ahkService.sendText(' ');
+            await ahkService.sendText(" ");
         } else {
             const robot = getRobot();
             if (!robot) return;
-            robot.keyTap('space');
+            robot.keyTap("space");
         }
         return;
     }
@@ -223,11 +210,11 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
     if (flags === 4) {
         // Tab
         if (useAHK && ahkService.isReady()) {
-            await ahkService.sendKey('{Tab}');
+            await ahkService.sendKey("{Tab}");
         } else {
             const robot = getRobot();
             if (!robot) return;
-            robot.keyTap('tab');
+            robot.keyTap("tab");
         }
         return;
     }
@@ -252,7 +239,7 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             }
         }
     } catch (err) {
-        console.error('executeKeyboardChar error:', err);
+        console.error("executeKeyboardChar error:", err);
     }
 }
 
@@ -263,19 +250,19 @@ async function pasteViaClipboard(text: string): Promise<void> {
     if (!robot) return;
 
     if (!clipboardy) {
-        console.warn('clipboardy not available');
+        console.warn("clipboardy not available");
         return;
     }
 
     try {
-        const oldClip = await clipboardy.read().catch(() => '');
+        const oldClip = await clipboardy.read().catch(() => "");
         await clipboardy.write(text);
-        await new Promise(r => setTimeout(r, 10));
-        robot.keyTap('v', 'control');
-        await new Promise(r => setTimeout(r, 30));
-        await clipboardy.write(oldClip).catch(() => {});
+        await new Promise((r) => setTimeout(r, 10));
+        robot.keyTap("v", "control");
+        await new Promise((r) => setTimeout(r, 30));
+        await clipboardy.write(oldClip).catch(() => { });
     } catch (err) {
-        console.error('pasteViaClipboard error:', err);
+        console.error("pasteViaClipboard error:", err);
     }
 }
 
@@ -283,11 +270,7 @@ async function pasteViaClipboard(text: string): Promise<void> {
 function executeKeyboardChar(charCode: number, flags: number): Promise<void> {
     if (!nativeActionsEnabled) return Promise.resolve();
     const now = Date.now();
-    if (
-        lastKeyboardEvent.charCode === charCode &&
-        lastKeyboardEvent.flags === flags &&
-        (now - lastKeyboardEvent.at) < KEYBOARD_DUPLICATE_WINDOW_MS
-    ) {
+    if (lastKeyboardEvent.charCode === charCode && lastKeyboardEvent.flags === flags && now - lastKeyboardEvent.at < KEYBOARD_DUPLICATE_WINDOW_MS) {
         return Promise.resolve();
     }
     lastKeyboardEvent = { charCode, flags, at: now };
@@ -340,41 +323,41 @@ async function executeActions(actions: any[], appLogger?: any) {
     for (const action of actions) {
         if (!nativeActionsEnabled) continue;
         switch (action.action) {
-            case 'move_mouse': {
+            case "move_mouse": {
                 const dx = action.dx || 0;
                 const dy = action.dy || 0;
                 executeMouseMove(dx, dy);
                 break;
             }
-            case 'click': {
-                const button = action.button || 'left';
+            case "click": {
+                const button = action.button || "left";
                 const double = !!action.double;
                 executeMouseClick(button, double);
                 break;
             }
-            case 'mouse_down': {
-                const button = action.button || 'left';
-                executeMouseToggle('down', button);
+            case "mouse_down": {
+                const button = action.button || "left";
+                executeMouseToggle("down", button);
                 break;
             }
-            case 'mouse_up': {
-                const button = action.button || 'left';
-                executeMouseToggle('up', button);
+            case "mouse_up": {
+                const button = action.button || "left";
+                executeMouseToggle("up", button);
                 break;
             }
-            case 'scroll': {
+            case "scroll": {
                 const dx = action.dx || 0;
                 const dy = action.dy || 0;
                 executeScroll(dx, dy);
                 break;
             }
-            case 'type_text': {
-                const text = action.text || '';
+            case "type_text": {
+                const text = action.text || "";
                 await executeKeyboardString(text);
                 break;
             }
-            case 'key_tap': {
-                const key = action.key || '';
+            case "key_tap": {
+                const key = action.key || "";
                 const modifiers = action.modifiers || [];
                 const robot = getRobot();
                 if (!robot && useAHK && ahkService.isReady()) {
@@ -389,21 +372,23 @@ async function executeActions(actions: any[], appLogger?: any) {
                 }
                 break;
             }
-            case 'hotkey': {
+            case "hotkey": {
                 const keys = action.keys || [];
                 const robot = getRobot();
                 if (!robot) break;
                 if (keys.length > 0) {
                     // Press all keys down
-                    keys.forEach((k: string) => robot.keyToggle(k, 'down'));
+                    keys.forEach((k: string) => robot.keyToggle(k, "down"));
                     // Release in reverse order
-                    keys.slice().reverse().forEach((k: string) => robot.keyToggle(k, 'up'));
+                    keys.slice()
+                        .reverse()
+                        .forEach((k: string) => robot.keyToggle(k, "up"));
                 }
                 break;
             }
             default:
                 if (appLogger) {
-                    appLogger.log.info({ action }, 'Unknown action');
+                    appLogger.log.info({ action }, "Unknown action");
                 }
                 break;
         }
@@ -437,7 +422,7 @@ export {
     // Clipboard-style hotkeys
     executeCopyHotkey,
     executeCutHotkey,
-    executePasteHotkey,
+    executePasteHotkey
 };
 
 // =========================
@@ -448,34 +433,34 @@ function executeCopyHotkey() {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
-        void ahkService.sendKey('^c').catch(() => { });
+        void ahkService.sendKey("^c").catch(() => { });
         return;
     }
     const robot = getRobot();
     if (!robot) return;
-    robot.keyTap('c', 'control');
+    robot.keyTap("c", "control");
 }
 
 function executeCutHotkey() {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
-        void ahkService.sendKey('^x').catch(() => { });
+        void ahkService.sendKey("^x").catch(() => { });
         return;
     }
     const robot = getRobot();
     if (!robot) return;
-    robot.keyTap('x', 'control');
+    robot.keyTap("x", "control");
 }
 
 function executePasteHotkey() {
     if (!nativeActionsEnabled) return;
     ensureAHKInitialized();
     if (useAHK && ahkService.isReady()) {
-        void ahkService.sendKey('^v').catch(() => { });
+        void ahkService.sendKey("^v").catch(() => { });
         return;
     }
     const robot = getRobot();
     if (!robot) return;
-    robot.keyTap('v', 'control');
+    robot.keyTap("v", "control");
 }

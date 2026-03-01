@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
-import { AiSettings,
-mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "./settings.ts";
+import { AiSettings, mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "../config/config.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
 import { safeJsonParse } from "../lib/parsing.ts";
 
@@ -83,7 +82,7 @@ export const registerCoreSettingsRoutes = async (app: FastifyInstance) => {
         const { userId, userKey, settings } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
-        const merged = mergeSettings(DEFAULT_SETTINGS, settings as Partial<StoredSettings> || {});
+        const merged = mergeSettings(DEFAULT_SETTINGS, (settings as Partial<StoredSettings>) || {});
         await writeUserFile(userId, "settings.json", Buffer.from(JSON.stringify(merged, null, 2)), record.encrypt, userKey);
         return { ok: true, settings: merged };
     });
@@ -112,7 +111,7 @@ export const registerOpsSettingsRoutes = async (app: FastifyInstance) => {
         }
 
         const ops = settings.core?.ops || { httpTargets: [], allowUnencrypted: false, allowInsecureTls: false, logLevel: "info" };
-        const httpTargets = ops.httpTargets || [] as HttpTarget[];
+        const httpTargets = ops.httpTargets || ([] as HttpTarget[]);
         const target = httpTargets.find((t: HttpTarget) => t.id === targetId);
         const resolvedUrl = overrideUrl || target?.url;
         if (!resolvedUrl) return { ok: false, error: "No URL" };

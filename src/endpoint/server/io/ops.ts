@@ -4,33 +4,12 @@ import type { SocketIoBridge } from "../network/socket/socketio-bridge.ts";
 
 import { loadUserSettings, verifyUser } from "../lib/users.ts";
 import type { WsHub } from "./websocket.ts";
-import {
-    executeActions,
-    executeCopyHotkey,
-    executeCutHotkey,
-    executePasteHotkey
-} from "./actions.ts";
+import { executeActions, executeCopyHotkey, executeCutHotkey, executePasteHotkey } from "./actions.ts";
 import { readClipboard, writeClipboard } from "./clipboard.ts";
-import { Settings } from "@rs-server/lib/settings.ts";
+import { Settings } from "@rs-server/lib/config.ts";
 import config from "../config/config.ts";
-import {
-    inferNetworkSurface,
-    normalizeNetworkAliasMap,
-    makeTargetTokenSet,
-    resolveNetworkAlias,
-    resolveDispatchAudience,
-    resolveDispatchPlan,
-    resolvePeerIdentity,
-    type PeerIdentityInput,
-    type DispatchRouteDecision
-} from "../network/index.ts";
-import {
-    resolveEndpointForwardTarget,
-    resolveEndpointPolicyRoute,
-    resolveEndpointIdPolicyStrict,
-    type EndpointIdPolicyMap,
-    normalizeEndpointPolicies
-} from "../network/stack/endpoint-policy.ts";
+import { inferNetworkSurface, normalizeNetworkAliasMap, makeTargetTokenSet, resolveNetworkAlias, resolveDispatchAudience, resolveDispatchPlan, resolvePeerIdentity, type PeerIdentityInput, type DispatchRouteDecision } from "../network/index.ts";
+import { resolveEndpointForwardTarget, resolveEndpointPolicyRoute, resolveEndpointIdPolicyStrict, type EndpointIdPolicyMap, normalizeEndpointPolicies } from "../network/stack/endpoint-policy.ts";
 import { pickEnvBoolLegacy } from "../lib/env.ts";
 import { parsePortableBoolean, parsePortableInteger, safeParseBoolean } from "../lib/parsing.ts";
 
@@ -247,7 +226,10 @@ type EndpointDeliveryCandidates = {
     policy?: EndpointIdPolicyMap[keyof EndpointIdPolicyMap];
 };
 
-const normalizeDeliveryTarget = (value: string): string => String(value || "").trim().toLowerCase();
+const normalizeDeliveryTarget = (value: string): string =>
+    String(value || "")
+        .trim()
+        .toLowerCase();
 const appendDeliveryTarget = (target: string, seen: Set<string>) => {
     const normalized = normalizeDeliveryTarget(target);
     if (!normalized) return;
@@ -397,14 +379,12 @@ const normalizePeerProfilesForResolution = (profiles: Array<{ id: string; label:
 
 const buildPeerIdentityContext = (userId: string) => {
     const staticTopology = (config as any)?.topology;
-    const topologyEntries = Array.isArray(staticTopology?.nodes)
-        ? (staticTopology.nodes as Array<Record<string, any>>).filter((node) => node && typeof node === "object" && !Array.isArray(node))
-        : [];
+    const topologyEntries = Array.isArray(staticTopology?.nodes) ? (staticTopology.nodes as Array<Record<string, any>>).filter((node) => node && typeof node === "object" && !Array.isArray(node)) : [];
     const peers = wsHub.getConnectedPeerProfiles(userId);
     return {
         peers: normalizePeerProfilesForResolution(peers),
         aliases: NETWORK_ALIAS_MAP,
-            topology: topologyEntries
+        topology: topologyEntries
     };
 };
 
@@ -430,10 +410,7 @@ const stripAliasPrefix = (value: string): string => {
     return resolveNetworkAlias(NETWORK_ALIAS_MAP, trimmed) || trimmed;
 };
 
-const normalizeNetworkFetchResponse = (
-    requestId: string,
-    response: any
-): { ok: boolean; status: number; statusText?: string; body?: string; headers?: Record<string, string>; requestId?: string; error?: string; raw: any } => {
+const normalizeNetworkFetchResponse = (requestId: string, response: any): { ok: boolean; status: number; statusText?: string; body?: string; headers?: Record<string, string>; requestId?: string; error?: string; raw: any } => {
     if (response == null) {
         return {
             ok: false,
@@ -456,9 +433,7 @@ const normalizeNetworkFetchResponse = (
         };
     }
 
-    const responseRequestId = typeof response?.requestId === "string" && response.requestId
-        ? String(response.requestId)
-        : requestId;
+    const responseRequestId = typeof response?.requestId === "string" && response.requestId ? String(response.requestId) : requestId;
     const normalizedHeaders = (() => {
         const source = response?.headers;
         if (!source || typeof source !== "object") return undefined;
@@ -483,7 +458,7 @@ const normalizeNetworkFetchResponse = (
         status: typeof status === "number" ? status : 200,
         statusText: typeof response.statusText === "string" ? response.statusText : response.error ? "Error" : "OK",
         headers: normalizedHeaders,
-        body: typeof bodySource === "string" ? bodySource : (bodySource == null ? undefined : JSON.stringify(bodySource)),
+        body: typeof bodySource === "string" ? bodySource : bodySource == null ? undefined : JSON.stringify(bodySource),
         requestId: responseRequestId,
         error: typeof response.error === "string" ? response.error : undefined,
         raw: response
@@ -530,10 +505,13 @@ const parseBroadcastTarget = (target: string): { url: URL; hasExplicitProtocol: 
     }
 };
 
-const resolveBroadcastProtocol = (source: string, opts: {
-    allowUnencrypted?: boolean;
-    forceHttps?: boolean;
-}): { protocol: "http" | "https"; sourceWithoutProtocol: string } | undefined => {
+const resolveBroadcastProtocol = (
+    source: string,
+    opts: {
+        allowUnencrypted?: boolean;
+        forceHttps?: boolean;
+    }
+): { protocol: "http" | "https"; sourceWithoutProtocol: string } | undefined => {
     const trimmed = source.trim();
     if (!trimmed) return undefined;
 
@@ -544,9 +522,7 @@ const resolveBroadcastProtocol = (source: string, opts: {
     const hasForceHttps = opts.forceHttps && isLikelySecurePort;
     const denyUnencrypted = opts.allowUnencrypted === false && isLikelySecurePort;
     const forcedProtocol = hasForceHttps || denyUnencrypted ? "https" : undefined;
-    const sourceWithoutProtocol = hasExplicitProtocol
-        ? normalized.replace(BROADCAST_PROTO_RE, "")
-        : `${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+    const sourceWithoutProtocol = hasExplicitProtocol ? normalized.replace(BROADCAST_PROTO_RE, "") : `${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 
     if (hasExplicitProtocol) {
         return {
@@ -556,27 +532,20 @@ const resolveBroadcastProtocol = (source: string, opts: {
     }
 
     return {
-        protocol: (hasForceHttps || denyUnencrypted) ? "https" : "http",
+        protocol: hasForceHttps || denyUnencrypted ? "https" : "http",
         sourceWithoutProtocol
     };
 };
 
-const resolveBroadcastUrl = (
-    entry: HttpDispatchRequest,
-    allowUnencrypted: boolean,
-    broadcastForceHttps: boolean
-): string | undefined => {
+const resolveBroadcastUrl = (entry: HttpDispatchRequest, allowUnencrypted: boolean, broadcastForceHttps: boolean): string | undefined => {
     const source = entry.url?.trim() || entry.ip?.trim();
     if (!source) return undefined;
 
     const explicitForceHttps = parsePortableBoolean(entry.broadcastForceHttps) ?? broadcastForceHttps;
-    const resolved = resolveBroadcastProtocol(
-        source,
-        {
-            allowUnencrypted,
-            forceHttps: explicitForceHttps
-        }
-    );
+    const resolved = resolveBroadcastProtocol(source, {
+        allowUnencrypted,
+        forceHttps: explicitForceHttps
+    });
     if (!resolved) return undefined;
     return `${resolved.protocol}://${resolved.sourceWithoutProtocol}`;
 };
@@ -597,14 +566,14 @@ const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[
             url: entry.url?.trim() || undefined,
             ip: entry.ip?.trim() || undefined
         };
-    const parsedBroadcastForceHttps = parsePortableBoolean((entry as any).broadcastForceHttps);
-    if (parsedBroadcastForceHttps !== undefined) {
-        normalized.broadcastForceHttps = parsedBroadcastForceHttps;
-    }
-    const parsedUnencrypted = parsePortableBoolean((entry as any).unencrypted);
-    if (parsedUnencrypted !== undefined) {
-        normalized.unencrypted = parsedUnencrypted;
-    }
+        const parsedBroadcastForceHttps = parsePortableBoolean((entry as any).broadcastForceHttps);
+        if (parsedBroadcastForceHttps !== undefined) {
+            normalized.broadcastForceHttps = parsedBroadcastForceHttps;
+        }
+        const parsedUnencrypted = parsePortableBoolean((entry as any).unencrypted);
+        if (parsedUnencrypted !== undefined) {
+            normalized.unencrypted = parsedUnencrypted;
+        }
         if (normalized.url || normalized.ip) out.push(normalized);
     };
 
@@ -627,9 +596,7 @@ const readTextPayload = (body: DeviceFeatureRequestBody): string => {
     return String(textFromBody).trim();
 };
 
-const resolveFeatureTarget = (body: DeviceFeatureRequestBody, userId: string) => (
-    resolveNetworkTargetWithPeerIdentity(body.targetDeviceId?.trim() || body.targetId?.trim() || (body as any).deviceId?.trim(), userId)
-);
+const resolveFeatureTarget = (body: DeviceFeatureRequestBody, userId: string) => resolveNetworkTargetWithPeerIdentity(body.targetDeviceId?.trim() || body.targetId?.trim() || (body as any).deviceId?.trim(), userId);
 
 const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<string, string | number | undefined>) => {
     const normalizedBase = baseUrl.trim().replace(/\/+$/, "");
@@ -657,18 +624,11 @@ type AuthContext = {
 };
 
 const resolveAuthContext = async (userId: string, userKey: string): Promise<AuthContext> => {
-    const [record, settings] = await Promise.all([
-        verifyUser(userId, userKey).catch(() => null),
-        loadUserSettings(userId, userKey).catch(() => undefined as Settings | undefined)
-    ]);
+    const [record, settings] = await Promise.all([verifyUser(userId, userKey).catch(() => null), loadUserSettings(userId, userKey).catch(() => undefined as Settings | undefined)]);
     return { record, settings };
 };
 
-    const toTargetUrl = (
-    body: HttpRequestBody,
-    targetUrlFromSettings?: string,
-    forceHttps = false
-): string | undefined => {
+const toTargetUrl = (body: HttpRequestBody, targetUrlFromSettings?: string, forceHttps = false): string | undefined => {
     const explicitUrl = body.url?.trim();
     if (explicitUrl) {
         if (forceHttps && explicitUrl.startsWith("http://")) {
@@ -684,20 +644,14 @@ const resolveAuthContext = async (userId: string, userKey: string): Promise<Auth
         return targetUrlFromSettings;
     }
 
-    const host = resolveDispatchTarget(
-        body.ip?.trim() || body.address?.trim() || body.host?.trim() || ""
-    );
+    const host = resolveDispatchTarget(body.ip?.trim() || body.address?.trim() || body.host?.trim() || "");
     if (!host) return undefined;
     if (/^https?:\/\//i.test(host)) {
-        return forceHttps && host.startsWith("http://")
-            ? `https://${host.slice("http://".length)}`
-            : host;
+        return forceHttps && host.startsWith("http://") ? `https://${host.slice("http://".length)}` : host;
     }
 
     const protocolFromBody = parsePortableBoolean(body.https) === true || parsePortableBoolean(body.secure) === true;
-    const protocol = forceHttps || protocolFromBody
-        ? "https"
-        : (body.protocol || "http");
+    const protocol = forceHttps || protocolFromBody ? "https" : body.protocol || "http";
     const portNumber = parsePortableInteger(body.port);
     const port = portNumber === undefined ? "" : `:${portNumber}`;
     const nextPath = (body.path || "").trim();
@@ -705,12 +659,7 @@ const resolveAuthContext = async (userId: string, userKey: string): Promise<Auth
     return `${protocol}://${host}${port}${normalizedPath}`;
 };
 
-export const registerOpsRoutes = async (
-    app: FastifyInstance,
-    wsHub: WsHub,
-    networkContext?: NetworkContextProvider,
-    socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">
-) => {
+export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, networkContext?: NetworkContextProvider, socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">) => {
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
         const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
@@ -718,9 +667,7 @@ export const registerOpsRoutes = async (
         const parsedRequestSecure = parsePortableBoolean(payload.secure);
         const forceHttpsRoute = (request.url || "").startsWith("/core/ops/https") || parsedRequestHttps === true || parsedRequestSecure === true;
         const hasCredentials = !!(userId && userKey);
-        const settings = hasCredentials
-            ? (await resolveAuthContext(userId, userKey)).settings
-            : undefined;
+        const settings = hasCredentials ? (await resolveAuthContext(userId, userKey)).settings : undefined;
         if (hasCredentials) {
             const { record } = await resolveAuthContext(userId, userKey);
             if (!record) {
@@ -758,10 +705,16 @@ export const registerOpsRoutes = async (
         }
         const reverseTargetForSend = reverseTargetPeer || reverseTarget;
         if (!resolvedUrl && reverseTargetForSend && typeof reverseTargetForSend === "string" && reverseTargetForSend.trim()) {
-            const delivery = await sendToTargetsWithFallback(userId, reverseTargetForSend, {
-                type: (payload as any).type || "dispatch",
-                data: (payload as any).data ?? payload
-            }, { mode: "dispatch" }, { wsHub, socketIoBridge });
+            const delivery = await sendToTargetsWithFallback(
+                userId,
+                reverseTargetForSend,
+                {
+                    type: (payload as any).type || "dispatch",
+                    data: (payload as any).data ?? payload
+                },
+                { mode: "dispatch" },
+                { wsHub, socketIoBridge }
+            );
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
@@ -833,13 +786,7 @@ export const registerOpsRoutes = async (
 
         const ops = settings?.core?.ops || {};
         const allowUnencrypted = ops.allowUnencrypted !== false;
-        const configBroadcastForceHttps = safeParseBoolean(
-            (config as any)?.broadcastForceHttps,
-            safeParseBoolean(
-                (config as any)?.ops?.broadcastForceHttps,
-                safeParseBoolean((config as any)?.core?.ops?.broadcastForceHttps, false)
-            )
-        );
+        const configBroadcastForceHttps = safeParseBoolean((config as any)?.broadcastForceHttps, safeParseBoolean((config as any)?.ops?.broadcastForceHttps, safeParseBoolean((config as any)?.core?.ops?.broadcastForceHttps, false)));
         const requestBroadcastForceHttps = parsePortableBoolean((body as any).broadcastForceHttps);
         const opsBroadcastForceHttps = parsePortableBoolean((ops as any).broadcastForceHttps);
         const forceBroadcastHttps = requestBroadcastForceHttps ?? opsBroadcastForceHttps ?? configBroadcastForceHttps;
@@ -857,10 +804,16 @@ export const registerOpsRoutes = async (
                         reason: routeDecision.reason
                     };
                 }
-                const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId.trim(), {
-                    type: (entry as any).type || "dispatch",
-                    data: (entry as any).data ?? (entry as any).body
-                }, { mode: "dispatch" }, { wsHub, socketIoBridge });
+                const delivery = await sendToTargetsWithFallback(
+                    userId,
+                    resolvedReverseDeviceId.trim(),
+                    {
+                        type: (entry as any).type || "dispatch",
+                        data: (entry as any).data ?? (entry as any).body
+                    },
+                    { mode: "dispatch" },
+                    { wsHub, socketIoBridge }
+                );
                 const delivered = delivery.delivered;
                 return {
                     target: reverseDeviceId,
@@ -877,7 +830,7 @@ export const registerOpsRoutes = async (
             if (!isHttps && !(allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
 
             const finalMethod = (entry.method || "POST").toUpperCase();
-            console.log(resolvedUrl, finalMethod, entry.headers || {}, '<body hidden>');
+            console.log(resolvedUrl, finalMethod, entry.headers || {}, "<body hidden>");
             try {
                 const res = await fetch(resolvedUrl, {
                     method: finalMethod,
@@ -897,24 +850,7 @@ export const registerOpsRoutes = async (
     };
 
     const networkFetchHandler = async (request: FastifyRequest<{ Body: NetworkFetchBody }>) => {
-        const {
-            userId,
-            userKey,
-            route = "auto",
-            target,
-            targetId,
-            deviceId,
-            peerId,
-            namespace,
-            ns,
-            method,
-            url,
-            headers,
-            data,
-            payload,
-            body,
-            timeoutMs
-        } = request.body || {};
+        const { userId, userKey, route = "auto", target, targetId, deviceId, peerId, namespace, ns, method, url, headers, data, payload, body, timeoutMs } = request.body || {};
         const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
         const routeSourceCheck = ensureKnownRoutingSource(routeSource);
         if (!routeSourceCheck.allowed) {
@@ -943,14 +879,8 @@ export const registerOpsRoutes = async (
             };
         }
         const timeoutValue = parsePortableInteger(timeoutMs);
-        const effectiveTimeoutMs = timeoutValue === undefined
-            ? undefined
-            : Math.max(250, timeoutValue);
-        const normalizedNamespace = typeof namespace === "string" && namespace.trim()
-            ? namespace.trim()
-            : typeof ns === "string" && ns.trim()
-                ? ns.trim()
-                : undefined;
+        const effectiveTimeoutMs = timeoutValue === undefined ? undefined : Math.max(250, timeoutValue);
+        const normalizedNamespace = typeof namespace === "string" && namespace.trim() ? namespace.trim() : typeof ns === "string" && ns.trim() ? ns.trim() : undefined;
 
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
@@ -988,10 +918,16 @@ export const registerOpsRoutes = async (
         const requestPayloadWithTimeout = requestPayload;
         const unifiedResult = async () => {
             if (!plan.local) return undefined;
-            const delivery = await sendToTargetsWithFallback(userId, requestTarget, requestPayloadWithTimeout, {
-                mode: "request",
-                waitMs: effectiveTimeoutMs ?? DEFAULT_NETWORK_FETCH_TIMEOUT_MS
-            }, { wsHub, socketIoBridge });
+            const delivery = await sendToTargetsWithFallback(
+                userId,
+                requestTarget,
+                requestPayloadWithTimeout,
+                {
+                    mode: "request",
+                    waitMs: effectiveTimeoutMs ?? DEFAULT_NETWORK_FETCH_TIMEOUT_MS
+                },
+                { wsHub, socketIoBridge }
+            );
             if (delivery.responses.length > 0) {
                 const hit = delivery.responses[0];
                 return {
@@ -1076,10 +1012,16 @@ export const registerOpsRoutes = async (
             return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
-        const delivery = await sendToTargetsWithFallback(userId, resolvedDeviceId, {
-            type: type || action || "dispatch",
-            data,
-        }, { mode: "dispatch" }, { wsHub, socketIoBridge });
+        const delivery = await sendToTargetsWithFallback(
+            userId,
+            resolvedDeviceId,
+            {
+                type: type || action || "dispatch",
+                data
+            },
+            { mode: "dispatch" },
+            { wsHub, socketIoBridge }
+        );
         const delivered = delivery.delivered;
         return { ok: !!delivered, delivered: delivered ? "ws-reverse" : "ws-reverse-missing", deviceId: resolvedDeviceId };
     };
@@ -1098,11 +1040,7 @@ export const registerOpsRoutes = async (
         if (!record) return { ok: false, error: "Invalid credentials" };
 
         const ops = settings?.core?.ops || {};
-        const configuredTargets = Array.isArray((ops as any).httpTargets)
-            ? (ops as any).httpTargets
-                .map((target: any) => String(target?.id || target?.name || "").trim())
-                .filter(Boolean)
-            : [];
+        const configuredTargets = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.map((target: any) => String(target?.id || target?.name || "").trim()).filter(Boolean) : [];
 
         const reverseDevices = wsHub.getConnectedDevices(userId);
         const reverseDeviceProfiles = wsHub.getConnectedPeerProfiles(userId).map((peer) => ({ id: peer.id, label: peer.label }));
@@ -1128,15 +1066,11 @@ export const registerOpsRoutes = async (
         const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         const ops = settings?.core?.ops || {};
-        const target = Array.isArray((ops as any).httpTargets)
-            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
-            : undefined;
+        const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
         const reverseDeviceId = resolveFeatureTarget(body, userId);
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
-        const permission = resolvedReverseDeviceId
-            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
-            : { allowed: true, reason: "" };
+        const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
         if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
             const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", { method: "GET", limit }), { mode: "dispatch" }, { wsHub, socketIoBridge });
@@ -1184,15 +1118,11 @@ export const registerOpsRoutes = async (
         const { record, settings } = await resolveAuthContext(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
         const ops = settings?.core?.ops || {};
-        const target = Array.isArray((ops as any).httpTargets)
-            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
-            : undefined;
+        const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
         const reverseDeviceId = resolveFeatureTarget(body, userId);
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
-        const permission = resolvedReverseDeviceId
-            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
-            : { allowed: true, reason: "" };
+        const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
         if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
             const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", { method: "GET", limit }), { mode: "dispatch" }, { wsHub, socketIoBridge });
@@ -1241,15 +1171,11 @@ export const registerOpsRoutes = async (
         if (!record) return { ok: false, error: "Invalid credentials" };
         if (!message) return { ok: false, error: "Missing text" };
         const ops = settings?.core?.ops || {};
-        const target = Array.isArray((ops as any).httpTargets)
-            ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId)
-            : undefined;
+        const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
         const reverseDeviceId = resolveFeatureTarget(body, userId);
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
-        const permission = resolvedReverseDeviceId
-            ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId)
-            : { allowed: true, reason: "" };
+        const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
         if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
             const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications.speak", { text: message }), { mode: "dispatch" }, { wsHub, socketIoBridge });
@@ -1300,9 +1226,7 @@ export const registerOpsRoutes = async (
         if (!record) return { ok: false, error: "Invalid credentials" };
 
         const requestedAction = (action || type || "").toString().trim().toLowerCase();
-        const actionsBatch = Array.isArray(request.body?.actions)
-            ? request.body!.actions
-            : (Array.isArray(data?.actions) ? data.actions : null);
+        const actionsBatch = Array.isArray(request.body?.actions) ? request.body!.actions : Array.isArray(data?.actions) ? data.actions : null;
 
         if (actionsBatch && actionsBatch.length > 0) {
             await executeActions(actionsBatch, app);
@@ -1310,7 +1234,7 @@ export const registerOpsRoutes = async (
         }
 
         if (requestedAction === "clipboard" || requestedAction === "clipboard.write" || requestedAction === "clipboard:set" || requestedAction === "clipboard/paste") {
-            const nextText = typeof text === "string" ? text : (typeof data?.text === "string" ? data.text : "");
+            const nextText = typeof text === "string" ? text : typeof data?.text === "string" ? data.text : "";
             if (!nextText) return { ok: false, error: "Missing clipboard text" };
             await writeClipboard(nextText);
             return { ok: true, action: "clipboard.write" };
@@ -1332,7 +1256,7 @@ export const registerOpsRoutes = async (
         }
 
         if (requestedAction === "paste" || requestedAction === "clipboard.paste") {
-            const nextText = typeof text === "string" ? text : (typeof data?.text === "string" ? data.text : "");
+            const nextText = typeof text === "string" ? text : typeof data?.text === "string" ? data.text : "";
             if (nextText) await writeClipboard(nextText);
             executePasteHotkey();
             return { ok: true, action: "paste" };
@@ -1346,11 +1270,7 @@ export const registerOpsRoutes = async (
 
     const rootCompatHandler = async (request: FastifyRequest<{ Body: any }>) => {
         const payload = (request.body || {}) as Record<string, unknown>;
-        const isBroadcastLike =
-            Array.isArray(payload.requests) ||
-            Array.isArray(payload.addresses) ||
-            Array.isArray(payload.urls) ||
-            Array.isArray(payload.ips);
+        const isBroadcastLike = Array.isArray(payload.requests) || Array.isArray(payload.addresses) || Array.isArray(payload.urls) || Array.isArray(payload.ips);
 
         if (isBroadcastLike) {
             return broadcastHandler(request as FastifyRequest<{ Body: HttpDispatchBody }>);
@@ -1369,9 +1289,7 @@ export const registerOpsRoutes = async (
         const isGateway = upstreamStatus?.running === true || upstreamStatus?.connected === true;
         const configuredTopology = (config as any)?.topology;
         const configuredEndpointIds = (config as any)?.endpointIDs;
-        const staticTopologyEnabled = configuredTopology && typeof configuredTopology === "object"
-            ? (configuredTopology as Record<string, any>).enabled !== false
-            : true;
+        const staticTopologyEnabled = configuredTopology && typeof configuredTopology === "object" ? (configuredTopology as Record<string, any>).enabled !== false : true;
         const staticTopologyNodes = staticTopologyEnabled
             ? Array.isArray((configuredTopology as Record<string, any>)?.nodes)
                 ? ((configuredTopology as Record<string, any>).nodes as Array<Record<string, any>>)
@@ -1385,7 +1303,10 @@ export const registerOpsRoutes = async (
             const normalizedNode = node as Record<string, any>;
             return {
                 ...normalizedNode,
-                peerId: String(normalizedNode.peerId || normalizedNode.id || "").trim().toLowerCase() || undefined,
+                peerId:
+                    String(normalizedNode.peerId || normalizedNode.id || "")
+                        .trim()
+                        .toLowerCase() || undefined,
                 id: String(normalizedNode.id).trim(),
                 kind: normalizedNode.kind || "node",
                 surface: normalizedNode.surface || "external"
@@ -1393,13 +1314,14 @@ export const registerOpsRoutes = async (
         });
         const staticTopologyLinks = staticTopologyEnabled
             ? Array.isArray((configuredTopology as Record<string, any>)?.links)
-                ? ((configuredTopology as Record<string, any>).links as Array<Record<string, any>>).filter((link) => {
-                    if (!link || typeof link !== "object" || Array.isArray(link)) return false;
-                    const source = String((link as Record<string, any>).source || "").trim();
-                    const target = String((link as Record<string, any>).target || "").trim();
-                    if (!source || !target) return false;
-                    return true;
-                })
+                ? ((configuredTopology as Record<string, any>).links as Array<Record<string, any>>)
+                    .filter((link) => {
+                        if (!link || typeof link !== "object" || Array.isArray(link)) return false;
+                        const source = String((link as Record<string, any>).source || "").trim();
+                        const target = String((link as Record<string, any>).target || "").trim();
+                        if (!source || !target) return false;
+                        return true;
+                    })
                     .map((link) => ({
                         id: String((link as Record<string, any>).id || `${(link as Record<string, any>).source || "unknown"}->${(link as Record<string, any>).target || "unknown"}`),
                         type: String((link as Record<string, any>).type || "topology-link"),
@@ -1407,27 +1329,30 @@ export const registerOpsRoutes = async (
                     }))
                 : []
             : [];
-        const endpointIdNodes = typeof configuredEndpointIds === "object" && configuredEndpointIds !== null
-            ? Object.entries(configuredEndpointIds).map(([id, entry]) => {
-                const peerPolicy = (entry && typeof entry === "object") ? (entry as Record<string, any>) : {};
-                return {
-                    id: String(id || "").trim(),
-                    kind: "peer",
-                    peerId: String(id || "").trim().toLowerCase(),
-                    role: peerPolicy?.flags?.gateway === true ? "gateway" : "endpoint-peer",
-                    surface: "external",
-                    origin: {
-                        hosts: Array.isArray(peerPolicy.origins) ? peerPolicy.origins : [],
+        const endpointIdNodes =
+            typeof configuredEndpointIds === "object" && configuredEndpointIds !== null
+                ? Object.entries(configuredEndpointIds).map(([id, entry]) => {
+                    const peerPolicy = entry && typeof entry === "object" ? (entry as Record<string, any>) : {};
+                    return {
+                        id: String(id || "").trim(),
+                        kind: "peer",
+                        peerId: String(id || "")
+                            .trim()
+                            .toLowerCase(),
+                        role: peerPolicy?.flags?.gateway === true ? "gateway" : "endpoint-peer",
+                        surface: "external",
+                        origin: {
+                            hosts: Array.isArray(peerPolicy.origins) ? peerPolicy.origins : [],
+                            forward: typeof peerPolicy.forward === "string" ? peerPolicy.forward : "self",
+                            flags: peerPolicy.flags || {}
+                        },
                         forward: typeof peerPolicy.forward === "string" ? peerPolicy.forward : "self",
-                        flags: peerPolicy.flags || {}
-                    },
-                    forward: typeof peerPolicy.forward === "string" ? peerPolicy.forward : "self",
-                    tokens: peerPolicy.tokens || [],
-                    allowedIncoming: peerPolicy.allowedIncoming || ["*"],
-                    allowedOutcoming: peerPolicy.allowedOutcoming || ["*"]
-                };
-            })
-            : [];
+                        tokens: peerPolicy.tokens || [],
+                        allowedIncoming: peerPolicy.allowedIncoming || ["*"],
+                        allowedOutcoming: peerPolicy.allowedOutcoming || ["*"]
+                    };
+                })
+                : [];
 
         const localNodes = [
             {
@@ -1451,9 +1376,17 @@ export const registerOpsRoutes = async (
             }))
         ];
 
-        const staticNodeKeys = new Set(normalizedStaticTopologyNodes.map((node) => String(node.peerId || node.id || "").trim().toLowerCase()));
+        const staticNodeKeys = new Set(
+            normalizedStaticTopologyNodes.map((node) =>
+                String(node.peerId || node.id || "")
+                    .trim()
+                    .toLowerCase()
+            )
+        );
         for (const endpointNode of endpointIdNodes) {
-            const key = String(endpointNode.peerId || endpointNode.id || "").trim().toLowerCase();
+            const key = String(endpointNode.peerId || endpointNode.id || "")
+                .trim()
+                .toLowerCase();
             if (!key) continue;
             if (!staticNodeKeys.has(key)) {
                 staticNodeKeys.add(key);
@@ -1462,7 +1395,9 @@ export const registerOpsRoutes = async (
         }
         const mergedTopologyNodes: Array<Record<string, any>> = [...normalizedStaticTopologyNodes];
         for (const node of localNodes) {
-            const key = String(node.peerId || node.id || "").trim().toLowerCase();
+            const key = String(node.peerId || node.id || "")
+                .trim()
+                .toLowerCase();
             if (!key) continue;
             if (!staticNodeKeys.has(key)) {
                 mergedTopologyNodes.push(node);
@@ -1541,23 +1476,7 @@ export const registerOpsRoutes = async (
     };
 
     const networkDispatchHandler = async (request: FastifyRequest<{ Body: NetworkDispatchBody }>) => {
-        const {
-            userId,
-            userKey,
-            route = "auto",
-            target,
-            targetId,
-            deviceId,
-            peerId,
-            namespace,
-            ns,
-            type,
-            action,
-            data,
-            payload,
-            broadcast,
-            targets
-        } = request.body || {};
+        const { userId, userKey, route = "auto", target, targetId, deviceId, peerId, namespace, ns, type, action, data, payload, broadcast, targets } = request.body || {};
         const parsedBroadcast = parsePortableBoolean(broadcast);
         const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
         const routeSourceCheck = ensureKnownRoutingSource(routeSource);
@@ -1569,16 +1488,8 @@ export const registerOpsRoutes = async (
 
         const messagePayload = payload ?? data ?? {};
         const destination = resolveEndpointRouteTarget(targetId || deviceId || peerId || target || "", userId);
-        const normalizedTargets = Array.isArray(targets)
-            ? targets
-                .map((item) => resolveEndpointRouteTarget(String(item || "").trim(), userId))
-                .filter(Boolean)
-            : [];
-        const normalizedNamespace = typeof namespace === "string" && namespace.trim()
-            ? namespace.trim()
-            : typeof ns === "string" && ns.trim()
-                ? ns.trim()
-                : undefined;
+        const normalizedTargets = Array.isArray(targets) ? targets.map((item) => resolveEndpointRouteTarget(String(item || "").trim(), userId)).filter(Boolean) : [];
+        const normalizedNamespace = typeof namespace === "string" && namespace.trim() ? namespace.trim() : typeof ns === "string" && ns.trim() ? ns.trim() : undefined;
 
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const localPeers = makeTargetTokenSet(wsHub.getConnectedDevices(userId));
@@ -1591,9 +1502,7 @@ export const registerOpsRoutes = async (
             return allLocalTargets.has(normalized) || resolveEndpointIdPolicyStrict(endpointPolicyMap, normalized) != null;
         };
         const surface = inferNetworkSurface(request.socket?.remoteAddress || (request.headers?.["x-forwarded-for"] as string | undefined));
-        const configuredBroadcastTargets = Array.isArray((config as any)?.broadcastTargets)
-            ? (config as any).broadcastTargets.map((entry: any) => resolveDispatchTarget(String(entry || "")))
-            : [];
+        const configuredBroadcastTargets = Array.isArray((config as any)?.broadcastTargets) ? (config as any).broadcastTargets.map((entry: any) => resolveDispatchTarget(String(entry || ""))) : [];
         const audience = resolveDispatchAudience({
             target: destination,
             targets: normalizedTargets,
@@ -1601,9 +1510,7 @@ export const registerOpsRoutes = async (
             implicitTargets: configuredBroadcastTargets.map((target) => resolveNetworkTargetWithPeerIdentity(target, userId))
         });
 
-        const requestedTargets = audience.targets.length > 0
-            ? audience.targets
-            : [destination];
+        const requestedTargets = audience.targets.length > 0 ? audience.targets : [destination];
         type DispatchPolicyCheckedTarget = {
             target: string;
             localDeliveryTargets: string[];
@@ -1615,12 +1522,7 @@ export const registerOpsRoutes = async (
                 const resolvedForward = resolveEndpointRouteTarget(resolved, userId);
                 const permission = checkEndpointRoutePermission(routeSource.sourceId, resolvedForward);
                 if (!permission.allowed) {
-                    console.warn(
-                        "[network/dispatch] route denied by endpoint policy",
-                        `source=${routeSource.sourceId}`,
-                        `target=${resolvedForward}`,
-                        permission.reason
-                    );
+                    console.warn("[network/dispatch] route denied by endpoint policy", `source=${routeSource.sourceId}`, `target=${resolvedForward}`, permission.reason);
                     return undefined;
                 }
                 const delivery = resolveEndpointDeliveryTargets(resolvedForward, userId);
@@ -1636,7 +1538,7 @@ export const registerOpsRoutes = async (
                 ok: false,
                 error: "Route denied by endpoint policy",
                 route: "policy-block",
-                target: (typeof destination === "string" ? destination : ""),
+                target: typeof destination === "string" ? destination : "",
                 targets: requestedTargets,
                 reason: "all requested targets denied by endpoint policy"
             };
@@ -1657,26 +1559,15 @@ export const registerOpsRoutes = async (
             };
         });
 
-        const upstreamDecisionTargets = audienceDecisions
-            .filter((entry) => entry.plan.upstream && entry.plan.route !== "none")
-            .map((entry) => entry.target);
+        const upstreamDecisionTargets = audienceDecisions.filter((entry) => entry.plan.upstream && entry.plan.route !== "none").map((entry) => entry.target);
 
-        const shouldBroadcastLocally = audience.source === "implicit-local-broadcast"
-            || !audience.targets.length && (typeof destination !== "string" || !destination.trim());
+        const shouldBroadcastLocally = audience.source === "implicit-local-broadcast" || (!audience.targets.length && (typeof destination !== "string" || !destination.trim()));
         const audienceRouteHints = audienceDecisions.map((entry) => entry.plan.route);
         const localPlan = audienceRouteHints.some((entry) => entry === "local" || entry === "both");
         const upstreamPlan = audienceRouteHints.some((entry) => entry === "upstream" || entry === "both");
-        const aggregateRoute: DispatchRouteDecision["route"] = localPlan && upstreamPlan
-            ? "both"
-            : localPlan
-                ? "local"
-                : upstreamPlan
-                    ? "upstream"
-                    : "none";
+        const aggregateRoute: DispatchRouteDecision["route"] = localPlan && upstreamPlan ? "both" : localPlan ? "local" : upstreamPlan ? "upstream" : "none";
         const reasonSet = new Set(audienceDecisions.map((entry) => entry.plan.reason));
-        const aggregateReason = reasonSet.size === 1
-            ? Array.from(reasonSet)[0]
-            : Array.from(reasonSet).join("; ");
+        const aggregateReason = reasonSet.size === 1 ? Array.from(reasonSet)[0] : Array.from(reasonSet).join("; ");
 
         const payloadEnvelope = {
             type: String(type || action || "dispatch"),
@@ -1695,22 +1586,16 @@ export const registerOpsRoutes = async (
                 return true;
             }
 
-            const results = await Promise.all(
-                localDecisionEntries.map((entry) => sendToTargetsWithFallback(userId, entry.target, payloadEnvelope, { mode: "dispatch" }, { wsHub, socketIoBridge }))
-            );
+            const results = await Promise.all(localDecisionEntries.map((entry) => sendToTargetsWithFallback(userId, entry.target, payloadEnvelope, { mode: "dispatch" }, { wsHub, socketIoBridge })));
             return results.some((result) => result.delivered);
         })();
 
         const upstreamDispatchPromise = (async () => {
             if (!upstreamPlan || !networkContext?.sendToUpstream) return false;
             const upstreamTargets = Array.from(new Set(upstreamDecisionTargets.filter(Boolean)));
-            const upstreamPayloads = upstreamTargets.length > 0
-                ? upstreamTargets.map((item) => ({ ...payloadEnvelope, targetId: item, target: item, to: item }))
-                : [payloadEnvelope];
+            const upstreamPayloads = upstreamTargets.length > 0 ? upstreamTargets.map((item) => ({ ...payloadEnvelope, targetId: item, target: item, to: item })) : [payloadEnvelope];
 
-            const results = await Promise.all(
-                upstreamPayloads.map((upstreamPayload) => networkContext?.sendToUpstream?.(upstreamPayload) || false)
-            );
+            const results = await Promise.all(upstreamPayloads.map((upstreamPayload) => networkContext?.sendToUpstream?.(upstreamPayload) || false));
             return results.some(Boolean);
         })();
 
@@ -1743,7 +1628,7 @@ export const registerOpsRoutes = async (
                 local: localDelivered,
                 upstream: upstreamDispatched,
                 target: targetValue || null,
-                    targets: policyCheckedTargets.map((entry) => entry.target)
+                targets: policyCheckedTargets.map((entry) => entry.target)
             },
             routePlan: {
                 decided: aggregateRoute,

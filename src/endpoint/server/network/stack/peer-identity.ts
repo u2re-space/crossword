@@ -29,11 +29,12 @@ const looksLikeAliasedHostTarget = (value: string): boolean => {
 };
 
 const normalizeAliasStringList = (value: unknown): string[] => {
-    if (Array.isArray(value)) return value
-        .map((item) => String(item || "").trim())
-        .filter(Boolean)
-        .map(normalizeToken)
-        .filter(Boolean);
+    if (Array.isArray(value))
+        return value
+            .map((item) => String(item || "").trim())
+            .filter(Boolean)
+            .map(normalizeToken)
+            .filter(Boolean);
 
     if (typeof value === "string") {
         return value
@@ -91,17 +92,7 @@ const getTopologyOriginList = (source: TopologyPeerAliasEntry): string[] => {
     return out;
 };
 
-export type PeerIdentitySourceKind =
-    | "device-id"
-    | "peer-label"
-    | "label-contains"
-    | "alias"
-    | "topology-peer-id"
-    | "topology-id"
-    | "topology-label"
-    | "topology-origin"
-    | "topology-alias"
-    | "fallback";
+export type PeerIdentitySourceKind = "device-id" | "peer-label" | "label-contains" | "alias" | "topology-peer-id" | "topology-id" | "topology-label" | "topology-origin" | "topology-alias" | "fallback";
 
 export type PeerIdentityResolution = {
     peerId: string;
@@ -136,10 +127,7 @@ const isPeerAliasMatch = (source: string, target: string): boolean => {
     return value === target || value.includes(target) || target.includes(value);
 };
 
-const readFromTopologyNode = (
-    node: TopologyPeerProfile,
-    target: string
-): { peerId: string; kind: PeerIdentitySourceKind } | undefined => {
+const readFromTopologyNode = (node: TopologyPeerProfile, target: string): { peerId: string; kind: PeerIdentitySourceKind } | undefined => {
     const nodeRecord = node as unknown as TopologyPeerAliasEntry;
     const aliases = collectTopologyAliases(nodeRecord);
     const candidates = getTopologyCandidateList(nodeRecord);
@@ -210,15 +198,14 @@ export const resolvePeerIdentity = (rawInput: string, context: PeerIdentityResol
     }
 
     if (resolvedAlias && resolvedAlias !== raw) {
-        const aliasPeer = peers.find((peer) => normalizeToken(peer.id) === normalizeToken(resolvedAlias))
-            || peers.find((peer) => normalizeToken(peer.label || "") === normalizeToken(resolvedAlias));
+        const aliasPeer = peers.find((peer) => normalizeToken(peer.id) === normalizeToken(resolvedAlias)) || peers.find((peer) => normalizeToken(peer.label || "") === normalizeToken(resolvedAlias));
         if (aliasPeer) {
             const peerId = normalizeToken((aliasPeer.peerId || aliasPeer.id || "").trim());
             if (peerId) return { peerId, raw: normalizeToken(resolvedAlias), sourceKind: "alias", source: resolvedAlias };
         }
     }
 
-    const topologyNodes = Array.isArray(context?.topology) ? context.topology as TopologyPeerProfile[] : [];
+    const topologyNodes = Array.isArray(context?.topology) ? (context.topology as TopologyPeerProfile[]) : [];
     for (const node of topologyNodes) {
         const nodeHit = readFromTopologyNode(node, normalized);
         if (nodeHit) return { peerId: nodeHit.peerId, raw: normalized, sourceKind: nodeHit.kind, source: (node as TopologyPeerAliasEntry).id as string | undefined };

@@ -167,7 +167,7 @@ export class AIOrchestrator {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`
                 },
                 body: JSON.stringify({
                     model: this.model,
@@ -176,12 +176,12 @@ export class AIOrchestrator {
                         {
                             type: "message",
                             role: "user",
-                            content: [{ type: "input_text", text: `${prompt}\n\nINPUT:\n${input}` }],
-                        },
+                            content: [{ type: "input_text", text: `${prompt}\n\nINPUT:\n${input}` }]
+                        }
                     ],
                     reasoning: { effort: "low" },
-                    text: { verbosity: "low" },
-                }),
+                    text: { verbosity: "low" }
+                })
             });
 
             if (!response.ok) {
@@ -214,14 +214,12 @@ export class AIOrchestrator {
             source_kind: "text",
             processing_time_ms: Date.now() - started,
             errors: result.ok ? [] : [result.error || "Recognition failed"],
-            warnings: [],
+            warnings: []
         };
     }
 
     async extractEntitiesFromData(data: string, instructionOptions?: InstructionOptions): Promise<{ ok: boolean; data?: any[]; error?: string }> {
-        const instructionAddon = instructionOptions?.customInstruction
-            ? `\n\nCUSTOM INSTRUCTION:\n${instructionOptions.customInstruction}`
-            : "";
+        const instructionAddon = instructionOptions?.customInstruction ? `\n\nCUSTOM INSTRUCTION:\n${instructionOptions.customInstruction}` : "";
         const prompt = `Extract entities from the input as JSON array. Use concise schema with id/type/title/props when possible.${instructionAddon}`;
         const result = await this.runPrompt(String(data || ""), prompt);
         if (!result.ok) return { ok: false, error: result.error || "Entity extraction failed" };
@@ -234,11 +232,7 @@ export class AIOrchestrator {
         return { ok: true, data: [] };
     }
 
-    async smartRecognize(
-        data: string,
-        hints?: SmartHints,
-        instructionOptions?: InstructionOptions
-    ): Promise<RecognitionResult & { entities?: any[] }> {
+    async smartRecognize(data: string, hints?: SmartHints, instructionOptions?: InstructionOptions): Promise<RecognitionResult & { entities?: any[] }> {
         const expected = hints?.expectedType ? `\nExpected type: ${hints.expectedType}` : "";
         const domain = hints?.domain ? `\nDomain: ${hints.domain}` : "";
         const language = hints?.language ? `\nLanguage: ${hints.language}` : "";
@@ -246,7 +240,7 @@ export class AIOrchestrator {
 
         const recognized = await this.recognize(String(data || ""), {
             context: context ? { expectedType: hints?.expectedType } : {},
-            customInstruction: instructionOptions?.customInstruction,
+            customInstruction: instructionOptions?.customInstruction
         });
 
         if (!recognized.ok || !hints?.extractEntities) return recognized;
@@ -254,7 +248,7 @@ export class AIOrchestrator {
         const entities = await this.extractEntitiesFromData(data, instructionOptions);
         return {
             ...recognized,
-            entities: entities.ok ? entities.data : [],
+            entities: entities.ok ? entities.data : []
         };
     }
 }

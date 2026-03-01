@@ -109,7 +109,7 @@ export const parsePayload = (payload: unknown): ParsedPayload => {
         const obj = payload as Record<string, any>;
         return {
             from: typeof obj.from === "string" ? obj.from : "unknown",
-            inner: obj.inner ?? obj.data ?? obj,
+            inner: obj.inner ?? obj.data ?? obj
         };
     }
 

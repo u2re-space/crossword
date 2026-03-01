@@ -68,15 +68,10 @@ export const unquotePortableValue = (value: string): string => {
     if (trimmed.length < 2) return trimmed;
     const first = trimmed[0];
     const last = trimmed[trimmed.length - 1];
-    if ((first !== "'" && first !== "\"") || last !== first) return trimmed;
+    if ((first !== "'" && first !== '"') || last !== first) return trimmed;
     const body = trimmed.slice(1, -1);
     if (first === "'") return body.replace(/\\\\/g, "\\").replace(/\\'/g, "'");
-    return body
-        .replace(/\\\\/g, "\\")
-        .replace(/\\"/g, "\"")
-        .replace(/\\n/g, "\n")
-        .replace(/\\r/g, "\r")
-        .replace(/\\t/g, "\t");
+    return body.replace(/\\\\/g, "\\").replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\r/g, "\r").replace(/\\t/g, "\t");
 };
 
 const decodeDataValue = (value: string): string => {
@@ -113,7 +108,7 @@ export const resolvePortableTextValue = (raw: PortableTextValue, baseDir = proce
     if (prefix === "inline") return payload;
     if (prefix === "data") return decodeDataValue(payload);
     if (prefix === "fs" || prefix === "file") {
-        return payload ? readTextFile(path.resolve(baseDir, payload)) ?? "" : "";
+        return payload ? (readTextFile(path.resolve(baseDir, payload)) ?? "") : "";
     }
 
     return trimmed;

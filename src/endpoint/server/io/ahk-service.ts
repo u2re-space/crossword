@@ -1,11 +1,11 @@
 // ahk-service.ts
-import { spawn } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { pickEnvStringLegacy } from "../lib/env.ts";
 
-const DEFAULT_AHK_PATH = 'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe';
+const DEFAULT_AHK_PATH = "C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe";
 const getAhkPath = () => (pickEnvStringLegacy("CWS_AUTOHOTKEY_PATH") || DEFAULT_AHK_PATH).trim();
 
 class AHKService {
@@ -13,10 +13,10 @@ class AHKService {
     private scriptPath: string;
     private ready: boolean = false;
     private queue: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
-    private responseBuffer: string = '';
+    private responseBuffer: string = "";
 
     constructor() {
-        this.scriptPath = path.join(os.tmpdir(), 'ahk_service.ahk');
+        this.scriptPath = path.join(os.tmpdir(), "ahk_service.ahk");
     }
 
     private createServiceScript() {
@@ -222,17 +222,17 @@ UTF8BytesToString(bytes) {
     return result
 }
 `;
-        fs.writeFileSync(this.scriptPath, script, 'utf8');
+        fs.writeFileSync(this.scriptPath, script, "utf8");
     }
 
     async start(): Promise<void> {
         if (this.process) return;
-        if (process.platform !== 'win32') {
-            throw new Error('AutoHotKey is only supported on Windows');
+        if (process.platform !== "win32") {
+            throw new Error("AutoHotKey is only supported on Windows");
         }
         const ahkPath = getAhkPath();
         if (!ahkPath || !fs.existsSync(ahkPath)) {
-            throw new Error(`AutoHotKey executable not found: ${ahkPath || '(empty path)'}`);
+            throw new Error(`AutoHotKey executable not found: ${ahkPath || "(empty path)"}`);
         }
 
         // Создаём скрипт перед запуском
@@ -240,24 +240,24 @@ UTF8BytesToString(bytes) {
 
         return new Promise((resolve, reject) => {
             this.process = spawn(ahkPath, [this.scriptPath], {
-                stdio: ['pipe', 'pipe', 'pipe'],
+                stdio: ["pipe", "pipe", "pipe"],
                 windowsHide: true
             });
 
             // Обработка ответов с буферизацией
-            this.process.stdout?.on('data', (data: Buffer) => {
-                this.responseBuffer += data.toString('utf8');
+            this.process.stdout?.on("data", (data: Buffer) => {
+                this.responseBuffer += data.toString("utf8");
 
                 // Обрабатываем все полные строки
                 let newlineIndex;
-                while ((newlineIndex = this.responseBuffer.indexOf('\n')) !== -1) {
+                while ((newlineIndex = this.responseBuffer.indexOf("\n")) !== -1) {
                     const line = this.responseBuffer.slice(0, newlineIndex).trim();
                     this.responseBuffer = this.responseBuffer.slice(newlineIndex + 1);
 
-                    if (line === 'OK' || line.startsWith('ERR:')) {
+                    if (line === "OK" || line.startsWith("ERR:")) {
                         if (this.queue.length > 0) {
                             const task = this.queue.shift()!;
-                            if (line === 'OK') {
+                            if (line === "OK") {
                                 task.resolve();
                             } else {
                                 task.reject(new Error(line.slice(4)));
@@ -267,16 +267,16 @@ UTF8BytesToString(bytes) {
                 }
             });
 
-            this.process.stderr?.on('data', (data: Buffer) => {
-                console.error('AHK Error:', data.toString());
+            this.process.stderr?.on("data", (data: Buffer) => {
+                console.error("AHK Error:", data.toString());
             });
 
-            this.process.on('error', (err: Error) => {
+            this.process.on("error", (err: Error) => {
                 this.ready = false;
                 reject(err);
             });
 
-            this.process.on('close', (code: number) => {
+            this.process.on("close", (code: number) => {
                 this.ready = false;
                 this.process = null;
                 // Reject all pending tasks
@@ -297,7 +297,7 @@ UTF8BytesToString(bytes) {
     stop() {
         if (this.process?.stdin) {
             try {
-                this.process.stdin.write('QUIT\n');
+                this.process.stdin.write("QUIT\n");
             } catch (e) {
                 // Ignore write errors during shutdown
             }
@@ -313,13 +313,13 @@ UTF8BytesToString(bytes) {
     }
 
     private base64Encode(str: string): string {
-        return Buffer.from(str, 'utf8').toString('base64');
+        return Buffer.from(str, "utf8").toString("base64");
     }
 
     private sendCommand(command: string): Promise<void> {
         return new Promise((resolve, reject) => {
             if (!this.ready || !this.process?.stdin) {
-                reject(new Error('AHK service not ready'));
+                reject(new Error("AHK service not ready"));
                 return;
             }
 
@@ -368,11 +368,11 @@ UTF8BytesToString(bytes) {
         return this.sendCommand(`MOVE:${Math.round(dx)},${Math.round(dy)}`);
     }
 
-    mouseClick(button: 'left' | 'right' | 'middle' = 'left', double: boolean = false): Promise<void> {
+    mouseClick(button: "left" | "right" | "middle" = "left", double: boolean = false): Promise<void> {
         return this.sendCommand(`MCLICK:${button},${double ? 1 : 0}`);
     }
 
-    mouseToggle(state: 'down' | 'up', button: 'left' | 'right' | 'middle' = 'left'): Promise<void> {
+    mouseToggle(state: "down" | "up", button: "left" | "right" | "middle" = "left"): Promise<void> {
         return this.sendCommand(`MTOGGLE:${state},${button}`);
     }
 

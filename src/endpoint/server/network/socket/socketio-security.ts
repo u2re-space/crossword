@@ -22,7 +22,6 @@ const normalizePort = (value: string | undefined): number | undefined => {
     return parsePortableInteger(value);
 };
 
-
 const parseOrigin = (value: string): { protocol: string; hostname: string; port: string } | null => {
     try {
         const parsed = new URL(value);
@@ -99,8 +98,7 @@ const isAllowedOrigin = (parsedOrigin: ReturnType<typeof parseOrigin>, item: str
     return false;
 };
 
-export const isPrivateNetworkCorsEnabled = (): boolean =>
-    pickEnvBoolLegacy("CWS_CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
+export const isPrivateNetworkCorsEnabled = (): boolean => pickEnvBoolLegacy("CWS_CORS_ALLOW_PRIVATE_NETWORK", true) !== false;
 
 export const applySocketIoPrivateNetworkHeaders = (headers: Record<string, any>, req: any): void => {
     if (!isPrivateNetworkCorsEnabled()) return;
@@ -152,8 +150,7 @@ const matchesAllowedOrigin = (origin: string, allowed: string[]): boolean => {
         }
     }
 
-    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false
-        && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
+    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
     const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
     if (!allowPrivateRfc1918 && !allowPrivateNetworkOrigins) return false;
 
@@ -168,14 +165,10 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const defaults = getDefaultAllowedOrigins();
     const effectiveAllowedOrigins = allowedOrigins.length ? allowedOrigins : defaults;
     const allowAllOrigins = effectiveAllowedOrigins.includes("*");
-    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false
-        && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
+    const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
     const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
-        const hasAirPadAuthTokens = getAirPadTokens().length > 0;
-    const allowUnknownOriginWithAirPadAuth = (
-        pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", undefined) ??
-        pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)
-    ) !== false && hasAirPadAuthTokens;
+    const hasAirPadAuthTokens = getAirPadTokens().length > 0;
+    const allowUnknownOriginWithAirPadAuth = (pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", undefined) ?? pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)) !== false && hasAirPadAuthTokens;
 
     logger?.info?.(
         {

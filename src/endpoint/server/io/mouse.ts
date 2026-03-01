@@ -2,14 +2,10 @@
 // Mouse Movement Handling
 // =========================
 
-import { executeMouseMove } from './actions.ts';
+import { executeMouseMove } from "./actions.ts";
 
 // Import constants
-import {
-    SERVER_JITTER_EPS,
-    SERVER_MAX_STEP,
-    SERVER_SMOOTH_ALPHA,
-} from '../config/constants.ts';
+import { SERVER_JITTER_EPS, SERVER_MAX_STEP, SERVER_SMOOTH_ALPHA } from "../config/constants.ts";
 
 // Accumulated mouse deltas and smooth target, applied at ~1000 Hz to avoid cross-source overlap
 let accumDx = 0;

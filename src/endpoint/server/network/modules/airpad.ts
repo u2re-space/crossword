@@ -16,11 +16,7 @@ type AirpadSignedEnvelope = { cipher: string; sig: string; from?: string };
 
 type HasSignedEnvelope = (payload: unknown) => payload is AirpadSignedEnvelope;
 
-const hasSignedEnvelope: HasSignedEnvelope = (payload: unknown): payload is AirpadSignedEnvelope =>
-    typeof payload === "object" &&
-    payload !== null &&
-    typeof (payload as any).cipher === "string" &&
-    typeof (payload as any).sig === "string";
+const hasSignedEnvelope: HasSignedEnvelope = (payload: unknown): payload is AirpadSignedEnvelope => typeof payload === "object" && payload !== null && typeof (payload as any).cipher === "string" && typeof (payload as any).sig === "string";
 
 const extractPayload = (payload: unknown, requiresSecureEnvelope: boolean): unknown => {
     if (!hasSignedEnvelope(payload)) return payload as unknown;
@@ -42,11 +38,7 @@ const extractTokenFromRequestQuery = (rawUrl: string | undefined): string => {
     const query = rawUrl.slice(queryIndex + 1);
     try {
         const params = new URLSearchParams(query);
-        return (
-            params.get("token")?.trim() ||
-            params.get("airpadToken")?.trim() ||
-            ""
-        );
+        return params.get("token")?.trim() || params.get("airpadToken")?.trim() || "";
     } catch {
         return "";
     }
@@ -64,11 +56,7 @@ const extractAirPadTokenFromRequestHeaders = (headers: IncomingMessage["headers"
         return rawAuthorization.slice(7).trim();
     }
 
-    return (
-        readRequestHeaderToken(headers["x-airpad-token"]) ||
-        readRequestHeaderToken(headers["x-airpad-client-token"]) ||
-        ""
-    );
+    return readRequestHeaderToken(headers["x-airpad-token"]) || readRequestHeaderToken(headers["x-airpad-client-token"]) || "";
 };
 
 export const getAirPadTokenFromRequest = (request?: IncomingMessage): string => {
@@ -95,12 +83,7 @@ export const getAirPadTokenFromSocket = (socket: Socket) => {
         return "";
     };
 
-    return (
-        pick(auth.token) ||
-        pick(auth.airpadToken) ||
-        pick(query.token) ||
-        pick(query.airpadToken)
-    );
+    return pick(auth.token) || pick(auth.airpadToken) || pick(query.token) || pick(query.airpadToken);
 };
 
 export const isAirPadAuthorized = (socket: Socket) => {
@@ -145,49 +128,27 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
     const auth: Record<string, unknown> = (socket as any).handshake?.auth || {};
     const headers: Record<string, unknown> = (socket as any).handshake?.headers || {};
     const query: Record<string, unknown> = (socket as any).handshake?.query || {};
-    const remoteAddress =
-        (socket.handshake as any)?.address ||
-        (socket as any)?.request?.socket?.remoteAddress;
+    const remoteAddress = (socket.handshake as any)?.address || (socket as any)?.request?.socket?.remoteAddress;
     const remotePort = (socket as any)?.request?.socket?.remotePort;
 
     return {
         remoteAddress: pickString(remoteAddress),
         remotePort: typeof remotePort === "number" ? remotePort : undefined,
         clientId: pickString(auth.clientId) || pickString(query.clientId),
-        sourceId: (
-            pickString(query.__airpad_src) ||
-            pickString(query.__airpad_source) ||
-            pickString(query.sourceId) ||
-            pickString(query.source) ||
-            pickString(query.peerId) ||
-            pickString(auth.clientId) ||
-            pickString(query.clientId)
-        ),
+        sourceId: pickString(query.__airpad_src) || pickString(query.__airpad_source) || pickString(query.sourceId) || pickString(query.source) || pickString(query.peerId) || pickString(auth.clientId) || pickString(query.clientId),
         hopHint: pickString(query.__airpad_hop),
         hostHint: pickString(query.__airpad_host),
         targetHost: pickString(query.__airpad_target),
         targetPort: pickString(query.__airpad_target_port),
         routeHint: pickString(query.__airpad_via),
-        routeTarget: (
-            pickString(query.__airpad_route) ||
-            pickString(query.__airpad_route_target) ||
-            pickString(query.routeTarget) ||
-            pickString(query.__airpad_peer) ||
-            pickString(query.__airpad_device) ||
-            pickString(query.__airpad_client) ||
-            pickString(query.to) ||
-            pickString(query.target) ||
-            pickString(query.targetId) ||
-            pickString(query.deviceId) ||
-            pickString(query.peerId)
-        ),
+        routeTarget: pickString(query.__airpad_route) || pickString(query.__airpad_route_target) || pickString(query.routeTarget) || pickString(query.__airpad_peer) || pickString(query.__airpad_device) || pickString(query.__airpad_client) || pickString(query.to) || pickString(query.target) || pickString(query.targetId) || pickString(query.deviceId) || pickString(query.peerId),
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
-        xForwardedFor: (headers["x-forwarded-for"] || headers["X-Forwarded-For"]),
-        xForwardedHost: (headers["x-forwarded-host"] || headers["X-Forwarded-Host"]),
-        xForwardedProto: (headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"]),
-        xRealIp: (headers["x-real-ip"] || headers["X-Real-IP"]),
-        xRealHost: (headers["x-real-host"] || headers["X-Real-Host"])
+        xForwardedFor: headers["x-forwarded-for"] || headers["X-Forwarded-For"],
+        xForwardedHost: headers["x-forwarded-host"] || headers["X-Forwarded-Host"],
+        xForwardedProto: headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"],
+        xRealIp: headers["x-real-ip"] || headers["X-Real-IP"],
+        xRealHost: headers["x-real-host"] || headers["X-Real-Host"]
     };
 };
 
@@ -203,10 +164,7 @@ export type AirpadObjectMessageDeps = {
     emitError: (socket: Socket, message: string) => void;
 };
 
-export const createAirpadObjectMessageHandler = (
-    socket: Socket,
-    deps: AirpadObjectMessageDeps
-) => {
+export const createAirpadObjectMessageHandler = (socket: Socket, deps: AirpadObjectMessageDeps) => {
     return async (msg: any): Promise<void> => {
         const normalized = normalizeSocketFrame(msg, deps.getSourceId(socket));
         const signed = hasSignedEnvelope(normalized.payload);
@@ -251,9 +209,7 @@ export const createAirpadObjectMessageHandler = (
 
             if (normalized.mode === "inspect") {
                 const { from, inner } = parsePayload(normalized.payload);
-                console.log(
-                    `[Server] INSPECT from=${from} to=${normalized.to} type=${normalized.type} action=${normalized.action} data=<hidden>`
-                );
+                console.log(`[Server] INSPECT from=${from} to=${normalized.to} type=${normalized.type} action=${normalized.action} data=<hidden>`);
 
                 if (normalized.type === "clip") {
                     deps.clipHistory.push({

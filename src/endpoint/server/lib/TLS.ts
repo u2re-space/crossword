@@ -63,26 +63,8 @@ const readCertificateMaterial = async (candidate: string | undefined, kind: Kind
 
 export const buildHttpsCandidateFiles = (moduleDir: string, cwd = process.cwd()) => {
     return {
-        keys: unique([
-            path.resolve(cwd, "./https/local/" + KEY_FILE_NAME),
-            path.resolve(cwd, "./" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../" + KEY_FILE_NAME),
-            path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)
-        ]),
-        certs: unique([
-            path.resolve(cwd, "./https/local/" + CRT_FILE_NAME),
-            path.resolve(cwd, "./" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../" + CRT_FILE_NAME),
-            path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)
-        ])
+        keys: unique([path.resolve(cwd, "./https/local/" + KEY_FILE_NAME), path.resolve(cwd, "./" + KEY_FILE_NAME), path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)]),
+        certs: unique([path.resolve(cwd, "./https/local/" + CRT_FILE_NAME), path.resolve(cwd, "./" + CRT_FILE_NAME), path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)])
     };
 };
 
@@ -95,12 +77,7 @@ export const resolveHttpsPaths = (moduleDir: string, cwd = process.cwd()) => {
     };
 };
 
-const resolveHttpsConfigValue = (
-    source: Record<string, any>,
-    sourceKeys: string[],
-    envCandidates: string[],
-    fallback?: string
-) => {
+const resolveHttpsConfigValue = (source: Record<string, any>, sourceKeys: string[], envCandidates: string[], fallback?: string) => {
     for (const name of envCandidates) {
         const value = process.env[name];
         if (typeof value === "string" && value.trim()) return resolvePortableTextValue(value);
@@ -120,23 +97,9 @@ export const loadHttpsOptions = async (params: { httpsConfig: Record<string, any
 
     const defaultHttpsPaths = resolveHttpsPaths(moduleDir, cwd);
     const { key: keyPath, cert: certPath, candidates } = defaultHttpsPaths;
-    const keySource = resolveHttpsConfigValue(
-        httpsConfig,
-        ["key", "keyFile", "keyPath"],
-        ["CWS_HTTPS_KEY", "CWS_HTTPS_KEY_FILE", "HTTPS_KEY", "HTTPS_KEY_FILE"],
-        keyPath
-    );
-    const certSource = resolveHttpsConfigValue(
-        httpsConfig,
-        ["cert", "certFile", "certPath"],
-        ["CWS_HTTPS_CERT", "CWS_HTTPS_CERT_FILE", "HTTPS_CERT", "HTTPS_CERT_FILE"],
-        certPath
-    );
-    const caSource = resolveHttpsConfigValue(
-        httpsConfig,
-        ["ca", "caFile", "caPath"],
-        ["CWS_HTTPS_CA", "CWS_HTTPS_CA_FILE", "HTTPS_CA", "HTTPS_CA_FILE"]
-    );
+    const keySource = resolveHttpsConfigValue(httpsConfig, ["key", "keyFile", "keyPath"], ["CWS_HTTPS_KEY", "CWS_HTTPS_KEY_FILE", "HTTPS_KEY", "HTTPS_KEY_FILE"], keyPath);
+    const certSource = resolveHttpsConfigValue(httpsConfig, ["cert", "certFile", "certPath"], ["CWS_HTTPS_CERT", "CWS_HTTPS_CERT_FILE", "HTTPS_CERT", "HTTPS_CERT_FILE"], certPath);
+    const caSource = resolveHttpsConfigValue(httpsConfig, ["ca", "caFile", "caPath"], ["CWS_HTTPS_CA", "CWS_HTTPS_CA_FILE", "HTTPS_CA", "HTTPS_CA_FILE"]);
 
     const keyCandidates = [keySource, ...candidates.keys];
     const certCandidates = [certSource, ...candidates.certs];
@@ -146,43 +109,27 @@ export const loadHttpsOptions = async (params: { httpsConfig: Record<string, any
         const certFile = certCandidates.find((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
         const caFile = caSource && typeof caSource === "string" && caSource.trim().length > 0 ? caSource : undefined;
 
-        const [key, cert] = await Promise.all([
-            readCertificateMaterial(keyFile, "key"),
-            readCertificateMaterial(certFile, "cert")
-        ]);
+        const [key, cert] = await Promise.all([readCertificateMaterial(keyFile, "key"), readCertificateMaterial(certFile, "cert")]);
         const ca = caFile ? await readCertificateMaterial(caFile, "ca") : undefined;
 
         if (!key || !cert) {
             throw new Error("[core-backend] HTTPS disabled: missing key or cert material");
         }
 
-        const requestClientCerts = parsePortableBoolean(
-            process.env.CWS_HTTPS_REQUEST_CLIENT_CERTS ??
-            process.env.HTTPS_REQUEST_CLIENT_CERTS ??
-            resolvePortableTextValue(String(httpsConfig.requestClientCerts ?? "false"), cwd)
-        ) ?? false;
+        const requestClientCerts = parsePortableBoolean(process.env.CWS_HTTPS_REQUEST_CLIENT_CERTS ?? process.env.HTTPS_REQUEST_CLIENT_CERTS ?? resolvePortableTextValue(String(httpsConfig.requestClientCerts ?? "false"), cwd)) ?? false;
 
-        const allowUntrustedClientCerts = parsePortableBoolean(
-            process.env.CWS_HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ??
-            process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ??
-            resolvePortableTextValue(String(httpsConfig.allowUntrustedClientCerts ?? "false"), cwd)
-        ) ?? false;
+        const allowUntrustedClientCerts = parsePortableBoolean(process.env.CWS_HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ?? process.env.HTTPS_ALLOW_UNTRUSTED_CLIENT_CERTS ?? resolvePortableTextValue(String(httpsConfig.allowUntrustedClientCerts ?? "false"), cwd)) ?? false;
 
         return {
             key,
             cert,
             allowHTTP1: true,
             ...(ca ? { ca } : {}),
-            ...(requestClientCerts
-                ? (allowUntrustedClientCerts ? { requestCert: true, rejectUnauthorized: false } : { requestCert: true })
-                : {})
+            ...(requestClientCerts ? (allowUntrustedClientCerts ? { requestCert: true, rejectUnauthorized: false } : { requestCert: true }) : {})
         };
     } catch (error) {
         const details = String((error as any)?.message || error || "unknown");
-        console.warn(
-            `[core-backend] HTTPS disabled: failed to load certificate files ` +
-            `key=${keyCandidates[0] || keyPath}, cert=${certCandidates[0] || certPath}. ${details}`
-        );
+        console.warn(`[core-backend] HTTPS disabled: failed to load certificate files ` + `key=${keyCandidates[0] || keyPath}, cert=${certCandidates[0] || certPath}. ${details}`);
         return undefined;
     }
 };

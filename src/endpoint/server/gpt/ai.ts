@@ -1,13 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { createAiContext, toAiCustomInstruction } from "./context.ts";
-import {
-    buildLegacyAiResponse,
-    buildProcessingAiResponse,
-    executeAiPipeline,
-    normalizeAiMode,
-    type AiMode
-} from "./response-adapter.ts";
+import { buildLegacyAiResponse, buildProcessingAiResponse, executeAiPipeline, normalizeAiMode, type AiMode } from "./response-adapter.ts";
 
 export const registerAiRoutes = async (app: FastifyInstance) => {
     const withAiContext = async (body: any, handler: (context: any) => Promise<any>) => {
@@ -16,13 +10,7 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
         return handler(contextResult.value);
     };
 
-    const runCoreAiRoute = async (
-        kind: "recognize" | "analysis",
-        body: any,
-        input: string,
-        mode: AiMode = "smartRecognize",
-        routeHints: { hints?: any; context?: any; title?: string; legacyRecognize?: boolean } = {}
-    ) => {
+    const runCoreAiRoute = async (kind: "recognize" | "analysis", body: any, input: string, mode: AiMode = "smartRecognize", routeHints: { hints?: any; context?: any; title?: string; legacyRecognize?: boolean } = {}) => {
         return withAiContext(body, async (ctx) => {
             const effectiveInstruction = toAiCustomInstruction(body, ctx.settings);
             const result = await executeAiPipeline(ctx, {
@@ -46,9 +34,7 @@ export const registerAiRoutes = async (app: FastifyInstance) => {
     const runProcessingRoute = async (body: any, input: string, mode: AiMode) => {
         return withAiContext(body, async (ctx) => {
             const effectiveInstruction = toAiCustomInstruction(body, ctx.settings);
-            const hints = mode === "recognize"
-                ? { context: body?.context || {} }
-                : (body?.hints || body?.hint);
+            const hints = mode === "recognize" ? { context: body?.context || {} } : body?.hints || body?.hint;
             const result = await executeAiPipeline(ctx, {
                 mode,
                 input,

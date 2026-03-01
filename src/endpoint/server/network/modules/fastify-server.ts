@@ -21,11 +21,7 @@ import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
 import { resolvePeerIdentity } from "../stack/peer-identity.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
-import {
-    normalizeEndpointPolicies,
-    resolveEndpointIdPolicyStrict,
-    resolveEndpointPolicyRoute
-} from "../stack/endpoint-policy.ts";
+import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointPolicyRoute } from "../stack/endpoint-policy.ts";
 
 const resolvePortableConfigBoolean = (value: string | undefined): boolean | undefined => {
     if (typeof value === "undefined") return undefined;
@@ -34,8 +30,7 @@ const resolvePortableConfigBoolean = (value: string | undefined): boolean | unde
 
 const loadHttpsOptions = async () => {
     const httpsConfig = ((config as any)?.https as Record<string, any>) || {};
-    const enabledCandidate = pickEnvStringLegacy("CWS_HTTPS_ENABLED")
-        ?? (httpsConfig.enabled === true ? "true" : httpsConfig.enabled === false ? "false" : undefined);
+    const enabledCandidate = pickEnvStringLegacy("CWS_HTTPS_ENABLED") ?? (httpsConfig.enabled === true ? "true" : httpsConfig.enabled === false ? "false" : undefined);
     if (resolvePortableConfigBoolean(enabledCandidate) === false) {
         return undefined;
     }
@@ -47,7 +42,7 @@ const loadHttpsOptions = async () => {
 
 const parseCli = (args: string[]) => {
     const out: { port?: number; host?: string; httpPort?: number; httpsPort?: number } = {};
-    const eat = (i: number) => args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : undefined;
+    const eat = (i: number) => (args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : undefined);
     for (let i = 0; i < args.length; i++) {
         const a = args[i];
         if (a === "--port") {
@@ -138,25 +133,15 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
     const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
-const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
+    const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
     const defaultUserId = fallbackUserId || "";
     const resolveSourceForPolicy = (msg: Record<string, unknown>, fallback: string): { sourceId: string; isKnown: boolean } => {
-        const sourceHint = (typeof msg.from === "string" && msg.from.trim())
-            ? msg.from
-            : (typeof (msg as any).source === "string" && (msg as any).source.trim()
-                ? (msg as any).source
-                : (typeof (msg as any).sourceId === "string" && (msg as any).sourceId.trim()
-                    ? (msg as any).sourceId
-                    : (typeof (msg as any).src === "string" && (msg as any).src.trim()
-                        ? (msg as any).src
-                        : fallback)));
+        const sourceHint = typeof msg.from === "string" && msg.from.trim() ? msg.from : typeof (msg as any).source === "string" && (msg as any).source.trim() ? (msg as any).source : typeof (msg as any).sourceId === "string" && (msg as any).sourceId.trim() ? (msg as any).sourceId : typeof (msg as any).src === "string" && (msg as any).src.trim() ? (msg as any).src : fallback;
         const trimmed = typeof sourceHint === "string" ? sourceHint.trim() : "";
         const fallbackSource = fallback.trim();
         if (!trimmed) return { sourceId: fallbackSource, isKnown: true };
         const normalizedPolicyHint = resolvePolicyTarget(trimmed);
-        const policyResolved = normalizedPolicyHint
-            ? resolveEndpointPolicyRoute(normalizedPolicyHint, normalizedPolicyHint, endpointPolicyMap).targetPolicy
-            : undefined;
+        const policyResolved = normalizedPolicyHint ? resolveEndpointPolicyRoute(normalizedPolicyHint, normalizedPolicyHint, endpointPolicyMap).targetPolicy : undefined;
         const strictPolicy = normalizedPolicyHint ? resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedPolicyHint) : undefined;
         const fallbackSourceId = fallback.trim();
         const sourceId = (policyResolved?.id && policyResolved.id !== "*" ? policyResolved.id : normalizedPolicyHint) || fallbackSource;
@@ -172,14 +157,16 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
         return trimmed;
     };
     const resolvePolicyTarget = (rawTarget: string): string => {
-        const normalized = stripPort(String(rawTarget || "").trim().toLowerCase());
+        const normalized = stripPort(
+            String(rawTarget || "")
+                .trim()
+                .toLowerCase()
+        );
         if (!normalized) return "";
         const directMatch = endpointPolicyMap[normalized];
         if (directMatch && directMatch.id) return directMatch.id;
         const policyCandidate = resolveEndpointPolicyRoute(normalized, normalized, endpointPolicyMap);
-        return policyCandidate?.targetPolicy?.id && policyCandidate.targetPolicy.id !== "*" && policyCandidate.targetPolicy.id !== normalized
-            ? policyCandidate.targetPolicy.id
-            : rawTarget.trim();
+        return policyCandidate?.targetPolicy?.id && policyCandidate.targetPolicy.id !== "*" && policyCandidate.targetPolicy.id !== normalized ? policyCandidate.targetPolicy.id : rawTarget.trim();
     };
     const resolveTargetWithPeerIdentity = (resolvedUserId: string, rawTarget: string) => {
         const normalized = String(rawTarget || "").trim();
@@ -188,9 +175,7 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
         const aliasInput = policyResolvedTarget !== normalized ? policyResolvedTarget : normalized;
         const aliasResolved = resolveNetworkAlias(upstreamAliasMap, aliasInput) || aliasInput;
         const topology = (config as any)?.topology;
-        const topologyNodes = Array.isArray(topology?.nodes)
-            ? topology.nodes.filter((node: any) => node && typeof node === "object" && !Array.isArray(node))
-            : [];
+        const topologyNodes = Array.isArray(topology?.nodes) ? topology.nodes.filter((node: any) => node && typeof node === "object" && !Array.isArray(node)) : [];
         const peers = hub.getConnectedPeerProfiles(resolvedUserId).map((peer) => ({
             id: peer.id,
             label: peer.label,
@@ -207,10 +192,7 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
         if (!message || typeof message !== "object") return;
         const msg = message as Record<string, unknown>;
         const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
-        const resolvedUserId =
-            typeof msg.userId === "string" && msg.userId.trim()
-                ? (msg.userId as string).trim()
-                : defaultUserId;
+        const resolvedUserId = typeof msg.userId === "string" && msg.userId.trim() ? (msg.userId as string).trim() : defaultUserId;
         if (!resolvedUserId) return;
         const normalizedRequestedTarget = String(target ?? "");
         const resolvedRequestedTarget = resolveTargetWithPeerIdentity(resolvedUserId, normalizedRequestedTarget.trim());
@@ -245,23 +227,10 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
         if (isTunnelDebug) {
-            const payloadKeys = payload && typeof payload === "object"
-                ? Object.keys(payload as Record<string, unknown>).join("|")
-                : typeof payload;
-            console.info(
-                `[upstream] IN`,
-                `userId=${resolvedUserId}`,
-                    `from=${sourceForPolicy.sourceId}`,
-                `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`,
-                `type=${String(msg.type || msg.action || "dispatch")}`,
-                `kind=${payloadKeys}`
-            );
+            const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload as Record<string, unknown>).join("|") : typeof payload;
+            console.info(`[upstream] IN`, `userId=${resolvedUserId}`, `from=${sourceForPolicy.sourceId}`, `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`, `type=${String(msg.type || msg.action || "dispatch")}`, `kind=${payloadKeys}`);
         }
-        const namespace = typeof msg.namespace === "string" && msg.namespace
-            ? msg.namespace
-            : typeof msg.ns === "string"
-                ? msg.ns
-                : undefined;
+        const namespace = typeof msg.namespace === "string" && msg.namespace ? msg.namespace : typeof msg.ns === "string" ? msg.ns : undefined;
         const type = String(msg.type || msg.action || "dispatch");
         const routed = {
             type,
@@ -286,7 +255,10 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget || "-"}`,
                         `kind=${resolvedKind || "-"}`,
-                        `known=${hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`).join(",")}`
+                        `known=${hub
+                            .getConnectedPeerProfiles(resolvedUserId)
+                            .map((entry) => `${entry.label}(${entry.id})`)
+                            .join(",")}`
                     );
                 }
                 app.log?.warn?.(
@@ -315,22 +287,18 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
                     "[upstream] routed command to reverse target"
                 );
                 if (isTunnelDebug) {
-                    console.info(
-                        `[upstream] target resolved`,
-                        `userId=${resolvedUserId}`,
-                        `requested=${requestedTarget}`,
-                        `resolved=${resolvedTarget}`,
-                        `kind=${resolvedKind || "-"}`,
-                        `delivered=${delivered}`
-                    );
+                    console.info(`[upstream] target resolved`, `userId=${resolvedUserId}`, `requested=${requestedTarget}`, `resolved=${resolvedTarget}`, `kind=${resolvedKind || "-"}`, `delivered=${delivered}`);
                 }
             }
-            app.log?.debug?.({
-                delivered,
-                target: resolvedRequestedTarget,
-                userId: resolvedUserId,
-                knownPeers: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
-            }, "[upstream] routed command to device");
+            app.log?.debug?.(
+                {
+                    delivered,
+                    target: resolvedRequestedTarget,
+                    userId: resolvedUserId,
+                    knownPeers: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
+                },
+                "[upstream] routed command to device"
+            );
             return;
         }
 
@@ -343,8 +311,7 @@ const buildNetworkContext = (upstreamConnector: ReturnType<typeof startUpstreamP
     return {
         getUpstreamStatus: () => upstreamConnector.getStatus(),
         sendToUpstream: (payload: any) => upstreamConnector.send(payload),
-        getNodeId: () => String(((config as any)?.upstream?.clientId || (config as any)?.upstream?.userId || "").trim() || ((config as any)?.upstream?.origin?.originId || ""))
-            .trim() || null
+        getNodeId: () => String(((config as any)?.upstream?.clientId || (config as any)?.upstream?.userId || "").trim() || (config as any)?.upstream?.origin?.originId || "").trim() || null
     };
 };
 
@@ -376,10 +343,12 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     }
 
     const socketIoBridge = createSocketIoBridge(app, {
-        networkContext: networkContext ? {
-            sendToUpstream: networkContext.sendToUpstream,
-            upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
-        } : undefined
+        networkContext: networkContext
+            ? {
+                sendToUpstream: networkContext.sendToUpstream,
+                upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
+            }
+            : undefined
     });
     await registerOpsRoutes(app, wsHub, networkContext, socketIoBridge);
     registerApiFallback(app);
@@ -387,9 +356,7 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     return app;
 };
 
-export const buildCoreServers = async (
-    opts: { logger?: boolean; httpsOptions?: any } = {}
-): Promise<{ http: FastifyInstance; https?: FastifyInstance }> => {
+export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<{ http: FastifyInstance; https?: FastifyInstance }> => {
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
     const http = Fastify({ logger: opts.logger ?? true }) as unknown as FastifyInstance;
     const https = Fastify({
@@ -421,10 +388,12 @@ export const buildCoreServers = async (
         });
     }
     const httpSocketIoBridge = createSocketIoBridge(http, {
-        networkContext: networkContext ? {
-            sendToUpstream: networkContext.sendToUpstream,
-            upstreamUserId: networkContext.getNodeId() || fallbackUserId
-        } : undefined
+        networkContext: networkContext
+            ? {
+                sendToUpstream: networkContext.sendToUpstream,
+                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+            }
+            : undefined
     });
     await registerOpsRoutes(http, unifiedHub, networkContext, httpSocketIoBridge);
     registerApiFallback(http);
@@ -440,10 +409,12 @@ export const buildCoreServers = async (
         });
     }
     const httpsSocketIoBridge = createSocketIoBridge(https, {
-        networkContext: networkContext ? {
-            sendToUpstream: networkContext.sendToUpstream,
-            upstreamUserId: networkContext.getNodeId() || fallbackUserId
-        } : undefined
+        networkContext: networkContext
+            ? {
+                sendToUpstream: networkContext.sendToUpstream,
+                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+            }
+            : undefined
     });
     await registerOpsRoutes(https, unifiedHub, networkContext, httpsSocketIoBridge);
     registerApiFallback(https);
@@ -468,23 +439,12 @@ export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: 
     //   - when HTTPS is available -> treat as HTTPS port
     //   - when HTTPS is unavailable -> treat as HTTP port
     const envPort = pickEnvNumberLegacy("PORT");
-    const legacyPort = args.port != null
-        ? parsePortableInteger(args.port)
-        : parsePortableInteger(envPort);
+    const legacyPort = args.port != null ? parsePortableInteger(args.port) : parsePortableInteger(envPort);
     const hasLegacyPort = legacyPort !== undefined;
 
-    const httpPortRaw =
-        args.httpPort ??
-        pickEnvNumberLegacy("HTTP_PORT") ??
-        pickEnvNumberLegacy("PORT_HTTP") ??
-        (!httpsEnabled && hasLegacyPort ? legacyPort : undefined);
+    const httpPortRaw = args.httpPort ?? pickEnvNumberLegacy("HTTP_PORT") ?? pickEnvNumberLegacy("PORT_HTTP") ?? (!httpsEnabled && hasLegacyPort ? legacyPort : undefined);
 
-    const httpsPort = parsePortableInteger(
-        args.httpsPort ??
-            pickEnvNumberLegacy("HTTPS_PORT") ??
-            pickEnvNumberLegacy("PORT_HTTPS") ??
-            (httpsEnabled && hasLegacyPort ? legacyPort : defaultHttpsPort)
-    ) ?? defaultHttpsPort;
+    const httpsPort = parsePortableInteger(args.httpsPort ?? pickEnvNumberLegacy("HTTPS_PORT") ?? pickEnvNumberLegacy("PORT_HTTPS") ?? (httpsEnabled && hasLegacyPort ? legacyPort : defaultHttpsPort)) ?? defaultHttpsPort;
 
     const { http, https } = await buildCoreServers({ logger: opts.logger ?? true, httpsOptions });
 
@@ -507,9 +467,8 @@ export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: 
 };
 
 if (isMainModule(import.meta)) {
-    startCoreBackend()
-        .catch((err) => {
-            console.error("[core-backend] failed to start", err);
-            process.exit(1);
-        });
+    startCoreBackend().catch((err) => {
+        console.error("[core-backend] failed to start", err);
+        process.exit(1);
+    });
 }

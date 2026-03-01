@@ -28,7 +28,9 @@ type EndpointRouteDecision = {
 };
 
 const normalizeEndpointToken = (value: string): string => {
-    const normalized = String(value || "").trim().toLowerCase();
+    const normalized = String(value || "")
+        .trim()
+        .toLowerCase();
     if (!normalized) return "";
     return normalized.startsWith("{") && normalized.endsWith("}") ? normalized.slice(1, -1).trim() : normalized;
 };
@@ -37,9 +39,7 @@ const normalizePolicyList = (raw: unknown, useWildcard = true): string[] => {
     if (raw === undefined) return useWildcard ? ["*"] : [];
     if (raw === null) return useWildcard ? ["*"] : [];
     if (Array.isArray(raw)) {
-        const list = raw
-            .map((entry) => normalizeEndpointToken(String(entry || "")))
-            .filter(Boolean);
+        const list = raw.map((entry) => normalizeEndpointToken(String(entry || ""))).filter(Boolean);
         if (list.length === 0) return [];
         return list;
     }
@@ -60,7 +60,7 @@ const normalizePolicyForward = (raw: unknown): string => {
 };
 
 const normalizePolicyFlags = (raw: unknown): EndpointIdFlags => {
-    const flags = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const flags = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const out: EndpointIdPolicy["flags"] = {};
     if (typeof flags.mobile === "boolean") out.mobile = flags.mobile;
     if (typeof flags.gateway === "boolean") out.gateway = flags.gateway;
@@ -69,7 +69,7 @@ const normalizePolicyFlags = (raw: unknown): EndpointIdFlags => {
 };
 
 export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPolicy => {
-    const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const normalizedId = normalizeEndpointToken(id);
     return {
         id: normalizedId,
@@ -77,19 +77,13 @@ export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPol
         tokens: normalizePolicyList(source.tokens, false),
         forward: normalizePolicyForward(source.forward),
         flags: normalizePolicyFlags(source.flags),
-        allowedIncoming: normalizePolicyList(
-            source.allowedIncoming,
-            true
-        ),
-        allowedOutcoming: normalizePolicyList(
-            source.allowedOutcoming,
-            true
-        )
+        allowedIncoming: normalizePolicyList(source.allowedIncoming, true),
+        allowedOutcoming: normalizePolicyList(source.allowedOutcoming, true)
     };
 };
 
 export const normalizeEndpointPolicies = (raw: unknown): EndpointIdPolicyMap => {
-    const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const out: NormalizedPolicyValue = {};
     const entries = Object.entries(source);
     for (const [policyId, policySource] of entries) {
@@ -135,10 +129,7 @@ const isAllowedByRules = (rules: readonly string[], candidate: string): boolean 
     return allows.some((entry) => entry === "*" || hasRuleMatch(entry, normalized));
 };
 
-export const resolveEndpointIdPolicy = (
-    policies: EndpointIdPolicyMap,
-    raw: string
-): EndpointIdPolicy | undefined => {
+export const resolveEndpointIdPolicy = (policies: EndpointIdPolicyMap, raw: string): EndpointIdPolicy | undefined => {
     const normalized = normalizeEndpointToken(raw);
     if (!normalized) return undefined;
     if (policies[normalized]) return policies[normalized];
@@ -155,16 +146,12 @@ export const resolveEndpointIdPolicy = (
     return policies["*"];
 };
 
-export const resolveEndpointIdPolicyStrict = (
-    policies: EndpointIdPolicyMap,
-    raw: string
-): EndpointIdPolicy | undefined => {
+export const resolveEndpointIdPolicyStrict = (policies: EndpointIdPolicyMap, raw: string): EndpointIdPolicy | undefined => {
     const normalized = normalizeEndpointToken(raw);
     if (!normalized) return undefined;
     if (policies[normalized] && normalized !== "*") return policies[normalized];
 
-    const entries = Object.entries(policies)
-        .filter(([id]) => id !== "*" && id);
+    const entries = Object.entries(policies).filter(([id]) => id !== "*" && id);
     for (const [, policy] of entries) {
         const normalizedTokens = [...(policy.tokens || []), ...(policy.origins || [])];
         for (const token of normalizedTokens) {
@@ -188,11 +175,7 @@ const stripPort = (value: string): string => {
     return trimmed;
 };
 
-export const resolveEndpointForwardTarget = (
-    raw: string,
-    sourceId: string,
-    policies: EndpointIdPolicyMap
-): string => {
+export const resolveEndpointForwardTarget = (raw: string, sourceId: string, policies: EndpointIdPolicyMap): string => {
     const requested = stripPort(normalizeEndpointToken(raw));
     if (requested) {
         const matched = resolveEndpointIdPolicy(policies, requested);
@@ -212,11 +195,7 @@ export const resolveEndpointForwardTarget = (
     return current;
 };
 
-export const resolveEndpointPolicyRoute = (
-    sourceRaw: string,
-    targetRaw: string,
-    policies: EndpointIdPolicyMap
-): EndpointRouteDecision => {
+export const resolveEndpointPolicyRoute = (sourceRaw: string, targetRaw: string, policies: EndpointIdPolicyMap): EndpointRouteDecision => {
     const source = resolveEndpointIdPolicy(policies, sourceRaw) || policies["*"];
     const target = resolveEndpointIdPolicy(policies, targetRaw) || policies["*"];
     const sourceToken = normalizeEndpointToken(sourceRaw);
@@ -224,11 +203,7 @@ export const resolveEndpointPolicyRoute = (
     const outgoing = isAllowedByRules(source?.allowedOutcoming || ["*"], targetToken);
     const incoming = isAllowedByRules(target?.allowedIncoming || ["*"], sourceToken);
     const allowed = outgoing && incoming;
-    const reason = allowed
-        ? "routing allowed by endpoint policy"
-        : sourceToken && targetToken && sourceRaw && targetRaw
-            ? `routing denied by endpoint policy source=${sourceToken},target=${targetToken}`
-            : "routing denied by endpoint policy";
+    const reason = allowed ? "routing allowed by endpoint policy" : sourceToken && targetToken && sourceRaw && targetRaw ? `routing denied by endpoint policy source=${sourceToken},target=${targetToken}` : "routing denied by endpoint policy";
     return {
         allowed,
         sourcePolicy: source,

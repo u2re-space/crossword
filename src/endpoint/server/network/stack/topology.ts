@@ -54,9 +54,7 @@ export const normalizeNetworkAliasMap = (value: unknown): NetworkAliasMap => {
 export const resolveNetworkAlias = (aliasMap: NetworkAliasMap | undefined, token: string): string => {
     const normalizedToken = token.trim().toLowerCase();
     if (!normalizedToken) return "";
-    const mapped = aliasMap && Object.prototype.hasOwnProperty.call(aliasMap, normalizedToken)
-        ? aliasMap[normalizedToken]
-        : undefined;
+    const mapped = aliasMap && Object.prototype.hasOwnProperty.call(aliasMap, normalizedToken) ? aliasMap[normalizedToken] : undefined;
     if (!mapped) return normalizedToken;
     const trimmed = mapped.trim();
     return trimmed || normalizedToken;
@@ -78,17 +76,9 @@ export const looksLikeExternalHost = (target: string): boolean => {
     return /\./.test(value) || value.startsWith("ws") || value.startsWith("wss") || /^\d{1,3}(?:\.\d{1,3}){3}/.test(value);
 };
 
-export const makeTargetTokenSet = (values: readonly string[]): Set<string> =>
-    new Set(values.map((value) => normalizeAddress(value)).filter(Boolean));
+export const makeTargetTokenSet = (values: readonly string[]): Set<string> => new Set(values.map((value) => normalizeAddress(value)).filter(Boolean));
 
-export const resolveDispatchPlan = (options: {
-    route?: DispatchRouteMode;
-    broadcast?: boolean;
-    target?: string;
-    hasUpstreamTransport?: boolean;
-    isLocalTarget?: (target: string) => boolean;
-    surface?: NetworkSurface;
-}): DispatchRouteDecision => {
+export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadcast?: boolean; target?: string; hasUpstreamTransport?: boolean; isLocalTarget?: (target: string) => boolean; surface?: NetworkSurface }): DispatchRouteDecision => {
     const route = options.route ?? "auto";
     const target = normalizeAddress(options.target ?? "");
     const hasUpstream = options.hasUpstreamTransport === true;
@@ -116,15 +106,11 @@ export const resolveDispatchPlan = (options: {
     if (route === "both") {
         const hasLocal = target ? options.isLocalTarget?.(target) === true : false;
         return {
-            route: hasUpstream || hasLocal ? "both" : (hasLocal ? "local" : "none"),
+            route: hasUpstream || hasLocal ? "both" : hasLocal ? "local" : "none",
             local: hasLocal,
             upstream: hasUpstream,
             surface: options.surface || "unknown",
-            reason: hasUpstream && hasLocal
-                ? "route forced both local + upstream"
-                : hasUpstream
-                    ? "upstream enabled; local target not matched"
-                    : "upstream disabled; local requested only"
+            reason: hasUpstream && hasLocal ? "route forced both local + upstream" : hasUpstream ? "upstream enabled; local target not matched" : "upstream disabled; local requested only"
         };
     }
 
@@ -168,12 +154,7 @@ export const resolveDispatchPlan = (options: {
     };
 };
 
-export const resolveDispatchAudience = (options: {
-    target?: string;
-    targets?: readonly string[];
-    broadcast?: boolean;
-    implicitTargets?: readonly string[];
-}): DispatchAudiencePlan => {
+export const resolveDispatchAudience = (options: { target?: string; targets?: readonly string[]; broadcast?: boolean; implicitTargets?: readonly string[] }): DispatchAudiencePlan => {
     const explicitTargets = new Set<string>();
     if (typeof options.target === "string") {
         const normalized = options.target.trim().toLowerCase();
@@ -197,11 +178,9 @@ export const resolveDispatchAudience = (options: {
         };
     }
 
-    const implicit = Array.isArray(options.implicitTargets)
-        ? Array.from(new Set(options.implicitTargets.map((value) => value?.trim().toLowerCase()).filter(Boolean)))
-        : [];
+    const implicit = Array.isArray(options.implicitTargets) ? Array.from(new Set(options.implicitTargets.map((value) => value?.trim().toLowerCase()).filter(Boolean))) : [];
 
-    if ((options.broadcast === true) && implicit.length > 0) {
+    if (options.broadcast === true && implicit.length > 0) {
         return {
             targets: implicit,
             fanout: implicit.length > 1,

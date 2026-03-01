@@ -44,12 +44,7 @@ export const executeAiPipeline = async (ctx: any, options: AiExecutionOptions): 
     return orchestrator.smartRecognize(options.input, options.hints, instructionOptions);
 };
 
-export const buildLegacyAiResponse = (opts: {
-    kind: LegacyAiKind;
-    result: any;
-    title?: string;
-    customInstruction: boolean;
-}): { ok: boolean; results: any[] } => {
+export const buildLegacyAiResponse = (opts: { kind: LegacyAiKind; result: any; title?: string; customInstruction: boolean }): { ok: boolean; results: any[] } => {
     if (opts.kind === "recognize") {
         const subId = Date.now();
         const directory = "/docs/preferences/";

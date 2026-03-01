@@ -19,10 +19,9 @@ export const FLAG_DOUBLE = 0x80;
 
 // Server-side jitter and smoothing parameters
 export const SERVER_JITTER_EPS = 0.5; // pixels; ignore tiny deltas
-export const SERVER_MAX_STEP = 200;   // safety clamp per flush
+export const SERVER_MAX_STEP = 200; // safety clamp per flush
 export const SERVER_SMOOTH_ALPHA = 0.8; // ~exponential approach to target
 
 // Ports
 // HTTP server port (non-TLS). Previously used for redirect-only server.
 export const HTTP_PORT = 8080;
-

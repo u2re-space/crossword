@@ -6,11 +6,7 @@ export interface HttpFrame extends NetworkFrame {
     requestMethod?: string;
 }
 
-export const normalizeHttpFrame = (
-    raw: unknown,
-    sourceId: string,
-    requestMeta?: { requestPath?: string; requestMethod?: string }
-): NormalizedNetworkFrame & HttpFrame => {
+export const normalizeHttpFrame = (raw: unknown, sourceId: string, requestMeta?: { requestPath?: string; requestMethod?: string }): NormalizedNetworkFrame & HttpFrame => {
     return {
         ...normalizeFrame(raw, sourceId),
         transport: "http",

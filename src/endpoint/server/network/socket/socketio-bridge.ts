@@ -2,24 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 import { randomUUID } from "node:crypto";
 
-import {
-    applySocketIoPrivateNetworkHeaders,
-    buildSocketIoOptions,
-    describeHandshake,
-    isPrivateNetworkCorsEnabled
-} from "./socketio-security.ts";
-import {
-    applyMessageHooks,
-    isBroadcast,
-    normalizeSocketFrame,
-    type SocketMessageHook
-} from "../stack/messages.ts";
+import { applySocketIoPrivateNetworkHeaders, buildSocketIoOptions, describeHandshake, isPrivateNetworkCorsEnabled } from "./socketio-security.ts";
+import { applyMessageHooks, isBroadcast, normalizeSocketFrame, type SocketMessageHook } from "../stack/messages.ts";
 import { registerAirpadSocketHandlers } from "../../routing/socket-airpad.ts";
-import { AirpadClipHistoryEntry,
-AirpadConnectionMeta,
-describeAirPadConnectionMeta,
-isAirPadAuthorized,
-requiresAirpadMessageAuth } from "../modules/airpad.ts";
+import { AirpadClipHistoryEntry, AirpadConnectionMeta, describeAirPadConnectionMeta, isAirPadAuthorized, requiresAirpadMessageAuth } from "../modules/airpad.ts";
 import { createAirpadObjectMessageHandler } from "../modules/airpad.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
@@ -30,12 +16,7 @@ export type SocketIoBridge = {
     getConnectedDevices: () => string[];
     getClipboardHistory: (limit?: number) => ClipHistoryEntry[];
     sendToDevice: (userId: string, deviceId: string, payload: any) => boolean;
-    requestToDevice?: (
-        userId: string,
-        deviceId: string,
-        payload: any,
-        waitMs?: number
-    ) => Promise<any>;
+    requestToDevice?: (userId: string, deviceId: string, payload: any, waitMs?: number) => Promise<any>;
     io: SocketIOServer;
 };
 
@@ -52,13 +33,9 @@ export type SocketIoBridgeOptions = {
 const MAX_HISTORY_DEFAULT = 100;
 
 const logMsg = (prefix: string, msg: any): void => {
-    const payloadLen = msg?.payload
-        ? (typeof msg.payload === "string" ? msg.payload.length : JSON.stringify(msg.payload).length)
-        : 0;
+    const payloadLen = msg?.payload ? (typeof msg.payload === "string" ? msg.payload.length : JSON.stringify(msg.payload).length) : 0;
     // Keep this format stable for grep-ability and client debugging
-    console.log(
-        `[${new Date().toISOString()}] ${prefix} type=${msg?.type} from=${msg?.from} to=${msg?.to} mode=${msg?.mode || "blind"} action=${msg?.action || "N/A"} payloadLen=${payloadLen}`
-    );
+    console.log(`[${new Date().toISOString()}] ${prefix} type=${msg?.type} from=${msg?.from} to=${msg?.to} mode=${msg?.mode || "blind"} action=${msg?.action || "N/A"} payloadLen=${payloadLen}`);
 };
 const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 const NETWORK_FETCH_TIMEOUT_MS = Math.max(
@@ -69,8 +46,7 @@ const NETWORK_FETCH_TIMEOUT_MS = Math.max(
     })()
 );
 
-const mapHookPayload = (hooks: SocketMessageHook[], msg: any, socket: Socket) =>
-    applyMessageHooks(hooks, msg, socket);
+const mapHookPayload = (hooks: SocketMessageHook[], msg: any, socket: Socket) => applyMessageHooks(hooks, msg, socket);
 
 export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeOptions = {}): SocketIoBridge => {
     const maxHistory = opts?.maxHistory ?? MAX_HISTORY_DEFAULT;
@@ -102,13 +78,15 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const airpadConnectionMeta = new Map<Socket, AirpadConnectionMeta>();
     const airpadTargets = new Map<string, Set<Socket>>();
     const socketAliases = new Map<Socket, Set<string>>();
-    const pendingFetchReplies = new Map<string, {
-        resolve: (value: any) => void;
-        reject: (error: any) => void;
-        timer?: ReturnType<typeof setTimeout>;
-    }>();
-    const requestToDeviceKey = (userId: string, deviceId: string, requestId: string) =>
-        `${userId}:${deviceId}:${requestId}`;
+    const pendingFetchReplies = new Map<
+        string,
+        {
+            resolve: (value: any) => void;
+            reject: (error: any) => void;
+            timer?: ReturnType<typeof setTimeout>;
+        }
+    >();
+    const requestToDeviceKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
 
     const normalizeHint = (value: unknown): string => {
         if (typeof value !== "string") return "";
@@ -175,25 +153,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
     const getHandshakeClientId = (socket: Socket): string | undefined => {
         const handshake: Record<string, unknown> = (socket as any).handshake || {};
-        const auth = (handshake.auth && typeof handshake.auth === "object") ? handshake.auth as Record<string, unknown> : {};
-        const query = (handshake.query && typeof handshake.query === "object") ? handshake.query as Record<string, unknown> : {};
-        const raw = typeof auth.clientId === "string"
-            ? auth.clientId
-            : typeof query.clientId === "string"
-                ? query.clientId
-                : typeof query.__airpad_src === "string"
-                    ? query.__airpad_src
-                : typeof query.__airpad_source === "string"
-                    ? query.__airpad_source
-                : typeof query.src === "string"
-                    ? query.src
-                    : typeof query.source === "string"
-                        ? query.source
-                        : typeof query.sourceId === "string"
-                            ? query.sourceId
-                            : typeof query.peerId === "string"
-                                ? query.peerId
-                : "";
+        const auth = handshake.auth && typeof handshake.auth === "object" ? (handshake.auth as Record<string, unknown>) : {};
+        const query = handshake.query && typeof handshake.query === "object" ? (handshake.query as Record<string, unknown>) : {};
+        const raw = typeof auth.clientId === "string" ? auth.clientId : typeof query.clientId === "string" ? query.clientId : typeof query.__airpad_src === "string" ? query.__airpad_src : typeof query.__airpad_source === "string" ? query.__airpad_source : typeof query.src === "string" ? query.src : typeof query.source === "string" ? query.source : typeof query.sourceId === "string" ? query.sourceId : typeof query.peerId === "string" ? query.peerId : "";
         const normalized = normalizeHint(raw);
         return normalized || undefined;
     };
@@ -209,12 +171,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const forwardBinaryToUpstream = (sourceSocket: Socket, raw: Buffer | Uint8Array, target: string): boolean => {
         if (!networkContext?.sendToUpstream) {
             if (isTunnelDebug) {
-                console.log(
-                    `[Router] Binary tunnel upstream unavailable`,
-                    `socket=${sourceSocket.id}`,
-                    `target=${target}`,
-                    `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`
-                );
+                console.log(`[Router] Binary tunnel upstream unavailable`, `socket=${sourceSocket.id}`, `target=${target}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
             }
             return false;
         }
@@ -243,12 +200,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (accepted && isTunnelDebug) {
             console.log(`[Router] OUT(tunnel-upstream-binary)`, `socket=${sourceSocket.id}`, `target=${upstreamTarget}`);
         } else if (isTunnelDebug) {
-            console.log(
-                `[Router] Binary tunnel upstream rejected`,
-                `socket=${sourceSocket.id}`,
-                `target=${upstreamTarget}`,
-                `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`
-            );
+            console.log(`[Router] Binary tunnel upstream rejected`, `socket=${sourceSocket.id}`, `target=${upstreamTarget}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
         }
         return accepted;
     };
@@ -346,10 +298,13 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         return new Promise<any>((resolve, reject) => {
             const key = requestToDeviceKey(normalizeHint(userId), normalizedDevice, requestId);
             const timeout = parsePortableInteger(waitMs) ?? NETWORK_FETCH_TIMEOUT_MS;
-            const timer = setTimeout(() => {
-                pendingFetchReplies.delete(key);
-                reject(new Error(`network.fetch timeout: ${requestId}`));
-            }, Math.max(500, timeout));
+            const timer = setTimeout(
+                () => {
+                    pendingFetchReplies.delete(key);
+                    reject(new Error(`network.fetch timeout: ${requestId}`));
+                },
+                Math.max(500, timeout)
+            );
             pendingFetchReplies.set(key, { resolve, reject, timer });
             try {
                 targetSocket.emit("network.fetch", envelope, (response: any) => {
@@ -386,12 +341,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const forwardToUpstream = (sourceSocket: Socket, frame: any): boolean => {
         if (!networkContext?.sendToUpstream) {
             if (isTunnelDebug) {
-                console.log(
-                    `[Router] Tunnel upstream unavailable`,
-                    `socket=${sourceSocket.id}`,
-                    `to=${normalizeHint(frame?.to) || "?"}`,
-                    `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`
-                );
+                console.log(`[Router] Tunnel upstream unavailable`, `socket=${sourceSocket.id}`, `to=${normalizeHint(frame?.to) || "?"}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
             }
             return false;
         }
@@ -420,13 +370,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const messageHooks: SocketMessageHook[] = [];
 
     const routeMessage = (sourceSocket: Socket, msg: any): void => {
-        const hasExplicitTarget = msg && typeof msg === "object" && (
-            "to" in msg ||
-            "target" in msg ||
-            "targetId" in msg ||
-            "target_id" in msg ||
-            "deviceId" in msg
-        );
+        const hasExplicitTarget = msg && typeof msg === "object" && ("to" in msg || "target" in msg || "targetId" in msg || "target_id" in msg || "deviceId" in msg);
         const normalized = normalizeSocketFrame(msg, sourceSocket.id, {
             nodeId: (sourceSocket as any).userId,
             peerId: sourceSocket.id,
@@ -447,14 +391,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const tunnelTargets = resolveTunnelTargets(sourceSocket, processed);
         if (tunnelTargets.length > 0) {
             if (isTunnelDebug) {
-                console.log(
-                    `[Router] Tunnel route attempt`,
-                    `socket=${sourceSocket.id}`,
-                    `from=${processed.from}`,
-                    `to=${processed.to}`,
-                    `targets=${tunnelTargets.join(",")}`,
-                    `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`
-                );
+                console.log(`[Router] Tunnel route attempt`, `socket=${sourceSocket.id}`, `from=${processed.from}`, `to=${processed.to}`, `targets=${tunnelTargets.join(",")}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
             }
             if (forwardToAirpadTargets(sourceSocket, processed, processed)) {
                 logMsg("OUT(tunnel)", processed);
@@ -469,11 +406,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             }
             const knownTunnelTargets = Array.from(airpadTargets.keys()).filter((key) => key);
             if (isTunnelDebug) {
-                console.warn(
-                    `[Router] Tunnel target not found for ${sourceSocket.id}`,
-                    `requested=${tunnelTargets.join(",")}`,
-                    `known=${knownTunnelTargets.join(",")}`
-                );
+                console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`, `requested=${tunnelTargets.join(",")}`, `known=${knownTunnelTargets.join(",")}`);
             } else {
                 console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`);
             }
@@ -554,7 +487,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
         socket.on("hello", (data: any) => {
             const handshakeClientId = getHandshakeClientId(socket);
-            deviceId = normalizeHint((data?.id as string)) || handshakeClientId || sourceAlias || socket.id;
+            deviceId = normalizeHint(data?.id as string) || handshakeClientId || sourceAlias || socket.id;
             addClientAlias(socket, deviceId);
             if (deviceId) {
                 addTunnelAlias(socket, deviceId);
@@ -589,11 +522,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 const tunnelTargets = resolveTunnelTargets(sourceSocket, { to: "broadcast" });
                 if (!tunnelTargets.length) {
                     if (isTunnelDebug) {
-                        console.log(
-                            `[Router] Binary tunnel target unavailable`,
-                            `socket=${sourceSocket.id}`,
-                            `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`
-                        );
+                        console.log(`[Router] Binary tunnel target unavailable`, `socket=${sourceSocket.id}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
                     }
                     return false;
                 }
@@ -611,20 +540,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 }
                 if (isTunnelDebug) {
                     const knownTunnelTargets = Array.from(airpadTargets.keys()).filter((key) => key);
-                    console.log(
-                        `[Router] Binary tunnel attempt`,
-                        `socket=${sourceSocket.id}`,
-                        `forwarded=false`,
-                        `target=${tunnelTargets.join("|")}`,
-                        `known=${knownTunnelTargets.join(",")}`
-                    );
+                    console.log(`[Router] Binary tunnel attempt`, `socket=${sourceSocket.id}`, `forwarded=false`, `target=${tunnelTargets.join("|")}`, `known=${knownTunnelTargets.join(",")}`);
                 }
                 if (isTunnelDebug) {
-                    console.warn(
-                        `[Router] Binary tunnel target not found for ${sourceSocket.id}`,
-                        `target=${tunnelTargets.join("|")}`,
-                        `upstreamEnabled=${networkContext?.sendToUpstream === true}`
-                    );
+                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `upstreamEnabled=${networkContext?.sendToUpstream === true}`);
                 }
                 if (!isTunnelDebug) {
                     console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`);
@@ -640,7 +559,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     clients.delete(deviceId);
                     socket.broadcast.emit("device-disconnected", { id: deviceId });
                 }
-            },
+            }
         });
 
         socket.on("network.fetch", (request: any, ack?: (value: any) => void) => {
@@ -729,8 +648,6 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         getConnectedDevices: () => Array.from(clients.keys()),
         getClipboardHistory: (limit = maxHistory) => clipHistory.slice(-limit),
         sendToDevice,
-        requestToDevice,
+        requestToDevice
     };
 };
-
-

@@ -1,8 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const isDenoRuntime = (): boolean =>
-    typeof (globalThis as any).Deno !== "undefined" && Boolean((globalThis as any).Deno?.version?.deno);
+export const isDenoRuntime = (): boolean => typeof (globalThis as any).Deno !== "undefined" && Boolean((globalThis as any).Deno?.version?.deno);
 
 export const getEnv = (key: string): string | undefined => {
     if (isDenoRuntime()) {
@@ -53,5 +52,3 @@ export const runtimeArgs = (): string[] => {
     }
     return process.argv.slice(2);
 };
-
-

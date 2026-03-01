@@ -30,12 +30,11 @@ type TcpSession = {
 };
 
 const parsePrivateNetworkHosts = (): Set<string> => {
-    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ??
-        pickEnvStringLegacy("WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ??
-        "";
+    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ?? pickEnvStringLegacy("WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ?? "";
     if (!raw.trim()) return new Set<string>();
     return new Set(
-        raw.split(",")
+        raw
+            .split(",")
             .map((value) => value.trim().toLowerCase())
             .filter(Boolean)
     );
@@ -73,11 +72,7 @@ const parsePort = (raw?: unknown): number | undefined => {
 };
 
 const parseTcpEndpoint = (frame: TcpPassthroughFrame): { host: string; port?: number } | undefined => {
-    const hostInput = typeof frame.target === "string" && frame.target.trim()
-        ? frame.target.trim()
-        : typeof frame.host === "string" && frame.host.trim()
-            ? frame.host.trim()
-            : undefined;
+    const hostInput = typeof frame.target === "string" && frame.target.trim() ? frame.target.trim() : typeof frame.host === "string" && frame.host.trim() ? frame.host.trim() : undefined;
     if (!hostInput) return undefined;
 
     try {
@@ -113,9 +108,7 @@ const isTcpTargetAllowed = (host: string, explicitPort: number | undefined): boo
 
 const explicitPortHostOverride = (host: string, explicitPort?: number): boolean => {
     if (!explicitPort) return false;
-    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ??
-        pickEnvStringLegacy("WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ??
-        "";
+    const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ?? pickEnvStringLegacy("WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ?? "";
     const entries = raw
         .split(",")
         .map((value) => value.trim().toLowerCase())
@@ -186,15 +179,17 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const namespaces = new Map<string, Map<string, ClientInfo>>();
     const reverseClients = new Map<string, ClientInfo>();
     const reversePeerProfiles = new Map<string, Map<string, { label: string; peerId: string }>>();
-    const pendingFetchReplies = new Map<string, {
-        resolve: (value: any) => void;
-        reject: (error: any) => void;
-        timer?: ReturnType<typeof setTimeout>;
-    }>();
+    const pendingFetchReplies = new Map<
+        string,
+        {
+            resolve: (value: any) => void;
+            reject: (error: any) => void;
+            timer?: ReturnType<typeof setTimeout>;
+        }
+    >();
     const tcpSessions = new Map<WebSocket, Map<string, TcpSession>>();
     const reverseClientKey = (userId: string, deviceId: string) => `${userId}:${deviceId}`;
-    const requestKey = (userId: string, deviceId: string, requestId: string) =>
-        `${userId}:${deviceId}:${requestId}`;
+    const requestKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
     const resolveReverseClientByTarget = (userId: string, target: string): ClientInfo | undefined => {
         const normalizedUser = userId.toLowerCase();
         const normalizedTarget = target.toLowerCase();
@@ -272,9 +267,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const handleTcpPassthroughFrame = (socket: WebSocket, frame: TcpPassthroughFrame, userId: string, source: ClientInfo) => {
         const payloadType = String(frame.type || "").trim();
         if (!payloadType || !payloadType.startsWith("tcp.")) return false;
-        const sessionId = typeof frame.sessionId === "string" && frame.sessionId.trim()
-            ? frame.sessionId.trim()
-            : randomUUID();
+        const sessionId = typeof frame.sessionId === "string" && frame.sessionId.trim() ? frame.sessionId.trim() : randomUUID();
 
         if (payloadType === "tcp.connect") {
             const parsedEndpoint = parseTcpEndpoint(frame);
@@ -519,7 +512,9 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                     }
                 }
             }
-            const frameType = String(parsed?.type || "").trim().toLowerCase();
+            const frameType = String(parsed?.type || "")
+                .trim()
+                .toLowerCase();
             if (frameType === "pong" || frameType === "hello") {
                 return;
             }
@@ -535,12 +530,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             const shouldBroadcast = isBroadcast(frame);
             // Simple forwarding: if targetId matches a client, relay
             if (!shouldBroadcast) {
-                const target = [...clients.values()].find((c) =>
-                    c.id === frame.to ||
-                    c.deviceId === frame.to ||
-                    c.peerId === frame.to ||
-                    c.userId === frame.to
-                );
+                const target = [...clients.values()].find((c) => c.id === frame.to || c.deviceId === frame.to || c.peerId === frame.to || c.userId === frame.to);
                 target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
             } else {
                 // broadcast to same userId
@@ -624,10 +614,13 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         return new Promise<any>((resolve, reject) => {
             const key = requestKey(normalizedUser, pendingTarget, requestId);
             const timeout = parsePortableInteger(waitMs) ?? 15000;
-            const timer = setTimeout(() => {
-                pendingFetchReplies.delete(key);
-                reject(new Error(`network.fetch timeout: ${requestId}`));
-            }, Math.max(500, timeout));
+            const timer = setTimeout(
+                () => {
+                    pendingFetchReplies.delete(key);
+                    reject(new Error(`network.fetch timeout: ${requestId}`));
+                },
+                Math.max(500, timeout)
+            );
             pendingFetchReplies.set(key, { resolve, reject, timer });
             try {
                 target.ws.send(JSON.stringify(envelope));
@@ -644,19 +637,12 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const asDevice = (key: string) => key.split(":")[1];
         if (!userId) return Array.from(new Set(keys.map(asDevice)));
         const prefix = `${userId}:`;
-        return Array.from(new Set(
-            keys
-                .filter((key) => key.startsWith(prefix))
-                .map((key) => key.slice(prefix.length))
-        ));
+        return Array.from(new Set(keys.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length))));
     };
 
     const getConnectedPeerProfiles = (userId?: string): Array<{ id: string; label: string; peerId?: string }> => {
         if (!userId) {
-            return Array.from(reversePeerProfiles.values())
-                .flatMap((labelsByDevice) =>
-                    Array.from(labelsByDevice.entries()).map(([id, profile]) => ({ id, label: profile.label, peerId: profile.peerId }))
-                );
+            return Array.from(reversePeerProfiles.values()).flatMap((labelsByDevice) => Array.from(labelsByDevice.entries()).map(([id, profile]) => ({ id, label: profile.label, peerId: profile.peerId })));
         }
         const profile = reversePeerProfiles.get(userId);
         if (!profile) return [];
@@ -666,7 +652,9 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const close = async () => {
         clients.forEach((c) => c.ws.close());
         server.off("upgrade", upgradeHandler);
-        await new Promise<void>((resolve) => { wss.close(() => resolve()); });
+        await new Promise<void>((resolve) => {
+            wss.close(() => resolve());
+        });
     };
 
     return {

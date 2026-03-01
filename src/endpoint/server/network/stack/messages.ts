@@ -1,4 +1,4 @@
-import { isBroadcastFrame, NormalizedNetworkFrame,normalizeFrame } from "./protocol.ts";
+import { isBroadcastFrame, NormalizedNetworkFrame, normalizeFrame } from "./protocol.ts";
 import { normalizeTunnelFrame } from "./protocol/tunnel.ts";
 
 export type SocketMessageHook = (msg: NormalizedNetworkFrame, ctx?: any) => unknown | null | undefined;
@@ -10,11 +10,7 @@ type SocketRoutingContext = {
     surface?: string;
 };
 
-export const normalizeSocketFrame = (
-    raw: unknown,
-    sourceId: string,
-    context: SocketRoutingContext = {}
-): NormalizedNetworkFrame => {
+export const normalizeSocketFrame = (raw: unknown, sourceId: string, context: SocketRoutingContext = {}): NormalizedNetworkFrame => {
     return {
         ...normalizeFrame(raw, sourceId),
         ...context
@@ -52,10 +48,7 @@ type TunnelPeerResolution = {
     source: "id" | "exactLabel" | "containsLabel";
 };
 
-export const resolveTunnelTarget = (
-    peers: TunnelPeerProfile[] | undefined | null,
-    requestedTarget: string
-): TunnelPeerResolution | undefined => {
+export const resolveTunnelTarget = (peers: TunnelPeerProfile[] | undefined | null, requestedTarget: string): TunnelPeerResolution | undefined => {
     const target = requestedTarget.trim();
     if (!target) return undefined;
 
@@ -76,11 +69,7 @@ export const resolveTunnelTarget = (
     return undefined;
 };
 
-export const normalizeTunnelRoutingFrame = (
-    raw: unknown,
-    sourceId: string,
-    routeMeta?: TunnelRouteMeta
-): NormalizedNetworkFrame => {
+export const normalizeTunnelRoutingFrame = (raw: unknown, sourceId: string, routeMeta?: TunnelRouteMeta): NormalizedNetworkFrame => {
     return normalizeTunnelFrame(raw, sourceId, routeMeta);
 };
 

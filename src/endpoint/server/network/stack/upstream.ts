@@ -87,20 +87,8 @@ type EnvelopePayload = {
 
 const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 const shouldRejectUnauthorized = pickEnvBoolLegacy("CWS_UPSTREAM_REJECT_UNAUTHORIZED", true) !== false;
-const invalidCredentialsRetryMs = Math.max(
-    1000,
-    pickEnvNumberLegacy("CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000
-);
-const TLS_VERIFY_ERRORS = [
-    "unable to verify the first certificate",
-    "self signed certificate",
-    "certificate has expired",
-    "certificate is not yet valid",
-    "self signed certificate in certificate chain",
-    "DEPTH_ZERO_SELF_SIGNED_CERT",
-    "SELF_SIGNED_CERT_IN_CHAIN",
-    "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
-];
+const invalidCredentialsRetryMs = Math.max(1000, pickEnvNumberLegacy("CWS_UPSTREAM_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000);
+const TLS_VERIFY_ERRORS = ["unable to verify the first certificate", "self signed certificate", "certificate has expired", "certificate is not yet valid", "self signed certificate in certificate chain", "DEPTH_ZERO_SELF_SIGNED_CERT", "SELF_SIGNED_CERT_IN_CHAIN", "UNABLE_TO_VERIFY_LEAF_SIGNATURE"];
 
 const isTlsVerifyError = (message: string) => {
     const lower = (message || "").toLowerCase();
@@ -119,7 +107,9 @@ const maskValue = (value: string): string => {
 };
 
 const normalizeHost = (value: string): string => {
-    return String(value || "").trim().toLowerCase();
+    return String(value || "")
+        .trim()
+        .toLowerCase();
 };
 
 const normalizeInterfaceAddress = (value: string): string => {
@@ -131,12 +121,7 @@ const normalizeInterfaceAddress = (value: string): string => {
 };
 
 const getLocalUpstreamHosts = (): Set<string> => {
-    const hosts = new Set<string>([
-        "localhost",
-        "127.0.0.1",
-        "::1",
-        normalizeHost(getHostName())
-    ]);
+    const hosts = new Set<string>(["localhost", "127.0.0.1", "::1", normalizeHost(getHostName())]);
     const interfaces = networkInterfaces();
     for (const entryList of Object.values(interfaces || {})) {
         if (!entryList) continue;
@@ -191,7 +176,10 @@ const normalizeOriginList = (value: unknown): string[] => {
         return value.map((item) => String(item || "").trim()).filter(Boolean);
     }
     if (typeof value === "string") {
-        return value.split(/[;,]/).map((item) => item.trim()).filter(Boolean);
+        return value
+            .split(/[;,]/)
+            .map((item) => item.trim())
+            .filter(Boolean);
     }
     return [];
 };
@@ -206,18 +194,12 @@ const parseUpstreamMode = (value: unknown): "active" | "passive" | undefined => 
 let invalidCredentialBlockUntil = 0;
 
 const formatHintForInvalidCredentials = (userId?: string, deviceId?: string, endpoint?: string) => {
-    return `Invalid upstream credentials for userId="${userId || "-"}" deviceId="${deviceId || "-"}" endpoint="${endpoint || "-"}". ` +
-        "Create or align this user on the target endpoint via `/core/auth/register` (POST {\"userId\":\"...\",\"userKey\":\"...\",\"encrypt\":false}) " +
-        "then set the same upstream.userId/upstream.userKey in both endpoints.";
+    return `Invalid upstream credentials for userId="${userId || "-"}" deviceId="${deviceId || "-"}" endpoint="${endpoint || "-"}". ` + 'Create or align this user on the target endpoint via `/core/auth/register` (POST {"userId":"...","userKey":"...","encrypt":false}) ' + "then set the same upstream.userId/upstream.userKey in both endpoints.";
 };
 
 const normalizeRoleSet = (roles: unknown): Set<string> => {
     if (!Array.isArray(roles)) return new Set<string>();
-    return new Set(
-        roles
-            .map((value) => (typeof value === "string" ? value.trim().toLowerCase() : ""))
-            .filter((value) => value.length > 0)
-    );
+    return new Set(roles.map((value) => (typeof value === "string" ? value.trim().toLowerCase() : "")).filter((value) => value.length > 0));
 };
 
 /**
@@ -324,44 +306,22 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
     };
     const origin = {
         originId: normalizeOriginToken((upstream as Record<string, any>).originId || originConfig.originId),
-        originHosts: normalizeOriginList(
-            originConfig.hosts || originConfig.host || (upstream as Record<string, any>).originHosts
-        ),
-        originDomains: normalizeOriginList(
-            originConfig.domains || (upstream as Record<string, any>).originDomains
-        ),
-        originMasks: normalizeOriginList(
-            originConfig.masks || (upstream as Record<string, any>).originMasks
-        ),
+        originHosts: normalizeOriginList(originConfig.hosts || originConfig.host || (upstream as Record<string, any>).originHosts),
+        originDomains: normalizeOriginList(originConfig.domains || (upstream as Record<string, any>).originDomains),
+        originMasks: normalizeOriginList(originConfig.masks || (upstream as Record<string, any>).originMasks),
         surface: normalizeOriginToken(originConfig.surface || (upstream as Record<string, any>).originSurface).toLowerCase() || "external"
     };
-    const endpointEntries = envEndpoints.length
-        ? envEndpoints
-        : Array.isArray(upstream.endpoints)
-            ? upstream.endpoints
-            : typeof upstream.endpointUrl === "string"
-                ? [upstream.endpointUrl]
-            : [];
-    const normalizedEndpoints = endpointEntries
-        .map((item) => String(item ?? "").trim())
-        .filter((item) => !!item);
+    const endpointEntries = envEndpoints.length ? envEndpoints : Array.isArray(upstream.endpoints) ? upstream.endpoints : typeof upstream.endpointUrl === "string" ? [upstream.endpointUrl] : [];
+    const normalizedEndpoints = endpointEntries.map((item) => String(item ?? "").trim()).filter((item) => !!item);
     const uniqueEndpoints = Array.from(new Set(normalizedEndpoints));
 
-    const endpointUrl = envEndpointUrl || (typeof upstream.endpointUrl === "string"
-        ? upstream.endpointUrl.trim()
-        : uniqueEndpoints[0] || "");
+    const endpointUrl = envEndpointUrl || (typeof upstream.endpointUrl === "string" ? upstream.endpointUrl.trim() : uniqueEndpoints[0] || "");
     const userId = envUserId || (typeof upstream.userId === "string" ? upstream.userId.trim() : "");
     const userKey = envUserKey || (typeof upstream.userKey === "string" ? upstream.userKey.trim() : "");
     const clientId = envUpstreamClientId || (typeof upstream.clientId === "string" ? upstream.clientId.trim() : "");
     if (!enabled) {
         if (isTunnelDebug) {
-            console.info(
-                `[upstream.connector] disabled: enabled=false`,
-                `roles=${formatEndpointList(Array.isArray(config.roles) ? config.roles : [])}`,
-                `endpointUrl=${endpointUrl || "-"}`,
-                `userId=${maskValue(userId)}`,
-                `userKey=${maskValue(userKey)}`
-            );
+            console.info(`[upstream.connector] disabled: enabled=false`, `roles=${formatEndpointList(Array.isArray(config.roles) ? config.roles : [])}`, `endpointUrl=${endpointUrl || "-"}`, `userId=${maskValue(userId)}`, `userKey=${maskValue(userKey)}`);
         }
         return null;
     }
@@ -370,13 +330,7 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         if (!endpointUrl) missing.push("endpointUrl");
         if (!userId) missing.push("userId");
         if (!userKey) missing.push("userKey");
-        console.warn(
-            `[upstream.connector] disabled: active mode requires credentials and endpoint`,
-            `missing=${missing.join(",") || "none"}`,
-            `endpointUrl=${endpointUrl || "-"}`,
-            `userId=${userId ? "***" : "-"}`,
-            `userKey=${userKey ? "***" : "-"}`
-        );
+        console.warn(`[upstream.connector] disabled: active mode requires credentials and endpoint`, `missing=${missing.join(",") || "none"}`, `endpointUrl=${endpointUrl || "-"}`, `userId=${userId ? "***" : "-"}`, `userKey=${userKey ? "***" : "-"}`);
         return null;
     }
 
@@ -399,13 +353,9 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
         userId,
         userKey,
         clientId,
-        deviceId: envDeviceId || (typeof upstream.deviceId === "string" && upstream.deviceId.trim()
-            ? upstream.deviceId.trim()
-            : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`),
-        namespace: envNamespace || (typeof upstream.namespace === "string" && upstream.namespace.trim()
-            ? upstream.namespace.trim()
-            : "default"),
-        reconnectMs: envReconnectMs > 0 ? envReconnectMs : (reconnectMs > 0 ? reconnectMs : 5000)
+        deviceId: envDeviceId || (typeof upstream.deviceId === "string" && upstream.deviceId.trim() ? upstream.deviceId.trim() : `endpoint-${randomUUID().replace(/-/g, "").slice(0, 12)}`),
+        namespace: envNamespace || (typeof upstream.namespace === "string" && upstream.namespace.trim() ? upstream.namespace.trim() : "default"),
+        reconnectMs: envReconnectMs > 0 ? envReconnectMs : reconnectMs > 0 ? reconnectMs : 5000
     };
 };
 
@@ -446,10 +396,7 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>)
 export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: UpstreamClientOptions = {}): RunningClient | null => {
     if (!isConnectorRoleEnabled(rawConfig)) {
         if (isTunnelDebug) {
-            console.info(
-            "[upstream.connector] disabled: client/peer/hub role is not enabled",
-                `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`
-            );
+            console.info("[upstream.connector] disabled: client/peer/hub role is not enabled", `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`);
         }
         return null;
     }
@@ -458,12 +405,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
     if (!cfg) return null;
     if (cfg.mode === "passive") {
         if (isTunnelDebug) {
-            console.info(
-                "[upstream.connector] passive mode: skip reverse connector startup",
-                `mode=${cfg.mode}`,
-                `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`,
-                `gatewayCandidates=${formatEndpointList(cfg.endpoints)}`
-            );
+            console.info("[upstream.connector] passive mode: skip reverse connector startup", `mode=${cfg.mode}`, `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`, `gatewayCandidates=${formatEndpointList(cfg.endpoints)}`);
         }
         let stopped = false;
         return {
@@ -494,17 +436,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         };
     }
     if (isTunnelDebug) {
-        console.info(
-            "[upstream.connector] config accepted",
-            `enabled=${cfg.enabled}`,
-            `mode=${cfg.mode}`,
-            `userId=${maskValue(cfg.userId)}`,
-            `endpoint=${cfg.endpointUrl}`,
-            `endpoints=${formatEndpointList(cfg.endpoints)}`,
-            `namespace=${cfg.namespace}`,
-            `deviceId=${cfg.deviceId}`,
-            `clientId=${cfg.clientId || cfg.deviceId}`
-        );
+        console.info("[upstream.connector] config accepted", `enabled=${cfg.enabled}`, `mode=${cfg.mode}`, `userId=${maskValue(cfg.userId)}`, `endpoint=${cfg.endpointUrl}`, `endpoints=${formatEndpointList(cfg.endpoints)}`, `namespace=${cfg.namespace}`, `deviceId=${cfg.deviceId}`, `clientId=${cfg.clientId || cfg.deviceId}`);
     }
 
     const localHosts = getLocalUpstreamHosts();
@@ -538,7 +470,6 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
             console.warn("[upstream.connector] disabled: no explicit endpoint candidates", `endpoints=${formatEndpointList(cfg.endpoints)}`, `endpointUrl=${cfg.endpointUrl || "-"}`);
         }
     }
-
 
     if (!upstreamCandidates.length) {
         if (isTunnelDebug) {
@@ -577,10 +508,13 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
         if (stopped) return;
         clearReconnect();
         const normalizedDelay = parsePortableInteger(delayMs);
-        reconnectHandle = setTimeout(() => {
-            reconnectHandle = null;
-            connect();
-        }, normalizedDelay && normalizedDelay > 0 ? normalizedDelay : cfg.reconnectMs);
+        reconnectHandle = setTimeout(
+            () => {
+                reconnectHandle = null;
+                connect();
+            },
+            normalizedDelay && normalizedDelay > 0 ? normalizedDelay : cfg.reconnectMs
+        );
     };
 
     const setNextEndpoint = () => {
@@ -668,11 +602,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
                 }
                 if (msgType === "pong") return;
 
-                options.onMessage?.(
-                    normalizeTunnelRoutingFrame(parsed, cfg.deviceId || cfg.userId || rawConfig?.upstream?.userId || "", { via: cfg.endpointUrl }),
-                    text,
-                    cfg
-                );
+                options.onMessage?.(normalizeTunnelRoutingFrame(parsed, cfg.deviceId || cfg.userId || rawConfig?.upstream?.userId || "", { via: cfg.endpointUrl }), text, cfg);
             } catch {
                 // ignore malformed payloads
             }
@@ -731,11 +661,7 @@ export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: Upst
                     const now = Date.now();
                     if (now - lastSendWarnAt > 5000) {
                         lastSendWarnAt = now;
-                        console.warn(
-                            "[upstream.connector] send blocked",
-                            `state=${socket ? String(socket.readyState) : "null"}`,
-                            `endpoint=${activeEndpoint}`
-                        );
+                        console.warn("[upstream.connector] send blocked", `state=${socket ? String(socket.readyState) : "null"}`, `endpoint=${activeEndpoint}`);
                     }
                 }
                 return false;

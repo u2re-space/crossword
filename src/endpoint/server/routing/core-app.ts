@@ -12,9 +12,9 @@ import { registerAuthRoutes } from "./auth.ts";
 import { registerStorageRoutes } from "./storage.ts";
 import { registerGptRoutes } from "../gpt/index.ts";
 import { loadEndpointDotenv } from "../gpt/provider.ts";
-import { registerCoreSettingsEndpoints, registerCoreSettingsRoutes } from "../config/userSettings.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../lib/env.ts";
 import { parsePortableInteger } from "../lib/parsing.ts";
+import { registerCoreSettingsEndpoints,registerCoreSettingsRoutes } from "./userSettings.ts";
 
 const PHOSPHOR_STYLES = ["thin", "light", "regular", "bold", "fill", "duotone"] as const;
 type PhosphorStyle = (typeof PHOSPHOR_STYLES)[number];

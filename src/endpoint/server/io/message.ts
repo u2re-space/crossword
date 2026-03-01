@@ -2,12 +2,7 @@
 // Binary Message Parsing
 // =========================
 
-import {
-    MSG_TYPE_KEYBOARD,
-    BUTTON_LEFT,
-    BUTTON_RIGHT,
-    BUTTON_MIDDLE,
-} from '../config/constants.ts';
+import { MSG_TYPE_KEYBOARD, BUTTON_LEFT, BUTTON_RIGHT, BUTTON_MIDDLE } from "../config/constants.ts";
 
 // Binary message format (8 bytes)
 //
@@ -81,13 +76,17 @@ export function parseBinaryMessage(buffer: Buffer | Uint8Array): ParsedMessage {
     };
 }
 
-export function buttonFromFlags(flags: number): 'left' | 'right' | 'middle' {
-    const buttonNum = flags & 0x7F;
+export function buttonFromFlags(flags: number): "left" | "right" | "middle" {
+    const buttonNum = flags & 0x7f;
     switch (buttonNum) {
-        case BUTTON_LEFT: return 'left';
-        case BUTTON_RIGHT: return 'right';
-        case BUTTON_MIDDLE: return 'middle';
-        default: return 'left';
+        case BUTTON_LEFT:
+            return "left";
+        case BUTTON_RIGHT:
+            return "right";
+        case BUTTON_MIDDLE:
+            return "middle";
+        default:
+            return "left";
     }
 }
 
@@ -98,5 +97,5 @@ export function isKeyboardMessage(msg: ParsedMessage): msg is KeyboardMessage {
 
 // Helper to check if message is mouse type
 export function isMouseMessage(msg: ParsedMessage): msg is MouseMessage {
-    return msg !== null && msg.type !== MSG_TYPE_KEYBOARD && 'dx' in msg;
+    return msg !== null && msg.type !== MSG_TYPE_KEYBOARD && "dx" in msg;
 }

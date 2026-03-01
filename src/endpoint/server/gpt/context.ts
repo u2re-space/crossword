@@ -11,9 +11,7 @@ type AiSettingsContext = {
     hasExplicitCredential: boolean;
 };
 
-export type AiContextResult =
-    | { ok: false; error: string }
-    | { ok: true; value: AiSettingsContext };
+export type AiContextResult = { ok: false; error: string } | { ok: true; value: AiSettingsContext };
 
 export const createAiContext = async (body: any): Promise<AiContextResult> => {
     const userId = String(body?.userId || "").trim();
@@ -55,4 +53,3 @@ export const toAiCustomInstruction = (body: any, settings: any): string => {
     const activeInstruction = active?.instruction || "";
     return String(body?.customInstruction || activeInstruction || "").trim();
 };
-

@@ -35,19 +35,18 @@ export interface NetworkFrame {
 
 export type NormalizedNetworkFrame = Required<Pick<NetworkFrame, "type" | "from" | "to">> &
     Omit<NetworkFrame, "type" | "from" | "to"> & {
-    namespace: string;
-    target: string;
-    payload: NetworkFramePayload;
-    mode: string;
-    transport?: NetworkTransport;
-};
+        namespace: string;
+        target: string;
+        payload: NetworkFramePayload;
+        mode: string;
+        transport?: NetworkTransport;
+    };
 
 const DEFAULT_FRAME_TYPE = "dispatch";
 const DEFAULT_NAMESPACE = "default";
 const BROADCAST_TARGETS = new Set(["broadcast", "all", "*"]);
 
-const pickString = (value: unknown): string | undefined =>
-    typeof value === "string" ? value.trim() : undefined;
+const pickString = (value: unknown): string | undefined => (typeof value === "string" ? value.trim() : undefined);
 
 export const extractPayload = (frame: NetworkFrame): NetworkFramePayload => {
     if (typeof frame?.payload !== "undefined") return frame.payload;
@@ -58,14 +57,8 @@ export const extractPayload = (frame: NetworkFrame): NetworkFramePayload => {
 };
 
 export const resolveTarget = (frame: NetworkFrame): string => {
-    const directTarget = pickString(frame?.to) ||
-        pickString(frame?.target) ||
-        pickString(frame?.targetId) ||
-        pickString(frame?.target_id) ||
-        pickString(frame?.deviceId);
-    return directTarget && directTarget.length > 0
-        ? directTarget
-        : "broadcast";
+    const directTarget = pickString(frame?.to) || pickString(frame?.target) || pickString(frame?.targetId) || pickString(frame?.target_id) || pickString(frame?.deviceId);
+    return directTarget && directTarget.length > 0 ? directTarget : "broadcast";
 };
 
 export const isBroadcastFrame = (frame: NetworkFrame): boolean => {
@@ -80,7 +73,7 @@ export const resolveMode = (frame: NetworkFrame): string => {
 };
 
 export const normalizeFrame = (raw: unknown, sourceId: string): NormalizedNetworkFrame => {
-    const frame = (raw && typeof raw === "object") ? raw as NetworkFrame : {};
+    const frame = raw && typeof raw === "object" ? (raw as NetworkFrame) : {};
     const target = resolveTarget(frame);
     const payload = extractPayload(frame);
     const type = pickString(frame?.type) || pickString(frame?.action) || DEFAULT_FRAME_TYPE;

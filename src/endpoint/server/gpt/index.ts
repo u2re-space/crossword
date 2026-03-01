@@ -53,14 +53,15 @@ const executeGptProxy = async (body: ApiProxyBody & any): Promise<any> => {
     const authHeader = pickGptApiAuthHeader(provider);
     if (authHeader) requestHeaders.authorization = authHeader;
 
-    const targetPayload = typeof requestBody === "undefined"
-        ? JSON.stringify({
-            model: provider.model,
-            input: body.input || body.text || body.query || ""
-        })
-        : typeof requestBody === "string"
-            ? requestBody
-            : JSON.stringify(requestBody);
+    const targetPayload =
+        typeof requestBody === "undefined"
+            ? JSON.stringify({
+                model: provider.model,
+                input: body.input || body.text || body.query || ""
+            })
+            : typeof requestBody === "string"
+                ? requestBody
+                : JSON.stringify(requestBody);
 
     const upstreamResponse = await fetch(targetUrl, {
         method,

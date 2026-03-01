@@ -1,10 +1,10 @@
-import { createRequire } from 'node:module';
+import { createRequire } from "node:module";
 import config from "../config/config.ts";
 import { pickEnvBoolLegacy } from "../lib/env.ts";
 import { parsePortableBooleanLoose } from "../lib/parsing.ts";
 
-type RobotButton = 'left' | 'right' | 'middle';
-type RobotToggleState = 'down' | 'up';
+type RobotButton = "left" | "right" | "middle";
+type RobotToggleState = "down" | "up";
 
 interface RobotLike {
     getMousePos(): { x: number; y: number };
@@ -30,20 +30,8 @@ const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
     return undefined;
 };
 
-const robotJsEnv = pickConfigFlag(
-    pickEnvBoolLegacy("CWS_AIRPAD_ROBOTJS_ENABLED", false),
-    pickEnvBoolLegacy("CWS_ENDPOINT_ROBOTJS_ENABLED", false),
-    pickEnvBoolLegacy("CWS_ROBOTJS_ENABLED", false)
-);
-const robotJsConfig = pickConfigFlag(
-    (config as any)?.core?.robotJsEnabled,
-    (config as any)?.core?.robotjsEnabled,
-    (config as any)?.airpad?.robotJsEnabled,
-    (config as any)?.airpad?.robotjsEnabled,
-    (config as any)?.robotJsEnabled,
-    (config as any)?.robotjsEnabled,
-    (config as any)?.robotEnabled
-);
+const robotJsEnv = pickConfigFlag(pickEnvBoolLegacy("CWS_AIRPAD_ROBOTJS_ENABLED", false), pickEnvBoolLegacy("CWS_ENDPOINT_ROBOTJS_ENABLED", false), pickEnvBoolLegacy("CWS_ROBOTJS_ENABLED", false));
+const robotJsConfig = pickConfigFlag((config as any)?.core?.robotJsEnabled, (config as any)?.core?.robotjsEnabled, (config as any)?.airpad?.robotJsEnabled, (config as any)?.airpad?.robotjsEnabled, (config as any)?.robotJsEnabled, (config as any)?.robotjsEnabled, (config as any)?.robotEnabled);
 const defaultRobotJsEnabled = process.platform === "win32";
 const robotJsEnabled = robotJsEnv ?? robotJsConfig ?? defaultRobotJsEnabled;
 
@@ -56,12 +44,12 @@ function loadRobot(): RobotLike | null {
     }
 
     try {
-        robotInstance = require('robotjs') as RobotLike;
+        robotInstance = require("robotjs") as RobotLike;
     } catch (error) {
         robotInstance = null;
         if (!warnedUnavailable) {
             warnedUnavailable = true;
-            console.warn('[robot-adapter] robotjs is unavailable; falling back to alternative adapters (AHK if available).', error);
+            console.warn("[robot-adapter] robotjs is unavailable; falling back to alternative adapters (AHK if available).", error);
         }
     }
 
@@ -75,4 +63,3 @@ export function getRobot(): RobotLike | null {
 export function hasRobot(): boolean {
     return loadRobot() !== null;
 }
-
