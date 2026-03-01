@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
-import { pickEnvEntriesByPrefix, pickEnvStringLegacy } from "../lib/env.ts";
-import { safeJsonParse } from "../lib/parsing.ts";
+import { pickEnvEntriesByPrefix, pickEnvStringLegacy } from "../../lib/env.ts";
+import { safeJsonParse } from "../../lib/parsing.ts";
 
 type ParsedPayload = {
     from: string;

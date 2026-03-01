@@ -31,7 +31,7 @@ type TcpSession = {
 
 const parsePrivateNetworkHosts = (): Set<string> => {
     const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ??
-        pickEnvStringLegacy("WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ||
+        pickEnvStringLegacy("WS_TCP_ALLOW_HOSTS", { allowEmpty: true }) ??
         "";
     if (!raw.trim()) return new Set<string>();
     return new Set(
@@ -114,7 +114,7 @@ const isTcpTargetAllowed = (host: string, explicitPort: number | undefined): boo
 const explicitPortHostOverride = (host: string, explicitPort?: number): boolean => {
     if (!explicitPort) return false;
     const raw = pickEnvStringLegacy("CWS_WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ??
-        pickEnvStringLegacy("WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ||
+        pickEnvStringLegacy("WS_TCP_ALLOWED_HOSTS_WITH_PORT", { allowEmpty: true }) ??
         "";
     const entries = raw
         .split(",")
