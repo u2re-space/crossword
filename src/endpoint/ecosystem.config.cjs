@@ -23,8 +23,8 @@ module.exports = {
             },
             env: {
                 NODE_ENV: "production",
-        CWS_ASSOCIATED_ID: "L-192.168.0.200",
-        CWS_ASSOCIATED_TOKEN: "n3v3rm1nd"
+                CWS_ASSOCIATED_ID: "L-192.168.0.200",
+                CWS_ASSOCIATED_TOKEN: "n3v3rm1nd"
             }
         }
     ]
