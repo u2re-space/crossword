@@ -288,16 +288,11 @@ if not exist "node_modules\\.bin\\tsx.cmd" (
 
 :portable_pm2_fallback
 if /I "%CWS_START_MODE%"=="watch" (
-  call npm run start:watch
+  start "" /B /D "%~dp0" npm.cmd run start:watch
 ) else (
-  call npm run start
+  start "" /B /D "%~dp0" npm.cmd run start
 )
-set EXIT_CODE=%ERRORLEVEL%
-if not "%EXIT_CODE%"=="0" (
-  echo [portable] Endpoint exited with code %EXIT_CODE%.
-  pause
-)
-exit /b %EXIT_CODE%
+exit /b 0
 `;
 
     const installNote = includeNodeModules

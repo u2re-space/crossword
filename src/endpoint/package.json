@@ -9,7 +9,12 @@
     },
     "scripts": {
         "start:with-env": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx server/index.ts",
-        "start": "npm run start:with-env",
+        "start:pm2": "pm2 stop cws || true && pm2 start ecosystem.config.cjs --only cws --update-env || npm run start:with-env",
+        "stop:pm2": "pm2 stop cws || true && pm2 delete cws || true",
+        "reload:pm2": "pm2 reload cws --update-env || pm2 restart cws --update-env || npm run start:pm2",
+        "start": "npm run start:pm2",
+        "stop": "npm run stop:pm2",
+        "reload": "npm run reload:pm2",
         "start:with-env:watch": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx watch server/index.ts",
         "start:watch": "npm run start:with-env:watch",
         "start:fastify": "cross-env CWS_PORTABLE_CONFIG_PATH=portable.config.json  CWS_ASSOCIATED_ID=L-192.168.0.200 CWS_ASSOCIATED_TOKEN=n3v3rm1nd CWS_AIRPAD_NATIVE_ACTIONS=true CWS_AIRPAD_ROBOTJS_ENABLED=true CWS_UPSTREAM_REJECT_UNAUTHORIZED=false CWS_CLIPBOARD_LOGGING=false tsx server/fastify-server.ts",

@@ -144,15 +144,47 @@ export const parseLegacyAllowedForwardList = (value: unknown): string[] => {
     return [];
 };
 
+const parseAliasPolicyTarget = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const candidate = resolvePortableTextValue(value).trim();
+    if (!candidate) return undefined;
+    const aliasPrefix = "alias:";
+    if (candidate.toLowerCase().startsWith(aliasPrefix)) {
+        const rest = candidate.slice(aliasPrefix.length).trim();
+        return rest || undefined;
+    }
+    return candidate || undefined;
+};
+
+const cloneEndpointPolicyAsAlias = (alias: string, policy: EndpointIdPolicy): EndpointIdPolicy => ({
+    ...policy,
+    id: alias
+});
+
 export const normalizeLegacyEndpointIds = (value: unknown): Record<string, EndpointIdPolicy> => {
     const source = asRecord(value);
     const out: Record<string, EndpointIdPolicy> = {};
+    const aliasToTarget = new Map<string, string>();
+
     for (const [rawPolicyId, rawPolicySource] of Object.entries(source)) {
-        if (!rawPolicySource || typeof rawPolicySource !== "object") continue;
         const policyId = String(rawPolicyId || "")
             .trim()
             .toLowerCase();
         if (!policyId) continue;
+
+        if (!rawPolicySource) {
+            continue;
+        }
+
+        if (typeof rawPolicySource === "string") {
+            const aliasTarget = parseAliasPolicyTarget(rawPolicySource);
+            if (aliasTarget) {
+                aliasToTarget.set(policyId, aliasTarget.toLowerCase());
+            }
+            continue;
+        }
+
+        if (typeof rawPolicySource !== "object" || Array.isArray(rawPolicySource)) continue;
         const policy = rawPolicySource as Record<string, unknown>;
         const legacyOutgoing = parseLegacyAllowedForwardList(policy.allowedOutgoing);
         const legacyForwards = parseLegacyAllowedForwardList(policy.allowedForwards);
@@ -167,6 +199,35 @@ export const normalizeLegacyEndpointIds = (value: unknown): Record<string, Endpo
             allowedOutcoming: allowedOutgoing
         });
     }
+
+    const resolveAliasTarget = (aliasId: string, seen = new Set<string>()) => {
+        if (seen.has(aliasId)) return undefined;
+        seen.add(aliasId);
+
+        const direct = aliasToTarget.get(aliasId);
+        if (!direct) return undefined;
+
+        const normalizedDirect = direct.trim();
+        if (out[normalizedDirect]) return normalizedDirect;
+        if (aliasToTarget.has(normalizedDirect)) return resolveAliasTarget(normalizedDirect, seen);
+        return undefined;
+    };
+
+    for (const [aliasId] of Array.from(aliasToTarget.entries())) {
+        const resolvedTarget = resolveAliasTarget(aliasId);
+        if (!resolvedTarget) continue;
+        const basePolicy = out[resolvedTarget];
+        if (!basePolicy) continue;
+        if (!out[aliasId]) {
+            out[aliasId] = cloneEndpointPolicyAsAlias(aliasId, basePolicy);
+            continue;
+        }
+        const aliasPolicy = out[aliasId];
+        if (aliasPolicy.id !== aliasId || aliasPolicy !== basePolicy) {
+            out[aliasId] = cloneEndpointPolicyAsAlias(aliasId, basePolicy);
+        }
+    }
+
     return out;
 };
 

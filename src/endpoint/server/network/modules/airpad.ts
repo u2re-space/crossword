@@ -124,6 +124,20 @@ const pickString = (value: unknown): string | undefined => {
     return undefined;
 };
 
+const normalizeAirPadRouteTarget = (value: string | undefined): string | undefined => {
+    const normalized = (value || "").trim();
+    if (!normalized) return undefined;
+
+    const prefixMatch = /^l-(.+)$/i.exec(normalized);
+    if (!prefixMatch) return normalized;
+
+    const suffix = prefixMatch[1].trim();
+    if (!suffix) return undefined;
+
+    const looksLikeHostLikeTarget = /^(?:\[[^\]]+\]|[a-z0-9.-]+)(?::\d{1,5})?(?:\.[a-z0-9.-]+)?$/i.test(suffix);
+    return looksLikeHostLikeTarget ? suffix : normalized;
+};
+
 export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMeta => {
     const auth: Record<string, unknown> = (socket as any).handshake?.auth || {};
     const headers: Record<string, unknown> = (socket as any).handshake?.headers || {};
@@ -141,7 +155,19 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
         targetHost: pickString(query.__airpad_target),
         targetPort: pickString(query.__airpad_target_port),
         routeHint: pickString(query.__airpad_via),
-        routeTarget: pickString(query.__airpad_route) || pickString(query.__airpad_route_target) || pickString(query.routeTarget) || pickString(query.__airpad_peer) || pickString(query.__airpad_device) || pickString(query.__airpad_client) || pickString(query.to) || pickString(query.target) || pickString(query.targetId) || pickString(query.deviceId) || pickString(query.peerId),
+        routeTarget: normalizeAirPadRouteTarget(
+            pickString(query.__airpad_route) ||
+            pickString(query.__airpad_route_target) ||
+            pickString(query.routeTarget) ||
+            pickString(query.__airpad_peer) ||
+            pickString(query.__airpad_device) ||
+            pickString(query.__airpad_client) ||
+            pickString(query.to) ||
+            pickString(query.target) ||
+            pickString(query.targetId) ||
+            pickString(query.deviceId) ||
+            pickString(query.peerId)
+        ),
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
         xForwardedFor: headers["x-forwarded-for"] || headers["X-Forwarded-For"],
