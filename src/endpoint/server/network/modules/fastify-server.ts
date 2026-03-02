@@ -26,10 +26,11 @@ import { handleMouseBinaryAction, handleKeyboardBinaryAction } from "../../airpa
 import { parseBinaryMessage } from "../../io/message.ts";
 
 const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => {
-    if (!frame || !frame.payload) return false;
+    const payload = frame?.payload || frame?.data;
+    if (!payload) return false;
     
-    if (frame.payload.type === "voice_command") {
-        const text = String(frame.payload.text || "");
+    if (payload.type === "voice_command") {
+        const text = String(payload.text || "");
         if (text) {
             app.log?.info?.("Voice command via tunnel");
             import("../../gpt/python.ts").then(({ sendVoiceToPython }) => {
@@ -42,9 +43,9 @@ const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => 
         return false;
     }
 
-    if (!frame.payload.__airpadBinary) return false;
+    if (!payload.__airpadBinary) return false;
     try {
-        const raw = Buffer.from(frame.payload.data, "base64");
+        const raw = Buffer.from(payload.data, "base64");
         const msg = parseBinaryMessage(raw);
         if (!msg) return false;
         const handledByMouse = handleMouseBinaryAction(app.log, msg);
@@ -168,6 +169,24 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
         },
         close: async () => {
             await Promise.all(hubs.map((hub) => hub.close()));
+        },
+        getUserId: () => {
+            for (const hub of hubs) {
+                if (hub.getUserId) {
+                    const id = hub.getUserId();
+                    if (id) return id;
+                }
+            }
+            return "";
+        },
+        onUnknownTarget: (userId: string, deviceId: string, frame: any) => {
+            let handled = false;
+            for (const hub of hubs) {
+                if (hub.onUnknownTarget && hub.onUnknownTarget(userId, deviceId, frame)) {
+                    handled = true;
+                }
+            }
+            return handled;
         }
     } as any;
 };
@@ -304,8 +323,16 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
             const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
             const resolvedKind = resolvedTargetHint?.source;
             const resolved = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
+            const requestedTargetLower = requestedTarget.toLowerCase();
             const fallbackTarget =
-                requestedTarget.toLowerCase() === "self" || requestedTarget.toLowerCase() === resolvedUserId.toLowerCase();
+                requestedTargetLower === "self" || 
+                requestedTargetLower === resolvedUserId.toLowerCase() || 
+                requestedTarget === "broadcast" || 
+                requestedTarget === "all" || 
+                requestedTarget === "*" || 
+                requestedTargetLower === (hub.getUserId?.() || "").toLowerCase() || 
+                requestedTargetLower === ((config as any)?.bridge?.deviceId || "").toLowerCase() || 
+                requestedTargetLower === ((config as any)?.bridge?.userId || "").toLowerCase();
             const fallbackSent =
                 !resolved && peerProfiles.length > 0 && fallbackTarget
                     ? (() => {
@@ -315,8 +342,8 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
                     : false;
             let delivered = resolved || fallbackSent;
 
-            if (!delivered && hub.onUnknownTarget) {
-                if (hub.onUnknownTarget(resolvedUserId, requestedTarget, routed)) {
+            if (!delivered) {
+                if (hub.onUnknownTarget && hub.onUnknownTarget(resolvedUserId, requestedTarget, routed)) {
                     delivered = true;
                 }
             }

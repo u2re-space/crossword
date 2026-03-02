@@ -254,6 +254,8 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
 
                 if (networkContext.sendToReverse(bridgeUser || "", rawTarget, reversePayload)) {
                     delivered = true;
+                } else if (logger) {
+                    logger.debug?.({ sourceSocket: sourceSocket.id, target: rawTarget }, "[Router] sendToReverse failed or returned false");
                 }
             }
         }

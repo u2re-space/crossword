@@ -164,6 +164,7 @@ export type WsHub = {
     getConnectedPeerProfiles: (userId?: string) => Array<{ id: string; label: string }>;
     close: () => Promise<void>;
     onUnknownTarget?: (userId: string, deviceId: string, frame: any) => boolean;
+    getUserId?: () => string;
 };
 
 const isIpLike = (value: string): boolean => {
@@ -550,15 +551,6 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                             return;
                         }
                     }
-                    if (keyByAnyTarget) {
-                        const pending = pendingFetchReplies.get(keyByAnyTarget);
-                        if (pending) {
-                            pendingFetchReplies.delete(keyByAnyTarget);
-                            if (pending.timer) clearTimeout(pending.timer);
-                            pending.resolve(parsed);
-                            return;
-                        }
-                    }
                 }
             }
             const frameType = String(parsed?.type || "")
@@ -717,6 +709,10 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         });
     };
 
+    const getUserId = () => {
+        return (config as any)?.bridge?.userId || "";
+    };
+
     const api: WsHub = {
         broadcast,
         multicast,
@@ -726,7 +722,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         requestToDevice,
         getConnectedDevices,
         getConnectedPeerProfiles,
-        close
+        close,
+        getUserId
     };
 
     return api;
