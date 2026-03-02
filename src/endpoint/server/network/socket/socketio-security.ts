@@ -191,7 +191,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
             credentials: true,
             origin(origin, callback) {
                 // Native/mobile clients often omit Origin. Allow them by default.
-                if (!origin) {
+                if (!origin || origin === "null") {
                     callback(null, true);
                     return;
                 }
@@ -207,12 +207,13 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
                     callback(null, true);
                     return;
                 }
-                callback(new Error(`Origin is not allowed by policy: ${origin}`), false);
+                logger?.warn?.({ origin }, "[socket.io] CORS origin rejected");
+                callback(null, false);
             }
         },
         allowRequest(req, callback) {
             const origin = String(req.headers.origin || "");
-            if (!origin) {
+            if (!origin || origin === "null") {
                 callback(null, true);
                 return;
             }
