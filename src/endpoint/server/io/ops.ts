@@ -1440,7 +1440,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 id: `link:${userId}:upstream`,
                 source: `${userId}`,
                 target: `upstream:${upstreamStatus.upstreamClientId || upstreamStatus.upstreamPeerId || upstreamStatus.userId || "default"}`,
-                type: "upstream-client"
+                type: "reverse-client"
             });
         }
 

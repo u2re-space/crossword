@@ -1,19 +1,19 @@
-export type WsConnectionArchetype = "client-upstream" | "client-downstream" | "server-upstream" | "server-downstream";
+export type WsConnectionArchetype = "reverse-client" | "forward-client" | "forward-server" | "reverse-server";
 
 const LEGACY_ROLE_ALIASES = new Set(["endpoint", "server", "peer", "client", "node", "hub"]);
-const CLIENT_CONNECTOR_ROLES = new Set(["client-upstream", "client-downstream"]);
-const SERVER_UPSTREAM_ROLES = new Set(["server-upstream"]);
-const SERVER_DOWNSTREAM_ROLES = new Set(["server-downstream"]);
-const REVERSE_MODE = "server-downstream";
-const DIRECT_MODE = "server-upstream";
+const CLIENT_CONNECTOR_ROLES = new Set(["reverse-client", "forward-client", "client-upstream", "client-downstream"]);
+const FORWARD_SERVER_ROLES = new Set(["forward-server", "server-upstream"]);
+const REVERSE_SERVER_ROLES = new Set(["reverse-server", "server-downstream"]);
+const REVERSE_MODE = "reverse-server";
+const DIRECT_MODE = "forward-server";
 
 const resolveClientRole = (input: string): WsConnectionArchetype | undefined => {
     const value = (input || "").trim().toLowerCase();
     if (!value) return undefined;
-    if (value === "client-upstream" || value === "cu" || value === "c-up") return "client-upstream";
-    if (value === "client-downstream" || value === "cd" || value === "c-down") return "client-downstream";
-    if (value === "server-upstream" || value === "su" || value === "s-up") return "server-upstream";
-    if (value === "server-downstream" || value === "sd" || value === "s-down") return "server-downstream";
+    if (value === "reverse-client" || value === "rc" || value === "client-upstream" || value === "cu" || value === "c-up") return "reverse-client";
+    if (value === "forward-client" || value === "fc" || value === "client-downstream" || value === "cd" || value === "c-down") return "forward-client";
+    if (value === "forward-server" || value === "fs" || value === "server-upstream" || value === "su" || value === "s-up") return "forward-server";
+    if (value === "reverse-server" || value === "rs" || value === "server-downstream" || value === "sd" || value === "s-down") return "reverse-server";
     return undefined;
 };
 
@@ -33,7 +33,7 @@ export const inferServerSideArchetype = (isReverse: boolean): WsConnectionArchet
 };
 
 export const inferExpectedRemoteArchetype = (isReverse: boolean): WsConnectionArchetype => {
-    return isReverse ? "client-upstream" : "client-downstream";
+    return isReverse ? "reverse-client" : "forward-client";
 };
 
 const hasLegacyRoleMarker = (roles: Set<string>): boolean => {
@@ -53,21 +53,21 @@ export const supportsConnectorRole = (rawRoles: unknown): boolean => {
     return false;
 };
 
-export const supportsServerUpstreamArchetype = (rawRoles: unknown): boolean => {
+export const supportsForwardServerArchetype = (rawRoles: unknown): boolean => {
     const roles = normalizeRoleSet(rawRoles);
     if (roles.size === 0) return true;
     if (hasLegacyRoleMarker(roles)) return true;
-    for (const role of SERVER_UPSTREAM_ROLES) {
+    for (const role of FORWARD_SERVER_ROLES) {
         if (roles.has(role)) return true;
     }
     return false;
 };
 
-export const supportsServerDownstreamArchetype = (rawRoles: unknown): boolean => {
+export const supportsReverseServerArchetype = (rawRoles: unknown): boolean => {
     const roles = normalizeRoleSet(rawRoles);
     if (roles.size === 0) return true;
     if (hasLegacyRoleMarker(roles)) return true;
-    for (const role of SERVER_DOWNSTREAM_ROLES) {
+    for (const role of REVERSE_SERVER_ROLES) {
         if (roles.has(role)) return true;
     }
     return false;
@@ -76,10 +76,10 @@ export const supportsServerDownstreamArchetype = (rawRoles: unknown): boolean =>
 export const areArchetypesCompatible = (localArchetype: WsConnectionArchetype, remoteArchetype: WsConnectionArchetype | undefined): boolean => {
     if (remoteArchetype == null) return true;
     const compatibility: Record<WsConnectionArchetype, WsConnectionArchetype> = {
-        "client-upstream": "server-downstream",
-        "server-downstream": "client-upstream",
-        "client-downstream": "server-upstream",
-        "server-upstream": "client-downstream"
+        "reverse-client": "reverse-server",
+        "reverse-server": "reverse-client",
+        "forward-client": "forward-server",
+        "forward-server": "forward-client"
     };
     return compatibility[localArchetype] === remoteArchetype;
 };

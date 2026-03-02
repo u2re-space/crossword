@@ -78,15 +78,12 @@ module.exports = {
                 followSymlinks: false
             },
             env: {
+                
                 NODE_ENV: "production",
                 CWS_TUNNEL_DEBUG: true,
                 CWS_AIRPAD_VERBOSE: 1,
                 CWS_PORTABLE_CONFIG_PATH: path.resolve(__dirname, "portable.config.json"),
                 CWS_ASSOCIATED_TOKEN: "n3v3rm1nd",
-                CWS_UPSTREAM_MODE: "active",
-                CWS_UPSTREAM_USER_KEY: "n3v3rm1nd",
-                CWS_UPSTREAM_NAMESPACE: "default",
-                CWS_UPSTREAM_RECONNECT_MS: 1000,
                 CWS_AIRPAD_NATIVE_ACTIONS: "true",
                 CWS_AIRPAD_ROBOTJS_ENABLED: "true",
                 CWS_CLIPBOARD_LOGGING: "false",

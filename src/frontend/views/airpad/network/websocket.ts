@@ -924,7 +924,7 @@ export function connectWS() {
         queryParams.__airpad_hop = candidate.host || remoteHost || 'unknown';
         queryParams.__airpad_host = candidate.host || remoteHost || '';
         queryParams.__airpad_target = targetHost || '';
-        queryParams.archetype = "client-downstream";
+        queryParams.archetype = "forward-client";
         const isSameAsTargetHost = () => {
             if (!routeTarget || !targetHost) return true;
             const normalizedRouteTarget = routeTarget.trim().toLowerCase();

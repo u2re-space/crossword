@@ -16,7 +16,7 @@ import {
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 import config from "../../config/config.ts";
-import { areArchetypesCompatible, inferExpectedRemoteArchetype, parseWsArchetype, supportsServerUpstreamArchetype } from "../stack/archetypes.ts";
+import { areArchetypesCompatible, inferExpectedRemoteArchetype, parseWsArchetype, supportsForwardServerArchetype } from "../stack/archetypes.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {
@@ -146,7 +146,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             requestedArchetype: remoteArchetype.raw ?? "none",
             transport: socket?.conn?.transport?.name,
             sourceHint: normalizeHint((socket as any)?.airpadSourceId),
-            transportAcceptedArchetype: "server-upstream"
+            transportAcceptedArchetype: "forward-server"
         };
     };
 
@@ -311,11 +311,11 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
         const connectionMeta = describeAirPadConnectionMeta(socket);
         const remoteArchetype = getSocketIoRemoteArchetype(socket);
-        const localArchetype = "server-upstream" as const;
+        const localArchetype = "forward-server" as const;
         const expectedRemoteArchetype = inferExpectedRemoteArchetype(false);
-        const supportsLocalServerUpstream = supportsServerUpstreamArchetype((config as any)?.roles);
-        if (!supportsLocalServerUpstream) {
-            console.warn(`[Server] AirPad socket rejected: server-upstream role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+        const supportsLocalForwardServer = supportsForwardServerArchetype((config as any)?.roles);
+        if (!supportsLocalForwardServer) {
+            console.warn(`[Server] AirPad socket rejected: forward-server role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
             socket.emit("error", { message: "Server role mismatch for Socket.IO clients" });
             socket.disconnect(true);
             return;

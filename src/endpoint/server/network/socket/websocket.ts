@@ -15,8 +15,8 @@ import {
     inferExpectedRemoteArchetype,
     inferServerSideArchetype,
     parseWsArchetype,
-    supportsServerDownstreamArchetype,
-    supportsServerUpstreamArchetype
+    supportsReverseServerArchetype,
+    supportsForwardServerArchetype
 } from "../stack/archetypes.ts";
 
 type TcpPassthroughFrame = {
@@ -470,8 +470,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             return;
         }
         const roleAllowed = isReverse
-            ? supportsServerDownstreamArchetype(config.roles as string[] | undefined)
-            : supportsServerUpstreamArchetype(config.roles as string[] | undefined);
+            ? supportsReverseServerArchetype(config.roles as string[] | undefined)
+            : supportsForwardServerArchetype(config.roles as string[] | undefined);
         if (!roleAllowed) {
             ws.close(4003, `Unsupported websocket archetype for this node: ${localArchetype}`);
             return;

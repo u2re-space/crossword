@@ -28,15 +28,7 @@
         "CWS_AIRPAD_ROBOTJS_ENABLED": "true",
         "CWS_UPSTREAM_REJECT_UNAUTHORIZED": "false",
         "CWS_CLIPBOARD_LOGGING": "false",
-        "CWS_UPSTREAM_ENABLED": true,
-        "CWS_UPSTREAM_MODE": "active",
         "CWS_ASSOCIATED_ID": "L-192.168.0.200",
-        "CWS_UPSTREAM_USER_ID": "L-192.168.0.200",
-        "CWS_UPSTREAM_CLIENT_ID": "L-192.168.0.200",
-        "CWS_UPSTREAM_DEVICE_ID": "L-192.168.0.200",
-        "CWS_UPSTREAM_USER_KEY": "n3v3rm1nd",
-        "CWS_UPSTREAM_ENDPOINT_URL": "https://192.168.0.200:8443/",
-        "CWS_UPSTREAM_ENDPOINTS": "https://192.168.0.200:8443/,https://45.147.121.152:8443/",
-        "CWS_ROLES": "server-upstream,client-upstream,client-downstream"
+        "CWS_ROLES": "server-forward,client-reverse,client-forward"
     }
 }

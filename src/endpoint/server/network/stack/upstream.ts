@@ -408,8 +408,8 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>)
             url.pathname = `${normalizedPath}ws`;
         }
         
-        const archetype = cfg.archetype || "client-upstream";
-        const mode = archetype === "client-downstream" ? "push" : "reverse";
+        const archetype = cfg.archetype || "reverse-client";
+        const mode = archetype === "forward-client" ? "push" : "reverse";
         
         url.searchParams.set("mode", mode);
         url.searchParams.set("archetype", archetype);
