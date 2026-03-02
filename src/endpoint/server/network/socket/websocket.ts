@@ -163,6 +163,7 @@ export type WsHub = {
     getConnectedDevices: (userId?: string) => string[];
     getConnectedPeerProfiles: (userId?: string) => Array<{ id: string; label: string }>;
     close: () => Promise<void>;
+    onUnknownTarget?: (userId: string, deviceId: string, frame: any) => boolean;
 };
 
 const isIpLike = (value: string): boolean => {
@@ -580,7 +581,13 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             if (!shouldBroadcast) {
                 const normalizedFrameTo = normalizeSocketPeer(frame.to);
                 const target = [...clients.values()].find((c) => c.id === frame.to || normalizeSocketPeer(c.deviceId) === normalizedFrameTo || normalizeSocketPeer(c.peerId) === normalizedFrameTo || normalizeSocketUser(c.userId) === normalizedFrameTo);
-                target?.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
+                if (target) {
+                    target.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
+                } else {
+                    if (api.onUnknownTarget) {
+                        api.onUnknownTarget(info.userIdKey, normalizedFrameTo || frame.to, frame);
+                    }
+                }
             } else {
                 // broadcast to same userId
                 multicast(info.userIdKey, { type, payload, from: frame.from }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
@@ -645,7 +652,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const target = resolveReverseClientByTarget(normalizedUser, normalizedTarget);
         if (!target?.ws) return false;
         try {
-            target.ws.send(JSON.stringify(payload));
+            if (Buffer.isBuffer(payload) || payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
+                target.ws.send(payload);
+            } else {
+                target.ws.send(JSON.stringify(payload));
+            }
             return true;
         } catch {
             return false;
@@ -706,7 +717,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         });
     };
 
-    return {
+    const api: WsHub = {
         broadcast,
         multicast,
         notify,
@@ -717,4 +728,6 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         getConnectedPeerProfiles,
         close
     };
+
+    return api;
 };

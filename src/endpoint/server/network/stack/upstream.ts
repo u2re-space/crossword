@@ -12,6 +12,7 @@ import {
 type UpstreamConnectorConfig = {
     enabled?: boolean;
     mode?: "active" | "passive";
+    archetype?: string;
     origin?: {
         originId?: string;
         originHosts?: string[];
@@ -316,6 +317,7 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
     const envUserKey = pickEnvStringLegacy("CWS_ASSOCIATED_TOKEN") || pickEnvStringLegacy("CWS_UPSTREAM_USER_KEY") || "";
     const envDeviceId = pickEnvStringLegacy("CWS_ASSOCIATED_ID") || pickEnvStringLegacy("CWS_UPSTREAM_DEVICE_ID") || "";
     const envNamespace = pickEnvStringLegacy("CWS_UPSTREAM_NAMESPACE") || "";
+    const envArchetype = pickEnvStringLegacy("CWS_UPSTREAM_ARCHETYPE") || "";
     const envReconnectMs = pickEnvNumberLegacy("CWS_UPSTREAM_RECONNECT_MS", 0);
 
     const enabled = envUpstreamEnabled === undefined ? upstream.enabled === true : envUpstreamEnabled;
@@ -364,9 +366,10 @@ const normalizeUpstreamConfig = (config: EndpointConfig): Required<UpstreamConne
     return {
         enabled: true,
         mode,
+        archetype: envArchetype || upstream.archetype || undefined,
         upstreamMasterKey: upstream.upstreamMasterKey,
         upstreamSigningPrivateKeyPem: upstream.upstreamSigningPrivateKeyPem,
-                upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
+        upstreamPeerPublicKeyPem: upstream.upstreamPeerPublicKeyPem,
         origin: {
             originId: origin.originId || normalizeOriginToken(origin.originId || resolvedDeviceId || resolvedUserId),
             originHosts: origin.originHosts,
@@ -404,8 +407,12 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>)
             const normalizedPath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
             url.pathname = `${normalizedPath}ws`;
         }
-        url.searchParams.set("mode", "reverse");
-        url.searchParams.set("archetype", "client-upstream");
+        
+        const archetype = cfg.archetype || "client-upstream";
+        const mode = archetype === "client-downstream" ? "push" : "reverse";
+        
+        url.searchParams.set("mode", mode);
+        url.searchParams.set("archetype", archetype);
         url.searchParams.set("userId", cfg.userId);
         url.searchParams.set("userKey", cfg.userKey);
         url.searchParams.set("namespace", cfg.namespace);

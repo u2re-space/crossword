@@ -144,7 +144,7 @@ export function sendToPython(obj: any) {
 }
 
 export async function sendVoiceToPython(socket: any, text: string) {
-    pythonSubscribers.add(socket);
+    if (socket) pythonSubscribers.add(socket);
     const delivered = sendToPython({ type: "voice_command", text });
     if (!delivered && socket && typeof socket.emit === "function") {
         socket.emit("voice_result", {

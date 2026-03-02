@@ -31,6 +31,7 @@ export type SocketIoBridge = {
 type SocketIoBridgeNetworkContext = {
     sendToUpstream?: (payload: any) => boolean;
     upstreamUserId?: string;
+    sendToReverse?: (userId: string, deviceId: string, payload: any) => boolean;
 };
 
 export type SocketIoBridgeOptions = {

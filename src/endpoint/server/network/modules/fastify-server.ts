@@ -22,6 +22,38 @@ import { setApp as setPythonApp } from "../../gpt/python.ts";
 import { resolvePeerIdentity } from "../stack/peer-identity.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointPolicyRoute } from "../stack/endpoint-policy.ts";
+import { handleMouseBinaryAction, handleKeyboardBinaryAction } from "../../airpad/index.ts";
+import { parseBinaryMessage } from "../../io/message.ts";
+
+const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => {
+    if (!frame || !frame.payload) return false;
+    
+    if (frame.payload.type === "voice_command") {
+        const text = String(frame.payload.text || "");
+        if (text) {
+            app.log?.info?.("Voice command via tunnel");
+            import("../../gpt/python.ts").then(({ sendVoiceToPython }) => {
+                sendVoiceToPython(null, text).catch((err: any) => {
+                    app.log?.error?.({ err }, "Failed to send voice command to python");
+                });
+            });
+            return true;
+        }
+        return false;
+    }
+
+    if (!frame.payload.__airpadBinary) return false;
+    try {
+        const raw = Buffer.from(frame.payload.data, "base64");
+        const msg = parseBinaryMessage(raw);
+        if (!msg) return false;
+        const handledByMouse = handleMouseBinaryAction(app.log, msg);
+        const handledByKeyboard = handleKeyboardBinaryAction(app.log, msg);
+        return handledByMouse || handledByKeyboard;
+    } catch {
+        return false;
+    }
+};
 
 const resolvePortableConfigBoolean = (value: string | undefined): boolean | undefined => {
     if (typeof value === "undefined") return undefined;
@@ -281,7 +313,14 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                           return true;
                       })()
                     : false;
-            const delivered = resolved || fallbackSent;
+            let delivered = resolved || fallbackSent;
+
+            if (!delivered && hub.onUnknownTarget) {
+                if (hub.onUnknownTarget(resolvedUserId, requestedTarget, routed)) {
+                    delivered = true;
+                }
+            }
+
             const knownPeers = peerProfiles.map((entry) => `${entry.label}(${entry.id})`);
 
             if (!delivered) {
@@ -390,10 +429,16 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
         networkContext: networkContext
             ? {
                 sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
+                upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId,
+                sendToReverse: (userId: string, deviceId: string, payload: any) => wsHub.sendToDevice(userId, deviceId, payload)
             }
             : undefined
     });
+    wsHub.onUnknownTarget = (userId, deviceId, frame) => {
+        const sent = socketIoBridge.sendToDevice(userId, deviceId, frame);
+        if (!sent && handleLocalAirpadPayload(app, frame)) return true;
+        return sent;
+    };
     await registerOpsRoutes(app, wsHub, networkContext, socketIoBridge);
     registerApiFallback(app);
 
@@ -435,10 +480,16 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
         networkContext: networkContext
             ? {
                 sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+                upstreamUserId: networkContext.getNodeId() || fallbackUserId,
+                sendToReverse: (userId: string, deviceId: string, payload: any) => unifiedHub.sendToDevice(userId, deviceId, payload)
             }
             : undefined
     });
+    httpWsHub.onUnknownTarget = (userId, deviceId, frame) => {
+        const sent = httpSocketIoBridge.sendToDevice(userId, deviceId, frame);
+        if (!sent && handleLocalAirpadPayload(http, frame)) return true;
+        return sent;
+    };
     await registerOpsRoutes(http, unifiedHub, networkContext, httpSocketIoBridge);
     registerApiFallback(http);
 
@@ -456,10 +507,16 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
         networkContext: networkContext
             ? {
                 sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+                upstreamUserId: networkContext.getNodeId() || fallbackUserId,
+                sendToReverse: (userId: string, deviceId: string, payload: any) => unifiedHub.sendToDevice(userId, deviceId, payload)
             }
             : undefined
     });
+    httpsWsHub.onUnknownTarget = (userId, deviceId, frame) => {
+        const sent = httpsSocketIoBridge.sendToDevice(userId, deviceId, frame);
+        if (!sent && handleLocalAirpadPayload(https, frame)) return true;
+        return sent;
+    };
     await registerOpsRoutes(https, unifiedHub, networkContext, httpsSocketIoBridge);
     registerApiFallback(https);
 

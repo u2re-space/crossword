@@ -5,6 +5,7 @@ import type { AirpadConnectionMeta } from "./airpad.ts";
 type NetworkContext = {
     sendToUpstream?: (payload: any) => boolean;
     upstreamUserId?: string;
+    sendToReverse?: (userId: string, deviceId: string, payload: any) => boolean;
 };
 
 type Logger = {
@@ -217,11 +218,43 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         let delivered = false;
         for (const rawTarget of targets) {
             const targetSockets = airpadTargets.get(rawTarget);
-            if (!targetSockets) continue;
-            for (const targetSocket of targetSockets) {
-                if (targetSocket === sourceSocket) continue;
-                targetSocket.emit("message", payload);
-                delivered = true;
+            if (targetSockets && targetSockets.size > 0) {
+                for (const targetSocket of targetSockets) {
+                    if (targetSocket === sourceSocket) continue;
+                    targetSocket.emit("message", payload);
+                    delivered = true;
+                }
+            }
+            if (!delivered && networkContext?.sendToReverse) {
+                const upstreamUser = normalizeHint(airpadConnectionMeta.get(sourceSocket)?.routeTarget) || normalizeHint(networkContext.upstreamUserId);
+                
+                let reversePayload = payload;
+                if (Buffer.isBuffer(payload) || payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
+                    const meta = airpadConnectionMeta.get(sourceSocket);
+                    const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || normalizeHint(networkContext.upstreamUserId) || sourceSocket.id;
+                    reversePayload = {
+                        type: "dispatch",
+                        from: upstreamFrom,
+                        to: rawTarget,
+                        target: rawTarget,
+                        targetId: rawTarget,
+                        namespace: "default",
+                        mode: "blind",
+                        payload: {
+                            __airpadBinary: true,
+                            encoding: "base64",
+                            data: encodeBinaryForTunnel(payload)
+                        },
+                        userId: upstreamUser,
+                        routeTarget: normalizeHint(meta?.routeTarget) || rawTarget,
+                        via: normalizeHint(meta?.routeHint),
+                        surface: "socketio"
+                    };
+                }
+
+                if (networkContext.sendToReverse(upstreamUser || "", rawTarget, reversePayload)) {
+                    delivered = true;
+                }
             }
         }
         return delivered;

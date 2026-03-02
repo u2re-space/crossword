@@ -1,7 +1,7 @@
 export type WsConnectionArchetype = "client-upstream" | "client-downstream" | "server-upstream" | "server-downstream";
 
 const LEGACY_ROLE_ALIASES = new Set(["endpoint", "server", "peer", "client", "node", "hub"]);
-const CLIENT_CONNECTOR_ROLES = new Set(["client-upstream"]);
+const CLIENT_CONNECTOR_ROLES = new Set(["client-upstream", "client-downstream"]);
 const SERVER_UPSTREAM_ROLES = new Set(["server-upstream"]);
 const SERVER_DOWNSTREAM_ROLES = new Set(["server-downstream"]);
 const REVERSE_MODE = "server-downstream";
