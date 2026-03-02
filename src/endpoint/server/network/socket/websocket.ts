@@ -3,11 +3,21 @@ import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
 import { connect as createTcpConnection, type Socket as NetSocket } from "node:net";
 
+import config from "../../config/config.ts";
 import { loadUserSettings } from "../../lib/users.ts";
 import { isBroadcast, normalizeSocketFrame } from "../stack/messages.ts";
 import { inferNetworkSurface } from "../stack/topology.ts";
 import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
+import {
+    type WsConnectionArchetype,
+    areArchetypesCompatible,
+    inferExpectedRemoteArchetype,
+    inferServerSideArchetype,
+    parseWsArchetype,
+    supportsServerDownstreamArchetype,
+    supportsServerUpstreamArchetype
+} from "../stack/archetypes.ts";
 
 type TcpPassthroughFrame = {
     type: string;
@@ -136,6 +146,8 @@ type ClientInfo = {
     id: string;
     namespace: string;
     reverse: boolean;
+    localArchetype: WsConnectionArchetype;
+    remoteArchetype?: WsConnectionArchetype;
     deviceId?: string;
     peerLabel?: string;
     peerId?: string;
@@ -435,6 +447,10 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const mode = params.get("mode") || "push";
         const deviceId = params.get("deviceId") || "";
         const isReverse = mode === "reverse";
+        const remoteArchetypeRaw = params.get("archetype") || params.get("connectionArchetype") || params.get("connectionRole");
+        const parsedRemoteArchetype = parseWsArchetype(remoteArchetypeRaw);
+        const localArchetype = inferServerSideArchetype(isReverse);
+        const remoteArchetype = parsedRemoteArchetype || inferExpectedRemoteArchetype(isReverse);
         const userIdKey = normalizeSocketUser(userId);
         const normalizedDeviceId = normalizeSocketPeer(deviceId);
         const settings = await verify(userId, userKey);
@@ -448,6 +464,21 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4002, "Missing deviceId");
             return;
         }
+        if (remoteArchetypeRaw && !parsedRemoteArchetype) {
+            ws.close(4005, `Invalid websocket archetype: ${remoteArchetypeRaw}`);
+            return;
+        }
+        const roleAllowed = isReverse
+            ? supportsServerDownstreamArchetype(config.roles as string[] | undefined)
+            : supportsServerUpstreamArchetype(config.roles as string[] | undefined);
+        if (!roleAllowed) {
+            ws.close(4003, `Unsupported websocket archetype for this node: ${localArchetype}`);
+            return;
+        }
+        if (!areArchetypesCompatible(localArchetype, remoteArchetype)) {
+            ws.close(4004, `Incompatible websocket archetypes: local=${localArchetype}, remote=${remoteArchetype}`);
+            return;
+        }
         const peerLabel = isReverse ? normalizePeerLabel(userId || "", normalizedDeviceId, requestedPeerId) : undefined;
         const info: ClientInfo = {
             userId,
@@ -457,6 +488,8 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             id: randomUUID(),
             namespace: normalizeSocketUser(namespace || userId),
             reverse: isReverse,
+            localArchetype,
+            remoteArchetype: remoteArchetype,
             deviceId: isReverse ? normalizedDeviceId : undefined,
             peerLabel,
             peerId: isReverse ? requestedPeerId : undefined
@@ -475,9 +508,18 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 peerId: requestedPeerId
             });
             reversePeerProfiles.set(info.userIdKey, labels);
-            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, deviceId, peerLabel, peerId: requestedPeerId }));
+            ws.send(JSON.stringify({
+                type: "welcome",
+                id: info.id,
+                userId,
+                deviceId,
+                peerLabel,
+                peerId: requestedPeerId,
+                archetype: info.localArchetype,
+                remoteArchetype: info.remoteArchetype
+            }));
         } else {
-            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId }));
+            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, archetype: info.localArchetype, remoteArchetype: info.remoteArchetype }));
         }
 
         ws.on("message", async (data) => {

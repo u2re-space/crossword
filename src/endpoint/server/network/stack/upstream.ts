@@ -5,6 +5,9 @@ import { WebSocket } from "ws";
 import { normalizeTunnelRoutingFrame } from "./messages.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, resolvePortableTextValue, safeJsonParse } from "../../lib/parsing.ts";
+import {
+    supportsConnectorRole
+} from "./archetypes.ts";
 
 type UpstreamConnectorConfig = {
     enabled?: boolean;
@@ -221,20 +224,13 @@ const formatHintForInvalidCredentials = (userId?: string, deviceId?: string, end
     return `Invalid upstream credentials for userId="${userId || "-"}" deviceId="${deviceId || "-"}" endpoint="${endpoint || "-"}". ` + 'Create or align this user on the target endpoint via `/core/auth/register` (POST {"userId":"...","userKey":"...","encrypt":false}) ' + "then set the same upstream.userId/upstream.userKey in both endpoints.";
 };
 
-const normalizeRoleSet = (roles: unknown): Set<string> => {
-    if (!Array.isArray(roles)) return new Set<string>();
-    return new Set(roles.map((value) => (typeof value === "string" ? value.trim().toLowerCase() : "")).filter((value) => value.length > 0));
-};
-
 /**
  * Endpoint role model is split into:
  * - upstream connector (this process): starts reverse WS/WebSocket client and pushes frames to upstream gateway
  * - upstream gateway/origin (remote endpoint): accepts reverse socket and proxies/reroutes messages for peers and connected clients
  */
 const isConnectorRoleEnabled = (config: EndpointConfig): boolean => {
-    const roles = normalizeRoleSet(config.roles);
-    if (roles.size === 0) return true;
-    return roles.has("client") || roles.has("peer") || roles.has("node") || roles.has("hub");
+    return supportsConnectorRole(config.roles);
 };
 
 const buildAesKey = (secret: string) => {
@@ -409,6 +405,7 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>)
             url.pathname = `${normalizedPath}ws`;
         }
         url.searchParams.set("mode", "reverse");
+        url.searchParams.set("archetype", "client-upstream");
         url.searchParams.set("userId", cfg.userId);
         url.searchParams.set("userKey", cfg.userKey);
         url.searchParams.set("namespace", cfg.namespace);
@@ -426,7 +423,7 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<UpstreamConnectorConfig>)
 export const startUpstreamPeerClient = (rawConfig: EndpointConfig, options: UpstreamClientOptions = {}): RunningClient | null => {
     if (!isConnectorRoleEnabled(rawConfig)) {
         if (isTunnelDebug) {
-            console.info("[upstream.connector] disabled: client/peer/hub role is not enabled", `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`);
+            console.info("[upstream.connector] disabled: connector role is not enabled", `roles=${formatEndpointList(Array.isArray(rawConfig.roles) ? rawConfig.roles : [])}`);
         }
         return null;
     }

@@ -153,11 +153,15 @@ const defaultConfig = {
 
     // Роли/режимы этого узла:
     // - endpoint: full endpoint behavior
-    // - server: run local HTTP/HTTPS endpoints and WS/Socket.IO bridge
-    // - client: connect as upstream connector (reverse initiator) to an upstream GATEWAY/ORIGIN
-    // - peer: participate as a peer device (reverse dispatch target)
-    // - hub: act as upstream relay participant and/or origin/gateway role
-    // - node: generic aggregate role (server+client+peer)
+    // - server: legacy alias (server-upstream/server-downstream/endpoint role)
+    // - client: legacy alias (client-upstream/client-downstream role)
+    // - peer: participate as a peer device (legacy reverse target role)
+    // - hub: act as upstream relay participant and/or origin/gateway role (legacy)
+    // - node: generic aggregate role (legacy)
+    // - server-upstream: принимает входящие обычные downstream-клиенты (включая локальные AirPad/браузер-клиенты)
+    // - server-downstream: принимает reverse-bridge соединения как серверная отправляющая сторона
+    // - client-upstream: подключается reverse-upstream (NAT/гейт-паттерн), compatible с server-downstream
+    // - client-downstream: обычный клиент-отправитель, compatible с server-upstream
     roles: [...DEFAULT_CORE_ROLES],
 
     // Upstream tunnel-through / be-as-device settings.
