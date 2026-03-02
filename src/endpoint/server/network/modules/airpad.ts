@@ -124,18 +124,40 @@ const pickString = (value: unknown): string | undefined => {
     return undefined;
 };
 
+const stripRouteTargetProtocol = (value: string): string => {
+    const withoutProtocol = value.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").split("/")[0];
+    return withoutProtocol.trim();
+};
+
+const isLikelyPort = (value: string): boolean => /^\d{1,5}$/.test(value);
+
+const stripRouteTargetPort = (value: string): string => {
+    const hostSpec = stripRouteTargetProtocol(value);
+    if (!hostSpec) return "";
+
+    if (hostSpec.startsWith("[") && hostSpec.includes("]")) {
+        const close = hostSpec.lastIndexOf("]");
+        const after = hostSpec.slice(close + 1);
+        if (after.startsWith(":")) {
+            const candidatePort = after.slice(1);
+            if (isLikelyPort(candidatePort)) {
+                return hostSpec.slice(0, close + 1);
+            }
+        }
+    }
+
+    const at = hostSpec.lastIndexOf(":");
+    if (at <= 0) return hostSpec;
+    const candidatePort = hostSpec.slice(at + 1);
+    if (isLikelyPort(candidatePort)) {
+        return hostSpec.slice(0, at);
+    }
+    return hostSpec;
+};
+
 const normalizeAirPadRouteTarget = (value: string | undefined): string | undefined => {
-    const normalized = (value || "").trim();
-    if (!normalized) return undefined;
-
-    const prefixMatch = /^l-(.+)$/i.exec(normalized);
-    if (!prefixMatch) return normalized;
-
-    const suffix = prefixMatch[1].trim();
-    if (!suffix) return undefined;
-
-    const looksLikeHostLikeTarget = /^(?:\[[^\]]+\]|[a-z0-9.-]+)(?::\d{1,5})?(?:\.[a-z0-9.-]+)?$/i.test(suffix);
-    return looksLikeHostLikeTarget ? suffix : normalized;
+    const normalized = stripRouteTargetPort(String(value || ""));
+    return normalized || undefined;
 };
 
 export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMeta => {

@@ -1,4 +1,5 @@
 import net from "node:net";
+import { networkInterfaces } from "node:os";
 
 import Fastify, { type FastifyInstance } from "fastify";
 
@@ -141,11 +142,91 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 };
 
 // Receives messages from upstream gateway/origin and dispatches them into local peer hub.
+const resolveLocalEndpointIds = (endpointPolicyMap: ReturnType<typeof normalizeEndpointPolicies>, fallbackUserId: string): Set<string> => {
+    const localHosts = new Set<string>(["localhost", "127.0.0.1", "::1"]);
+    const hostName = ((config as any)?.host || "").toString().trim().toLowerCase();
+    if (hostName) localHosts.add(hostName);
+    const hostname = (typeof process?.env?.HOSTNAME === "string" && process.env.HOSTNAME.trim()) ? process.env.HOSTNAME.trim().toLowerCase() : "";
+    if (hostname) localHosts.add(hostname);
+
+    const interfaces = networkInterfaces();
+    for (const list of Object.values(interfaces)) {
+        if (!list) continue;
+        for (const iface of list) {
+            if (!iface || !(typeof iface.address === "string")) continue;
+            const normalizedAddress = iface.address.trim().toLowerCase();
+            if (normalizedAddress) localHosts.add(normalizedAddress);
+            if (!normalizedAddress) continue;
+            if (normalizedAddress.startsWith("[") && normalizedAddress.endsWith("]")) {
+                localHosts.add(normalizedAddress.slice(1, -1));
+            }
+        }
+    }
+
+    const normalizePolicyHost = (value: string): string => {
+        const trimmed = value.trim().toLowerCase();
+        if (!trimmed) return "";
+        const withoutPort = trimmed.split("#")[0];
+        if (!withoutPort) return "";
+        const protocolSplit = withoutPort.includes("://") ? withoutPort.split("://")[1] : withoutPort;
+        const hostOnly = protocolSplit.split("/")[0];
+        if (!hostOnly) return "";
+        const withoutBrackets = hostOnly.startsWith("[") && hostOnly.includes("]") ? hostOnly.slice(1, hostOnly.indexOf("]")) : hostOnly;
+        const host = withoutBrackets.split(":")[0];
+        return host.trim().toLowerCase();
+    };
+
+    const selfIds = new Set<string>();
+    const addEndpointIdVariants = (policyId: string) => {
+        const normalized = String(policyId || "").trim().toLowerCase();
+        if (!normalized) return;
+        selfIds.add(normalized);
+        if (normalized.startsWith("l-")) {
+            selfIds.add(normalized.slice(2));
+            return;
+        }
+        selfIds.add(`l-${normalized}`);
+    };
+    const normalizedFallback = fallbackUserId.trim().toLowerCase();
+    if (normalizedFallback) {
+        addEndpointIdVariants(normalizedFallback);
+    }
+    for (const [rawPolicyId, policy] of Object.entries(endpointPolicyMap || {})) {
+        const policyId = rawPolicyId.trim().toLowerCase();
+        if (!policyId || policyId === "*") continue;
+        const rawOrigins = (policy as any).origins;
+        if (!Array.isArray(rawOrigins)) continue;
+        for (const rawOrigin of rawOrigins) {
+            const normalizedOriginHost = normalizePolicyHost(String(rawOrigin || ""));
+            if (!normalizedOriginHost) continue;
+            if (localHosts.has(normalizedOriginHost)) {
+                addEndpointIdVariants(policyId);
+                break;
+            }
+        }
+    }
+    return selfIds;
+};
+
+const normalizeTargetForLocalRouting = (rawTarget: string): string[] => {
+    const normalized = String(rawTarget || "").trim().toLowerCase();
+    if (!normalized) return [];
+    if (normalized.startsWith("l-")) return [normalized, normalized.slice(2)];
+    return [normalized, `l-${normalized}`];
+};
+
+const isLocalEndpointTarget = (requestedTarget: string, localEndpointIds: Set<string>): boolean => {
+    const normalized = String(requestedTarget || "").trim().toLowerCase();
+    if (!normalized) return false;
+    return normalizeTargetForLocalRouting(normalized).some((candidate) => localEndpointIds.has(candidate));
+};
+
 const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
     const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
     const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
     const defaultUserId = fallbackUserId || "";
+    const localEndpointIds = resolveLocalEndpointIds(endpointPolicyMap, defaultUserId);
     const resolveSourceForPolicy = (msg: Record<string, unknown>, fallback: string): { sourceId: string; isKnown: boolean } => {
         const sourceHint = typeof msg.from === "string" && msg.from.trim() ? msg.from : typeof (msg as any).source === "string" && (msg as any).source.trim() ? (msg as any).source : typeof (msg as any).sourceId === "string" && (msg as any).sourceId.trim() ? (msg as any).sourceId : typeof (msg as any).src === "string" && (msg as any).src.trim() ? (msg as any).src : fallback;
         const trimmed = typeof sourceHint === "string" ? sourceHint.trim() : "";
@@ -238,6 +319,8 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         }
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
+        const airpadBinary = tryDecodeUpstreamBinary(payload);
+        const hasAirpadBinaryPayload = airpadBinary instanceof Buffer;
         if (isTunnelDebug) {
             const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload as Record<string, unknown>).join("|") : typeof payload;
             console.info(`[upstream] IN`, `userId=${resolvedUserId}`, `from=${sourceForPolicy.sourceId}`, `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`, `type=${String(msg.type || msg.action || "dispatch")}`, `kind=${payloadKeys}`);
@@ -267,24 +350,70 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
 
         if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
             const requestedTarget = resolvedRequestedTarget.trim();
-            const peerProfiles = hub.getConnectedPeerProfiles(resolvedUserId);
-            const resolvedTargetHint = resolveTunnelTarget(peerProfiles, requestedTarget);
-            const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
-            const resolvedKind = resolvedTargetHint?.source;
-            const resolved = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
+            const requestedTargetUser = requestedTarget.toLowerCase();
+            const candidateUsers = Array.from(
+                new Set<string>([
+                    resolvedUserId,
+                    ...(requestedTargetUser && requestedTargetUser !== resolvedUserId ? [requestedTargetUser] : [])
+                ])
+            );
+
+            let resolved = false;
+            let resolvedUserForDelivery = "";
+            let resolvedTarget = "";
+            let resolvedKind: "id" | "exactLabel" | "containsLabel" | undefined;
+            let matchedLabel: string | undefined;
+            let matchedUserPeers: string[] = [];
+            let resolvedRequestLabel = "";
+
+            for (const candidateUser of candidateUsers) {
+                const peerProfiles = hub.getConnectedPeerProfiles(candidateUser);
+                const resolvedTargetHint = resolveTunnelTarget(peerProfiles, requestedTarget);
+                const candidateTarget = resolvedTargetHint?.profile.id || requestedTarget;
+                const resolvedTo = hub.sendToDevice(candidateUser, candidateTarget, routed);
+                if (resolvedTo) {
+                    resolved = true;
+                    resolvedUserForDelivery = candidateUser;
+                    resolvedTarget = candidateTarget;
+                    resolvedKind = resolvedTargetHint?.source;
+                    matchedLabel = resolvedTargetHint?.profile.label;
+                    matchedUserPeers = peerProfiles.map((entry) => `${entry.label}(${entry.id})`);
+                    break;
+                }
+                if (!resolvedRequestLabel) {
+                    resolvedRequestLabel = candidateTarget;
+                }
+            }
             const fallbackTarget =
                 requestedTarget.toLowerCase() === "self" || requestedTarget.toLowerCase() === resolvedUserId.toLowerCase();
             const fallbackSent =
-                !resolved && peerProfiles.length > 0 && fallbackTarget
+                !resolved && hub.getConnectedPeerProfiles(resolvedUserId).length > 0 && fallbackTarget
                     ? (() => {
                           hub.multicast(resolvedUserId, routed, namespace);
                           return true;
                       })()
                     : false;
-            const delivered = resolved || fallbackSent;
-            const knownPeers = peerProfiles.map((entry) => `${entry.label}(${entry.id})`);
+            const shouldFallbackToLocalAirpad =
+                hasAirpadBinaryPayload &&
+                !resolved &&
+                !fallbackSent &&
+                (requestedTarget.toLowerCase() === "self" || isLocalEndpointTarget(requestedTarget, localEndpointIds));
+            const decodedAirpadBinary = hasAirpadBinaryPayload ? (airpadBinary as Buffer) : undefined;
+            const forcedLocalAirpad = shouldFallbackToLocalAirpad && !!decodedAirpadBinary ? handleAirpadBinaryMessage(app.log as any, decodedAirpadBinary) : false;
+            const delivered = resolved || fallbackSent || forcedLocalAirpad;
+            if (shouldFallbackToLocalAirpad && isTunnelDebug) {
+                console.info(
+                    `[upstream] airpad binary forced local fallback`,
+                    `userId=${resolvedUserId}`,
+                    `target=${requestedTarget}`,
+                    `handled=${forcedLocalAirpad}`,
+                    `from=${sourceForPolicy.sourceId}`
+                );
+            }
 
             if (!delivered) {
+                const requestedPeers = hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`);
+                const targetPeers = hub.getConnectedPeerProfiles(requestedTargetUser).map((entry) => `${entry.label}(${entry.id})`);
                 if (isTunnelDebug) {
                     console.warn(
                         `[upstream] target resolve failed`,
@@ -292,31 +421,46 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget || "-"}`,
                         `kind=${resolvedKind || "-"}`,
-                        `known=${knownPeers.join(",")}`
+                        `known=${requestedPeers.join(",")}`,
+                        `candidateUsers=${candidateUsers.join("|")}`,
+                        `targetUsers=${targetPeers.join(",")}`
                     );
                 }
                 app.log?.warn?.(
                     {
                         userId: resolvedUserId,
                         target: resolvedRequestedTarget,
-                        matchedLabel: resolvedTargetHint?.profile.label,
+                        matchedLabel,
                         resolutionKind: resolvedKind,
-                        resolvedTarget,
-                        knownTargets: knownPeers,
+                        resolvedTarget: resolvedRequestLabel || requestedTarget,
+                        knownTargets: requestedPeers,
+                        candidateUsers,
+                        targetUserPeers: targetPeers,
                         payloadType: type
                     },
                     "[upstream] failed to route command to reverse target"
+                );
+            } else if (forcedLocalAirpad) {
+                app.log?.debug?.(
+                    {
+                        userId: resolvedUserId,
+                        requestedTarget,
+                        payloadType: type,
+                        source: sourceForPolicy.sourceId
+                    },
+                    "[upstream] forced airpad binary execution on local endpoint"
                 );
             } else {
                 app.log?.debug?.(
                     {
                         userId: resolvedUserId,
-                        requestedTarget: requestedTarget,
+                        requestedTarget,
                         resolvedTarget,
-                        matchedLabel: resolvedTargetHint?.profile.label,
+                        resolvedUserForDelivery,
+                        matchedLabel,
                         resolutionKind: resolvedKind,
                         payloadType: type,
-                        knownTargets: knownPeers,
+                        knownTargets: matchedUserPeers,
                         fallbackToSelf: fallbackSent,
                         resolvedUserId
                     },
@@ -327,6 +471,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         `[upstream] target resolved`,
                         `userId=${resolvedUserId}`,
                         `requested=${requestedTarget}`,
+                        `deliveryUser=${resolvedUserForDelivery}`,
                         `resolved=${resolvedTarget}`,
                         `kind=${resolvedKind || "-"}`,
                         `delivered=${delivered}`,
@@ -339,6 +484,8 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                     delivered,
                     target: resolvedRequestedTarget,
                     userId: resolvedUserId,
+                    deliveryUser: resolvedUserForDelivery || resolvedUserId,
+                    resolvedTarget,
                     knownPeers: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
                 },
                 "[upstream] routed command to device"

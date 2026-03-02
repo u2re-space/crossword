@@ -77,7 +77,32 @@ async function writeAirpadClipboard(text: string): Promise<void> {
     }
 }
 
-function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array | ArrayBuffer): boolean {
+export const tryDecodeUpstreamBinary = (raw: unknown): Buffer | null => {
+    if (!raw || typeof raw !== "object") return null;
+    const candidates: Array<unknown> = [raw];
+    const envelopePayload = (raw as any).payload;
+    const envelopeData = (raw as any).data;
+    if (envelopePayload !== undefined) candidates.push(envelopePayload);
+    if (envelopeData !== undefined) candidates.push(envelopeData);
+
+    for (const item of candidates) {
+        if (!item || typeof item !== "object") continue;
+        const payload: Record<string, unknown> = item as Record<string, unknown>;
+        if (payload.__airpadBinary !== true) continue;
+        if (payload.encoding && typeof payload.encoding === "string" && payload.encoding.toLowerCase() !== "base64") continue;
+        const source = typeof payload.data === "string" ? payload.data : "";
+        if (!source) continue;
+        try {
+            return Buffer.from(source, "base64");
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+};
+
+export function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array | ArrayBuffer): boolean {
     const msg = parseBinaryMessage(buffer);
     if (!msg) {
         logger?.warn?.("Invalid binary message format");
@@ -123,9 +148,67 @@ function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array | Ar
     return true;
 }
 
+const normalizeSocketIdentifier = (value: unknown): string => {
+    if (!value) return "";
+    if (typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+};
+
+const shouldSkipLocalBinaryExecution = (socket: Socket): boolean => {
+    const query: Record<string, unknown> = (socket as any).handshake?.query || {};
+    const queryRouteTarget = normalizeSocketIdentifier(
+        query.__airpad_route ||
+            query.__airpad_route_target ||
+            query.routeTarget ||
+            query.__airpad_peer ||
+            query.__airpad_device ||
+            query.__airpad_client ||
+            query.target ||
+            query.targetId ||
+            query.deviceId ||
+            query.to ||
+            query.peerId
+    );
+    if (!queryRouteTarget || queryRouteTarget === "self") return false;
+
+    const via = normalizeSocketIdentifier(query.__airpad_via || query.via);
+    if (via === "tunnel" || via === "remote") {
+        return true;
+    }
+
+    const normalizeRouteAlias = (value: string): string[] => {
+        const normalized = normalizeSocketIdentifier(value);
+        if (!normalized) return [];
+        if (normalized.startsWith("l-")) return [normalized, normalized.slice(2)];
+        return [normalized, `l-${normalized}`];
+    };
+
+    const targetHost = normalizeSocketIdentifier(query.__airpad_target || query.__airpad_host || query.host || query.__airpad_hop);
+    if (targetHost) {
+        const targetVariants = new Set(normalizeRouteAlias(queryRouteTarget));
+        const hostVariants = new Set(normalizeRouteAlias(targetHost));
+        for (const targetVariant of targetVariants) {
+            if (hostVariants.has(targetVariant)) return false;
+        }
+    }
+
+    const sourceId = normalizeSocketIdentifier(
+        query.__airpad_src ||
+        query.__airpad_source ||
+        query.source ||
+        query.sourceId ||
+        query.clientId ||
+        query.peerId ||
+        query.sourceId
+    );
+    if (!sourceId) return false;
+    return queryRouteTarget !== sourceId;
+};
+
 export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSocketHandlerOptions = {}): void {
     const { logger, onObjectMessage, onBinaryMessage, onDisconnect } = options;
     airpadSockets.add(socket);
+    const skipLocalBinary = shouldSkipLocalBinaryExecution(socket);
 
     readAirpadClipboard()
         .then((text) => socket.emit("clipboard:update", { text, source: "local" }))
@@ -133,8 +216,14 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
 
     socket.on("message", async (data: any) => {
         if (Buffer.isBuffer(data) || data instanceof Uint8Array || data instanceof ArrayBuffer) {
-            const localHandled = handleAirpadBinaryMessage(logger, data);
+            const localHandled = skipLocalBinary ? false : handleAirpadBinaryMessage(logger, data);
             const routed = await onBinaryMessage?.(data as any, socket);
+            if (skipLocalBinary && localHandled === false && routed) {
+                logger?.debug?.(
+                    { socketId: socket.id },
+                    "[airpad] remote route detected, skipping local binary execution"
+                );
+            }
             if (routed && localHandled) {
                 logger?.debug?.(
                     { socketId: socket.id, localHandled, routed },
@@ -145,6 +234,18 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
                 logger?.warn?.(
                     { socketId: socket.id },
                     "[airpad] binary routed but not parsed locally"
+                );
+            }
+            return;
+        }
+
+        const upstreamBinary = tryDecodeUpstreamBinary(data);
+        if (upstreamBinary) {
+            const localHandled = handleAirpadBinaryMessage(logger, upstreamBinary);
+            if (!localHandled) {
+                logger?.warn?.(
+                    { socketId: socket.id },
+                    "[airpad] upstream binary envelope parsed but message is invalid"
                 );
             }
             return;

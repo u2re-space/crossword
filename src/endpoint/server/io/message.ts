@@ -47,7 +47,7 @@ export function parseBinaryMessage(buffer: Buffer | Uint8Array | ArrayBuffer): P
         return null;
     }
 
-    if (buf.length < 8) {
+    if (buf.length < 6) {
         return null;
     }
 

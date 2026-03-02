@@ -21,6 +21,7 @@
         "preserveTargets": ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
     },
     "launcherEnv": {
+        "CWS_AIRPAD_VERBOSE": 1,
         "CWS_TUNNEL_DEBUG": true,
         "CWS_ASSOCIATED_TOKEN": "n3v3rm1nd",
         "CWS_AIRPAD_NATIVE_ACTIONS": "true",

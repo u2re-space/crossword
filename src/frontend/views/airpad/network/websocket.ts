@@ -725,6 +725,8 @@ export function connectWS() {
         .filter((entry): entry is { host: string; port?: string } => !!entry && !!entry.host);
     const firstExplicitPort = (remoteHostSpecs[0]?.port || '').trim();
     const remotePort = firstExplicitPort;
+    const configuredRouteTarget = getRemoteRouteTarget().trim();
+    const parsedConfiguredRouteTarget = configuredRouteTarget ? parseHostAndPort(configuredRouteTarget) : undefined;
     const pageHost = location.hostname || "";
     const isLocalPageHost = /^(localhost|127\.0\.0\.1)$/.test(pageHost) || (
         /^\d{1,3}(?:\.\d{1,3}){3}$/.test(pageHost) &&
@@ -752,6 +754,8 @@ export function connectWS() {
     const remoteHostSpec = remoteHostSpecs[0];
     const parsedRemoteHost = remoteHostSpec?.host || resolvedRemoteHost;
     const parsedRemotePort = remoteHostSpec?.port;
+    const routeTargetForQuery = parsedConfiguredRouteTarget?.host || configuredRouteTarget || "";
+    const routeTargetPortForQuery = (parsedConfiguredRouteTarget?.port || "").trim();
 
     const primaryProtocol = inferProtocol();
     const probeHost = parsedRemoteHost || resolvedRemoteHost;
@@ -887,8 +891,12 @@ export function connectWS() {
         const candidate = uniqueCandidates[index];
         const url = candidate.url;
         const targetHost = parsedRemoteHost || remoteHost;
-        const targetPort = parsedRemotePort || remotePort || (primaryProtocol === 'https' ? '8443' : '8080');
-        const routeTarget = getRemoteRouteTarget().trim();
+        const targetPort =
+            routeTargetPortForQuery ||
+            parsedRemotePort ||
+            remotePort ||
+            (primaryProtocol === 'https' ? '8443' : '8080');
+        const routeTarget = routeTargetForQuery;
         const resolvedRouteTarget = routeTarget || targetHost || "";
         log(`Connecting Socket.IO: ${url} via ${candidate.source} (${candidate.host}:${candidate.port}) target=${targetHost}:${targetPort}`);
         const authToken = getAirPadAuthToken().trim();
