@@ -3,7 +3,7 @@
 // =========================
 
 import { Server } from "socket.io";
-import { registerAirpadSocketHandlers } from "../../routing/socket-airpad.ts";
+import { registerAirpadSocketHandlers } from "../../airpad/index.ts";
 import { applySocketIoPrivateNetworkHeaders, buildSocketIoOptions, describeHandshake, isPrivateNetworkCorsEnabled } from "../socket/socketio-security.ts";
 
 export function setupSocketIO(server: any, logger?: any) {

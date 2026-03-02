@@ -4,9 +4,15 @@ import { randomUUID } from "node:crypto";
 
 import { applySocketIoPrivateNetworkHeaders, buildSocketIoOptions, describeHandshake, isPrivateNetworkCorsEnabled } from "./socketio-security.ts";
 import { applyMessageHooks, isBroadcast, normalizeSocketFrame, type SocketMessageHook } from "../stack/messages.ts";
-import { registerAirpadSocketHandlers } from "../../routing/socket-airpad.ts";
-import { AirpadClipHistoryEntry, AirpadConnectionMeta, describeAirPadConnectionMeta, isAirPadAuthorized, requiresAirpadMessageAuth } from "../modules/airpad.ts";
-import { createAirpadObjectMessageHandler } from "../modules/airpad.ts";
+import {
+    createAirpadRouter,
+    registerAirpadSocketHandlers,
+    AirpadClipHistoryEntry,
+    describeAirPadConnectionMeta,
+    isAirPadAuthorized,
+    requiresAirpadMessageAuth,
+    createAirpadObjectMessageHandler
+} from "../../airpad/index.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
@@ -73,11 +79,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         );
     });
 
-    // Device management: deviceId -> socket
-    const clients = new Map<string, Socket>();
-    const airpadConnectionMeta = new Map<Socket, AirpadConnectionMeta>();
-    const airpadTargets = new Map<string, Set<Socket>>();
-    const socketAliases = new Map<Socket, Set<string>>();
+    // AirPad routing state and helpers
+    const airpadRouter = createAirpadRouter({
+        logger: app.log,
+        networkContext,
+        isTunnelDebug
+    });
     const pendingFetchReplies = new Map<
         string,
         {
@@ -87,44 +94,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
     >();
     const requestToDeviceKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
+    const normalizeHint = (value: unknown): string => airpadRouter.normalizeHint(value);
 
-    const normalizeHint = (value: unknown): string => {
-        if (typeof value !== "string") return "";
-        const normalized = value.trim().toLowerCase();
-        return normalized;
-    };
-    const addClientAlias = (socket: Socket, value: unknown): void => {
-        const normalized = normalizeHint(value);
-        if (!normalized) return;
-        clients.set(normalized, socket);
-        const aliases = socketAliases.get(socket) ?? new Set<string>();
-        aliases.add(normalized);
-        socketAliases.set(socket, aliases);
-    };
-    const addTunnelAlias = (socket: Socket, value: unknown): void => {
-        const normalized = normalizeHint(value);
-        if (!normalized) return;
-        const existing = airpadTargets.get(normalized) || new Set<Socket>();
-        existing.add(socket);
-        airpadTargets.set(normalized, existing);
-        const aliases = socketAliases.get(socket) ?? new Set<string>();
-        aliases.add(normalized);
-        socketAliases.set(socket, aliases);
-    };
-    const removeSocketAliases = (socket: Socket): void => {
-        const aliases = socketAliases.get(socket);
-        if (!aliases) return;
-        aliases.forEach((alias) => {
-            const direct = clients.get(alias);
-            if (direct === socket) clients.delete(alias);
-            const tunnelSet = airpadTargets.get(alias);
-            if (tunnelSet) {
-                tunnelSet.delete(socket);
-                if (tunnelSet.size === 0) airpadTargets.delete(alias);
-            }
-        });
-        socketAliases.delete(socket);
-    };
     const removeSocketRequestPendings = (userId: string, deviceId: string): void => {
         const normalizedUser = normalizeHint(userId);
         const normalizedDevice = normalizeHint(deviceId);
@@ -149,8 +120,6 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
     };
 
-    const isBroadcastTarget = (value: string): boolean => value === "broadcast" || value === "all" || value === "*";
-
     const getHandshakeClientId = (socket: Socket): string | undefined => {
         const handshake: Record<string, unknown> = (socket as any).handshake || {};
         const auth = handshake.auth && typeof handshake.auth === "object" ? (handshake.auth as Record<string, unknown>) : {};
@@ -160,148 +129,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         return normalized || undefined;
     };
 
-    const encodeBinaryForTunnel = (raw: Buffer | Uint8Array): string => {
-        try {
-            return Buffer.from(raw).toString("base64");
-        } catch {
-            return "";
-        }
-    };
-
-    const forwardBinaryToUpstream = (sourceSocket: Socket, raw: Buffer | Uint8Array, target: string): boolean => {
-        if (!networkContext?.sendToUpstream) {
-            if (isTunnelDebug) {
-                console.log(`[Router] Binary tunnel upstream unavailable`, `socket=${sourceSocket.id}`, `target=${target}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
-            }
-            return false;
-        }
-        const meta = airpadConnectionMeta.get(sourceSocket);
-        const upstreamTarget = normalizeHint(target);
-        if (!upstreamTarget || isBroadcastTarget(upstreamTarget)) return false;
-
-        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
-        const upstreamPayload = {
-            type: "dispatch",
-            from: upstreamFrom,
-            to: upstreamTarget,
-            target: upstreamTarget,
-            targetId: upstreamTarget,
-            namespace: "default",
-            mode: "blind",
-            payload: {
-                __airpadBinary: true,
-                encoding: "base64",
-                data: encodeBinaryForTunnel(raw)
-            },
-            userId: upstreamUser,
-            routeTarget: normalizeHint(meta?.routeTarget) || upstreamTarget,
-            via: normalizeHint(meta?.routeHint),
-            surface: "socketio"
-        };
-        const accepted = networkContext.sendToUpstream(upstreamPayload);
-        if (accepted && isTunnelDebug) {
-            console.log(`[Router] OUT(tunnel-upstream-binary)`, `socket=${sourceSocket.id}`, `target=${upstreamTarget}`);
-        } else if (isTunnelDebug) {
-            console.log(`[Router] Binary tunnel upstream rejected`, `socket=${sourceSocket.id}`, `target=${upstreamTarget}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
-        }
-        return accepted;
-    };
-
-    const registerAirpadSocketHints = (socket: Socket, meta: AirpadConnectionMeta): void => {
-        airpadConnectionMeta.set(socket, meta);
-        if (meta.targetHost) addTunnelAlias(socket, meta.targetHost);
-        if (meta.targetHost) addClientAlias(socket, meta.targetHost);
-        if (meta.hostHint) addTunnelAlias(socket, meta.hostHint);
-        if (meta.hostHint) addClientAlias(socket, meta.hostHint);
-        if (meta.clientId) addTunnelAlias(socket, meta.clientId);
-        if (meta.clientId) addClientAlias(socket, meta.clientId);
-        if (meta.sourceId) addClientAlias(socket, meta.sourceId);
-        if (meta.sourceId) addTunnelAlias(socket, meta.sourceId);
-        if (meta.routeTarget) addClientAlias(socket, meta.routeTarget);
-        if (meta.routeTarget) addTunnelAlias(socket, meta.routeTarget);
-    };
-
-    const unregisterAirpadSocketHints = (socket: Socket): void => {
-        const meta = airpadConnectionMeta.get(socket);
-        if (!meta) return;
-        const remove = (target: unknown): void => {
-            const normalized = normalizeHint(target);
-            if (!normalized) return;
-            const existing = airpadTargets.get(normalized);
-            if (!existing) return;
-            existing.delete(socket);
-            if (existing.size === 0) {
-                airpadTargets.delete(normalized);
-            }
-        };
-        remove(meta.targetHost);
-        remove(meta.hostHint);
-        remove(meta.clientId);
-        remove(meta.sourceId);
-        remove(meta.routeTarget);
-        removeSocketAliases(socket);
-        airpadConnectionMeta.delete(socket);
-    };
-
-    const resolveTunnelTargets = (sourceSocket: Socket, frame: any): string[] => {
-        const next = new Set<string>();
-        const meta = airpadConnectionMeta.get(sourceSocket);
-        const routeHint = normalizeHint(meta?.routeHint);
-        if (routeHint !== "tunnel" && routeHint !== "remote") return [];
-
-        const frameTarget = normalizeHint(frame?.to);
-        if (frameTarget && !isBroadcastTarget(frameTarget)) {
-            next.add(frameTarget);
-            return Array.from(next).filter(Boolean);
-        }
-        if (!frameTarget || isBroadcastTarget(frameTarget)) {
-            const routeTarget = normalizeHint(meta?.routeTarget);
-            if (routeTarget) {
-                next.add(routeTarget);
-                return Array.from(next).filter(Boolean);
-            }
-            if (meta?.targetHost) {
-                next.add(normalizeHint(meta.targetHost));
-            }
-            if (meta?.hostHint) {
-                next.add(normalizeHint(meta.hostHint));
-            }
-            return Array.from(next).filter(Boolean);
-        }
-        return Array.from(next).filter(Boolean);
-    };
-
-    const resolveAirpadTarget = (sourceSocket: Socket, rawTarget: string, hasExplicitTarget: boolean): string => {
-        const target = normalizeHint(rawTarget);
-        const meta = airpadConnectionMeta.get(sourceSocket);
-        const hasRouteTarget = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.targetHost) || "";
-        if (!target) return hasRouteTarget || target;
-        if (isBroadcastTarget(target)) {
-            return hasExplicitTarget ? target : hasRouteTarget || target;
-        }
-        const direct = clients.get(target);
-        if (direct && direct.connected) return target;
-        if (hasExplicitTarget) return target;
-        return hasRouteTarget || target;
-    };
-
-    const sendToDevice = (_userId: string, deviceId: string, payload: any): boolean => {
-        const target = clients.get(normalizeHint(deviceId));
-        if (!target?.connected) return false;
-        try {
-            target.emit("message", payload);
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
     const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = NETWORK_FETCH_TIMEOUT_MS) => {
         const normalizedDevice = normalizeHint(deviceId);
         if (!normalizedDevice) return undefined;
-        const targetSocket = clients.get(normalizedDevice);
+        const targetSocket = airpadRouter.getSocket(normalizedDevice);
         if (!targetSocket?.connected) return undefined;
         const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
         const envelope = { ...payload, requestId };
@@ -332,53 +163,6 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         });
     };
 
-    const forwardToAirpadTargets = (sourceSocket: Socket, payload: any, frame: any): boolean => {
-        const targets = resolveTunnelTargets(sourceSocket, frame);
-        if (!targets.length) return false;
-        let delivered = false;
-        for (const rawTarget of targets) {
-            const targetSockets = airpadTargets.get(rawTarget);
-            if (!targetSockets) continue;
-            for (const targetSocket of targetSockets) {
-                if (targetSocket === sourceSocket) continue;
-                targetSocket.emit("message", payload);
-                delivered = true;
-            }
-        }
-        return delivered;
-    };
-
-    const forwardToUpstream = (sourceSocket: Socket, frame: any): boolean => {
-        if (!networkContext?.sendToUpstream) {
-            if (isTunnelDebug) {
-                console.log(`[Router] Tunnel upstream unavailable`, `socket=${sourceSocket.id}`, `to=${normalizeHint(frame?.to) || "?"}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
-            }
-            return false;
-        }
-        if (!frame || typeof frame !== "object") return false;
-        const meta = airpadConnectionMeta.get(sourceSocket);
-        const routeHint = normalizeHint(meta?.routeHint);
-        if (routeHint !== "tunnel" && routeHint !== "remote") return false;
-        const rawTarget = normalizeHint(frame.to);
-        if (!rawTarget || isBroadcastTarget(rawTarget)) return false;
-        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
-        const accepted = networkContext.sendToUpstream({
-            ...frame,
-            from: upstreamFrom,
-            userId: upstreamUser,
-            target: rawTarget,
-            targetId: rawTarget,
-            to: rawTarget,
-            routeTarget: normalizeHint(meta?.routeTarget) || rawTarget
-        });
-        if (!accepted && isTunnelDebug) {
-            console.log(`[Router] Tunnel upstream rejected`, `socket=${sourceSocket.id}`, `to=${rawTarget}`);
-        }
-        return accepted;
-    };
-
     // Message history for inspection mode
     const clipHistory: ClipHistoryEntry[] = [];
 
@@ -393,7 +177,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             via: "socketio",
             surface: "external"
         });
-        const resolvedTo = resolveAirpadTarget(sourceSocket, normalized.to, hasExplicitTarget);
+        const resolvedTo = airpadRouter.resolveAirpadTarget(sourceSocket, normalized.to, hasExplicitTarget);
         if (resolvedTo) {
             normalized.to = resolvedTo;
             normalized.target = resolvedTo;
@@ -404,23 +188,23 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             return;
         }
 
-        const tunnelTargets = resolveTunnelTargets(sourceSocket, processed);
+        const tunnelTargets = airpadRouter.resolveTunnelTargets(sourceSocket, processed);
         if (tunnelTargets.length > 0) {
             if (isTunnelDebug) {
-                console.log(`[Router] Tunnel route attempt`, `socket=${sourceSocket.id}`, `from=${processed.from}`, `to=${processed.to}`, `targets=${tunnelTargets.join(",")}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
+                console.log(`[Router] Tunnel route attempt`, `socket=${sourceSocket.id}`, `from=${processed.from}`, `to=${processed.to}`, `targets=${tunnelTargets.join(",")}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
             }
-            if (forwardToAirpadTargets(sourceSocket, processed, processed)) {
+            if (airpadRouter.forwardToAirpadTargets(sourceSocket, processed, processed)) {
                 logMsg("OUT(tunnel)", processed);
                 if (isTunnelDebug) {
                     console.log(`[Router] OUT(tunnel) forwarded`, sourceSocket.id, `target=${processed.to}`);
                 }
                 return;
             }
-            if (forwardToUpstream(sourceSocket, processed)) {
+            if (airpadRouter.forwardToUpstream(sourceSocket, processed)) {
                 logMsg("OUT(tunnel-upstream)", processed);
                 return;
             }
-            const knownTunnelTargets = Array.from(airpadTargets.keys()).filter((key) => key);
+            const knownTunnelTargets = airpadRouter.getTunnelTargets();
             if (isTunnelDebug) {
                 console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`, `requested=${tunnelTargets.join(",")}`, `known=${knownTunnelTargets.join(",")}`);
             } else {
@@ -434,7 +218,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             return;
         }
 
-        const targetSocket = clients.get(processed.to);
+        const targetSocket = airpadRouter.getSocket(processed.to);
         if (targetSocket) {
             targetSocket.emit("message", processed);
             logMsg(`OUT(to=${processed.to})`, processed);
@@ -461,7 +245,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
         let sentCount = 0;
         for (const deviceId of deviceIds) {
-            const targetSocket = clients.get(deviceId);
+            const targetSocket = airpadRouter.getSocket(deviceId);
             if (targetSocket && targetSocket !== sourceSocket) {
                 targetSocket.emit("message", processed);
                 sentCount++;
@@ -487,7 +271,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (!sourceAlias) {
             (socket as any).airpadSourceId = normalizeHint(connectionMeta.clientId);
         }
-        registerAirpadSocketHints(socket, connectionMeta);
+        airpadRouter.registerConnection(socket, connectionMeta);
 
         app.log?.info?.(
             {
@@ -504,9 +288,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         socket.on("hello", (data: any) => {
             const handshakeClientId = getHandshakeClientId(socket);
             deviceId = normalizeHint(data?.id as string) || handshakeClientId || sourceAlias || socket.id;
-            addClientAlias(socket, deviceId);
+            airpadRouter.registerAlias(socket, deviceId);
             if (deviceId) {
-                addTunnelAlias(socket, deviceId);
+                airpadRouter.registerTunnelAlias(socket, deviceId);
             }
             console.log(`[Server] HELLO from ${deviceId}, socket.id=${socket.id}`);
             socket.emit("hello-ack", { id: deviceId, status: "connected" });
@@ -535,34 +319,34 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     }
                     return false;
                 }
-                const tunnelTargets = resolveTunnelTargets(sourceSocket, { to: "broadcast" });
+                const tunnelTargets = airpadRouter.resolveTunnelTargets(sourceSocket, { to: "broadcast" });
                 if (!tunnelTargets.length) {
                     if (isTunnelDebug) {
-                        console.log(`[Router] Binary tunnel target unavailable`, `socket=${sourceSocket.id}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
+                        console.log(`[Router] Binary tunnel target unavailable`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
                     }
                     return false;
                 }
                 for (const target of tunnelTargets) {
-                    const targetDelivered = forwardToAirpadTargets(sourceSocket, raw, { to: target, type: "binary" });
+                    const targetDelivered = airpadRouter.forwardToAirpadTargets(sourceSocket, raw, { to: target, type: "binary" });
                     if (targetDelivered) {
                         if (isTunnelDebug) {
                             console.log(`[Router] OUT(tunnel-binary)`, `socket=${sourceSocket.id}`, `target=${target}`);
                         }
                         return true;
                     }
-                    if (forwardBinaryToUpstream(sourceSocket, raw, target)) {
+                    if (airpadRouter.forwardBinaryToUpstream(sourceSocket, raw, target)) {
                         return true;
                     }
                 }
                 if (isTunnelDebug) {
-                    const knownTunnelTargets = Array.from(airpadTargets.keys()).filter((key) => key);
+                    const knownTunnelTargets = airpadRouter.getTunnelTargets().filter((key) => key);
                     console.log(`[Router] Binary tunnel attempt`, `socket=${sourceSocket.id}`, `forwarded=false`, `target=${tunnelTargets.join("|")}`, `known=${knownTunnelTargets.join(",")}`);
                 }
                 if (isTunnelDebug) {
                     const upstreamEnabled = networkContext?.sendToUpstream instanceof Function;
                     console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `upstreamEnabled=${upstreamEnabled}`);
                     if (!upstreamEnabled) {
-                        console.warn(`[Router] Binary tunnel dropped`, `reason=no upstream connector available`, `socket=${sourceSocket.id}`, `via=${airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"}`);
+                        console.warn(`[Router] Binary tunnel dropped`, `reason=no upstream connector available`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
                     }
                 }
                 if (!isTunnelDebug) {
@@ -572,11 +356,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             },
             onDisconnect: (reason) => {
                 console.log(`[Server] Disconnected: ${deviceId || socket.id}, reason: ${reason}`);
-                unregisterAirpadSocketHints(socket);
+                airpadRouter.unregisterConnection(socket);
                 const currentDeviceId = normalizeHint(deviceId);
                 removeSocketRequestPendings("", currentDeviceId);
-                if (deviceId && clients.get(deviceId) === socket) {
-                    clients.delete(deviceId);
+                if (deviceId && airpadRouter.getSocket(deviceId) === socket) {
                     socket.broadcast.emit("device-disconnected", { id: deviceId });
                 }
             }
@@ -631,23 +414,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
     // Minimal debug endpoints (optional but handy)
     app.get("/core/bridge/devices", async () => {
-        const tunnelTargets = Array.from(airpadTargets.keys()).filter(Boolean);
-        const devices = Array.from(clients.entries()).map(([deviceId, socket]) => {
-            const meta = airpadConnectionMeta.get(socket);
-            return {
-                deviceId,
-                socketId: socket.id,
-                clientId: meta?.clientId,
-                sourceId: meta?.sourceId,
-                routeTarget: meta?.routeTarget,
-                routeHint: meta?.routeHint,
-                targetHost: meta?.targetHost,
-                hostHint: meta?.hostHint,
-                targetPort: meta?.targetPort,
-                viaPort: meta?.viaPort,
-                protocolHint: meta?.protocolHint
-            };
-        });
+        const tunnelTargets = airpadRouter.getTunnelTargets().filter(Boolean);
+        const devices = airpadRouter.getDebugDevices();
         return {
             ok: true,
             upstreamConnected: networkContext?.sendToUpstream != null,
@@ -665,9 +433,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     return {
         io,
         addMessageHook: (hook) => messageHooks.push(hook),
-        getConnectedDevices: () => Array.from(clients.keys()),
+        getConnectedDevices: () => airpadRouter.getConnectedDevices(),
         getClipboardHistory: (limit = maxHistory) => clipHistory.slice(-limit),
-        sendToDevice,
+        sendToDevice: airpadRouter.sendToDevice,
         requestToDevice
     };
 };

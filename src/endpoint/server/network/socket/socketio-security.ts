@@ -2,7 +2,7 @@ import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
 import config from "../../config/config.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy } from "../../lib/env.ts";
-import { getAirPadTokens, isAirPadRequestAuthorized } from "../modules/airpad.ts";
+import { getAirPadTokens, isAirPadRequestAuthorized } from "../../airpad/index.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 
 type LoggerLike = {

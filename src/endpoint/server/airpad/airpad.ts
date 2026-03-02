@@ -1,9 +1,9 @@
 import type { Socket } from "socket.io";
 import type { IncomingMessage } from "node:http";
 
-import { parsePayload, verifyWithoutDecrypt } from "../stack/crypto-utils.ts";
-import { normalizeSocketFrame } from "../stack/messages.ts";
-import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
+import { parsePayload, verifyWithoutDecrypt } from "../network/stack/crypto-utils.ts";
+import { normalizeSocketFrame } from "../network/stack/messages.ts";
+import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../lib/env.ts";
 
 export type AirpadClipHistoryEntry = {
     from: string;
