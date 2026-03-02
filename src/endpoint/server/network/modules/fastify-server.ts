@@ -180,13 +180,12 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
             return "";
         },
         onUnknownTarget: (userId: string, deviceId: string, frame: any) => {
-            let handled = false;
             for (const hub of hubs) {
                 if (hub.onUnknownTarget && hub.onUnknownTarget(userId, deviceId, frame)) {
-                    handled = true;
+                    return true;
                 }
             }
-            return handled;
+            return false;
         }
     } as any;
 };

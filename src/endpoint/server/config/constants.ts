@@ -17,10 +17,12 @@ export const BUTTON_RIGHT = 1;
 export const BUTTON_MIDDLE = 2;
 export const FLAG_DOUBLE = 0x80;
 
+import { pickEnvNumberLegacy } from "../lib/env.ts";
+
 // Server-side jitter and smoothing parameters
-export const SERVER_JITTER_EPS = 0.5; // pixels; ignore tiny deltas
-export const SERVER_MAX_STEP = 200; // safety clamp per flush
-export const SERVER_SMOOTH_ALPHA = 0.8; // ~exponential approach to target
+export const SERVER_JITTER_EPS = pickEnvNumberLegacy("CWS_SERVER_JITTER_EPS") ?? 0.5; // pixels; ignore tiny deltas
+export const SERVER_MAX_STEP = pickEnvNumberLegacy("CWS_SERVER_MAX_STEP") ?? 2000; // safety clamp per flush (increased for LTE burst compensation)
+export const SERVER_SMOOTH_ALPHA = pickEnvNumberLegacy("CWS_SERVER_SMOOTH_ALPHA") ?? 1.0; // ~exponential approach to target (1.0 = no smoothing, better for high latency)
 
 // Ports
 // HTTP server port (non-TLS). Previously used for redirect-only server.

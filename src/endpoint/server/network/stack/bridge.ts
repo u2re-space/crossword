@@ -619,7 +619,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             socket?.send(`{"type":"hello","deviceId":"${cfg.deviceId}"}`);
             heartbeatHandle = setInterval(() => {
                 socket?.send(`{"type":"ping","ts":${Date.now()}}`);
-            }, 20_000);
+            }, 10_000); // 10s ping interval to keep NAT/LTE connections alive
         });
 
         socket.on("message", (raw) => {

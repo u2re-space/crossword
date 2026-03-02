@@ -954,7 +954,7 @@ export function connectWS() {
             transports: candidate.useWebSocketOnly ? ['websocket'] : ['websocket', 'polling'],
             upgrade: !candidate.useWebSocketOnly,
             reconnection: false,
-            timeout: 3500,
+            timeout: 10000,
             secure: candidate.protocol === 'https',
             forceNew: true,
         });
