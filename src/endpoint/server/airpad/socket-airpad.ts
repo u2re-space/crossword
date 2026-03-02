@@ -17,6 +17,7 @@ export interface AirpadSocketHandlerOptions {
     logger?: any;
     onObjectMessage?: AirpadObjectMessageHandler;
     onBinaryMessage?: AirpadBinaryMessageHandler;
+    allowLocalInput?: boolean;
     onDisconnect?: AirpadDisconnectHandler;
 }
 
@@ -47,7 +48,7 @@ function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array | Ar
 }
 
 export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSocketHandlerOptions = {}): void {
-    const { logger, onObjectMessage, onBinaryMessage, onDisconnect } = options;
+    const { logger, onObjectMessage, onBinaryMessage, onDisconnect, allowLocalInput = true } = options;
     airpadSockets.add(socket);
 
     readAirpadClipboard()
@@ -56,7 +57,7 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
 
     socket.on("message", async (data: any) => {
         if (Buffer.isBuffer(data) || data instanceof Uint8Array || data instanceof ArrayBuffer) {
-            const localHandled = handleAirpadBinaryMessage(logger, data);
+            const localHandled = allowLocalInput ? handleAirpadBinaryMessage(logger, data) : false;
             const routed = await onBinaryMessage?.(data as any, socket);
             if (routed && localHandled) {
                 logger?.debug?.(
@@ -64,7 +65,7 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
                     "[airpad] binary both executed locally and routed (possible bridge fan-out)"
                 );
             }
-            if (!localHandled && routed) {
+            if (allowLocalInput && !localHandled && routed) {
                 logger?.warn?.(
                     { socketId: socket.id },
                     "[airpad] binary routed but not parsed locally"
@@ -74,6 +75,9 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         }
 
         if (typeof data === "string") {
+            if (!allowLocalInput) {
+                return;
+            }
             const jsonData = safeJsonParse<Record<string, unknown>>(data);
             if (jsonData?.type === "voice_command") {
                 const text = String(jsonData.text || "");
@@ -96,6 +100,12 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
     });
 
     socket.on("clipboard:get", async (ack?: any) => {
+        if (!allowLocalInput) {
+            if (typeof ack === "function") {
+                ack({ ok: false, error: "routing-disabled" });
+            }
+            return;
+        }
         try {
             const text = await readAirpadClipboard();
             const payload = { ok: true, text };
@@ -107,6 +117,12 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
     });
 
     socket.on("clipboard:copy", async (ack?: any) => {
+        if (!allowLocalInput) {
+            if (typeof ack === "function") {
+                ack({ ok: false, error: "routing-disabled" });
+            }
+            return;
+        }
         try {
             executeCopyHotkey();
             await sleep(60);
@@ -120,6 +136,12 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
     });
 
     socket.on("clipboard:cut", async (ack?: any) => {
+        if (!allowLocalInput) {
+            if (typeof ack === "function") {
+                ack({ ok: false, error: "routing-disabled" });
+            }
+            return;
+        }
         try {
             executeCutHotkey();
             await sleep(60);
@@ -133,6 +155,12 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
     });
 
     socket.on("clipboard:paste", async (data: any, ack?: any) => {
+        if (!allowLocalInput) {
+            if (typeof ack === "function") {
+                ack({ ok: false, error: "routing-disabled" });
+            }
+            return;
+        }
         try {
             const text = typeof data?.text === "string" ? data.text : "";
             if (text) {

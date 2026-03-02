@@ -13,6 +13,7 @@ export type EndpointIdPolicy = {
     flags: EndpointIdFlags;
     allowedIncoming: string[];
     allowedOutcoming: string[];
+    roles: string[];
 };
 
 export type EndpointIdPolicyMap = Record<string, EndpointIdPolicy>;
@@ -78,7 +79,8 @@ export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPol
         forward: normalizePolicyForward(source.forward),
         flags: normalizePolicyFlags(source.flags),
         allowedIncoming: normalizePolicyList(source.allowedIncoming, true),
-        allowedOutcoming: normalizePolicyList(source.allowedOutcoming, true)
+        allowedOutcoming: normalizePolicyList(source.allowedOutcoming, true),
+        roles: normalizePolicyList(source.roles, false)
     };
 };
 

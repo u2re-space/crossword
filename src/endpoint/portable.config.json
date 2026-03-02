@@ -35,6 +35,7 @@
         "CWS_UPSTREAM_CLIENT_ID": "L-192.168.0.200",
         "CWS_UPSTREAM_DEVICE_ID": "L-192.168.0.200",
         "CWS_UPSTREAM_USER_KEY": "n3v3rm1nd",
-        "CWS_UPSTREAM_ENDPOINT_URL": "https://45.147.121.152:8443/"
+        "CWS_UPSTREAM_ENDPOINT_URL": "https://45.147.121.152:8443/",
+        "CWS_ROLES": "server-upstream,client-upstream,client-downstream"
     }
 }

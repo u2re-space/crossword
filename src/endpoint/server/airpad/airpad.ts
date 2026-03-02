@@ -106,6 +106,8 @@ export type AirpadConnectionMeta = {
     routeHint?: string;
     viaPort?: string;
     protocolHint?: string;
+    isEndpoint?: boolean;
+    archetype?: string;
     xForwardedFor?: unknown;
     xForwardedHost?: unknown;
     xForwardedProto?: unknown;
@@ -155,6 +157,34 @@ const stripRouteTargetPort = (value: string): string => {
     return hostSpec;
 };
 
+const parseBooleanLike = (value: unknown): boolean | undefined => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value !== "string") return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (["1", "true", "yes", "on", "enabled", "enable", "y"].includes(normalized)) return true;
+    if (["0", "false", "no", "off", "disabled", "disable", "n"].includes(normalized)) return false;
+    return undefined;
+};
+
+const isRouteEndpoint = (query: Record<string, unknown>): boolean | undefined => {
+    const candidates = [
+        query.__airpad_endpoint,
+        query.__airpad_is_endpoint,
+        query.endpoint,
+        query.endpoint_flag,
+        query.endpointFlag,
+        query.__airpad_endpoint_flag,
+        query.isEndpoint
+    ];
+    const parsed = candidates
+        .map(parseBooleanLike)
+        .find((value) => typeof value === "boolean");
+    if (typeof parsed === "boolean") return parsed;
+    return undefined;
+};
+
 const normalizeAirPadRouteTarget = (value: string | undefined): string | undefined => {
     const normalized = stripRouteTargetPort(String(value || ""));
     return normalized || undefined;
@@ -192,6 +222,8 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
         ),
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
+        isEndpoint: isRouteEndpoint(query),
+        archetype: pickString(query.archetype) || pickString(query.connectionArchetype) || pickString(query.connectionRole),
         xForwardedFor: headers["x-forwarded-for"] || headers["X-Forwarded-For"],
         xForwardedHost: headers["x-forwarded-host"] || headers["X-Forwarded-Host"],
         xForwardedProto: headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"],

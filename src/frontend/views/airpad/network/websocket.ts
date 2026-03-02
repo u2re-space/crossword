@@ -924,6 +924,7 @@ export function connectWS() {
         queryParams.__airpad_hop = candidate.host || remoteHost || 'unknown';
         queryParams.__airpad_host = candidate.host || remoteHost || '';
         queryParams.__airpad_target = targetHost || '';
+        queryParams.archetype = "client-downstream";
         const isSameAsTargetHost = () => {
             if (!routeTarget || !targetHost) return true;
             const normalizedRouteTarget = routeTarget.trim().toLowerCase();
@@ -934,6 +935,7 @@ export function connectWS() {
             return false;
         };
         queryParams.__airpad_via = !isSameAsTargetHost() ? "tunnel" : (candidate.source || 'unknown');
+        queryParams.__airpad_endpoint = isSameAsTargetHost() ? "1" : "0";
         queryParams.__airpad_target_port = targetPort;
         queryParams.__airpad_via_port = candidate.port || '';
         queryParams.__airpad_protocol = candidate.protocol || 'https';

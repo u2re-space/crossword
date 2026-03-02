@@ -40,6 +40,7 @@ export interface AirpadSocketRouter {
     registerTunnelAlias: (socket: Socket, value: unknown) => void;
     getConnectionMeta: (socket: Socket) => AirpadConnectionMeta | undefined;
     getRouteHint: (socket: Socket) => string | undefined;
+    isEndpoint: (socket: Socket) => boolean;
     resolveAirpadTarget: (sourceSocket: Socket, rawTarget: string, hasExplicitTarget: boolean) => string;
     resolveTunnelTargets: (sourceSocket: Socket, frame: any) => string[];
     forwardToAirpadTargets: (sourceSocket: Socket, payload: any, frame: any) => boolean;
@@ -181,6 +182,19 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
             return Array.from(next).filter(Boolean);
         }
         return Array.from(next).filter(Boolean);
+    };
+
+    const isEndpointConnection = (socket: Socket): boolean => {
+        const meta = airpadConnectionMeta.get(socket);
+        if (typeof meta?.isEndpoint === "boolean") return meta.isEndpoint;
+        const routeHint = normalizeHint(meta?.routeHint);
+        if (routeHint === "tunnel" || routeHint === "remote") return false;
+        const routeTarget = normalizeHint(meta?.routeTarget);
+        const hostHint = normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
+        if (routeTarget && hostHint && routeTarget !== hostHint && routeTarget !== `l-${hostHint}`) {
+            return false;
+        }
+        return true;
     };
 
     const resolveAirpadTarget = (sourceSocket: Socket, rawTarget: string, hasExplicitTarget: boolean): string => {
@@ -343,6 +357,7 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         registerTunnelAlias: addTunnelAlias,
         getConnectionMeta: (socket) => airpadConnectionMeta.get(socket),
         getRouteHint: (socket) => airpadConnectionMeta.get(socket)?.routeHint,
+        isEndpoint: (socket) => isEndpointConnection(socket),
         resolveAirpadTarget,
         resolveTunnelTargets,
         forwardToAirpadTargets,

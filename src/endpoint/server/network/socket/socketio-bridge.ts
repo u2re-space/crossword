@@ -15,6 +15,8 @@ import {
 } from "../../airpad/index.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
+import config from "../../config/config.ts";
+import { areArchetypesCompatible, inferExpectedRemoteArchetype, parseWsArchetype, supportsServerUpstreamArchetype } from "../stack/archetypes.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {
@@ -129,6 +131,24 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         return normalized || undefined;
     };
 
+    const getSocketIoRemoteArchetype = (socket: Socket): { raw: string | undefined; parsed?: ReturnType<typeof parseWsArchetype> } => {
+        const meta = describeAirPadConnectionMeta(socket);
+        const raw = (meta as any)?.archetype;
+        const normalized = typeof raw === "string" ? raw.trim() : "";
+        if (!normalized) return { raw: undefined };
+        return { raw: normalized, parsed: parseWsArchetype(normalized) };
+    };
+
+    const buildSocketArchetypeLogPayload = (socket: Socket, remoteArchetype: { raw?: string; parsed?: ReturnType<typeof parseWsArchetype> }) => {
+        return {
+            socketId: socket.id,
+            requestedArchetype: remoteArchetype.raw ?? "none",
+            transport: socket?.conn?.transport?.name,
+            sourceHint: normalizeHint((socket as any)?.airpadSourceId),
+            transportAcceptedArchetype: "server-upstream"
+        };
+    };
+
     const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = NETWORK_FETCH_TIMEOUT_MS) => {
         const normalizedDevice = normalizeHint(deviceId);
         if (!normalizedDevice) return undefined;
@@ -171,6 +191,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
     const routeMessage = (sourceSocket: Socket, msg: any): void => {
         const hasExplicitTarget = msg && typeof msg === "object" && ("to" in msg || "target" in msg || "targetId" in msg || "target_id" in msg || "deviceId" in msg);
+        const routeHint = airpadRouter.getRouteHint(sourceSocket);
+        const isEndpoint = airpadRouter.isEndpoint(sourceSocket);
         const normalized = normalizeSocketFrame(msg, sourceSocket.id, {
             nodeId: (sourceSocket as any).userId,
             peerId: sourceSocket.id,
@@ -205,11 +227,34 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 return;
             }
             const knownTunnelTargets = airpadRouter.getTunnelTargets();
+            if (routeHint === "tunnel" || routeHint === "remote") {
+                if (isTunnelDebug) {
+                    console.warn(
+                        `[Router] Tunnel target not found; upstream/bridge fallback not enabled for routed socket`,
+                        `socket=${sourceSocket.id}`,
+                        `requested=${tunnelTargets.join(",")}`,
+                        `known=${knownTunnelTargets.join(",")}`
+                    );
+                }
+                return;
+            }
             if (isTunnelDebug) {
                 console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`, `requested=${tunnelTargets.join(",")}`, `known=${knownTunnelTargets.join(",")}`);
             } else {
                 console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`);
             }
+        }
+        if (!isEndpoint) {
+            if (isTunnelDebug) {
+                console.warn(
+                    `[Router] Local handling skipped for non-endpoint socket`,
+                    `socket=${sourceSocket.id}`,
+                    `from=${processed.from}`,
+                    `to=${processed.to}`,
+                    `via=${routeHint || "?"}`
+                );
+            }
+            return;
         }
 
         if (isBroadcast(processed)) {
@@ -264,6 +309,30 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             return;
         }
         const connectionMeta = describeAirPadConnectionMeta(socket);
+        const remoteArchetype = getSocketIoRemoteArchetype(socket);
+        const localArchetype = "server-upstream" as const;
+        const expectedRemoteArchetype = inferExpectedRemoteArchetype(false);
+        const supportsLocalServerUpstream = supportsServerUpstreamArchetype((config as any)?.roles);
+        if (!supportsLocalServerUpstream) {
+            console.warn(`[Server] AirPad socket rejected: server-upstream role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+            socket.emit("error", { message: "Server role mismatch for Socket.IO clients" });
+            socket.disconnect(true);
+            return;
+        }
+        if (remoteArchetype.raw && remoteArchetype.parsed == null) {
+            console.warn(`[Server] AirPad socket rejected: invalid connection archetype`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+            socket.emit("error", { message: `Invalid AirPad connection archetype: ${remoteArchetype.raw}` });
+            socket.disconnect(true);
+            return;
+        }
+        if (!areArchetypesCompatible(localArchetype, remoteArchetype.parsed || expectedRemoteArchetype)) {
+            console.warn(`[Server] AirPad socket rejected: incompatible connection archetype`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+            socket.emit("error", {
+                message: `Incompatible connection archetypes: local=${localArchetype}, remote=${remoteArchetype.parsed || expectedRemoteArchetype}`
+            });
+            socket.disconnect(true);
+            return;
+        }
         const sourceAlias = normalizeHint(connectionMeta.sourceId);
         if (sourceAlias) {
             (socket as any).airpadSourceId = sourceAlias;
@@ -272,6 +341,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             (socket as any).airpadSourceId = normalizeHint(connectionMeta.clientId);
         }
         airpadRouter.registerConnection(socket, connectionMeta);
+        const isEndpoint = airpadRouter.isEndpoint(socket);
 
         app.log?.info?.(
             {
@@ -311,8 +381,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
         registerAirpadSocketHandlers(socket, {
             logger: app.log,
+            allowLocalInput: isEndpoint,
             onObjectMessage,
             onBinaryMessage: async (raw: any, sourceSocket) => {
+                const isEndpoint = airpadRouter.isEndpoint(sourceSocket);
                 if (!(raw instanceof Uint8Array) && !Buffer.isBuffer(raw) && !(raw instanceof ArrayBuffer)) {
                     if (isTunnelDebug) {
                         console.log(`[Router] Binary tunnel skipped: unsupported payload type`, `type=${typeof raw}`);
@@ -321,6 +393,16 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 }
                 const tunnelTargets = airpadRouter.resolveTunnelTargets(sourceSocket, { to: "broadcast" });
                 if (!tunnelTargets.length) {
+                    if (!isEndpoint) {
+                        if (isTunnelDebug) {
+                            console.log(
+                                `[Router] Binary local handling skipped for non-endpoint socket`,
+                                `socket=${sourceSocket.id}`,
+                                `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`
+                            );
+                        }
+                        return false;
+                    }
                     if (isTunnelDebug) {
                         console.log(`[Router] Binary tunnel target unavailable`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
                     }

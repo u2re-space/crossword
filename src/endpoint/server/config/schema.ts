@@ -56,6 +56,7 @@ export type EndpointIdPolicy = {
     };
     allowedIncoming: string[];
     allowedOutcoming: string[];
+    roles?: string[];
 };
 
 export type EndpointConfig = {

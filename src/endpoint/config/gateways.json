@@ -6,6 +6,7 @@
         "origins": ["192.168.0.200", "45.147.121.152"],
         "clients": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.200", "*"],
         "tokens": [],
+        "roles": ["server-upstream", "server-downstream", "client-upstream", "client-downstream"],
         "acceptance": {
             "direct": true,
             "reverse": true,
