@@ -82,18 +82,18 @@ type ActionBody = {
     namespace?: string;
 };
 
-type UpstreamTopologyStatus = {
+type BridgeTopologyStatus = {
     running: boolean;
     connected: boolean;
-    upstreamEnabled: boolean;
-    upstreamRole?: "active-connector" | "passive-connector" | "gateway-origin";
+    bridgeEnabled: boolean;
+    bridgeRole?: "active-connector" | "passive-connector" | "gateway-origin";
     endpointUrl?: string;
     userId?: string;
     deviceId?: string;
     namespace?: string;
-    upstreamMode?: "active" | "passive";
-    upstreamClientId?: string;
-    upstreamPeerId?: string;
+    bridgeMode?: "active" | "passive";
+    bridgeClientId?: string;
+    bridgePeerId?: string;
     surface?: string;
     origin?: {
         originId?: string;
@@ -105,15 +105,15 @@ type UpstreamTopologyStatus = {
 };
 
 type NetworkContextProvider = {
-    getUpstreamStatus?: () => UpstreamTopologyStatus | null;
-    sendToUpstream?: (payload: any) => boolean;
+    getBridgeStatus?: () => BridgeTopologyStatus | null;
+    sendToBridge?: (payload: any) => boolean;
     getNodeId?: () => string | null;
 };
 
 type NetworkDispatchBody = {
     userId: string;
     userKey: string;
-    route?: "auto" | "local" | "upstream" | "both";
+    route?: "auto" | "local" | "bridge" | "both";
     target?: string;
     targetId?: string;
     deviceId?: string;
@@ -130,7 +130,7 @@ type NetworkDispatchBody = {
 type NetworkFetchBody = {
     userId: string;
     userKey: string;
-    route?: "auto" | "local" | "upstream" | "both";
+    route?: "auto" | "local" | "bridge" | "both";
     target?: string;
     targetId?: string;
     deviceId?: string;
@@ -897,11 +897,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const plan = resolveDispatchPlan({
             route,
             target: requestTarget,
-            hasUpstreamTransport: typeof networkContext?.sendToUpstream === "function",
+            hasBridgeTransport: typeof networkContext?.sendToBridge === "function",
             isLocalTarget,
             surface
         });
-        if (!plan.local && !plan.upstream) {
+        if (!plan.local && !plan.bridge) {
             return { ok: false, error: "Target unknown and no available route", route: "none", target: requestTarget };
         }
 
@@ -955,8 +955,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const localResult = await unifiedResult();
         if (localResult) return localResult;
 
-        if (plan.upstream && networkContext?.sendToUpstream) {
-            const upstreamPayload = {
+        if (plan.bridge && networkContext?.sendToBridge) {
+            const bridgePayload = {
                 ...requestPayload,
                 to: requestTarget,
                 target: requestTarget,
@@ -964,8 +964,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 route,
                 namespace: normalizedNamespace
             };
-            const sent = networkContext.sendToUpstream({
-                ...upstreamPayload,
+            const sent = networkContext.sendToBridge({
+                ...bridgePayload,
                 from: routeSource.sourceId
             });
             return {
@@ -973,7 +973,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 route: plan.route,
                 requestId,
                 target: requestTarget,
-                mode: sent ? "upstream-fire-and-forget" : "upstream-not-available"
+                mode: sent ? "bridge-fire-and-forget" : "bridge-not-available"
             };
         }
 
@@ -1288,8 +1288,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
         const peers = wsHub.getConnectedDevices(userId);
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
-        const upstreamStatus = networkContext?.getUpstreamStatus?.() || null;
-        const isGateway = upstreamStatus?.running === true || upstreamStatus?.connected === true;
+        const bridgeStatus = networkContext?.getBridgeStatus?.() || null;
+        const isGateway = bridgeStatus?.running === true || bridgeStatus?.connected === true;
         const configuredTopology = (config as any)?.topology;
         const configuredEndpointIds = (config as any)?.endpointIDs;
         const staticTopologyEnabled = configuredTopology && typeof configuredTopology === "object" ? (configuredTopology as Record<string, any>).enabled !== false : true;
@@ -1408,21 +1408,21 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             }
         }
 
-        if (upstreamStatus) {
-            const upstreamKey = upstreamStatus.upstreamClientId || upstreamStatus.upstreamPeerId || upstreamStatus.userId || `upstream:${userId}`;
+        if (bridgeStatus) {
+            const bridgeKey = bridgeStatus.bridgeClientId || bridgeStatus.bridgePeerId || bridgeStatus.userId || `bridge:${userId}`;
             mergedTopologyNodes.push({
-                id: `upstream:${upstreamKey}`,
+                id: `bridge:${bridgeKey}`,
                 kind: "node",
-                role: upstreamStatus.connected ? "gateway" : upstreamStatus.running ? "gateway-passive" : "gateway-offline",
+                role: bridgeStatus.connected ? "gateway" : bridgeStatus.running ? "gateway-passive" : "gateway-offline",
                 parent: isGateway ? `${userId}` : undefined,
-                connected: upstreamStatus.connected,
-                peerId: upstreamStatus.upstreamPeerId || upstreamStatus.userId || upstreamKey,
-                upstreamMode: upstreamStatus.upstreamMode || undefined,
-                upstreamRole: upstreamStatus.upstreamRole,
-                origin: upstreamStatus.origin || {
-                    originId: upstreamStatus.upstreamClientId || upstreamStatus.userId
+                connected: bridgeStatus.connected,
+                peerId: bridgeStatus.bridgePeerId || bridgeStatus.userId || bridgeKey,
+                bridgeMode: bridgeStatus.bridgeMode || undefined,
+                bridgeRole: bridgeStatus.bridgeRole,
+                origin: bridgeStatus.origin || {
+                    originId: bridgeStatus.bridgeClientId || bridgeStatus.userId
                 },
-                surface: upstreamStatus.upstreamMode === "passive" ? "local" : "external"
+                surface: bridgeStatus.bridgeMode === "passive" ? "local" : "external"
             });
         }
 
@@ -1435,11 +1435,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             }))
         ];
 
-        if (upstreamStatus && (upstreamStatus.connected || upstreamStatus.running || upstreamStatus.upstreamEnabled)) {
+        if (bridgeStatus && (bridgeStatus.connected || bridgeStatus.running || bridgeStatus.bridgeEnabled)) {
             links.push({
-                id: `link:${userId}:upstream`,
+                id: `link:${userId}:bridge`,
                 source: `${userId}`,
-                target: `upstream:${upstreamStatus.upstreamClientId || upstreamStatus.upstreamPeerId || upstreamStatus.userId || "default"}`,
+                target: `bridge:${bridgeStatus.bridgeClientId || bridgeStatus.bridgePeerId || bridgeStatus.userId || "default"}`,
                 type: "reverse-client"
             });
         }
@@ -1469,12 +1469,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                     nodes: peers.map((peer) => `${userId}:${peer}`).concat(userId)
                 },
                 {
-                    id: "upstream",
+                    id: "bridge",
                     kind: "unit",
-                    active: !!upstreamStatus
+                    active: !!bridgeStatus
                 }
             ],
-            upstream: upstreamStatus || null
+            bridge: bridgeStatus || null
         };
     };
 
@@ -1559,20 +1559,20 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 plan: resolveDispatchPlan({
                     route,
                     target: targetValue || undefined,
-                    hasUpstreamTransport: typeof networkContext?.sendToUpstream === "function",
+                    hasBridgeTransport: typeof networkContext?.sendToBridge === "function",
                     isLocalTarget,
                     surface
                 })
             };
         });
 
-        const upstreamDecisionTargets = audienceDecisions.filter((entry) => entry.plan.upstream && entry.plan.route !== "none").map((entry) => entry.target);
+        const bridgeDecisionTargets = audienceDecisions.filter((entry) => entry.plan.bridge && entry.plan.route !== "none").map((entry) => entry.target);
 
         const shouldBroadcastLocally = audience.source === "implicit-local-broadcast" || (!audience.targets.length && (typeof destination !== "string" || !destination.trim()));
         const audienceRouteHints = audienceDecisions.map((entry) => entry.plan.route);
         const localPlan = audienceRouteHints.some((entry) => entry === "local" || entry === "both");
-        const upstreamPlan = audienceRouteHints.some((entry) => entry === "upstream" || entry === "both");
-        const aggregateRoute: DispatchRouteDecision["route"] = localPlan && upstreamPlan ? "both" : localPlan ? "local" : upstreamPlan ? "upstream" : "none";
+        const bridgePlan = audienceRouteHints.some((entry) => entry === "bridge" || entry === "both");
+        const aggregateRoute: DispatchRouteDecision["route"] = localPlan && bridgePlan ? "both" : localPlan ? "local" : bridgePlan ? "bridge" : "none";
         const reasonSet = new Set(audienceDecisions.map((entry) => entry.plan.reason));
         const aggregateReason = reasonSet.size === 1 ? Array.from(reasonSet)[0] : Array.from(reasonSet).join("; ");
 
@@ -1597,32 +1597,32 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             return results.some((result) => result.delivered);
         })();
 
-        const upstreamDispatchPromise = (async () => {
-            if (!upstreamPlan || !networkContext?.sendToUpstream) return false;
-            const upstreamTargets = Array.from(new Set(upstreamDecisionTargets.filter(Boolean)));
-            const upstreamPayloads = upstreamTargets.length > 0 ? upstreamTargets.map((item) => ({ ...payloadEnvelope, targetId: item, target: item, to: item })) : [payloadEnvelope];
+        const bridgeDispatchPromise = (async () => {
+            if (!bridgePlan || !networkContext?.sendToBridge) return false;
+            const bridgeTargets = Array.from(new Set(bridgeDecisionTargets.filter(Boolean)));
+            const bridgePayloads = bridgeTargets.length > 0 ? bridgeTargets.map((item) => ({ ...payloadEnvelope, targetId: item, target: item, to: item })) : [payloadEnvelope];
 
-            const results = await Promise.all(upstreamPayloads.map((upstreamPayload) => networkContext?.sendToUpstream?.(upstreamPayload) || false));
+            const results = await Promise.all(bridgePayloads.map((bridgePayload) => networkContext?.sendToBridge?.(bridgePayload) || false));
             return results.some(Boolean);
         })();
 
-        const [localDelivered, upstreamDispatched] = await Promise.all([localDeliveryPromise, upstreamDispatchPromise]);
+        const [localDelivered, bridgeDispatched] = await Promise.all([localDeliveryPromise, bridgeDispatchPromise]);
 
-        if (!localPlan && !upstreamPlan) {
+        if (!localPlan && !bridgePlan) {
             return {
                 ok: false,
                 error: aggregateReason,
                 route: aggregateRoute,
                 delivered: {
                     local: localDelivered,
-                    upstream: upstreamDispatched,
+                    bridge: bridgeDispatched,
                     target: targetValue || null
                 },
                 routePlan: {
                     decided: aggregateRoute,
                     reason: aggregateReason,
                     local: localPlan,
-                    upstream: upstreamPlan,
+                    bridge: bridgePlan,
                     audience
                 }
             };
@@ -1633,7 +1633,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             route: aggregateRoute,
             delivered: {
                 local: localDelivered,
-                upstream: upstreamDispatched,
+                bridge: bridgeDispatched,
                 target: targetValue || null,
                 targets: policyCheckedTargets.map((entry) => entry.target)
             },
@@ -1641,13 +1641,13 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 decided: aggregateRoute,
                 reason: aggregateReason,
                 local: localPlan,
-                upstream: upstreamPlan,
+                bridge: bridgePlan,
                 audience,
                 decisions: audienceDecisions.map((entry) => ({
                     target: entry.target,
                     route: entry.plan.route,
                     local: entry.plan.local,
-                    upstream: entry.plan.upstream,
+                    bridge: entry.plan.bridge,
                     reason: entry.plan.reason
                 }))
             }

@@ -1,8 +1,8 @@
 export type WsConnectionArchetype = "reverse-client" | "forward-client" | "forward-server" | "reverse-server";
 
 const LEGACY_ROLE_ALIASES = new Set(["endpoint", "server", "peer", "client", "node", "hub"]);
-const CLIENT_CONNECTOR_ROLES = new Set(["reverse-client", "forward-client", "client-upstream", "client-downstream"]);
-const FORWARD_SERVER_ROLES = new Set(["forward-server", "server-upstream"]);
+const CLIENT_CONNECTOR_ROLES = new Set(["reverse-client", "forward-client", "client-bridge", "client-downstream"]);
+const FORWARD_SERVER_ROLES = new Set(["forward-server", "server-bridge"]);
 const REVERSE_SERVER_ROLES = new Set(["reverse-server", "server-downstream"]);
 const REVERSE_MODE = "reverse-server";
 const DIRECT_MODE = "forward-server";
@@ -10,9 +10,9 @@ const DIRECT_MODE = "forward-server";
 const resolveClientRole = (input: string): WsConnectionArchetype | undefined => {
     const value = (input || "").trim().toLowerCase();
     if (!value) return undefined;
-    if (value === "reverse-client" || value === "rc" || value === "client-upstream" || value === "cu" || value === "c-up") return "reverse-client";
+    if (value === "reverse-client" || value === "rc" || value === "client-bridge" || value === "cu" || value === "c-up") return "reverse-client";
     if (value === "forward-client" || value === "fc" || value === "client-downstream" || value === "cd" || value === "c-down") return "forward-client";
-    if (value === "forward-server" || value === "fs" || value === "server-upstream" || value === "su" || value === "s-up") return "forward-server";
+    if (value === "forward-server" || value === "fs" || value === "server-bridge" || value === "su" || value === "s-up") return "forward-server";
     if (value === "reverse-server" || value === "rs" || value === "server-downstream" || value === "sd" || value === "s-down") return "reverse-server";
     return undefined;
 };

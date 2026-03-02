@@ -78,7 +78,8 @@ module.exports = {
                 followSymlinks: false
             },
             env: {
-                
+                CWS_UPSTREAM_ENDPOINTS: ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
+                CWS_ROLES: "server-forward,client-reverse,client-forward",
                 NODE_ENV: "production",
                 CWS_TUNNEL_DEBUG: true,
                 CWS_AIRPAD_VERBOSE: 1,
@@ -87,7 +88,7 @@ module.exports = {
                 CWS_AIRPAD_NATIVE_ACTIONS: "true",
                 CWS_AIRPAD_ROBOTJS_ENABLED: "true",
                 CWS_CLIPBOARD_LOGGING: "false",
-                CWS_UPSTREAM_REJECT_UNAUTHORIZED: "false",
+                CWS_BRIDGE_REJECT_UNAUTHORIZED: "false",
                 ...envFromFile
             }
         }

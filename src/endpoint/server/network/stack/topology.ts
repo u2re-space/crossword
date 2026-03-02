@@ -1,9 +1,9 @@
 import { parsePortableInteger } from "../../lib/parsing.ts";
 
 export type NetworkSurface = "local" | "private" | "public" | "external" | "unknown";
-export type PeerNodeRole = "endpoint" | "gateway" | "peer" | "upstream";
-export type DispatchRouteHint = "local" | "upstream" | "both" | "none";
-export type DispatchRouteMode = "local" | "upstream" | "both" | "auto";
+export type PeerNodeRole = "endpoint" | "gateway" | "peer" | "bridge";
+export type DispatchRouteHint = "local" | "bridge" | "both" | "none";
+export type DispatchRouteMode = "local" | "bridge" | "both" | "auto";
 export type DispatchTargetHint = "explicit" | "implicit-config" | "implicit-local-broadcast" | "implicit-empty";
 export type NetworkAliasMap = Record<string, string>;
 
@@ -17,7 +17,7 @@ export type DispatchAudiencePlan = {
 export type DispatchRouteDecision = {
     route: DispatchRouteHint;
     local: boolean;
-    upstream: boolean;
+    bridge: boolean;
     reason: string;
     surface: NetworkSurface;
 };
@@ -78,39 +78,39 @@ export const looksLikeExternalHost = (target: string): boolean => {
 
 export const makeTargetTokenSet = (values: readonly string[]): Set<string> => new Set(values.map((value) => normalizeAddress(value)).filter(Boolean));
 
-export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadcast?: boolean; target?: string; hasUpstreamTransport?: boolean; isLocalTarget?: (target: string) => boolean; surface?: NetworkSurface }): DispatchRouteDecision => {
+export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadcast?: boolean; target?: string; hasBridgeTransport?: boolean; isLocalTarget?: (target: string) => boolean; surface?: NetworkSurface }): DispatchRouteDecision => {
     const route = options.route ?? "auto";
     const target = normalizeAddress(options.target ?? "");
-    const hasUpstream = options.hasUpstreamTransport === true;
+    const hasBridge = options.hasBridgeTransport === true;
 
     if (route === "local") {
         return {
             route: "local",
             local: true,
-            upstream: false,
+            bridge: false,
             surface: options.surface || "unknown",
             reason: "route forced local via api/network/dispatch"
         };
     }
 
-    if (route === "upstream") {
+    if (route === "bridge") {
         return {
-            route: hasUpstream ? "upstream" : "none",
+            route: hasBridge ? "bridge" : "none",
             local: false,
-            upstream: hasUpstream,
+            bridge: hasBridge,
             surface: options.surface || "unknown",
-            reason: hasUpstream ? "route forced upstream via api/network/dispatch" : "upstream not available for forced route"
+            reason: hasBridge ? "route forced bridge via api/network/dispatch" : "bridge not available for forced route"
         };
     }
 
     if (route === "both") {
         const hasLocal = target ? options.isLocalTarget?.(target) === true : false;
         return {
-            route: hasUpstream || hasLocal ? "both" : hasLocal ? "local" : "none",
+            route: hasBridge || hasLocal ? "both" : hasLocal ? "local" : "none",
             local: hasLocal,
-            upstream: hasUpstream,
+            bridge: hasBridge,
             surface: options.surface || "unknown",
-            reason: hasUpstream && hasLocal ? "route forced both local + upstream" : hasUpstream ? "upstream enabled; local target not matched" : "upstream disabled; local requested only"
+            reason: hasBridge && hasLocal ? "route forced both local + bridge" : hasBridge ? "bridge enabled; local target not matched" : "bridge disabled; local requested only"
         };
     }
 
@@ -118,7 +118,7 @@ export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadc
         return {
             route: "local",
             local: true,
-            upstream: false,
+            bridge: false,
             surface: options.surface || "unknown",
             reason: "broadcast/default dispatch is local-only"
         };
@@ -126,11 +126,11 @@ export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadc
 
     if (looksLikeExternalHost(target)) {
         return {
-            route: hasUpstream ? "upstream" : "none",
+            route: hasBridge ? "bridge" : "none",
             local: false,
-            upstream: hasUpstream,
+            bridge: hasBridge,
             surface: options.surface || "unknown",
-            reason: "target looks like external host; prefer upstream"
+            reason: "target looks like external host; prefer bridge"
         };
     }
 
@@ -139,18 +139,18 @@ export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadc
         return {
             route: "local",
             local: true,
-            upstream: false,
+            bridge: false,
             surface: options.surface || "unknown",
             reason: "target resolved as connected local reverse peer/device"
         };
     }
 
     return {
-        route: hasUpstream ? "upstream" : "none",
+        route: hasBridge ? "bridge" : "none",
         local: false,
-        upstream: hasUpstream,
+        bridge: hasBridge,
         surface: options.surface || "unknown",
-        reason: hasUpstream ? "target unknown locally; relay via upstream" : "target unknown and no upstream transport"
+        reason: hasBridge ? "target unknown locally; relay via bridge" : "target unknown and no bridge transport"
     };
 };
 

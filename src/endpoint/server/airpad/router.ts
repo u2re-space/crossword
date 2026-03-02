@@ -3,8 +3,8 @@ import type { Socket } from "socket.io";
 import type { AirpadConnectionMeta } from "./airpad.ts";
 
 type NetworkContext = {
-    sendToUpstream?: (payload: any) => boolean;
-    upstreamUserId?: string;
+    sendToBridge?: (payload: any) => boolean;
+    bridgeUserId?: string;
     sendToReverse?: (userId: string, deviceId: string, payload: any) => boolean;
 };
 
@@ -45,8 +45,8 @@ export interface AirpadSocketRouter {
     resolveAirpadTarget: (sourceSocket: Socket, rawTarget: string, hasExplicitTarget: boolean) => string;
     resolveTunnelTargets: (sourceSocket: Socket, frame: any) => string[];
     forwardToAirpadTargets: (sourceSocket: Socket, payload: any, frame: any) => boolean;
-    forwardBinaryToUpstream: (sourceSocket: Socket, raw: Buffer | Uint8Array | ArrayBuffer, target: string) => boolean;
-    forwardToUpstream: (sourceSocket: Socket, frame: any) => boolean;
+    forwardBinaryToBridge: (sourceSocket: Socket, raw: Buffer | Uint8Array | ArrayBuffer, target: string) => boolean;
+    forwardToBridge: (sourceSocket: Socket, frame: any) => boolean;
     getSocket: (deviceId: string) => Socket | undefined;
     sendToDevice: (userId: string, deviceId: string, payload: any) => boolean;
     getConnectedDevices: () => string[];
@@ -226,15 +226,15 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
                 }
             }
             if (!delivered && networkContext?.sendToReverse) {
-                const upstreamUser = normalizeHint(airpadConnectionMeta.get(sourceSocket)?.routeTarget) || normalizeHint(networkContext.upstreamUserId);
+                const bridgeUser = normalizeHint(airpadConnectionMeta.get(sourceSocket)?.routeTarget) || normalizeHint(networkContext.bridgeUserId);
                 
                 let reversePayload = payload;
                 if (Buffer.isBuffer(payload) || payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
                     const meta = airpadConnectionMeta.get(sourceSocket);
-                    const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || normalizeHint(networkContext.upstreamUserId) || sourceSocket.id;
+                    const bridgeFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || normalizeHint(networkContext.bridgeUserId) || sourceSocket.id;
                     reversePayload = {
                         type: "dispatch",
-                        from: upstreamFrom,
+                        from: bridgeFrom,
                         to: rawTarget,
                         target: rawTarget,
                         targetId: rawTarget,
@@ -245,14 +245,14 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
                             encoding: "base64",
                             data: encodeBinaryForTunnel(payload)
                         },
-                        userId: upstreamUser,
+                        userId: bridgeUser,
                         routeTarget: normalizeHint(meta?.routeTarget) || rawTarget,
                         via: normalizeHint(meta?.routeHint),
                         surface: "socketio"
                     };
                 }
 
-                if (networkContext.sendToReverse(upstreamUser || "", rawTarget, reversePayload)) {
+                if (networkContext.sendToReverse(bridgeUser || "", rawTarget, reversePayload)) {
                     delivered = true;
                 }
             }
@@ -260,12 +260,12 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         return delivered;
     };
 
-    const forwardToUpstream = (sourceSocket: Socket, frame: any): boolean => {
-        if (!networkContext?.sendToUpstream) {
+    const forwardToBridge = (sourceSocket: Socket, frame: any): boolean => {
+        if (!networkContext?.sendToBridge) {
             if (isTunnelDebug) {
                 logger?.debug?.(
                     { socketId: sourceSocket.id, to: normalizeHint(frame?.to), via: airpadConnectionMeta.get(sourceSocket)?.routeHint },
-                    `[Router] Tunnel upstream unavailable`
+                    `[Router] Tunnel bridge unavailable`
                 );
             }
             return false;
@@ -276,13 +276,13 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         if (routeHint !== "tunnel" && routeHint !== "remote") return false;
         const rawTarget = normalizeHint(frame.to);
         if (!rawTarget || isBroadcastTarget(rawTarget)) return false;
-        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = normalizeHint(meta?.routeTarget) || upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
-        const accepted = networkContext.sendToUpstream({
+        const bridgeUserId = normalizeHint(networkContext.bridgeUserId);
+        const bridgeFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || bridgeUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const bridgeUser = normalizeHint(meta?.routeTarget) || bridgeUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
+        const accepted = networkContext.sendToBridge({
             ...frame,
-            from: upstreamFrom,
-            userId: upstreamUser,
+            from: bridgeFrom,
+            userId: bridgeUser,
             target: rawTarget,
             targetId: rawTarget,
             to: rawTarget,
@@ -295,35 +295,35 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
                     to: rawTarget,
                     via: airpadConnectionMeta.get(sourceSocket)?.routeHint || "?"
                 },
-                `[Router] Tunnel upstream rejected`
+                `[Router] Tunnel bridge rejected`
             );
         }
         return accepted;
     };
 
-    const forwardBinaryToUpstream = (sourceSocket: Socket, raw: Buffer | Uint8Array | ArrayBuffer, target: string): boolean => {
-        if (!networkContext?.sendToUpstream) {
+    const forwardBinaryToBridge = (sourceSocket: Socket, raw: Buffer | Uint8Array | ArrayBuffer, target: string): boolean => {
+        if (!networkContext?.sendToBridge) {
             if (isTunnelDebug) {
                 logger?.debug?.(
                     { socketId: sourceSocket.id, target, via: airpadConnectionMeta.get(sourceSocket)?.routeHint || "?" },
-                    `[Router] Binary tunnel upstream unavailable`
+                    `[Router] Binary tunnel bridge unavailable`
                 );
             }
             return false;
         }
         const meta = airpadConnectionMeta.get(sourceSocket);
-        const upstreamTarget = normalizeHint(target);
-        if (!upstreamTarget || isBroadcastTarget(upstreamTarget)) return false;
+        const bridgeTarget = normalizeHint(target);
+        if (!bridgeTarget || isBroadcastTarget(bridgeTarget)) return false;
 
-        const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = normalizeHint(meta?.routeTarget) || upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
-        const upstreamPayload = {
+        const bridgeUserId = normalizeHint(networkContext.bridgeUserId);
+        const bridgeFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || bridgeUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const bridgeUser = normalizeHint(meta?.routeTarget) || bridgeUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
+        const bridgePayload = {
             type: "dispatch",
-            from: upstreamFrom,
-            to: upstreamTarget,
-            target: upstreamTarget,
-            targetId: upstreamTarget,
+            from: bridgeFrom,
+            to: bridgeTarget,
+            target: bridgeTarget,
+            targetId: bridgeTarget,
             namespace: "default",
             mode: "blind",
             payload: {
@@ -331,21 +331,21 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
                 encoding: "base64",
                 data: encodeBinaryForTunnel(raw)
             },
-            userId: upstreamUser,
-            routeTarget: normalizeHint(meta?.routeTarget) || upstreamTarget,
+            userId: bridgeUser,
+            routeTarget: normalizeHint(meta?.routeTarget) || bridgeTarget,
             via: normalizeHint(meta?.routeHint),
             surface: "socketio"
         };
-        const accepted = networkContext.sendToUpstream(upstreamPayload);
+        const accepted = networkContext.sendToBridge(bridgePayload);
         if (accepted && isTunnelDebug) {
             logger?.debug?.(
-                { socketId: sourceSocket.id, target: upstreamTarget },
-                `[Router] OUT(tunnel-upstream-binary)`
+                { socketId: sourceSocket.id, target: bridgeTarget },
+                `[Router] OUT(tunnel-bridge-binary)`
             );
         } else if (isTunnelDebug) {
             logger?.debug?.(
-                { socketId: sourceSocket.id, target: upstreamTarget, via: airpadConnectionMeta.get(sourceSocket)?.routeHint || "?" },
-                `[Router] Binary tunnel upstream rejected`
+                { socketId: sourceSocket.id, target: bridgeTarget, via: airpadConnectionMeta.get(sourceSocket)?.routeHint || "?" },
+                `[Router] Binary tunnel bridge rejected`
             );
         }
         return accepted;
@@ -394,8 +394,8 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         resolveAirpadTarget,
         resolveTunnelTargets,
         forwardToAirpadTargets,
-        forwardBinaryToUpstream,
-        forwardToUpstream,
+        forwardBinaryToBridge,
+        forwardToBridge,
         getSocket,
         sendToDevice: (_userId, deviceId, payload) => sendToDevice("", deviceId, payload),
         getConnectedDevices: () => Array.from(clients.keys()),

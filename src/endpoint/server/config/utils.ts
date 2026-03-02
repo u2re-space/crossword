@@ -84,7 +84,7 @@ export const collectPortableModules = (portableConfig: Record<string, any>, base
         pushModule(rawPath);
     }
 
-    const legacyFlatKeys = ["portableCorePath", "portableEndpointPath", "portableTopologyPath", "portableRuntimePath", "portableRolesPath", "portableUpstreamPath"];
+    const legacyFlatKeys = ["portableCorePath", "portableEndpointPath", "portableTopologyPath", "portableRuntimePath", "portableRolesPath", "portableBridgePath"];
     for (const key of legacyFlatKeys) pushModule(portableConfig[key]);
 
     return out;
@@ -299,7 +299,7 @@ export const loadPortableEndpointSeed = (): PortableConfigSeed => {
             networkAliases: normalized.networkAliases,
             networkAliasMap: normalized.networkAliasMap,
             topology: normalized.topology,
-            upstream: normalized.upstream,
+            bridge: normalized.bridge,
             roles: normalized.roles,
             peers: normalized.peers,
             broadcastTargets: normalized.broadcastTargets,
@@ -610,10 +610,10 @@ export const createEndpointConfigSanitizer = (params: {
         const coreNetwork = asRecord(coreSource.network);
         const sourceNetwork = asRecord((source as Record<string, any>).network);
         const seedNetworkEndpoints = normalizeOptionalUrlList(sourceNetwork.endpoints || coreNetwork.endpoints || seedNetwork.endpoints);
-        const seedUpstream = asRecord(seedCore.upstream || seedEndpoint.upstream || seedEndpointDefaults.upstream || {});
-        const seedUpstreamWithNetwork = {
-            ...seedUpstream,
-            ...(seedNetworkEndpoints && !Array.isArray(seedUpstream.endpoints) ? { endpoints: seedNetworkEndpoints } : {})
+        const seedBridge = asRecord(seedCore.bridge || seedEndpoint.bridge || seedEndpointDefaults.bridge || {});
+        const seedBridgeWithNetwork = {
+            ...seedBridge,
+            ...(seedNetworkEndpoints && !Array.isArray(seedBridge.endpoints) ? { endpoints: seedNetworkEndpoints } : {})
         };
 
         const seedEndpointConfig = {
@@ -622,20 +622,20 @@ export const createEndpointConfigSanitizer = (params: {
             ...seedEndpoint
         };
 
-        const mergedUpstream = {
-            ...defaultConfig.upstream,
-            ...seedUpstreamWithNetwork,
-            ...(coreSource.upstream as Record<string, any>),
-            ...(source.core?.upstream as Record<string, any>),
-            ...(source.upstream as Record<string, any>)
+        const mergedBridge = {
+            ...defaultConfig.bridge,
+            ...seedBridgeWithNetwork,
+            ...(coreSource.bridge as Record<string, any>),
+            ...(source.core?.bridge as Record<string, any>),
+            ...(source.bridge as Record<string, any>)
         };
 
-        const mergedUpstreamWithFallback = {
-            ...mergedUpstream,
-            origin: normalizeOriginConfig((coreSource as Record<string, any>).upstream?.origin || (source as Record<string, any>).upstream?.origin || (source.core?.upstream as Record<string, any>)?.origin),
-            userId: normalizeTextField(mergedUpstream.userId, normalizeTextField((defaultConfig.upstream as Record<string, any>).userId, "")),
-            userKey: normalizeTextField(mergedUpstream.userKey, normalizeTextField((defaultConfig.upstream as Record<string, any>).userKey, "")),
-            endpoints: normalizeUrlList(coreSource.upstream?.endpoints || source.core?.upstream?.endpoints || source.upstream?.endpoints) ?? normalizeUrlList(mergedUpstream.endpoints) ?? []
+        const mergedBridgeWithFallback = {
+            ...mergedBridge,
+            origin: normalizeOriginConfig((coreSource as Record<string, any>).bridge?.origin || (source as Record<string, any>).bridge?.origin || (source.core?.bridge as Record<string, any>)?.origin),
+            userId: normalizeTextField(mergedBridge.userId, normalizeTextField((defaultConfig.bridge as Record<string, any>).userId, "")),
+            userKey: normalizeTextField(mergedBridge.userKey, normalizeTextField((defaultConfig.bridge as Record<string, any>).userKey, "")),
+            endpoints: normalizeUrlList(coreSource.bridge?.endpoints || source.core?.bridge?.endpoints || source.bridge?.endpoints) ?? normalizeUrlList(mergedBridge.endpoints) ?? []
         };
 
         const mergedTopologySource = {
@@ -647,8 +647,8 @@ export const createEndpointConfigSanitizer = (params: {
         };
         const mergedTopology = normalizeTopologyConfig(mergedTopologySource);
 
-        if (!mergedUpstreamWithFallback.endpointUrl && mergedUpstreamWithFallback.endpoints?.length) {
-            mergedUpstreamWithFallback.endpointUrl = mergedUpstreamWithFallback.endpoints[0];
+        if (!mergedBridgeWithFallback.endpointUrl && mergedBridgeWithFallback.endpoints?.length) {
+            mergedBridgeWithFallback.endpointUrl = mergedBridgeWithFallback.endpoints[0];
         }
 
         const envPeers = normalizePeerSource(pickEnvStringLegacy("CWS_PEERS") || pickEnvStringLegacy("CLIPBOARD_PEERS") || "");
@@ -711,7 +711,7 @@ export const createEndpointConfigSanitizer = (params: {
             httpTimeoutMs: parsePortableInteger(envHttpTimeoutMs) ?? source.httpTimeoutMs ?? sourceNetwork.httpTimeoutMs ?? coreNetwork.httpTimeoutMs ?? seedEndpointConfig.httpTimeoutMs ?? defaultConfig.httpTimeoutMs,
             secret: envSecret || (source.secret ?? sourceNetwork.secret ?? coreNetwork.secret ?? seedEndpointConfig.secret ?? defaultConfig.secret),
             roles: Array.isArray(coreSource.roles) ? coreSource.roles : Array.isArray(source.roles) ? source.roles : Array.isArray(seedEndpointConfig.roles) ? seedEndpointConfig.roles : Array.isArray(seedEndpoint.roles) ? seedEndpoint.roles : envRoles ? envRoles : defaultConfig.roles,
-            upstream: mergedUpstreamWithFallback,
+            bridge: mergedBridgeWithFallback,
             topology: {
                 ...mergedTopology,
                 ...normalizeTopologyConfig(mergedTopology)

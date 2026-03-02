@@ -2,7 +2,7 @@ import { SETTINGS_FILE } from "../lib/paths.ts";
 import { createSettingsStore } from "../lib/settings.ts";
 import type { Settings } from "../lib/settings.ts";
 import type { PortableConfigSeed } from "./schema.ts";
-import { FALLBACK_ROLES, FALLBACK_RUNTIME_DEFAULTS, FALLBACK_TOPOLOGY, FALLBACK_UPSTREAM, FALLBACK_UPSTREAM_ENDPOINTS } from "../lib/config-defaults.ts";
+import { FALLBACK_ROLES, FALLBACK_RUNTIME_DEFAULTS, FALLBACK_TOPOLOGY, FALLBACK_BRIDGE, FALLBACK_BRIDGE_ENDPOINTS } from "../lib/config-defaults.ts";
 import { parsePortableBoolean, parsePortableInteger } from "../lib/parsing.ts";
 import {
     asRecord,
@@ -21,7 +21,7 @@ const portableEndpointSection = asRecord(portableConfig && typeof portableConfig
 const portableEndpointDefaults = asRecord(portableConfig && typeof portableConfig === "object" && "endpointDefaults" in portableConfig ? (portableConfig as Record<string, any>).endpointDefaults : undefined) as
     | {
         roles?: unknown;
-        upstream?: unknown;
+        bridge?: unknown;
     }
     | undefined;
 const portableRuntimeDefaults = asRecord(portableConfig && typeof portableConfig === "object" ? ((portableConfig as Record<string, any>).endpointRuntimeDefaults ?? (portableConfig as Record<string, any>).endpointRuntime ?? (portableEndpointSection as Record<string, any>).runtime ?? (portableCoreSection as Record<string, any>).runtime) : undefined) as {
@@ -41,12 +41,12 @@ const portableTopology =
     (portableEndpointSection as Record<string, any>).topology ||
     (portableCoreSection as Record<string, any>).topology;
 const portableRoles = toStringArray(portableEndpointDefaults?.roles) || toStringArray(portableCoreSection.roles) || toStringArray(portableEndpointSection.roles);
-const portableUpstream =
-    (portableEndpointSection as Record<string, any>).upstream ||
-    (portableCoreSection as Record<string, any>).upstream ||
-    (portableEndpointDefaults as Record<string, any>).upstream ||
+const portableBridge =
+    (portableEndpointSection as Record<string, any>).bridge ||
+    (portableCoreSection as Record<string, any>).bridge ||
+    (portableEndpointDefaults as Record<string, any>).bridge ||
     {};
-const portableUpstreamEndpoints = toStringArray((portableUpstream as Record<string, any>)?.endpoints) || toStringArray(FALLBACK_UPSTREAM_ENDPOINTS);
+const portableBridgeEndpoints = toStringArray((portableBridge as Record<string, any>)?.endpoints) || toStringArray(FALLBACK_BRIDGE_ENDPOINTS);
 const portablePeers = toStringArray((portableRuntimeDefaults as Record<string, any>).peers) || toStringArray((portableEndpointSection as Record<string, any>).peers);
 const portableBroadcastTargets = toStringArray((portableRuntimeDefaults as Record<string, any>).broadcastTargets) || toStringArray((portableEndpointSection as Record<string, any>).broadcastTargets);
 const portableClipboardPeerTargets = toStringArray((portableRuntimeDefaults as Record<string, any>).clipboardPeerTargets) || toStringArray((portableEndpointSection as Record<string, any>).clipboardPeerTargets);
@@ -68,13 +68,13 @@ const portableTopologyConfig =
 
 export const DEFAULT_CORE_ROLES = [...(portableRoles || FALLBACK_ROLES)] as const;
 
-export const DEFAULT_UPSTREAM_ENDPOINTS = [...(portableUpstreamEndpoints || FALLBACK_UPSTREAM_ENDPOINTS)] as const;
+export const DEFAULT_BRIDGE_ENDPOINTS = [...(portableBridgeEndpoints || FALLBACK_BRIDGE_ENDPOINTS)] as const;
 
-export const DEFAULT_ENDPOINT_UPSTREAM = {
-    ...FALLBACK_UPSTREAM,
-    ...(typeof portableUpstream === "object" && portableUpstream ? portableUpstream : {}),
-    endpointUrl: typeof (portableUpstream as Record<string, any>)?.endpointUrl === "string" && (portableUpstream as Record<string, any>).endpointUrl.trim() ? (portableUpstream as Record<string, any>).endpointUrl : DEFAULT_UPSTREAM_ENDPOINTS[0],
-    endpoints: DEFAULT_UPSTREAM_ENDPOINTS
+export const DEFAULT_ENDPOINT_BRIDGE = {
+    ...FALLBACK_BRIDGE,
+    ...(typeof portableBridge === "object" && portableBridge ? portableBridge : {}),
+    endpointUrl: typeof (portableBridge as Record<string, any>)?.endpointUrl === "string" && (portableBridge as Record<string, any>).endpointUrl.trim() ? (portableBridge as Record<string, any>).endpointUrl : DEFAULT_BRIDGE_ENDPOINTS[0],
+    endpoints: DEFAULT_BRIDGE_ENDPOINTS
 };
 
 export const DEFAULT_ENDPOINT_RUNTIME = {
@@ -101,8 +101,8 @@ export const DEFAULT_SETTINGS: Settings = {
         topology: {
             ...DEFAULT_ENDPOINT_TOPOLOGY
         },
-        upstream: {
-            ...DEFAULT_ENDPOINT_UPSTREAM
+        bridge: {
+            ...DEFAULT_ENDPOINT_BRIDGE
         }
     },
     ai: { customInstructions: [], activeInstructionId: "" },
@@ -155,30 +155,30 @@ const defaultConfig = {
     // - endpoint: full endpoint behavior
     // - server: legacy alias (forward-server/reverse-server/endpoint role)
     // - client: legacy alias (reverse-client/forward-client role)
-    // - client-upstream: legacy alias (reverse-client)
+    // - client-bridge: legacy alias (reverse-client)
     // - peer: participate as a peer device (legacy reverse target role)
-    // - hub: act as upstream relay participant and/or origin/gateway role (legacy)
+    // - hub: act as bridge relay participant and/or origin/gateway role (legacy)
     // - node: generic aggregate role (legacy)
     // - forward-server: принимает входящие обычные forward-клиенты (включая локальные AirPad/браузер-клиенты)
     // - reverse-server: принимает reverse-bridge соединения как серверная отправляющая сторона
-    // - reverse-client: подключается reverse-upstream (NAT/гейт-паттерн), compatible с reverse-server
+    // - reverse-client: подключается reverse-bridge (NAT/гейт-паттерн), compatible с reverse-server
     // - forward-client: обычный клиент-отправитель, compatible с forward-server
     roles: [...DEFAULT_CORE_ROLES],
 
-    // Upstream tunnel-through / be-as-device settings.
+    // Bridge tunnel-through / be-as-device settings.
     // Connector/Client roles:
-    // - active|keepalive (default): opens outbound reverse WS и держит keepalive (CWS_UPSTREAM_ENABLED + CWS_UPSTREAM_MODE=active)
+    // - active|keepalive (default): opens outbound reverse WS и держит keepalive (CWS_BRIDGE_ENABLED + CWS_BRIDGE_MODE=active)
     // - passive: no outbound WS, endpoint only consumes direct private/local/gateway traffic
     // Gateway/Origin (куда подключается) на своей стороне выступает как reverse receiver и проксирует между peer-клиентами.
     // Когда active: endpoint откроет reverse WS на gateway-узел.
-    upstream: {
-        ...(DEFAULT_SETTINGS.core?.upstream || {}),
-        ...DEFAULT_ENDPOINT_UPSTREAM,
+    bridge: {
+        ...(DEFAULT_SETTINGS.core?.bridge || {}),
+        ...DEFAULT_ENDPOINT_BRIDGE,
         // Основные адреса для hub/server/endpoint подключения:
         // 1) внешний endpoint hub (дефолт)
         // 2) локальный fallback для LAN
-        endpoints: [...DEFAULT_UPSTREAM_ENDPOINTS],
-        endpointUrl: DEFAULT_ENDPOINT_UPSTREAM.endpointUrl
+        endpoints: [...DEFAULT_BRIDGE_ENDPOINTS],
+        endpointUrl: DEFAULT_ENDPOINT_BRIDGE.endpointUrl
     },
     topology: {
         ...DEFAULT_ENDPOINT_TOPOLOGY

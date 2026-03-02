@@ -13,7 +13,7 @@ export type CoreMode = "native" | "web" | "desktop" | "mobile" | "server" | "dae
 export interface CoreSettings {
     mode?: CoreMode;
     roles?: string[];
-    upstream?: {
+    bridge?: {
         enabled?: boolean;
         mode?: "active" | "passive";
         origin?: {
@@ -26,9 +26,9 @@ export interface CoreSettings {
         endpointUrl?: string;
         userId?: string;
         userKey?: string;
-        upstreamMasterKey?: string;
-        upstreamSigningPrivateKeyPem?: string;
-        upstreamPeerPublicKeyPem?: string;
+        bridgeMasterKey?: string;
+        bridgeSigningPrivateKeyPem?: string;
+        bridgePeerPublicKeyPem?: string;
         deviceId?: string;
         clientId?: string;
         namespace?: string;

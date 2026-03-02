@@ -1,15 +1,15 @@
 export const FALLBACK_ROLES = ["endpoint", "server", "peer", "client", "node", "hub"] as const;
 
-export const FALLBACK_UPSTREAM_ENDPOINTS = ["https://45.147.121.152:8443/", "https://192.168.0.200:8443/"] as const;
+export const FALLBACK_BRIDGE_ENDPOINTS = ["https://45.147.121.152:8443/", "https://192.168.0.200:8443/"] as const;
 
-export const FALLBACK_UPSTREAM = {
+export const FALLBACK_BRIDGE = {
     enabled: true,
-    endpointUrl: FALLBACK_UPSTREAM_ENDPOINTS[0],
+    endpointUrl: FALLBACK_BRIDGE_ENDPOINTS[0],
     userId: "",
     userKey: "",
-    upstreamMasterKey: "",
-    upstreamSigningPrivateKeyPem: "",
-    upstreamPeerPublicKeyPem: "",
+    bridgeMasterKey: "",
+    bridgeSigningPrivateKeyPem: "",
+    bridgePeerPublicKeyPem: "",
     deviceId: "L-192.168.0.200",
     namespace: "default",
     reconnectMs: 5000

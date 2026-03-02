@@ -10,7 +10,7 @@ import { createWsServer } from "../socket/websocket.ts";
 import type { WsHub } from "../socket/websocket.ts";
 import { createSocketIoBridge } from "../socket/socketio-bridge.ts";
 import { registerOpsRoutes } from "../../io/ops.ts";
-import { startUpstreamPeerClient } from "../stack/upstream.ts";
+import { startBridgePeerClient } from "../stack/bridge.ts";
 import { resolveTunnelTarget } from "../stack/messages.ts";
 import { normalizeNetworkAliasMap, resolveNetworkAlias } from "../stack/topology.ts";
 import config from "../../config/config.ts";
@@ -141,7 +141,7 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
     } as any;
 };
 
-// Receives messages from upstream gateway/origin and dispatches them into local peer hub.
+// Receives messages from bridge gateway/origin and dispatches them into local peer hub.
 const resolveLocalEndpointIds = (endpointPolicyMap: ReturnType<typeof normalizeEndpointPolicies>, fallbackUserId: string): Set<string> => {
     const localHosts = new Set<string>(["localhost", "127.0.0.1", "::1"]);
     const hostName = ((config as any)?.host || "").toString().trim().toLowerCase();
@@ -221,8 +221,8 @@ const isLocalEndpointTarget = (requestedTarget: string, localEndpointIds: Set<st
     return normalizeTargetForLocalRouting(normalized).some((candidate) => localEndpointIds.has(candidate));
 };
 
-const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
-    const upstreamAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
+const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
+    const bridgeAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
     const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
     const defaultUserId = fallbackUserId || "";
@@ -265,7 +265,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         if (!normalized) return "";
         const policyResolvedTarget = resolvePolicyTarget(normalized);
         const aliasInput = policyResolvedTarget !== normalized ? policyResolvedTarget : normalized;
-        const aliasResolved = resolveNetworkAlias(upstreamAliasMap, aliasInput) || aliasInput;
+        const aliasResolved = resolveNetworkAlias(bridgeAliasMap, aliasInput) || aliasInput;
         const topology = (config as any)?.topology;
         const topologyNodes = Array.isArray(topology?.nodes) ? topology.nodes.filter((node: any) => node && typeof node === "object" && !Array.isArray(node)) : [];
         const peers = hub.getConnectedPeerProfiles(resolvedUserId).map((peer) => ({
@@ -275,7 +275,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
         }));
         const resolution = resolvePeerIdentity(aliasResolved, {
             peers,
-            aliases: upstreamAliasMap,
+            aliases: bridgeAliasMap,
             topology: topologyNodes
         });
         return resolution?.peerId || aliasResolved;
@@ -298,7 +298,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                     target: resolvedRequestedTarget || "-",
                     userId: resolvedUserId
                 },
-                "[upstream] route denied by unknown source"
+                "[bridge] route denied by unknown source"
             );
             return;
         }
@@ -312,18 +312,18 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         reason: policyDecision.reason,
                         userId: resolvedUserId
                     },
-                    "[upstream] route denied by endpoint policy"
+                    "[bridge] route denied by endpoint policy"
                 );
                 return;
             }
         }
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
-        const airpadBinary = tryDecodeUpstreamBinary(payload);
+        const airpadBinary = tryDecodeBridgeBinary(payload);
         const hasAirpadBinaryPayload = airpadBinary instanceof Buffer;
         if (isTunnelDebug) {
             const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload as Record<string, unknown>).join("|") : typeof payload;
-            console.info(`[upstream] IN`, `userId=${resolvedUserId}`, `from=${sourceForPolicy.sourceId}`, `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`, `type=${String(msg.type || msg.action || "dispatch")}`, `kind=${payloadKeys}`);
+            console.info(`[bridge] IN`, `userId=${resolvedUserId}`, `from=${sourceForPolicy.sourceId}`, `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`, `type=${String(msg.type || msg.action || "dispatch")}`, `kind=${payloadKeys}`);
         }
         const namespace = typeof msg.namespace === "string" && msg.namespace ? msg.namespace : typeof msg.ns === "string" ? msg.ns : undefined;
         const type = String(msg.type || msg.action || "dispatch");
@@ -342,7 +342,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         target: resolvedRequestedTarget,
                         from: sourceForPolicy.sourceId
                     },
-                    "[upstream] ignored welcome event from upstream"
+                    "[bridge] ignored welcome event from bridge"
                 );
             }
             return;
@@ -403,7 +403,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
             const delivered = resolved || fallbackSent || forcedLocalAirpad;
             if (shouldFallbackToLocalAirpad && isTunnelDebug) {
                 console.info(
-                    `[upstream] airpad binary forced local fallback`,
+                    `[bridge] airpad binary forced local fallback`,
                     `userId=${resolvedUserId}`,
                     `target=${requestedTarget}`,
                     `handled=${forcedLocalAirpad}`,
@@ -416,7 +416,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                 const targetPeers = hub.getConnectedPeerProfiles(requestedTargetUser).map((entry) => `${entry.label}(${entry.id})`);
                 if (isTunnelDebug) {
                     console.warn(
-                        `[upstream] target resolve failed`,
+                        `[bridge] target resolve failed`,
                         `userId=${resolvedUserId}`,
                         `requested=${requestedTarget}`,
                         `resolved=${resolvedTarget || "-"}`,
@@ -438,7 +438,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         targetUserPeers: targetPeers,
                         payloadType: type
                     },
-                    "[upstream] failed to route command to reverse target"
+                    "[bridge] failed to route command to reverse target"
                 );
             } else if (forcedLocalAirpad) {
                 app.log?.debug?.(
@@ -448,7 +448,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         payloadType: type,
                         source: sourceForPolicy.sourceId
                     },
-                    "[upstream] forced airpad binary execution on local endpoint"
+                    "[bridge] forced airpad binary execution on local endpoint"
                 );
             } else {
                 app.log?.debug?.(
@@ -464,11 +464,11 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                         fallbackToSelf: fallbackSent,
                         resolvedUserId
                     },
-                    "[upstream] routed command to reverse target"
+                    "[bridge] routed command to reverse target"
                 );
                 if (isTunnelDebug) {
                     console.info(
-                        `[upstream] target resolved`,
+                        `[bridge] target resolved`,
                         `userId=${resolvedUserId}`,
                         `requested=${requestedTarget}`,
                         `deliveryUser=${resolvedUserForDelivery}`,
@@ -488,7 +488,7 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
                     resolvedTarget,
                     knownPeers: hub.getConnectedPeerProfiles(resolvedUserId).map((entry) => `${entry.label}(${entry.id})`)
                 },
-                "[upstream] routed command to device"
+                "[bridge] routed command to device"
             );
             return;
         }
@@ -497,12 +497,12 @@ const buildUpstreamRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: s
     };
 };
 
-const buildNetworkContext = (upstreamConnector: ReturnType<typeof startUpstreamPeerClient> | null) => {
-    if (!upstreamConnector) return undefined;
+const buildNetworkContext = (bridgeConnector: ReturnType<typeof startBridgePeerClient> | null) => {
+    if (!bridgeConnector) return undefined;
     return {
-        getUpstreamStatus: () => upstreamConnector.getStatus(),
-        sendToUpstream: (payload: any) => upstreamConnector.send(payload),
-        getNodeId: () => String(((config as any)?.upstream?.clientId || (config as any)?.upstream?.userId || "").trim() || (config as any)?.upstream?.origin?.originId || "").trim() || null
+        getBridgeStatus: () => bridgeConnector.getStatus(),
+        sendToBridge: (payload: any) => bridgeConnector.send(payload),
+        getNodeId: () => String(((config as any)?.bridge?.clientId || (config as any)?.bridge?.userId || "").trim() || (config as any)?.bridge?.origin?.originId || "").trim() || null
     };
 };
 
@@ -521,23 +521,23 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     registerRoutes(app);
     await registerCoreApp(app);
     const wsHub = createWsServer(app);
-    // Upstream connector: this node opens reverse sessions to an origin/gateway.
-    const upstreamConnector = startUpstreamPeerClient(config as any, {
-        onMessage: buildUpstreamRouter(app, wsHub, (config as any)?.upstream?.userId || "")
+    // Bridge connector: this node opens reverse sessions to an origin/gateway.
+    const bridgeConnector = startBridgePeerClient(config as any, {
+        onMessage: buildBridgeRouter(app, wsHub, (config as any)?.bridge?.userId || "")
     });
-    const networkContext = buildNetworkContext(upstreamConnector);
-    if (upstreamConnector) {
+    const networkContext = buildNetworkContext(bridgeConnector);
+    if (bridgeConnector) {
         app.addHook("onClose", async () => {
-            upstreamConnector.stop();
+            bridgeConnector.stop();
         });
-        app.log?.info?.("Upstream peer bridge started");
+        app.log?.info?.("Bridge peer bridge started");
     }
 
     const socketIoBridge = createSocketIoBridge(app, {
         networkContext: networkContext
             ? {
-                sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || (config as any)?.upstream?.userId
+                sendToBridge: networkContext.sendToBridge,
+                bridgeUserId: networkContext.getNodeId() || (config as any)?.bridge?.userId
             }
             : undefined
     });
@@ -562,27 +562,27 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
     setClipboardApp(primaryApp);
     setPythonApp(primaryApp);
 
-    const fallbackUserId = String((config as any)?.upstream?.userId || "").trim();
+    const fallbackUserId = String((config as any)?.bridge?.userId || "").trim();
     const httpWsHub = createWsServer(http);
     const httpWsHubs: WsHub[] = [httpWsHub];
     const unifiedHub = makeUnifiedWsHub(httpWsHubs);
-    // Upstream connector: HTTP-side bootstrap also reuses outbound reverse transport.
-    const upstreamConnector = startUpstreamPeerClient(config as any, {
-        onMessage: buildUpstreamRouter(http, unifiedHub, fallbackUserId)
+    // Bridge connector: HTTP-side bootstrap also reuses outbound reverse transport.
+    const bridgeConnector = startBridgePeerClient(config as any, {
+        onMessage: buildBridgeRouter(http, unifiedHub, fallbackUserId)
     });
-    const networkContext = buildNetworkContext(upstreamConnector);
+    const networkContext = buildNetworkContext(bridgeConnector);
 
     await registerCoreApp(http);
-    if (upstreamConnector) {
+    if (bridgeConnector) {
         http.addHook("onClose", async () => {
-            upstreamConnector.stop();
+            bridgeConnector.stop();
         });
     }
     const httpSocketIoBridge = createSocketIoBridge(http, {
         networkContext: networkContext
             ? {
-                sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+                sendToBridge: networkContext.sendToBridge,
+                bridgeUserId: networkContext.getNodeId() || fallbackUserId
             }
             : undefined
     });
@@ -594,16 +594,16 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
     httpWsHubs.push(httpsWsHub);
     await registerCoreApp(https);
     registerRoutes(https);
-    if (upstreamConnector) {
+    if (bridgeConnector) {
         https.addHook("onClose", async () => {
-            upstreamConnector.stop();
+            bridgeConnector.stop();
         });
     }
     const httpsSocketIoBridge = createSocketIoBridge(https, {
         networkContext: networkContext
             ? {
-                sendToUpstream: networkContext.sendToUpstream,
-                upstreamUserId: networkContext.getNodeId() || fallbackUserId
+                sendToBridge: networkContext.sendToBridge,
+                bridgeUserId: networkContext.getNodeId() || fallbackUserId
             }
             : undefined
     });

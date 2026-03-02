@@ -29,8 +29,8 @@ export type SocketIoBridge = {
 };
 
 type SocketIoBridgeNetworkContext = {
-    sendToUpstream?: (payload: any) => boolean;
-    upstreamUserId?: string;
+    sendToBridge?: (payload: any) => boolean;
+    bridgeUserId?: string;
     sendToReverse?: (userId: string, deviceId: string, payload: any) => boolean;
 };
 
@@ -223,15 +223,15 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 }
                 return;
             }
-            if (airpadRouter.forwardToUpstream(sourceSocket, processed)) {
-                logMsg("OUT(tunnel-upstream)", processed);
+            if (airpadRouter.forwardToBridge(sourceSocket, processed)) {
+                logMsg("OUT(tunnel-bridge)", processed);
                 return;
             }
             const knownTunnelTargets = airpadRouter.getTunnelTargets();
             if (routeHint === "tunnel" || routeHint === "remote") {
                 if (isTunnelDebug) {
                     console.warn(
-                        `[Router] Tunnel target not found; upstream/bridge fallback not enabled for routed socket`,
+                        `[Router] Tunnel target not found; bridge/bridge fallback not enabled for routed socket`,
                         `socket=${sourceSocket.id}`,
                         `requested=${tunnelTargets.join(",")}`,
                         `known=${knownTunnelTargets.join(",")}`
@@ -417,7 +417,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                         }
                         return true;
                     }
-                    if (airpadRouter.forwardBinaryToUpstream(sourceSocket, raw, target)) {
+                    if (airpadRouter.forwardBinaryToBridge(sourceSocket, raw, target)) {
                         return true;
                     }
                 }
@@ -426,10 +426,10 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     console.log(`[Router] Binary tunnel attempt`, `socket=${sourceSocket.id}`, `forwarded=false`, `target=${tunnelTargets.join("|")}`, `known=${knownTunnelTargets.join(",")}`);
                 }
                 if (isTunnelDebug) {
-                    const upstreamEnabled = networkContext?.sendToUpstream instanceof Function;
-                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `upstreamEnabled=${upstreamEnabled}`);
-                    if (!upstreamEnabled) {
-                        console.warn(`[Router] Binary tunnel dropped`, `reason=no upstream connector available`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
+                    const bridgeEnabled = networkContext?.sendToBridge instanceof Function;
+                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `bridgeEnabled=${bridgeEnabled}`);
+                    if (!bridgeEnabled) {
+                        console.warn(`[Router] Binary tunnel dropped`, `reason=no bridge connector available`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
                     }
                 }
                 if (!isTunnelDebug) {
@@ -501,8 +501,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         const devices = airpadRouter.getDebugDevices();
         return {
             ok: true,
-            upstreamConnected: networkContext?.sendToUpstream != null,
-            upstreamUserId: networkContext?.upstreamUserId,
+            bridgeConnected: networkContext?.sendToBridge != null,
+            bridgeUserId: networkContext?.bridgeUserId,
             connectedCount: devices.length,
             devices,
             tunnelTargets

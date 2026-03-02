@@ -19,7 +19,7 @@ export type EndpointTopologyConfig = {
     links?: Array<Record<string, any>>;
 };
 
-export type EndpointUpstreamOriginConfig = {
+export type EndpointBridgeOriginConfig = {
     originId?: string;
     originHosts?: string[];
     originDomains?: string[];
@@ -27,17 +27,17 @@ export type EndpointUpstreamOriginConfig = {
     surface?: string;
 };
 
-export type EndpointUpstreamConfig = {
+export type EndpointBridgeConfig = {
     enabled?: boolean;
     mode?: "active" | "passive";
-    origin?: EndpointUpstreamOriginConfig;
+    origin?: EndpointBridgeOriginConfig;
     endpointUrl?: string;
     endpoints?: string[];
     userId?: string;
     userKey?: string;
-    upstreamMasterKey?: string;
-    upstreamSigningPrivateKeyPem?: string;
-    upstreamPeerPublicKeyPem?: string;
+    bridgeMasterKey?: string;
+    bridgeSigningPrivateKeyPem?: string;
+    bridgePeerPublicKeyPem?: string;
     deviceId?: string;
     clientId?: string;
     namespace?: string;
@@ -74,7 +74,7 @@ export type EndpointConfig = {
     httpTimeoutMs?: number;
     secret?: string;
     roles?: string[];
-    upstream?: EndpointUpstreamConfig;
+    bridge?: EndpointBridgeConfig;
     ai?: Record<string, any>;
 };
 
@@ -89,7 +89,7 @@ export type PortableConfigSeed = {
     networkAliases?: unknown;
     networkAliasMap?: unknown;
     topology?: unknown;
-    upstream?: unknown;
+    bridge?: unknown;
     roles?: unknown;
     peers?: unknown;
     broadcastTargets?: unknown;

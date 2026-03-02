@@ -77,7 +77,7 @@ async function writeAirpadClipboard(text: string): Promise<void> {
     }
 }
 
-export const tryDecodeUpstreamBinary = (raw: unknown): Buffer | null => {
+export const tryDecodeBridgeBinary = (raw: unknown): Buffer | null => {
     if (!raw || typeof raw !== "object") return null;
     const candidates: Array<unknown> = [raw];
     const envelopePayload = (raw as any).payload;
@@ -239,13 +239,13 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
             return;
         }
 
-        const upstreamBinary = tryDecodeUpstreamBinary(data);
-        if (upstreamBinary) {
-            const localHandled = handleAirpadBinaryMessage(logger, upstreamBinary);
+        const bridgeBinary = tryDecodeBridgeBinary(data);
+        if (bridgeBinary) {
+            const localHandled = handleAirpadBinaryMessage(logger, bridgeBinary);
             if (!localHandled) {
                 logger?.warn?.(
                     { socketId: socket.id },
-                    "[airpad] upstream binary envelope parsed but message is invalid"
+                    "[airpad] bridge binary envelope parsed but message is invalid"
                 );
             }
             return;

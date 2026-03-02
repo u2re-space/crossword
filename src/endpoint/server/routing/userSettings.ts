@@ -16,7 +16,7 @@ export type HttpTarget = {
 export type CoreSettings = {
     mode: "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint";
     roles?: string[];
-    upstream?: {
+    bridge?: {
         enabled?: boolean;
         mode?: "active" | "passive";
         origin?: {
@@ -29,9 +29,9 @@ export type CoreSettings = {
         endpointUrl?: string;
         userId?: string;
         userKey?: string;
-        upstreamMasterKey?: string;
-        upstreamSigningPrivateKeyPem?: string;
-        upstreamPeerPublicKeyPem?: string;
+        bridgeMasterKey?: string;
+        bridgeSigningPrivateKeyPem?: string;
+        bridgePeerPublicKeyPem?: string;
         deviceId?: string;
         clientId?: string;
         namespace?: string;
@@ -95,7 +95,7 @@ export const registerCoreSettingsEndpoints = async (app: FastifyInstance) => {
             ok: true,
             mode: (settings.core?.mode ?? "endpoint") as "native" | "web" | "desktop" | "mobile" | "server" | "daemon" | "client" | "daemon-client" | "endpoint",
             roles: settings.core?.roles ?? (DEFAULT_SETTINGS.core?.roles || ["server", "endpoint"]),
-            upstreamEnabled: settings.core?.upstream?.enabled === true
+            bridgeEnabled: settings.core?.bridge?.enabled === true
         };
     });
 };
