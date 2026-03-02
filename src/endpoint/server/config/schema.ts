@@ -49,6 +49,7 @@ export type EndpointIdPolicy = {
     origins: string[];
     tokens: string[];
     forward: string;
+    ports?: Record<string, unknown>;
     flags: {
         mobile?: boolean;
         gateway?: boolean;

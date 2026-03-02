@@ -27,8 +27,10 @@ type HttpDispatchRequest = {
     broadcastForceHttps?: boolean;
 };
 type HttpDispatchBody = {
-    userId: string;
-    userKey: string;
+    userId?: string;
+    userKey?: string;
+    clientId?: string;
+    token?: string;
     targetDeviceId?: string;
     requests?: HttpDispatchRequest[];
     addresses?: Array<string | HttpDispatchRequest>;
@@ -189,8 +191,8 @@ type RouteSourceResolution = {
     isKnown: boolean;
 };
 
-const resolveRouteSourceId = (sourceHint: string | undefined, fallbackUserId: string): RouteSourceResolution => {
-    const fallback = fallbackUserId.trim().toLowerCase();
+const resolveRouteSourceId = (sourceHint: string | undefined, fallbackUserId?: string): RouteSourceResolution => {
+    const fallback = (fallbackUserId || "").trim().toLowerCase();
     if (!sourceHint || !sourceHint.trim()) return { sourceId: fallback, isKnown: true };
 
     const trimmedHint = sourceHint.trim();
@@ -207,10 +209,17 @@ const resolveRouteSourceId = (sourceHint: string | undefined, fallbackUserId: st
     };
 };
 
-const extractRoutingSourceId = (body: Record<string, any> | undefined, fallbackUserId: string): RouteSourceResolution => {
-    if (!body) return { sourceId: fallbackUserId.trim().toLowerCase(), isKnown: true };
+const extractRoutingSourceId = (body: Record<string, any> | undefined, fallbackUserId?: string): RouteSourceResolution => {
+    if (!body) return { sourceId: (fallbackUserId || "").trim().toLowerCase(), isKnown: true };
     const sourceHint = body.from || body.source || body.sourceId || body.src || body.suggestedSource || body.routeSource || body._routeSource;
     return resolveRouteSourceId(typeof sourceHint === "string" ? sourceHint : undefined, fallbackUserId);
+};
+
+const resolveDispatchIdentity = (body: { userId?: string; userKey?: string; clientId?: string; token?: string }) => {
+    return {
+        userId: (body.userId || body.clientId || "").trim(),
+        userKey: (body.userKey || body.token || "").trim()
+    };
 };
 
 const ensureKnownRoutingSource = (routeSource: RouteSourceResolution): { allowed: boolean; reason: string } => {
@@ -551,6 +560,129 @@ const resolveBroadcastUrl = (entry: HttpDispatchRequest, allowUnencrypted: boole
     return `${resolved.protocol}://${resolved.sourceWithoutProtocol}`;
 };
 
+const buildPolicyDirectDispatchUrls = (targetHint: string, userId: string, broadcastForceHttps: boolean, allowUnencrypted: boolean): string[] => {
+    const fallbackHttpPorts = [8080];
+    const fallbackHttpsPorts = [8443];
+    const normalizeDispatchHost = (rawHost: string): string => {
+        const noAlias = stripAliasPrefix(String(rawHost || "").trim());
+        if (!noAlias) return "";
+        if (/^https?:\/\//i.test(noAlias)) return noAlias.replace(/^https?:\/\//i, "");
+        if (noAlias.includes("/")) return noAlias.split("/")[0].trim();
+        return noAlias;
+    };
+
+    const collectHostCandidates = (rawValues: unknown, out: Set<string>, defaultHttpsPorts: number[], defaultHttpPorts: number[]) => {
+        if (!Array.isArray(rawValues)) return;
+        for (const rawValue of rawValues) {
+            const host = normalizeDispatchHost(String(rawValue || "").trim().toLowerCase());
+            if (!host || !looksLikeAliasedHostTarget(host)) continue;
+            const hasPort = hasExplicitPort(host);
+            const pushPorts = (protocol: "http" | "https", ports: number[]) => {
+                if (hasPort) {
+                    addCandidate(out, protocol, host);
+                } else {
+                    for (const port of ports) {
+                        addCandidate(out, protocol, host, port);
+                    }
+                }
+            };
+            pushPorts("https", defaultHttpsPorts);
+            pushPorts("http", defaultHttpPorts);
+        }
+    };
+
+    const collectTargetHostFallbacks = (value: string, out: Set<string>, defaultHttpsPorts: number[], defaultHttpPorts: number[]) => {
+        const lower = value.toLowerCase().trim();
+        if (!lower) return;
+        const asAliasTrim = normalizeDispatchHost(lower.replace(/^id[:\-]/i, "").replace(/^[a-z]+-/i, ""));
+        if (!asAliasTrim || !looksLikeAliasedHostTarget(asAliasTrim)) return;
+        const hasPort = hasExplicitPort(asAliasTrim);
+        const pushPorts = (protocol: "http" | "https", ports: number[]) => {
+            if (hasPort) {
+                addCandidate(out, protocol, asAliasTrim);
+            } else {
+                for (const port of ports) {
+                    addCandidate(out, protocol, asAliasTrim, port);
+                }
+            }
+        };
+        pushPorts("https", defaultHttpsPorts);
+        pushPorts("http", defaultHttpPorts);
+    };
+
+    const normalizeUrlPortList = (policy: Record<string, any> | undefined, key: "http" | "https"): number[] => {
+        const raw = policy?.ports;
+        if (!raw || typeof raw !== "object") return [];
+        const values = (raw as Record<string, unknown>)[key];
+        if (!Array.isArray(values)) return [];
+        return values
+            .map((entry) => parsePortableInteger(entry))
+            .filter((value): value is number => value !== undefined && value > 0 && value <= 65535)
+            .filter((value, index, list) => list.indexOf(value) === index);
+    };
+
+    const hasExplicitPort = (value: string): boolean => {
+        const trimmed = value.trim();
+        if (!trimmed) return false;
+        const hostPort = trimmed.split("/")[0];
+        const idx = hostPort.lastIndexOf(":");
+        if (idx <= 0) return false;
+        const port = parsePortableInteger(hostPort.slice(idx + 1));
+        return port !== undefined;
+    };
+
+    const addCandidate = (out: Set<string>, force: "http" | "https", host: string, port?: number) => {
+        const trimmed = host.trim();
+        if (!trimmed) return;
+        const base = hasExplicitPort(trimmed) ? trimmed : port ? `${trimmed}:${port}` : trimmed;
+        const url = `${force}://${base}/clipboard`;
+        const resolved = resolveBroadcastProtocol(url, { allowUnencrypted, forceHttps: broadcastForceHttps });
+        if (!resolved) return;
+        out.add(`${resolved.protocol}://${resolved.sourceWithoutProtocol}`);
+    };
+
+    const appendFromTarget = (target: string, out: Set<string>) => {
+        const policy = resolveEndpointIdPolicyStrict(endpointPolicyMap, target) || resolveEndpointIdPolicy(endpointPolicyMap, target);
+        if (!policy) return;
+        const strictPolicy = policy as Record<string, any>;
+        const directPorts = {
+            https: normalizeUrlPortList(strictPolicy, "https"),
+            http: normalizeUrlPortList(strictPolicy, "http")
+        };
+        const httpPorts = directPorts.http.length ? directPorts.http : [8080];
+        const httpsPorts = directPorts.https.length ? directPorts.https : [8443];
+        const origins = Array.isArray(strictPolicy.origins) ? strictPolicy.origins : [];
+        const tokens = Array.isArray(strictPolicy.tokens) ? strictPolicy.tokens : [];
+
+        collectHostCandidates(origins, out, httpsPorts, httpPorts);
+        collectHostCandidates(tokens, out, httpsPorts, httpPorts);
+    };
+
+    const normalizedHint = resolveEndpointRouteTarget(targetHint, userId).trim().toLowerCase();
+    if (!normalizedHint) return [];
+    const out = new Set<string>();
+    const deliveryPlan = resolveEndpointDeliveryTargets(normalizedHint, userId);
+    const targets = Array.from(new Set([...deliveryPlan.direct, ...deliveryPlan.fallback, ...deliveryPlan.ordered]));
+    targets.forEach((target) => appendFromTarget(target, out));
+    if (out.size === 0) appendFromTarget(normalizedHint, out);
+    if (out.size === 0) {
+        const hostHint = stripAliasPrefix(normalizedHint).trim();
+        if (looksLikeAliasedHostTarget(hostHint)) {
+            const hasPort = hasExplicitPort(hostHint);
+            if (hasPort) {
+                addCandidate(out, "https", hostHint);
+                addCandidate(out, "http", hostHint);
+            } else {
+                for (const port of [8443, 8080]) {
+                    addCandidate(out, port === 8443 ? "https" : "http", hostHint, port);
+                }
+            }
+        }
+        collectTargetHostFallbacks(normalizedHint, out, fallbackHttpsPorts, fallbackHttpPorts);
+    }
+    return Array.from(out);
+};
+
 const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[] => {
     const out: HttpDispatchRequest[] = [];
     const pushEntry = (entry: string | HttpDispatchRequest | undefined | null) => {
@@ -575,7 +707,9 @@ const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[
         if (parsedUnencrypted !== undefined) {
             normalized.unencrypted = parsedUnencrypted;
         }
-        if (normalized.url || normalized.ip) out.push(normalized);
+        if (normalized.url || normalized.ip || normalized.deviceId || normalized.targetId || (normalized as any).peerId) {
+            out.push(normalized);
+        }
     };
 
     (body.requests || []).forEach((r) => pushEntry(r));
@@ -665,7 +799,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
         const payload = (request.body || {}) as HttpRequestBody;
-        const { userId, userKey, targetId, targetDeviceId, method, headers, body } = payload;
+        const { targetId, targetDeviceId, method, headers, body } = payload;
+        const { userId, userKey } = resolveDispatchIdentity(payload as { userId?: string; userKey?: string; clientId?: string; token?: string });
         const parsedRequestHttps = parsePortableBoolean(payload.https);
         const parsedRequestSecure = parsePortableBoolean(payload.secure);
         const forceHttpsRoute = (request.url || "").startsWith("/core/ops/https") || parsedRequestHttps === true || parsedRequestSecure === true;
@@ -757,7 +892,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
 
     const broadcastHandler = async (request: FastifyRequest<{ Body: HttpDispatchBody }>) => {
         const body = (request.body || {}) as HttpDispatchBody;
-        const { userId, userKey, targetDeviceId } = body;
+        const { targetDeviceId } = body;
+        const { userId, userKey } = resolveDispatchIdentity(body);
         const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
         const routeSourceCheck = ensureKnownRoutingSource(routeSource);
         if (!routeSourceCheck.allowed) {
@@ -795,6 +931,36 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const forceBroadcastHttps = requestBroadcastForceHttps ?? opsBroadcastForceHttps ?? configBroadcastForceHttps;
         const execOne = async (entry: HttpDispatchRequest) => {
             const reverseDeviceId = (entry as any).deviceId || (entry as any).targetId || defaultDeviceId;
+            const resolvedUrl = resolveBroadcastUrl(entry, allowUnencrypted, forceBroadcastHttps);
+            const executeUrlRequest = async (overrideUrl?: string) => {
+                const source = overrideUrl || resolvedUrl;
+                if (!source) {
+                    return { target: entry.ip || entry.url, ok: false, error: "No URL" };
+                }
+
+                const isHttps = source.startsWith("https://");
+                if (!isHttps && !(allowUnencrypted || entry.unencrypted)) return { target: source, ok: false, error: "Unencrypted HTTP is not allowed" };
+
+                const finalMethod = (entry.method || "POST").toUpperCase();
+                const headers: Record<string, string> = { ...((entry.headers as Record<string, string>) || {}) };
+                if (typeof entry.body === "string" && !Object.keys(headers).some(k => k.toLowerCase() === "content-type")) {
+                    headers["Content-Type"] = "text/plain; charset=utf-8";
+                }
+                
+                console.log(source, finalMethod, headers, "<body hidden>");
+                try {
+                    const res = await fetch(source, {
+                        method: finalMethod,
+                        headers,
+                        body: entry.body ?? null
+                    });
+                    const text = await res.text();
+                    return { target: source, ok: true, status: res.status, data: text };
+                } catch (e) {
+                    return { target: source, ok: false, error: String(e) };
+                }
+            };
+
             if (typeof reverseDeviceId === "string" && reverseDeviceId.trim()) {
                 const resolvedReverseDeviceId = resolveEndpointRouteTarget(reverseDeviceId, userId);
                 const routeDecision = checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId);
@@ -818,6 +984,27 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                     { wsHub, socketIoBridge }
                 );
                 const delivered = delivery.delivered;
+                if (delivered) {
+                    return {
+                        target: reverseDeviceId,
+                        ok: true,
+                        delivered: "ws-reverse",
+                        mode: "reverse"
+                    };
+                }
+                const directCandidates = [resolvedUrl, ...buildPolicyDirectDispatchUrls(reverseDeviceId || "", userId, forceBroadcastHttps, allowUnencrypted)];
+                for (const candidate of directCandidates) {
+                    if (!candidate) continue;
+                    const directResult = await executeUrlRequest(candidate);
+                    if (directResult.ok) {
+                        return {
+                            ...directResult,
+                            target: candidate,
+                            mode: "hybrid",
+                            delivered: "http-fallback"
+                        };
+                    }
+                }
                 return {
                     target: reverseDeviceId,
                     ok: !!delivered,
@@ -825,35 +1012,28 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                     mode: "reverse"
                 };
             }
-
-            const resolvedUrl = resolveBroadcastUrl(entry, allowUnencrypted, forceBroadcastHttps);
-            if (!resolvedUrl) return { target: entry.ip || entry.url, ok: false, error: "No URL" };
-
-            const isHttps = resolvedUrl.startsWith("https://");
-            if (!isHttps && !(allowUnencrypted || entry.unencrypted)) return { target: resolvedUrl, ok: false, error: "Unencrypted HTTP is not allowed" };
-
-            const finalMethod = (entry.method || "POST").toUpperCase();
-            console.log(resolvedUrl, finalMethod, entry.headers || {}, "<body hidden>");
-            try {
-                const res = await fetch(resolvedUrl, {
-                    method: finalMethod,
-                    headers: entry.headers || {},
-                    body: entry.body ?? null
-                });
-                const text = await res.text();
-                return { target: resolvedUrl, ok: true, status: res.status, data: text };
-            } catch (e) {
-                return { target: resolvedUrl, ok: false, error: String(e) };
-            }
+            return executeUrlRequest();
         };
 
         const results = await Promise.all(requests.map(execOne));
         const failed = results.find((r) => !r.ok);
+        console.log(
+            `[broadcast] client=${routeSource.sourceId} targets=${results.length} failed=${results.filter((r) => !r.ok).length} ` +
+            `results=${JSON.stringify(results.map((r) => ({
+                target: (r as any).target,
+                delivered: (r as any).delivered,
+                mode: (r as any).mode,
+                ok: r.ok,
+                status: (r as any).status,
+                error: (r as any).error
+            })))}`
+        );
         return { ok: !failed, results };
     };
 
     const networkFetchHandler = async (request: FastifyRequest<{ Body: NetworkFetchBody }>) => {
-        const { userId, userKey, route = "auto", target, targetId, deviceId, peerId, namespace, ns, method, url, headers, data, payload, body, timeoutMs } = request.body || {};
+        const { route = "auto", target, targetId, deviceId, peerId, namespace, ns, method, url, headers, data, payload, body, timeoutMs } = request.body || {};
+        const { userId, userKey } = resolveDispatchIdentity(request.body || {});
         const routeSource = extractRoutingSourceId(request.body as Record<string, any>, userId);
         const routeSourceCheck = ensureKnownRoutingSource(routeSource);
         if (!routeSourceCheck.allowed) {

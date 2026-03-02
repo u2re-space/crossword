@@ -10,6 +10,7 @@ export type EndpointIdPolicy = {
     origins: string[];
     tokens: string[];
     forward: string;
+    ports?: Record<string, unknown>;
     flags: EndpointIdFlags;
     allowedIncoming: string[];
     allowedOutcoming: string[];
@@ -69,6 +70,34 @@ const normalizePolicyFlags = (raw: unknown): EndpointIdFlags => {
     return out;
 };
 
+const normalizePolicyPortList = (raw: unknown): number[] => {
+    if (!Array.isArray(raw)) return [];
+    const normalized = raw
+        .map((entry) => {
+            const parsed = Number(String(entry).trim());
+            return Number.isFinite(parsed) && parsed > 0 && parsed <= 65535 ? Math.trunc(parsed) : undefined;
+        })
+        .filter((entry): entry is number => entry !== undefined);
+    const unique: number[] = [];
+    for (const port of normalized) {
+        if (!unique.includes(port)) unique.push(port);
+    }
+    return unique;
+};
+
+const normalizePolicyPorts = (raw: unknown): Record<string, number[]> => {
+    if (!raw || typeof raw !== "object") return {};
+    const source = raw as Record<string, unknown>;
+    const out: Record<string, number[]> = {};
+    Object.keys(source).forEach((key) => {
+        const normalized = normalizePolicyPortList(source[key]);
+        if (normalized.length > 0) {
+            out[key.trim()] = normalized;
+        }
+    });
+    return out;
+};
+
 export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPolicy => {
     const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const normalizedId = normalizeEndpointToken(id);
@@ -77,6 +106,7 @@ export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPol
         origins: normalizePolicyList(source.origins),
         tokens: normalizePolicyList(source.tokens, false),
         forward: normalizePolicyForward(source.forward),
+        ports: normalizePolicyPorts(source.ports),
         flags: normalizePolicyFlags(source.flags),
         allowedIncoming: normalizePolicyList(source.allowedIncoming, true),
         allowedOutcoming: normalizePolicyList(source.allowedOutcoming, true),

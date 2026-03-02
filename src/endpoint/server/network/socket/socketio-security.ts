@@ -122,7 +122,7 @@ export const applySocketIoPrivateNetworkHeaders = (headers: Record<string, any>,
 const getDefaultAllowedOrigins = (): string[] => {
     const httpsPort = parsePortableInteger((config as any)?.listenPort) ?? 8443;
     const httpPort = parsePortableInteger((config as any)?.httpPort) ?? 8080;
-    const hosts = ["localhost", "127.0.0.1", "u2re.space", "www.u2re.space"];
+    const hosts = ["localhost", "127.0.0.1", "45.147.121.152", "192.168.0.200", "192.168.0.110"];
     const values = new Set<string>();
     for (const host of hosts) {
         values.add(`http://${host}`);
