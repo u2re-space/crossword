@@ -1,31 +1,37 @@
-# Bi-directional tunneling/proxy system
+# Network Stack Internals
 
-- For (self-hosted) NG-roking/tunneling (reverse, gateway, keep-alive, connection).
-  - For connection from entry/gate network to mobile/NAT connected nodes/peers.
-- Peering system (node, apps, devices)...
-- NAT passing to local/private network...
-- Center/entry/hub external IP address support (gate).
+`network/stack/*` is the canonical implementation layer for message handling and topology decisions.
 
-## Planned network topology model
+## Responsibilities
 
-- `node`:
-  - a stable actor in the network (`userId` scope) with one or more runtime peers.
-- `peer`:
-  - reverse-connected device (`mode=reverse`) representing a NATed/mobile node.
-- `gateway`:
-  - any node that exposes/consumes upstream tunnel while keeping reverse keep-alive to another node.
+- protocol message normalization support (`messages.ts`)
+- endpoint policy parsing and route checks (`endpoint-policy.ts`)
+- transport topology helpers and route planning (`topology.ts`)
+- peer identity helpers and token normalization (`peer-identity.ts`)
+- HTTPS and transport bootstrap helpers (`https.ts`)
+- crypto and utility helpers (`crypto-utils.ts`)
+- shared protocol schema (`protocol.ts` and `protocol/index.ts`)
 
-Flow examples:
+The stack is intentionally free of direct framework-specific transport orchestration:
 
-- `client-1-pna directly to client-2-pna`
-- `client-2-pna through gateway-1 (external opened) to client-2-pna`
-- `client-1-ext to gateway-1` (gateway behaves as `client-3-ext`)
-- `gateway-1 to client-1-keepalive` (mobile/NAT keepalive reverse)
-- `client-2[-ext] through gateway-1 to client-1-keepalive`
+- Socket transport details live in `network/socket/*`
+- Tunnel/reverse details live in `network/tunnel/*`
+- HTTP entrypoints remain in `network/http/*`
 
-Routing intent is evaluated by:
+## Current architecture intent
 
-1. explicit API route (`route` in `/api/network/dispatch`),
-2. local reverse registry presence,
-3. external target heuristics,
-4. upstream availability.
+- one policy format for all protocols
+- route decision is centralized and reusable from all surfaces
+- explicit fallback chains for compatibility and migration
+
+## Topology and route intent
+
+- route candidates are resolved with consistent policy + alias logic before transport write
+- fanout works through explicit `targets`, fallback broadcast settings, and compatibility behavior
+- upstream availability is considered for `auto` route selection
+
+## Planned / watch list
+
+- continue improving role visibility in topology (`node`, `peer`, `gateway`)
+- strengthen local/private/NAT decision paths
+- keep compatibility fields as stable compatibility shims until all migration points are completed

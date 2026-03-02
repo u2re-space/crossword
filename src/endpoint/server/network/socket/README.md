@@ -1,24 +1,53 @@
-# Socket transport stack
+# Socket Transport Layer
 
-Responsibilities in `network/socket` are split into three explicit layers.
+This layer implements real transport IO for both Socket.IO and raw WebSocket links.
 
-- `websocket.ts` owns WS transport lifecycle (upgrade, connection, basic client registry, reverse channel).
-- `socketio-bridge.ts` owns Socket.IO lifecycle and bridge behavior.
-- `socketio-security.ts` owns handshake and CORS/allowRequest policy for Socket.IO.
-- `routing/*` owns canonical message normalization and routing helpers shared between websocket/socket.io handlers.
+## Layer split
 
-The `routing/` module is currently used to normalize incoming frames and apply message hooks, so transport modules focus on transport mechanics and not protocol decoding details.
+- `websocket.ts` — Fastify upgrade lifecycle, connection registry, reverse socket entries
+- `socketio-bridge.ts` — Socket.IO lifecycle and bridge behavior
+- `socketio-security.ts` — handshake validation, CORS, and allowRequest policy
+- `routing/*` — protocol normalization + shared routing hooks used by socket transports
 
-Legacy modules under `routing/` in endpoint server still exist as compatibility shells and delegate to these canonical socket implementations.
+## Responsibility boundaries
 
-## Passthrough transport on WebSocket
+Transport modules should only:
 
-- `network/socket/websocket.ts` supports raw TCP tunneling frames on WS:
-  - `tcp.connect` -> open outbound TCP socket and receive `tcp.connected`,
-  - `tcp.send` -> send base64 payload to upstream TCP stream,
-  - `tcp.data` -> receive base64 chunks from upstream,
-  - `tcp.close`/`tcp.closed` -> close/close confirmation.
-- Endpoint-level filtering of destinations uses env vars:
-  - `WS_TCP_ALLOW_ALL=true` to disable target restrictions,
-  - `WS_TCP_ALLOW_HOSTS=host1,host2` for hostname allowlist,
-  - `WS_TCP_ALLOWED_HOSTS_WITH_PORT=host:port,...` for explicit host+port overrides.
+- manage connection lifecycle and backpressure/cleanup
+- pass validated frames to canonical routing helpers
+- apply transport-specific transport limits and events
+
+They should not encode business routing semantics beyond transport boundaries.
+
+## Reverse transport semantics
+
+A reverse WebSocket connection (`mode=reverse`) registers a reverse-capable device for upstream tunnel operations and fanout.
+
+### TCP passthrough on WebSocket
+
+`websocket.ts` supports forwarding raw TCP-like stream control over WS:
+
+- `tcp.connect` — opens outgoing stream target
+- `tcp.send` — sends payload chunk (base64 encoded)
+- `tcp.close` — closes stream
+
+Responses include:
+
+- `tcp.connected`
+- `tcp.data`
+- `tcp.closed`
+- `tcp.error`
+
+## Security and filtering
+
+Destination filtering is available through environment-driven allow-lists when passthrough and tunneling are enabled.
+
+Common keys:
+
+- `WS_TCP_ALLOW_ALL`
+- `WS_TCP_ALLOW_HOSTS`
+- `WS_TCP_ALLOWED_HOSTS_WITH_PORT`
+
+## Compatibility
+
+Message normalization and dispatch behavior are centralized in `network/socket/routing/*`, while this folder exposes transport-facing behavior.

@@ -1,12 +1,24 @@
-# Routing compatibility layer
+# Routing Compatibility Layer
 
-`routing/*` modules now act as compatibility shims after migration to `network/*`.
-They keep legacy import paths stable while the canonical implementations live in:
+`routing/*` remains a compatibility entry layer after migration of endpoint networking to `network/*`.
 
-- `network/http/` for server lifecycle
-- `network/socket/` for websocket/socket.io transports
-- `network/tunnel/` for upstream peer and tunnel helpers
+## Purpose
 
-For new socket work:
-- prefer `network/socket/routing/*` for message normalization and route-policy helpers
-- keep transport modules focused on lifecycle/IO boundaries
+- preserve historical import paths used by older endpoint modules
+- delegate real implementation to canonical `network/*` exports
+- avoid behavior changes while allowing incremental migration
+
+## Canonical implementation location
+
+- `network/http/` for HTTP behavior
+- `network/socket/` for socket/WebSocket behavior
+- `network/tunnel/` for upstream and reverse-link logic
+- `network/protocol/` and `network/stack/` for shared contracts/helpers
+
+## Guidance for edits
+
+For new protocol or routing work:
+
+- use `network/socket/routing/*` for frame normalization and policy checks
+- keep transport-specific files limited to connection and I/O mechanics
+- prefer canonical types from `network/protocol/protocol.ts`

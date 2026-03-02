@@ -1,158 +1,137 @@
 # Network Stack Specification
 
-## 0) Configuration baseline
+This document describes the practical contract used by CrossWord endpoint networking.
 
-Runtime is driven by three layered inputs:
+## 0) Inputs and effective configuration
 
-- `apps/CrossWord/src/endpoint/portable.config.json` (portable manifest)
-- referenced portable modules (for example `portable-core.json` and `portable-endpoint.json`)
-- environment overrides loaded directly by the server
+### 0.1 Source layers
 
-Current default chain:
+- `portable.config.json`
+- `portable-core.json`
+- `portable-endpoint.json`
+- `network.json` (usually referenced from portable endpoint)
 
-- `portable.config.json` → `config/portable-core.json` and `config/portable-endpoint.json`
-- `portable-core.json` keeps identity/topology/bootstrap refs:
-  - `endpointIDs: fs:./clients.json`
-  - `gateways: fs:./gateways.json`
-  - `network: fs:./network.json`
-- `portable-endpoint.json` forwards runtime+network payload via `endpoint: fs:./network.json` (compact reference)
-- `network.json` carries transport/protocol policy (`protocols`, TLS flags, allowed origins) and now also endpoint aliases if enabled in your install
+### 0.2 Override rules
 
-## 1) Frame model
+- config references are resolved through the prefix loader (`fs:`, `inline:`, `env:`, `data:`)
+- environment variables with `CWS_*` are preferred
+- `AIRPAD_*` support is retained only where a compatibility path is explicitly implemented
+- JSON values in active profile can be merged with endpoint runtime values from startup if provided
 
-All network payloads use the shared frame contract from `network/protocol/protocol.ts`.
+## 1) Canonical frame model
 
-- `from` — logical sender id
-- `to` / `target` / `targetId` / `deviceId` — routing hints for receiver selection
-- `namespace` / `ns` — broadcast group/channel
-- `type` / `action` — semantic action name
-- `payload` / `data` / `body` / `message` — message body, normalized to one payload
-- `mode` — protocol mode (`blind` / `secure` / `inspect`)
-- `broadcast` — explicit broadcast intent
-- `targets` — optional multi-destination fanout list for `/api/network/dispatch`
+All messaging uses the shared frame contract from `network/protocol/protocol.ts`.
 
-Normalization:
+### required / core fields
 
-- `normalizeFrame()` maps legacy fields (`target`, `to`, `targetId`, `deviceId`) into one target value
-- `extractPayload()` resolves body payload precedence
-- `isBroadcastFrame()` detects broadcast targets and explicit broadcast flag
+- `from` — source identity used for policy context
+- `type` / `action` — message action key
+- `payload` / `data` / `body` / `message` — normalized into a single payload through `extractPayload()`
+- `namespace` / `ns` — optional namespace/channel hint
+- `mode` — `blind`, `secure`, or `inspect`
+- `broadcast` — explicit broadcast flag
+- `targets` — list for explicit multi-target fanout
 
-## 2) Transport contracts
+### routing fields
 
-### Socket.IO
+- `to`, `target`, `targetId`, `deviceId` are normalized into one target value
+- `source` or `from` can be provided in request body for policy context
 
-- Handshake is validated by `socketio-security`.
-- Allowed origin policy is explicit, with fallback behavior for private LAN and token-based allow.
-- Signed envelopes can be enforced depending on `CWS_REQUIRE_SIGNED_MESSAGE`
-  (legacy alias `AIRPAD_REQUIRE_SIGNED_MESSAGE`).
+### helpers
 
-### WebSocket
+- `normalizeFrame()` — canonical target/path extraction
+- `isBroadcastFrame()` — broadcast intent detection
 
-- WebSocket endpoint is `/ws` over `Fastify` raw upgrade.
-- Client verification uses `userId + userKey` from query and user settings.
-- Reverse mode (`mode=reverse`) creates device-linked sockets that can be routed by `deviceId`.
-- Additional pass-through stream frames are available for raw TCP bridging:
-  - `tcp.connect`, `tcp.send`, `tcp.data`, `tcp.close`, `tcp.closed`.
-- Control events include `tcp.error` with reason and message fields.
+## 2) Routing and policy model
 
-### HTTP
+### 2.1 Endpoint policy resolution
 
-- REST routes remain application route-level.
-- HTTP control and helpers can normalize inputs using `normalizeHttpFrame`.
+`endpointIDs` policy maps define:
 
-### Tunnel
+- `origins` and `tokens`
+- `forward`
+- `flags`
+- `allowedIncoming`, `allowedOutcoming`
+- `roles`
 
-- Reverse bridge client (upstream **connector**) in `network/stack/upstream.ts` reconnects across configured endpoints and opens outbound `mode=reverse` sessions.
-- The **origin/gateway** side accepts these sessions and forwards normalized upstream frames into local Hub logic.
-- Connector modes:
-  - `active` (default): active keepalive reverse connector that auto-connects to upstream gateway.
-  - `passive`: no auto-start of reverse connector, endpoint is expected to be directly reachable on local/private path.
+Policy fallback behavior:
 
-### Virtual request-response over keep-alive links
+- `resolveEndpointForwardTarget()` follows `forward` links and defaults to `self`
+- unknown source policy can still proceed through wildcard `*` only in non-strict code paths
 
-- `POST /api/network/fetch` (and compatibility `/api/request/fetch`) enables server-initiated virtual requests to reverse-connected peers.
-- Payload uses the same frame semantics as existing dispatch frames but adds request metadata (`method`, `url`, `headers`, `body`, `timeoutMs`) and `requestId`.
-- Current implementation is transport-native:
-  - local route: server sends `type: network.fetch` to reverse device map (`sendToDevice`);
-  - if the reverse client responds with `requestId` in its WS reply, result is returned as a synchronous response;
-  - if no response arrives before timeout, the transport returns the transport outcome (ack/targeting metadata).
-- Upstream-only route remains fire-and-forget until remote responder support is implemented on that hop.
+### 2.2 Identity and aliasing
 
-## 3) Compatibility layer
+- direct identity is matched through IDs, tokens, and origin tokens
+- aliases are resolved early via `networkAliases` / `networkAliasMap`
+- explicit hostname-like targets are treated as upstream candidates by resolver when policy suggests so
 
-- `routing/*` re-exports are compatibility wrappers.
-- New implementation is canonical inside `network/*`, with one frame model and shared helpers.
+### 2.3 Route decision
 
-## 4) Identity and topology
+- route intent is selected through `route` and runtime availability:
+  - `local`
+  - `upstream`
+  - `both`
+  - `auto` (or omitted)
+- broadcast semantics:
+  - `targets` provided => explicit fanout
+  - no `targets` + `broadcast=true` => `broadcastTargets` fallback
+  - none => compatibility local multicast behavior
 
-- `NetworkFrame` now carries optional routing metadata:
-  - `nodeId`, `peerId`, `gatewayId`, `via`, `surface`, `transport`, `target`, `mode`
-- The routing decision is now split into:
-  - local delivery (reverse WS/SIO device map)
-  - upstream delivery (reverse tunnel)
-  - dual delivery (`both`) when explicitly requested
-- The endpoint now shares a unified fanout model:
-  - explicit `targets` list (array) is treated as broadcast intent
-  - absent `targets` + `broadcast=true` uses configured fallback list `broadcastTargets`
-  - fully empty set still falls back to local multicast for compatibility
-- In `/api/network/dispatch` a route resolver now evaluates:
-  - explicit API route (`local` / `upstream` / `both`)
-  - auto route when `route: "auto"` is passed (or omitted)
-  - local reverse target availability
-  - upstream transport availability
-  - target token form (host-like targets are treated as upstream candidates)
-- `/api/network/topology` reflects gateway roles and peer links:
-  - `gateway` node when upstream transport is active/available
-  - `link:user->gateway` and `peer` links for reverse clients (connector-side topology perspective)
-  - optional static overlay can be provided in endpoint config `endpointTopology` and merged with runtime links/nodes
+## 3) Transport-level contracts
 
-### 5) Address aliases and socket-native identifiers
+### 3.1 Socket.IO
 
-- Routing now supports token alias expansion before route resolution.
-- Configure alias map via endpoint config:
-  - `networkAliases` (object): `"alias": "target"` pairs.
-  - `networkAliasMap` (object alias): legacy alias key compatibility.
-- Alias resolution is applied to explicit dispatch/fetch targets and broadcast target normalizers.
-- Alias map is sourced from runtime config `networkAliases` and can be set in the active `network` payload.
+- handshake validated by `socketio-security.ts`
+- origin allowlist is explicit
+- private path has token-based relax/deny rules
+- signed frame checks are configurable (`CWS_REQUIRE_SIGNED_MESSAGE`)
 
-### 6) Socket.IO AirPad routing hints for non-peerId clients
+### 3.2 WebSocket
 
-- AirPad clients can expose a stable source and optional route target in handshake query:
-  - `__airpad_src` or `__airpad_source`: local source identifier (`sourceId`).
-  - `__airpad_route`, `__airpad_route_target`, `routeTarget`, `__airpad_peer`, `__airpad_device`, `__airpad_client`: destination hint used when no explicit target is provided in messages.
-  - `__airpad_via=tunnel`: indicates a gateway-forwarded path; tunnel routing uses these hints plus host markers (`__airpad_host`/`__airpad_target`).
-  - If no route hint is provided, routing falls back to `__airpad_target` (connection URL host), so direct endpoint URL can act as default destination.
+- path: `/ws`
+- query/query params carry handshake and routing hints
+- reverse sessions register as `reverse` transport entries
+- supports control frames for transport-native TCP passthrough:
+  - `tcp.connect`
+  - `tcp.send`
+  - `tcp.close`
+  - resulting replies `tcp.connected`, `tcp.data`, `tcp.closed`, `tcp.error`
 
-### 7) endpointIDs policy config
+### 3.3 HTTP control
 
- - This layer defines peer policy and forwarding rules by normalized peer identity.
-  - `origins`: peer-associated IPs or host masks.
-  - `tokens`: peer-associated tokens that can be used for identity matching.
-  - `forward`: default target if a message has no explicit destination (`self` keeps it local).
-  - `flags`: role metadata for runtime behavior (`mobile`, `gateway`, `direct`).
-  - `allowedIncoming`: inbound policy checks (`*` allow all, `!ID`, `!IP`, `!{ID}` deny regardless of allow entries).
-  - `allowedOutgoing`: outbound policy checks with the same syntax.
-  - `allowedOutcoming`: legacy alias.
-- Wildcard entry `endpointIDs["*"]` is the fallback guest/default policy.
-- In portable JSON source files, value fields support compact prefixes:
-  - `fs:<path>` / `file:<path>`: load data from a file path relative to the current config file.
-  - `inline:<value>`: use raw inline text value.
-  - `inline:'<value>'` / `inline:"<value>"`: preserve spaces/escapes in inline content.
-  - `env:<NAME>`: read environment variable at startup.
-  - `data:<value>`: inline data payload (`data:...,<payload>`, optional `;base64` decoding).
-- Runtime TLS values in `config.https` and `CWS_HTTPS_*` also support `inline:`, `data:`, `fs:` forms, with inline/base64 key/cert/ca text normalized automatically.
-- If PEM boundaries are missing, the loader can append them automatically:
-  - certificate/CA default tag: `CERTIFICATE`
-  - key default tag: `PRIVATE KEY`
-- Endpoint operations resolve final targets through `forward` first and then apply policy checks (`source -> target`) before WS or upstream fanout in `/api/network/request` and `/api/network/dispatch`.
-- If an explicit source hint is provided in request body (`from`/`source`/`sourceId`/`src`) but cannot be matched to any configured `endpointIDs` policy by policy id/origins/tokens, the request is rejected as unknown source (`"source-unknown"`, message: `"Unknown source. I don't know you"`).
-- Backward compatibility: if `clients.json` or `gateways.json` are still present, their entries are folded into `endpointIDs` at bootstrap so older deployments keep working without immediate manual migration.
-- `allowedOutgoing` is the preferred field; `allowedOutcoming` remains accepted for legacy compatibility.
-- Examples:
-  - If `endpointIDs` contains:
-    - `L-192.168.0.200` with `origins: ["45.147.121.152","192.168.0.200"]`
-  - then target hints `45.147.121.152` and `192.168.0.200` are resolved to `L-192.168.0.200` before forwarding.
-  - Further target `L-192.168.0.110` is used explicitly if provided; otherwise the configured `forward` value (or `self`) is applied.
-  - If a request body carries `source` / `from` / `sourceId` (or `src`) and it points to another peer (`L-192.168.0.196`), policy evaluation uses that peer as sender, so rules are checked as if the request was sent directly by that peer while still resolving target via the normal target-IP mapping.
+- command routes stay on HTTP REST layer
+- frame-like inputs are normalized through `normalizeHttpFrame()` style normalization
 
----
+### 3.4 Tunnel / upstream
+
+- reverse connector side in `network/stack/upstream.ts` handles keep-alive reconnect loops
+- origin side is the local hub receiving normalized upstream frames
+- connector modes:
+  - `active` (default): open outbound reverse sessions
+  - `passive`: do not open reverse sessions
+
+## 4) Fetch-over-network contract
+
+`POST /api/network/fetch` (`/api/request/fetch` compatibility) carries:
+
+- request envelope fields (`method`, `url`, `headers`, `body`, `timeoutMs`, `requestId`)
+- response behavior:
+  - if reverse peer responds with `requestId`, full response is returned synchronously
+  - otherwise transport-level ack/fallback is returned on timeout
+
+## 5) Topology contract
+
+`POST /api/network/topology` returns at minimum:
+
+- current endpoint role views (`gateway`, `reverse`, direct peers)
+- `link:user->gateway` and `peer` relationships
+- optionally merged static overlay from `endpointTopology`
+
+## 6) Compatibility and migration notes
+
+- new logic lives under `network/*`
+- `routing/*` modules remain compatibility imports
+- legacy naming preserved where needed:
+  - `allowedOutcoming` as alias to `allowedOutgoing`
+  - old `AIRPAD_*` environment keys where explicitly mapped
+- avoid duplicating transport knobs across multiple config files when pointer chains are in place
