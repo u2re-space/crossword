@@ -2,7 +2,10 @@ const NODE_BIN = process.execPath;
 const fs = require("fs");
 const path = require("path");
 
-const resolveValue = (value) => (value && typeof value === "string" ? value.trim() : "");
+const resolveValue = (value) => {
+    if (Array.isArray(value)) return value.join(",");
+    return value && typeof value === "string" ? value.trim() : "";
+};
 const isPortableConfigArg = (value) => resolveValue(value).length > 0;
 
 const extractConfigArg = () => {
@@ -38,7 +41,12 @@ const readLauncherEnv = (portableConfigPath) => {
         const parsed = JSON.parse(raw);
         const launcherEnv = parsed && typeof parsed === "object" && parsed.launcherEnv;
         if (!launcherEnv || typeof launcherEnv !== "object") return {};
-        return Object.fromEntries(Object.entries(launcherEnv).filter(([, value]) => value !== undefined));
+        return Object.fromEntries(Object.entries(launcherEnv).map(([key, value]) => {
+            if (Array.isArray(value)) {
+                return [key, value.join(",")];
+            }
+            return [key, value];
+        }).filter(([, value]) => value !== undefined));
     } catch {
         return {};
     }
@@ -51,7 +59,10 @@ if (portableConfigPath) {
     envFromFile.CWS_PORTABLE_CONFIG_PATH = portableConfigPath;
 }
 
-const normalizeEnvValue = (value) => (value === true || value === false || typeof value === "number" ? String(value) : resolveValue(value));
+const normalizeEnvValue = (value) => {
+    if (Array.isArray(value)) return value.join(",");
+    return (value === true || value === false || typeof value === "number" ? String(value) : resolveValue(value));
+};
 for (const [key, value] of Object.entries(envFromFile)) {
     envFromFile[key] = normalizeEnvValue(value);
 }
@@ -78,7 +89,7 @@ module.exports = {
                 followSymlinks: false
             },
             env: {
-                CWS_UPSTREAM_ENDPOINTS: ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
+                CWS_BRIDGE_ENDPOINTS: ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
                 CWS_ROLES: "server-forward,client-reverse,client-forward",
                 NODE_ENV: "production",
                 CWS_TUNNEL_DEBUG: true,

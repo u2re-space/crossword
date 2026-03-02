@@ -29,7 +29,7 @@
         "CWS_BRIDGE_REJECT_UNAUTHORIZED": "false",
         "CWS_CLIPBOARD_LOGGING": "false",
         "CWS_ASSOCIATED_ID": "L-192.168.0.200",
-        "CWS_UPSTREAM_ENDPOINTS": ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
-        "CWS_ROLES": "server-forward,client-reverse,client-forward"
+        "CWS_BRIDGE_ENDPOINTS": ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
+        "CWS_ROLES": ["forward-server", "reverse-client", "forward-client"]
     }
 }

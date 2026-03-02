@@ -35,6 +35,7 @@ const boolValue = (value, fallback = false) => {
 };
 
 const stringifyLauncherValue = (value) => {
+    if (Array.isArray(value)) return value.join(",");
     if (typeof value === "string") return value;
     if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "number") return String(value);
@@ -207,10 +208,16 @@ const installNodeModules = async () => {
 const writeLaunchers = async () => {
     const launchEnvEntries = Object.entries(PORTABLE_CONFIG.launcherEnv || {}).filter(([, value]) => value !== undefined);
     const launchShLines = launchEnvEntries.map(
-        ([key, value]) => `export ${key}="\${${key}:-${stringifyLauncherValue(value)}}"`
+        ([key, value]) => {
+            const strVal = stringifyLauncherValue(value);
+            return `export ${key}="\${${key}:-${strVal}}"`;
+        }
     );
     const launchCmdLines = launchEnvEntries.map(
-        ([key, value]) => `if not defined ${key} set "${key}=${stringifyLauncherValue(value)}"`
+        ([key, value]) => {
+            const strVal = stringifyLauncherValue(value);
+            return `if not defined ${key} set "${key}=${strVal}"`;
+        }
     );
 const runSh = `#!/usr/bin/env bash
 set -euo pipefail
