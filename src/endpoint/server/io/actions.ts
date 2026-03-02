@@ -13,6 +13,14 @@ let useAHK = false;
 let ahkInitialized = false;
 let ahkInitPromise: Promise<boolean> | null = null;
 const preferAhkMouse = pickEnvBoolLegacy("CWS_ENDPOINT_USE_AHK_MOUSE", false) === true;
+let lastActionDriverWarningAt = 0;
+
+const warnNoNativeInputDriver = (reason: string) => {
+    const now = Date.now();
+    if (now - lastActionDriverWarningAt < 5000) return;
+    lastActionDriverWarningAt = now;
+    console.warn(`[AirPad actions] No native input driver for this event: ${reason}. Check CWS_AIRPAD_NATIVE_ACTIONS / CWS_AIRPAD_ROBOTJS_ENABLED and AHK availability.`);
+};
 
 const pickConfigFlag = (...candidates: unknown[]): boolean | undefined => {
     for (const item of candidates) {
@@ -79,6 +87,15 @@ function ensureAHKInitialized() {
     if (!nativeActionsEnabled) return;
     if (!ahkInitialized) {
         void initAHKService();
+        return;
+    }
+
+    if (useAHK && !ahkService.isReady()) {
+        useAHK = false;
+        ahkInitialized = false;
+        ahkInitPromise = null;
+        console.warn("[AirPad actions] AHK service is not ready. Restarting service...");
+        void initAHKService();
     }
 }
 
@@ -99,7 +116,10 @@ function executeMouseMove(dx: number, dy: number) {
         void ahkService.moveMouseBy(dx, dy).catch(() => { });
         return;
     }
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("mouse move (AHK unavailable and robotjs missing)");
+        return;
+    }
     const pos = robot.getMousePos();
     robot.moveMouse(pos.x + dx, pos.y + dy);
 }
@@ -112,7 +132,10 @@ function executeMouseClick(button: "left" | "right" | "middle" = "left", double:
         void ahkService.mouseClick(button, double).catch(() => { });
         return;
     }
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("mouse click (AHK unavailable and robotjs missing)");
+        return;
+    }
     robot.mouseClick(button, double);
 }
 
@@ -124,7 +147,10 @@ function executeMouseToggle(state: "down" | "up", button: "left" | "right" | "mi
         void ahkService.mouseToggle(state, button).catch(() => { });
         return;
     }
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("mouse toggle (AHK unavailable and robotjs missing)");
+        return;
+    }
     robot.mouseToggle(state, button);
 }
 
@@ -140,7 +166,10 @@ function executeScroll(dx: number, dy: number) {
         void ahkService.scrollMouse(dx, dy).catch(() => { });
         return;
     }
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("scroll (AHK unavailable and robotjs missing)");
+        return;
+    }
     // robotjs scrollMouse(x, y) - positive y scrolls up, negative scrolls down
     robot.scrollMouse(dx, dy);
 }
@@ -177,7 +206,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             await ahkService.sendKey("{Backspace}");
         } else {
             const robot = getRobot();
-            if (!robot) return;
+            if (!robot) {
+                warnNoNativeInputDriver("keyboard backspace (AHK unavailable and robotjs missing)");
+                return;
+            }
             robot.keyTap("backspace");
         }
         return;
@@ -189,7 +221,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             await ahkService.sendKey("{Enter}");
         } else {
             const robot = getRobot();
-            if (!robot) return;
+            if (!robot) {
+                warnNoNativeInputDriver("keyboard enter (AHK unavailable and robotjs missing)");
+                return;
+            }
             robot.keyTap("enter");
         }
         return;
@@ -201,7 +236,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             await ahkService.sendText(" ");
         } else {
             const robot = getRobot();
-            if (!robot) return;
+            if (!robot) {
+                warnNoNativeInputDriver("keyboard space (AHK unavailable and robotjs missing)");
+                return;
+            }
             robot.keyTap("space");
         }
         return;
@@ -213,7 +251,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             await ahkService.sendKey("{Tab}");
         } else {
             const robot = getRobot();
-            if (!robot) return;
+            if (!robot) {
+                warnNoNativeInputDriver("keyboard tab (AHK unavailable and robotjs missing)");
+                return;
+            }
             robot.keyTap("tab");
         }
         return;
@@ -229,7 +270,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
             await ahkService.sendText(char);
         } else {
             const robot = getRobot();
-            if (!robot) return;
+            if (!robot) {
+                warnNoNativeInputDriver("keyboard char (AHK unavailable and robotjs missing)");
+                return;
+            }
             // Fallback на robotjs (только ASCII надёжно)
             if (charCode <= 127) {
                 robot.typeString(char);
@@ -247,7 +291,10 @@ async function executeKeyboardCharInternal(charCode: number, flags: number): Pro
 async function pasteViaClipboard(text: string): Promise<void> {
     if (!nativeActionsEnabled) return;
     const robot = getRobot();
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("paste text (AHK unavailable and robotjs missing)");
+        return;
+    }
 
     if (!clipboardy) {
         console.warn("clipboardy not available");
@@ -293,6 +340,7 @@ function executeKeyboardChar(charCode: number, flags: number): Promise<void> {
 // Отправка строки целиком (оптимизация для paste)
 async function executeKeyboardString(text: string): Promise<void> {
     if (!nativeActionsEnabled) return;
+    ensureAHKInitialized();
     if (!ahkInitialized) {
         await initAHKService();
     }
@@ -364,7 +412,10 @@ async function executeActions(actions: any[], appLogger?: any) {
                     void ahkService.sendRawText(key).catch(() => { });
                     break;
                 }
-                if (!robot) break;
+                if (!robot) {
+                    warnNoNativeInputDriver("key_tap (AHK unavailable and robotjs missing)");
+                    break;
+                }
                 if (modifiers.length > 0) {
                     robot.keyTap(key, modifiers);
                 } else {
@@ -375,7 +426,10 @@ async function executeActions(actions: any[], appLogger?: any) {
             case "hotkey": {
                 const keys = action.keys || [];
                 const robot = getRobot();
-                if (!robot) break;
+                if (!robot) {
+                    warnNoNativeInputDriver("hotkey action (AHK unavailable and robotjs missing)");
+                    break;
+                }
                 if (keys.length > 0) {
                     // Press all keys down
                     keys.forEach((k: string) => robot.keyToggle(k, "down"));
@@ -437,7 +491,10 @@ function executeCopyHotkey() {
         return;
     }
     const robot = getRobot();
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("copy hotkey (AHK unavailable and robotjs missing)");
+        return;
+    }
     robot.keyTap("c", "control");
 }
 
@@ -449,7 +506,10 @@ function executeCutHotkey() {
         return;
     }
     const robot = getRobot();
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("cut hotkey (AHK unavailable and robotjs missing)");
+        return;
+    }
     robot.keyTap("x", "control");
 }
 
@@ -461,6 +521,9 @@ function executePasteHotkey() {
         return;
     }
     const robot = getRobot();
-    if (!robot) return;
+    if (!robot) {
+        warnNoNativeInputDriver("paste hotkey (AHK unavailable and robotjs missing)");
+        return;
+    }
     robot.keyTap("v", "control");
 }

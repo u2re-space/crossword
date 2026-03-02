@@ -529,7 +529,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             logger: app.log,
             onObjectMessage,
             onBinaryMessage: async (raw: any, sourceSocket) => {
-                if (!(raw instanceof Uint8Array) && !Buffer.isBuffer(raw)) {
+                if (!(raw instanceof Uint8Array) && !Buffer.isBuffer(raw) && !(raw instanceof ArrayBuffer)) {
                     if (isTunnelDebug) {
                         console.log(`[Router] Binary tunnel skipped: unsupported payload type`, `type=${typeof raw}`);
                     }

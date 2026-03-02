@@ -28,7 +28,7 @@ import { safeJsonParse } from "../lib/parsing.ts";
 
 type AirpadObjectMessageHandler = (msg: any, socket: Socket) => void | Promise<void>;
 type AirpadDisconnectHandler = (reason: string, socket: Socket) => void | Promise<void>;
-type AirpadBinaryMessageHandler = (data: Buffer | Uint8Array, socket: Socket) => boolean | Promise<boolean>;
+type AirpadBinaryMessageHandler = (data: Buffer | Uint8Array | ArrayBuffer, socket: Socket) => boolean | Promise<boolean>;
 type AirpadClipboardSource = "local" | "network";
 const airpadClipboardEnabled =
     pickEnvBoolLegacy("CWS_AIRPAD_CLIPBOARD_ENABLED", true) ??
@@ -77,11 +77,11 @@ async function writeAirpadClipboard(text: string): Promise<void> {
     }
 }
 
-function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array): void {
+function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array | ArrayBuffer): boolean {
     const msg = parseBinaryMessage(buffer);
     if (!msg) {
         logger?.warn?.("Invalid binary message format");
-        return;
+        return false;
     }
 
     switch (msg.type) {
@@ -119,6 +119,8 @@ function handleAirpadBinaryMessage(logger: any, buffer: Buffer | Uint8Array): vo
         default:
             logger?.info?.({ type: msg.type }, "Unknown binary message type");
     }
+
+    return true;
 }
 
 export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSocketHandlerOptions = {}): void {
@@ -130,10 +132,21 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         .catch(() => { });
 
     socket.on("message", async (data: any) => {
-        if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
-            const handled = await onBinaryMessage?.(data as any, socket);
-            if (handled) return;
-            handleAirpadBinaryMessage(logger, data);
+        if (Buffer.isBuffer(data) || data instanceof Uint8Array || data instanceof ArrayBuffer) {
+            const localHandled = handleAirpadBinaryMessage(logger, data);
+            const routed = await onBinaryMessage?.(data as any, socket);
+            if (routed && localHandled) {
+                logger?.debug?.(
+                    { socketId: socket.id, localHandled, routed },
+                    "[airpad] binary both executed locally and routed (possible bridge fan-out)"
+                );
+            }
+            if (!localHandled && routed) {
+                logger?.warn?.(
+                    { socketId: socket.id },
+                    "[airpad] binary routed but not parsed locally"
+                );
+            }
             return;
         }
 

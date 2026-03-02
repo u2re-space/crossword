@@ -34,13 +34,15 @@ interface MouseMessage {
 
 type ParsedMessage = KeyboardMessage | MouseMessage | null;
 
-export function parseBinaryMessage(buffer: Buffer | Uint8Array): ParsedMessage {
+export function parseBinaryMessage(buffer: Buffer | Uint8Array | ArrayBuffer): ParsedMessage {
     // Handle both Buffer (Node.js) and Uint8Array (browser)
     let buf: Buffer;
     if (Buffer.isBuffer(buffer)) {
         buf = buffer;
     } else if (buffer instanceof Uint8Array) {
         buf = Buffer.from(buffer);
+    } else if (buffer instanceof ArrayBuffer) {
+        buf = Buffer.from(new Uint8Array(buffer));
     } else {
         return null;
     }
