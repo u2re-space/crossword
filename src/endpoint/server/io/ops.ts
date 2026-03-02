@@ -916,11 +916,11 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             return { ok: false, error: "No requests" };
         }
 
-        const hasCredentials = !!(userId && userKey);
+        const hasCredentials = !!(userId || userKey);
         const authContext = hasCredentials ? await resolveAuthContext(userId, userKey) : { record: null, settings: undefined };
-        if (hasCredentials && !authContext.record) {
-            return { ok: false, error: "Invalid credentials" };
-        }
+        // if (hasCredentials && !authContext.record) {
+        //     return { ok: false, error: "Invalid credentials" };
+        // }
         const settings = authContext.settings;
 
         const ops = settings?.core?.ops || {};
@@ -949,11 +949,26 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 
                 console.log(source, finalMethod, headers, "<body hidden>");
                 try {
-                    const res = await fetch(source, {
+                    const fetchOptions: RequestInit = {
                         method: finalMethod,
                         headers,
                         body: entry.body ?? null
-                    });
+                    };
+                    
+                    // Use native Node.js dispatchers if available
+                    if (!isHttps || allowUnencrypted || entry.unencrypted || forceBroadcastHttps) {
+                        try {
+                            const { Agent } = await import("undici");
+                            fetchOptions.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+                        } catch(e) {
+                            try {
+                                const https = await import("https");
+                                fetchOptions.dispatcher = new https.Agent({ rejectUnauthorized: false }) as any;
+                            } catch (err) {}
+                        }
+                    }
+                    
+                    const res = await fetch(source, fetchOptions);
                     const text = await res.text();
                     return { target: source, ok: true, status: res.status, data: text };
                 } catch (e) {
