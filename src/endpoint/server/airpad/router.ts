@@ -244,8 +244,8 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         const rawTarget = normalizeHint(frame.to);
         if (!rawTarget || isBroadcastTarget(rawTarget)) return false;
         const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
+        const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const upstreamUser = normalizeHint(meta?.routeTarget) || upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
         const accepted = networkContext.sendToUpstream({
             ...frame,
             from: upstreamFrom,
@@ -283,8 +283,8 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         if (!upstreamTarget || isBroadcastTarget(upstreamTarget)) return false;
 
         const upstreamUserId = normalizeHint(networkContext.upstreamUserId);
-        const upstreamFrom = normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
-        const upstreamUser = upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
+        const upstreamFrom = normalizeHint(meta?.routeTarget) || normalizeHint(meta?.sourceId) || upstreamUserId || normalizeHint((sourceSocket as any).userId) || sourceSocket.id;
+        const upstreamUser = normalizeHint(meta?.routeTarget) || upstreamUserId || normalizeHint(meta?.targetHost) || normalizeHint(meta?.hostHint);
         const upstreamPayload = {
             type: "dispatch",
             from: upstreamFrom,

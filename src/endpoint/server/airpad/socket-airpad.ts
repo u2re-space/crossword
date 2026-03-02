@@ -75,10 +75,31 @@ export function registerAirpadSocketHandlers(socket: Socket, options: AirpadSock
         }
 
         if (typeof data === "string") {
+            const jsonData = safeJsonParse<Record<string, unknown>>(data);
+            if (jsonData && typeof jsonData === "object") {
+                if (jsonData?.type === "voice_command") {
+                    if (!allowLocalInput) {
+                        await onObjectMessage?.(jsonData, socket);
+                        return;
+                    }
+                    const text = String(jsonData.text || "");
+                    logger?.info?.("Voice command");
+                    await sendVoiceToPython(socket as any, text).catch((err: any) => {
+                        logger?.error?.({ err }, "Failed to send voice command to python");
+                        socket.emit("voice_result", {
+                            type: "voice_error",
+                            error: err?.message || String(err),
+                        });
+                    });
+                    return;
+                }
+                await onObjectMessage?.(jsonData, socket);
+                return;
+            }
+
             if (!allowLocalInput) {
                 return;
             }
-            const jsonData = safeJsonParse<Record<string, unknown>>(data);
             if (jsonData?.type === "voice_command") {
                 const text = String(jsonData.text || "");
                 logger?.info?.("Voice command");

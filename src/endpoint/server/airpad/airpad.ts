@@ -210,15 +210,7 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
         routeTarget: normalizeAirPadRouteTarget(
             pickString(query.__airpad_route) ||
             pickString(query.__airpad_route_target) ||
-            pickString(query.routeTarget) ||
-            pickString(query.__airpad_peer) ||
-            pickString(query.__airpad_device) ||
-            pickString(query.__airpad_client) ||
-            pickString(query.to) ||
-            pickString(query.target) ||
-            pickString(query.targetId) ||
-            pickString(query.deviceId) ||
-            pickString(query.peerId)
+            pickString(query.routeTarget)
         ),
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
