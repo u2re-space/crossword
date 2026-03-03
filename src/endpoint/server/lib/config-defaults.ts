@@ -19,7 +19,7 @@ export const FALLBACK_RUNTIME_DEFAULTS = {
     listenPort: 8443,
     httpPort: 8080,
     broadcastForceHttps: true,
-    peers: ["100.81.105.5", "100.90.155.65", "192.168.0.196", "192.168.0.200", "192.168.0.110", "45.147.121.152"],
+    peers: ["100.81.105.5", "100.90.155.65", "192.168.0.196", "192.168.0.208", "192.168.0.200", "192.168.0.110", "45.147.121.152"],
     broadcastTargets: [],
     clipboardPeerTargets: ["https:443", "https:8443", "http:8080", "http:80"],
     pollInterval: 100,

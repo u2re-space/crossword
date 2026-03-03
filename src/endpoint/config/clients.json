@@ -2,6 +2,7 @@
     "l-192.168.0.200": "alias:L-192.168.0.200",
     "l-192.168.0.110": "alias:L-192.168.0.110",
     "l-192.168.0.196": "alias:L-192.168.0.196",
+    "l-192.168.0.208": "alias:L-192.168.0.208",
     "L-192.168.0.200": {
         "origins": ["192.168.0.200", "45.147.121.152"],
         "tokens": [],
@@ -11,7 +12,7 @@
             "conditions": ["airpad", "mouse", "keyboard"]
         }, "self"],
         "broadcast": [{
-            "targets": ["L-192.168.0.196", "L-192.168.0.110"],
+            "targets": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.208"],
             "conditions": ["clipboard-tunnel", "clipboard-write", "clipboard-read"]
         }],
         "protocols": {
@@ -48,8 +49,8 @@
         "modules": {
             "mouse": ["tunnel-only"],
             "clipboard": ["tunnel-allowed", "write-allowed", "read-allowed",{
-                "shareTo": ["L-192.168.0.196", "L-192.168.0.110"],
-                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.110"]
+                "shareTo": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.208"],
+                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.208"]
             }],
             "keyboard": ["tunnel-only"]
         }
@@ -92,22 +93,22 @@
         "modules": {
             "mouse": ["ahk-used", "tunnel-allowed", "airpad-allowed", {
                 "mode": "relative",
-                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "self"]
+                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "L-192.168.0.208", "self"]
             }],
             "clipboard": ["ahk-used", "write-allowed", "read-allowed", "tunnel-allowed", {
                 "pollInterval": 1000,
-                "shareTo": ["L-192.168.0.196", "L-192.168.0.200"],
-                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.200"]
+                "shareTo": ["L-192.168.0.196", "L-192.168.0.200", "L-192.168.0.208"],
+                "acceptFrom": ["L-192.168.0.196", "L-192.168.0.200", "L-192.168.0.208"]
             }],
             "keyboard": ["ahk-used", "tunnel-allowed", {
-                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "self"],
+                "allowed": ["L-192.168.0.196", "L-192.168.0.200", "L-192.168.0.208", "self"],
                 "clipboard": true
             }]
         }
     },
-    "L-192.168.0.196": {
-        "origins": ["192.168.0.196"],
-        "tokens": ["inline:n3v3rm1nd", "env:CWS_ASSOCIATED_TOKEN"],
+    "L-192.168.0.208": {
+        "origins": ["192.168.0.208"],
+        "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
         "roles": ["client-reverse", "client-forward"],
         "flags": {
             "mobile": true,
@@ -145,8 +146,54 @@
             "mouse": ["client-only"],
             "clipboard": ["write-allowed", "read-allowed", "tunnel-allowed", {
                 "pollInterval": 1000,
-                "shareTo": ["L-192.168.0.110", "L-192.168.0.200"],
-                "acceptFrom": ["L-192.168.0.110", "L-192.168.0.200"]
+                "shareTo": ["L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.196"],
+                "acceptFrom": ["L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.196"]
+            }],
+            "keyboard": ["client-only"]
+        }
+    },
+    "L-192.168.0.196": {
+        "origins": ["192.168.0.196"],
+        "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
+        "roles": ["client-reverse", "client-forward"],
+        "flags": {
+            "mobile": true,
+            "gateway": false,
+            "direct": false
+        },
+        "forward": ["self"],
+        "tls": {
+            "enabled": true,
+            "ca": "fs:../https/local/rootCA.crt",
+            "cert": "fs:../https/local/multi.crt",
+            "key": "fs:../https/local/multi.key"
+        },
+        "ports": {
+            "wss": [8443, 8080],
+            "ws": [8080],
+            "http": [8080],
+            "https": [8443, 8080]
+        },
+        "protocols": {
+            "websocket": {
+                "client": true,
+                "reverse": true,
+                "keepalive": true
+            },
+            "http": {
+                "enabled": true,
+                "keepalive": true,
+                "direction": ["request-only"]
+            }
+        },
+        "allowedIncoming": ["*"],
+        "allowedOutgoing": ["*"],
+        "modules": {
+            "mouse": ["client-only"],
+            "clipboard": ["write-allowed", "read-allowed", "tunnel-allowed", {
+                "pollInterval": 1000,
+                "shareTo": ["L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.208"],
+                "acceptFrom": ["L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.208"]
             }],
             "keyboard": ["client-only"]
         }
