@@ -1,8 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { readFile, writeFile } from "node:fs/promises";
 
 import { AiSettings, mergeSettings, readCoreSettings, WebdavSettings, SpeechSettings, TimelineSettings, AppearanceSettings, GridSettings, DEFAULT_SETTINGS, type Settings as StoredSettings } from "../config/config.ts";
 import { verifyUser, readUserFile, writeUserFile, loadUserSettings } from "../lib/users.ts";
 import { safeJsonParse } from "../lib/parsing.ts";
+import { ADMIN_PREFS_FILE, CONFIG_DIR } from "../lib/paths.ts";
+import path from "node:path";
 
 export type HttpTarget = {
     id: string;
@@ -97,6 +100,45 @@ export const registerCoreSettingsEndpoints = async (app: FastifyInstance) => {
             roles: settings.core?.roles ?? (DEFAULT_SETTINGS.core?.roles || ["server", "endpoint"]),
             bridgeEnabled: settings.core?.bridge?.enabled === true
         };
+    });
+
+    app.get("/core/admin/prefs", async () => {
+        try {
+            const data = await readFile(ADMIN_PREFS_FILE, "utf-8");
+            const parsed = JSON.parse(data);
+            return { ok: true, prefs: parsed };
+        } catch {
+            return { ok: true, prefs: {} };
+        }
+    });
+
+    app.post("/core/admin/prefs", async (request: FastifyRequest<{ Body: { prefs: any } }>) => {
+        try {
+            const prefs = request.body?.prefs || {};
+            await writeFile(ADMIN_PREFS_FILE, JSON.stringify(prefs, null, 2), "utf-8");
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: String(e) };
+        }
+    });
+
+    app.get("/api/config/:filename", async (request: FastifyRequest<{ Params: { filename: string } }>, reply) => {
+        const { filename } = request.params;
+        if (!filename || filename.includes("/") || filename.includes("\\") || filename.includes("..")) {
+            return reply.code(400).send({ ok: false, error: "Bad Request" });
+        }
+        try {
+            const targetPath = path.join(CONFIG_DIR, filename);
+            const data = await readFile(targetPath, "utf-8");
+            if (filename.endsWith(".json")) {
+                reply.header("Content-Type", "application/json");
+            } else {
+                reply.header("Content-Type", "text/plain");
+            }
+            return reply.send(data);
+        } catch {
+            return reply.code(404).send({ ok: false, error: "Not Found" });
+        }
     });
 };
 

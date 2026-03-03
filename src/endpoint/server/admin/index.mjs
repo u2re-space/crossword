@@ -248,23 +248,45 @@ const main = () => {
         }
     };
 
-    $("#btnSaveLocal").onclick = () => {
-        ls.save("cw-admin-creds", {
-            userId: $("#userId").value.trim(),
-            userKey: $("#userKey").value.trim(),
-            endpointUrl: $("#endpointUrl").value.trim(),
-            encrypt: $("#encrypt").value
-        });
-        setStatus($("#accessMsg"), "Saved to browser");
+    $("#btnSaveLocal").onclick = async () => {
+        try {
+            const prefs = {
+                userId: $("#userId").value.trim(),
+                userKey: $("#userKey").value.trim(),
+                endpointUrl: $("#endpointUrl").value.trim(),
+                encrypt: $("#encrypt").value
+            };
+            const res = await fetch("/core/admin/prefs", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prefs })
+            });
+            const json = await res.json();
+            if (json?.ok) {
+                setStatus($("#accessMsg"), "Saved to server config");
+            } else {
+                setStatus($("#accessMsg"), json?.error || "Save failed");
+            }
+        } catch (e) {
+            console.warn(e);
+            setStatus($("#accessMsg"), "Save to config failed");
+        }
     };
-    $("#btnLoadLocal").onclick = () => {
-        const v = ls.load("cw-admin-creds");
-        if (v) {
-            $("#userId").value = v.userId || "";
-            $("#userKey").value = v.userKey || "";
-            $("#endpointUrl").value = v.endpointUrl || "";
-            $("#encrypt").value = v.encrypt || "false";
-            setStatus($("#accessMsg"), "Loaded from browser");
+    $("#btnLoadLocal").onclick = async () => {
+        try {
+            const res = await fetch("/core/admin/prefs");
+            const json = await res.json();
+            if (json?.ok && json.prefs) {
+                const v = json.prefs;
+                $("#userId").value = v.userId || "";
+                $("#userKey").value = v.userKey || "";
+                $("#endpointUrl").value = v.endpointUrl || "";
+                $("#encrypt").value = v.encrypt || "false";
+                setStatus($("#accessMsg"), "Loaded from server config");
+            }
+        } catch (e) {
+            console.warn(e);
+            setStatus($("#accessMsg"), "Load from config failed");
         }
     };
 

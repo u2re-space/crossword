@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { parsePortableBoolean, parsePortableInteger, safeJsonParse, resolvePortablePayload, resolvePortableTextValue } from "../lib/parsing.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../lib/env.ts";
-import { SETTINGS_FILE } from "../lib/paths.ts";
+import { SETTINGS_FILE, CONFIG_DIR } from "../lib/paths.ts";
 import type { EndpointConfig, EndpointIdPolicy, PortableConfigSeed } from "./schema.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -91,7 +91,7 @@ export const collectPortableModules = (portableConfig: Record<string, any>, base
 };
 
 export const loadPortableConfig = (): Record<string, any> => {
-    const candidates = [pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH"), pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH"), pickEnvStringLegacy("PORTABLE_CONFIG_PATH"), path.resolve(process.cwd(), "portable.config.json"), path.resolve(__dirname, "../../portable.config.json"), path.resolve(__dirname, "../portable.config.json")].filter(Boolean);
+    const candidates = [pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH"), pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH"), pickEnvStringLegacy("PORTABLE_CONFIG_PATH"), path.resolve(CONFIG_DIR, "portable.config.json"), path.resolve(process.cwd(), "portable.config.json"), path.resolve(__dirname, "../../portable.config.json"), path.resolve(__dirname, "../portable.config.json")].filter(Boolean);
 
     for (const candidate of candidates) {
         const baseDir = path.dirname(candidate);
@@ -241,6 +241,8 @@ export const loadLegacyEndpointIds = (): Record<string, EndpointIdPolicy> => {
         pickEnvStringLegacy("CWS_GATEWAYS_JSON_PATH"),
         pickEnvStringLegacy("ENDPOINT_GATEWAYS_JSON_PATH"),
         pickEnvStringLegacy("GATEWAYS_JSON_PATH"),
+        path.resolve(CONFIG_DIR, "clients.json"),
+        path.resolve(CONFIG_DIR, "gateways.json"),
         path.resolve(cwd, "./config/clients.json"),
         path.resolve(cwd, "./config/gateways.json"),
         path.resolve(moduleDir, "../config/clients.json"),
@@ -264,7 +266,10 @@ const collectPortableConfigSources = (): string[] => {
     const cwd = process.cwd();
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
-    return [explicit, path.resolve(cwd, "portable.config.json"), path.resolve(moduleDir, "../../portable.config.json"), path.resolve(moduleDir, "../portable.config.json")].filter(Boolean) as string[];
+    return [
+        explicit,
+        path.resolve(CONFIG_DIR, "portable.config.json"),
+        path.resolve(cwd, "portable.config.json"), path.resolve(moduleDir, "../../portable.config.json"), path.resolve(moduleDir, "../portable.config.json")].filter(Boolean) as string[];
 };
 
 export const loadPortableEndpointSeed = (): PortableConfigSeed => {
@@ -325,6 +330,8 @@ export const getConfigSources = (): string[] => {
 
     return [
         explicit,
+        path.resolve(CONFIG_DIR, "config.json"),
+        path.resolve(CONFIG_DIR, "portable.config.json"),
         path.resolve(cwd, ".endpoint.config.json"),
         path.resolve(cwd, ".config.endpoint.json"),
         path.resolve(cwd, "data", "config.json"),
