@@ -6,7 +6,9 @@ import { normalizeTunnelRoutingFrame } from "./messages.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, resolvePortableTextValue, safeJsonParse } from "../../lib/parsing.ts";
 import {
-    supportsConnectorRole
+    supportsConnectorRole,
+    parseWsArchetype,
+    describeArchetype
 } from "./archetypes.ts";
 
 type BridgeConnectorConfig = {
@@ -93,6 +95,44 @@ const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 const shouldRejectUnauthorized = pickEnvBoolLegacy("CWS_BRIDGE_REJECT_UNAUTHORIZED", true) !== false;
 const invalidCredentialsRetryMs = Math.max(1000, pickEnvNumberLegacy("CWS_BRIDGE_INVALID_CREDENTIALS_RETRY_MS", 30000) ?? 30000);
 const TLS_VERIFY_ERRORS = ["unable to verify the first certificate", "self signed certificate", "certificate has expired", "certificate is not yet valid", "self signed certificate in certificate chain", "DEPTH_ZERO_SELF_SIGNED_CERT", "SELF_SIGNED_CERT_IN_CHAIN", "UNABLE_TO_VERIFY_LEAF_SIGNATURE"];
+
+const isControlLikeRole = (roles: string[] | undefined): boolean => {
+    if (!Array.isArray(roles)) return false;
+    const normalized = roles.map((role) => String(role || "").trim().toLowerCase());
+    const forwardHints = new Set([
+        "client-forward",
+        "forward-client",
+        "client-bridge",
+        "server-bridge",
+        "forward-server",
+        "server-forward",
+        "control",
+        "control-panel",
+        "ops",
+        "admin"
+    ]);
+    return normalized.some((role) => forwardHints.has(role));
+};
+
+const canonicalConnectorArchetype = (value: string | undefined, roles: string[] | undefined): "client-reverse" | "client-forward" => {
+    const parsed = parseWsArchetype(value);
+    if (parsed === "server-forward") return "client-forward";
+    if (parsed === "server-reverse") return "client-reverse";
+    if (parsed) return parsed;
+
+    const raw = (value || "").trim();
+    const normalizedRaw = raw.toLowerCase();
+    const rawLooksLikeControl = ["forward", "push", "control", "manage", "admin", "ops"].some((token) => normalizedRaw.includes(token));
+    const fallback = isControlLikeRole(roles) || rawLooksLikeControl ? "client-forward" : "client-reverse";
+    const intent = fallback === "client-forward" ? "control/management path" : "connect/join path";
+    console.warn(
+        "[bridge.connector] archetype is missing or unsupported, fallback to canonical",
+        `rawArchetype=${raw || "-"}`,
+        `fallback=${fallback}`,
+        `intent=${intent}`
+    );
+    return fallback;
+};
 
 const isTlsVerifyError = (message: string) => {
     const lower = (message || "").toLowerCase();
@@ -366,7 +406,7 @@ const normalizeBridgeConfig = (config: EndpointConfig): Required<BridgeConnector
     return {
         enabled: true,
         mode,
-        archetype: envArchetype || bridge.archetype || undefined,
+        archetype: describeArchetype(canonicalConnectorArchetype(envArchetype || bridge.archetype, config.roles as string[] | undefined)),
         bridgeMasterKey: bridge.bridgeMasterKey,
         bridgeSigningPrivateKeyPem: bridge.bridgeSigningPrivateKeyPem,
         bridgePeerPublicKeyPem: bridge.bridgePeerPublicKeyPem,
@@ -408,8 +448,8 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<BridgeConnectorConfig>): 
             url.pathname = `${normalizedPath}ws`;
         }
         
-        const archetype = cfg.archetype || "reverse-client";
-        const mode = archetype === "forward-client" ? "push" : "reverse";
+        const archetype = cfg.archetype || "client-reverse";
+        const mode = archetype === "client-forward" ? "push" : "reverse";
         
         url.searchParams.set("mode", mode);
         url.searchParams.set("archetype", archetype);
@@ -470,7 +510,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
         };
     }
     if (isTunnelDebug) {
-        console.info("[bridge.connector] config accepted", `enabled=${cfg.enabled}`, `mode=${cfg.mode}`, `userId=${maskValue(cfg.userId)}`, `endpoint=${cfg.endpointUrl}`, `endpoints=${formatEndpointList(cfg.endpoints)}`, `namespace=${cfg.namespace}`, `deviceId=${cfg.deviceId}`, `clientId=${cfg.clientId || cfg.deviceId}`);
+            console.info("[bridge.connector] config accepted", `enabled=${cfg.enabled}`, `mode=${cfg.mode}`, `archetype=${cfg.archetype}`, `userId=${maskValue(cfg.userId)}`, `endpoint=${cfg.endpointUrl}`, `endpoints=${formatEndpointList(cfg.endpoints)}`, `namespace=${cfg.namespace}`, `deviceId=${cfg.deviceId}`, `clientId=${cfg.clientId || cfg.deviceId}`);
     }
 
     const localHosts = getLocalBridgeHosts();

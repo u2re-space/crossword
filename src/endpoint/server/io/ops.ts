@@ -1640,7 +1640,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 id: `link:${userId}:bridge`,
                 source: `${userId}`,
                 target: `bridge:${bridgeStatus.bridgeClientId || bridgeStatus.bridgePeerId || bridgeStatus.userId || "default"}`,
-                type: "reverse-client"
+                type: "client-reverse"
             });
         }
 

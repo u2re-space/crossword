@@ -158,16 +158,16 @@ const defaultConfig = {
 
     // Роли/режимы этого узла:
     // - endpoint: full endpoint behavior
-    // - server: legacy alias (forward-server/reverse-server/endpoint role)
-    // - client: legacy alias (reverse-client/forward-client role)
-    // - client-bridge: legacy alias (reverse-client)
+    // - server: legacy alias (server-forward/server-reverse/endpoint role)
+    // - client: legacy alias (client-reverse/client-forward role)
+    // - client-bridge: legacy alias (client-reverse)
     // - peer: participate as a peer device (legacy reverse target role)
     // - hub: act as bridge relay participant and/or origin/gateway role (legacy)
     // - node: generic aggregate role (legacy)
-    // - forward-server: принимает входящие обычные forward-клиенты (включая локальные AirPad/браузер-клиенты)
-    // - reverse-server: принимает reverse-bridge соединения как серверная отправляющая сторона
-    // - reverse-client: подключается reverse-bridge (NAT/гейт-паттерн), compatible с reverse-server
-    // - forward-client: обычный клиент-отправитель, compatible с forward-server
+    // - server-forward: принимает входящие обычные forward-клиенты (включая локальные AirPad/браузер-клиенты)
+    // - server-reverse: принимает reverse-bridge соединения как серверная отправляющая сторона
+    // - client-reverse: подключается reverse-bridge (NAT/гейт-паттерн), compatible с server-reverse
+    // - client-forward: обычный клиент-отправитель, compatible с server-forward
     roles: [...DEFAULT_CORE_ROLES],
 
     // Bridge tunnel-through / be-as-device settings.

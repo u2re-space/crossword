@@ -146,7 +146,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             requestedArchetype: remoteArchetype.raw ?? "none",
             transport: socket?.conn?.transport?.name,
             sourceHint: normalizeHint((socket as any)?.airpadSourceId),
-            transportAcceptedArchetype: "forward-server"
+            transportAcceptedArchetype: "server-forward"
         };
     };
 
@@ -311,11 +311,11 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
         const connectionMeta = describeAirPadConnectionMeta(socket);
         const remoteArchetype = getSocketIoRemoteArchetype(socket);
-        const localArchetype = "forward-server" as const;
+        const localArchetype = "server-forward" as const;
         const expectedRemoteArchetype = inferExpectedRemoteArchetype(false);
         const supportsLocalForwardServer = supportsForwardServerArchetype((config as any)?.roles);
         if (!supportsLocalForwardServer) {
-            console.warn(`[Server] AirPad socket rejected: forward-server role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+            console.warn(`[Server] AirPad socket rejected: server-forward role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
             socket.emit("error", { message: "Server role mismatch for Socket.IO clients" });
             socket.disconnect(true);
             return;
