@@ -26,10 +26,57 @@ import { handleMouseBinaryAction, handleKeyboardBinaryAction } from "../../airpa
 import { parseBinaryMessage } from "../../io/message.ts";
 
 const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => {
-    const payload = frame?.payload || frame?.data;
+    const payload = frame?.payload || frame?.data || frame;
     if (!payload) return false;
     
-    if (payload.type === "voice_command") {
+    const action = String(payload.action || payload.type || "").toLowerCase();
+    if (action === "clipboard" || action === "clipboard.write" || action === "clipboard:set" || action === "copy" || action === "paste") {
+        const text = payload.text || payload.data?.text || payload.body || (typeof payload.data === "string" ? payload.data : "");
+        if (typeof text === "string" && text) {
+            app.log?.info?.("Clipboard write via tunnel");
+            import("../../io/clipboard.ts").then(({ writeClipboard }) => {
+                writeClipboard(text).catch(err => {
+                    app.log?.error?.({ err }, "Failed to write clipboard");
+                });
+            });
+            return true;
+        }
+    }
+    
+    if (action === "dispatch" || action === "network.dispatch" || action === "http") {
+        const requestsRaw = payload.requests || payload.data?.requests || (Array.isArray(payload.data) ? payload.data : [payload.data || payload]);
+        const requests = Array.isArray(requestsRaw) ? requestsRaw : [requestsRaw];
+        if (requests.length > 0) {
+            app.log?.info?.(`Network dispatch via tunnel (${requests.length} requests)`);
+            requests.forEach((req: any) => {
+                if (!req || !req.url) return;
+                const url = req.url;
+                const method = req.method || "POST";
+                const headers = req.headers || {};
+                const body = req.body;
+                
+                try {
+                    import("undici").then(({ Agent }) => {
+                        fetch(url, {
+                            method,
+                            headers,
+                            body: typeof body === "string" ? body : (body ? JSON.stringify(body) : undefined),
+                            dispatcher: new Agent({ connect: { rejectUnauthorized: false } }) as any
+                        } as any).catch(err => {
+                            app.log?.error?.({ err, url }, "Tunnel dispatch failed");
+                        });
+                    }).catch(() => {
+                        fetch(url, { method, headers, body: typeof body === "string" ? body : (body ? JSON.stringify(body) : undefined) }).catch(err => app.log?.error?.({ err, url }, "Tunnel dispatch failed"));
+                    });
+                } catch (e) {
+                    app.log?.error?.({ err: e, url }, "Tunnel dispatch error");
+                }
+            });
+            return true;
+        }
+    }
+    
+    if (action === "voice_command") {
         const text = String(payload.text || "");
         if (text) {
             app.log?.info?.("Voice command via tunnel");
