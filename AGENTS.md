@@ -37,3 +37,32 @@ Since `/workspace` is the crossword repo, `../../` resolves to `/`. The update s
 - **Tests (endpoint):** `cd src/endpoint && python3 -m pytest tests/unit/ -v` — requires `windows-use` (Windows-only)
 - **Typecheck (endpoint):** `cd src/endpoint && npx tsc -p tsconfig.json --noEmit` — 2 pre-existing errors
 - **Dev server:** `npx vite dev --port 5173 --no-open` (root) — the primary development workflow
+
+## Token & Context Optimization
+
+To minimize token usage and optimize context window:
+- **No Yapping**: Keep responses extremely concise. Answer directly without filler text.
+- **Targeted Edits**: Never repeat code that hasn't changed. Use precise file editing tools.
+- **Avoid Large Files**: Do not read package lockfiles, compiled assets, or large data files into context.
+- **Limit Output**: Only generate necessary code files. Do NOT generate unnecessary reports (e.g., `BUGFIX.md`, `SUMMARY.md`) unless explicitly requested.
+- **Use Memory over Context**: Rely on the `pantry` system instead of reading the whole codebase repeatedly or asking the user for context over and over again.
+
+## Pantry — persistent notes
+
+You have access to a persistent note storage system via the `pantry` MCP tools.
+
+**Session start — MANDATORY**: Before doing any work, retrieve notes from previous sessions:
+
+- Call `pantry_context` to get recent notes for this project
+- If the request relates to a specific topic, also call `pantry_search` with relevant terms
+
+**Session end — MANDATORY**: After any task that involved changes, decisions, bugs, or learnings, call `pantry_store` with:
+
+- `title`: short descriptive title
+- `what`: what happened or was decided
+- `why`: reasoning behind it
+- `impact`: what changed
+- `category`: one of `decision`, `pattern`, `bug`, `context`, `learning`
+- `details`: full context for a future agent with no prior knowledge
+
+Do not skip either step. Notes are how context survives across sessions.

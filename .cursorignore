@@ -155,3 +155,14 @@ src/**/*.js.map
 **/src/**/*.js
 **/src/**/*.jsx
 **/src/**/*.js.map
+
+# Token optimization - ignore large unneeded files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+*.min.js
+*.min.css
+*.map
+.pantry/
+~/.pantry/
