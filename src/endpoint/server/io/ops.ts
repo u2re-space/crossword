@@ -746,11 +746,10 @@ const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<stri
 };
 
 const reverseDispatchPayload = (feature: string, payload: any) => ({
-    type: "feature",
-    data: {
-        feature,
-        payload
-    }
+    type: feature,
+    action: feature,
+    ...payload,
+    data: payload
 });
 
 type AuthContext = {
@@ -1271,7 +1270,12 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
         if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
-            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", { method: "GET", limit }), { mode: "dispatch" }, { wsHub, socketIoBridge });
+            const payloadData = { ...((body as any).data || {}), method: body.method || "POST", limit };
+            if ((body as any).number) payloadData.number = (body as any).number;
+            if ((body as any).content) payloadData.content = (body as any).content;
+            if ((body as any).text) payloadData.text = (body as any).text;
+            
+            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge });
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
@@ -1323,7 +1327,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
         if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
-            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", { method: "GET", limit }), { mode: "dispatch" }, { wsHub, socketIoBridge });
+            const payloadData = { ...((body as any).data || {}), method: body.method || "GET", limit };
+            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge });
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
