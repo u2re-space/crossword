@@ -22,6 +22,7 @@ They should not encode business routing semantics beyond transport boundaries.
 ## Reverse transport semantics
 
 A reverse WebSocket connection (`mode=reverse`) registers a reverse-capable device for upstream tunnel operations and fanout.
+It is expected to negotiate `client-reverse` ↔ `server-reverse` role pairing across endpoint and peer.
 
 ### TCP passthrough on WebSocket
 

@@ -8,8 +8,7 @@ const CLIENT_CONNECTOR_ROLES = new Set([
     "client-downstream",
     "reverse-client",
     "forward-client",
-    "client-upstream",
-    "client-downstream"
+    "client-upstream"
 ]);
 const FORWARD_SERVER_ROLES = new Set(["server-forward", "server-bridge", "forward-server"]);
 const REVERSE_SERVER_ROLES = new Set(["server-reverse", "server-downstream", "reverse-server"]);

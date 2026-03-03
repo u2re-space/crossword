@@ -97,6 +97,19 @@ Policy fallback behavior:
   - `tcp.close`
   - resulting replies `tcp.connected`, `tcp.data`, `tcp.closed`, `tcp.error`
 
+### 3.2.1 Archetype compatibility contract
+
+- Canonical values are `client-reverse`, `server-reverse`, `client-forward`, and `server-forward`.
+- WebSocket query param `archetype` and role aliases are normalized on both sides:
+  - `reverse-client` → `client-reverse`
+  - `forward-client` → `client-forward`
+  - `reverse-server` → `server-reverse`
+  - `forward-server` → `server-forward`
+  - `server-bridge` → `server-forward`
+  - `server-downstream` → `server-reverse`
+- For a reverse WebSocket (`mode=reverse`), server side expects a `server-reverse` local role and requires remote `client-reverse`.
+- For a forward WebSocket (`mode=push`), server side expects a `server-forward` local role and requires remote `client-forward`.
+
 ### 3.3 HTTP control
 
 - command routes stay on HTTP REST layer
