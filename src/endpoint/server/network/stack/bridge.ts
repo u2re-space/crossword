@@ -448,7 +448,8 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<BridgeConnectorConfig>): 
             url.pathname = `${normalizedPath}ws`;
         }
         
-        const archetype = cfg.archetype || "client-reverse";
+        const rawArchetype = cfg.archetype || "client-reverse";
+        const archetype = rawArchetype.includes("client-forward") || rawArchetype.includes("forward") ? "client-forward" : "client-reverse";
         const mode = archetype === "client-forward" ? "push" : "reverse";
         
         url.searchParams.set("mode", mode);

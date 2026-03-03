@@ -15,6 +15,7 @@ import {
     inferExpectedRemoteArchetype,
     inferServerSideArchetype,
     parseWsArchetype,
+    supportsConnectorRole,
     supportsReverseServerArchetype,
     supportsForwardServerArchetype
 } from "../stack/archetypes.ts";
@@ -470,9 +471,10 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4005, `Invalid websocket archetype: ${remoteArchetypeRaw}`);
             return;
         }
+        const runtimeRoles = config.roles as string[] | undefined;
         const roleAllowed = isReverse
-            ? supportsReverseServerArchetype(config.roles as string[] | undefined)
-            : supportsForwardServerArchetype(config.roles as string[] | undefined);
+            ? supportsReverseServerArchetype(runtimeRoles) || (remoteArchetype === "client-reverse" && supportsConnectorRole(runtimeRoles))
+            : supportsForwardServerArchetype(runtimeRoles);
         if (!roleAllowed) {
             ws.close(4003, `Unsupported websocket archetype for this node: ${localArchetype}`);
             return;
