@@ -6,8 +6,36 @@ import { pickEnvStringLegacy } from "./env.ts";
 
 const ROOT = moduleDirname(import.meta);
 
-export const DATA_DIR = pickEnvStringLegacy("CWS_DATA_DIR") ? path.resolve(pickEnvStringLegacy("CWS_DATA_DIR")!) : path.resolve(ROOT, "../../.data");
-export const CONFIG_DIR = pickEnvStringLegacy("CWS_CONFIG_DIR") ? path.resolve(pickEnvStringLegacy("CWS_CONFIG_DIR")!) : path.resolve(ROOT, "../../config");
+const getCliArg = (flag: string): string | undefined => {
+    const args = typeof process !== "undefined" && Array.isArray(process.argv) ? process.argv : [];
+    const idx = args.indexOf(flag);
+    if (idx !== -1 && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
+        return args[idx + 1];
+    }
+    for (const arg of args) {
+        if (arg.startsWith(`${flag}=`)) {
+            return arg.slice(flag.length + 1);
+        }
+    }
+    return undefined;
+};
+
+const dataArg = getCliArg("--data");
+const configArg = getCliArg("--config");
+
+const explicitDataDir = dataArg || pickEnvStringLegacy("CWS_PORTABLE_DATA_PATH") || pickEnvStringLegacy("CWS_DATA_DIR");
+const explicitConfigFile = configArg || pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH") || pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH") || pickEnvStringLegacy("PORTABLE_CONFIG_PATH");
+const explicitConfigDir = pickEnvStringLegacy("CWS_CONFIG_DIR");
+
+export const DATA_DIR = explicitDataDir 
+    ? path.resolve(explicitDataDir) 
+    : path.resolve(ROOT, "../../.data");
+
+export const CONFIG_DIR = explicitConfigDir 
+    ? path.resolve(explicitConfigDir) 
+    : explicitConfigFile 
+        ? path.dirname(path.resolve(explicitConfigFile)) 
+        : path.resolve(ROOT, "../../config");
 
 export const SETTINGS_FILE = path.join(DATA_DIR, "core-settings.json");
 export const USERS_FILE = path.join(DATA_DIR, "users.json");

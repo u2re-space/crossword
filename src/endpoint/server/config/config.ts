@@ -61,8 +61,8 @@ const portableTopologyConfig =
     portableTopology && typeof portableTopology === "object"
         ? {
             enabled: parsePortableBoolean((portableTopology as Record<string, any>).enabled) ?? true,
-            nodes: normalizeTopologyCollection((portableTopology as Record<string, any>).nodes),
-            links: normalizeTopologyCollection((portableTopology as Record<string, any>).links)
+            nodes: normalizeTopologyCollection((portableTopology as Record<string, any>).nodes).map((entry) => entry as Record<string, any>),
+            links: normalizeTopologyCollection((portableTopology as Record<string, any>).links).map((entry) => entry as Record<string, any>)
         }
         : undefined;
 
@@ -90,9 +90,14 @@ export const DEFAULT_ENDPOINT_RUNTIME = {
     secret: typeof portableSecret === "string" ? portableSecret : FALLBACK_RUNTIME_DEFAULTS.secret
 };
 
-export const DEFAULT_ENDPOINT_TOPOLOGY = {
-    ...FALLBACK_TOPOLOGY,
-    ...(portableTopologyConfig || {})
+export const DEFAULT_ENDPOINT_TOPOLOGY: {
+    enabled: boolean;
+    nodes: Array<Record<string, any>>;
+    links: Array<Record<string, any>>;
+} = {
+    enabled: portableTopologyConfig?.enabled ?? FALLBACK_TOPOLOGY.enabled,
+    nodes: portableTopologyConfig?.nodes ? [...portableTopologyConfig.nodes] : [...FALLBACK_TOPOLOGY.nodes].map((entry) => entry as Record<string, any>),
+    links: portableTopologyConfig?.links ? [...portableTopologyConfig.links] : [...FALLBACK_TOPOLOGY.links].map((entry) => entry as Record<string, any>)
 };
 
 export const DEFAULT_SETTINGS: Settings = {

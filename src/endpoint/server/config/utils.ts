@@ -97,10 +97,36 @@ export const loadPortableConfig = (): Record<string, any> => {
         const baseDir = path.dirname(candidate);
         const base = readJson(candidate);
         if (!base || Object.keys(base).length === 0) continue;
-        const merged = collectPortableModules(base, baseDir).reduce((seed, modulePath) => {
+        
+        let merged = collectPortableModules(base, baseDir).reduce((seed, modulePath) => {
             const modulePayload = readJson(modulePath);
             return modulePayload ? mergePortableConfigPayload(seed, modulePayload) : seed;
         }, base);
+
+        // Also proactively check for clients.json / gateways.json as implicit modules in baseDir if they exist
+        const defaultGatewaysPath = path.resolve(baseDir, "gateways.json");
+        const defaultClientsPath = path.resolve(baseDir, "clients.json");
+        
+        if (fs.existsSync(defaultGatewaysPath)) {
+            const gatewaysPayload = readJson(defaultGatewaysPath);
+            if (gatewaysPayload) {
+                merged = mergePortableConfigPayload(merged, { 
+                    gateways: gatewaysPayload.gateways ?? gatewaysPayload.destinations ?? gatewaysPayload,
+                    endpointIDs: gatewaysPayload.gateways ?? gatewaysPayload.destinations ?? gatewaysPayload
+                });
+            }
+        }
+        
+        if (fs.existsSync(defaultClientsPath)) {
+            const clientsPayload = readJson(defaultClientsPath);
+            if (clientsPayload) {
+                merged = mergePortableConfigPayload(merged, {
+                    clients: clientsPayload,
+                    endpointIDs: clientsPayload
+                });
+            }
+        }
+
         return merged;
     }
 
@@ -262,14 +288,31 @@ export const loadLegacyEndpointIds = (): Record<string, EndpointIdPolicy> => {
 };
 
 const collectPortableConfigSources = (): string[] => {
-    const explicit = pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH") || pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH") || pickEnvStringLegacy("PORTABLE_CONFIG_PATH");
+    const args = typeof process !== "undefined" && Array.isArray(process.argv) ? process.argv : [];
+    let configArg: string | undefined;
+    const idx = args.indexOf("--config");
+    if (idx !== -1 && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
+        configArg = args[idx + 1];
+    } else {
+        for (const arg of args) {
+            if (arg.startsWith("--config=")) {
+                configArg = arg.slice("--config=".length);
+                break;
+            }
+        }
+    }
+
+    const explicit = configArg || pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH") || pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH") || pickEnvStringLegacy("PORTABLE_CONFIG_PATH");
     const cwd = process.cwd();
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
     return [
         explicit,
         path.resolve(CONFIG_DIR, "portable.config.json"),
-        path.resolve(cwd, "portable.config.json"), path.resolve(moduleDir, "../../portable.config.json"), path.resolve(moduleDir, "../portable.config.json")].filter(Boolean) as string[];
+        path.resolve(cwd, "portable.config.json"),
+        path.resolve(moduleDir, "../../portable.config.json"),
+        path.resolve(moduleDir, "../portable.config.json")
+    ].filter(Boolean) as string[];
 };
 
 export const loadPortableEndpointSeed = (): PortableConfigSeed => {

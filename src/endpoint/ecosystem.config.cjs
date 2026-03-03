@@ -8,22 +8,25 @@ const resolveValue = (value) => {
 };
 const isPortableConfigArg = (value) => resolveValue(value).length > 0;
 
-const extractConfigArg = () => {
+const extractArg = (flag) => {
     const args = Array.isArray(process.argv) ? process.argv : [];
     for (let index = 0; index < args.length; index++) {
         const arg = args[index];
-        if (arg === "--config") {
+        if (arg === flag) {
             const next = resolveValue(args[index + 1]);
             if (isPortableConfigArg(next)) return next;
             continue;
         }
-        if (arg.startsWith("--config=")) {
-            const next = resolveValue(arg.slice("--config=".length));
+        if (arg.startsWith(`${flag}=`)) {
+            const next = resolveValue(arg.slice(flag.length + 1));
             if (isPortableConfigArg(next)) return next;
         }
     }
     return "";
 };
+
+const extractConfigArg = () => extractArg("--config");
+const extractDataArg = () => extractArg("--data");
 
 const resolvePortableConfigPath = () => {
     const explicitArg = resolveValue(extractConfigArg());
@@ -57,6 +60,11 @@ const launcherEnv = readLauncherEnv(portableConfigPath);
 const envFromFile = Object.assign({}, launcherEnv);
 if (portableConfigPath) {
     envFromFile.CWS_PORTABLE_CONFIG_PATH = portableConfigPath;
+}
+
+const explicitDataArg = resolveValue(extractDataArg());
+if (explicitDataArg) {
+    envFromFile.CWS_PORTABLE_DATA_PATH = path.isAbsolute(explicitDataArg) ? explicitDataArg : path.resolve(process.cwd(), explicitDataArg);
 }
 
 const normalizeEnvValue = (value) => {
