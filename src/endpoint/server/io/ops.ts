@@ -226,6 +226,43 @@ const resolveDispatchIdentity = (body: { userId?: string; userKey?: string; clie
     };
 };
 
+const isRouteDebugLoggingEnabled = (): boolean => {
+    return pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
+};
+
+const normalizeRouteText = (value: unknown): string => {
+    if (typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+};
+
+const resolveRouteTokenFromPayload = (payload: any): string => {
+    if (!payload || typeof payload !== "object") return "";
+    if (typeof payload.userKey === "string" && payload.userKey.trim()) return payload.userKey.trim().toLowerCase();
+    if (typeof payload.token === "string" && payload.token.trim()) return payload.token.trim().toLowerCase();
+    if (typeof payload.clientKey === "string" && payload.clientKey.trim()) return payload.clientKey.trim().toLowerCase();
+    if (typeof payload.accessToken === "string" && payload.accessToken.trim()) return payload.accessToken.trim().toLowerCase();
+    if (typeof payload.authorization === "string" && payload.authorization.trim()) {
+        const match = payload.authorization.match(/^bearer\s+(.+)$/i);
+        return (match?.[1] || payload.authorization).trim().toLowerCase();
+    }
+    return "";
+};
+
+const resolveRouteSourceFromPayload = (payload: any): string => {
+    if (!payload || typeof payload !== "object") return "";
+    const sourceValue = payload.from || payload.source || payload.sourceId || payload.src || payload.suggestedSource || payload.routeSource || payload._routeSource;
+    return normalizeRouteText(sourceValue);
+};
+
+const logDispatchRoute = (prefix: string, payload: Record<string, any>): void => {
+    if (!isRouteDebugLoggingEnabled()) return;
+    try {
+        console.log(`[route] ${prefix}\n${JSON.stringify(payload, null, 2)}`);
+    } catch {
+        console.log(`[route] ${prefix}`, payload);
+    }
+};
+
 const ensureKnownRoutingSource = (routeSource: RouteSourceResolution): { allowed: boolean; reason: string } => {
     if (routeSource.sourceHint && !routeSource.isKnown) {
         return { allowed: false, reason: "unknown source identity" };
@@ -320,8 +357,22 @@ const sendToTargetsWithFallback = async (
         : typeof payload?.source === "string" && payload.source.trim()
             ? payload.source.trim()
             : userId;
+    const routeSource = resolveRouteSourceFromPayload(payload) || normalizeRouteText(sourceHint);
+    const routeToken = resolveRouteTokenFromPayload(payload);
     const bridgeSenderId = typeof bridges?.networkContext?.getNodeId === "function" ? (bridges.networkContext.getNodeId() || "").trim() : "";
     const bridgeFrom = bridgeSenderId || sourceHint || userId;
+    const routeTraceBase = {
+        mode: isRequestMode ? "request" : "dispatch",
+        userId,
+        sourceHint,
+        routeSource: routeSource || sourceHint,
+        token: routeToken || "-",
+        targetHint: targetHint?.trim() || "",
+        bridgeFrom,
+        orderedTargets: deliveryPlan.ordered.join("|") || "none",
+        directTargets: deliveryPlan.direct.join("|") || "none"
+    };
+    logDispatchRoute("route-plan", routeTraceBase);
     const attemptBridgeDelivery = async (target: string, deliveryPayload: any): Promise<boolean> => {
         const sendToBridge = bridges?.networkContext?.sendToBridge;
         if (!sendToBridge) return false;
@@ -332,6 +383,16 @@ const sendToTargetsWithFallback = async (
             preference.transports.includes("socketio") ||
             preference.transports.includes("tcp");
         if (hasRelationRestriction && !hasMessageTransport) return false;
+        logDispatchRoute("attempt", {
+            action: "bridge-fallback",
+            userId,
+            sourceHint,
+            routeSource,
+            token: routeToken || "-",
+            target,
+            transport: "bridge",
+            allowedTransports: preference.transports.join("|") || "none"
+        });
         const bridgePayload =
             deliveryPayload && typeof deliveryPayload === "object" && !Array.isArray(deliveryPayload)
                 ? { ...deliveryPayload } as Record<string, any>
@@ -345,8 +406,24 @@ const sendToTargetsWithFallback = async (
         if (!bridgePayload.userId) bridgePayload.userId = bridgeSenderId || userId;
         if (!bridgePayload.route) bridgePayload.route = "bridge-fallback";
         try {
-            return !!sendToBridge(bridgePayload);
+            const delivered = !!sendToBridge(bridgePayload);
+            logDispatchRoute("result", {
+                action: "bridge-fallback",
+                userId,
+                target,
+                delivered,
+                routeSource,
+                token: routeToken || "-"
+            });
+            return delivered;
         } catch {
+            logDispatchRoute("bridge-error", {
+                action: "bridge-fallback",
+                userId,
+                target,
+                routeSource,
+                token: routeToken || "-"
+            });
             return false;
         }
     };
@@ -358,13 +435,33 @@ const sendToTargetsWithFallback = async (
         return resolveEndpointTransportPreference(sourceHint, target, endpointPolicyMap);
     };
 
-    const tryRequestFromTarget = async (target: string): Promise<any> => {
+    const tryRequestFromTarget = async (target: string): Promise<{ transport: string; response: any } | undefined> => {
         const preference = getTransportPreference(target);
         for (const transport of preference.transports) {
             if (transport === "ws" && bridges?.wsHub?.requestToDevice) {
                 try {
+                    logDispatchRoute("attempt", {
+                        action: "request",
+                        userId,
+                        sourceHint,
+                        routeSource,
+                        token: routeToken || "-",
+                        target,
+                        transport
+                    });
                     const response = await bridges.wsHub.requestToDevice(userId, target, payload, options?.waitMs);
-                    if (response !== undefined) return response;
+                    if (response !== undefined) {
+                        logDispatchRoute("hit", {
+                            action: "request",
+                            userId,
+                            target,
+                            transport,
+                            sourceHint,
+                            routeSource,
+                            token: routeToken || "-"
+                        });
+                        return { transport, response };
+                    }
                 } catch {
                     // ignored
                 }
@@ -372,8 +469,28 @@ const sendToTargetsWithFallback = async (
             }
             if (transport === "socketio" && bridges?.socketIoBridge?.requestToDevice) {
                 try {
+                    logDispatchRoute("attempt", {
+                        action: "request",
+                        userId,
+                        sourceHint,
+                        routeSource,
+                        token: routeToken || "-",
+                        target,
+                        transport
+                    });
                     const response = await bridges.socketIoBridge.requestToDevice(userId, target, payload, options?.waitMs);
-                    if (response !== undefined) return response;
+                    if (response !== undefined) {
+                        logDispatchRoute("hit", {
+                            action: "request",
+                            userId,
+                            target,
+                            transport,
+                            sourceHint,
+                            routeSource,
+                            token: routeToken || "-"
+                        });
+                        return { transport, response };
+                    }
                 } catch {
                     // ignored
                 }
@@ -382,20 +499,60 @@ const sendToTargetsWithFallback = async (
         return undefined;
     };
 
-    const trySendToTarget = async (target: string): Promise<boolean> => {
+    const trySendToTarget = async (target: string): Promise<{ transport: string; delivered: boolean } | undefined> => {
         const preference = getTransportPreference(target);
         for (const transport of preference.transports) {
             if (transport === "ws" && bridges?.wsHub.sendToDevice) {
+                logDispatchRoute("attempt", {
+                    action: "dispatch",
+                    userId,
+                    sourceHint,
+                    routeSource,
+                    token: routeToken || "-",
+                    target,
+                    transport
+                });
                 const wsResult = bridges.wsHub.sendToDevice(userId, target, payload);
-                if (wsResult) return true;
+                if (wsResult) {
+                    logDispatchRoute("hit", {
+                        action: "dispatch",
+                        userId,
+                        target,
+                        transport,
+                        sourceHint,
+                        routeSource,
+                        token: routeToken || "-"
+                    });
+                    return { transport, delivered: true };
+                }
                 continue;
             }
             if (transport === "socketio" && bridges?.socketIoBridge?.sendToDevice) {
+                logDispatchRoute("attempt", {
+                    action: "dispatch",
+                    userId,
+                    sourceHint,
+                    routeSource,
+                    token: routeToken || "-",
+                    target,
+                    transport
+                });
                 const socketResult = bridges.socketIoBridge.sendToDevice(userId, target, payload);
-                if (socketResult) return true;
+                if (socketResult) {
+                    logDispatchRoute("hit", {
+                        action: "dispatch",
+                        userId,
+                        target,
+                        transport,
+                        sourceHint,
+                        routeSource,
+                        token: routeToken || "-"
+                    });
+                    return { transport, delivered: true };
+                }
             }
         }
-        return false;
+        return undefined;
     };
 
     for (const target of orderedTargets) {
@@ -405,17 +562,27 @@ const sendToTargetsWithFallback = async (
             if (isRequestMode) {
                 const response = await tryRequestFromTarget(target);
                 if (response !== undefined) {
-                    responses.push({ target, response });
+                    responses.push({
+                        target,
+                        response: response.response,
+                        via: response.transport,
+                        transport: response.transport
+                    });
                     return { delivered: true, responses, attemptedTargets };
                 }
             } else {
                 const delivered = await trySendToTarget(target);
-                gotDirectDelivery = gotDirectDelivery || delivered;
-                if (delivered) {
-                    responses.push({ target, response: true });
+                gotDirectDelivery = gotDirectDelivery || !!delivered?.delivered;
+                if (delivered?.delivered) {
+                    responses.push({
+                        target,
+                        response: true,
+                        via: delivered.transport,
+                        transport: delivered.transport
+                    });
                 } else {
                     bridgeDelivered = await attemptBridgeDelivery(target, payload);
-                    if (bridgeDelivered) responses.push({ target, viaBridge: true });
+                    if (bridgeDelivered) responses.push({ target, viaBridge: true, via: "bridge", transport: "bridge" });
                 }
             }
             continue;
@@ -426,17 +593,27 @@ const sendToTargetsWithFallback = async (
         if (isRequestMode) {
             const response = await tryRequestFromTarget(target);
             if (response !== undefined) {
-                responses.push({ target, response });
+                responses.push({
+                    target,
+                    response: response.response,
+                    via: response.transport,
+                    transport: response.transport
+                });
                 return { delivered: true, responses, attemptedTargets };
             }
             continue;
         }
         const delivered = await trySendToTarget(target);
-        if (delivered) {
-            responses.push({ target, response: true });
+        if (delivered?.delivered) {
+            responses.push({
+                target,
+                response: true,
+                via: delivered.transport,
+                transport: delivered.transport
+            });
         } else {
             bridgeDelivered = await attemptBridgeDelivery(target, payload);
-            if (bridgeDelivered) responses.push({ target, viaBridge: true });
+            if (bridgeDelivered) responses.push({ target, viaBridge: true, via: "bridge", transport: "bridge" });
         }
     }
 
@@ -1242,17 +1419,21 @@ export const registerOpsRoutes = async (
 
         const results = await Promise.all(requests.map(execOne));
         const failed = results.find((r) => !r.ok);
-        console.log(
-            `[broadcast] client=${routeSource.sourceId} targets=${results.length} failed=${results.filter((r) => !r.ok).length} ` +
-            `results=${JSON.stringify(results.map((r) => ({
+        const summary = {
+            target: routeSource.sourceId,
+            targets: results.length,
+            failed: results.filter((r) => !r.ok).length,
+            results: results.map((r) => ({
                 target: (r as any).target,
                 delivered: (r as any).delivered,
                 mode: (r as any).mode,
                 ok: r.ok,
                 status: (r as any).status,
-                error: (r as any).error
-            })))}`
-        );
+                error: (r as any).error,
+                transport: (r as any).via || (r as any).viaBridge ? (r as any).via || "bridge" : (r as any).transport || (r as any).via
+            }))
+        };
+        console.log(`[broadcast] client=${routeSource.sourceId} targets=${summary.targets} failed=${summary.failed} results=${JSON.stringify(summary, null, 2)}`);
         return { ok: !failed, results };
     };
 

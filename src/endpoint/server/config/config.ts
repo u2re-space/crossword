@@ -12,7 +12,8 @@ import {
     loadPortableConfig,
     loadPortableEndpointSeed,
     normalizeTopologyCollection,
-    toStringArray
+    toStringArray,
+    getConfigLoadReport
 } from "./utils.ts";
 
 const portableConfig = loadPortableConfig();
@@ -124,6 +125,7 @@ export const writeCoreSettings = settingsStore.writeCoreSettings;
 
 const portableSeed: PortableConfigSeed = loadPortableEndpointSeed();
 const legacyEndpointIDs = loadLegacyEndpointIds();
+const getConfigLoadReportSnapshot = () => getConfigLoadReport();
 
 const defaultConfig = {
     // На каком порту слушаем входящие HTTP запросы
@@ -202,6 +204,8 @@ export default discoverEndpointConfig({
     defaultConfig,
     sanitizeConfig: sanitizeEndpointConfig
 }) as Record<string, any>;
+
+export { getConfigLoadReportSnapshot };
 
 export type {
     AppSettings,

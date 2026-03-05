@@ -16,6 +16,130 @@ export const toStringArray = (value: unknown): string[] | undefined => {
     return list.length ? list : undefined;
 };
 
+type ConfigFileLoadInfo = {
+    source: string;
+    exists: boolean;
+    usedAs: "portable-config" | "clients" | "gateways" | "legacy-clients" | "legacy-gateways";
+    loaded: boolean;
+    entries: number;
+    ids?: string[];
+    reason?: string;
+};
+
+type ConfigEndpointIdEntry = {
+    source: string;
+    paperId: string;
+    actualId: string;
+    paperOrigins: string[];
+    paperTokens: string[];
+};
+
+type ConfigLoadReport = {
+    portableCandidatesChecked: string[];
+    selectedPortableConfig?: string;
+    portableModules: string[];
+    portableImplicitClients?: ConfigFileLoadInfo;
+    portableImplicitGateways?: ConfigFileLoadInfo;
+    configSourcesChecked?: string[];
+    selectedEndpointConfig?: string;
+    legacyClientsSources: string[];
+    legacyGatewaysSources: string[];
+    legacyClientsMergedEntries: number;
+    legacyGatewaysMergedEntries: number;
+    endpointIdDefinitions: ConfigEndpointIdEntry[];
+};
+
+const initialReport: ConfigLoadReport = {
+    portableCandidatesChecked: [],
+    portableModules: [],
+    legacyClientsSources: [],
+    legacyGatewaysSources: [],
+    legacyClientsMergedEntries: 0,
+    legacyGatewaysMergedEntries: 0,
+    endpointIdDefinitions: []
+};
+
+const configLoadReport = {
+    ...initialReport,
+    reset: () => {
+        configLoadReport.portableCandidatesChecked = [];
+        configLoadReport.portableModules = [];
+        configLoadReport.legacyClientsSources = [];
+        configLoadReport.legacyGatewaysSources = [];
+        configLoadReport.legacyClientsMergedEntries = 0;
+        configLoadReport.legacyGatewaysMergedEntries = 0;
+        configLoadReport.selectedPortableConfig = undefined;
+        configLoadReport.portableImplicitClients = undefined;
+        configLoadReport.portableImplicitGateways = undefined;
+        configLoadReport.configSourcesChecked = [];
+        configLoadReport.selectedEndpointConfig = undefined;
+        configLoadReport.endpointIdDefinitions = [];
+    },
+    collect: (): ConfigLoadReport => {
+        return {
+            portableCandidatesChecked: [...configLoadReport.portableCandidatesChecked],
+            portableModules: [...configLoadReport.portableModules],
+            legacyClientsSources: [...configLoadReport.legacyClientsSources],
+            legacyGatewaysSources: [...configLoadReport.legacyGatewaysSources],
+            legacyClientsMergedEntries: configLoadReport.legacyClientsMergedEntries,
+            legacyGatewaysMergedEntries: configLoadReport.legacyGatewaysMergedEntries,
+            selectedPortableConfig: configLoadReport.selectedPortableConfig,
+            portableImplicitClients: configLoadReport.portableImplicitClients ? { ...configLoadReport.portableImplicitClients } : undefined,
+            portableImplicitGateways: configLoadReport.portableImplicitGateways ? { ...configLoadReport.portableImplicitGateways } : undefined,
+            configSourcesChecked: configLoadReport.configSourcesChecked ? [...configLoadReport.configSourcesChecked] : undefined,
+            selectedEndpointConfig: configLoadReport.selectedEndpointConfig,
+            endpointIdDefinitions: configLoadReport.endpointIdDefinitions.map((entry) => ({ ...entry }))
+        };
+    }
+};
+
+const asLowerCaseId = (value: string): string => String(value || "").trim().toLowerCase();
+
+const collectAsStringList = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((entry) => resolvePortableTextValue(String(entry || "")).trim())
+        .filter(Boolean);
+};
+
+const collectEndpointIdEntries = (source: string, rawEndpointIds: unknown): ConfigEndpointIdEntry[] => {
+    if (!rawEndpointIds || typeof rawEndpointIds !== "object" || Array.isArray(rawEndpointIds)) return [];
+    const sourceObject = rawEndpointIds as Record<string, any>;
+    const rows: ConfigEndpointIdEntry[] = [];
+    for (const [paperIdRaw, policyRaw] of Object.entries(sourceObject)) {
+        const paperId = String(paperIdRaw || "").trim();
+        if (!paperId) continue;
+        const policy = policyRaw && typeof policyRaw === "object" ? (policyRaw as Record<string, unknown>) : {};
+        rows.push({
+            source,
+            paperId,
+            actualId: asLowerCaseId(paperIdRaw),
+            paperOrigins: collectAsStringList(policy.origins),
+            paperTokens: collectAsStringList(policy.tokens)
+        });
+    }
+    return rows;
+};
+
+const appendEndpointIdDefinitions = (source: string, rawEndpointIds: unknown): void => {
+    if (!rawEndpointIds || typeof rawEndpointIds !== "object" || Array.isArray(rawEndpointIds)) return;
+    const entries = collectEndpointIdEntries(source, rawEndpointIds);
+    if (entries.length > 0) {
+        configLoadReport.endpointIdDefinitions.push(...entries);
+    }
+};
+
+const countPortableEntries = (payload: unknown): number => {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return 0;
+    return Object.keys(payload as Record<string, unknown>).length;
+};
+
+const payloadKeysPreview = (payload: unknown): string[] | undefined => {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined;
+    const keys = Object.keys(payload as Record<string, unknown>);
+    return keys.length ? keys.sort().slice(0, 25) : undefined;
+};
+
 export const normalizeNumber = (value: unknown, fallback: number): number => {
     return parsePortableInteger(value) ?? fallback;
 };
@@ -92,13 +216,21 @@ export const collectPortableModules = (portableConfig: Record<string, any>, base
 
 export const loadPortableConfig = (): Record<string, any> => {
     const candidates = [pickEnvStringLegacy("CWS_PORTABLE_CONFIG_PATH"), pickEnvStringLegacy("ENDPOINT_CONFIG_JSON_PATH"), pickEnvStringLegacy("PORTABLE_CONFIG_PATH"), path.resolve(CONFIG_DIR, "portable.config.json"), path.resolve(process.cwd(), "portable.config.json"), path.resolve(__dirname, "../../portable.config.json"), path.resolve(__dirname, "../portable.config.json")].filter(Boolean);
+    configLoadReport.portableCandidatesChecked = candidates;
+    configLoadReport.portableModules = [];
+    configLoadReport.portableImplicitClients = undefined;
+    configLoadReport.portableImplicitGateways = undefined;
+    configLoadReport.selectedPortableConfig = undefined;
 
     for (const candidate of candidates) {
+        const selectedPortableConfig = path.resolve(candidate);
         const baseDir = path.dirname(candidate);
         const base = readJson(candidate);
         if (!base || Object.keys(base).length === 0) continue;
-        
-        let merged = collectPortableModules(base, baseDir).reduce((seed, modulePath) => {
+        configLoadReport.selectedPortableConfig = selectedPortableConfig;
+        appendEndpointIdDefinitions(`portable:${selectedPortableConfig}`, base.endpointIDs || (base as Record<string, any>).endpointIDs || (base as Record<string, any>).clients || (base as Record<string, any>).gateways);
+        configLoadReport.portableModules = collectPortableModules(base, baseDir);
+        let merged = configLoadReport.portableModules.reduce((seed, modulePath) => {
             const modulePayload = readJson(modulePath);
             return modulePayload ? mergePortableConfigPayload(seed, modulePayload) : seed;
         }, base);
@@ -109,21 +241,61 @@ export const loadPortableConfig = (): Record<string, any> => {
         
         if (fs.existsSync(defaultGatewaysPath)) {
             const gatewaysPayload = readJson(defaultGatewaysPath);
+            configLoadReport.portableImplicitGateways = {
+                source: defaultGatewaysPath,
+                exists: true,
+                loaded: Boolean(gatewaysPayload),
+                usedAs: "gateways",
+                entries: countPortableEntries(gatewaysPayload),
+                ids: payloadKeysPreview(gatewaysPayload),
+                reason: gatewaysPayload ? undefined : "empty_or_unparseable"
+            };
             if (gatewaysPayload) {
+                appendEndpointIdDefinitions(`portable:${defaultGatewaysPath}`, gatewaysPayload);
                 merged = mergePortableConfigPayload(merged, { 
                     gateways: gatewaysPayload.gateways ?? gatewaysPayload.destinations ?? gatewaysPayload,
                     endpointIDs: gatewaysPayload.gateways ?? gatewaysPayload.destinations ?? gatewaysPayload
                 });
             }
+        } else {
+            configLoadReport.portableImplicitGateways = {
+                source: defaultGatewaysPath,
+                exists: false,
+                loaded: false,
+                usedAs: "gateways",
+                entries: 0,
+                ids: [],
+                reason: "not_found"
+            }
         }
         
         if (fs.existsSync(defaultClientsPath)) {
             const clientsPayload = readJson(defaultClientsPath);
+            configLoadReport.portableImplicitClients = {
+                source: defaultClientsPath,
+                exists: true,
+                loaded: Boolean(clientsPayload),
+                usedAs: "clients",
+                entries: countPortableEntries(clientsPayload),
+                ids: payloadKeysPreview(clientsPayload),
+                reason: clientsPayload ? undefined : "empty_or_unparseable"
+            };
             if (clientsPayload) {
+                appendEndpointIdDefinitions(`portable:${defaultClientsPath}`, clientsPayload);
                 merged = mergePortableConfigPayload(merged, {
                     clients: clientsPayload,
                     endpointIDs: clientsPayload
                 });
+            }
+        } else {
+            configLoadReport.portableImplicitClients = {
+                source: defaultClientsPath,
+                exists: false,
+                loaded: false,
+                usedAs: "clients",
+                entries: 0,
+                ids: [],
+                reason: "not_found"
             }
         }
 
@@ -278,11 +450,31 @@ export const loadLegacyEndpointIds = (): Record<string, EndpointIdPolicy> => {
     ].filter(Boolean) as string[];
 
     const merged: Record<string, EndpointIdPolicy> = {};
+    configLoadReport.legacyClientsSources = [];
+    configLoadReport.legacyGatewaysSources = [];
+    configLoadReport.legacyClientsMergedEntries = 0;
+    configLoadReport.legacyGatewaysMergedEntries = 0;
+
     for (const candidate of candidates) {
         const parsed = readJson(candidate);
         if (!parsed) continue;
         const normalized = normalizeLegacyEndpointIds(parsed);
+        appendEndpointIdDefinitions(`legacy:${candidate}`, parsed);
         Object.assign(merged, normalized);
+        const normalizedCount = Object.keys(merged).length;
+        const normalizedCandidate = candidate.toLowerCase();
+        if (normalizedCandidate.includes("clients")) {
+            if (!configLoadReport.legacyClientsSources.includes(candidate)) {
+                configLoadReport.legacyClientsSources.push(candidate);
+            }
+            configLoadReport.legacyClientsMergedEntries = normalizedCount;
+        }
+        if (normalizedCandidate.includes("gateway")) {
+            if (!configLoadReport.legacyGatewaysSources.includes(candidate)) {
+                configLoadReport.legacyGatewaysSources.push(candidate);
+            }
+            configLoadReport.legacyGatewaysMergedEntries = normalizedCount;
+        }
     }
     return merged;
 };
@@ -781,11 +973,22 @@ export const discoverEndpointConfig = (params: {
     sanitizeConfig: (value: Record<string, any>) => EndpointConfig;
 }): EndpointConfig => {
     const { defaultConfig, sanitizeConfig } = params;
-    for (const candidate of getConfigSources()) {
+    const configSources = getConfigSources();
+    configLoadReport.configSourcesChecked = configSources;
+    configLoadReport.selectedEndpointConfig = undefined;
+    for (const candidate of configSources) {
         const loaded = loadJsonFile(candidate);
         if (loaded && typeof loaded === "object" && !Array.isArray(loaded)) {
+            configLoadReport.selectedEndpointConfig = candidate;
+            appendEndpointIdDefinitions(`core-config:${candidate}`, loaded.endpointIDs || (loaded as Record<string, any>).core?.endpointIDs || (loaded as Record<string, any>).endpointIDs);
+            appendEndpointIdDefinitions(`core-config:${candidate}:clients`, (loaded as Record<string, any>).clients || (loaded as Record<string, any>).core?.clients);
+            appendEndpointIdDefinitions(`core-config:${candidate}:gateways`, (loaded as Record<string, any>).gateways || (loaded as Record<string, any>).core?.gateways);
             return sanitizeConfig(loaded);
         }
     }
     return sanitizeConfig(defaultConfig);
+};
+
+export const getConfigLoadReport = (): ConfigLoadReport => {
+    return configLoadReport.collect();
 };

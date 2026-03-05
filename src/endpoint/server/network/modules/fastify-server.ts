@@ -12,7 +12,7 @@ import { registerOpsRoutes } from "../../io/ops.ts";
 import { startBridgePeerClient } from "../stack/bridge.ts";
 import { resolveTunnelTarget } from "../stack/messages.ts";
 import { normalizeNetworkAliasMap, resolveNetworkAlias } from "../stack/topology.ts";
-import config from "../../config/config.ts";
+import config, { getConfigLoadReportSnapshot } from "../../config/config.ts";
 import { registerRoutes } from "../../routing/routes.ts";
 import { registerApiFallback, registerCoreApp } from "../../routing/core-app.ts";
 import { createHttpClient } from "../stack/https.ts";
@@ -24,6 +24,63 @@ import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../
 import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointPolicyRoute, resolveEndpointTransportPreference } from "../stack/endpoint-policy.ts";
 import { handleMouseBinaryAction, handleKeyboardBinaryAction } from "../../airpad/index.ts";
 import { parseBinaryMessage } from "../../io/message.ts";
+
+const shouldSuppressFastifyStartupLog = (msg: string | undefined): boolean => {
+    if (!msg) return false;
+    return msg.startsWith("Server listening at ");
+};
+
+const formatLoggerValue = (value: unknown): string => {
+    if (typeof value === "undefined") return "";
+    if (typeof value === "string") return value;
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch {
+        return String(value);
+    }
+};
+
+const formatLoggerPayload = (payload: Record<string, any> | undefined): string => {
+    if (!payload || Object.keys(payload).length === 0) return "";
+    const entries = Object.entries(payload).filter(([key]) => key !== "msg" && key !== "hostname" && key !== "pid" && key !== "time" && key !== "level");
+    if (entries.length === 0) return "";
+    return entries
+        .map(([key, value]) => `  ${key}: ${formatLoggerValue(value)}`)
+        .join("\n");
+};
+
+const makeReadableFastifyLogger = () => {
+    const write = (chunk: unknown): void => {
+        let payload: Record<string, any> = {};
+        let messageText = "";
+        if (typeof chunk === "string") {
+            try {
+                const parsed = JSON.parse(chunk);
+                if (parsed && typeof parsed === "object") {
+                    payload = parsed as Record<string, any>;
+                    messageText = String(parsed.msg || "");
+                } else {
+                    messageText = String(chunk);
+                }
+            } catch {
+                messageText = String(chunk);
+            }
+        } else {
+            messageText = String(chunk);
+        }
+
+        if (!messageText) return;
+        const level = String(payload?.level ?? "info");
+        if (shouldSuppressFastifyStartupLog(messageText)) return;
+        const detail = formatLoggerPayload(payload);
+        const line = `[${level}] ${messageText}`;
+        console.log(detail ? `${line}\n${detail}` : line);
+    };
+    return {
+        level: "info",
+        stream: { write }
+    };
+};
 
 const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => {
     const payload = frame?.payload || frame?.data || frame;
@@ -119,6 +176,27 @@ const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => 
     }
 };
 
+const stripPolicyTargetPort = (value: string): string => {
+    const normalized = String(value || "").trim();
+    if (!normalized) return "";
+    const colonIndex = normalized.lastIndexOf(":");
+    if (colonIndex < 0) return normalized;
+    const suffix = normalized.slice(colonIndex + 1);
+    return /^\d+$/.test(suffix) ? normalized.slice(0, colonIndex) : normalized;
+};
+
+const resolveEndpointPolicyTarget = (endpointPolicyMap: ReturnType<typeof normalizeEndpointPolicies>, rawTarget: string): string => {
+    const normalized = stripPolicyTargetPort(String(rawTarget || "").trim().toLowerCase());
+    if (!normalized) return "";
+    const directMatch = endpointPolicyMap[normalized];
+    if (directMatch && directMatch.id) {
+        return directMatch.id === "*" ? normalized : directMatch.id;
+    }
+    const policyDecision = resolveEndpointPolicyRoute(normalized, normalized, endpointPolicyMap);
+    const candidate = policyDecision?.targetPolicy?.id || "";
+    return candidate && candidate !== "*" && candidate !== normalized ? candidate : normalized;
+};
+
 const buildBridgeForwardPayload = (
     app: FastifyInstance,
     userId: string,
@@ -129,7 +207,8 @@ const buildBridgeForwardPayload = (
     endpointPolicyMap: ReturnType<typeof normalizeEndpointPolicies>
 ): Record<string, unknown> | null => {
     if (!frame || typeof frame !== "object") return null;
-    const target = String(deviceId || frame?.target || frame?.to || frame?.targetId || "").trim();
+    const rawTarget = String(deviceId || frame?.target || frame?.to || frame?.targetId || "").trim();
+    const target = resolveEndpointPolicyTarget(endpointPolicyMap, rawTarget);
     if (!target) return null;
     const preference = resolveEndpointTransportPreference(sourceForPolicy, target, endpointPolicyMap);
     const supportsBridge = preference.transports.includes("ws") || preference.transports.includes("socketio");
@@ -316,6 +395,46 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
 };
 
 // Receives messages from bridge gateway/origin and dispatches them into local peer hub.
+const sensitiveBridgeKeys = new Set(["text", "body", "payload", "data", "clipboard", "content"]);
+
+const sanitizeBridgeLogValue = (value: unknown): unknown => {
+    if (value === null || typeof value === "undefined") return value;
+    if (typeof value === "string") {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map((entry) => sanitizeBridgeLogValue(entry));
+    }
+    if (typeof value === "object") {
+        const input = value as Record<string, unknown>;
+        const output: Record<string, unknown> = {};
+        for (const key of Object.keys(input)) {
+            if (sensitiveBridgeKeys.has(key.toLowerCase())) {
+                const raw = input[key];
+                if (typeof raw === "string") {
+                    output[key] = raw.length ? `<redacted ${raw.length} chars>` : "";
+                } else if (Array.isArray(raw)) {
+                    output[key] = raw.map((entry) => (typeof entry === "string" ? (entry.length ? `<redacted ${entry.length} chars>` : "") : sanitizeBridgeLogValue(entry)));
+                } else {
+                    output[key] = raw === null || typeof raw === "undefined" ? raw : sanitizeBridgeLogValue(raw);
+                }
+                continue;
+            }
+            output[key] = sanitizeBridgeLogValue(input[key]);
+        }
+        return output;
+    }
+    return value;
+};
+
+const formatBridgeLog = (prefix: string, payload: Record<string, any>): string => {
+    try {
+        return `${prefix}\n${JSON.stringify(sanitizeBridgeLogValue(payload), null, 2)}`;
+    } catch {
+        return `${prefix}\n${String(payload)}`;
+    }
+};
+
 const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: string) => {
     const bridgeAliasMap = normalizeNetworkAliasMap((config as any)?.networkAliases || {});
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
@@ -381,8 +500,8 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
         const messageType = String(msg.type || msg.action || "").trim().toLowerCase();
         if (messageType === "welcome") {
             if (isTunnelDebug) {
-                app.log?.debug?.(
-                    {
+                console.debug(
+                    formatBridgeLog("[bridge] ignored welcome event from bridge", {
                         userId: (typeof msg.userId === "string" && msg.userId.trim()) || defaultUserId || "unknown",
                         type: messageType || "dispatch",
                         from:
@@ -392,8 +511,7 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
                             (typeof msg.src === "string" && msg.src.trim()) ||
                             "unknown",
                         target: typeof msg.target === "string" && msg.target.trim() ? msg.target : typeof msg.to === "string" && msg.to.trim() ? msg.to : typeof msg.targetId === "string" && msg.targetId.trim() ? msg.targetId : "-"
-                    },
-                    "[bridge] ignored welcome event from bridge"
+                    })
                 );
             }
             return;
@@ -406,29 +524,33 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
         const resolvedRequestedTarget = resolveTargetWithPeerIdentity(resolvedUserId, normalizedRequestedTarget.trim());
         const sourceForPolicy = resolveSourceForPolicy(msg, resolvedUserId);
         if (!sourceForPolicy.isKnown && sourceForPolicy.sourceId !== resolvedUserId) {
-            app.log?.warn?.(
-                {
-                    source: sourceForPolicy.sourceId,
-                    rawSource: msg.source || msg.sourceId || msg.from || msg.src || msg.suggestedSource || msg.routeSource || msg._routeSource,
-                    target: resolvedRequestedTarget || "-",
-                    userId: resolvedUserId
-                },
-                "[bridge] route denied by unknown source"
-            );
+            if (isTunnelDebug) {
+                console.warn(
+                    formatBridgeLog("[bridge] route denied by unknown source", {
+                        source: sourceForPolicy.sourceId,
+                        rawSource: msg.source || msg.sourceId || msg.from || msg.src || msg.suggestedSource || msg.routeSource || msg._routeSource,
+                        target: resolvedRequestedTarget || "-",
+                        userId: resolvedUserId,
+                        targetSource: "explicit"
+                    })
+                );
+            }
             return;
         }
         if (normalizedRequestedTarget.trim()) {
             const policyDecision = resolveEndpointPolicyRoute(sourceForPolicy.sourceId, resolvedRequestedTarget, endpointPolicyMap);
             if (!policyDecision.allowed) {
-                app.log?.warn?.(
-                    {
-                        source: sourceForPolicy.sourceId,
-                        target: resolvedRequestedTarget,
-                        reason: policyDecision.reason,
-                        userId: resolvedUserId
-                    },
-                    "[bridge] route denied by endpoint policy"
-                );
+                if (isTunnelDebug) {
+                    console.warn(
+                        formatBridgeLog("[bridge] route denied by endpoint policy", {
+                            source: sourceForPolicy.sourceId,
+                            target: resolvedRequestedTarget,
+                            reason: policyDecision.reason,
+                            userId: resolvedUserId,
+                            targetSource: "explicit"
+                        })
+                    );
+                }
                 return;
             }
         }
@@ -439,13 +561,15 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
         if (isTunnelDebug) {
             const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload as Record<string, unknown>).join("|") : typeof payload;
             console.info(
-                `[bridge] IN`,
-                `userId=${resolvedUserId}`,
-                `from=${sourceForPolicy.sourceId}`,
-                `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`,
-                `type=${String(msg.type || msg.action || "dispatch")}`,
-                `kind=${payloadKeys}`,
-                `targetSource=${incomingTargetSource}`
+                formatBridgeLog("[bridge] IN", {
+                    userId: resolvedUserId,
+                    from: sourceForPolicy.sourceId,
+                    target: resolvedRequestedTarget ? resolvedRequestedTarget : "-",
+                    type: String(msg.type || msg.action || "dispatch"),
+                    kind: payloadKeys,
+                    targetSource: incomingTargetSource,
+                    route: "bridge-router"
+                })
             );
         }
         const namespace = typeof msg.namespace === "string" && msg.namespace ? msg.namespace : typeof msg.ns === "string" ? msg.ns : undefined;
@@ -502,12 +626,14 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
             if (!delivered) {
                 if (isTunnelDebug) {
                     console.warn(
-                        `[bridge] target resolve failed`,
-                        `userId=${resolvedUserId}`,
-                        `requested=${requestedTarget}`,
-                        `resolved=${resolvedTarget || "-"}`,
-                        `kind=${resolvedKind || "-"}`,
-                        `known=${knownPeers.join(",")}`
+                        formatBridgeLog("[bridge] target resolve failed", {
+                            userId: resolvedUserId,
+                            requested: requestedTarget,
+                            resolved: resolvedTarget || "-",
+                            kind: resolvedKind || "-",
+                            known: knownPeers,
+                            targetSource: incomingTargetSource
+                        })
                     );
                 }
                 app.log?.warn?.(
@@ -539,13 +665,15 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
                 );
                 if (isTunnelDebug) {
                     console.info(
-                        `[bridge] target resolved`,
-                        `userId=${resolvedUserId}`,
-                        `requested=${requestedTarget}`,
-                        `resolved=${resolvedTarget}`,
-                        `kind=${resolvedKind || "-"}`,
-                        `delivered=${delivered}`,
-                        `fallback=${fallbackSent}`
+                        formatBridgeLog("[bridge] target resolved", {
+                            userId: resolvedUserId,
+                            requested: requestedTarget,
+                            resolved: resolvedTarget,
+                            kind: resolvedKind || "-",
+                            delivered,
+                            fallback: fallbackSent,
+                            targetSource: incomingTargetSource
+                        })
                     );
                 }
             }
@@ -574,11 +702,131 @@ const buildNetworkContext = (bridgeConnector: ReturnType<typeof startBridgePeerC
     };
 };
 
+const formatShortList = (items: string[] | undefined, limit = 8) => {
+    if (!Array.isArray(items) || !items.length) return "none";
+    const normalized = items.map((entry) => String(entry)).filter(Boolean);
+    if (!normalized.length) return "none";
+    if (normalized.length <= limit) return normalized.join(", ");
+    return `${normalized.slice(0, limit).join(", ")} ... (+${normalized.length - limit})`;
+};
+
+const toSortedUniqueStringList = (items: string[] | undefined): string[] => {
+    if (!Array.isArray(items)) return [];
+    return [...new Set(items.map((entry) => String(entry || "").trim()).filter(Boolean))].sort();
+};
+
+const formatValueList = (values: string[] | undefined, limit = 20) => {
+    const normalized = toSortedUniqueStringList(values);
+    if (!normalized.length) return "none";
+    return normalized.length <= limit ? normalized.join(", ") : `${normalized.slice(0, limit).join(", ")} ... (+${normalized.length - limit})`;
+};
+
+const inferEndpointIdentityKind = (policyId: string, aliasCandidates: string[], policy: Record<string, any> | undefined): string => {
+    const kindHints = new Set<string>();
+    const normalizedPolicyRoles = toSortedUniqueStringList((policy?.roles as string[] | undefined)).map((role) => role.toLowerCase());
+    for (const role of normalizedPolicyRoles) {
+        if (!role) continue;
+        if (role.includes("gateway") || role === "hub") kindHints.add("gateway");
+        if (role.includes("mobile") || role === "client") kindHints.add("mobile-client");
+        if (role === "endpoint" || role === "server") kindHints.add("endpoint");
+    }
+
+    const normalizedFlags = (policy?.flags as Record<string, unknown>) || {};
+    if (normalizedFlags.gateway === true) kindHints.add("gateway");
+    if (normalizedFlags.mobile === true) kindHints.add("mobile-client");
+    if (normalizedFlags.direct === true) kindHints.add("endpoint");
+
+    const allIds = [...aliasCandidates, policyId].map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean);
+    if (allIds.some((entry) => entry.startsWith("h-"))) kindHints.add("hub");
+    if (allIds.some((entry) => entry.startsWith("l-"))) kindHints.add("local-endpoint");
+    if (allIds.some((entry) => entry.startsWith("p-"))) kindHints.add("private-endpoint");
+
+    if (!kindHints.size) kindHints.add("endpoint");
+    return Array.from(kindHints).sort().join("|");
+};
+
+const logStartupConfigOverview = () => {
+    const endpointIds = ((config as any)?.endpointIDs || {}) as Record<string, any>;
+    const endpointIdKeys = Object.keys(endpointIds).filter((value) => value !== "*").sort();
+    const endpointIdPreview = endpointIdKeys.slice(0, 20);
+    const policyMap = normalizeEndpointPolicies(endpointIds);
+    const policyKeys = Object.keys(policyMap).filter((value) => value !== "*").sort();
+    const policyIdPreview = policyKeys.slice(0, 20);
+    const candidatePayload = typeof getConfigLoadReportSnapshot === "function" ? getConfigLoadReportSnapshot() : undefined;
+    const usedPortable = candidatePayload?.selectedPortableConfig || "not selected";
+    const selectedConfig = candidatePayload?.selectedEndpointConfig || "default config fallback";
+    const availableClientsSource = candidatePayload?.portableImplicitClients?.source || "not_checked";
+    const availableGatewaysSource = candidatePayload?.portableImplicitGateways?.source || "not_checked";
+    const registeredCount = policyKeys.length;
+    const registrationRows = (candidatePayload?.endpointIdDefinitions || [])
+        .filter((entry) => typeof entry?.actualId === "string")
+        .filter((entry) => entry.actualId !== "*");
+    const byActualId = new Map<string, { papers: string[]; paperOrigins: string[]; paperTokens: string[]; actualOrigins: string[]; actualTokens: string[] }>();
+    for (const entry of registrationRows) {
+        const actualId = entry.actualId.trim().toLowerCase();
+        const bucket = byActualId.get(actualId) ?? { papers: [], paperOrigins: [], paperTokens: [], actualOrigins: [], actualTokens: [] };
+        if (entry.paperId) bucket.papers.push(entry.paperId);
+        bucket.paperOrigins.push(...toSortedUniqueStringList(entry.paperOrigins));
+        bucket.paperTokens.push(...toSortedUniqueStringList(entry.paperTokens));
+        byActualId.set(actualId, bucket);
+    }
+    for (const policyId of policyKeys) {
+        const policy = policyMap[policyId];
+        const bucket = byActualId.get(policyId) ?? { papers: [], paperOrigins: [], paperTokens: [], actualOrigins: [], actualTokens: [] };
+        bucket.actualOrigins.push(...toSortedUniqueStringList(policy?.origins as string[] | undefined));
+        bucket.actualTokens.push(...toSortedUniqueStringList(policy?.tokens as string[] | undefined));
+        byActualId.set(policyId, bucket);
+    }
+
+    const printIdRows = (label: string, ids: string[]) => {
+        console.log(`[core-startup] ${label}:`);
+        if (!ids.length) {
+            console.log("  none");
+            return;
+        }
+        for (const policyId of ids) {
+            const row = byActualId.get(policyId) ?? { papers: [policyId], paperOrigins: [], paperTokens: [], actualOrigins: [], actualTokens: [] };
+            const papers = toSortedUniqueStringList(row.papers);
+            const actualOrigins = formatValueList(row.actualOrigins);
+            const paperOrigins = formatValueList(row.paperOrigins);
+            const actualTokens = formatValueList(row.actualTokens);
+            const paperTokens = formatValueList(row.paperTokens);
+            const identityKind = inferEndpointIdentityKind(policyId, papers, policyMap[policyId]);
+            const responseAliases = papers.filter((entry) => entry.toLowerCase() !== policyId);
+            const identityValues = toSortedUniqueStringList([policyId, ...papers]);
+            console.log(
+                `  - [identity: ${formatValueList(identityValues, 8)}] [kind: ${identityKind}] [ip_actual: ${actualOrigins}] [ip_paper: ${paperOrigins}] [token_actual: ${actualTokens}] [token_paper: ${paperTokens}]`
+            );
+            console.log(`    aliases: ${formatValueList(responseAliases, 12)}`);
+        }
+    };
+
+    console.log("[core-startup] endpoint configuration:");
+    console.log(`[core-startup] selected core config: ${selectedConfig}`);
+    console.log(`[core-startup] portable config candidates: ${formatShortList(candidatePayload?.portableCandidatesChecked, 6)}`);
+    console.log(`[core-startup] selected portable config: ${usedPortable}`);
+    console.log(`[core-startup] portable modules: ${formatShortList(candidatePayload?.portableModules, 6)}`);
+    console.log(
+        `[core-startup] implicit fs clients: source=${availableClientsSource} loaded=${candidatePayload?.portableImplicitClients?.loaded ? "yes" : "no"} entries=${candidatePayload?.portableImplicitClients?.entries ?? 0} exists=${candidatePayload?.portableImplicitClients?.exists ? "yes" : "no"} ids=${formatShortList(candidatePayload?.portableImplicitClients?.ids as string[] | undefined, 12)}`
+    );
+    console.log(
+        `[core-startup] implicit fs gateways: source=${availableGatewaysSource} loaded=${candidatePayload?.portableImplicitGateways?.loaded ? "yes" : "no"} entries=${candidatePayload?.portableImplicitGateways?.entries ?? 0} exists=${candidatePayload?.portableImplicitGateways?.exists ? "yes" : "no"} ids=${formatShortList(candidatePayload?.portableImplicitGateways?.ids as string[] | undefined, 12)}`
+    );
+    console.log(`[core-startup] legacy clients sources: ${formatShortList(candidatePayload?.legacyClientsSources as string[] | undefined, 6)}`);
+    console.log(`[core-startup] legacy gateways sources: ${formatShortList(candidatePayload?.legacyGatewaysSources as string[] | undefined, 6)}`);
+    console.log(`[core-startup] endpointIDs available in config: ${endpointIdKeys.length}; registered for routing: ${registeredCount}`);
+    printIdRows("endpointID preview", endpointIdPreview);
+    printIdRows("registered endpointID preview", policyIdPreview);
+};
+
 export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<FastifyInstance> => {
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
+    const loggerEnabled = opts.logger ?? true;
+    const logger = loggerEnabled ? makeReadableFastifyLogger() : false;
 
     const app = Fastify({
-        logger: opts.logger ?? true,
+        logger,
+        disableRequestLogging: true,
         ...(httpsOptions ? { https: httpsOptions } : {})
     }) as unknown as FastifyInstance;
 
@@ -613,15 +861,18 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
     wsHub.onUnknownTarget = (userId, deviceId, frame) => {
         const sourceForPolicy = frame?.from || (config as any)?.bridge?.userId || "";
         const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
-        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const targetSource = String((frame as Record<string, any>)?.targetSource || "").trim().toLowerCase() === "fallback" ? "fallback" : "explicit";
+        const resolvedDeviceId = resolveEndpointPolicyTarget(endpointPolicyMap, String(deviceId || ""));
+        const targetForRoute = resolvedDeviceId || deviceId;
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, targetForRoute, endpointPolicyMap);
         const canSocketIo = transportPref.transports.includes("socketio");
-        const sent = canSocketIo ? socketIoBridge.sendToDevice(userId, deviceId, frame) : false;
-        const bridgePayload = networkContext?.sendToBridge
+        const sent = canSocketIo ? socketIoBridge.sendToDevice(userId, targetForRoute, frame) : false;
+        const bridgePayload = !sent && targetSource !== "fallback" && networkContext?.sendToBridge
             ? buildBridgeForwardPayload(
                 app,
                 userId,
                 ((config as any)?.bridge?.userId || ""),
-                deviceId,
+                targetForRoute,
                 frame,
                 String(sourceForPolicy || ""),
                 endpointPolicyMap
@@ -630,39 +881,37 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
         const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
         
         if (!sent && handleLocalAirpadPayload(app, frame)) {
-            app.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target handled locally", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
-                    from: frame?.from
-                },
-                "[bridge] unknown ws target handled locally"
+                    from: frame?.from,
+                    targetSource
+                })
             );
             return true;
         }
         if (!sent && !sentViaBridge && app.log) {
-            app.log?.warn?.(
-                {
+            console.warn(
+                formatBridgeLog("[bridge] unknown ws target not handled", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: frame?.from,
-                    targetSource: "explicit"
-                },
-                "[bridge] unknown ws target not handled"
+                    targetSource
+                })
             );
         } else if (!sent && sentViaBridge && app.log) {
-            app.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target forwarded via bridge", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: bridgePayload?.from,
                     route: bridgePayload?.route,
                     targetSource: "fallback"
-                },
-                "[bridge] unknown ws target forwarded via bridge"
+                })
             );
         }
         return sent || sentViaBridge;
@@ -675,9 +924,12 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
 
 export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<{ http: FastifyInstance; https?: FastifyInstance }> => {
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
-    const http = Fastify({ logger: opts.logger ?? true }) as unknown as FastifyInstance;
+    const loggerEnabled = opts.logger ?? true;
+    const logger = loggerEnabled ? makeReadableFastifyLogger() : false;
+    const http = Fastify({ logger, disableRequestLogging: true }) as unknown as FastifyInstance;
     const https = Fastify({
-        logger: opts.logger ?? true,
+        logger,
+        disableRequestLogging: true,
         https: httpsOptions
     }) as unknown as FastifyInstance;
 
@@ -716,15 +968,18 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
     httpWsHub.onUnknownTarget = (userId, deviceId, frame) => {
         const sourceForPolicy = frame?.from || fallbackUserId;
         const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
-        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const targetSource = String((frame as Record<string, any>)?.targetSource || "").trim().toLowerCase() === "fallback" ? "fallback" : "explicit";
+        const resolvedDeviceId = resolveEndpointPolicyTarget(endpointPolicyMap, String(deviceId || ""));
+        const targetForRoute = resolvedDeviceId || deviceId;
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, targetForRoute, endpointPolicyMap);
         const canSocketIo = transportPref.transports.includes("socketio");
-        const sent = canSocketIo ? httpSocketIoBridge.sendToDevice(userId, deviceId, frame) : false;
-        const bridgePayload = networkContext?.sendToBridge
+        const sent = canSocketIo ? httpSocketIoBridge.sendToDevice(userId, targetForRoute, frame) : false;
+        const bridgePayload = !sent && targetSource !== "fallback" && networkContext?.sendToBridge
             ? buildBridgeForwardPayload(
                 http,
                 userId,
                 fallbackUserId,
-                deviceId,
+                targetForRoute,
                 frame,
                 String(sourceForPolicy || ""),
                 endpointPolicyMap
@@ -733,39 +988,37 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
         const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
         
         if (!sent && handleLocalAirpadPayload(http, frame)) {
-            http.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target handled locally", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
-                    from: frame?.from
-                },
-                "[bridge] unknown ws target handled locally"
+                    from: frame?.from,
+                    targetSource
+                })
             );
             return true;
         }
         if (!sent && !sentViaBridge && http.log) {
-            http.log?.warn?.(
-                {
+            console.warn(
+                formatBridgeLog("[bridge] unknown ws target not handled", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: frame?.from,
-                    targetSource: "explicit"
-                },
-                "[bridge] unknown ws target not handled"
+                    targetSource
+                })
             );
         } else if (!sent && sentViaBridge && http.log) {
-            http.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target forwarded via bridge", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: bridgePayload?.from,
                     route: bridgePayload?.route,
                     targetSource: "fallback"
-                },
-                "[bridge] unknown ws target forwarded via bridge"
+                })
             );
         }
         return sent || sentViaBridge;
@@ -795,15 +1048,18 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
     httpsWsHub.onUnknownTarget = (userId, deviceId, frame) => {
         const sourceForPolicy = frame?.from || fallbackUserId;
         const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
-        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const targetSource = String((frame as Record<string, any>)?.targetSource || "").trim().toLowerCase() === "fallback" ? "fallback" : "explicit";
+        const resolvedDeviceId = resolveEndpointPolicyTarget(endpointPolicyMap, String(deviceId || ""));
+        const targetForRoute = resolvedDeviceId || deviceId;
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, targetForRoute, endpointPolicyMap);
         const canSocketIo = transportPref.transports.includes("socketio");
-        const sent = canSocketIo ? httpsSocketIoBridge.sendToDevice(userId, deviceId, frame) : false;
-        const bridgePayload = networkContext?.sendToBridge
+        const sent = canSocketIo ? httpsSocketIoBridge.sendToDevice(userId, targetForRoute, frame) : false;
+        const bridgePayload = !sent && targetSource !== "fallback" && networkContext?.sendToBridge
             ? buildBridgeForwardPayload(
                 https,
                 userId,
                 fallbackUserId,
-                deviceId,
+                targetForRoute,
                 frame,
                 String(sourceForPolicy || ""),
                 endpointPolicyMap
@@ -812,39 +1068,37 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
         const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
         
         if (!sent && handleLocalAirpadPayload(https, frame)) {
-            https.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target handled locally", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
-                    from: frame?.from
-                },
-                "[bridge] unknown ws target handled locally"
+                    from: frame?.from,
+                    targetSource
+                })
             );
             return true;
         }
         if (!sent && !sentViaBridge && https.log) {
-            https.log?.warn?.(
-                {
+            console.warn(
+                formatBridgeLog("[bridge] unknown ws target not handled", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: frame?.from,
-                    targetSource: "explicit"
-                },
-                "[bridge] unknown ws target not handled"
+                    targetSource
+                })
             );
         } else if (!sent && sentViaBridge && https.log) {
-            https.log?.debug?.(
-                {
+            console.log(
+                formatBridgeLog("[bridge] unknown ws target forwarded via bridge", {
                     userId,
-                    deviceId,
+                    deviceId: targetForRoute,
                     type: frame?.type,
                     from: bridgePayload?.from,
                     route: bridgePayload?.route,
                     targetSource: "fallback"
-                },
-                "[bridge] unknown ws target forwarded via bridge"
+                })
             );
         }
         return sent || sentViaBridge;
@@ -856,6 +1110,7 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
 };
 
 export const startCoreBackend = async (opts: { logger?: boolean; httpsOptions?: any } = {}): Promise<void> => {
+    logStartupConfigOverview();
     const args = parseCli(runtimeArgs());
     const httpsOptions = typeof opts.httpsOptions !== "undefined" ? opts.httpsOptions : await loadHttpsOptions();
     const configHttpsEnabled = (config as any)?.https?.enabled;

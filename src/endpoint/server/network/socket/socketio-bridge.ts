@@ -58,12 +58,58 @@ export type SocketIoBridgeOptions = {
 
 const MAX_HISTORY_DEFAULT = 100;
 
+const sensitiveBridgeKeys = new Set(["text", "body", "payload", "data", "clipboard", "content"]);
+
+const sanitizeBridgeLogValue = (value: unknown): unknown => {
+    if (value === null || typeof value === "undefined") return value;
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) {
+        return value.map((entry) => sanitizeBridgeLogValue(entry));
+    }
+    if (typeof value === "object") {
+        const input = value as Record<string, unknown>;
+        const output: Record<string, unknown> = {};
+        for (const key of Object.keys(input)) {
+            if (sensitiveBridgeKeys.has(key.toLowerCase())) {
+                const raw = input[key];
+                if (typeof raw === "string") {
+                    output[key] = raw.length ? `<redacted ${raw.length} chars>` : "";
+                } else if (Array.isArray(raw)) {
+                    output[key] = raw.map((entry) => (typeof entry === "string" ? (entry.length ? `<redacted ${entry.length} chars>` : "") : sanitizeBridgeLogValue(entry)));
+                } else {
+                    output[key] = raw === null || typeof raw === "undefined" ? raw : sanitizeBridgeLogValue(raw);
+                }
+                continue;
+            }
+            output[key] = sanitizeBridgeLogValue(input[key]);
+        }
+        return output;
+    }
+    return value;
+};
+
+const formatBridgeSocketLog = (prefix: string, payload: Record<string, unknown>): string => {
+    try {
+        return `${prefix}\n${JSON.stringify(sanitizeBridgeLogValue(payload), null, 2)}`;
+    } catch {
+        return `${prefix}\n${String(payload)}`;
+    }
+};
+
 const logMsg = (prefix: string, msg: any, targetSource = "explicit"): void => {
     const payloadLen = msg?.payload ? (typeof msg.payload === "string" ? msg.payload.length : JSON.stringify(msg.payload).length) : 0;
-    // Keep this format stable for grep-ability and client debugging
-    console.log(
-        `[${new Date().toISOString()}] ${prefix} type=${msg?.type} from=${msg?.from} to=${msg?.to} targetSource=${targetSource} mode=${msg?.mode || "blind"} action=${msg?.action || "N/A"} payloadLen=${payloadLen}`
-    );
+    const summary = {
+        when: new Date().toISOString(),
+        type: msg?.type,
+        from: msg?.from,
+        to: msg?.to,
+        targetSource,
+        mode: msg?.mode || "blind",
+        action: msg?.action || "N/A",
+        payloadLen,
+        kind: typeof msg?.target === "string" ? "string" : typeof msg?.target
+    };
+    console.log(formatBridgeSocketLog(`[bridge] ${prefix}`, summary));
 };
 const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
 const NETWORK_FETCH_TIMEOUT_MS = Math.max(
@@ -279,20 +325,36 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
         const processed = mapHookPayload(messageHooks, normalized, sourceSocket) as any;
         if (processed === null) {
-            console.log(`[Router] Message skipped by hook`);
+            console.log(formatBridgeSocketLog("[Router] Message skipped by hook", { socket: sourceSocket.id }));
             return;
         }
+        const incomingTargetSource = String((processed as Record<string, any>)?.targetSource || "").trim().toLowerCase() === "fallback" ? "fallback" : "explicit";
+        const targetSource = incomingTargetSource === "fallback" ? "fallback" : (hasExplicitTarget ? "explicit" : "fallback");
 
         const tunnelTargets = airpadRouter.resolveTunnelTargets(sourceSocket, processed);
-        const targetSource = hasExplicitTarget ? "explicit" : "fallback";
         if (tunnelTargets.length > 0) {
             if (isTunnelDebug) {
-                console.log(`[Router] Tunnel route attempt`, `socket=${sourceSocket.id}`, `from=${processed.from}`, `to=${processed.to}`, `targets=${tunnelTargets.join(",")}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
+                console.log(
+                    formatBridgeSocketLog("[Router] Tunnel route attempt", {
+                        socket: sourceSocket.id,
+                        from: processed.from,
+                        to: processed.to,
+                        targets: tunnelTargets.join(","),
+                        via: airpadRouter.getRouteHint(sourceSocket) || "?",
+                        targetSource
+                    })
+                );
             }
             if (airpadRouter.forwardToAirpadTargets(sourceSocket, processed, processed)) {
                 logMsg("OUT(tunnel)", processed, targetSource);
                 if (isTunnelDebug) {
-                    console.log(`[Router] OUT(tunnel) forwarded`, sourceSocket.id, `target=${processed.to}`);
+                    console.log(
+                        formatBridgeSocketLog("[Router] OUT(tunnel) forwarded", {
+                            socket: sourceSocket.id,
+                            target: processed.to,
+                            targetSource
+                        })
+                    );
                 }
                 return;
             }
@@ -304,35 +366,39 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             if (routeHint === "tunnel" || routeHint === "remote") {
                 if (isTunnelDebug) {
                     console.warn(
-                        `[Router] Tunnel target not found; bridge/bridge fallback not enabled for routed socket`,
-                        `socket=${sourceSocket.id}`,
-                        `requested=${tunnelTargets.join(",")}`,
-                        `known=${knownTunnelTargets.join(",")}`,
-                        `targetSource=${targetSource}`
+                        formatBridgeSocketLog("[Router] Tunnel target not found; bridge/bridge fallback not enabled for routed socket", {
+                            socket: sourceSocket.id,
+                            requested: tunnelTargets.join(","),
+                            known: knownTunnelTargets.join(","),
+                            targetSource
+                        })
                     );
                 }
                 return;
             }
             if (isTunnelDebug) {
                 console.warn(
-                    `[Router] Tunnel target not found for ${sourceSocket.id}`,
-                    `requested=${tunnelTargets.join(",")}`,
-                    `known=${knownTunnelTargets.join(",")}`,
-                    `targetSource=${targetSource}`
+                    formatBridgeSocketLog("[Router] Tunnel target not found", {
+                        socket: sourceSocket.id,
+                        requested: tunnelTargets.join(","),
+                        known: knownTunnelTargets.join(","),
+                        targetSource
+                    })
                 );
             } else {
-                console.warn(`[Router] Tunnel target not found for ${sourceSocket.id}`, `targetSource=${targetSource}`);
+                console.warn(formatBridgeSocketLog("[Router] Tunnel target not found", { socket: sourceSocket.id, targetSource }));
             }
         }
         if (!isEndpoint) {
             if (isTunnelDebug) {
                 console.warn(
-                    `[Router] Local handling skipped for non-endpoint socket`,
-                    `socket=${sourceSocket.id}`,
-                    `from=${processed.from}`,
-                    `to=${processed.to}`,
-                    `via=${routeHint || "?"}`,
-                    `targetSource=${targetSource}`
+                    formatBridgeSocketLog("[Router] Local handling skipped for non-endpoint socket", {
+                        socket: sourceSocket.id,
+                        from: processed.from,
+                        to: processed.to,
+                        via: routeHint || "?",
+                        targetSource
+                    })
                 );
             }
             return;
@@ -350,24 +416,37 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             logMsg(`OUT(to=${processed.to})`, processed, targetSource);
             return;
         }
-        const bridgePayload = buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource);
+        const bridgePayload = incomingTargetSource !== "fallback" ? buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource) : null;
         if (bridgePayload && networkContext?.sendToBridge?.(bridgePayload) === true) {
             logMsg(`OUT(socketio-bridge to=${processed.to})`, processed, targetSource);
             if (isTunnelDebug) {
-                console.log(`[Router] OUT(socketio-bridge)`, `socket=${sourceSocket.id}`, `target=${processed.to}`, `targetSource=${targetSource}`);
+                console.log(
+                    formatBridgeSocketLog("[Router] OUT(socketio-bridge)", {
+                        socket: sourceSocket.id,
+                        target: processed.to,
+                        targetSource
+                    })
+                );
             }
             return;
         }
         if (!bridgePayload && isTunnelDebug) {
             console.log(
-                `[Router] Socket.IO bridge payload skipped`,
-                `socket=${sourceSocket.id}`,
-                `target=${processed.to}`,
-                `targetSource=${targetSource}`,
-                `policyTransports=${resolveEndpointTransportPreference(targetSource === "explicit" ? String(processed.from || sourceSocket.id) : String(sourceSocket.id), String(processed.to || ""), endpointPolicyMap).transports.join("|") || "none"}`
+                formatBridgeSocketLog("[Router] Socket.IO bridge payload skipped", {
+                    socket: sourceSocket.id,
+                    target: processed.to,
+                    targetSource,
+                    policyTransports:
+                        resolveEndpointTransportPreference(targetSource === "explicit" ? String(processed.from || sourceSocket.id) : String(sourceSocket.id), String(processed.to || ""), endpointPolicyMap).transports.join("|") || "none"
+                })
             );
         }
-        console.warn(`[Router] No target client for deviceId: ${processed.to}`, `targetSource=${targetSource}`);
+        console.warn(
+            formatBridgeSocketLog("[Router] No target client for deviceId", {
+                deviceId: processed.to,
+                targetSource
+            })
+        );
     };
 
     const multicastMessage = (sourceSocket: Socket, msg: any, deviceIds?: string[]): void => {
@@ -503,7 +582,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 const isEndpoint = airpadRouter.isEndpoint(sourceSocket);
                 if (!(raw instanceof Uint8Array) && !Buffer.isBuffer(raw) && !(raw instanceof ArrayBuffer)) {
                     if (isTunnelDebug) {
-                        console.log(`[Router] Binary tunnel skipped: unsupported payload type`, `type=${typeof raw}`);
+                    console.log(
+                        formatBridgeSocketLog("[Router] Binary tunnel skipped: unsupported payload type", {
+                            socket: sourceSocket.id,
+                            type: typeof raw
+                        })
+                    );
                     }
                     return false;
                 }
@@ -511,16 +595,22 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 if (!tunnelTargets.length) {
                     if (!isEndpoint) {
                         if (isTunnelDebug) {
-                            console.log(
-                                `[Router] Binary local handling skipped for non-endpoint socket`,
-                                `socket=${sourceSocket.id}`,
-                                `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`
-                            );
+                        console.log(
+                            formatBridgeSocketLog("[Router] Binary local handling skipped for non-endpoint socket", {
+                                socket: sourceSocket.id,
+                                via: airpadRouter.getRouteHint(sourceSocket) || "?"
+                            })
+                        );
                         }
                         return false;
                     }
                     if (isTunnelDebug) {
-                        console.log(`[Router] Binary tunnel target unavailable`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
+                    console.log(
+                        formatBridgeSocketLog("[Router] Binary tunnel target unavailable", {
+                            socket: sourceSocket.id,
+                            via: airpadRouter.getRouteHint(sourceSocket) || "?"
+                        })
+                    );
                     }
                     return false;
                 }
@@ -528,30 +618,62 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                     const targetDelivered = airpadRouter.forwardToAirpadTargets(sourceSocket, raw, { to: target, type: "binary" });
                     if (targetDelivered) {
                         if (isTunnelDebug) {
-                            console.log(`[Router] OUT(tunnel-binary)`, `socket=${sourceSocket.id}`, `target=${target}`);
+                        console.log(
+                            formatBridgeSocketLog("[Router] OUT(tunnel-binary)", {
+                                socket: sourceSocket.id,
+                                target,
+                                targetSource: "explicit"
+                            })
+                        );
                         }
                         return true;
                     }
                     if (airpadRouter.forwardBinaryToBridge(sourceSocket, raw, target)) {
                     if (isTunnelDebug) {
-                        console.log(`[Router] OUT(tunnel-binary-bridge)`, `socket=${sourceSocket.id}`, `target=${target}`, `targetSource=explicit`);
+                        console.log(
+                            formatBridgeSocketLog("[Router] OUT(tunnel-binary-bridge)", {
+                                socket: sourceSocket.id,
+                                target,
+                                targetSource: "explicit"
+                            })
+                        );
                     }
                         return true;
                     }
                 }
                 if (isTunnelDebug) {
                     const knownTunnelTargets = airpadRouter.getTunnelTargets().filter((key) => key);
-                    console.log(`[Router] Binary tunnel attempt`, `socket=${sourceSocket.id}`, `forwarded=false`, `target=${tunnelTargets.join("|")}`, `known=${knownTunnelTargets.join(",")}`);
+                console.log(
+                    formatBridgeSocketLog("[Router] Binary tunnel attempt", {
+                        socket: sourceSocket.id,
+                        forwarded: false,
+                        target: tunnelTargets.join("|"),
+                        known: knownTunnelTargets.join(",")
+                    })
+                );
                 }
                 if (isTunnelDebug) {
                     const bridgeEnabled = networkContext?.sendToBridge instanceof Function;
-                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`, `target=${tunnelTargets.join("|")}`, `bridgeEnabled=${bridgeEnabled}`);
+                console.warn(
+                    formatBridgeSocketLog("[Router] Binary tunnel target not found", {
+                        socket: sourceSocket.id,
+                        target: tunnelTargets.join("|"),
+                        bridgeEnabled,
+                        targetSource: "explicit"
+                    })
+                );
                     if (!bridgeEnabled) {
-                        console.warn(`[Router] Binary tunnel dropped`, `reason=no bridge connector available`, `socket=${sourceSocket.id}`, `via=${airpadRouter.getRouteHint(sourceSocket) || "?"}`);
+                    console.warn(
+                        formatBridgeSocketLog("[Router] Binary tunnel dropped", {
+                            reason: "no bridge connector available",
+                            socket: sourceSocket.id,
+                            via: airpadRouter.getRouteHint(sourceSocket) || "?"
+                        })
+                    );
                     }
                 }
                 if (!isTunnelDebug) {
-                    console.warn(`[Router] Binary tunnel target not found for ${sourceSocket.id}`);
+                    console.warn(formatBridgeSocketLog("[Router] Binary tunnel target not found", { socket: sourceSocket.id, targetSource: "explicit" }));
                 }
                 return false;
             },

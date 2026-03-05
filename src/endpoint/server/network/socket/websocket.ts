@@ -75,6 +75,43 @@ const isIpAddress = (value: string): boolean => {
     return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) || /^[0-9a-fA-F:]+$/.test(value);
 };
 
+const isWebSocketTunnelDebug = (): boolean => {
+    return pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
+};
+
+const getWebSocketProtocol = (req: any): "ws" | "wss" => {
+    return req?.socket?.encrypted === true ? "wss" : "ws";
+};
+
+const formatWsFrameLog = (
+    direction: string,
+    req: any,
+    info: ClientInfo,
+    frame: any,
+    target?: string,
+    delivered = false
+): string => {
+    const localAddress = req?.socket?.localAddress || "unknown";
+    const localPort = req?.socket?.localPort || "";
+    const remoteAddress = req?.socket?.remoteAddress || "unknown";
+    const remotePort = req?.socket?.remotePort || "";
+    const normalizedTarget = String(frame?.to || target || "").trim();
+    const source = String(frame?.from || info.id || info.deviceId || "unknown");
+    const type = String(frame?.type || "").trim();
+    return [
+        `[ws] ${direction}`,
+        `  proto=${getWebSocketProtocol(req)}`,
+        `  local=${localAddress}:${localPort}`,
+        `  remote=${remoteAddress}:${remotePort}`,
+        `  userId=${info.userId || "unknown"}`,
+        `  deviceId=${info.deviceId || "unknown"}`,
+        `  from=${source}`,
+        `  type=${type || "unknown"}`,
+        `  to=${normalizedTarget || "-"}`,
+        `  delivered=${delivered ? "yes" : "no"}`
+    ].join("\n");
+};
+
 const parsePort = (raw?: unknown): number | undefined => {
     if (typeof raw === "number" || typeof raw === "string") {
         const parsed = parsePortableInteger(raw);
@@ -116,6 +153,34 @@ const isTcpTargetAllowed = (host: string, explicitPort: number | undefined): boo
     if (explicitAllowed.size > 0) return false;
 
     return !!explicitPortHostOverride(host, explicitPort);
+};
+
+const formatInboundWsConnection = (
+    req: any,
+    userId: string,
+    deviceId: string,
+    activeArchetype: string,
+    localArchetype: string,
+    mode: string,
+    requestedPeerId: string,
+    peerLabel: string
+): string => {
+    const localAddress = req?.socket?.localAddress || "unknown";
+    const localPort = req?.socket?.localPort || "";
+    const remoteAddress = req?.socket?.remoteAddress || "unknown";
+    const remotePort = req?.socket?.remotePort || "";
+    return [
+        "[bridge.connector] inbound ws connection",
+        `  proto=${getWebSocketProtocol(req)}`,
+        `  local=${localAddress}:${localPort}`,
+        `  remote=${remoteAddress}:${remotePort}`,
+        `  mode=${mode}`,
+        `  userId=${userId || "unknown"}`,
+        `  deviceId=${deviceId || "unknown"}`,
+        `  peerId=${requestedPeerId || "-"}`,
+        `  peerLabel=${peerLabel || "-"}`,
+        `  archetype(local=${localArchetype}, remote=${activeArchetype})`
+    ].join("\n");
 };
 
 const explicitPortHostOverride = (host: string, explicitPort?: number): boolean => {
@@ -214,7 +279,7 @@ const resolveTargetAlias = (value: string): string[] => {
         return input.slice(colon + 1);
     };
 
-    const stripLanPrefix = (input: string): string => input.replace(/^(?:l|p)-/, "");
+    const stripLanPrefix = (input: string): string => input.replace(/^(?:l|p|h)-/, "");
 
     const items = new Set<string>();
     const add = (entry: string | undefined) => {
@@ -251,6 +316,48 @@ const normalizePeerLabel = (userId: string, rawDeviceId: string, rawLabel: strin
         .replace(/^-+|-+$/g, "")
         .slice(0, 48);
     return sanitized || `${userPart}-peer-${hashSuffix(labelSource)}`;
+};
+
+const expandClientAlias = (value: string): string[] => {
+    const raw = normalizeSocketPeer(value);
+    if (!raw) return [];
+    const candidates = new Set<string>();
+    const add = (entry: string | undefined) => {
+        const normalized = String(entry || "").trim().toLowerCase();
+        if (!normalized) return;
+        candidates.add(normalized);
+    };
+
+    const stripPort = (input: string): string => {
+        if (!input.includes(":")) return input;
+        if (/^\[[^\]]+\]:\d{1,5}$/.test(input)) {
+            return input.slice(0, input.lastIndexOf("]") + 1);
+        }
+        if (/^[^:]+:\d{1,5}$/.test(input)) {
+            return input.slice(0, input.lastIndexOf(":"));
+        }
+        return input;
+    };
+
+    const stripRolePrefix = (input: string): string => {
+        const normalized = input.toLowerCase();
+        if (/^[hlp]-/.test(normalized)) return normalized.slice(2);
+        if (/^l_/.test(normalized)) return normalized.slice(2);
+        if (/^p_/.test(normalized)) return normalized.slice(2);
+        if (/^h_/.test(normalized)) return normalized.slice(2);
+        return normalized;
+    };
+
+    const rawNoPort = stripPort(raw);
+    add(raw);
+    add(rawNoPort);
+    const noRole = stripRolePrefix(raw);
+    add(noRole);
+    add(stripPort(noRole));
+    add(raw.replace(/^[hlp]-/, "l-"));
+    add(raw.replace(/^[hlp]-/, "p-"));
+    add(raw.replace(/^[hlp]-/, "h-"));
+    return Array.from(candidates);
 };
 
 export const createWsServer = (app: FastifyInstance): WsHub => {
@@ -307,12 +414,56 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     };
     server.on("upgrade", upgradeHandler);
 
+    const isPolicyKnownClient = (userId: string, userKey: string): boolean => {
+        const normalizedUserId = normalizeSocketPeer(userId);
+        const normalizedUserKey = String(userKey || "").trim().toLowerCase();
+        if (!normalizedUserId || !normalizedUserKey) return false;
+        const endpointIds = (config as any)?.endpointIDs;
+        if (!endpointIds || typeof endpointIds !== "object") return false;
+
+        const userAliases = new Set(expandClientAlias(normalizedUserId));
+        for (const [policyIdRaw, policyRaw] of Object.entries(endpointIds)) {
+            const policy = (policyRaw || {}) as Record<string, any>;
+            const policyId = String(policyIdRaw || "").trim().toLowerCase();
+            if (!policyId) continue;
+
+            const policyAliases = new Set<string>(expandClientAlias(policyId));
+            const policyOrigins = Array.isArray(policy.origins) ? policy.origins : [];
+            for (const origin of policyOrigins) {
+                for (const originAlias of expandClientAlias(String(origin || ""))) {
+                    policyAliases.add(originAlias);
+                    policyAliases.add(`l-${originAlias}`);
+                    policyAliases.add(`h-${originAlias}`);
+                    policyAliases.add(`p-${originAlias}`);
+                }
+            }
+
+            const policyTokens = Array.isArray(policy.tokens) ? policy.tokens : [];
+            const normalizedTokens = policyTokens.map((token: unknown) => String(token || "").trim().toLowerCase()).filter(Boolean);
+            const wildcardToken = normalizedTokens.includes("*");
+            const tokenMatches = wildcardToken || normalizedTokens.includes(normalizedUserKey) || normalizedTokens.length === 0;
+
+            let aliasMatch = false;
+            for (const userAlias of userAliases) {
+                if (policyAliases.has(userAlias)) {
+                    aliasMatch = true;
+                    break;
+                }
+            }
+            if (aliasMatch && tokenMatches) return true;
+        }
+        return false;
+    };
+
     const verify = async (userId?: string, userKey?: string) => {
         if (!userId || !userKey) return null;
         try {
             const settings = await loadUserSettings(userId, userKey);
             return settings;
         } catch {
+            if (isPolicyKnownClient(userId, userKey)) {
+                return {} as any;
+            }
             return null;
         }
     };
@@ -577,6 +728,20 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             peerId: isReverse ? requestedPeerId : undefined,
             connectedAt: Date.now()
         };
+        if (isReverse) {
+            console.log(
+                formatInboundWsConnection(
+                    req,
+                    userId || "",
+                    normalizedDeviceId || "",
+                    String(activeArchetype || ""),
+                    String(localArchetype || ""),
+                    mode,
+                    requestedPeerId || "",
+                    peerLabel || ""
+                )
+            );
+        }
         clients.set(ws, info);
         if (!namespaces.has(info.userIdKey)) namespaces.set(info.userIdKey, new Map());
         namespaces.get(info.userIdKey)!.set(info.id, info);
@@ -663,9 +828,24 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                     ];
                     return frameTargetAliases.some((alias) => alias && aliases.includes(alias));
                 });
+            if (isWebSocketTunnelDebug()) {
+                console.log(
+                    formatWsFrameLog("IN", req, info, frame, normalizedFrameTo || frame.to || "", false)
+                );
+            }
                 if (target) {
                     target.ws?.send?.(JSON.stringify({ type, payload, from: frame.from || info.id, via: "ws" }));
+                if (isWebSocketTunnelDebug()) {
+                    console.log(
+                        formatWsFrameLog("OUT", req, info, { ...frame, to: target?.deviceId || target?.peerId || frame.to }, true)
+                    );
+                }
                 } else {
+                if (isWebSocketTunnelDebug()) {
+                    console.log(
+                        formatWsFrameLog("MISS", req, info, frame, normalizedFrameTo || frame.to || "", false)
+                    );
+                }
                     if (api.onUnknownTarget) {
                         api.onUnknownTarget(info.userIdKey, normalizedFrameTo || frame.to, frame);
                     }
@@ -673,6 +853,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             } else {
                 // broadcast to same userId
                 multicast(info.userIdKey, { type, payload, from: frame.from || info.id, via: "ws" }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
+            if (isWebSocketTunnelDebug()) {
+                console.log(
+                    formatWsFrameLog("BROADCAST", req, info, { ...frame, to: "broadcast" }, true)
+                );
+            }
             }
         });
 

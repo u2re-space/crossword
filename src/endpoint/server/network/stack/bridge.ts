@@ -243,6 +243,23 @@ const formatCloseReason = (reason: Buffer | string | undefined): string => {
     }
 };
 
+const formatBridgeUrl = (url: string): string => {
+    if (!url) return "";
+    try {
+        const parsed = new URL(url);
+        const queryEntries = Array.from(parsed.searchParams.entries());
+        if (!queryEntries.length) {
+            return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+        }
+        const formattedQuery = queryEntries
+            .map(([key, value]) => `${key}=${value}`)
+            .join("\n  ");
+        return `${parsed.protocol}//${parsed.host}${parsed.pathname}\n  ${formattedQuery}`;
+    } catch {
+        return url;
+    }
+};
+
 const normalizeOriginList = (value: unknown): string[] => {
     if (Array.isArray(value)) {
         return value.map((item) => String(item || "").trim()).filter(Boolean);
@@ -668,7 +685,8 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             }
             activeEndpoint = endpoint;
             if (isTunnelDebug) {
-                console.info("[bridge.connector] connecting", `endpoint=${endpoint}`, `url=${wsUrl}`);
+                const readableWsUrl = formatBridgeUrl(wsUrl);
+                console.info(`[bridge.connector] connecting\n  endpoint=${endpoint}\n  url=${readableWsUrl}`);
             }
             socket = new WebSocket(wsUrl, {
                 rejectUnauthorized: shouldRejectUnauthorized
@@ -693,7 +711,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
         socket.on("open", () => {
             invalidCredentialBlockUntil = 0;
             if (isTunnelDebug) {
-                console.info("[bridge.connector] connected", `endpoint=${activeEndpoint}`);
+                console.info(`[bridge.connector] connected\n  endpoint=${activeEndpoint || "unknown"}\n  userId=${cfg.userId || "unknown"}\n  deviceId=${cfg.deviceId || "unknown"}\n  archetype=${cfg.archetype || "client-reverse"}`);
             }
             clearConnectTimeout();
             clearReconnect();

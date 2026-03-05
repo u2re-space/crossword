@@ -9,6 +9,36 @@ type LoggerLike = {
     info?: (obj: any, msg?: string) => void;
     warn?: (obj: any, msg?: string) => void;
     error?: (obj: any, msg?: string) => void;
+    debug?: (obj: any, msg?: string) => void;
+};
+
+type CorsPolicyLogEntry = {
+    allowedOrigins: string[];
+    source: string;
+    allowPrivateRfc1918: boolean;
+    allowPrivateNetworkOrigins: boolean;
+    allowUnknownOriginWithAirPadAuth: boolean;
+};
+
+const corsPolicyLogCache = new Set<string>();
+
+const formatCorsPolicyLog = (entry: CorsPolicyLogEntry): string => {
+    const lines = [
+        "[socket.io] CORS origin policy initialized",
+        `source=${entry.source}`,
+        `flags: allowPrivateRfc1918=${entry.allowPrivateRfc1918}, allowPrivateNetworkOrigins=${entry.allowPrivateNetworkOrigins}, allowUnknownOriginWithAirPadAuth=${entry.allowUnknownOriginWithAirPadAuth}`
+    ];
+    const allowedOrigins = entry.allowedOrigins || [];
+    const limit = 12;
+    lines.push(`allowedOrigins (total ${allowedOrigins.length})`);
+    const shown = allowedOrigins.slice(0, limit);
+    for (const origin of shown) {
+        lines.push(`  - ${origin}`);
+    }
+    if (allowedOrigins.length > limit) {
+        lines.push(`  ... (+${allowedOrigins.length - limit} more)`);
+    }
+    return lines.join("\n");
 };
 
 const parseAllowedOrigins = (): string[] => {
@@ -228,16 +258,19 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
     const allowUnknownOriginWithAirPadAuth = (pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", true) ?? pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)) !== false;
 
-    logger?.info?.(
-        {
-            allowedOrigins: effectiveAllowedOrigins,
-            source: allowedOrigins.length ? "CWS_SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins",
-            allowPrivateRfc1918: allowPrivateRfc1918,
-            allowPrivateNetworkOrigins,
-            allowUnknownOriginWithAirPadAuth
-        },
-        "[socket.io] CORS origin policy initialized"
-    );
+    const source = allowedOrigins.length ? "CWS_SOCKET_IO_ALLOWED_ORIGINS" : "default-local-origins";
+    const entry = {
+        allowedOrigins: effectiveAllowedOrigins,
+        source,
+        allowPrivateRfc1918,
+        allowPrivateNetworkOrigins,
+        allowUnknownOriginWithAirPadAuth
+    };
+    const cacheKey = `${source}|${effectiveAllowedOrigins.length}|${allowPrivateRfc1918}|${allowPrivateNetworkOrigins}|${allowUnknownOriginWithAirPadAuth}`;
+    if (!corsPolicyLogCache.has(cacheKey)) {
+        corsPolicyLogCache.add(cacheKey);
+        console.log(formatCorsPolicyLog(entry));
+    }
 
     return {
         transports: ["websocket", "polling"],

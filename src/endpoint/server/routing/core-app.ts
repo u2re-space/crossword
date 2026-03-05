@@ -89,13 +89,69 @@ const sendAdminIcon = (reply: FastifyReply) => {
 
 const debugRequestLoggingEnabled = (): boolean =>
     pickEnvBoolLegacy("REQUEST_DEBUG_LOGGING", true) !== false;
-const clipboardDebugLoggingEnabled = (): boolean =>
-    pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
 
-const maskClipboardBody = (req: FastifyRequest, maxChars: number): string | undefined => {
-    if (req?.url !== "/clipboard" && (req as any).url !== "/clipboard") return safeBodyPreview((req as any).body, maxChars);
-    if (clipboardDebugLoggingEnabled()) return safeBodyPreview((req as any).body, maxChars);
-    return "<omitted>";
+const hasClipboardPayloadHint = (body: unknown, url?: string): boolean => {
+    if (typeof url === "string" && url.toLowerCase() === "/api/broadcast" && typeof body === "object" && body !== null) {
+        const payload = body as Record<string, any>;
+        if (Array.isArray(payload.requests)) return true;
+        if (typeof (payload as any).action === "string" && String((payload as any).action).toLowerCase().includes("clipboard")) return true;
+        return false;
+    }
+    if (typeof url === "string" && url.toLowerCase() === "/clipboard") return true;
+    return false;
+};
+
+const sanitizeLogValue = (value: unknown): unknown => {
+    if (value === null || typeof value === "undefined") return value;
+    if (Array.isArray(value)) {
+        return value.map((entry) => sanitizeLogValue(entry));
+    }
+    if (typeof value === "object") {
+        if (Buffer.isBuffer(value)) {
+            return `<buffer:${value.length}>`;
+        }
+        if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+            const bytes = value instanceof ArrayBuffer ? value.byteLength : value.byteLength;
+            return `<binary:${bytes}>`;
+        }
+        const input = value as Record<string, any>;
+        const output: Record<string, any> = {};
+        const sensitiveKeys = new Set(["text", "body", "payload", "data", "clipboard", "content"]);
+        for (const key of Object.keys(input)) {
+            if (sensitiveKeys.has(key.toLowerCase())) {
+                const raw = input[key];
+                if (typeof raw === "string") {
+                    output[key] = raw.length ? `<redacted ${raw.length} chars>` : "";
+                } else if (Array.isArray(raw)) {
+                    output[key] = raw.map((entry) =>
+                        typeof entry === "string" && entry.length ? `<redacted ${entry.length} chars>` : sanitizeLogValue(entry)
+                    );
+                } else {
+                    output[key] = raw === null || typeof raw === "undefined" ? raw : sanitizeLogValue(raw);
+                }
+                continue;
+            }
+            output[key] = sanitizeLogValue(input[key]);
+        }
+        return output;
+    }
+    return value;
+};
+
+const tryPrettyJson = (body: unknown, maxChars: number): string => {
+    try {
+        if (typeof body === "string") {
+            const parsed = body.trim().startsWith("{") || body.trim().startsWith("[") ? JSON.parse(body) : undefined;
+            if (typeof parsed === "undefined") return body.length > maxChars ? `${body.slice(0, maxChars)}…(truncated)` : body;
+            const pretty = JSON.stringify(parsed, null, 2);
+            return pretty.length > maxChars ? `${pretty.slice(0, maxChars)}…(truncated)` : pretty;
+        }
+        const pretty = JSON.stringify(body, null, 2);
+        return pretty.length > maxChars ? `${pretty.slice(0, maxChars)}…(truncated)` : pretty;
+    } catch {
+        const fallback = safeBodyPreview(body, maxChars);
+        return fallback || "";
+    }
 };
 
 const safeBodyPreview = (body: unknown, maxChars: number): string | undefined => {
@@ -125,25 +181,175 @@ const safeBodyPreview = (body: unknown, maxChars: number): string | undefined =>
     }
 };
 
+const formatBodyPreview = (req: FastifyRequest, maxChars: number): string | undefined => {
+    const url = String((req as any).url || "").trim().toLowerCase();
+    const rawBody = (req as any).body;
+    if (typeof rawBody === "undefined") return undefined;
+
+    if (!debugRequestLoggingEnabled()) return undefined;
+    if (url === "/clipboard") {
+        if (typeof rawBody === "string") return "<clipboard text omitted>";
+        return tryPrettyJson(sanitizeLogValue(rawBody), maxChars);
+    }
+    if (url === "/api/broadcast" && hasClipboardPayloadHint(rawBody, url)) {
+        return tryPrettyJson(sanitizeLogValue(rawBody), maxChars);
+    }
+    if (typeof rawBody === "string") {
+        const asString = rawBody.trim();
+        if (asString.startsWith("{") || asString.startsWith("[")) {
+            return tryPrettyJson(asString, maxChars);
+        }
+    }
+    if (typeof rawBody === "object") {
+        return tryPrettyJson(sanitizeLogValue(rawBody), maxChars);
+    }
+    return safeBodyPreview(rawBody, maxChars);
+};
+
+const REQUEST_IDENTITY = Symbol("requestIdentity");
+
+const readHeaderValue = (headers: Record<string, unknown> | undefined, key: string): string => {
+    const value = headers?.[key];
+    if (typeof value === "string") return value.trim();
+    if (Array.isArray(value)) return String(value[0] || "").trim();
+    return "";
+};
+
+const normalizeTokenFromAuthorization = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    const bearerMatch = trimmed.match(/^bearer\s+(.+)$/i);
+    return bearerMatch?.[1]?.trim() || trimmed;
+};
+
+const resolveProtocolHint = (headers: Record<string, unknown> | undefined): string => {
+    const fromForwardedProto = readHeaderValue(headers, "x-forwarded-proto");
+    if (fromForwardedProto) return fromForwardedProto;
+    const fromForwardedProtocol = readHeaderValue(headers, "x-forwarded-protocol");
+    if (fromForwardedProtocol) return fromForwardedProtocol;
+    const fromForwardedScheme = readHeaderValue(headers, "x-forwarded-scheme");
+    if (fromForwardedScheme) return fromForwardedScheme;
+    const via = readHeaderValue(headers, "via");
+    return via ? "via-proxy" : "";
+};
+
+const resolveForwardedFromRequest = (headers: Record<string, unknown> | undefined): string => {
+    const forwardedFor = readHeaderValue(headers, "x-forwarded-for");
+    if (forwardedFor) return forwardedFor.split(",")[0].trim();
+    const realIp = readHeaderValue(headers, "x-real-ip");
+    if (realIp) return realIp;
+    return "";
+};
+
+const extractRequestIdentity = (req: FastifyRequest): {
+    userId: string;
+    clientId: string;
+    routeHint: string;
+    sourceHint: string;
+    token: string;
+    forwarded: string;
+} => {
+    const body = ((req as any).body || {}) as Record<string, any>;
+    const headers = (req.headers || {}) as Record<string, any>;
+    const userId = String(body.userId || body.clientId || "").trim();
+    const clientId = String(body.clientId || body.deviceId || "").trim();
+    const routeHint = String(body.route || body.to || body.targetId || body.targetDeviceId || "").trim();
+    const sourceHint = String(
+        body.from || body.source || body.sourceId || body.src || body.suggestedSource || body.routeSource || body._routeSource || ""
+    ).trim();
+    const headerAuth = normalizeTokenFromAuthorization(readHeaderValue(headers, "authorization"));
+    const token = String(
+        body.userKey || body.token || body.clientKey || readHeaderValue(headers, "x-auth-token") || headerAuth || ""
+    ).trim();
+    const protocolHint = resolveProtocolHint(headers);
+    const routeFromHeaders = readHeaderValue(headers, "x-route-source") || readHeaderValue(headers, "x-source-id") || readHeaderValue(headers, "x-source");
+    return {
+        userId,
+        clientId,
+        routeHint,
+        sourceHint,
+        token,
+        forwarded: resolveForwardedFromRequest(headers),
+        protocol: protocolHint,
+        sourceHeaderHint: routeFromHeaders
+    };
+};
+
+const formatRequestLog = (
+    req: FastifyRequest,
+    proto: string,
+    localPort: number | string | undefined,
+    remoteAddr: string | undefined,
+    bodyPreview: string | undefined,
+    identity: {
+        userId: string;
+        clientId: string;
+        routeHint: string;
+        sourceHint: string;
+        token: string;
+        forwarded: string;
+        protocol: string;
+        sourceHeaderHint: string;
+    }
+): string => {
+    const lines = [
+        `[req] ${proto}:${localPort || "?"} ${req.method} ${(req as any).url} from=${remoteAddr || "unknown"}`
+    ];
+    if (identity.userId || identity.clientId || identity.token || identity.sourceHint || identity.routeHint || identity.forwarded) {
+        lines.push(
+                `identity user=${identity.userId || "-"} client=${identity.clientId || "-"} source=${identity.sourceHint || "-"} route=${identity.routeHint || "-"} token=${identity.token || "-"} forwarded=${identity.forwarded || "none"} protocol=${identity.protocol || "na"} sourceHeader=${identity.sourceHeaderHint || "-"}`
+        );
+    }
+    if (bodyPreview) {
+        lines.push(`body=${bodyPreview}`);
+    }
+    return lines.join("\n");
+};
+
+const REQUEST_START_TIME = Symbol("requestStartTime");
+
+const formatResponseLog = (req: FastifyRequest, reply: any): string => {
+    const identity = (req as any)[REQUEST_IDENTITY] || {};
+    const socket: any = (req as any).socket;
+    const proto = socket?.encrypted ? "https" : "http";
+    const localPort = socket?.localPort;
+    const remoteAddr = (req as any).ip || socket?.remoteAddress;
+    const elapsedMs = (() => {
+        const start = (req as any)[REQUEST_START_TIME];
+        if (typeof start === "number") return `${(Date.now() - start).toFixed(2)}ms`;
+        return undefined;
+    })();
+    const status = typeof reply?.statusCode === "number" ? reply.statusCode : 0;
+    const reqId = (req as any).id ? ` reqId=${(req as any).id}` : "";
+    const timeLine = elapsedMs ? ` in ${elapsedMs}` : "";
+    const userId = String(identity.userId || "").trim() || "unknown";
+    return `[res] ${proto}:${localPort || "?"} ${req.method} ${(req as any).url} status=${status}${timeLine}${reqId} from=${remoteAddr || "unknown"} user=${userId}`;
+};
+
 const registerDebugRequestLogging = async (app: FastifyInstance): Promise<void> => {
     if (!debugRequestLoggingEnabled()) return;
         const configuredMaxChars = pickEnvNumberLegacy("REQUEST_DEBUG_LOG_BODY_MAX_CHARS", 64 * 1024);
         const resolvedMaxChars = parsePortableInteger(configuredMaxChars) ?? 64 * 1024;
         const maxChars = Math.max(256, Math.min(1024 * 1024, resolvedMaxChars));
 
+    app.addHook("onRequest", async (req) => {
+        (req as any)[REQUEST_START_TIME] = Date.now();
+    });
+
     app.addHook("preHandler", async (req: FastifyRequest, _reply) => {
         const socket: any = (req as any).socket;
         const proto = socket?.encrypted ? "https" : "http";
         const localPort = socket?.localPort;
         const remoteAddr = (req as any).ip || socket?.remoteAddress;
-        const bodyPreview = maskClipboardBody(req as any, maxChars);
+        const bodyPreview = formatBodyPreview(req as any, maxChars);
+        const identity = extractRequestIdentity(req);
+        (req as any)[REQUEST_IDENTITY] = identity;
+        const msg = formatRequestLog(req, proto, localPort, remoteAddr, bodyPreview, identity);
+        console.log(msg);
+    });
 
-        const msg =
-            bodyPreview !== undefined
-                ? `[req] ${proto}:${localPort} ${req.method} ${(req as any).url} from=${remoteAddr} body=${bodyPreview}`
-                : `[req] ${proto}:${localPort} ${req.method} ${(req as any).url} from=${remoteAddr}`;
-
-        (app.log?.info ? app.log.info(msg) : console.log(msg));
+    app.addHook("onResponse", async (req, reply) => {
+        console.log(formatResponseLog(req as any, reply));
     });
 };
 
