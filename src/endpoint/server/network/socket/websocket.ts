@@ -83,33 +83,148 @@ const getWebSocketProtocol = (req: any): "ws" | "wss" => {
     return req?.socket?.encrypted === true ? "wss" : "ws";
 };
 
+type WebSocketFrameActor = {
+    id?: string;
+    token?: string;
+    ip?: string;
+    raw?: string;
+    source?: "socket-id" | "device" | "user" | "unknown";
+};
+
+const isSocketUuid = (value: string): boolean => {
+    const candidate = String(value || "").trim().toLowerCase();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(candidate);
+};
+
+const stripFramePort = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("[") && raw.includes("]:")) {
+        const close = raw.lastIndexOf("]:");
+        return raw.slice(1, close);
+    }
+    if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(raw)) {
+        return raw.replace(/:\d+$/, "");
+    }
+    const colon = raw.lastIndexOf(":");
+    if (colon <= 0) return raw;
+    return raw.substring(0, colon);
+};
+
+const buildWsActor = (raw: string, clients: Map<WebSocket, ClientInfo>, fallbackClient: ClientInfo): WebSocketFrameActor => {
+    const rawTrimmed = String(raw || "").trim();
+    if (!rawTrimmed) {
+        return { raw: "", source: "unknown" };
+    }
+    const normalized = normalizeSocketPeer(rawTrimmed);
+    const byConnection = Array.from(clients.values()).find((entry) => {
+        if (normalizeSocketPeer(entry.id) === normalized) return true;
+        if (normalizeSocketPeer(entry.deviceId || "") === normalized) return true;
+        if (normalizeSocketPeer(entry.peerId || "") === normalized) return true;
+        if (normalizeSocketPeer(entry.userId || "") === normalized) return true;
+        const aliases = [
+            ...resolveTargetAlias(entry.deviceId || ""),
+            ...resolveTargetAlias(entry.peerId || ""),
+            normalizeSocketPeer(entry.userId || ""),
+            normalizeSocketPeer(entry.id)
+        ];
+        return aliases.some((alias) => alias === normalized);
+    });
+    if (!byConnection) {
+        return {
+            raw: rawTrimmed,
+            source: isSocketUuid(rawTrimmed) ? "socket-id" : "unknown",
+            id: isSocketUuid(rawTrimmed) ? rawTrimmed : undefined,
+            ip: byConnection?.remoteAddress
+        };
+    }
+    const isCurrent = byConnection.id === fallbackClient.id;
+    return {
+        raw: rawTrimmed,
+        source: isSocketUuid(rawTrimmed) ? "socket-id" : byConnection.deviceId ? "device" : "user",
+        id: byConnection.deviceId || byConnection.peerId || byConnection.id,
+        token: byConnection.userKey || (isCurrent ? fallbackClient.userKey : undefined),
+        ip: byConnection.remoteAddress
+    };
+};
+
+const actorToken = (actor: WebSocketFrameActor, fallbackClient: ClientInfo): string => {
+    return actor.token || fallbackClient.userKey || "-";
+};
+
+const normalizeOptionalIp = (value: string | undefined): string => {
+    const trimmed = String(value || "").trim();
+    return trimmed || "-";
+};
+
 const formatWsFrameLog = (
     direction: string,
     req: any,
     info: ClientInfo,
     frame: any,
+    clients: Map<WebSocket, ClientInfo>,
     target?: string,
+    targetClient?: ClientInfo,
+    sourceClient?: ClientInfo,
     delivered = false
 ): string => {
     const localAddress = req?.socket?.localAddress || "unknown";
     const localPort = req?.socket?.localPort || "";
     const remoteAddress = req?.socket?.remoteAddress || "unknown";
     const remotePort = req?.socket?.remotePort || "";
-    const normalizedTarget = String(frame?.to || target || "").trim();
-    const source = String(frame?.from || info.id || info.deviceId || "unknown");
+    const resolvedFrameSource = buildWsActor(String(frame?.from || ""), clients, info);
+    const resolvedTarget = buildWsActor(String(target || frame?.to || ""), clients, info);
+    const directionTarget = String(target || frame?.to || "").trim();
+    const targetKind = isIpLike(stripFramePort(directionTarget)) ? "ip" : "id";
     const type = String(frame?.type || "").trim();
-    return [
+    const fromToken = actorToken(resolvedFrameSource, info);
+    const toToken = actorToken(resolvedTarget, targetClient ? targetClient : info);
+    const byToken = info.userKey || fromToken;
+    const fromId = resolvedFrameSource.id || (isSocketUuid(resolvedFrameSource.raw || "") ? resolvedFrameSource.raw : "-");
+    const toId = targetClient?.deviceId || targetClient?.peerId || targetClient?.id || targetClient?.userId || resolvedTarget.id || "-";
+    const fromIp = sourceClient?.remoteAddress || resolvedFrameSource.ip || "-";
+    const toIp = targetClient?.remoteAddress || (targetKind === "ip" ? stripFramePort(directionTarget) : resolvedTarget.ip || "-");
+    const fromKind = resolvedFrameSource.source || "unknown";
+    const toKind = targetKind === "ip" ? "ip" : targetClient ? "id" : resolvedTarget.source || "unknown";
+    const srcId = fromId;
+    const dstId = toId;
+    const srcIp = fromIp;
+    const dstIp = toIp;
+    const srcToken = fromToken;
+    const dstToken = toToken;
+    const lines: string[] = [
         `[ws] ${direction}`,
         `  proto=${getWebSocketProtocol(req)}`,
         `  local=${localAddress}:${localPort}`,
         `  remote=${remoteAddress}:${remotePort}`,
         `  userId=${info.userId || "unknown"}`,
         `  deviceId=${info.deviceId || "unknown"}`,
-        `  from=${source}`,
+        `  byToken=${byToken}`,
+        `  from=${resolvedFrameSource.raw || "-"}`,
+        `  fromKind=${fromKind}`,
+        `  fromId=${fromId}`,
+        `  fromIp=${fromIp}`,
+        `  fromToken=${fromToken}`,
+        `  srcId=${srcId}`,
+        `  srcIp=${srcIp}`,
+        `  srcToken=${srcToken}`,
+        `  toToken=${toToken}`,
+        `  dstId=${dstId}`,
+        `  dstIp=${normalizeOptionalIp(dstIp)}`,
+        `  dstToken=${dstToken}`,
         `  type=${type || "unknown"}`,
-        `  to=${normalizedTarget || "-"}`,
-        `  delivered=${delivered ? "yes" : "no"}`
-    ].join("\n");
+        `  to=${directionTarget || "-"}`,
+        `  toKind=${toKind}`
+    ];
+    if (targetKind === "ip") {
+        lines.push(`  toIp=${stripFramePort(directionTarget)}`);
+        lines.push(`  toIpKnown=${toIp}`);
+    } else {
+        lines.push(`  toId=${toId}`);
+        lines.push(`  toIp=${toIp}`);
+    }
+    lines.push(`  delivered=${delivered ? "yes" : "no"}`);
+    return lines.join("\n");
 };
 
 const parsePort = (raw?: unknown): number | undefined => {
@@ -802,10 +917,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             const frameType = String(parsed?.type || "")
                 .trim()
                 .toLowerCase();
-            if (frameType === "pong" || frameType === "hello") {
+            if (frameType === "pong" || frameType === "hello" || frameType === "ping") {
                 return;
             }
-            const frame = normalizeSocketFrame(parsed, info.id, {
+            const frameSource = info.deviceId || info.id;
+            const frame = normalizeSocketFrame(parsed, frameSource, {
                 nodeId: info.userId,
                 peerId: info.deviceId,
                 via: "ws",
@@ -828,36 +944,39 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                     ];
                     return frameTargetAliases.some((alias) => alias && aliases.includes(alias));
                 });
-            if (isWebSocketTunnelDebug()) {
-                console.log(
-                    formatWsFrameLog("IN", req, info, frame, normalizedFrameTo || frame.to || "", false)
-                );
-            }
+                if (isWebSocketTunnelDebug()) {
+                    console.log(
+                        formatWsFrameLog("IN", req, info, frame, clients, normalizedFrameTo || frame.to || "", undefined, info, false)
+                    );
+                }
                 if (target) {
-                    target.ws?.send?.(JSON.stringify({ type, payload, from: frame.from || info.id, via: "ws" }));
-                if (isWebSocketTunnelDebug()) {
-                    console.log(
-                        formatWsFrameLog("OUT", req, info, { ...frame, to: target?.deviceId || target?.peerId || frame.to }, true)
-                    );
-                }
+                    const frameFrom = frame.from || frameSource;
+                    const frameTo = target?.deviceId || target?.peerId || frame.to;
+                    target.ws?.send?.(JSON.stringify({ type, payload, from: frameFrom, via: "ws" }));
+                    if (isWebSocketTunnelDebug()) {
+                        console.log(
+                            formatWsFrameLog("OUT", req, info, { ...frame, from: frameFrom, to: frameTo }, clients, frameTo, target, info, true)
+                        );
+                    }
                 } else {
-                if (isWebSocketTunnelDebug()) {
-                    console.log(
-                        formatWsFrameLog("MISS", req, info, frame, normalizedFrameTo || frame.to || "", false)
-                    );
-                }
+                    if (isWebSocketTunnelDebug()) {
+                        console.log(
+                            formatWsFrameLog("MISS", req, info, frame, clients, normalizedFrameTo || frame.to || "", undefined, info, false)
+                        );
+                    }
                     if (api.onUnknownTarget) {
                         api.onUnknownTarget(info.userIdKey, normalizedFrameTo || frame.to, frame);
                     }
                 }
             } else {
                 // broadcast to same userId
-                multicast(info.userIdKey, { type, payload, from: frame.from || info.id, via: "ws" }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
-            if (isWebSocketTunnelDebug()) {
-                console.log(
-                    formatWsFrameLog("BROADCAST", req, info, { ...frame, to: "broadcast" }, true)
-                );
-            }
+                const frameFrom = frame.from || frameSource;
+                multicast(info.userIdKey, { type, payload, from: frameFrom, via: "ws" }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
+                if (isWebSocketTunnelDebug()) {
+                    console.log(
+                        formatWsFrameLog("BROADCAST", req, info, { ...frame, from: frameFrom, to: "broadcast" }, clients, "broadcast", undefined, info, true)
+                    );
+                }
             }
         });
 

@@ -34,6 +34,7 @@ type BridgeConnectorConfig = {
     deviceId?: string;
     namespace?: string;
     reconnectMs?: number;
+    roles?: string[];
 };
 
 type EndpointConfig = {
@@ -182,6 +183,21 @@ const normalizeHost = (value: string): string => {
     return String(value || "")
         .trim()
         .toLowerCase();
+};
+
+const inferDisplayConnectorRolePair = (cfg: Required<BridgeConnectorConfig>): string => {
+    const parseClientArchetype = (value: unknown): "client-forward" | "client-reverse" | undefined => {
+        const parsed = parseWsArchetype(value);
+        if (parsed === "client-forward" || parsed === "client-reverse") return parsed;
+        return undefined;
+    };
+    const configuredRoles = Array.isArray(cfg.roles) ? cfg.roles : [];
+    const localClientArchetype =
+        configuredRoles.map((entry) => parseClientArchetype(entry)).find((entry) => entry === "client-forward") ||
+        parseClientArchetype(cfg.archetype) ||
+        "client-reverse";
+    const remoteArchetype = localClientArchetype === "client-forward" ? "server-forward" : "server-reverse";
+    return `${localClientArchetype} + ${remoteArchetype}`;
 };
 
 const normalizeInterfaceAddress = (value: string): string => {
@@ -452,6 +468,7 @@ const normalizeBridgeConfig = (config: EndpointConfig): Required<BridgeConnector
         enabled: true,
         mode,
         archetype: describeArchetype(canonicalConnectorArchetype(envArchetype || bridge.archetype, config.roles as string[] | undefined)),
+        roles: Array.isArray(config.roles) ? config.roles.map((entry) => String(entry)).filter(Boolean) : [],
         bridgeMasterKey: bridge.bridgeMasterKey,
         bridgeSigningPrivateKeyPem: bridge.bridgeSigningPrivateKeyPem,
         bridgePeerPublicKeyPem: bridge.bridgePeerPublicKeyPem,
@@ -569,7 +586,19 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
         };
     }
     if (isTunnelDebug) {
-            console.info("[bridge.connector] config accepted", `enabled=${cfg.enabled}`, `mode=${cfg.mode}`, `archetype=${cfg.archetype}`, `userId=${maskValue(cfg.userId)}`, `endpoint=${cfg.endpointUrl}`, `endpoints=${formatEndpointList(cfg.endpoints)}`, `namespace=${cfg.namespace}`, `deviceId=${cfg.deviceId}`, `clientId=${cfg.clientId || cfg.deviceId}`);
+        console.info(
+            "[bridge.connector] config accepted",
+            `enabled=${cfg.enabled}`,
+            `mode=${cfg.mode}`,
+            `archetype=${cfg.archetype}`,
+            `rolePair=${inferDisplayConnectorRolePair(cfg)}`,
+            `userId=${maskValue(cfg.userId)}`,
+            `endpoint=${cfg.endpointUrl}`,
+            `endpoints=${formatEndpointList(cfg.endpoints)}`,
+            `namespace=${cfg.namespace}`,
+            `deviceId=${cfg.deviceId}`,
+            `clientId=${cfg.clientId || cfg.deviceId}`
+        );
     }
 
     const localHosts = getLocalBridgeHosts();
@@ -686,7 +715,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             activeEndpoint = endpoint;
             if (isTunnelDebug) {
                 const readableWsUrl = formatBridgeUrl(wsUrl);
-                console.info(`[bridge.connector] connecting\n  endpoint=${endpoint}\n  url=${readableWsUrl}`);
+                console.info(`[bridge.connector] connecting\n  endpoint=${endpoint}\n  url=${readableWsUrl}\n  rolePair=${inferDisplayConnectorRolePair(cfg)}`);
             }
             socket = new WebSocket(wsUrl, {
                 rejectUnauthorized: shouldRejectUnauthorized
@@ -711,7 +740,9 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
         socket.on("open", () => {
             invalidCredentialBlockUntil = 0;
             if (isTunnelDebug) {
-                console.info(`[bridge.connector] connected\n  endpoint=${activeEndpoint || "unknown"}\n  userId=${cfg.userId || "unknown"}\n  deviceId=${cfg.deviceId || "unknown"}\n  archetype=${cfg.archetype || "client-reverse"}`);
+                console.info(
+                    `[bridge.connector] connected\n  endpoint=${activeEndpoint || "unknown"}\n  userId=${cfg.userId || "unknown"}\n  deviceId=${cfg.deviceId || "unknown"}\n  archetype=${cfg.archetype || "client-reverse"}\n  rolePair=${inferDisplayConnectorRolePair(cfg)}`
+                );
             }
             clearConnectTimeout();
             clearReconnect();

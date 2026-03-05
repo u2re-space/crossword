@@ -2195,6 +2195,35 @@ export const registerOpsRoutes = async (
         };
     };
 
+const KNOWN_ARCHETYPE_ROLES = new Set([
+    "server-forward",
+    "server-reverse",
+    "client-forward",
+    "client-reverse"
+]);
+
+const normalizeArchetypeRole = (value: unknown): string => String(value || "").trim().toLowerCase();
+
+const buildConnectionRoleSet = (values: Array<unknown>): string[] => {
+    const result = new Set<string>();
+    for (const raw of values) {
+        const value = normalizeArchetypeRole(raw);
+        if (!value || !KNOWN_ARCHETYPE_ROLES.has(value)) continue;
+        result.add(value);
+    }
+    return Array.from(result);
+};
+
+const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteArchetype?: unknown; role?: unknown; archetype?: unknown }): string[] => {
+    const fromRemoteArchetype = entry.remoteArchetype;
+    const fromLocalArchetype = entry.localArchetype;
+    const fallback = normalizeArchetypeRole(entry.role);
+    const fallbackFromLegacy = KNOWN_ARCHETYPE_ROLES.has(fallback) ? [fallback] : [];
+    const fallbackFromArchetype = normalizeArchetypeRole(entry.archetype);
+    const fallbackFromLegacyArchetype = KNOWN_ARCHETYPE_ROLES.has(fallbackFromArchetype) ? [fallbackFromArchetype] : [];
+    return buildConnectionRoleSet([fromLocalArchetype, fromRemoteArchetype, ...fallbackFromLegacy, ...fallbackFromLegacyArchetype]);
+};
+
     const collectSocketIoConnectionRows = (userId: string) => {
         if (!socketIoBridge?.getConnectionRegistry || typeof socketIoBridge.getConnectionRegistry !== "function") {
             const socketIoDevices = Array.from(new Set(Array.isArray(socketIoBridge?.getConnectedDevices?.() ) ? socketIoBridge.getConnectedDevices() : []));
@@ -2231,6 +2260,12 @@ export const registerOpsRoutes = async (
                 localNode,
                 peerNode
             });
+            const localRoleSet = buildConnectionLogicalRoles({
+                localArchetype: entry.localArchetype,
+                remoteArchetype: entry.remoteArchetype,
+                role: entry.role,
+                archetype: entry.archetype
+            });
             return {
                 id: entry.id,
                 transport: "socketio" as const,
@@ -2241,6 +2276,9 @@ export const registerOpsRoutes = async (
                 userId: entry.userId || localNode || "socketio",
                 sourceId: entry.sourceId,
                 namespace: entry.namespace || "socketio",
+                localArchetype: entry.localArchetype,
+                remoteArchetype: entry.remoteArchetype,
+                localRoleSet,
                 alias: entry.alias || entry.sourceId || entry.userId || entry.id,
                 remoteAddress: entry.remoteAddress,
                 remotePort: entry.remotePort,
@@ -2267,6 +2305,12 @@ export const registerOpsRoutes = async (
                 localNode,
                 peerNode
             });
+            const localRoleSet = buildConnectionLogicalRoles({
+                localArchetype: entry.localArchetype,
+                remoteArchetype: entry.remoteArchetype,
+                role: entry.reverse ? "server-reverse" : "server-forward",
+                archetype: entry.remoteArchetype
+            });
             return {
                 id: entry.id,
                 transport: "ws" as const,
@@ -2278,6 +2322,9 @@ export const registerOpsRoutes = async (
                 sourceId: entry.peerId || entry.deviceId || entry.id,
                 namespace: entry.namespace || "ws",
                 alias: entry.peerId || entry.deviceId || entry.id,
+                localArchetype: entry.localArchetype,
+                remoteArchetype: entry.remoteArchetype,
+                localRoleSet,
                 connectionNodeId: canonical.nodeId,
                 targetNodeId: canonical.peerNodeId,
                 remoteAddress: entry.remoteAddress,
@@ -2362,6 +2409,35 @@ export const registerOpsRoutes = async (
         return {
             allRows: filteredRows
         };
+    };
+
+    const summarizeSharedConnectionRoles = (rows: Array<{
+        nodeId?: unknown;
+        localArchetype?: unknown;
+        remoteArchetype?: unknown;
+        archetype?: unknown;
+        role?: unknown;
+        scope?: string;
+    }>) => {
+        const byNode = new Map<string, Set<string>>();
+        for (const row of rows) {
+            const nodeId = normalizeSocketUser(row.nodeId || row.scope || "");
+            if (!nodeId) continue;
+            const set = byNode.get(nodeId) || new Set<string>();
+            const roles = buildConnectionLogicalRoles({
+                localArchetype: row.localArchetype,
+                remoteArchetype: row.remoteArchetype,
+                archetype: row.archetype,
+                role: row.role
+            });
+            for (const role of roles) set.add(role);
+            byNode.set(nodeId, set);
+        }
+        return Array.from(byNode.entries()).map(([nodeId, roles]) => ({
+            nodeId,
+            roles: Array.from(roles),
+            rolesText: Array.from(roles).join(" + ") || "none"
+        }));
     };
 
     const buildSharedConnectionGraph = (rows: Array<{
@@ -2458,6 +2534,7 @@ export const registerOpsRoutes = async (
             bridgeStatus,
             filters: sharedFilters
         }).allRows;
+        const sharedNodeRoles = summarizeSharedConnectionRoles(sharedConnections);
         const wsConnections = sharedConnections.filter((entry) => entry.scope === "ws");
         const socketIoConnections = sharedConnections.filter((entry) => entry.scope === "socketio");
         const bridgeConnections = sharedConnections.filter((entry) => entry.scope === "bridge");
@@ -2649,6 +2726,7 @@ export const registerOpsRoutes = async (
                     socketio: includeSharedRealTimeRegistry ? socketIoConnections : [],
                     bridge: includeSharedRealTimeRegistry ? bridgeConnections : []
                 },
+                nodeRoles: sharedNodeRoles,
                 totals: {
                     total: includeSharedRealTimeRegistry ? sharedConnections.length : 0,
                     toServer: includeSharedRealTimeRegistry ? wsConnections.length + socketIoConnections.length : 0,
@@ -2710,6 +2788,7 @@ export const registerOpsRoutes = async (
             bridgeStatus,
             filters: registryFilters
         }).allRows;
+        const sharedNodeRoles = summarizeSharedConnectionRoles(sharedConnections);
         const sharedTopologyGraph = includeSharedRealTimeRegistry ? buildSharedConnectionGraph(sharedConnections) : { nodes: [], links: [] };
         const wsConnectionRows = sharedConnections.filter((entry) => entry.scope === "ws");
         const socketIoRows = sharedConnections.filter((entry) => entry.scope === "socketio");
@@ -2753,6 +2832,7 @@ export const registerOpsRoutes = async (
                     socketio: includeSharedRealTimeRegistry ? socketIoRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })) : [],
                     bridge: includeSharedRealTimeRegistry ? bridgeRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })) : []
                 },
+                nodeRoles: sharedNodeRoles,
                 graph: sharedTopologyGraph
             },
         };

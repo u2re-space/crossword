@@ -28,12 +28,15 @@ export type SocketIoBridge = {
         direction: string;
         scope: string;
         role: string;
+        localRoleSet?: string[];
         transport: "socketio";
         state: string;
         userId: string;
         sourceId: string;
         namespace: string;
         archetype?: string;
+        localArchetype?: string;
+        remoteArchetype?: string;
         remoteAddress?: string;
         remotePort?: number;
         connectedAt: number;
@@ -96,13 +99,63 @@ const formatBridgeSocketLog = (prefix: string, payload: Record<string, unknown>)
     }
 };
 
-const logMsg = (prefix: string, msg: any, targetSource = "explicit"): void => {
+type SocketIoLogActor = {
+    id: string;
+    sourceId: string;
+    userId: string;
+    ip: string;
+    token: string;
+};
+
+const normalizeSocketIoActorValue = (value: unknown): string => {
+    const normalized = String(value || "").trim();
+    return normalized || "-";
+};
+
+const resolveSocketIoActor = (socket?: Socket): SocketIoLogActor => {
+    const sourceId = normalizeSocketIoActorValue((socket as any)?.airpadSourceId || (socket as any)?.userId || socket?.id);
+    const userId = normalizeSocketIoActorValue((socket as any)?.userId || sourceId || socket?.id);
+    const remoteAddress = (socket as any)?.conn?.remoteAddress || (socket as any)?.handshake?.address;
+    const ip = normalizeSocketIoActorValue(typeof remoteAddress === "string" ? remoteAddress : remoteAddress ? String(remoteAddress) : "-");
+    return {
+        id: normalizeSocketIoActorValue(socket?.id || sourceId),
+        sourceId,
+        userId,
+        ip,
+        token: sourceId
+    };
+};
+
+const logMsg = (prefix: string, msg: any, targetSource = "explicit", sourceSocket?: Socket, targetSocket?: Socket): void => {
+    const source = resolveSocketIoActor(sourceSocket);
+    const destination = targetSocket ? resolveSocketIoActor(targetSocket) : undefined;
+    const targetHint = normalizeSocketIoActorValue(msg?.to);
+    const dst = destination || {
+        id: targetHint || "-",
+        sourceId: targetHint || "-",
+        userId: targetHint || "-",
+        ip: "-",
+        token: targetHint || "-"
+    };
     const payloadLen = msg?.payload ? (typeof msg.payload === "string" ? msg.payload.length : JSON.stringify(msg.payload).length) : 0;
     const summary = {
         when: new Date().toISOString(),
         type: msg?.type,
         from: msg?.from,
+        fromId: source.id,
+        fromIp: source.ip,
+        fromToken: source.token,
         to: msg?.to,
+        toId: dst.id,
+        toIp: dst.ip,
+        toToken: dst.token,
+        srcId: source.id,
+        srcIp: source.ip,
+        srcToken: source.token,
+        dstId: dst.id,
+        dstIp: dst.ip,
+        dstToken: dst.token,
+        byToken: source.token,
         targetSource,
         mode: msg?.mode || "blind",
         action: msg?.action || "N/A",
@@ -252,6 +305,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             userId: string;
             namespace: string;
             archetype: string | undefined;
+            localArchetype: string;
+            remoteArchetype: string;
             remoteAddress: string | undefined;
             remotePort: number | undefined;
             connectedAt: number;
@@ -346,7 +401,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 );
             }
             if (airpadRouter.forwardToAirpadTargets(sourceSocket, processed, processed)) {
-                logMsg("OUT(tunnel)", processed, targetSource);
+                logMsg("OUT(tunnel)", processed, targetSource, sourceSocket);
                 if (isTunnelDebug) {
                     console.log(
                         formatBridgeSocketLog("[Router] OUT(tunnel) forwarded", {
@@ -359,7 +414,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 return;
             }
             if (airpadRouter.forwardToBridge(sourceSocket, processed)) {
-                logMsg("OUT(tunnel-bridge)", processed, "fallback");
+                logMsg("OUT(tunnel-bridge)", processed, "fallback", sourceSocket);
                 return;
             }
             const knownTunnelTargets = airpadRouter.getTunnelTargets();
@@ -406,19 +461,19 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
         if (isBroadcast(processed)) {
             sourceSocket.broadcast.emit("message", processed);
-            logMsg("OUT(broadcast)", processed, targetSource);
+            logMsg("OUT(broadcast)", processed, targetSource, sourceSocket);
             return;
         }
 
         const targetSocket = airpadRouter.getSocket(processed.to);
         if (targetSocket) {
             targetSocket.emit("message", processed);
-            logMsg(`OUT(to=${processed.to})`, processed, targetSource);
+            logMsg(`OUT(to=${processed.to})`, processed, targetSource, sourceSocket, targetSocket);
             return;
         }
         const bridgePayload = incomingTargetSource !== "fallback" ? buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource) : null;
         if (bridgePayload && networkContext?.sendToBridge?.(bridgePayload) === true) {
-            logMsg(`OUT(socketio-bridge to=${processed.to})`, processed, targetSource);
+            logMsg(`OUT(socketio-bridge to=${processed.to})`, processed, targetSource, sourceSocket);
             if (isTunnelDebug) {
                 console.log(
                     formatBridgeSocketLog("[Router] OUT(socketio-bridge)", {
@@ -461,7 +516,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
 
         if (!deviceIds || deviceIds.length === 0) {
             sourceSocket.broadcast.emit("message", processed);
-            logMsg("OUT(multicast-all)", processed, "explicit");
+            logMsg("OUT(multicast-all)", processed, "explicit", sourceSocket);
             return;
         }
 
@@ -473,7 +528,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 sentCount++;
             }
         }
-        logMsg(`OUT(multicast-${sentCount})`, processed, sentCount > 0 ? "explicit" : "fallback");
+        logMsg(`OUT(multicast-${sentCount})`, processed, sentCount > 0 ? "explicit" : "fallback", sourceSocket);
     };
 
     io.on("connection", (socket: Socket) => {
@@ -516,6 +571,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             activeArchetype = localArchetype === "server-reverse" ? "client-reverse" : "client-forward";
             console.log(`[Server] AirPad socket accepted first-order connection, acting as ${activeArchetype}`);
         }
+        const resolvedLocalArchetype = "server-forward";
+        const resolvedRemoteArchetype = activeArchetype;
         
         const sourceAlias = normalizeHint(connectionMeta.sourceId);
         if (sourceAlias) {
@@ -531,6 +588,8 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             userId: connectionSourceId || normalizeHint(connectionMeta.clientId) || socket.id,
             namespace: normalizeHint(connectionMeta.routeTarget) || normalizeHint(connectionMeta.targetHost) || connectionSourceId || normalizeHint(connectionMeta.clientId) || socket.id,
             archetype: connectionMeta.archetype || activeArchetype || undefined,
+            localArchetype: resolvedLocalArchetype,
+            remoteArchetype: resolvedRemoteArchetype,
             remoteAddress: normalizeHint(connectionMeta.remoteAddress),
             remotePort: connectionMeta.remotePort,
             connectedAt: now
@@ -747,6 +806,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         sourceId: string;
         namespace: string;
         archetype?: string;
+        localArchetype?: string;
+        remoteArchetype?: string;
+        localRoleSet?: string[];
         remoteAddress?: string;
         remotePort?: number;
         connectedAt: number;
@@ -763,10 +825,13 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             sourceId: string;
             namespace: string;
             archetype?: string;
+            localArchetype?: string;
+            remoteArchetype?: string;
             remoteAddress?: string;
             remotePort?: number;
             connectedAt: number;
             alias: string;
+            localRoleSet?: string[];
         }> = [];
         for (const [socketId, state] of socketConnectionRegistry) {
             const socket = io.sockets.sockets.get(socketId);
@@ -785,6 +850,9 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 sourceId: state.sourceId || userId,
                 namespace: state.namespace || "",
                 archetype: state.archetype || meta?.archetype || undefined,
+                localArchetype: state.localArchetype,
+                remoteArchetype: state.remoteArchetype,
+                localRoleSet: [state.localArchetype, state.remoteArchetype, state.archetype].filter(Boolean) as string[],
                 remoteAddress: state.remoteAddress,
                 remotePort: state.remotePort,
                 connectedAt: state.connectedAt,
