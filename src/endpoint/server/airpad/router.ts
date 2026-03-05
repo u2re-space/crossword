@@ -62,7 +62,7 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
     const isTunnelDebug = options.isTunnelDebug === true;
     const logger = options.logger;
 
-    const clients = new Map<string, Socket>();
+    const clients = new Map<string, Set<Socket>>();
     const airpadConnectionMeta = new Map<Socket, AirpadConnectionMeta>();
     const airpadTargets = new Map<string, Set<Socket>>();
     const socketAliases = new Map<Socket, Set<string>>();
@@ -84,7 +84,9 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
     const addClientAlias = (socket: Socket, value: unknown): void => {
         const normalized = normalizeHint(value);
         if (!normalized) return;
-        clients.set(normalized, socket);
+        const existing = clients.get(normalized) ?? new Set<Socket>();
+        existing.add(socket);
+        clients.set(normalized, existing);
         const aliases = socketAliases.get(socket) ?? new Set<string>();
         aliases.add(normalized);
         socketAliases.set(socket, aliases);
@@ -106,7 +108,10 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         if (!aliases) return;
         aliases.forEach((alias) => {
             const direct = clients.get(alias);
-            if (direct === socket) clients.delete(alias);
+            if (direct) {
+                direct.delete(socket);
+                if (direct.size === 0) clients.delete(alias);
+            }
             const tunnelSet = airpadTargets.get(alias);
             if (tunnelSet) {
                 tunnelSet.delete(socket);
@@ -206,8 +211,9 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         if (isBroadcastTarget(target)) {
             return hasExplicitTarget ? target : hasRouteTarget || target;
         }
-        const direct = clients.get(target);
-        if (direct && direct.connected) return target;
+        const directSockets = clients.get(target);
+        const directSocket = directSockets?.values().next().value;
+        if (directSocket && directSocket.connected) return target;
         if (hasExplicitTarget) return target;
         return hasRouteTarget || target;
     };
@@ -353,36 +359,48 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         return accepted;
     };
 
-    const getSocket = (deviceId: string): Socket | undefined => clients.get(normalizeHint(deviceId));
+    const getSocket = (deviceId: string): Socket | undefined => clients.get(normalizeHint(deviceId))?.values().next().value;
 
     const sendToDevice = (_userId: string, deviceId: string, payload: any): boolean => {
-        const target = getSocket(deviceId);
-        if (!target?.connected) return false;
-        try {
-            target.emit("message", payload);
-            return true;
-        } catch {
-            return false;
+        const targets = clients.get(normalizeHint(deviceId));
+        if (!targets?.size) return false;
+        let sent = false;
+        for (const target of targets) {
+            if (!target.connected) continue;
+            try {
+                target.emit("message", payload);
+                sent = true;
+            } catch {
+                // no-op
+            }
         }
+        return sent;
     };
 
+    const getConnectedDevices = () => Array.from(new Set(clients.keys()));
+
     const getDebugDevices = (): AirpadRouterDebugDevice[] => {
-        return Array.from(clients.entries()).map(([deviceId, socket]) => {
-            const meta = airpadConnectionMeta.get(socket);
-            return {
-                deviceId,
-                socketId: socket.id,
-                clientId: meta?.clientId,
-                sourceId: meta?.sourceId,
-                routeTarget: meta?.routeTarget,
-                routeHint: meta?.routeHint,
-                targetHost: meta?.targetHost,
-                hostHint: meta?.hostHint,
-                targetPort: meta?.targetPort,
-                viaPort: meta?.viaPort,
-                protocolHint: meta?.protocolHint
-            };
-        });
+        const items: AirpadRouterDebugDevice[] = [];
+        for (const [deviceId, sockets] of clients.entries()) {
+            for (const socket of sockets) {
+                const meta = airpadConnectionMeta.get(socket);
+                if (!meta) continue;
+                items.push({
+                    deviceId,
+                    socketId: socket.id,
+                    clientId: meta?.clientId,
+                    sourceId: meta?.sourceId,
+                    routeTarget: meta?.routeTarget,
+                    routeHint: meta?.routeHint,
+                    targetHost: meta?.targetHost,
+                    hostHint: meta?.hostHint,
+                    targetPort: meta?.targetPort,
+                    viaPort: meta?.viaPort,
+                    protocolHint: meta?.protocolHint
+                });
+            }
+        }
+        return items;
     };
 
     return {
@@ -399,8 +417,8 @@ export const createAirpadRouter = (options: AirpadRouterOptions = {}): AirpadSoc
         forwardBinaryToBridge,
         forwardToBridge,
         getSocket,
-        sendToDevice: (_userId, deviceId, payload) => sendToDevice("", deviceId, payload),
-        getConnectedDevices: () => Array.from(clients.keys()),
+        sendToDevice,
+        getConnectedDevices,
         getTunnelTargets: () => Array.from(airpadTargets.keys()).filter(Boolean),
         getDebugDevices,
         normalizeHint

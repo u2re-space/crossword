@@ -1,10 +1,27 @@
+type RawEnvValue = string | number | boolean | undefined;
+
+const normalizeEnvValue = (raw: RawEnvValue, allowEmpty: boolean): string | undefined => {
+    if (raw === undefined) return undefined;
+    if (typeof raw === "string") {
+        const normalized = raw.trim();
+        if (!allowEmpty && normalized.length === 0) return undefined;
+        return normalized;
+    }
+    if (typeof raw === "boolean" || typeof raw === "number") {
+        const normalized = String(raw).trim();
+        if (!allowEmpty && normalized.length === 0) return undefined;
+        return normalized;
+    }
+    return undefined;
+};
+
 export const pickFirstEnv = (candidates: string[], options: { allowEmpty?: boolean } = {}): string | undefined => {
     const allowEmpty = options.allowEmpty === true;
     for (const key of candidates) {
-        const raw = process.env[key];
-        if (raw === undefined) continue;
-        if (!allowEmpty && raw.trim().length === 0) continue;
-        return raw;
+        const raw = process.env[key] as unknown as RawEnvValue;
+        const normalized = normalizeEnvValue(raw, allowEmpty);
+        if (normalized === undefined) continue;
+        return normalized;
     }
     return undefined;
 };

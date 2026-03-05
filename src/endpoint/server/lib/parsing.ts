@@ -8,6 +8,11 @@ const trimOptional = (value: string): string => (value == null ? "" : String(val
 
 export const parsePortableBoolean = (value: unknown): boolean | undefined => {
     if (typeof value === "boolean") return value;
+    if (typeof value === "number") {
+        if (value === 1) return true;
+        if (value === 0) return false;
+        return undefined;
+    }
     if (typeof value !== "string") return undefined;
     const normalized = value.trim().toLowerCase();
     if (["1", "true", "yes", "on"].includes(normalized)) return true;
@@ -17,6 +22,11 @@ export const parsePortableBoolean = (value: unknown): boolean | undefined => {
 
 export const parsePortableBooleanLoose = (value: unknown): boolean | undefined => {
     if (typeof value === "boolean") return value;
+    if (typeof value === "number") {
+        if (value === 1) return true;
+        if (value === 0) return false;
+        return true;
+    }
     if (typeof value !== "string") return undefined;
     const normalized = value.trim().toLowerCase();
     if (!normalized) return undefined;

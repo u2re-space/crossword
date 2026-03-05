@@ -31,6 +31,78 @@ const isClipboardLoggingEnabled = () => {
     return pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
 };
 
+const normalizeClipboardText = (body: any): string => {
+    if (typeof body === "string") return body.trim();
+    if (!body || typeof body !== "object") return "";
+    const candidates = [
+        body.text,
+        body.body,
+        body.payload,
+        body.data,
+        body.content,
+        body.clipboard
+    ];
+    for (const candidate of candidates) {
+        if (typeof candidate === "string" && candidate.trim()) {
+            return candidate.trim();
+        }
+    }
+    return "";
+};
+
+const normalizeClipboardTarget = (value: any): string[] => {
+    if (typeof value !== "string") return [];
+    const normalized = value.trim();
+    if (!normalized) return [];
+    return normalized
+        .split(/[;,]/)
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+};
+
+const collectClipboardTargets = (requestBody: any): string[] => {
+    if (!requestBody || typeof requestBody !== "object") return [];
+    const out = new Set<string>();
+    const pushTargets = (value: any) => {
+        for (const entry of normalizeClipboardTarget(value)) {
+            out.add(entry);
+        }
+    };
+
+    pushTargets(requestBody.targetDeviceId);
+    pushTargets(requestBody.deviceId);
+    pushTargets(requestBody.targetId);
+    pushTargets(requestBody.target);
+    pushTargets(requestBody.to);
+    if (Array.isArray(requestBody.targets)) {
+        for (const target of requestBody.targets) {
+            pushTargets(target);
+        }
+    }
+    return Array.from(out);
+};
+
+const buildClipboardBroadcastPayload = (requestBody: any, text: string, request: any) => {
+    const targets = collectClipboardTargets(requestBody);
+    if (!targets.length || !text) return null;
+    const resolvedClientId = typeof requestBody.clientId === "string" ? requestBody.clientId.trim() : "";
+    const resolvedToken = typeof requestBody.token === "string" ? requestBody.token.trim() : "";
+    const requests = targets.map((target) => ({
+        deviceId: target,
+        body: text,
+        method: "POST"
+    }));
+    const payload: any = {
+        requests
+    };
+    if (resolvedClientId) payload.clientId = resolvedClientId;
+    if (resolvedToken) payload.token = resolvedToken;
+    if (typeof request.headers?.["x-auth-token"] === "string") {
+        payload.token = payload.token || String(request.headers["x-auth-token"]).trim();
+    }
+    return payload;
+};
+
 export function registerRoutes(app: any) {
     // POST /clipboard  (Fastify-style)
     app.post("/clipboard", async (request: any, reply: any) => {
@@ -40,17 +112,25 @@ export function registerRoutes(app: any) {
         }
 
         try {
-            let text = "";
-
-            if (typeof request.body === "object" && request.body !== null && "text" in request.body) {
-                text = String(request.body.text);
-            } else if (typeof request.body === "string") {
-                text = request.body;
-            }
+            const text = normalizeClipboardText(request.body);
+            const relayPayload = buildClipboardBroadcastPayload(request.body, text, request);
 
             if (!text) {
                 setUtf8Plain(reply);
                 return reply.code(400).send("No text provided");
+            }
+
+            if (relayPayload) {
+                const relayResponse = await app.inject({
+                    method: "POST",
+                    url: "/core/ops/http/dispatch",
+                    headers: {
+                        "content-type": "application/json"
+                    },
+                    payload: relayPayload
+                });
+                const relayBody = typeof relayResponse.body === "string" ? relayResponse.body : JSON.stringify(relayResponse.body ?? {});
+                return reply.code(relayResponse.statusCode || 200).send(relayBody);
             }
 
             setBroadcasting(true);

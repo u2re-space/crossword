@@ -11,6 +11,7 @@ import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
 import {
     type WsConnectionArchetype,
+    type WsConnectionIntent,
     areArchetypesCompatible,
     inferExpectedRemoteArchetype,
     inferServerSideArchetype,
@@ -146,12 +147,14 @@ type ClientInfo = {
     ws: WebSocket;
     id: string;
     namespace: string;
+    remoteAddress?: string;
     reverse: boolean;
     localArchetype: WsConnectionArchetype;
-    remoteArchetype?: WsConnectionArchetype;
+    remoteArchetype?: WsConnectionIntent;
     deviceId?: string;
     peerLabel?: string;
     peerId?: string;
+    connectedAt: number;
 };
 
 export type WsHub = {
@@ -165,6 +168,21 @@ export type WsHub = {
     getConnectedPeerProfiles: (userId?: string) => Array<{ id: string; label: string }>;
     close: () => Promise<void>;
     onUnknownTarget?: (userId: string, deviceId: string, frame: any) => boolean;
+    getConnectionRegistry?: (userId?: string) => Array<{
+        id: string;
+        userId: string;
+        userKey?: string;
+        namespace?: string;
+        deviceId?: string;
+        peerId?: string;
+        peerLabel?: string;
+        reverse: boolean;
+        localArchetype: WsConnectionArchetype;
+        remoteArchetype?: WsConnectionIntent;
+        remoteAddress?: string;
+        connectedAt: number;
+        surface: string;
+    }>;
     getUserId?: () => string;
 };
 
@@ -175,6 +193,51 @@ const isIpLike = (value: string): boolean => {
 const hashSuffix = (value: string): string => createHash("sha1").update(value).digest("hex").slice(0, 8);
 const normalizeSocketUser = (value: string | undefined): string => String(value || "").trim().toLowerCase();
 const normalizeSocketPeer = (value: string | undefined): string => String(value || "").trim().toLowerCase();
+const resolveTargetAlias = (value: string): string[] => {
+    const raw = normalizeSocketPeer(value);
+    if (!raw) return [];
+
+    const stripPort = (input: string): string => {
+        if (!input.includes(":")) return input;
+        if (/^\[[^\]]+\]:\d{1,5}$/.test(input)) {
+            return input.slice(0, input.lastIndexOf("]") + 1);
+        }
+        if (/^[^:]+:\d{1,5}$/.test(input)) {
+            return input.slice(0, input.lastIndexOf(":"));
+        }
+        return input;
+    };
+
+    const stripRolePrefix = (input: string): string => {
+        const colon = input.indexOf(":");
+        if (colon <= 0) return input;
+        return input.slice(colon + 1);
+    };
+
+    const stripLanPrefix = (input: string): string => input.replace(/^(?:l|p)-/, "");
+
+    const items = new Set<string>();
+    const add = (entry: string | undefined) => {
+        const normalized = String(entry || "").trim().toLowerCase();
+        if (!normalized) return;
+        items.add(normalized);
+    };
+
+    const variants = [raw];
+    add(raw);
+    variants.push(stripPort(raw));
+    const withoutRolePrefix = stripRolePrefix(raw);
+    if (withoutRolePrefix !== raw) variants.push(withoutRolePrefix);
+    const noRoleNoPort = stripPort(withoutRolePrefix);
+    if (noRoleNoPort !== withoutRolePrefix) variants.push(noRoleNoPort);
+
+    variants.forEach((candidate) => {
+        add(candidate);
+        add(stripLanPrefix(candidate));
+    });
+
+    return Array.from(items);
+};
 
 const normalizePeerLabel = (userId: string, rawDeviceId: string, rawLabel: string | null): string => {
     const userPart = (userId || "user").trim().slice(0, 16);
@@ -210,14 +273,21 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
     const requestKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
     const resolveReverseClientByTarget = (userId: string, target: string): ClientInfo | undefined => {
         const normalizedUser = normalizeSocketUser(userId);
-        const normalizedTarget = normalizeSocketPeer(target);
-        const direct = reverseClients.get(reverseClientKey(normalizedUser, normalizedTarget));
-        if (direct) return direct;
+        const normalizedTargets = resolveTargetAlias(target);
+        for (const candidate of normalizedTargets) {
+            const direct = reverseClients.get(reverseClientKey(normalizedUser, candidate));
+            if (direct) return direct;
+        }
         for (const entry of reverseClients.values()) {
             if (!entry.userId) continue;
             if (normalizeSocketUser(entry.userId) !== normalizedUser) continue;
-            if (normalizeSocketPeer(entry.deviceId) === normalizedTarget) return entry;
-            if (normalizeSocketPeer(entry.peerId) === normalizedTarget) return entry;
+            const candidateDevices = resolveTargetAlias(entry.deviceId || "");
+            const candidatePeers = resolveTargetAlias(entry.peerId || "");
+            const hasMatch =
+                candidateDevices.some((device) => normalizedTargets.includes(device)) ||
+                candidatePeers.some((peer) => normalizedTargets.includes(peer)) ||
+                normalizedTargets.some((targetAlias) => targetAlias === (entry.deviceId || "").toLowerCase() || targetAlias === (entry.peerId || "").toLowerCase());
+            if (hasMatch) return entry;
         }
         return undefined;
     };
@@ -473,7 +543,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         }
         const runtimeRoles = config.roles as string[] | undefined;
         const roleAllowed = isReverse
-            ? supportsReverseServerArchetype(runtimeRoles) || (remoteArchetype === "client-reverse" && supportsConnectorRole(runtimeRoles))
+            ? supportsReverseServerArchetype(runtimeRoles) || ((remoteArchetype === "client-reverse" || remoteArchetype === "first-order") && supportsConnectorRole(runtimeRoles))
             : supportsForwardServerArchetype(runtimeRoles);
         if (!roleAllowed) {
             ws.close(4003, `Unsupported websocket archetype for this node: ${localArchetype}`);
@@ -483,6 +553,13 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4004, `Incompatible websocket archetypes: local=${localArchetype}, remote=${remoteArchetype}`);
             return;
         }
+        
+        let activeArchetype = remoteArchetype;
+        if (activeArchetype === "first-order") {
+            activeArchetype = localArchetype === "server-reverse" ? "client-reverse" : "client-forward";
+            console.log(`[Server] Raw WS accepted first-order connection, acting as ${activeArchetype}`);
+        }
+        
         const peerLabel = isReverse ? normalizePeerLabel(userId || "", normalizedDeviceId, requestedPeerId) : undefined;
         const info: ClientInfo = {
             userId,
@@ -491,12 +568,14 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws,
             id: randomUUID(),
             namespace: normalizeSocketUser(namespace || userId),
+            remoteAddress: req.socket?.remoteAddress,
             reverse: isReverse,
             localArchetype,
-            remoteArchetype: remoteArchetype,
+            remoteArchetype: activeArchetype,
             deviceId: isReverse ? normalizedDeviceId : undefined,
             peerLabel,
-            peerId: isReverse ? requestedPeerId : undefined
+            peerId: isReverse ? requestedPeerId : undefined,
+            connectedAt: Date.now()
         };
         clients.set(ws, info);
         if (!namespaces.has(info.userIdKey)) namespaces.set(info.userIdKey, new Map());
@@ -573,10 +652,19 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             const shouldBroadcast = isBroadcast(frame);
             // Simple forwarding: if targetId matches a client, relay
             if (!shouldBroadcast) {
+                const frameTargetAliases = resolveTargetAlias(frame.to);
                 const normalizedFrameTo = normalizeSocketPeer(frame.to);
-                const target = [...clients.values()].find((c) => c.id === frame.to || normalizeSocketPeer(c.deviceId) === normalizedFrameTo || normalizeSocketPeer(c.peerId) === normalizedFrameTo || normalizeSocketUser(c.userId) === normalizedFrameTo);
+                const target = [...clients.values()].find((c) => {
+                    if (c.id === frame.to) return true;
+                    const aliases = [
+                        ...resolveTargetAlias(c.deviceId || ""),
+                        ...resolveTargetAlias(c.peerId || ""),
+                        normalizeSocketUser(c.userId)
+                    ];
+                    return frameTargetAliases.some((alias) => alias && aliases.includes(alias));
+                });
                 if (target) {
-                    target.ws?.send?.(JSON.stringify({ type, payload, from: info.id }));
+                    target.ws?.send?.(JSON.stringify({ type, payload, from: frame.from || info.id, via: "ws" }));
                 } else {
                     if (api.onUnknownTarget) {
                         api.onUnknownTarget(info.userIdKey, normalizedFrameTo || frame.to, frame);
@@ -584,7 +672,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 }
             } else {
                 // broadcast to same userId
-                multicast(info.userIdKey, { type, payload, from: frame.from }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
+                multicast(info.userIdKey, { type, payload, from: frame.from || info.id, via: "ws" }, normalizeSocketUser(frame.namespace || info.namespace), info.id);
             }
         });
 
@@ -702,6 +790,41 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         if (!profile) return [];
         return Array.from(profile.entries()).map(([id, profileEntry]) => ({ id, label: profileEntry.label, peerId: profileEntry.peerId }));
     };
+    const getConnectionRegistry = (userId?: string): Array<{
+        id: string;
+        userId: string;
+        userKey: string;
+        namespace: string;
+        deviceId?: string;
+        peerId?: string;
+        peerLabel?: string;
+        reverse: boolean;
+        localArchetype: WsConnectionArchetype;
+        remoteArchetype?: WsConnectionIntent;
+        remoteAddress?: string;
+        connectedAt: number;
+        surface: string;
+    }> => {
+        const requestedUser = userId ? normalizeSocketUser(userId) : "";
+        return Array.from(clients.values()).flatMap((entry) => {
+            if (requestedUser && entry.userIdKey !== requestedUser) return [];
+            return [{
+                id: entry.id,
+                userId: entry.userId,
+                userKey: entry.userKey,
+                namespace: entry.namespace,
+                deviceId: entry.deviceId,
+                peerId: entry.peerId,
+                peerLabel: entry.peerLabel,
+                reverse: entry.reverse,
+                localArchetype: entry.localArchetype,
+                remoteArchetype: entry.remoteArchetype,
+                remoteAddress: entry.remoteAddress,
+                connectedAt: entry.connectedAt,
+                surface: entry.reverse ? "server-reverse" : "endpoint-server"
+            }];
+        });
+    };
 
     const close = async () => {
         clients.forEach((c) => c.ws.close());
@@ -724,6 +847,7 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         requestToDevice,
         getConnectedDevices,
         getConnectedPeerProfiles,
+        getConnectionRegistry,
         close,
         getUserId
     };

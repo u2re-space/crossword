@@ -107,13 +107,82 @@ Policy fallback behavior:
   - `forward-server` → `server-forward`
   - `server-bridge` → `server-forward`
   - `server-downstream` → `server-reverse`
+- `first-order` / `firstorder` / `fo` → `first-order` (bipolar-ready negotiation hint)
 - For a reverse WebSocket (`mode=reverse`), server side expects a `server-reverse` local role and requires remote `client-reverse`.
 - For a forward WebSocket (`mode=push`), server side expects a `server-forward` local role and requires remote `client-forward`.
+- `first-order` archetype is treated as connection-agnostic:
+  - it is accepted on both reverse and forward endpoints
+  - compatibility checks allow it to match either server direction, enabling "who-connected-first" behavior when both endpoints advertise direct access.
 
 ### 3.3 HTTP control
 
 - command routes stay on HTTP REST layer
 - frame-like inputs are normalized through `normalizeHttpFrame()` style normalization
+
+### 3.3.1 Feature endpoint examples
+
+Common target forms supported by feature endpoints:
+
+- `target`, `targetId`, `deviceId`, `to` — single target aliases
+- `targetDeviceId` — compatibility alias
+- `targets` — explicit multi-target fan-out list
+
+`/api/sms`
+```json
+{
+  "userId": "alice",
+  "userKey": "secret",
+  "targets": ["L-192.168.0.110", "L-192.168.0.200"],
+  "data": {
+    "number": "+123456789",
+    "content": "СМС на всех"
+  }
+}
+```
+
+`/api/notifications`
+```json
+{
+  "userId": "alice",
+  "userKey": "secret",
+  "target": "L-192.168.0.110",
+  "data": { "limit": 25 }
+}
+```
+
+`/api/notifications/speak`
+```json
+{
+  "userId": "alice",
+  "userKey": "secret",
+  "targets": "L-192.168.0.110;L-192.168.0.200",
+  "text": "Синхронное голосовое уведомление"
+}
+```
+
+`/api/contacts` (new feature endpoint)
+```json
+{
+  "userId": "alice",
+  "userKey": "secret",
+  "targetDeviceId": "L-192.168.0.110",
+  "query": "John",
+  "method": "GET",
+  "limit": 50
+}
+```
+
+```json
+{
+  "userId": "alice",
+  "userKey": "secret",
+  "targets": ["L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.150"],
+  "query": "Иван",
+  "to": "broadcast",
+  "method": "GET",
+  "limit": 20
+}
+```
 
 ### 3.4 Tunnel / upstream
 

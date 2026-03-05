@@ -21,7 +21,7 @@ import { startMouseFlushInterval } from "../../io/mouse.ts";
 import { setApp as setPythonApp } from "../../gpt/python.ts";
 import { resolvePeerIdentity } from "../stack/peer-identity.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
-import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointPolicyRoute } from "../stack/endpoint-policy.ts";
+import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointPolicyRoute, resolveEndpointTransportPreference } from "../stack/endpoint-policy.ts";
 import { handleMouseBinaryAction, handleKeyboardBinaryAction } from "../../airpad/index.ts";
 import { parseBinaryMessage } from "../../io/message.ts";
 
@@ -30,7 +30,23 @@ const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => 
     if (!payload) return false;
     
     const action = String(payload.action || payload.type || "").toLowerCase();
-    if (action === "clipboard" || action === "clipboard.write" || action === "clipboard:set" || action === "copy" || action === "paste") {
+    if (
+        action === "clipboard" ||
+        action === "clipboard.write" ||
+        action === "clipboard:set" ||
+        action === "clipboard.request" ||
+        action === "clipboard.read" ||
+        action === "clipboard.get" ||
+        action === "clipboard.request.read" ||
+        action === "clipboard.request.get" ||
+        action === "copy" ||
+        action === "paste" ||
+        action === "clipboard.copy" ||
+        action === "clipboard.paste" ||
+        action === "clipboard.request.paste" ||
+        action === "clipboard.request.insert" ||
+        action === "clipboard.insert"
+    ) {
         const text = payload.text || payload.data?.text || payload.body || (typeof payload.data === "string" ? payload.data : "");
         if (typeof text === "string" && text) {
             app.log?.info?.("Clipboard write via tunnel");
@@ -101,6 +117,55 @@ const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => 
     } catch {
         return false;
     }
+};
+
+const buildBridgeForwardPayload = (
+    app: FastifyInstance,
+    userId: string,
+    fallbackUserId: string,
+    deviceId: string,
+    frame: Record<string, unknown> | null | undefined,
+    sourceForPolicy: string,
+    endpointPolicyMap: ReturnType<typeof normalizeEndpointPolicies>
+): Record<string, unknown> | null => {
+    if (!frame || typeof frame !== "object") return null;
+    const target = String(deviceId || frame?.target || frame?.to || frame?.targetId || "").trim();
+    if (!target) return null;
+    const preference = resolveEndpointTransportPreference(sourceForPolicy, target, endpointPolicyMap);
+    const supportsBridge = preference.transports.includes("ws") || preference.transports.includes("socketio");
+    if (!supportsBridge) {
+        app.log?.debug?.(
+            {
+                userId,
+                target,
+                source: sourceForPolicy,
+                route: preference.hasExplicitRelation ? "policy-blocked" : "policy-unset",
+                transports: preference.transports.join("|")
+            },
+            "[bridge] skipping forward fallback by transport policy"
+        );
+        return null;
+    }
+
+    const payload = {
+        ...(frame as Record<string, unknown>),
+        type: String((frame as Record<string, unknown>).type || "dispatch"),
+        data: (frame as Record<string, unknown>).payload ?? (frame as Record<string, unknown>).data,
+        from: String(sourceForPolicy || (frame as Record<string, unknown>).from || frame?.source || userId || fallbackUserId || "unknown"),
+        source: String(sourceForPolicy || (frame as Record<string, unknown>).source || (frame as Record<string, unknown>).from || userId || fallbackUserId || "unknown"),
+        userId,
+        to: target,
+        target: target,
+        targetId: target,
+        targetSource: "fallback",
+        route: "ws-forward-fallback",
+        routeSource: sourceForPolicy || String((frame as Record<string, unknown>).source || ""),
+        routeTarget: target
+    };
+    if (!payload.from) {
+        delete payload.from;
+    }
+    return payload;
 };
 
 const resolvePortableConfigBoolean = (value: string | undefined): boolean | undefined => {
@@ -214,6 +279,19 @@ const makeUnifiedWsHub = (hubs: WsHub[]): WsHub => {
             }
             return Array.from(seen.values());
         },
+        getConnectionRegistry: (userId?: string) => {
+            const seen = new Map<string, any>();
+            for (const hub of hubs) {
+                const entries = hub.getConnectionRegistry ? hub.getConnectionRegistry(userId) : [];
+                for (const entry of entries) {
+                    if (!entry?.id) continue;
+                    if (!seen.has(entry.id)) {
+                        seen.set(entry.id, entry);
+                    }
+                }
+            }
+            return Array.from(seen.values());
+        },
         close: async () => {
             await Promise.all(hubs.map((hub) => hub.close()));
         },
@@ -243,6 +321,7 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
     const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
     const isTunnelDebug = pickEnvBoolLegacy("CWS_TUNNEL_DEBUG") === true;
     const defaultUserId = fallbackUserId || "";
+    
     const resolveSourceForPolicy = (msg: Record<string, unknown>, fallback: string): { sourceId: string; isKnown: boolean } => {
         const sourceHint = typeof msg.from === "string" && msg.from.trim() ? msg.from : typeof (msg as any).source === "string" && (msg as any).source.trim() ? (msg as any).source : typeof (msg as any).sourceId === "string" && (msg as any).sourceId.trim() ? (msg as any).sourceId : typeof (msg as any).src === "string" && (msg as any).src.trim() ? (msg as any).src : fallback;
         const trimmed = typeof sourceHint === "string" ? sourceHint.trim() : "";
@@ -299,6 +378,26 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
     return (message: any) => {
         if (!message || typeof message !== "object") return;
         const msg = message as Record<string, unknown>;
+        const messageType = String(msg.type || msg.action || "").trim().toLowerCase();
+        if (messageType === "welcome") {
+            if (isTunnelDebug) {
+                app.log?.debug?.(
+                    {
+                        userId: (typeof msg.userId === "string" && msg.userId.trim()) || defaultUserId || "unknown",
+                        type: messageType || "dispatch",
+                        from:
+                            (typeof msg.from === "string" && msg.from.trim()) ||
+                            (typeof msg.source === "string" && msg.source.trim()) ||
+                            (typeof msg.sourceId === "string" && msg.sourceId.trim()) ||
+                            (typeof msg.src === "string" && msg.src.trim()) ||
+                            "unknown",
+                        target: typeof msg.target === "string" && msg.target.trim() ? msg.target : typeof msg.to === "string" && msg.to.trim() ? msg.to : typeof msg.targetId === "string" && msg.targetId.trim() ? msg.targetId : "-"
+                    },
+                    "[bridge] ignored welcome event from bridge"
+                );
+            }
+            return;
+        }
         const target = msg.targetId || msg.deviceId || msg.target || msg.to || msg.target_id;
         const resolvedUserIdRaw = typeof msg.userId === "string" && msg.userId.trim() ? (msg.userId as string).trim() : defaultUserId;
         if (!resolvedUserIdRaw) return;
@@ -335,9 +434,19 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
         }
 
         const payload = msg.payload ?? msg.data ?? msg.body ?? msg;
+        const incomingTargetSource =
+            String((msg as Record<string, unknown>).targetSource).trim().toLowerCase() === "fallback" ? "fallback" : "explicit";
         if (isTunnelDebug) {
             const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload as Record<string, unknown>).join("|") : typeof payload;
-            console.info(`[bridge] IN`, `userId=${resolvedUserId}`, `from=${sourceForPolicy.sourceId}`, `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`, `type=${String(msg.type || msg.action || "dispatch")}`, `kind=${payloadKeys}`);
+            console.info(
+                `[bridge] IN`,
+                `userId=${resolvedUserId}`,
+                `from=${sourceForPolicy.sourceId}`,
+                `target=${resolvedRequestedTarget ? resolvedRequestedTarget : "-"}`,
+                `type=${String(msg.type || msg.action || "dispatch")}`,
+                `kind=${payloadKeys}`,
+                `targetSource=${incomingTargetSource}`
+            );
         }
         const namespace = typeof msg.namespace === "string" && msg.namespace ? msg.namespace : typeof msg.ns === "string" ? msg.ns : undefined;
         const type = String(msg.type || msg.action || "dispatch");
@@ -345,30 +454,24 @@ const buildBridgeRouter = (app: FastifyInstance, hub: WsHub, fallbackUserId: str
             type,
             data: payload,
             namespace,
+            targetSource: incomingTargetSource,
             from: typeof msg.from === "string" ? msg.from.toLowerCase().trim() : resolvedUserId,
+            source: sourceForPolicy.sourceId,
+            route: "bridge-router",
+            hops: [sourceForPolicy.sourceId, resolvedUserId].filter((value) => Boolean(value)),
             ts: parsePortableInteger(msg.ts) ?? Date.now()
         };
-        if (type.toLowerCase() === "welcome") {
-            if (isTunnelDebug) {
-                app.log?.debug?.(
-                    {
-                        userId: resolvedUserId,
-                        target: resolvedRequestedTarget,
-                        from: sourceForPolicy.sourceId
-                    },
-                    "[bridge] ignored welcome event from bridge"
-                );
-            }
-            return;
-        }
-
         if (typeof resolvedRequestedTarget === "string" && resolvedRequestedTarget.trim()) {
             const requestedTarget = resolvedRequestedTarget.trim();
             const peerProfiles = hub.getConnectedPeerProfiles(resolvedUserId);
             const resolvedTargetHint = resolveTunnelTarget(peerProfiles, requestedTarget);
             const resolvedTarget = resolvedTargetHint?.profile.id || requestedTarget;
             const resolvedKind = resolvedTargetHint?.source;
-            const resolved = hub.sendToDevice(resolvedUserId, resolvedTarget, routed);
+            
+            const transportPref = resolveEndpointTransportPreference(sourceForPolicy.sourceId, resolvedTarget, endpointPolicyMap);
+            const canWs = transportPref.transports.includes("ws");
+            
+            const resolved = canWs ? hub.sendToDevice(resolvedUserId, resolvedTarget, routed) : false;
             const requestedTargetLower = requestedTarget.toLowerCase();
             const fallbackTarget =
                 requestedTargetLower === "self" || 
@@ -508,9 +611,61 @@ export const buildCoreServer = async (opts: { logger?: boolean; httpsOptions?: a
             : undefined
     });
     wsHub.onUnknownTarget = (userId, deviceId, frame) => {
-        const sent = socketIoBridge.sendToDevice(userId, deviceId, frame);
-        if (!sent && handleLocalAirpadPayload(app, frame)) return true;
-        return sent;
+        const sourceForPolicy = frame?.from || (config as any)?.bridge?.userId || "";
+        const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const canSocketIo = transportPref.transports.includes("socketio");
+        const sent = canSocketIo ? socketIoBridge.sendToDevice(userId, deviceId, frame) : false;
+        const bridgePayload = networkContext?.sendToBridge
+            ? buildBridgeForwardPayload(
+                app,
+                userId,
+                ((config as any)?.bridge?.userId || ""),
+                deviceId,
+                frame,
+                String(sourceForPolicy || ""),
+                endpointPolicyMap
+            )
+            : null;
+        const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
+        
+        if (!sent && handleLocalAirpadPayload(app, frame)) {
+            app.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from
+                },
+                "[bridge] unknown ws target handled locally"
+            );
+            return true;
+        }
+        if (!sent && !sentViaBridge && app.log) {
+            app.log?.warn?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from,
+                    targetSource: "explicit"
+                },
+                "[bridge] unknown ws target not handled"
+            );
+        } else if (!sent && sentViaBridge && app.log) {
+            app.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: bridgePayload?.from,
+                    route: bridgePayload?.route,
+                    targetSource: "fallback"
+                },
+                "[bridge] unknown ws target forwarded via bridge"
+            );
+        }
+        return sent || sentViaBridge;
     };
     await registerOpsRoutes(app, wsHub, networkContext, socketIoBridge);
     registerApiFallback(app);
@@ -559,9 +714,61 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
             : undefined
     });
     httpWsHub.onUnknownTarget = (userId, deviceId, frame) => {
-        const sent = httpSocketIoBridge.sendToDevice(userId, deviceId, frame);
-        if (!sent && handleLocalAirpadPayload(http, frame)) return true;
-        return sent;
+        const sourceForPolicy = frame?.from || fallbackUserId;
+        const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const canSocketIo = transportPref.transports.includes("socketio");
+        const sent = canSocketIo ? httpSocketIoBridge.sendToDevice(userId, deviceId, frame) : false;
+        const bridgePayload = networkContext?.sendToBridge
+            ? buildBridgeForwardPayload(
+                http,
+                userId,
+                fallbackUserId,
+                deviceId,
+                frame,
+                String(sourceForPolicy || ""),
+                endpointPolicyMap
+            )
+            : null;
+        const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
+        
+        if (!sent && handleLocalAirpadPayload(http, frame)) {
+            http.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from
+                },
+                "[bridge] unknown ws target handled locally"
+            );
+            return true;
+        }
+        if (!sent && !sentViaBridge && http.log) {
+            http.log?.warn?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from,
+                    targetSource: "explicit"
+                },
+                "[bridge] unknown ws target not handled"
+            );
+        } else if (!sent && sentViaBridge && http.log) {
+            http.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: bridgePayload?.from,
+                    route: bridgePayload?.route,
+                    targetSource: "fallback"
+                },
+                "[bridge] unknown ws target forwarded via bridge"
+            );
+        }
+        return sent || sentViaBridge;
     };
     await registerOpsRoutes(http, unifiedHub, networkContext, httpSocketIoBridge);
     registerApiFallback(http);
@@ -586,9 +793,61 @@ export const buildCoreServers = async (opts: { logger?: boolean; httpsOptions?: 
             : undefined
     });
     httpsWsHub.onUnknownTarget = (userId, deviceId, frame) => {
-        const sent = httpsSocketIoBridge.sendToDevice(userId, deviceId, frame);
-        if (!sent && handleLocalAirpadPayload(https, frame)) return true;
-        return sent;
+        const sourceForPolicy = frame?.from || fallbackUserId;
+        const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+        const transportPref = resolveEndpointTransportPreference(sourceForPolicy, deviceId, endpointPolicyMap);
+        const canSocketIo = transportPref.transports.includes("socketio");
+        const sent = canSocketIo ? httpsSocketIoBridge.sendToDevice(userId, deviceId, frame) : false;
+        const bridgePayload = networkContext?.sendToBridge
+            ? buildBridgeForwardPayload(
+                https,
+                userId,
+                fallbackUserId,
+                deviceId,
+                frame,
+                String(sourceForPolicy || ""),
+                endpointPolicyMap
+            )
+            : null;
+        const sentViaBridge = !sent && bridgePayload ? networkContext?.sendToBridge?.(bridgePayload) === true : false;
+        
+        if (!sent && handleLocalAirpadPayload(https, frame)) {
+            https.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from
+                },
+                "[bridge] unknown ws target handled locally"
+            );
+            return true;
+        }
+        if (!sent && !sentViaBridge && https.log) {
+            https.log?.warn?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: frame?.from,
+                    targetSource: "explicit"
+                },
+                "[bridge] unknown ws target not handled"
+            );
+        } else if (!sent && sentViaBridge && https.log) {
+            https.log?.debug?.(
+                {
+                    userId,
+                    deviceId,
+                    type: frame?.type,
+                    from: bridgePayload?.from,
+                    route: bridgePayload?.route,
+                    targetSource: "fallback"
+                },
+                "[bridge] unknown ws target forwarded via bridge"
+            );
+        }
+        return sent || sentViaBridge;
     };
     await registerOpsRoutes(https, unifiedHub, networkContext, httpsSocketIoBridge);
     registerApiFallback(https);

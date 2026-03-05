@@ -9,7 +9,7 @@ import { readClipboard, writeClipboard } from "./clipboard.ts";
 import { Settings } from "@rs-server/lib/config.ts";
 import config from "../config/config.ts";
 import { inferNetworkSurface, normalizeNetworkAliasMap, makeTargetTokenSet, resolveNetworkAlias, resolveDispatchAudience, resolveDispatchPlan, resolvePeerIdentity, type PeerIdentityInput, type DispatchRouteDecision } from "../network/index.ts";
-import { resolveEndpointForwardTarget, resolveEndpointPolicyRoute, resolveEndpointIdPolicyStrict, type EndpointIdPolicyMap, normalizeEndpointPolicies } from "../network/stack/endpoint-policy.ts";
+import { resolveEndpointForwardTarget, resolveEndpointPolicyRoute, resolveEndpointIdPolicyStrict, resolveEndpointTransportPreference, type EndpointIdPolicyMap, type EndpointTransportPreference, normalizeEndpointPolicies } from "../network/stack/endpoint-policy.ts";
 import { pickEnvBoolLegacy } from "../lib/env.ts";
 import { parsePortableBoolean, parsePortableInteger, safeParseBoolean } from "../lib/parsing.ts";
 
@@ -31,7 +31,9 @@ type HttpDispatchBody = {
     userKey?: string;
     clientId?: string;
     token?: string;
+    text?: string;
     targetDeviceId?: string;
+    targets?: string[];
     requests?: HttpDispatchRequest[];
     addresses?: Array<string | HttpDispatchRequest>;
     urls?: string[];
@@ -63,6 +65,8 @@ type HttpRequestBody = {
 type DeviceFeatureRequestBody = HttpRequestBody & {
     text?: string;
     limit?: number;
+    targets?: string[];
+    query?: string;
 };
 type WsSendBody = { userId: string; userKey: string; namespace?: string; type?: string; data?: any };
 type ReverseSendBody = {
@@ -294,6 +298,10 @@ const sendToTargetsWithFallback = async (
     bridges?: {
         wsHub: WsHub;
         socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">;
+        networkContext?: {
+            sendToBridge?: (payload: any) => boolean;
+            getNodeId?: () => string | null | undefined;
+        };
     }
 ): Promise<{
     delivered: boolean;
@@ -307,38 +315,92 @@ const sendToTargetsWithFallback = async (
     if (!orderedTargets.length) return { delivered: false, responses, attemptedTargets };
 
     const isRequestMode = options?.mode === "request";
+    const sourceHint = typeof payload?.from === "string" && payload.from.trim()
+        ? payload.from.trim()
+        : typeof payload?.source === "string" && payload.source.trim()
+            ? payload.source.trim()
+            : userId;
+    const bridgeSenderId = typeof bridges?.networkContext?.getNodeId === "function" ? (bridges.networkContext.getNodeId() || "").trim() : "";
+    const bridgeFrom = bridgeSenderId || sourceHint || userId;
+    const attemptBridgeDelivery = async (target: string, deliveryPayload: any): Promise<boolean> => {
+        const sendToBridge = bridges?.networkContext?.sendToBridge;
+        if (!sendToBridge) return false;
+        const preference = getTransportPreference(target);
+        const hasRelationRestriction = preference.hasExplicitRelation;
+        const hasMessageTransport =
+            preference.transports.includes("ws") ||
+            preference.transports.includes("socketio") ||
+            preference.transports.includes("tcp");
+        if (hasRelationRestriction && !hasMessageTransport) return false;
+        const bridgePayload =
+            deliveryPayload && typeof deliveryPayload === "object" && !Array.isArray(deliveryPayload)
+                ? { ...deliveryPayload } as Record<string, any>
+                : { type: "dispatch", data: deliveryPayload };
+        if (!bridgePayload.type && !bridgePayload.action) bridgePayload.type = "dispatch";
+        if (!bridgePayload.from) bridgePayload.from = bridgeFrom;
+        if (!bridgePayload.source) bridgePayload.source = bridgeFrom;
+        if (!bridgePayload.to) bridgePayload.to = target;
+        if (!bridgePayload.target) bridgePayload.target = target;
+        if (!bridgePayload.targetId) bridgePayload.targetId = target;
+        if (!bridgePayload.userId) bridgePayload.userId = bridgeSenderId || userId;
+        if (!bridgePayload.route) bridgePayload.route = "bridge-fallback";
+        try {
+            return !!sendToBridge(bridgePayload);
+        } catch {
+            return false;
+        }
+    };
+
     let gotDirectDelivery = false;
     const directTargets = new Set(deliveryPlan.direct);
 
+    const getTransportPreference = (target: string): EndpointTransportPreference => {
+        return resolveEndpointTransportPreference(sourceHint, target, endpointPolicyMap);
+    };
+
     const tryRequestFromTarget = async (target: string): Promise<any> => {
-        if (bridges?.wsHub?.requestToDevice) {
-            try {
-                const response = await bridges.wsHub.requestToDevice(userId, target, payload, options?.waitMs);
-                if (response !== undefined) return response;
-            } catch {
-                // ignored
+        const preference = getTransportPreference(target);
+        for (const transport of preference.transports) {
+            if (transport === "ws" && bridges?.wsHub?.requestToDevice) {
+                try {
+                    const response = await bridges.wsHub.requestToDevice(userId, target, payload, options?.waitMs);
+                    if (response !== undefined) return response;
+                } catch {
+                    // ignored
+                }
+                continue;
             }
-        }
-        if (bridges?.socketIoBridge?.requestToDevice) {
-            try {
-                const response = await bridges.socketIoBridge.requestToDevice(userId, target, payload, options?.waitMs);
-                if (response !== undefined) return response;
-            } catch {
-                // ignored
+            if (transport === "socketio" && bridges?.socketIoBridge?.requestToDevice) {
+                try {
+                    const response = await bridges.socketIoBridge.requestToDevice(userId, target, payload, options?.waitMs);
+                    if (response !== undefined) return response;
+                } catch {
+                    // ignored
+                }
             }
         }
         return undefined;
     };
 
-    const trySendToTarget = (target: string): boolean => {
-        const wsResult = bridges?.wsHub.sendToDevice(userId, target, payload);
-        if (wsResult) return true;
-        if (bridges?.socketIoBridge?.sendToDevice) return bridges.socketIoBridge.sendToDevice(userId, target, payload);
+    const trySendToTarget = async (target: string): Promise<boolean> => {
+        const preference = getTransportPreference(target);
+        for (const transport of preference.transports) {
+            if (transport === "ws" && bridges?.wsHub.sendToDevice) {
+                const wsResult = bridges.wsHub.sendToDevice(userId, target, payload);
+                if (wsResult) return true;
+                continue;
+            }
+            if (transport === "socketio" && bridges?.socketIoBridge?.sendToDevice) {
+                const socketResult = bridges.socketIoBridge.sendToDevice(userId, target, payload);
+                if (socketResult) return true;
+            }
+        }
         return false;
     };
 
     for (const target of orderedTargets) {
         attemptedTargets.push(target);
+        let bridgeDelivered = false;
         if (directTargets.has(target)) {
             if (isRequestMode) {
                 const response = await tryRequestFromTarget(target);
@@ -347,9 +409,14 @@ const sendToTargetsWithFallback = async (
                     return { delivered: true, responses, attemptedTargets };
                 }
             } else {
-                const delivered = trySendToTarget(target);
+                const delivered = await trySendToTarget(target);
                 gotDirectDelivery = gotDirectDelivery || delivered;
-                if (delivered) responses.push({ target, response: true });
+                if (delivered) {
+                    responses.push({ target, response: true });
+                } else {
+                    bridgeDelivered = await attemptBridgeDelivery(target, payload);
+                    if (bridgeDelivered) responses.push({ target, viaBridge: true });
+                }
             }
             continue;
         }
@@ -364,8 +431,13 @@ const sendToTargetsWithFallback = async (
             }
             continue;
         }
-        const delivered = trySendToTarget(target);
-        if (delivered) responses.push({ target, response: true });
+        const delivered = await trySendToTarget(target);
+        if (delivered) {
+            responses.push({ target, response: true });
+        } else {
+            bridgeDelivered = await attemptBridgeDelivery(target, payload);
+            if (bridgeDelivered) responses.push({ target, viaBridge: true });
+        }
     }
 
     if (isRequestMode) {
@@ -719,6 +791,41 @@ const normalizeDispatchRequests = (body: HttpDispatchBody): HttpDispatchRequest[
     return out;
 };
 
+const collectBroadcastTopLevelTargets = (body: HttpDispatchBody): string[] => {
+    const normalizedBody = body as any;
+    const out = new Set<string>();
+    const push = (value: unknown) => {
+        if (typeof value !== "string") return;
+        const list = value
+            .split(/[;,]/)
+            .map((entry) => entry.trim())
+            .filter(Boolean);
+        for (const target of list) {
+            out.add(target);
+        }
+    };
+    push(body.targetDeviceId);
+    push(normalizedBody.targetId);
+    push(normalizedBody.deviceId);
+    push(normalizedBody.target);
+    push(normalizedBody.to);
+    if (Array.isArray(normalizedBody.targets)) {
+        for (const target of normalizedBody.targets) push(target);
+    }
+    return Array.from(out);
+};
+
+const buildBroadcastRequestsFromTargets = (body: HttpDispatchBody): HttpDispatchRequest[] => {
+    const payloadText = typeof body.text === "string" ? body.text.trim() : "";
+    if (!payloadText) return [];
+    const targets = collectBroadcastTopLevelTargets(body);
+    return targets.map((target) => ({
+        deviceId: target,
+        body: payloadText,
+        method: "POST"
+    }));
+};
+
 const readFeatureLimit = (body: DeviceFeatureRequestBody): number => {
     const limit = parsePortableInteger((body as any).limit);
     return Math.max(1, Math.min(200, limit ?? 50));
@@ -731,7 +838,105 @@ const readTextPayload = (body: DeviceFeatureRequestBody): string => {
     return String(textFromBody).trim();
 };
 
+const collectFeatureTargets = (body: DeviceFeatureRequestBody): string[] => {
+    const out = new Set<string>();
+    const normalized = body as Record<string, any>;
+    const push = (value: unknown) => {
+        if (typeof value !== "string") return;
+        const list = value
+            .split(/[;,]/)
+            .map((entry) => entry.trim())
+            .filter(Boolean);
+        for (const target of list) {
+            out.add(target);
+        }
+    };
+    push(body.targetDeviceId);
+    push(body.targetId);
+    push(normalized.deviceId);
+    push(normalized.target);
+    push(normalized.to);
+    if (Array.isArray(normalized.targets)) {
+        for (const target of normalized.targets) push(target);
+    }
+    return Array.from(out);
+};
+
 const resolveFeatureTarget = (body: DeviceFeatureRequestBody, userId: string) => resolveNetworkTargetWithPeerIdentity(body.targetDeviceId?.trim() || body.targetId?.trim() || (body as any).deviceId?.trim(), userId);
+
+const resolveFeatureTargets = (body: DeviceFeatureRequestBody, userId: string): string[] => {
+    const explicitTargets = collectFeatureTargets(body);
+    if (explicitTargets.length > 0) return explicitTargets;
+    const fallback = resolveFeatureTarget(body, userId);
+    return fallback ? [fallback] : [];
+};
+
+type FeatureTargetDelivery = {
+    target?: string;
+    delivered: boolean;
+    reason?: string;
+};
+
+const dispatchFeatureToTargets = async (
+    userId: string,
+    routeSource: RouteSourceResolution,
+    targets: string[],
+    feature: string,
+    payload: any,
+    bridges: {
+        wsHub: WsHub;
+        socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">;
+        networkContext?: {
+            sendToBridge?: (payload: any) => boolean;
+            getNodeId?: () => string | null | undefined;
+        };
+    }
+): Promise<{ delivered: boolean; responses: any[]; attemptedTargets: string[]; targetResults: FeatureTargetDelivery[] }> => {
+    const deliveredTargetSet = new Set<string>();
+    const responses: any[] = [];
+    const attemptedTargets: string[] = [];
+    const targetResults: FeatureTargetDelivery[] = [];
+    let anyDelivered = false;
+
+    for (const target of targets) {
+        if (!target.trim()) continue;
+        const resolvedTarget = resolveEndpointRouteTarget(target, userId);
+        if (!resolvedTarget) {
+            targetResults.push({ target, delivered: false, reason: "No target" });
+            continue;
+        }
+        const permission = checkEndpointRoutePermission(routeSource.sourceId, resolvedTarget);
+        if (!permission.allowed) {
+            targetResults.push({ target: resolvedTarget, delivered: false, reason: `Route denied by endpoint policy: ${permission.reason || "policy-blocked"}` });
+            continue;
+        }
+
+        const response = await sendToTargetsWithFallback(
+            userId,
+            resolvedTarget,
+            reverseDispatchPayload(feature, payload),
+            { mode: "dispatch" },
+            bridges
+        );
+        const isDelivered = !!response.delivered;
+        if (isDelivered) {
+            anyDelivered = true;
+            deliveredTargetSet.add(resolvedTarget);
+            attemptedTargets.push(resolvedTarget);
+        }
+        for (const entry of response.responses) {
+            responses.push({ ...entry, target: resolvedTarget });
+        }
+        targetResults.push({ target: resolvedTarget, delivered: isDelivered });
+    }
+
+    return {
+        delivered: anyDelivered,
+        responses,
+        attemptedTargets: Array.from(deliveredTargetSet),
+        targetResults
+    };
+};
 
 const withFeatureUrl = (baseUrl: string, featurePath: string, query: Record<string, string | number | undefined>) => {
     const normalizedBase = baseUrl.trim().replace(/\/+$/, "");
@@ -793,7 +998,12 @@ const toTargetUrl = (body: HttpRequestBody, targetUrlFromSettings?: string, forc
     return `${protocol}://${host}${port}${normalizedPath}`;
 };
 
-export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, networkContext?: NetworkContextProvider, socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice">) => {
+export const registerOpsRoutes = async (
+    app: FastifyInstance,
+    wsHub: WsHub,
+    networkContext?: NetworkContextProvider,
+    socketIoBridge?: Pick<SocketIoBridge, "requestToDevice" | "sendToDevice" | "getConnectedDevices">
+) => {
     resolvePeerIdentityHub = wsHub;
 
     const requestHandler = async (request: FastifyRequest<{ Body: HttpRequestBody }>) => {
@@ -850,7 +1060,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                     data: (payload as any).data ?? payload
                 },
                 { mode: "dispatch" },
-                { wsHub, socketIoBridge }
+                { wsHub, socketIoBridge, networkContext }
             );
             const delivered = delivery.delivered;
             return {
@@ -904,7 +1114,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             };
         }
         const defaultDeviceId = targetDeviceId && targetDeviceId.trim() ? targetDeviceId.trim() : undefined;
-        const requests = normalizeDispatchRequests(body);
+        const legacyRequests = normalizeDispatchRequests(body);
+        const requests = legacyRequests.length > 0 ? legacyRequests : buildBroadcastRequestsFromTargets(body);
         // console.log(requests); // Disabled to prevent logging JSON/payload content
         if (requests.length === 0) {
             const notifyType = (request.body as any)?.type;
@@ -995,7 +1206,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                         data: (entry as any).data ?? (entry as any).body
                     },
                     { mode: "dispatch" },
-                    { wsHub, socketIoBridge }
+                    { wsHub, socketIoBridge, networkContext }
                 );
                 const delivered = delivery.delivered;
                 if (delivered) {
@@ -1123,7 +1334,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                     mode: "request",
                     waitMs: effectiveTimeoutMs ?? DEFAULT_NETWORK_FETCH_TIMEOUT_MS
                 },
-                { wsHub, socketIoBridge }
+                { wsHub, socketIoBridge, networkContext }
             );
             if (delivery.responses.length > 0) {
                 const hit = delivery.responses[0];
@@ -1217,7 +1428,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 data
             },
             { mode: "dispatch" },
-            { wsHub, socketIoBridge }
+            { wsHub, socketIoBridge, networkContext }
         );
         const delivered = delivery.delivered;
         return { ok: !!delivered, delivered: delivered ? "ws-reverse" : "ws-reverse-missing", deviceId: resolvedDeviceId };
@@ -1246,7 +1457,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             reverseDevices,
             reverseDeviceProfiles,
             configuredTargets,
-            features: ["/sms", "/notifications", "/notifications/speak"]
+            features: ["/sms", "/notifications", "/notifications/speak", "/contacts"]
         };
     };
 
@@ -1265,17 +1476,57 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedTargets = resolveFeatureTargets(body, userId);
+        const payloadData = { ...((body as any).data || {}), method: body.method || "POST", limit };
+        if ((body as any).number) payloadData.number = (body as any).number;
+        if ((body as any).content) payloadData.content = (body as any).content;
+        if ((body as any).text) payloadData.text = (body as any).text;
+        const useReverseDispatch = !resolvedBase || resolvedTargets.length > 1;
+
+        if (useReverseDispatch) {
+            if (resolvedTargets.length === 0) return { ok: false, error: "No target", feature: "sms" };
+            const dispatchResult = await dispatchFeatureToTargets(userId, routeSource, resolvedTargets, "sms", payloadData, { wsHub, socketIoBridge, networkContext });
+            if (dispatchResult.targetResults.length === 1 && !dispatchResult.delivered) {
+                const singleResult = dispatchResult.targetResults[0];
+                if (singleResult.reason?.includes("Route denied")) {
+                    return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: singleResult.reason };
+                }
+            }
+            const targetIds = dispatchResult.targetResults.map((entry) => entry.target).filter((value): value is string => typeof value === "string");
+            if (resolvedTargets.length === 1) {
+                return {
+                    ok: !!dispatchResult.delivered,
+                    delivered: dispatchResult.delivered ? "ws-reverse" : "ws-reverse-missing",
+                    targetDeviceId: targetIds[0],
+                    mode: "reverse",
+                    feature: "sms",
+                    limit
+                };
+            }
+            return {
+                ok: !!dispatchResult.delivered,
+                delivered: dispatchResult.delivered ? "ws-reverse-multi" : "ws-reverse-missing",
+                targetDeviceIds: targetIds,
+                mode: "reverse",
+                feature: "sms",
+                limit,
+                targets: dispatchResult.targetResults,
+                responses: dispatchResult.responses,
+                attemptedTargets: dispatchResult.attemptedTargets
+            };
+        }
+
+        const reverseDeviceId = resolvedTargets[0];
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
         const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
-        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
+        if (resolvedReverseDeviceId && permission.allowed) {
             const payloadData = { ...((body as any).data || {}), method: body.method || "POST", limit };
             if ((body as any).number) payloadData.number = (body as any).number;
             if ((body as any).content) payloadData.content = (body as any).content;
             if ((body as any).text) payloadData.text = (body as any).text;
             
-            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge });
+            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("sms", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge, networkContext });
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
@@ -1286,7 +1537,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 limit
             };
         }
-        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+        if (!resolvedReverseDeviceId) return { ok: false, error: "No target", feature: "sms" };
+        if (!permission.allowed) {
             return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
@@ -1322,13 +1574,56 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedTargets = resolveFeatureTargets(body, userId);
+        const payloadData = { ...((body as any).data || {}), method: body.method || "GET", limit };
+        const useReverseDispatch = !resolvedBase || resolvedTargets.length > 1;
+
+        if (useReverseDispatch) {
+            if (resolvedTargets.length === 0) return { ok: false, error: "No target", feature: "notifications" };
+            const dispatchResult = await dispatchFeatureToTargets(
+                userId,
+                routeSource,
+                resolvedTargets,
+                "notifications",
+                payloadData,
+                { wsHub, socketIoBridge, networkContext }
+            );
+            if (dispatchResult.targetResults.length === 1 && !dispatchResult.delivered) {
+                const singleResult = dispatchResult.targetResults[0];
+                if (singleResult.reason?.includes("Route denied")) {
+                    return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: singleResult.reason };
+                }
+            }
+            const targetIds = dispatchResult.targetResults.map((entry) => entry.target).filter((value): value is string => typeof value === "string");
+            if (resolvedTargets.length === 1) {
+                return {
+                    ok: !!dispatchResult.delivered,
+                    delivered: dispatchResult.delivered ? "ws-reverse" : "ws-reverse-missing",
+                    targetDeviceId: targetIds[0],
+                    mode: "reverse",
+                    feature: "notifications",
+                    limit
+                };
+            }
+            return {
+                ok: !!dispatchResult.delivered,
+                delivered: dispatchResult.delivered ? "ws-reverse-multi" : "ws-reverse-missing",
+                targetDeviceIds: targetIds,
+                mode: "reverse",
+                feature: "notifications",
+                limit,
+                targets: dispatchResult.targetResults,
+                responses: dispatchResult.responses,
+                attemptedTargets: dispatchResult.attemptedTargets
+            };
+        }
+
+        const reverseDeviceId = resolvedTargets[0];
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
         const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
-        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
-            const payloadData = { ...((body as any).data || {}), method: body.method || "GET", limit };
-            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge });
+        if (resolvedReverseDeviceId && permission.allowed) {
+            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications", payloadData), { mode: "dispatch" }, { wsHub, socketIoBridge, networkContext });
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
@@ -1339,7 +1634,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 limit
             };
         }
-        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+        if (!resolvedReverseDeviceId) return { ok: false, error: "No target", feature: "notifications" };
+        if (!permission.allowed) {
             return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
@@ -1376,12 +1672,53 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const ops = settings?.core?.ops || {};
         const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
         const resolvedBase = toTargetUrl(body, target?.url, false);
-        const reverseDeviceId = resolveFeatureTarget(body, userId);
+        const resolvedTargets = resolveFeatureTargets(body, userId);
+        const useReverseDispatch = !resolvedBase || resolvedTargets.length > 1;
+        const payload = { text: message };
+        if (useReverseDispatch) {
+            if (resolvedTargets.length === 0) return { ok: false, error: "No target", feature: "notifications.speak" };
+            const dispatchResult = await dispatchFeatureToTargets(
+                userId,
+                routeSource,
+                resolvedTargets,
+                "notifications.speak",
+                payload,
+                { wsHub, socketIoBridge, networkContext }
+            );
+            if (dispatchResult.targetResults.length === 1 && !dispatchResult.delivered) {
+                const singleResult = dispatchResult.targetResults[0];
+                if (singleResult.reason?.includes("Route denied")) {
+                    return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: singleResult.reason };
+                }
+            }
+            const targetIds = dispatchResult.targetResults.map((entry) => entry.target).filter((value): value is string => typeof value === "string");
+            if (resolvedTargets.length === 1) {
+                return {
+                    ok: !!dispatchResult.delivered,
+                    delivered: dispatchResult.delivered ? "ws-reverse" : "ws-reverse-missing",
+                    targetDeviceId: targetIds[0],
+                    mode: "reverse",
+                    feature: "notifications.speak"
+                };
+            }
+            return {
+                ok: !!dispatchResult.delivered,
+                delivered: dispatchResult.delivered ? "ws-reverse-multi" : "ws-reverse-missing",
+                targetDeviceIds: targetIds,
+                mode: "reverse",
+                feature: "notifications.speak",
+                targets: dispatchResult.targetResults,
+                responses: dispatchResult.responses,
+                attemptedTargets: dispatchResult.attemptedTargets
+            };
+        }
+
+        const reverseDeviceId = resolvedTargets[0];
         const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
         const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
 
-        if (!resolvedBase && resolvedReverseDeviceId && permission.allowed) {
-            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications.speak", { text: message }), { mode: "dispatch" }, { wsHub, socketIoBridge });
+        if (resolvedReverseDeviceId && permission.allowed) {
+            const delivery = await sendToTargetsWithFallback(userId, resolvedReverseDeviceId, reverseDispatchPayload("notifications.speak", payload), { mode: "dispatch" }, { wsHub, socketIoBridge, networkContext });
             const delivered = delivery.delivered;
             return {
                 ok: !!delivered,
@@ -1391,7 +1728,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 feature: "notifications.speak"
             };
         }
-        if (!resolvedBase && resolvedReverseDeviceId && !permission.allowed) {
+        if (!resolvedReverseDeviceId) return { ok: false, error: "No target", feature: "notifications.speak" };
+        if (!permission.allowed) {
             return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
         }
 
@@ -1408,6 +1746,121 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             return { ok: true, status: res.status, data: responseText };
         } catch (e) {
             return { ok: false, error: String(e) };
+        }
+    };
+
+    const contactsFeatureHandler = async (request: FastifyRequest<{ Body: DeviceFeatureRequestBody }>) => {
+        const body = (request.body || {}) as DeviceFeatureRequestBody;
+        const { userId, userKey, headers, targetId, query } = body;
+        const routeSource = extractRoutingSourceId(body as Record<string, any>, userId);
+        const routeSourceCheck = ensureKnownRoutingSource(routeSource);
+        if (!routeSourceCheck.allowed) {
+            return { ok: false, error: "Unknown source. I don't know you", route: "source-unknown", reason: routeSourceCheck.reason };
+        }
+
+        const { record, settings } = await resolveAuthContext(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+        const ops = settings?.core?.ops || {};
+        const target = Array.isArray((ops as any).httpTargets) ? (ops as any).httpTargets.find((entry: any) => entry?.id === targetId) : undefined;
+        const resolvedBase = toTargetUrl(body, target?.url, false);
+        const resolvedTargets = resolveFeatureTargets(body, userId);
+        const payloadData = { ...((body as any).data || {}), method: body.method || "GET" };
+        if ((body as any).query) payloadData.query = (body as any).query;
+        const useReverseDispatch = !resolvedBase || resolvedTargets.length > 1;
+
+        if (useReverseDispatch) {
+            if (resolvedTargets.length === 0) return { ok: false, error: "No target", feature: "contacts" };
+            const dispatchResult = await dispatchFeatureToTargets(
+                userId,
+                routeSource,
+                resolvedTargets,
+                "contacts",
+                payloadData,
+                { wsHub, socketIoBridge, networkContext }
+            );
+            if (dispatchResult.targetResults.length === 1 && !dispatchResult.delivered) {
+                const singleResult = dispatchResult.targetResults[0];
+                if (singleResult.reason?.includes("Route denied")) {
+                    return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: singleResult.reason };
+                }
+            }
+            const targetIds = dispatchResult.targetResults.map((entry) => entry.target).filter((value): value is string => typeof value === "string");
+            if (resolvedTargets.length === 1) {
+                return {
+                    ok: !!dispatchResult.delivered,
+                    delivered: dispatchResult.delivered ? "ws-reverse" : "ws-reverse-missing",
+                    targetDeviceId: targetIds[0],
+                    mode: "reverse",
+                    feature: "contacts"
+                };
+            }
+            return {
+                ok: !!dispatchResult.delivered,
+                delivered: dispatchResult.delivered ? "ws-reverse-multi" : "ws-reverse-missing",
+                targetDeviceIds: targetIds,
+                mode: "reverse",
+                feature: "contacts",
+                targets: dispatchResult.targetResults,
+                responses: dispatchResult.responses,
+                attemptedTargets: dispatchResult.attemptedTargets
+            };
+        }
+
+        const reverseDeviceId = resolvedTargets[0];
+        const resolvedReverseDeviceId = reverseDeviceId ? resolveEndpointRouteTarget(reverseDeviceId, userId) : reverseDeviceId;
+        const permission = resolvedReverseDeviceId ? checkEndpointRoutePermission(routeSource.sourceId, resolvedReverseDeviceId) : { allowed: true, reason: "" };
+
+        if (resolvedReverseDeviceId && permission.allowed) {
+            const delivery = await sendToTargetsWithFallback(
+                userId,
+                resolvedReverseDeviceId,
+                reverseDispatchPayload("contacts", payloadData),
+                { mode: "dispatch" },
+            { wsHub, socketIoBridge, networkContext }
+            );
+            const delivered = delivery.delivered;
+            return {
+                ok: !!delivered,
+                delivered: delivered ? "ws-reverse" : "ws-reverse-missing",
+                targetDeviceId: resolvedReverseDeviceId,
+                mode: "reverse",
+                feature: "contacts"
+            };
+        }
+        if (!resolvedReverseDeviceId) return { ok: false, error: "No target", feature: "contacts" };
+        if (!permission.allowed) {
+            return { ok: false, error: "Route denied by endpoint policy", delivered: "policy-blocked", reason: permission.reason };
+        }
+
+        if (!resolvedBase) return { ok: false, error: "No URL", feature: "contacts" };
+        const finalHeaders = { ...(target?.headers || {}), ...(headers || {}) };
+        const directMethod = (body.method || "GET").toUpperCase();
+        const requestBody = (body as any).body;
+        const requestData = (body as any).data;
+        const requestPayload = requestBody ?? requestData;
+        const payload = (directMethod === "GET" || directMethod === "HEAD")
+            ? undefined
+            : requestPayload == null
+                ? undefined
+                : typeof requestPayload === "string"
+                    ? requestPayload
+                    : JSON.stringify(requestPayload);
+
+        try {
+            const targetUrl = withFeatureUrl(
+                resolvedBase,
+                "/contacts",
+                { query: query?.trim() }
+            );
+            const res = await fetch(targetUrl, {
+                method: directMethod,
+                headers: finalHeaders,
+                body: payload
+            });
+            const responseText = await res.text();
+            return { ok: true, status: res.status, data: responseText, feature: "contacts" };
+        } catch (e) {
+            return { ok: false, error: String(e), feature: "contacts" };
         }
     };
 
@@ -1436,29 +1889,58 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             return { ok: true, action: "actions", count: actionsBatch.length };
         }
 
-        if (requestedAction === "clipboard" || requestedAction === "clipboard.write" || requestedAction === "clipboard:set" || requestedAction === "clipboard/paste") {
+        if (
+            requestedAction === "clipboard" ||
+            requestedAction === "clipboard.write" ||
+            requestedAction === "clipboard:set" ||
+            requestedAction === "clipboard/paste" ||
+            requestedAction === "clipboard.insert" ||
+            requestedAction === "clipboard.request" ||
+            requestedAction === "clipboard.request.write" ||
+            requestedAction === "clipboard.request.set" ||
+            requestedAction === "clipboard.request.paste" ||
+            requestedAction === "clipboard.request.insert"
+        ) {
             const nextText = typeof text === "string" ? text : typeof data?.text === "string" ? data.text : "";
             if (!nextText) return { ok: false, error: "Missing clipboard text" };
             await writeClipboard(nextText);
             return { ok: true, action: "clipboard.write" };
         }
 
-        if (requestedAction === "clipboard.read" || requestedAction === "clipboard:get") {
+        if (
+            requestedAction === "clipboard.read" ||
+            requestedAction === "clipboard:get" ||
+            requestedAction === "clipboard.request.read" ||
+            requestedAction === "clipboard.request.get"
+        ) {
             const current = await readClipboard();
             return { ok: true, action: "clipboard.read", text: current };
         }
 
-        if (requestedAction === "copy" || requestedAction === "clipboard.copy") {
+        if (
+            requestedAction === "copy" ||
+            requestedAction === "clipboard.copy" ||
+            requestedAction === "clipboard.request.copy"
+        ) {
             executeCopyHotkey();
             return { ok: true, action: "copy" };
         }
 
-        if (requestedAction === "cut" || requestedAction === "clipboard.cut") {
+        if (
+            requestedAction === "cut" ||
+            requestedAction === "clipboard.cut" ||
+            requestedAction === "clipboard.request.cut"
+        ) {
             executeCutHotkey();
             return { ok: true, action: "cut" };
         }
 
-        if (requestedAction === "paste" || requestedAction === "clipboard.paste") {
+        if (
+            requestedAction === "paste" ||
+            requestedAction === "clipboard.paste" ||
+            requestedAction === "clipboard.request.paste" ||
+            requestedAction === "clipboard.request.insert"
+        ) {
             const nextText = typeof text === "string" ? text : typeof data?.text === "string" ? data.text : "";
             if (nextText) await writeClipboard(nextText);
             executePasteHotkey();
@@ -1481,7 +1963,299 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         return requestHandler(request as FastifyRequest<{ Body: HttpRequestBody }>);
     };
 
-    const topologyHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
+    const normalizeScopeFilter = (value: unknown): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+            return value
+                .map((entry) => String(entry || "").trim().toLowerCase())
+                .filter(Boolean)
+                .filter((entry) => entry === "ws" || entry === "socketio" || entry === "bridge");
+        }
+        return String(value)
+            .split(",")
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean)
+            .filter((entry) => entry === "ws" || entry === "socketio" || entry === "bridge");
+    };
+
+    const normalizeTextFilter = (value: unknown): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+            return value.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean);
+        }
+        return String(value)
+            .split(",")
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean);
+    };
+
+    const normalizeSocketUser = (value: unknown): string => String(value || "").trim().toLowerCase();
+
+    const makeCanonicalNodeIds = (params: {
+        direction: "to-server" | "initiated-by-server" | string;
+        localNode: string;
+        peerNode: string;
+    }) => {
+        const localNode = params.localNode || "endpoint";
+        const peerNode = params.peerNode || "peer";
+        if (params.direction === "initiated-by-server") {
+            return {
+                nodeId: peerNode,
+                peerNodeId: localNode,
+                source: peerNode,
+                target: localNode
+            };
+        }
+        return {
+            nodeId: localNode,
+            peerNodeId: peerNode,
+            source: localNode,
+            target: peerNode
+        };
+    };
+
+    const collectSocketIoConnectionRows = (userId: string) => {
+        if (!socketIoBridge?.getConnectionRegistry || typeof socketIoBridge.getConnectionRegistry !== "function") {
+            const socketIoDevices = Array.from(new Set(Array.isArray(socketIoBridge?.getConnectedDevices?.() ) ? socketIoBridge.getConnectedDevices() : []));
+            return socketIoDevices.map((deviceId) => ({
+                id: `socketio:${String(deviceId)}`,
+                transport: "socketio" as const,
+                scope: "socketio" as const,
+                direction: "to-server",
+                role: "airpad-client",
+                state: "connected",
+                userId: normalizeSocketUser(userId),
+                sourceId: String(deviceId),
+                namespace: "socketio",
+                alias: String(deviceId),
+                connectionNodeId: normalizeSocketUser(userId),
+                targetNodeId: String(deviceId),
+                remoteAddress: undefined,
+                remotePort: undefined,
+                archetype: undefined,
+                connectedAt: Date.now(),
+                nodeId: normalizeSocketUser(userId),
+                peerNodeId: String(deviceId),
+                fromNodeId: normalizeSocketUser(userId),
+                toNodeId: String(deviceId)
+            }));
+        }
+        const rows = socketIoBridge.getConnectionRegistry();
+        return rows.map((entry) => {
+            const localNode = normalizeSocketUser(userId);
+            const direction = (entry.direction as any) === "initiated-by-server" ? "initiated-by-server" : "to-server";
+            const peerNode = entry.sourceId || entry.alias || entry.userId || entry.id;
+            const canonical = makeCanonicalNodeIds({
+                direction: direction as "to-server" | "initiated-by-server",
+                localNode,
+                peerNode
+            });
+            return {
+                id: entry.id,
+                transport: "socketio" as const,
+                scope: "socketio" as const,
+                direction,
+                role: entry.role,
+                state: entry.state,
+                userId: entry.userId || localNode || "socketio",
+                sourceId: entry.sourceId,
+                namespace: entry.namespace || "socketio",
+                alias: entry.alias || entry.sourceId || entry.userId || entry.id,
+                remoteAddress: entry.remoteAddress,
+                remotePort: entry.remotePort,
+                archetype: entry.archetype,
+                connectedAt: entry.connectedAt || Date.now(),
+                nodeId: canonical.nodeId,
+                peerNodeId: canonical.peerNodeId,
+                connectionNodeId: canonical.nodeId,
+                targetNodeId: canonical.peerNodeId,
+                fromNodeId: canonical.source,
+                toNodeId: canonical.target
+            };
+        });
+    };
+
+    const collectWsConnectionRows = (userId: string) => {
+        if (!wsHub?.getConnectionRegistry || typeof wsHub.getConnectionRegistry !== "function") return [];
+        const localNode = normalizeSocketUser(userId);
+        return wsHub.getConnectionRegistry(userId).map((entry) => {
+            const direction = "to-server" as const;
+            const peerNode = entry.peerId || entry.deviceId || entry.id;
+            const canonical = makeCanonicalNodeIds({
+                direction,
+                localNode,
+                peerNode
+            });
+            return {
+                id: entry.id,
+                transport: "ws" as const,
+                scope: "ws" as const,
+                direction,
+                role: entry.reverse ? "reverse-client" : "server-side-peer",
+                state: "connected",
+                userId: entry.userId || localNode || "ws",
+                sourceId: entry.peerId || entry.deviceId || entry.id,
+                namespace: entry.namespace || "ws",
+                alias: entry.peerId || entry.deviceId || entry.id,
+                connectionNodeId: canonical.nodeId,
+                targetNodeId: canonical.peerNodeId,
+                remoteAddress: entry.remoteAddress,
+                remotePort: undefined,
+                archetype: entry.remoteArchetype || entry.localArchetype,
+                connectedAt: entry.connectedAt,
+                nodeId: canonical.nodeId,
+                peerNodeId: canonical.peerNodeId,
+                fromNodeId: canonical.source,
+                toNodeId: canonical.target
+            };
+        });
+    };
+
+    const collectBridgeRows = (userId: string, bridgeStatus: any) => {
+        if (!bridgeStatus || !(bridgeStatus.connected || bridgeStatus.running)) return [];
+        const localNode = normalizeSocketUser(userId || bridgeStatus.userId || "endpoint");
+        const remoteNode = bridgeStatus.bridgePeerId || bridgeStatus.bridgeClientId || bridgeStatus.userId || bridgeStatus.bridgeMode || "bridge";
+        const canonical = makeCanonicalNodeIds({
+            direction: "initiated-by-server",
+            localNode,
+            peerNode: remoteNode
+        });
+        return [{
+            id: `bridge:${bridgeStatus.bridgeClientId || bridgeStatus.bridgePeerId || bridgeStatus.userId || "default"}`,
+            transport: "ws" as const,
+            scope: "bridge" as const,
+            direction: "initiated-by-server" as const,
+            role: "bridge-connector",
+            state: bridgeStatus.connected ? "connected" : "attempting",
+            userId: localNode,
+            sourceId: remoteNode,
+            namespace: "bridge",
+            alias: remoteNode,
+                connectionNodeId: canonical.nodeId,
+                targetNodeId: canonical.peerNodeId,
+            remoteAddress: undefined,
+            remotePort: undefined,
+            archetype: bridgeStatus.bridgeMode,
+            connectedAt: Date.now(),
+            nodeId: canonical.nodeId,
+            peerNodeId: canonical.peerNodeId,
+            fromNodeId: canonical.source,
+            toNodeId: canonical.target
+        }];
+    };
+
+    const collectSharedConnections = ({
+        requestUserId,
+        bridgeStatus,
+        filters
+    }: {
+        requestUserId: string;
+        bridgeStatus: any;
+        filters?: {
+            scope?: string[];
+            direction?: string[];
+            userId?: string[];
+            role?: string[];
+            state?: string[];
+        };
+    }) => {
+        const normalizedUser = normalizeSocketUser(requestUserId);
+        const allRows = [
+            ...collectWsConnectionRows(normalizedUser),
+            ...collectSocketIoConnectionRows(normalizedUser),
+            ...collectBridgeRows(normalizedUser, bridgeStatus)
+        ];
+        const scopeFilter = normalizeScopeFilter(filters?.scope);
+        const directionFilter = normalizeTextFilter(filters?.direction);
+        const userIdFilter = normalizeTextFilter(filters?.userId);
+        const roleFilter = normalizeTextFilter(filters?.role);
+        const stateFilter = normalizeTextFilter(filters?.state);
+        const filteredRows = allRows.filter((row) => {
+            if (scopeFilter.length && !scopeFilter.includes(row.scope)) return false;
+            if (directionFilter.length && !directionFilter.includes(String(row.direction).toLowerCase())) return false;
+            if (userIdFilter.length && !userIdFilter.includes(String(row.userId).toLowerCase())) return false;
+            if (roleFilter.length && !roleFilter.includes(String(row.role).toLowerCase())) return false;
+            if (stateFilter.length && !stateFilter.includes(String(row.state).toLowerCase())) return false;
+            return true;
+        });
+        return {
+            allRows: filteredRows
+        };
+    };
+
+    const buildSharedConnectionGraph = (rows: Array<{
+        id: string;
+        scope: string;
+        direction: string;
+        role: string;
+        state: string;
+        userId: string;
+        fromNodeId: string;
+        toNodeId: string;
+    }>) => {
+        const nodeSet = new Map<string, { id: string; label: string; degree: number }>();
+        const linkSet = new Map<string, {
+            id: string;
+            source: string;
+            target: string;
+            scope: string;
+            direction: string;
+            role: string;
+            state: string;
+            count: number;
+        }>();
+
+        for (const row of rows) {
+            if (row.fromNodeId) {
+                const from = String(row.fromNodeId).trim() || row.userId || "endpoint";
+                const to = String(row.toNodeId || "").trim() || row.userId || "endpoint";
+                nodeSet.set(from, {
+                    id: from,
+                    label: from,
+                    degree: (nodeSet.get(from)?.degree || 0) + 1
+                });
+                nodeSet.set(to, {
+                    id: to,
+                    label: to,
+                    degree: (nodeSet.get(to)?.degree || 0) + 1
+                });
+                const key = `link:${from}->${to}:${row.scope}:${row.direction}:${row.role}`;
+                const existing = linkSet.get(key);
+                if (existing) {
+                    existing.count += 1;
+                    continue;
+                }
+                linkSet.set(key, {
+                    id: `shared-link:${from}->${to}:${row.scope}`,
+                    source: from,
+                    target: to,
+                    scope: row.scope,
+                    direction: row.direction,
+                    role: row.role,
+                    state: row.state,
+                    count: 1
+                });
+            }
+        }
+        return {
+            nodes: Array.from(nodeSet.values()).map((entry) => ({ ...entry })),
+            links: Array.from(linkSet.values())
+        };
+    };
+
+    const topologyHandler = async (request: FastifyRequest<{
+        Body: {
+            userId: string;
+            userKey: string;
+            scope?: unknown;
+            direction?: unknown;
+            userIdFilter?: unknown;
+            filterUserId?: unknown;
+            sharedRealTimeRegistry?: unknown;
+            role?: unknown;
+            state?: unknown;
+        };
+    }>) => {
         const { userId, userKey } = request.body || {};
         const record = await verifyUser(userId, userKey);
         if (!record) return { ok: false, error: "Invalid credentials" };
@@ -1489,6 +2263,24 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
         const peers = wsHub.getConnectedDevices(userId);
         const peerProfiles = wsHub.getConnectedPeerProfiles(userId);
         const bridgeStatus = networkContext?.getBridgeStatus?.() || null;
+        const sharedRealTimeRegistryEnabled = parsePortableBoolean(request.body?.sharedRealTimeRegistry);
+        const includeSharedRealTimeRegistry = sharedRealTimeRegistryEnabled === false ? false : true;
+        const sharedFilters = {
+            scope: normalizeScopeFilter(request.body?.scope),
+            direction: normalizeTextFilter(request.body?.direction),
+            userId: normalizeTextFilter(request.body?.userIdFilter || request.body?.filterUserId),
+            role: normalizeTextFilter(request.body?.role),
+            state: normalizeTextFilter(request.body?.state)
+        };
+        const sharedConnections = collectSharedConnections({
+            requestUserId: userId,
+            bridgeStatus,
+            filters: sharedFilters
+        }).allRows;
+        const wsConnections = sharedConnections.filter((entry) => entry.scope === "ws");
+        const socketIoConnections = sharedConnections.filter((entry) => entry.scope === "socketio");
+        const bridgeConnections = sharedConnections.filter((entry) => entry.scope === "bridge");
+        const sharedTopologyGraph = includeSharedRealTimeRegistry ? buildSharedConnectionGraph(sharedConnections) : { nodes: [], links: [] };
         const isGateway = bridgeStatus?.running === true || bridgeStatus?.connected === true;
         const configuredTopology = (config as any)?.topology;
         const configuredEndpointIds = (config as any)?.endpointIDs;
@@ -1655,6 +2447,34 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
             ok: true,
             nodes: mergedTopologyNodes,
             links: staticTopologyLinks,
+            connections: {
+                total: wsConnections.length + socketIoConnections.length + bridgeConnections.length,
+                incoming: wsConnections.length + socketIoConnections.length,
+                outgoing: bridgeConnections.length,
+                list: [...wsConnections, ...socketIoConnections, ...bridgeConnections]
+            },
+            sharedRealTimeRegistry: {
+                enabled: includeSharedRealTimeRegistry,
+                scope: includeSharedRealTimeRegistry ? ["ws", "socketio", "bridge"] : [],
+                filters: {
+                    scope: sharedFilters.scope,
+                    direction: sharedFilters.direction,
+                    userId: sharedFilters.userId,
+                    role: sharedFilters.role,
+                    state: sharedFilters.state
+                },
+                grouped: {
+                    ws: includeSharedRealTimeRegistry ? wsConnections : [],
+                    socketio: includeSharedRealTimeRegistry ? socketIoConnections : [],
+                    bridge: includeSharedRealTimeRegistry ? bridgeConnections : []
+                },
+                totals: {
+                    total: includeSharedRealTimeRegistry ? sharedConnections.length : 0,
+                    toServer: includeSharedRealTimeRegistry ? wsConnections.length + socketIoConnections.length : 0,
+                    initiated: includeSharedRealTimeRegistry ? bridgeConnections.length : 0
+                },
+                graph: sharedTopologyGraph
+            },
             topology: {
                 enabled: staticTopologyEnabled,
                 nodes: Array.isArray(mergedTopologyNodes) ? mergedTopologyNodes.length : 0,
@@ -1675,6 +2495,129 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
                 }
             ],
             bridge: bridgeStatus || null
+        };
+    };
+
+    const connectionRegistryHandler = async (request: FastifyRequest<{
+        Body: {
+            userId: string;
+            userKey: string;
+            scope?: unknown;
+            direction?: unknown;
+            userIdFilter?: unknown;
+            filterUserId?: unknown;
+            sharedRealTimeRegistry?: unknown;
+            role?: unknown;
+            state?: unknown;
+        };
+    }>) => {
+        const { userId, userKey } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+        const bridgeStatus = networkContext?.getBridgeStatus?.() || null;
+        const sharedRealTimeRegistryEnabled = parsePortableBoolean(request.body?.sharedRealTimeRegistry);
+        const includeSharedRealTimeRegistry = sharedRealTimeRegistryEnabled === false ? false : true;
+        const registryFilters = {
+            scope: normalizeScopeFilter(request.body?.scope),
+            direction: normalizeTextFilter(request.body?.direction),
+            userId: normalizeTextFilter(request.body?.userIdFilter || request.body?.filterUserId),
+            role: normalizeTextFilter(request.body?.role),
+            state: normalizeTextFilter(request.body?.state)
+        };
+        const sharedConnections = collectSharedConnections({
+            requestUserId: userId,
+            bridgeStatus,
+            filters: registryFilters
+        }).allRows;
+        const sharedTopologyGraph = includeSharedRealTimeRegistry ? buildSharedConnectionGraph(sharedConnections) : { nodes: [], links: [] };
+        const wsConnectionRows = sharedConnections.filter((entry) => entry.scope === "ws");
+        const socketIoRows = sharedConnections.filter((entry) => entry.scope === "socketio");
+        const bridgeRows = sharedConnections.filter((entry) => entry.scope === "bridge");
+
+        const peers = Array.from(new Set(wsHub.getConnectedDevices(userId)));
+
+        return {
+            ok: true,
+            userId,
+            totals: {
+                total: wsConnectionRows.length + socketIoRows.length + bridgeRows.length,
+                toServer: wsConnectionRows.length + socketIoRows.length,
+                initiated: bridgeRows.length
+            },
+            peerCount: peers.length,
+            connections: {
+                ws: wsConnectionRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })),
+                socketio: socketIoRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })),
+                bridge: bridgeRows.map((row) => ({
+                    ...row,
+                    startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null
+                }))
+            },
+            list: [...wsConnectionRows, ...socketIoRows, ...bridgeRows].map((row) => ({
+                ...row,
+                startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null
+            })),
+            sharedRealTimeRegistry: {
+                enabled: includeSharedRealTimeRegistry,
+                scope: includeSharedRealTimeRegistry ? ["ws", "socketio", "bridge"] : [],
+                filters: {
+                    scope: registryFilters.scope,
+                    direction: registryFilters.direction,
+                    userId: registryFilters.userId,
+                    role: registryFilters.role,
+                    state: registryFilters.state
+                },
+                grouped: {
+                    ws: includeSharedRealTimeRegistry ? wsConnectionRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })) : [],
+                    socketio: includeSharedRealTimeRegistry ? socketIoRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })) : [],
+                    bridge: includeSharedRealTimeRegistry ? bridgeRows.map((row) => ({ ...row, startedAt: row.connectedAt ? new Date(row.connectedAt).toISOString() : null })) : []
+                },
+                graph: sharedTopologyGraph
+            },
+        };
+    };
+
+    const protocolStatusHandler = async (request: FastifyRequest<{ Body: { userId: string; userKey: string } }>) => {
+        const { userId, userKey } = request.body || {};
+        const record = await verifyUser(userId, userKey);
+        if (!record) return { ok: false, error: "Invalid credentials" };
+
+        const bridgeStatus = networkContext?.getBridgeStatus?.() || null;
+        const wsPeers = Array.isArray(wsHub?.getConnectedDevices?.(userId)) ? wsHub.getConnectedDevices(userId).length : 0;
+        const wsPeerProfiles = Array.isArray(wsHub?.getConnectedPeerProfiles?.(userId)) ? wsHub.getConnectedPeerProfiles(userId) : [];
+        const socketIoClients = typeof socketIoBridge?.getConnectedDevices === "function"
+            ? socketIoBridge.getConnectedDevices().map(String)
+            : [];
+
+        return {
+            ok: true,
+            timestamp: new Date().toISOString(),
+            protocolStatus: {
+                websocket: {
+                    available: true,
+                    active: wsPeers > 0,
+                    peers: wsPeers,
+                    profiles: wsPeerProfiles.length
+                },
+                socketio: {
+                    available: true,
+                    active: socketIoClients.length > 0,
+                    clients: socketIoClients.length
+                },
+                bridge: {
+                    running: !!bridgeStatus?.running,
+                    connected: !!bridgeStatus?.connected,
+                    bridgeEnabled: !!bridgeStatus?.bridgeEnabled,
+                    bridgeMode: bridgeStatus?.bridgeMode || null,
+                    bridgeRole: bridgeStatus?.bridgeRole || null,
+                    bridgeSurface: bridgeStatus?.surface || null
+                },
+                endpoint: {
+                    topologyEnabled: true,
+                    hasTopology: true,
+                    hasBridgeStatus: !!bridgeStatus
+                }
+            }
         };
     };
 
@@ -1861,7 +2804,7 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
     //   plus partial notify multicast fallback
     // - /api/ws: ws send operation (legacy /core/ops/ws/send)
     // - /api/action: host/device action endpoint (legacy /clipboard, /sms, partial notify)
-    // - /api/devices, /api/sms, /api/notifications and /api/notifications/speak:
+    // - /api/devices, /api/sms, /api/contacts, /api/notifications and /api/notifications/speak:
     //   feature mirrors for device capability requests
     app.post("/core/ops/http", requestHandler);
     app.post("/core/ops/https", requestHandler);
@@ -1872,6 +2815,8 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
     app.post("/api/devices", featureDevicesHandler);
     app.post("/core/ops/sms", smsFeatureHandler);
     app.post("/api/sms", smsFeatureHandler);
+    app.post("/core/ops/contacts", contactsFeatureHandler);
+    app.post("/api/contacts", contactsFeatureHandler);
     app.post("/core/ops/notifications", notificationsFeatureHandler);
     app.post("/api/notifications", notificationsFeatureHandler);
     app.post("/core/ops/notifications/speak", notificationsSpeakHandler);
@@ -1889,6 +2834,10 @@ export const registerOpsRoutes = async (app: FastifyInstance, wsHub: WsHub, netw
     app.post("/api/reverse/devices", reverseDevicesHandler);
     app.post("/core/network/topology", topologyHandler);
     app.post("/api/network/topology", topologyHandler);
+    app.post("/core/network/connections", connectionRegistryHandler);
+    app.post("/api/network/connections", connectionRegistryHandler);
+    app.post("/core/network/status", protocolStatusHandler);
+    app.post("/api/network/status", protocolStatusHandler);
     app.post("/core/network/dispatch", networkDispatchHandler);
     app.post("/api/network/dispatch", networkDispatchHandler);
     app.post("/core/network/fetch", networkFetchHandler);

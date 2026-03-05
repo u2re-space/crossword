@@ -515,6 +515,11 @@ function updateButtonLabel() {
     }
 }
 
+function logWsState(event: string, payload: string) {
+    const trimmedPayload = payload.trim();
+    log(`[ws-state] event=${event}${trimmedPayload ? ` ${trimmedPayload}` : ""}`);
+}
+
 function setWsStatus(connected: boolean) {
     wsConnected = connected;
     const wsStatusEl = getWsStatusEl();
@@ -878,11 +883,11 @@ export function connectWS() {
 
         if (index >= uniqueCandidates.length) {
             if (round + 1 < maxRounds) {
-                log(`Socket.IO retry ${round + 2}/${maxRounds}...`);
+                logWsState("retry", `round=${round + 2}/${maxRounds} next=0`);
                 globalThis.setTimeout(() => tryConnect(0, round + 1), retryDelayMs);
                 return;
             }
-            log('Socket.IO error: all protocol candidates failed');
+            logWsState("failed", `round=${round + 1}/${maxRounds} all-candidates`);
             isConnecting = false;
             setWsStatus(false);
             updateButtonLabel();
@@ -899,7 +904,11 @@ export function connectWS() {
             (primaryProtocol === 'https' ? '8443' : '8080');
         const routeTarget = routeTargetForQuery;
         const resolvedRouteTarget = routeTarget || targetHost || "";
-        log(`Connecting Socket.IO: ${url} via ${candidate.source} (${candidate.host}:${candidate.port}) target=${targetHost}:${targetPort}`);
+        logWsState(
+            "connecting",
+            `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} transport=${candidate.protocol} ` +
+            `source=${candidate.source} host=${candidate.host}:${candidate.port} target=${targetHost}:${targetPort}`
+        );
         const authToken = getAirPadAuthToken().trim();
         const clientId = getAirPadClientId().trim();
         const handshakeAuth: Record<string, string> = {};
@@ -961,14 +970,14 @@ export function connectWS() {
         });
         const engine = (probeSocket as any).io?.engine as EngineLike | undefined;
         const onEngineClose = (code?: number, reason?: unknown) => {
-            log(
-                `Socket.IO engine close (${url}): ` +
-                `code=${code ?? "n/a"}, reason=${typeof reason === "string" ? reason : safeJson(reason)}, ` +
-                `transport=${engine?.transport?.name || "unknown"}`
+            logWsState(
+                "engine-close",
+                `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} ` +
+                `code=${code ?? "n/a"} reason=${typeof reason === "string" ? reason : safeJson(reason)} transport=${engine?.transport?.name || "unknown"}`
             );
         };
         const onEngineError = (error: unknown) => {
-            log(`Socket.IO engine error (${url}): ${describeError(error)}`);
+            logWsState("engine-error", `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${describeError(error)}`);
         };
         engine?.on?.("close", onEngineClose);
         engine?.on?.("error", onEngineError);
@@ -983,14 +992,14 @@ export function connectWS() {
             }
             if (activeProbeSocket === probeSocket) activeProbeSocket = null;
             socket = probeSocket;
-            log('Socket.IO connected: ' + url);
+            logWsState("connected", `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} transport=${candidate.protocol}`);
             isConnecting = false;
-        autoReconnectAttempts = 0;
+            autoReconnectAttempts = 0;
             setWsStatus(true);
             socket.emit('hello', { id: getClientId() });
 
             socket.on('disconnect', (reason?: string) => {
-                log('Socket.IO disconnected' + (reason ? `: ${reason}` : ''));
+                logWsState("disconnected", `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${reason || "unknown"}`);
                 engine?.off?.("close", onEngineClose);
                 engine?.off?.("error", onEngineError);
                 isConnecting = false;
@@ -1023,7 +1032,7 @@ export function connectWS() {
                 if (isConnecting || wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
                     return;
                 }
-                log(`Socket.IO auto-reconnect attempt ${attempt}/${AUTO_RECONNECT_MAX_ATTEMPTS} after ${reason || "unknown reason"}`);
+                logWsState("auto-reconnect", `attempt=${attempt}/${AUTO_RECONNECT_MAX_ATTEMPTS} reason=${reason || "unknown reason"}`);
                 connectWS();
             }, delay);
             });
@@ -1036,7 +1045,7 @@ export function connectWS() {
             });
 
             socket.on('connect_error', (error) => {
-                log('Socket.IO error: ' + (error.message || ''));
+                logWsState("socket-connect-error", `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${error?.message || "unknown"}`);
                 isConnecting = false;
                 updateButtonLabel();
             });
@@ -1085,10 +1094,9 @@ export function connectWS() {
                 /xhr poll error|websocket error/i.test(errorMessage);
 
             if (certLikely) {
-                log(
-                    `Socket.IO connect failed (${url}): ${errorMessage}. ` +
-                    'Likely TLS certificate mismatch for IP. Certificate must include this IP in SAN, ' +
-                    'or use HTTP endpoint from an HTTP page.'
+                logWsState(
+                    "connect-failed",
+                    `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${errorMessage} hint=tls-certificate`
                 );
                 tryConnect(index + 1, round);
                 return;
@@ -1098,14 +1106,17 @@ export function connectWS() {
                 candidate.useWebSocketOnly &&
                 /xhr poll error|cors|private network|address space|failed fetch/i.test(errorMessage)
             ) {
-                log(
-                    `Socket.IO connect failed (${url}): ${errorMessage}. ` +
-                    'Endpoint must allow CORS from this origin and reply with Access-Control-Allow-Private-Network: true.'
+                logWsState(
+                    "connect-failed",
+                    `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${errorMessage} hint=private-network-cors`
                 );
             }
 
             tryConnect(index + 1, round);
-            log(`Socket.IO connect failed (${url}): ${errorMessage} ${details ? `| ${safeJson(details)}` : ''}`);
+            logWsState(
+                "connect-failed",
+                `candidate=${index + 1}/${uniqueCandidates.length} candidate_url=${url} reason=${errorMessage} details=${details ? safeJson(details) : "none"}`
+            );
         });
     };
 

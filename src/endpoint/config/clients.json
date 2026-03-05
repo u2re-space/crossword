@@ -6,7 +6,10 @@
     "L-192.168.0.200": {
         "origins": ["192.168.0.200", "45.147.121.152"],
         "tokens": [],
-        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward"],
+        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward", "first-order"],
+        "relations": {
+            "L-192.168.0.110": "both ws,socketio,http,tcp"
+        },
         "forward": [{
             "id": "L-192.168.0.110",
             "conditions": ["airpad", "mouse", "keyboard"]
@@ -58,7 +61,10 @@
     "L-192.168.0.110": {
         "origins": ["192.168.0.110"],
         "tokens": [],
-        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward"],
+        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward", "first-order"],
+        "relations": {
+            "L-192.168.0.200": "both ws,socketio,http,tcp"
+        },
         "flags": {
             "mobile": true,
             "gateway": false,

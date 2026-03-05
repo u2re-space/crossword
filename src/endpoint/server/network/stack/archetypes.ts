@@ -1,4 +1,5 @@
 export type WsConnectionArchetype = "client-reverse" | "client-forward" | "server-forward" | "server-reverse";
+export type WsConnectionIntent = WsConnectionArchetype | "first-order";
 
 const LEGACY_ROLE_ALIASES = new Set(["endpoint", "server", "peer", "client", "node", "hub"]);
 const CLIENT_CONNECTOR_ROLES = new Set([
@@ -15,7 +16,7 @@ const REVERSE_SERVER_ROLES = new Set(["server-reverse", "server-downstream", "re
 const REVERSE_MODE = "server-reverse";
 const DIRECT_MODE = "server-forward";
 
-const resolveClientRole = (input: string): WsConnectionArchetype | undefined => {
+const resolveClientRole = (input: string): WsConnectionIntent | undefined => {
     const value = (input || "").trim().toLowerCase();
     if (!value) return undefined;
     switch (value) {
@@ -48,6 +49,10 @@ const resolveClientRole = (input: string): WsConnectionArchetype | undefined => 
         case "sd":
         case "s-down":
             return "server-reverse";
+        case "first-order":
+        case "firstorder":
+        case "fo":
+            return "first-order";
         default:
             return undefined;
     }
@@ -59,7 +64,7 @@ export const normalizeRoleSet = (roles: unknown): Set<string> => {
     return new Set(normalized);
 };
 
-export const parseWsArchetype = (value: unknown): WsConnectionArchetype | undefined => {
+export const parseWsArchetype = (value: unknown): WsConnectionIntent | undefined => {
     if (typeof value !== "string") return undefined;
     return resolveClientRole(value);
 };
@@ -109,8 +114,12 @@ export const supportsReverseServerArchetype = (rawRoles: unknown): boolean => {
     return false;
 };
 
-export const areArchetypesCompatible = (localArchetype: WsConnectionArchetype, remoteArchetype: WsConnectionArchetype | undefined): boolean => {
+export const areArchetypesCompatible = (
+    localArchetype: WsConnectionArchetype,
+    remoteArchetype: WsConnectionIntent | undefined
+): boolean => {
     if (remoteArchetype == null) return true;
+    if (remoteArchetype === "first-order") return true;
     const compatibility: Record<WsConnectionArchetype, WsConnectionArchetype> = {
         "client-reverse": "server-reverse",
         "server-reverse": "client-reverse",
@@ -120,4 +129,4 @@ export const areArchetypesCompatible = (localArchetype: WsConnectionArchetype, r
     return compatibility[localArchetype] === remoteArchetype;
 };
 
-export const describeArchetype = (archetype: WsConnectionArchetype): string => archetype;
+export const describeArchetype = (archetype: WsConnectionIntent): string => archetype;

@@ -5,6 +5,14 @@ export type EndpointIdFlags = {
     [key: string]: boolean | undefined;
 };
 
+export type EndpointTransportMode = "http" | "ws" | "socketio" | "tcp";
+export type EndpointTransportDirection = "both" | "outbound" | "inbound";
+
+export type EndpointTransportHint = {
+    transports: EndpointTransportMode[];
+    direction: EndpointTransportDirection;
+};
+
 export type EndpointIdPolicy = {
     id: string;
     origins: string[];
@@ -12,6 +20,7 @@ export type EndpointIdPolicy = {
     forward: string;
     ports?: Record<string, unknown>;
     flags: EndpointIdFlags;
+    relations?: Record<string, EndpointTransportHint>;
     allowedIncoming: string[];
     allowedOutcoming: string[];
     roles: string[];
@@ -98,6 +107,128 @@ const normalizePolicyPorts = (raw: unknown): Record<string, number[]> => {
     return out;
 };
 
+const normalizeTransportMode = (raw: string): EndpointTransportMode | undefined => {
+    const normalized = normalizeEndpointToken(raw);
+    if (!normalized) return undefined;
+    if (normalized === "ws" || normalized === "websocket") return "ws";
+    if (normalized === "socketio" || normalized === "socket.io" || normalized === "io") return "socketio";
+    if (normalized === "tcp" || normalized === "tcp4" || normalized === "tcp6") return "tcp";
+    if (normalized === "http" || normalized === "https") return "http";
+    return undefined;
+};
+
+const normalizeTransportDirection = (raw: string): EndpointTransportDirection | undefined => {
+    const normalized = normalizeEndpointToken(raw);
+    if (!normalized) return undefined;
+    if (normalized === "both" || normalized === "bidi" || normalized === "bidirectional") return "both";
+    if (normalized === "outbound" || normalized === "out" || normalized === "source" || normalized === "send" || normalized === "to-target") return "outbound";
+    if (normalized === "inbound" || normalized === "in" || normalized === "target" || normalized === "target-to-source" || normalized === "reverse") return "inbound";
+    return undefined;
+};
+
+const normalizeTransportHint = (value: unknown): EndpointTransportHint | undefined => {
+    if (value == null) return undefined;
+
+    if (typeof value === "string") {
+        const tokens = value
+            .split(/[,\s;|]+/)
+            .map((entry) => entry.trim())
+            .filter(Boolean);
+        const transports: EndpointTransportMode[] = [];
+        let direction: EndpointTransportDirection = "both";
+        for (const token of tokens) {
+            const normalizedTransport = normalizeTransportMode(token);
+            if (normalizedTransport) {
+                if (!transports.includes(normalizedTransport)) transports.push(normalizedTransport);
+                continue;
+            }
+            const normalizedDirection = normalizeTransportDirection(token);
+            if (normalizedDirection) direction = normalizedDirection;
+        }
+        if (transports.length === 0) return undefined;
+        return { transports, direction };
+    }
+
+    if (Array.isArray(value)) {
+        const transports: EndpointTransportMode[] = [];
+        for (const transportRaw of value) {
+            const transport = normalizeTransportMode(String(transportRaw || "").trim());
+            if (transport && !transports.includes(transport)) transports.push(transport);
+        }
+        if (!transports.length) return undefined;
+        return { transports, direction: "both" };
+    }
+
+    if (typeof value === "object") {
+        const source = value as Record<string, unknown>;
+        const rawDirection = typeof source.direction === "string" ? source.direction : typeof source.dir === "string" ? source.dir : "";
+        const direction = normalizeTransportDirection(rawDirection) || "both";
+        const transportEntries = [
+            ...([source.transport] as unknown[]),
+            ...([source.transports] as unknown[]),
+            ...([source.via] as unknown[])
+        ].filter((entry) => entry != null);
+        const transports = new Set<EndpointTransportMode>();
+        for (const transportEntry of transportEntries) {
+            if (Array.isArray(transportEntry)) {
+                for (const transportRaw of transportEntry) {
+                    const transport = normalizeTransportMode(String(transportRaw || "").trim());
+                    if (transport) transports.add(transport);
+                }
+            } else {
+                const transport = normalizeTransportMode(String(transportEntry || "").trim());
+                if (transport) transports.add(transport);
+            }
+        }
+        if (!transports.size) return undefined;
+        return { transports: Array.from(transports), direction };
+    }
+
+    return undefined;
+};
+
+const normalizePolicyRelations = (raw: unknown): Record<string, EndpointTransportHint> => {
+    const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+    if (!source || Array.isArray(source)) return {};
+    const out: Record<string, EndpointTransportHint> = {};
+    for (const [rawTarget, rawHint] of Object.entries(source)) {
+        const normalizedTarget = normalizeEndpointToken(rawTarget);
+        if (!normalizedTarget) continue;
+        const hint = normalizeTransportHint(rawHint);
+        if (!hint) continue;
+        out[normalizedTarget] = {
+            direction: hint.direction,
+            transports: hint.transports
+        };
+    }
+    return out;
+};
+
+const findRelationForTarget = (
+    relations: Record<string, EndpointTransportHint> | undefined,
+    target: string
+): { key: string; hint: EndpointTransportHint } | undefined => {
+    if (!relations) return undefined;
+    const normalizedTarget = normalizeEndpointToken(target);
+    if (!normalizedTarget) return undefined;
+    if (relations[normalizedTarget]) {
+        return { key: normalizedTarget, hint: relations[normalizedTarget] };
+    }
+    for (const [key, hint] of Object.entries(relations)) {
+        if (hasRuleMatch(key, normalizedTarget) || hasRuleMatch(normalizedTarget, key)) {
+            return { key, hint };
+        }
+    }
+    return undefined;
+};
+
+const isOwnerToPeerTransport = (direction: EndpointTransportDirection): boolean =>
+    direction === "both" || direction === "outbound";
+const isPeerToOwnerTransport = (direction: EndpointTransportDirection): boolean =>
+    direction === "both" || direction === "inbound";
+
+const DEFAULT_TRANSPORT_PLAN: EndpointTransportMode[] = ["ws", "socketio", "http", "tcp"];
+
 export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPolicy => {
     const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const normalizedId = normalizeEndpointToken(id);
@@ -108,6 +239,7 @@ export const normalizeEndpointPolicy = (id: string, raw: unknown): EndpointIdPol
         forward: normalizePolicyForward(source.forward),
         ports: normalizePolicyPorts(source.ports),
         flags: normalizePolicyFlags(source.flags),
+        relations: normalizePolicyRelations(source.relations),
         allowedIncoming: normalizePolicyList(source.allowedIncoming, true),
         allowedOutcoming: normalizePolicyList(source.allowedOutcoming, true),
         roles: normalizePolicyList(source.roles, false)
@@ -243,5 +375,64 @@ export const resolveEndpointPolicyRoute = (sourceRaw: string, targetRaw: string,
         source: sourceToken,
         target: targetToken,
         reason
+    };
+};
+
+export type EndpointTransportPreference = {
+    transports: EndpointTransportMode[];
+    hasExplicitRelation: boolean;
+    sourceMatchedRule?: string;
+    targetMatchedRule?: string;
+};
+
+export const resolveEndpointTransportPreference = (
+    sourceRaw: string,
+    targetRaw: string,
+    policies: EndpointIdPolicyMap
+): EndpointTransportPreference => {
+    const normalizedSource = normalizeEndpointToken(sourceRaw);
+    const normalizedTarget = normalizeEndpointToken(targetRaw);
+    if (!normalizedSource || !normalizedTarget) {
+        return { transports: [...DEFAULT_TRANSPORT_PLAN], hasExplicitRelation: false };
+    }
+
+    const sourcePolicy = resolveEndpointIdPolicyStrict(policies, normalizedSource) || resolveEndpointIdPolicy(policies, normalizedSource);
+    const targetPolicy = resolveEndpointIdPolicyStrict(policies, normalizedTarget) || resolveEndpointIdPolicy(policies, normalizedTarget);
+    const sourceRelation = findRelationForTarget(sourcePolicy?.relations, normalizedTarget);
+    const targetRelation = findRelationForTarget(targetPolicy?.relations, normalizedSource);
+
+    const hasExplicitRelation = Boolean(sourceRelation || targetRelation);
+    if (!hasExplicitRelation) {
+        return {
+            transports: [...DEFAULT_TRANSPORT_PLAN],
+            hasExplicitRelation: false
+        };
+    }
+
+    const selected = new Set<EndpointTransportMode>();
+
+    if (sourceRelation && isOwnerToPeerTransport(sourceRelation.hint.direction)) {
+        sourceRelation.hint.transports.forEach((transport) => selected.add(transport));
+    }
+
+    if (targetRelation && isPeerToOwnerTransport(targetRelation.hint.direction)) {
+        targetRelation.hint.transports.forEach((transport) => selected.add(transport));
+    }
+
+    if (selected.size === 0) {
+        return {
+            transports: [],
+            hasExplicitRelation: true,
+            sourceMatchedRule: sourceRelation?.key,
+            targetMatchedRule: targetRelation?.key
+        };
+    }
+
+    const ordered = DEFAULT_TRANSPORT_PLAN.filter((transport) => selected.has(transport));
+    return {
+        transports: ordered,
+        hasExplicitRelation: true,
+        sourceMatchedRule: sourceRelation?.key,
+        targetMatchedRule: targetRelation?.key
     };
 };

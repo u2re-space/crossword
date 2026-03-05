@@ -6,6 +6,7 @@ import { normalizeTunnelRoutingFrame } from "./messages.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy, pickEnvNumberLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, resolvePortableTextValue, safeJsonParse } from "../../lib/parsing.ts";
 import {
+    type WsConnectionIntent,
     supportsConnectorRole,
     parseWsArchetype,
     describeArchetype
@@ -120,6 +121,11 @@ const inferConnectorArchetypeFromRoles = (roles: string[] | undefined): "client-
             hasReverse = true;
             continue;
         }
+        if (parsed === "first-order") {
+            hasForward = true;
+            hasReverse = true;
+            continue;
+        }
         if (parsed === "server-forward" || parsed === "client-forward") {
             hasForward = true;
             continue;
@@ -134,10 +140,11 @@ const inferConnectorArchetypeFromRoles = (roles: string[] | undefined): "client-
     return undefined;
 };
 
-const canonicalConnectorArchetype = (value: string | undefined, roles: string[] | undefined): "client-reverse" | "client-forward" => {
+const canonicalConnectorArchetype = (value: string | undefined, roles: string[] | undefined): "client-reverse" | "client-forward" | "first-order" => {
     const parsed = parseWsArchetype(value);
     if (parsed === "server-forward") return "client-forward";
     if (parsed === "server-reverse") return "client-reverse";
+    if (parsed === "first-order") return "first-order";
     if (parsed) return parsed;
 
     const raw = (value || "").trim();
@@ -469,9 +476,22 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<BridgeConnectorConfig>): 
             url.pathname = `${normalizedPath}ws`;
         }
         
-        const rawArchetype = cfg.archetype || "client-reverse";
-        const archetype = rawArchetype.includes("client-forward") || rawArchetype.includes("forward") ? "client-forward" : "client-reverse";
-        const mode = archetype === "client-forward" ? "push" : "reverse";
+        const rawArchetype = String(cfg.archetype || "client-reverse");
+        const normalizedArchetype = rawArchetype.toLowerCase();
+        const isFirstOrder = normalizedArchetype.includes("first-order") || normalizedArchetype.includes("firstorder");
+        
+        let archetype: WsConnectionIntent = isFirstOrder ? "first-order" : "client-reverse";
+        if (!isFirstOrder) {
+            archetype = normalizedArchetype.includes("client-forward") || normalizedArchetype.includes("forward")
+                ? "client-forward"
+                : "client-reverse";
+        }
+        
+        // If we hit a fallback condition on reconnect, swap the requested mode temporarily
+        const isFirstOrderFallback = isFirstOrder && rawArchetype.includes("fallback");
+        const mode = isFirstOrder
+            ? (isFirstOrderFallback ? "push" : "reverse")
+            : (archetype === "client-forward" ? "push" : "reverse");
         
         url.searchParams.set("mode", mode);
         url.searchParams.set("archetype", archetype);
@@ -713,6 +733,13 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
                 if (code === 4001 && normalizedReason.includes("invalid credentials")) {
                     invalidCredentialBlockUntil = Date.now() + invalidCredentialsRetryMs;
                     console.error("[bridge.connector] rejected by gateway", formatHintForInvalidCredentials(cfg.userId, cfg.deviceId, active));
+                }
+                if (code === 4003 || code === 4004 || code === 4005) {
+                    if (String(cfg.archetype).toLowerCase().includes("first-order")) {
+                        console.warn("[bridge.connector] First-order archetype mode conflict. Forcing candidate rotation and alternative archetype interpretation on next retry.");
+                        // Force a random archetype retry switch when standard mode failed
+                        cfg.archetype = cfg.archetype === "first-order" ? "first-order-fallback" : "first-order";
+                    }
                 }
             }
             clearConnectTimeout();

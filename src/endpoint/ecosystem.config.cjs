@@ -108,6 +108,10 @@ module.exports = {
                 CWS_AIRPAD_NATIVE_ACTIONS: "true",
                 CWS_AIRPAD_ROBOTJS_ENABLED: "true",
                 CWS_CLIPBOARD_LOGGING: "false",
+                CWS_HTTPS_ENABLED: "true",
+                CWS_HTTPS_KEY: path.resolve(__dirname, "https/local/multi.key"),
+                CWS_HTTPS_CERT: path.resolve(__dirname, "https/local/multi.crt"),
+                CWS_HTTPS_CA: path.resolve(__dirname, "https/local/rootCA.crt"),
                 CWS_BRIDGE_REJECT_UNAUTHORIZED: "false",
                 ...envFromFile
             }
