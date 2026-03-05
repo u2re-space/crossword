@@ -290,15 +290,15 @@ export const loadLegacyEndpointIds = (): Record<string, EndpointIdPolicy> => {
 const collectPortableConfigSources = (): string[] => {
     const args = typeof process !== "undefined" && Array.isArray(process.argv) ? process.argv : [];
     let configArg: string | undefined;
-    const idx = args.indexOf("--config");
-    if (idx !== -1 && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
-        configArg = args[idx + 1];
-    } else {
-        for (const arg of args) {
-            if (arg.startsWith("--config=")) {
-                configArg = arg.slice("--config=".length);
-                break;
-            }
+    for (let idx = args.length - 1; idx >= 0; idx--) {
+        const arg = args[idx];
+        if (arg === "--config" && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
+            configArg = args[idx + 1];
+            break;
+        }
+        if (arg.startsWith("--config=")) {
+            configArg = arg.slice("--config=".length);
+            break;
         }
     }
 

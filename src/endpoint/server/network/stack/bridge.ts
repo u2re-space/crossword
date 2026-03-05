@@ -99,19 +99,39 @@ const TLS_VERIFY_ERRORS = ["unable to verify the first certificate", "self signe
 const isControlLikeRole = (roles: string[] | undefined): boolean => {
     if (!Array.isArray(roles)) return false;
     const normalized = roles.map((role) => String(role || "").trim().toLowerCase());
-    const forwardHints = new Set([
-        "client-forward",
-        "forward-client",
-        "client-bridge",
-        "server-bridge",
-        "forward-server",
-        "server-forward",
+    const controlHints = new Set([
         "control",
         "control-panel",
+        "manager",
+        "manage",
         "ops",
         "admin"
     ]);
-    return normalized.some((role) => forwardHints.has(role));
+    return normalized.some((role) => controlHints.has(role));
+};
+
+const inferConnectorArchetypeFromRoles = (roles: string[] | undefined): "client-reverse" | "client-forward" | undefined => {
+    if (!Array.isArray(roles)) return undefined;
+    let hasReverse = false;
+    let hasForward = false;
+    for (const role of roles) {
+        const parsed = parseWsArchetype(role);
+        if (parsed === "server-reverse" || parsed === "client-reverse") {
+            hasReverse = true;
+            continue;
+        }
+        if (parsed === "server-forward" || parsed === "client-forward") {
+            hasForward = true;
+            continue;
+        }
+        const normalized = String(role || "").trim().toLowerCase();
+        if (!normalized) continue;
+        if (normalized.includes("reverse")) hasReverse = true;
+        if (normalized.includes("forward")) hasForward = true;
+    }
+    if (hasReverse) return "client-reverse";
+    if (hasForward) return "client-forward";
+    return undefined;
 };
 
 const canonicalConnectorArchetype = (value: string | undefined, roles: string[] | undefined): "client-reverse" | "client-forward" => {
@@ -122,8 +142,9 @@ const canonicalConnectorArchetype = (value: string | undefined, roles: string[] 
 
     const raw = (value || "").trim();
     const normalizedRaw = raw.toLowerCase();
-    const rawLooksLikeControl = ["forward", "push", "control", "manage", "admin", "ops"].some((token) => normalizedRaw.includes(token));
-    const fallback = isControlLikeRole(roles) || rawLooksLikeControl ? "client-forward" : "client-reverse";
+    const roleHint = inferConnectorArchetypeFromRoles(roles);
+    const hasExplicitControlIntent = isControlLikeRole(roles) || ["push", "control", "manage", "admin", "ops"].some((token) => normalizedRaw.includes(token));
+    const fallback = hasExplicitControlIntent ? "client-forward" : roleHint || "client-reverse";
     const intent = fallback === "client-forward" ? "control/management path" : "connect/join path";
     console.warn(
         "[bridge.connector] archetype is missing or unsupported, fallback to canonical",

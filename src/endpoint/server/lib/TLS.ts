@@ -62,9 +62,10 @@ const readCertificateMaterial = async (candidate: string | undefined, kind: Kind
 };
 
 export const buildHttpsCandidateFiles = (moduleDir: string, cwd = process.cwd()) => {
+    const configDir = path.resolve(cwd, "config");
     return {
-        keys: unique([path.resolve(cwd, "./https/local/" + KEY_FILE_NAME), path.resolve(cwd, "./" + KEY_FILE_NAME), path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)]),
-        certs: unique([path.resolve(cwd, "./https/local/" + CRT_FILE_NAME), path.resolve(cwd, "./" + CRT_FILE_NAME), path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)])
+        keys: unique([path.resolve(cwd, "./https/local/" + KEY_FILE_NAME), path.resolve(cwd, "./" + KEY_FILE_NAME), path.resolve(configDir, "./https/local/" + KEY_FILE_NAME), path.resolve(configDir, "./" + KEY_FILE_NAME), path.resolve(moduleDir, "./https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + KEY_FILE_NAME), path.resolve(moduleDir, "../../" + KEY_FILE_NAME), path.resolve(moduleDir, "../../../" + KEY_FILE_NAME)]),
+        certs: unique([path.resolve(cwd, "./https/local/" + CRT_FILE_NAME), path.resolve(cwd, "./" + CRT_FILE_NAME), path.resolve(configDir, "./https/local/" + CRT_FILE_NAME), path.resolve(configDir, "./" + CRT_FILE_NAME), path.resolve(moduleDir, "./https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../https/local/" + CRT_FILE_NAME), path.resolve(moduleDir, "../../" + CRT_FILE_NAME), path.resolve(moduleDir, "../../../" + CRT_FILE_NAME)])
     };
 };
 

@@ -103,6 +103,7 @@ module.exports = {
                 CWS_TUNNEL_DEBUG: true,
                 CWS_AIRPAD_VERBOSE: 1,
                 CWS_PORTABLE_CONFIG_PATH: path.resolve(__dirname, "portable.config.json"),
+                CWS_PORTABLE_DATA_PATH: path.resolve(__dirname, ".data"),
                 CWS_ASSOCIATED_TOKEN: "n3v3rm1nd",
                 CWS_AIRPAD_NATIVE_ACTIONS: "true",
                 CWS_AIRPAD_ROBOTJS_ENABLED: "true",

@@ -19,6 +19,7 @@ let socket: Socket | null = null;
 let wsConnected = false;
 let isConnecting = false;
 let btnEl: HTMLElement | null = null;
+let wsConnectButton: HTMLElement | null = null;
 let connectAttemptId = 0;
 let activeProbeSocket: Socket | null = null;
 let manualDisconnectRequested = false;
@@ -1137,11 +1138,18 @@ export function initWebSocket(btnConnect: HTMLElement | null) {
     updateButtonLabel();
     if (!btnConnect) return;
 
-    btnConnect.addEventListener('click', () => {
-        if (isConnecting || wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
-            disconnectWS();
-        } else {
-            connectWS();
-        }
-    });
+    if (wsConnectButton === btnConnect) return;
+    if (wsConnectButton) {
+        wsConnectButton.removeEventListener('click', handleWsConnectButtonClick);
+    }
+    wsConnectButton = btnConnect;
+    wsConnectButton.addEventListener('click', handleWsConnectButtonClick);
+}
+
+function handleWsConnectButtonClick() {
+    if (isConnecting || wsConnected || (socket && socket.connected) || (socket as any)?.connecting) {
+        disconnectWS();
+    } else {
+        connectWS();
+    }
 }

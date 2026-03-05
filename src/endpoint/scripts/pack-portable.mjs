@@ -607,7 +607,11 @@ const copyToConfiguredOutput = async () => {
 
     if (doRemote) {
         const copied = await copyRemote();
-        if (!copied && mode === "remote") {
+        if (!copied) {
+            if (mode === "remote") {
+                throw new Error("[portable] Remote mirror failed; build is not complete without a successful remote copy.");
+            }
+            console.warn("[portable] Remote mirror skipped because destination sync failed in auto mode.");
             return;
         }
     } else if (mode !== "auto") {

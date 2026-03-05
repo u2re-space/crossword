@@ -8,13 +8,13 @@ const ROOT = moduleDirname(import.meta);
 
 const getCliArg = (flag: string): string | undefined => {
     const args = typeof process !== "undefined" && Array.isArray(process.argv) ? process.argv : [];
-    const idx = args.indexOf(flag);
-    if (idx !== -1 && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
-        return args[idx + 1];
-    }
-    for (const arg of args) {
-        if (arg.startsWith(`${flag}=`)) {
-            return arg.slice(flag.length + 1);
+    for (let idx = args.length - 1; idx >= 0; idx--) {
+        const current = args[idx];
+        if (current === flag && args.length > idx + 1 && !args[idx + 1].startsWith("--")) {
+            return args[idx + 1];
+        }
+        if (current.startsWith(`${flag}=`)) {
+            return current.slice(flag.length + 1);
         }
     }
     return undefined;

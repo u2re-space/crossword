@@ -11,6 +11,9 @@ import {
     requestClipboardGet,
 } from '../network/websocket';
 
+let clipboardToolbarInitialized = false;
+let unsubscribeClipboardUpdate: (() => void) | null = null;
+
 function setPreview(text: string, meta?: { source?: string }) {
     const clipboardPreviewEl = getClipboardPreviewEl();
     if (!clipboardPreviewEl || typeof clipboardPreviewEl === 'undefined') return;
@@ -57,12 +60,17 @@ async function tryWritePhoneClipboardText(text: string): Promise<boolean> {
 }
 
 export function initClipboardToolbar() {
+    if (clipboardToolbarInitialized) return;
+
     const btnCut = getBtnCut();
     const btnCopy = getBtnCopy();
     const btnPaste = getBtnPaste();
 
     // Keep preview in sync with backend clipboard events
-    onServerClipboardUpdate((text, meta) => setPreview(text, meta));
+    if (unsubscribeClipboardUpdate) {
+        unsubscribeClipboardUpdate();
+    }
+    unsubscribeClipboardUpdate = onServerClipboardUpdate((text, meta) => setPreview(text, meta));
 
     // Best-effort initial fetch (so UI isn't empty)
     requestClipboardGet().then((res) => {
@@ -118,6 +126,8 @@ export function initClipboardToolbar() {
         // Show what we just pasted (useful confirmation)
         setPreview(text, { source: 'phone' });
     });
+
+    clipboardToolbarInitialized = true;
 }
 
 

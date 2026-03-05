@@ -15,6 +15,9 @@ import {
 import { renderKeyboard, renderEmoji, restoreButtonIcon } from './ui';
 
 const DEBUG_KEYBOARD_INPUT = false;
+let toggleButtonHandlerInitialized = false;
+let virtualKeyboardApiHandlersInitialized = false;
+let keyboardUIHandlersInitialized = false;
 
 function isConfigOverlayVisible(): boolean {
     const overlay = document.querySelector('.config-overlay') as HTMLElement | null;
@@ -107,6 +110,8 @@ export function toggleKeyboard() {
 
 // Setup toggle button click handler
 export function setupToggleButtonHandler() {
+    if (toggleButtonHandlerInitialized) return;
+
     const toggleButton = getToggleButton();
 
     if (!toggleButton) return;
@@ -128,10 +133,14 @@ export function setupToggleButtonHandler() {
 
         toggleKeyboard();
     });
+
+    toggleButtonHandlerInitialized = true;
 }
 
 // Setup VirtualKeyboard API input handlers
 export function setupVirtualKeyboardAPIHandlers() {
+    if (virtualKeyboardApiHandlersInitialized) return;
+
     const virtualKeyboardAPI = getVirtualKeyboardAPI();
     const toggleButton = getToggleButton();
 
@@ -649,10 +658,14 @@ export function setupVirtualKeyboardAPIHandlers() {
         lastKnownContent = ICON;
         restoreButtonIcon();
     });
+
+    virtualKeyboardApiHandlersInitialized = true;
 }
 
 // Setup keyboard UI event handlers
 export function setupKeyboardUIHandlers() {
+    if (keyboardUIHandlersInitialized) return;
+
     const keyboardElement = getKeyboardElement();
     if (!keyboardElement) return;
 
@@ -745,4 +758,6 @@ export function setupKeyboardUIHandlers() {
             hideKeyboard();
         }
     });
+
+    keyboardUIHandlersInitialized = true;
 }

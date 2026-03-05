@@ -18,6 +18,8 @@ import {
     setupKeyboardUIHandlers,
 } from './keyboard/handlers';
 
+let virtualKeyboardInitialized = false;
+
 function updateToggleButtonEnabledState(enabled: boolean) {
     const toggleButton = getToggleButton();
     if (!(toggleButton instanceof HTMLButtonElement)) return;
@@ -43,6 +45,8 @@ export function setRemoteKeyboardEnabled(enabled: boolean) {
 }
 
 export function initVirtualKeyboard() {
+    if (virtualKeyboardInitialized) return;
+
     // Initialize VirtualKeyboard API if available
     initVirtualKeyboardAPI();
     const hasAPI = hasVirtualKeyboardAPI();
@@ -103,5 +107,6 @@ export function initVirtualKeyboard() {
     setupVirtualKeyboardAPIHandlers();
     setupKeyboardUIHandlers();
 
+    virtualKeyboardInitialized = true;
     log('Virtual keyboard initialized');
 }

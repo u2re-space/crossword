@@ -302,6 +302,18 @@ function initHintOverlay() {
         }
         globalThis.setTimeout(cb, 0);
     };
+    const safeToString = (value: unknown): string => {
+        if (value instanceof Error) return `${value.name}: ${value.message}`;
+        if (typeof value === 'string') return value;
+        return String(value);
+    };
+    const runInitializer = (label: string, initializer: () => void) => {
+        try {
+            initializer();
+        } catch (error) {
+            log(`Airpad init [${label}] failed: ${safeToString(error)}`);
+        }
+    };
 
     scheduleIdle(async () => {
     // PWA: register Service Worker (auto-update)
@@ -322,23 +334,23 @@ function initHintOverlay() {
     log('Готово. Нажми "WS Connect", затем используй Air/AI кнопки.');
     log('Движение мыши основано только на Gyroscope API (повороты телефона).');
 
-    initLogOverlay();
-    initHintOverlay();
-    initWebSocket(getBtnConnect());
-    initSpeechRecognition();
-    initAiButton();
-    initAirButton();
-    initVirtualKeyboard();
+    runInitializer('log overlay', () => initLogOverlay());
+    runInitializer('hint overlay', () => initHintOverlay());
+    runInitializer('websocket button', () => initWebSocket(getBtnConnect()));
+    runInitializer('speech', () => initSpeechRecognition());
+    runInitializer('AI button', () => initAiButton());
+    runInitializer('Air button', () => initAirButton());
+    runInitializer('virtual keyboard', () => initVirtualKeyboard());
     unsubscribeWsKeyboardSync?.();
     unsubscribeWsKeyboardSync = onWSConnectionChange((connected) => {
         setRemoteKeyboardEnabled(connected);
     });
-    initClipboardToolbar();
-    initConfigButton();
-    initAdaptiveHintPanel();
+    runInitializer('clipboard toolbar', () => initClipboardToolbar());
+    runInitializer('config button', () => initConfigButton());
+    runInitializer('adaptive hint', () => initAdaptiveHintPanel());
     // Включаем RelativeOrientationSensor как основной источник
-    initRelativeOrientation();
-    initMotionResetButton();
+    runInitializer('relative orientation', () => initRelativeOrientation());
+    runInitializer('motion reset', () => initMotionResetButton());
     // Остальные можно включить при необходимости
     //initGravitySensor();
     //initGyro();

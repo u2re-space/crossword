@@ -31,6 +31,8 @@ let lastMotionSentAt = 0;
 let lastTapEndTime = 0;           // Когда закончился последний tap
 let lastTapWasClean = false;      // Был ли последний tap "чистым" (короткий, без движения)
 let pendingDragOnHold = false;    // Флаг: если hold — активировать drag
+let isAirButtonInitialized = false;
+let isNeighborButtonInitialized = false;
 
 const DOUBLE_TAP_WINDOW = 300;    // Окно между tap и следующим down для drag
 const DRAG_HOLD_DELAY = 150;      // Задержка hold для drag (короче обычного HOLD_DELAY)
@@ -427,6 +429,8 @@ function resetNeighborState() {
 }
 
 function initNeighborButton() {
+    if (isNeighborButtonInitialized) return;
+
     const neighborButton = document.getElementById('airNeighborButton');
     if (!neighborButton) return;
 
@@ -530,6 +534,7 @@ function initNeighborButton() {
     });
 
     log('Neighbor button initialized (tap: right-click, hold: middle-scroll via sensors)');
+    isNeighborButtonInitialized = true;
 }
 
 // ========== Экспорт состояния для gyroscope.ts / accelerometer.ts ==========
@@ -541,6 +546,8 @@ export function isMiddleScrollActive(): boolean {
 // ========== Initialization ==========
 
 export function initAirButton() {
+    if (isAirButtonInitialized) return;
+
     const airButton = getAirButton();
     if (!airButton) return;
 
@@ -595,5 +602,6 @@ export function initAirButton() {
         }
     });
 
+    isAirButtonInitialized = true;
     log('Air button initialized');
 }

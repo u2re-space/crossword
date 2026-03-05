@@ -10,6 +10,7 @@ let recognition: any = null;
 let aiListening = false;
 export let aiModeActive = false;
 let speechLanguage = 'ru-RU';
+let speechRecognitionInitialized = false;
 
 const normalizeSpeechLanguage = (value: string | undefined): string => {
     const lang = (value || '').trim();
@@ -58,6 +59,9 @@ function setupSpeechRecognition() {
 }
 
 export function initSpeechRecognition() {
+    if (speechRecognitionInitialized) return;
+
+    speechRecognitionInitialized = true;
     void loadSpeechLanguagePreference();
     recognition = setupSpeechRecognition();
 

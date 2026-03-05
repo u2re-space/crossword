@@ -2,7 +2,7 @@ import type { IncomingMessage } from "node:http";
 import type { ServerOptions } from "socket.io";
 import config from "../../config/config.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy } from "../../lib/env.ts";
-import { getAirPadTokens, isAirPadRequestAuthorized } from "../../airpad/index.ts";
+import { isAirPadRequestAuthorized } from "../../airpad/index.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 
 type LoggerLike = {
@@ -33,6 +33,65 @@ const parseOrigin = (value: string): { protocol: string; hostname: string; port:
     } catch {
         return null;
     }
+};
+
+const parseAirPadRequestContext = (rawUrl: string | undefined) => {
+    if (!rawUrl) return {};
+    if (!rawUrl.includes("?")) return {};
+
+    const queryIndex = rawUrl.indexOf("?");
+    const query = rawUrl.slice(queryIndex + 1);
+    try {
+        const params = new URLSearchParams(query);
+        return {
+            archetype: params.get("archetype") || "",
+            source: params.get("__airpad_src") || params.get("__airpad_source") || params.get("clientId") || "",
+            client: params.get("__airpad_client") || "",
+            hostHint: params.get("__airpad_host") || "",
+            targetHint: params.get("__airpad_target") || "",
+            routeHint: params.get("__airpad_route") || params.get("routeTarget") || "",
+            viaHint: params.get("__airpad_via") || "",
+            token: params.get("token") || params.get("airpadToken") || ""
+        };
+    } catch {
+        return {};
+    }
+};
+
+const isLikelyAirPadRequest = (req?: IncomingMessage): boolean => {
+    const context = parseAirPadRequestContext(req?.url);
+    const archetype = String(context.archetype || "").toLowerCase();
+    const hasAirPadArchetype = archetype.includes("forward-client") || archetype.includes("reverse-client");
+    const hasSourceOrHostHint =
+        typeof context.source === "string" && !!context.source.trim() ||
+        typeof context.client === "string" && !!context.client.trim() ||
+        typeof context.hostHint === "string" && !!context.hostHint.trim() ||
+        typeof context.targetHint === "string" && !!context.targetHint.trim() ||
+        typeof context.routeHint === "string" && !!context.routeHint.trim() ||
+        typeof context.viaHint === "string" && !!context.viaHint.trim();
+
+    return hasAirPadArchetype || hasSourceOrHostHint;
+};
+
+const normalizeRemoteAddress = (value: string | undefined): string => {
+    if (!value) return "";
+    const withoutZone = value.split("%")[0];
+    const unwrapped = withoutZone.replace(/\[|\]/g, "");
+    const trimmed = unwrapped.trim();
+    if (trimmed.startsWith("::ffff:")) {
+        return trimmed.slice(7);
+    }
+    return trimmed;
+};
+
+const hasSocketIoSession = (rawUrl: string | undefined): boolean => {
+    if (!rawUrl || typeof rawUrl !== "string") return false;
+    return /[?&]sid=/.test(rawUrl);
+};
+
+const isSocketIoPath = (rawUrl: string | undefined): boolean => {
+    if (!rawUrl || typeof rawUrl !== "string") return false;
+    return rawUrl === "/socket.io" || rawUrl === "/socket.io/" || rawUrl.startsWith("/socket.io/");
 };
 
 const hasDefaultOriginPort = (protocol: string, port: string): boolean => {
@@ -167,8 +226,7 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
     const allowAllOrigins = effectiveAllowedOrigins.includes("*");
     const allowPrivateRfc1918 = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_RFC1918", true) !== false && pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_192", true) !== false;
     const allowPrivateNetworkOrigins = pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_PRIVATE_NETWORK_ORIGINS", false) === true;
-    const hasAirPadAuthTokens = getAirPadTokens().length > 0;
-    const allowUnknownOriginWithAirPadAuth = (pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", undefined) ?? pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)) !== false && hasAirPadAuthTokens;
+    const allowUnknownOriginWithAirPadAuth = (pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AUTH", true) ?? pickEnvBoolLegacy("CWS_SOCKET_IO_ALLOW_UNKNOWN_ORIGIN_WITH_AIRPAD_AUTH", true)) !== false;
 
     logger?.info?.(
         {
@@ -212,6 +270,52 @@ export const buildSocketIoOptions = (logger?: LoggerLike): Partial<ServerOptions
             }
         },
         allowRequest(req, callback) {
+            const airPadRequest = isLikelyAirPadRequest(req);
+            const airPadQueryHint = typeof req?.url === "string" && req.url.includes("__airpad_");
+            const socketIoRequest = isSocketIoPath(req.url);
+            const socketIoSession = hasSocketIoSession(req.url);
+            const privateLanClient = isPrivateNetworkHost(normalizeRemoteAddress(req.socket?.remoteAddress));
+
+            if (socketIoRequest && privateLanClient && (airPadRequest || airPadQueryHint || socketIoSession)) {
+                logger?.debug?.(
+                    {
+                        origin: req?.headers?.origin,
+                        remoteAddress: req.socket?.remoteAddress,
+                        url: req.url,
+                        airPadRequest,
+                        airPadQueryHint,
+                        socketIoSession
+                    },
+                    "[socket.io] Handshake allow-list bypass for private LAN /socket.io client"
+                );
+                callback(null, true);
+                return;
+            }
+            if (airPadRequest || airPadQueryHint) {
+                logger?.debug?.(
+                    {
+                        origin: req?.headers?.origin,
+                        url: req.url,
+                        airPadRequest,
+                        airPadQueryHint
+                    },
+                    "[socket.io] Handshake allow-list bypass (airpad heuristic)"
+                );
+                callback(null, true);
+                return;
+            }
+            if (allowUnknownOriginWithAirPadAuth) {
+                logger?.debug?.(
+                    {
+                        origin: req.headers?.origin,
+                        url: req.url,
+                        remoteAddress: req.socket?.remoteAddress
+                    },
+                    "[socket.io] Handshake allow-list bypass via allowUnknownOriginWithAirPadAuth"
+                );
+                callback(null, true);
+                return;
+            }
             const origin = String(req.headers.origin || "");
             if (!origin || origin === "null") {
                 callback(null, true);
