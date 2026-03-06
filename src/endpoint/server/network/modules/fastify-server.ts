@@ -129,17 +129,12 @@ const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => 
                 const body = req.body;
                 
                 try {
-                    import("undici").then(({ Agent }) => {
-                        fetch(url, {
-                            method,
-                            headers,
-                            body: typeof body === "string" ? body : (body ? JSON.stringify(body) : undefined),
-                            dispatcher: new Agent({ connect: { rejectUnauthorized: false } }) as any
-                        } as any).catch(err => {
-                            app.log?.error?.({ err, url }, "Tunnel dispatch failed");
-                        });
-                    }).catch(() => {
-                        fetch(url, { method, headers, body: typeof body === "string" ? body : (body ? JSON.stringify(body) : undefined) }).catch(err => app.log?.error?.({ err, url }, "Tunnel dispatch failed"));
+                    fetch(url, {
+                        method,
+                        headers,
+                        body: typeof body === "string" ? body : (body ? JSON.stringify(body) : undefined)
+                    }).catch(err => {
+                        app.log?.error?.({ err, url }, "Tunnel dispatch failed");
                     });
                 } catch (e) {
                     app.log?.error?.({ err: e, url }, "Tunnel dispatch error");
