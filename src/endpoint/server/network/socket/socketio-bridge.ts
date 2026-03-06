@@ -471,6 +471,15 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (isBroadcast(processed)) {
             sourceSocket.broadcast.emit("message", processed);
             logMsg("OUT(broadcast)", processed, targetSource, sourceSocket);
+            
+            const userIdForReverse = (sourceSocket as any).userId || "";
+            networkContext?.sendToReverse?.(userIdForReverse, "broadcast", processed);
+            
+            const bridgePayload = buildSocketIoBridgePayload(sourceSocket, processed, "broadcast", targetSource);
+            if (bridgePayload) {
+                networkContext?.sendToBridge?.(bridgePayload);
+            }
+            
             return;
         }
 
@@ -480,6 +489,13 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             logMsg(`OUT(to=${processed.to})`, processed, targetSource, sourceSocket, targetSocket);
             return;
         }
+        
+        const userIdForReverse = (sourceSocket as any).userId || "";
+        if (networkContext?.sendToReverse?.(userIdForReverse, String(processed.to || ""), processed) === true) {
+            logMsg(`OUT(wsHub to=${processed.to})`, processed, targetSource, sourceSocket);
+            return;
+        }
+
         const bridgePayload = buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource);
         if (bridgePayload && networkContext?.sendToBridge?.(bridgePayload) === true) {
             logMsg(`OUT(socketio-bridge to=${processed.to})`, processed, targetSource, sourceSocket);
@@ -526,6 +542,14 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         if (!deviceIds || deviceIds.length === 0) {
             sourceSocket.broadcast.emit("message", processed);
             logMsg("OUT(multicast-all)", processed, "explicit", sourceSocket);
+            
+            const userIdForReverse = (sourceSocket as any).userId || "";
+            networkContext?.sendToReverse?.(userIdForReverse, "broadcast", processed);
+            
+            const bridgePayload = buildSocketIoBridgePayload(sourceSocket, processed, "broadcast", "explicit");
+            if (bridgePayload) {
+                networkContext?.sendToBridge?.(bridgePayload);
+            }
             return;
         }
 
