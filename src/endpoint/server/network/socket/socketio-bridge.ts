@@ -542,7 +542,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
         const connectionMeta = describeAirPadConnectionMeta(socket);
         const remoteArchetype = getSocketIoRemoteArchetype(socket);
-        const localArchetype = "server-forward" as const;
+        const localArchetype = "server-forward" as "server-forward" | "server-reverse";
         const expectedRemoteArchetype = inferExpectedRemoteArchetype(false);
         const supportsLocalForwardServer = supportsForwardServerArchetype((config as any)?.roles);
         if (!supportsLocalForwardServer) {

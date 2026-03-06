@@ -87,10 +87,11 @@ const decryptPayload = (payloadB64: string): { from: string; inner: any } => {
     const decipher = crypto.createDecipheriv("aes-256-gcm", AES_KEY, iv);
     decipher.setAuthTag(authTag);
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    const inner = safeJsonParse<Record<string, any>>(decrypted.toString("utf8"));
+    const decryptedText = decrypted.toString("utf8");
+    const inner = safeJsonParse<Record<string, any>>(decryptedText);
     return {
         from: deviceId,
-        inner: inner ?? payload
+        inner: inner ?? decryptedText
     };
 };
 
