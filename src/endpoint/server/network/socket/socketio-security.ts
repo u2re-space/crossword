@@ -74,7 +74,7 @@ const parseAirPadRequestContext = (rawUrl: string | undefined) => {
     try {
         const params = new URLSearchParams(query);
         return {
-            archetype: params.get("archetype") || "",
+            connectionType: params.get("connectionType") || params.get("archetype") || "",
             source: params.get("__airpad_src") || params.get("__airpad_source") || params.get("clientId") || "",
             client: params.get("__airpad_client") || "",
             hostHint: params.get("__airpad_host") || "",
@@ -90,8 +90,8 @@ const parseAirPadRequestContext = (rawUrl: string | undefined) => {
 
 const isLikelyAirPadRequest = (req?: IncomingMessage): boolean => {
     const context = parseAirPadRequestContext(req?.url);
-    const archetype = String(context.archetype || "").toLowerCase();
-    const hasAirPadArchetype = archetype.includes("forward-client") || archetype.includes("reverse-client");
+    const connectionType = String(context.connectionType || "").toLowerCase();
+    const hasAirPadConnectionType = connectionType.includes("forward-client") || connectionType.includes("reverse-client") || connectionType.includes("initiator");
     const hasSourceOrHostHint =
         typeof context.source === "string" && !!context.source.trim() ||
         typeof context.client === "string" && !!context.client.trim() ||
@@ -100,7 +100,7 @@ const isLikelyAirPadRequest = (req?: IncomingMessage): boolean => {
         typeof context.routeHint === "string" && !!context.routeHint.trim() ||
         typeof context.viaHint === "string" && !!context.viaHint.trim();
 
-    return hasAirPadArchetype || hasSourceOrHostHint;
+    return hasAirPadConnectionType || hasSourceOrHostHint;
 };
 
 const normalizeRemoteAddress = (value: string | undefined): string => {

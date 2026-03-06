@@ -99,17 +99,18 @@ Policy fallback behavior:
 
 ### 3.2.1 Archetype compatibility contract
 
-- Canonical values are `client-reverse`, `server-reverse`, `client-forward`, and `server-forward`.
-- WebSocket query param `archetype` and role aliases are normalized on both sides:
-  - `reverse-client` → `client-reverse`
-  - `forward-client` → `client-forward`
-  - `reverse-server` → `server-reverse`
-  - `forward-server` → `server-forward`
-  - `server-bridge` → `server-forward`
-  - `server-downstream` → `server-reverse`
-- `first-order` / `firstorder` / `fo` → `first-order` (bipolar-ready negotiation hint)
-- For a reverse WebSocket (`mode=reverse`), server side expects a `server-reverse` local role and requires remote `client-reverse`.
-- For a forward WebSocket (`mode=push`), server side expects a `server-forward` local role and requires remote `client-forward`.
+- Canonical runtime pairs are `responser-initiator` ↔ `requestor-initiated` and `requestor-initiator` ↔ `responser-initiated`.
+- `exchanger-initiator` / `exchanger-initiated` are represented as the compatibility marker `first-order` for who-connects-first negotiation.
+- WebSocket query param `archetype` supports both new names and legacy aliases on both sides:
+  - `reverse-client`, `responser-initiator` → `responser-initiator`
+  - `forward-client`, `requestor-initiator` → `requestor-initiator`
+  - `server-forward`, `responser-initiated` → `responser-initiated`
+  - `server-reverse`, `requestor-initiated` → `requestor-initiated`
+  - `server-bridge` → `responser-initiated`
+  - `server-downstream` → `requestor-initiated`
+- `first-order` / `firstorder` / `fo` / `exchanger` → `first-order` compatibility marker
+- For a reverse WebSocket (`mode=reverse`), server side expects local `requestor-initiated` and requires remote `responser-initiator`.
+- For a forward WebSocket (`mode=push`), server side expects local `responser-initiated` and requires remote `requestor-initiator`.
 - `first-order` archetype is treated as connection-agnostic:
   - it is accepted on both reverse and forward endpoints
   - compatibility checks allow it to match either server direction, enabling "who-connected-first" behavior when both endpoints advertise direct access.

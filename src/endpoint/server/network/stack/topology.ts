@@ -114,13 +114,13 @@ export const resolveDispatchPlan = (options: { route?: DispatchRouteMode; broadc
         };
     }
 
-    if (options.broadcast || !target) {
+    if (options.broadcast || !target || target === "broadcast") {
         return {
-            route: "local",
+            route: hasBridge ? "both" : "local",
             local: true,
-            bridge: false,
+            bridge: hasBridge,
             surface: options.surface || "unknown",
-            reason: "broadcast/default dispatch is local-only"
+            reason: hasBridge ? "broadcast/default dispatch routed to local + bridge" : "broadcast/default dispatch is local-only"
         };
     }
 

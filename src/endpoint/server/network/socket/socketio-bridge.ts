@@ -16,7 +16,7 @@ import {
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 import config from "../../config/config.ts";
-import { areArchetypesCompatible, inferExpectedRemoteArchetype, parseWsArchetype, supportsForwardServerArchetype } from "../stack/archetypes.ts";
+import { areConnectionTypesCompatible, describeDisplayConnectionType, inferExpectedRemoteConnectionType, parseWsConnectionType, supportsForwardServerConnectionType, toDisplayTopology } from "../stack/connection-types.ts";
 import { normalizeEndpointPolicies, resolveEndpointTransportPreference } from "../stack/endpoint-policy.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
@@ -34,9 +34,12 @@ export type SocketIoBridge = {
         userId: string;
         sourceId: string;
         namespace: string;
-        archetype?: string;
-        localArchetype?: string;
-        remoteArchetype?: string;
+        connectionType?: string;
+        localConnectionType?: string;
+        remoteConnectionType?: string;
+        localDisplayConnectionType?: string;
+        remoteDisplayConnectionType?: string;
+        displayTopology?: string;
         remoteAddress?: string;
         remotePort?: number;
         connectedAt: number;
@@ -290,12 +293,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         return normalized || undefined;
     };
 
-    const getSocketIoRemoteArchetype = (socket: Socket): { raw: string | undefined; parsed?: ReturnType<typeof parseWsArchetype> } => {
+    const getSocketIoRemoteConnectionType = (socket: Socket): { raw: string | undefined; parsed?: ReturnType<typeof parseWsConnectionType> } => {
         const meta = describeAirPadConnectionMeta(socket);
-        const raw = (meta as any)?.archetype;
+        const raw = (meta as any)?.connectionType || (meta as any)?.archetype;
         const normalized = typeof raw === "string" ? raw.trim() : "";
         if (!normalized) return { raw: undefined };
-        return { raw: normalized, parsed: parseWsArchetype(normalized) };
+        return { raw: normalized, parsed: parseWsConnectionType(normalized) };
     };
 
     const socketConnectionRegistry = new Map<
@@ -304,22 +307,28 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             sourceId: string;
             userId: string;
             namespace: string;
-            archetype: string | undefined;
-            localArchetype: string;
-            remoteArchetype: string;
+            connectionType: string | undefined;
+            localConnectionType: string;
+            remoteConnectionType: string;
+            localDisplayConnectionType?: string;
+            remoteDisplayConnectionType?: string;
+            displayTopology?: string;
             remoteAddress: string | undefined;
             remotePort: number | undefined;
             connectedAt: number;
         }
     >();
 
-    const buildSocketArchetypeLogPayload = (socket: Socket, remoteArchetype: { raw?: string; parsed?: ReturnType<typeof parseWsArchetype> }) => {
+    const buildSocketConnectionTypeLogPayload = (socket: Socket, remoteConnectionType: { raw?: string; parsed?: ReturnType<typeof parseWsConnectionType> }) => {
+        const parsed = remoteConnectionType.parsed || inferExpectedRemoteConnectionType(false);
         return {
             socketId: socket.id,
-            requestedArchetype: remoteArchetype.raw ?? "none",
+            requestedConnectionType: remoteConnectionType.raw ?? "none",
             transport: socket?.conn?.transport?.name,
             sourceHint: normalizeHint((socket as any)?.airpadSourceId),
-            transportAcceptedArchetype: "server-forward"
+            transportAcceptedConnectionType: "responser-initiated",
+            remoteDisplayConnectionType: describeDisplayConnectionType(parsed as any),
+            transportDisplayTopology: toDisplayTopology("responser-initiated", parsed as any)
         };
     };
 
@@ -471,7 +480,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             logMsg(`OUT(to=${processed.to})`, processed, targetSource, sourceSocket, targetSocket);
             return;
         }
-        const bridgePayload = incomingTargetSource !== "fallback" ? buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource) : null;
+        const bridgePayload = buildSocketIoBridgePayload(sourceSocket, processed, String(processed.to || ""), targetSource);
         if (bridgePayload && networkContext?.sendToBridge?.(bridgePayload) === true) {
             logMsg(`OUT(socketio-bridge to=${processed.to})`, processed, targetSource, sourceSocket);
             if (isTunnelDebug) {
@@ -541,38 +550,38 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             return;
         }
         const connectionMeta = describeAirPadConnectionMeta(socket);
-        const remoteArchetype = getSocketIoRemoteArchetype(socket);
-        const localArchetype = "server-forward" as "server-forward" | "server-reverse";
-        const expectedRemoteArchetype = inferExpectedRemoteArchetype(false);
-        const supportsLocalForwardServer = supportsForwardServerArchetype((config as any)?.roles);
+        const remoteConnectionType = getSocketIoRemoteConnectionType(socket);
+        const localConnectionType: "responser-initiated" = "responser-initiated";
+        const expectedRemoteConnectionType = inferExpectedRemoteConnectionType(false);
+        const supportsLocalForwardServer = supportsForwardServerConnectionType((config as any)?.roles);
         if (!supportsLocalForwardServer) {
-            console.warn(`[Server] AirPad socket rejected: server-forward role is disabled`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+            console.warn(`[Server] AirPad socket rejected: responser-initiated role is disabled`, buildSocketConnectionTypeLogPayload(socket, remoteConnectionType));
             socket.emit("error", { message: "Server role mismatch for Socket.IO clients" });
             socket.disconnect(true);
             return;
         }
-        if (remoteArchetype.raw && remoteArchetype.parsed == null) {
-            console.warn(`[Server] AirPad socket rejected: invalid connection archetype`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
-            socket.emit("error", { message: `Invalid AirPad connection archetype: ${remoteArchetype.raw}` });
+        if (remoteConnectionType.raw && remoteConnectionType.parsed == null) {
+            console.warn(`[Server] AirPad socket rejected: invalid connectionType`, buildSocketConnectionTypeLogPayload(socket, remoteConnectionType));
+            socket.emit("error", { message: `Invalid AirPad connectionType: ${remoteConnectionType.raw}` });
             socket.disconnect(true);
             return;
         }
-        if (!areArchetypesCompatible(localArchetype, remoteArchetype.parsed || expectedRemoteArchetype)) {
-            console.warn(`[Server] AirPad socket rejected: incompatible connection archetype`, buildSocketArchetypeLogPayload(socket, remoteArchetype));
+        if (!areConnectionTypesCompatible(localConnectionType, remoteConnectionType.parsed || expectedRemoteConnectionType)) {
+            console.warn(`[Server] AirPad socket rejected: incompatible connectionType`, buildSocketConnectionTypeLogPayload(socket, remoteConnectionType));
             socket.emit("error", {
-                message: `Incompatible connection archetypes: local=${localArchetype}, remote=${remoteArchetype.parsed || expectedRemoteArchetype}`
+                message: `Incompatible connection types: local=${localConnectionType}, remote=${remoteConnectionType.parsed || expectedRemoteConnectionType}`
             });
             socket.disconnect(true);
             return;
         }
         
-        let activeArchetype = remoteArchetype.parsed || expectedRemoteArchetype;
-        if (activeArchetype === "first-order") {
-            activeArchetype = localArchetype === "server-reverse" ? "client-reverse" : "client-forward";
-            console.log(`[Server] AirPad socket accepted first-order connection, acting as ${activeArchetype}`);
+        let activeConnectionType = remoteConnectionType.parsed || expectedRemoteConnectionType;
+        if (activeConnectionType === "first-order") {
+            activeConnectionType = localConnectionType === "requestor-initiated" ? "responser-initiator" : "requestor-initiator";
+            console.log(`[Server] AirPad socket accepted first-order connection, acting as ${activeConnectionType}`);
         }
-        const resolvedLocalArchetype = "server-forward";
-        const resolvedRemoteArchetype = activeArchetype;
+        const resolvedLocalConnectionType = localConnectionType;
+        const resolvedRemoteConnectionType = activeConnectionType;
         
         const sourceAlias = normalizeHint(connectionMeta.sourceId);
         if (sourceAlias) {
@@ -587,9 +596,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             sourceId: connectionSourceId,
             userId: connectionSourceId || normalizeHint(connectionMeta.clientId) || socket.id,
             namespace: normalizeHint(connectionMeta.routeTarget) || normalizeHint(connectionMeta.targetHost) || connectionSourceId || normalizeHint(connectionMeta.clientId) || socket.id,
-            archetype: connectionMeta.archetype || activeArchetype || undefined,
-            localArchetype: resolvedLocalArchetype,
-            remoteArchetype: resolvedRemoteArchetype,
+            connectionType: connectionMeta.connectionType || activeConnectionType || undefined,
+            localConnectionType: resolvedLocalConnectionType,
+            remoteConnectionType: resolvedRemoteConnectionType,
+            localDisplayConnectionType: describeDisplayConnectionType(resolvedLocalConnectionType as any),
+            remoteDisplayConnectionType: describeDisplayConnectionType(resolvedRemoteConnectionType as any),
+            displayTopology: toDisplayTopology(resolvedLocalConnectionType as any, resolvedRemoteConnectionType as any),
             remoteAddress: normalizeHint(connectionMeta.remoteAddress),
             remotePort: connectionMeta.remotePort,
             connectedAt: now
@@ -682,6 +694,18 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                                 socket: sourceSocket.id,
                                 target,
                                 targetSource: "explicit"
+                            })
+                        );
+                        }
+                        return true;
+                    }
+                    if (airpadRouter.forwardBinaryToBridge(sourceSocket, raw, target)) {
+                        if (isTunnelDebug) {
+                        console.log(
+                            formatBridgeSocketLog("[Router] OUT(tunnel-bridge-binary)", {
+                                socket: sourceSocket.id,
+                                target,
+                                targetSource: "fallback"
                             })
                         );
                         }
@@ -805,9 +829,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         userId: string;
         sourceId: string;
         namespace: string;
-        archetype?: string;
-        localArchetype?: string;
-        remoteArchetype?: string;
+        connectionType?: string;
+        localConnectionType?: string;
+        remoteConnectionType?: string;
+        localDisplayConnectionType?: string;
+        remoteDisplayConnectionType?: string;
+        displayTopology?: string;
         localRoleSet?: string[];
         remoteAddress?: string;
         remotePort?: number;
@@ -824,9 +851,12 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
             userId: string;
             sourceId: string;
             namespace: string;
-            archetype?: string;
-            localArchetype?: string;
-            remoteArchetype?: string;
+            connectionType?: string;
+            localConnectionType?: string;
+            remoteConnectionType?: string;
+        localDisplayConnectionType?: string;
+        remoteDisplayConnectionType?: string;
+        displayTopology?: string;
             remoteAddress?: string;
             remotePort?: number;
             connectedAt: number;
@@ -849,10 +879,13 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
                 userId,
                 sourceId: state.sourceId || userId,
                 namespace: state.namespace || "",
-                archetype: state.archetype || meta?.archetype || undefined,
-                localArchetype: state.localArchetype,
-                remoteArchetype: state.remoteArchetype,
-                localRoleSet: [state.localArchetype, state.remoteArchetype, state.archetype].filter(Boolean) as string[],
+                connectionType: state.connectionType || meta?.connectionType || undefined,
+                localConnectionType: state.localConnectionType,
+                remoteConnectionType: state.remoteConnectionType,
+                localDisplayConnectionType: state.localDisplayConnectionType,
+                remoteDisplayConnectionType: state.remoteDisplayConnectionType,
+                displayTopology: state.displayTopology,
+                localRoleSet: [state.localConnectionType, state.remoteConnectionType, state.connectionType].filter(Boolean) as string[],
                 remoteAddress: state.remoteAddress,
                 remotePort: state.remotePort,
                 connectedAt: state.connectedAt,

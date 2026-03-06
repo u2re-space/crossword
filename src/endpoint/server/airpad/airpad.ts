@@ -107,7 +107,7 @@ export type AirpadConnectionMeta = {
     viaPort?: string;
     protocolHint?: string;
     isEndpoint?: boolean;
-    archetype?: string;
+    connectionType?: string;
     xForwardedFor?: unknown;
     xForwardedHost?: unknown;
     xForwardedProto?: unknown;
@@ -215,7 +215,7 @@ export const describeAirPadConnectionMeta = (socket: Socket): AirpadConnectionMe
         viaPort: pickString(query.__airpad_via_port),
         protocolHint: pickString(query.__airpad_protocol),
         isEndpoint: isRouteEndpoint(query),
-        archetype: pickString(query.archetype) || pickString(query.connectionArchetype) || pickString(query.connectionRole),
+        connectionType: pickString(query.connectionType) || pickString(query.archetype) || pickString(query.connectionRole),
         xForwardedFor: headers["x-forwarded-for"] || headers["X-Forwarded-For"],
         xForwardedHost: headers["x-forwarded-host"] || headers["X-Forwarded-Host"],
         xForwardedProto: headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"],

@@ -98,7 +98,7 @@ module.exports = {
             },
             env: {
                 CWS_BRIDGE_ENDPOINTS: ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
-                CWS_ROLES: "server-forward,client-reverse,client-forward",
+                CWS_ROLES: "responser-initiated,requestor-initiated,responser-initiator,requestor-initiator",
                 NODE_ENV: "production",
                 CWS_TUNNEL_DEBUG: true,
                 CWS_AIRPAD_VERBOSE: 1,

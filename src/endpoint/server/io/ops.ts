@@ -2195,33 +2195,39 @@ export const registerOpsRoutes = async (
         };
     };
 
-const KNOWN_ARCHETYPE_ROLES = new Set([
+const KNOWN_CONNECTION_TYPE_ROLES = new Set([
+    "requestor-initiator",
+    "requestor-initiated",
+    "responser-initiator",
+    "responser-initiated",
+    "exchanger-initiator",
+    "exchanger-initiated",
     "server-forward",
     "server-reverse",
     "client-forward",
     "client-reverse"
 ]);
 
-const normalizeArchetypeRole = (value: unknown): string => String(value || "").trim().toLowerCase();
+const normalizeConnectionTypeRole = (value: unknown): string => String(value || "").trim().toLowerCase();
 
 const buildConnectionRoleSet = (values: Array<unknown>): string[] => {
     const result = new Set<string>();
     for (const raw of values) {
-        const value = normalizeArchetypeRole(raw);
-        if (!value || !KNOWN_ARCHETYPE_ROLES.has(value)) continue;
+        const value = normalizeConnectionTypeRole(raw);
+        if (!value || !KNOWN_CONNECTION_TYPE_ROLES.has(value)) continue;
         result.add(value);
     }
     return Array.from(result);
 };
 
-const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteArchetype?: unknown; role?: unknown; archetype?: unknown }): string[] => {
-    const fromRemoteArchetype = entry.remoteArchetype;
-    const fromLocalArchetype = entry.localArchetype;
-    const fallback = normalizeArchetypeRole(entry.role);
-    const fallbackFromLegacy = KNOWN_ARCHETYPE_ROLES.has(fallback) ? [fallback] : [];
-    const fallbackFromArchetype = normalizeArchetypeRole(entry.archetype);
-    const fallbackFromLegacyArchetype = KNOWN_ARCHETYPE_ROLES.has(fallbackFromArchetype) ? [fallbackFromArchetype] : [];
-    return buildConnectionRoleSet([fromLocalArchetype, fromRemoteArchetype, ...fallbackFromLegacy, ...fallbackFromLegacyArchetype]);
+const buildConnectionLogicalRoles = (entry: { localConnectionType?: unknown; remoteConnectionType?: unknown; role?: unknown; connectionType?: unknown }): string[] => {
+    const fromRemoteConnectionType = entry.remoteConnectionType;
+    const fromLocalConnectionType = entry.localConnectionType;
+    const fallback = normalizeConnectionTypeRole(entry.role);
+    const fallbackFromLegacy = KNOWN_CONNECTION_TYPE_ROLES.has(fallback) ? [fallback] : [];
+    const fallbackFromConnectionType = normalizeConnectionTypeRole(entry.connectionType);
+    const fallbackFromLegacyConnectionType = KNOWN_CONNECTION_TYPE_ROLES.has(fallbackFromConnectionType) ? [fallbackFromConnectionType] : [];
+    return buildConnectionRoleSet([fromLocalConnectionType, fromRemoteConnectionType, ...fallbackFromLegacy, ...fallbackFromLegacyConnectionType]);
 };
 
     const collectSocketIoConnectionRows = (userId: string) => {
@@ -2242,7 +2248,7 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 targetNodeId: String(deviceId),
                 remoteAddress: undefined,
                 remotePort: undefined,
-                archetype: undefined,
+                connectionType: undefined,
                 connectedAt: Date.now(),
                 nodeId: normalizeSocketUser(userId),
                 peerNodeId: String(deviceId),
@@ -2261,10 +2267,10 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 peerNode
             });
             const localRoleSet = buildConnectionLogicalRoles({
-                localArchetype: entry.localArchetype,
-                remoteArchetype: entry.remoteArchetype,
+                localConnectionType: entry.localConnectionType,
+                remoteConnectionType: entry.remoteConnectionType,
                 role: entry.role,
-                archetype: entry.archetype
+                connectionType: entry.connectionType
             });
             return {
                 id: entry.id,
@@ -2276,13 +2282,13 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 userId: entry.userId || localNode || "socketio",
                 sourceId: entry.sourceId,
                 namespace: entry.namespace || "socketio",
-                localArchetype: entry.localArchetype,
-                remoteArchetype: entry.remoteArchetype,
+                localConnectionType: entry.localConnectionType,
+                remoteConnectionType: entry.remoteConnectionType,
                 localRoleSet,
                 alias: entry.alias || entry.sourceId || entry.userId || entry.id,
                 remoteAddress: entry.remoteAddress,
                 remotePort: entry.remotePort,
-                archetype: entry.archetype,
+                connectionType: entry.connectionType,
                 connectedAt: entry.connectedAt || Date.now(),
                 nodeId: canonical.nodeId,
                 peerNodeId: canonical.peerNodeId,
@@ -2306,10 +2312,10 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 peerNode
             });
             const localRoleSet = buildConnectionLogicalRoles({
-                localArchetype: entry.localArchetype,
-                remoteArchetype: entry.remoteArchetype,
+                localConnectionType: entry.localConnectionType,
+                remoteConnectionType: entry.remoteConnectionType,
                 role: entry.reverse ? "server-reverse" : "server-forward",
-                archetype: entry.remoteArchetype
+                connectionType: entry.remoteConnectionType
             });
             return {
                 id: entry.id,
@@ -2322,14 +2328,14 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 sourceId: entry.peerId || entry.deviceId || entry.id,
                 namespace: entry.namespace || "ws",
                 alias: entry.peerId || entry.deviceId || entry.id,
-                localArchetype: entry.localArchetype,
-                remoteArchetype: entry.remoteArchetype,
+                localConnectionType: entry.localConnectionType,
+                remoteConnectionType: entry.remoteConnectionType,
                 localRoleSet,
                 connectionNodeId: canonical.nodeId,
                 targetNodeId: canonical.peerNodeId,
                 remoteAddress: entry.remoteAddress,
                 remotePort: undefined,
-                archetype: entry.remoteArchetype || entry.localArchetype,
+                connectionType: entry.remoteConnectionType || entry.localConnectionType,
                 connectedAt: entry.connectedAt,
                 nodeId: canonical.nodeId,
                 peerNodeId: canonical.peerNodeId,
@@ -2363,7 +2369,7 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
                 targetNodeId: canonical.peerNodeId,
             remoteAddress: undefined,
             remotePort: undefined,
-            archetype: bridgeStatus.bridgeMode,
+            connectionType: bridgeStatus.bridgeMode,
             connectedAt: Date.now(),
             nodeId: canonical.nodeId,
             peerNodeId: canonical.peerNodeId,
@@ -2413,9 +2419,9 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
 
     const summarizeSharedConnectionRoles = (rows: Array<{
         nodeId?: unknown;
-        localArchetype?: unknown;
-        remoteArchetype?: unknown;
-        archetype?: unknown;
+        localConnectionType?: unknown;
+        remoteConnectionType?: unknown;
+        connectionType?: unknown;
         role?: unknown;
         scope?: string;
     }>) => {
@@ -2425,9 +2431,9 @@ const buildConnectionLogicalRoles = (entry: { localArchetype?: unknown; remoteAr
             if (!nodeId) continue;
             const set = byNode.get(nodeId) || new Set<string>();
             const roles = buildConnectionLogicalRoles({
-                localArchetype: row.localArchetype,
-                remoteArchetype: row.remoteArchetype,
-                archetype: row.archetype,
+                localConnectionType: row.localConnectionType,
+                remoteConnectionType: row.remoteConnectionType,
+                connectionType: row.connectionType,
                 role: row.role
             });
             for (const role of roles) set.add(role);

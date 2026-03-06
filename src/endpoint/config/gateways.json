@@ -6,7 +6,7 @@
         "origins": ["192.168.0.200", "45.147.121.152"],
         "clients": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.208", "*"],
         "tokens": [],
-        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward"],
+        "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator"],
         "acceptance": {
             "direct": true,
             "reverse": true,

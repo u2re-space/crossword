@@ -8,14 +8,16 @@ import { parsePortableInteger, resolvePortableTextValue, safeJsonParse } from ".
 import {
     type WsConnectionIntent,
     supportsConnectorRole,
-    parseWsArchetype,
-    describeArchetype
-} from "./archetypes.ts";
+    parseWsConnectionType,
+    describeConnectionType,
+    toDisplayTopology,
+    describeDisplayConnectionType
+} from "./connection-types.ts";
 
 type BridgeConnectorConfig = {
     enabled?: boolean;
     mode?: "active" | "passive";
-    archetype?: string;
+    connectionType?: string;
     origin?: {
         originId?: string;
         originHosts?: string[];
@@ -112,13 +114,13 @@ const isControlLikeRole = (roles: string[] | undefined): boolean => {
     return normalized.some((role) => controlHints.has(role));
 };
 
-const inferConnectorArchetypeFromRoles = (roles: string[] | undefined): "client-reverse" | "client-forward" | undefined => {
+const inferConnectorConnectionTypeFromRoles = (roles: string[] | undefined): "responser-initiator" | "requestor-initiator" | "first-order" | undefined => {
     if (!Array.isArray(roles)) return undefined;
     let hasReverse = false;
     let hasForward = false;
     for (const role of roles) {
-        const parsed = parseWsArchetype(role);
-        if (parsed === "server-reverse" || parsed === "client-reverse") {
+        const parsed = parseWsConnectionType(role);
+        if (parsed === "requestor-initiated" || parsed === "responser-initiator") {
             hasReverse = true;
             continue;
         }
@@ -127,36 +129,37 @@ const inferConnectorArchetypeFromRoles = (roles: string[] | undefined): "client-
             hasReverse = true;
             continue;
         }
-        if (parsed === "server-forward" || parsed === "client-forward") {
+        if (parsed === "responser-initiated" || parsed === "requestor-initiator") {
             hasForward = true;
             continue;
         }
         const normalized = String(role || "").trim().toLowerCase();
         if (!normalized) continue;
-        if (normalized.includes("reverse")) hasReverse = true;
-        if (normalized.includes("forward")) hasForward = true;
+        if (normalized.includes("requestor")) hasReverse = true;
+        if (normalized.includes("responser")) hasForward = true;
     }
-    if (hasReverse) return "client-reverse";
-    if (hasForward) return "client-forward";
+    if (hasReverse) return "responser-initiator";
+    if (hasForward) return "requestor-initiator";
     return undefined;
 };
 
-const canonicalConnectorArchetype = (value: string | undefined, roles: string[] | undefined): "client-reverse" | "client-forward" | "first-order" => {
-    const parsed = parseWsArchetype(value);
-    if (parsed === "server-forward") return "client-forward";
-    if (parsed === "server-reverse") return "client-reverse";
+const canonicalConnectorConnectionType = (value: string | undefined, roles: string[] | undefined): "responser-initiator" | "requestor-initiator" | "first-order" => {
+    const parsed = parseWsConnectionType(value);
+    if (parsed === "responser-initiated") return "requestor-initiator";
+    if (parsed === "requestor-initiated") return "responser-initiator";
+    if (parsed === "responser-initiator") return "responser-initiator";
     if (parsed === "first-order") return "first-order";
     if (parsed) return parsed;
 
     const raw = (value || "").trim();
     const normalizedRaw = raw.toLowerCase();
-    const roleHint = inferConnectorArchetypeFromRoles(roles);
+    const roleHint = inferConnectorConnectionTypeFromRoles(roles);
     const hasExplicitControlIntent = isControlLikeRole(roles) || ["push", "control", "manage", "admin", "ops"].some((token) => normalizedRaw.includes(token));
-    const fallback = hasExplicitControlIntent ? "client-forward" : roleHint || "client-reverse";
-    const intent = fallback === "client-forward" ? "control/management path" : "connect/join path";
+    const fallback = hasExplicitControlIntent ? "requestor-initiator" : roleHint || "responser-initiator";
+    const intent = fallback === "requestor-initiator" ? "control/management path" : "connect/join path";
     console.warn(
-        "[bridge.connector] archetype is missing or unsupported, fallback to canonical",
-        `rawArchetype=${raw || "-"}`,
+        "[bridge.connector] connectionType is missing or unsupported, fallback to canonical",
+        `rawConnectionType=${raw || "-"}`,
         `fallback=${fallback}`,
         `intent=${intent}`
     );
@@ -185,19 +188,19 @@ const normalizeHost = (value: string): string => {
         .toLowerCase();
 };
 
-const inferDisplayConnectorRolePair = (cfg: Required<BridgeConnectorConfig>): string => {
-    const parseClientArchetype = (value: unknown): "client-forward" | "client-reverse" | undefined => {
-        const parsed = parseWsArchetype(value);
-        if (parsed === "client-forward" || parsed === "client-reverse") return parsed;
+const inferDisplayConnectorTopology = (cfg: Required<BridgeConnectorConfig>): string => {
+    const parseClientConnectionType = (value: unknown): WsConnectionIntent | undefined => {
+        const parsed = parseWsConnectionType(value);
+        if (parsed === "requestor-initiator" || parsed === "responser-initiator" || parsed === "first-order") return parsed;
         return undefined;
     };
     const configuredRoles = Array.isArray(cfg.roles) ? cfg.roles : [];
-    const localClientArchetype =
-        configuredRoles.map((entry) => parseClientArchetype(entry)).find((entry) => entry === "client-forward") ||
-        parseClientArchetype(cfg.archetype) ||
-        "client-reverse";
-    const remoteArchetype = localClientArchetype === "client-forward" ? "server-forward" : "server-reverse";
-    return `${localClientArchetype} + ${remoteArchetype}`;
+    const localClientConnectionType =
+        configuredRoles.map((entry) => parseClientConnectionType(entry)).find((entry) => entry === "requestor-initiator") ||
+        parseClientConnectionType(cfg.connectionType) ||
+        "responser-initiator";
+    const remoteConnectionType = localClientConnectionType === "requestor-initiator" ? "responser-initiated" : "requestor-initiated";
+    return toDisplayTopology(localClientConnectionType, remoteConnectionType);
 };
 
 const normalizeInterfaceAddress = (value: string): string => {
@@ -418,7 +421,7 @@ const normalizeBridgeConfig = (config: EndpointConfig): Required<BridgeConnector
     const envUserKey = pickEnvStringLegacy("CWS_ASSOCIATED_TOKEN") || pickEnvStringLegacy("CWS_BRIDGE_USER_KEY") || pickEnvStringLegacy("CWS_UPSTREAM_USER_KEY") || "";
     const envDeviceId = pickEnvStringLegacy("CWS_ASSOCIATED_ID") || pickEnvStringLegacy("CWS_BRIDGE_DEVICE_ID") || pickEnvStringLegacy("CWS_UPSTREAM_DEVICE_ID") || "";
     const envNamespace = pickEnvStringLegacy("CWS_BRIDGE_NAMESPACE") || pickEnvStringLegacy("CWS_UPSTREAM_NAMESPACE") || "";
-    const envArchetype = pickEnvStringLegacy("CWS_BRIDGE_ARCHETYPE") || pickEnvStringLegacy("CWS_UPSTREAM_ARCHETYPE") || "";
+    const envConnectionType = pickEnvStringLegacy("CWS_BRIDGE_CONNECTION_TYPE") || pickEnvStringLegacy("CWS_UPSTREAM_CONNECTION_TYPE") || pickEnvStringLegacy("CWS_BRIDGE_ARCHETYPE") || pickEnvStringLegacy("CWS_UPSTREAM_ARCHETYPE") || "";
     const envReconnectMs = pickEnvNumberLegacy("CWS_BRIDGE_RECONNECT_MS") ?? pickEnvNumberLegacy("CWS_UPSTREAM_RECONNECT_MS") ?? 0;
 
     const enabled = envBridgeEnabled === undefined ? bridge.enabled === true : envBridgeEnabled;
@@ -467,7 +470,7 @@ const normalizeBridgeConfig = (config: EndpointConfig): Required<BridgeConnector
     return {
         enabled: true,
         mode,
-        archetype: describeArchetype(canonicalConnectorArchetype(envArchetype || bridge.archetype, config.roles as string[] | undefined)),
+        connectionType: describeConnectionType(canonicalConnectorConnectionType(envConnectionType || bridge.connectionType, config.roles as string[] | undefined)),
         roles: Array.isArray(config.roles) ? config.roles.map((entry) => String(entry)).filter(Boolean) : [],
         bridgeMasterKey: bridge.bridgeMasterKey,
         bridgeSigningPrivateKeyPem: bridge.bridgeSigningPrivateKeyPem,
@@ -510,25 +513,34 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<BridgeConnectorConfig>): 
             url.pathname = `${normalizedPath}ws`;
         }
         
-        const rawArchetype = String(cfg.archetype || "client-reverse");
-        const normalizedArchetype = rawArchetype.toLowerCase();
-        const isFirstOrder = normalizedArchetype.includes("first-order") || normalizedArchetype.includes("firstorder");
-        
-        let archetype: WsConnectionIntent = isFirstOrder ? "first-order" : "client-reverse";
-        if (!isFirstOrder) {
-            archetype = normalizedArchetype.includes("client-forward") || normalizedArchetype.includes("forward")
-                ? "client-forward"
-                : "client-reverse";
+        const rawConnectionType = String(cfg.connectionType || "responser-initiator");
+        const normalizedConnectionType = rawConnectionType.toLowerCase();
+        const parsedConnectionType = parseWsConnectionType(rawConnectionType);
+        const isFirstOrder = normalizedConnectionType.includes("first-order") || normalizedConnectionType.includes("firstorder");
+        let connectionType: WsConnectionIntent = isFirstOrder ? "first-order" : "responser-initiator";
+        if (!isFirstOrder && parsedConnectionType) {
+            connectionType = parsedConnectionType === "responser-initiated" || parsedConnectionType === "requestor-initiator" || parsedConnectionType === "requestor-initiated" || parsedConnectionType === "responser-initiator"
+                ? (parsedConnectionType === "responser-initiated" ? "requestor-initiator" : parsedConnectionType === "requestor-initiator" ? "requestor-initiator" : "responser-initiator")
+                : inferConnectorConnectionTypeFromRoles(Array.isArray(cfg.roles) ? cfg.roles : []) || "responser-initiator";
+        } else if (!isFirstOrder) {
+            connectionType = normalizedConnectionType.includes("requestor-initiator") || normalizedConnectionType.includes("requestor") || normalizedConnectionType.includes("forward")
+                ? "requestor-initiator"
+                : "responser-initiator";
         }
-        
+        const localDisplay = describeDisplayConnectionType(connectionType);
+        const remoteDisplay = connectionType === "first-order"
+            ? describeDisplayConnectionType("exchanger-initiator")
+            : connectionType === "requestor-initiator"
+                ? describeDisplayConnectionType("responser-initiated")
+                : describeDisplayConnectionType("requestor-initiated");
         // If we hit a fallback condition on reconnect, swap the requested mode temporarily
-        const isFirstOrderFallback = isFirstOrder && rawArchetype.includes("fallback");
+        const isFirstOrderFallback = isFirstOrder && rawConnectionType.includes("fallback");
         const mode = isFirstOrder
             ? (isFirstOrderFallback ? "push" : "reverse")
-            : (archetype === "client-forward" ? "push" : "reverse");
+            : (connectionType === "requestor-initiator" ? "push" : "reverse");
         
         url.searchParams.set("mode", mode);
-        url.searchParams.set("archetype", archetype);
+        url.searchParams.set("connectionType", connectionType);
         url.searchParams.set("userId", cfg.userId);
         url.searchParams.set("userKey", cfg.userKey);
         url.searchParams.set("namespace", cfg.namespace);
@@ -537,6 +549,9 @@ const buildWsUrl = (endpointUrl: string, cfg: Required<BridgeConnectorConfig>): 
             url.searchParams.set("label", cfg.clientId.trim());
             url.searchParams.set("clientId", cfg.clientId.trim());
         }
+            if (localDisplay && remoteDisplay) {
+                url.searchParams.set("topology", `${localDisplay}↔${remoteDisplay}`);
+            }
         return url.toString();
     } catch {
         return null;
@@ -590,8 +605,8 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             "[bridge.connector] config accepted",
             `enabled=${cfg.enabled}`,
             `mode=${cfg.mode}`,
-            `archetype=${cfg.archetype}`,
-            `rolePair=${inferDisplayConnectorRolePair(cfg)}`,
+            `connectionType=${cfg.connectionType}`,
+            `topology=${inferDisplayConnectorTopology(cfg)}`,
             `userId=${maskValue(cfg.userId)}`,
             `endpoint=${cfg.endpointUrl}`,
             `endpoints=${formatEndpointList(cfg.endpoints)}`,
@@ -715,7 +730,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             activeEndpoint = endpoint;
             if (isTunnelDebug) {
                 const readableWsUrl = formatBridgeUrl(wsUrl);
-                console.info(`[bridge.connector] connecting\n  endpoint=${endpoint}\n  url=${readableWsUrl}\n  rolePair=${inferDisplayConnectorRolePair(cfg)}`);
+                console.info(`[bridge.connector] connecting\n  endpoint=${endpoint}\n  url=${readableWsUrl}\n  topology=${inferDisplayConnectorTopology(cfg)}`);
             }
             socket = new WebSocket(wsUrl, {
                 rejectUnauthorized: shouldRejectUnauthorized
@@ -741,7 +756,7 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
             invalidCredentialBlockUntil = 0;
             if (isTunnelDebug) {
                 console.info(
-                    `[bridge.connector] connected\n  endpoint=${activeEndpoint || "unknown"}\n  userId=${cfg.userId || "unknown"}\n  deviceId=${cfg.deviceId || "unknown"}\n  archetype=${cfg.archetype || "client-reverse"}\n  rolePair=${inferDisplayConnectorRolePair(cfg)}`
+                    `[bridge.connector] connected\n  endpoint=${activeEndpoint || "unknown"}\n  userId=${cfg.userId || "unknown"}\n  deviceId=${cfg.deviceId || "unknown"}\n  connectionType=${cfg.connectionType || "responser-initiator"}\n  topology=${inferDisplayConnectorTopology(cfg)}`
                 );
             }
             clearConnectTimeout();
@@ -784,10 +799,10 @@ export const startBridgePeerClient = (rawConfig: EndpointConfig, options: Bridge
                     console.error("[bridge.connector] rejected by gateway", formatHintForInvalidCredentials(cfg.userId, cfg.deviceId, active));
                 }
                 if (code === 4003 || code === 4004 || code === 4005) {
-                    if (String(cfg.archetype).toLowerCase().includes("first-order")) {
-                        console.warn("[bridge.connector] First-order archetype mode conflict. Forcing candidate rotation and alternative archetype interpretation on next retry.");
-                        // Force a random archetype retry switch when standard mode failed
-                        cfg.archetype = cfg.archetype === "first-order" ? "first-order-fallback" : "first-order";
+                    if (String(cfg.connectionType).toLowerCase().includes("first-order") || String(cfg.connectionType).toLowerCase().includes("exchanger")) {
+                        console.warn("[bridge.connector] First-order connectionType mode conflict. Forcing candidate rotation and alternative connectionType interpretation on next retry.");
+                        // Force a random connectionType retry switch when standard mode failed
+                        cfg.connectionType = cfg.connectionType === "first-order" ? "first-order-fallback" : "first-order";
                     }
                 }
             }

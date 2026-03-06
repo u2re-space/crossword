@@ -160,21 +160,23 @@ const defaultConfig = {
 
     // Роли/режимы этого узла:
     // - endpoint: full endpoint behavior
-    // - server: legacy alias (server-forward/server-reverse, old legacy endpoint role token)
-    // - client: legacy alias (client-reverse/client-forward, old legacy client token)
-    // - client-bridge: legacy alias (client-reverse)
-    // - peer: participate as a peer device (legacy reverse target role)
-    // - hub: act as bridge relay participant and/or origin/gateway role (legacy)
-    // - node: generic aggregate role (legacy)
-    // - server-forward: принимает обычные forward-клиенты (включая локальные AirPad/браузер-клиенты)
-    // - server-reverse: принимает reverse-bridge соединения как reverse-сервер (origin side)
-    // - client-reverse: подключается к reverse-серверу (NAT/гейт-паттерн), compatible с server-reverse
-    // - client-forward: подключается как обычный forward-клиент, compatible с server-forward
+    // - server-facing roles:
+    //   - requestor-initiated: принимает обычные прямые push-сессии (клиенты requestor-initiator)
+    //   - responser-initiated: принимает uplink-сессии и инициализирующие keepalive на локальных/Web-сессиях
+    // - client-facing roles:
+    //   - requestor-initiator: подключается как push-инициатор
+    //   - responser-initiator: подключается как reverse-инициатор
+    // - peer: participate as a peer device
+    // - hub: acts as relay participant and/or gateway origin role
+    // - node: generic aggregate role
+    // - first-order / exchanger-initiator: bidirectional compatibility negotiation mode
+    // - server: legacy alias for server-initiated role naming
+    // - client: legacy alias for client-initiated role naming
     // - compatibility aliases for mixed stacks:
-    //   - forward-client <=> client-forward
-    //   - reverse-client <=> client-reverse
-    //   - forward-server <=> server-forward
-    //   - reverse-server <=> server-reverse
+    //   - forward-client <=> requestor-initiator
+    //   - reverse-client <=> responser-initiator
+    //   - forward-server <=> responser-initiated
+    //   - reverse-server <=> requestor-initiated
     roles: [...DEFAULT_CORE_ROLES],
 
     // Bridge tunnel-through / be-as-device settings.

@@ -6,7 +6,7 @@
     "L-192.168.0.200": {
         "origins": ["192.168.0.200", "45.147.121.152"],
         "tokens": [],
-        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward", "first-order"],
+        "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator", "exchanger-initiator"],
         "relations": {
             "L-192.168.0.110": "both ws,socketio,http,tcp"
         },
@@ -61,7 +61,7 @@
     "L-192.168.0.110": {
         "origins": ["192.168.0.110"],
         "tokens": [],
-        "roles": ["server-forward", "server-reverse", "client-reverse", "client-forward", "first-order"],
+        "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator", "exchanger-initiator"],
         "relations": {
             "L-192.168.0.200": "both ws,socketio,http,tcp"
         },
@@ -115,7 +115,7 @@
     "L-192.168.0.208": {
         "origins": ["192.168.0.208"],
         "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
-        "roles": ["client-reverse", "client-forward"],
+        "roles": ["responser-initiator", "requestor-initiator"],
         "flags": {
             "mobile": true,
             "gateway": false,
@@ -161,7 +161,7 @@
     "L-192.168.0.196": {
         "origins": ["192.168.0.196"],
         "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
-        "roles": ["client-reverse", "client-forward"],
+        "roles": ["responser-initiator", "requestor-initiator"],
         "flags": {
             "mobile": true,
             "gateway": false,
@@ -207,7 +207,7 @@
     "*": {
         "origins": ["*"],
         "tokens": ["*"],
-        "roles": ["client-reverse", "client-forward"],
+        "roles": ["responser-initiator", "requestor-initiator"],
         "flags": {
             "mobile": true,
             "gateway": true,

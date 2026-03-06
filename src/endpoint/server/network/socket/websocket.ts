@@ -10,16 +10,18 @@ import { inferNetworkSurface } from "../stack/topology.ts";
 import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
 import {
-    type WsConnectionArchetype,
+    type WsConnectionType,
     type WsConnectionIntent,
-    areArchetypesCompatible,
-    inferExpectedRemoteArchetype,
-    inferServerSideArchetype,
-    parseWsArchetype,
+    areConnectionTypesCompatible,
+    inferExpectedRemoteConnectionType,
+    inferServerSideConnectionType,
+    parseWsConnectionType,
+    describeDisplayConnectionType,
+    toDisplayTopology,
     supportsConnectorRole,
-    supportsReverseServerArchetype,
-    supportsForwardServerArchetype
-} from "../stack/archetypes.ts";
+    supportsReverseServerConnectionType,
+    supportsForwardServerConnectionType
+} from "../stack/connection-types.ts";
 
 type TcpPassthroughFrame = {
     type: string;
@@ -274,8 +276,8 @@ const formatInboundWsConnection = (
     req: any,
     userId: string,
     deviceId: string,
-    activeArchetype: string,
-    localArchetype: string,
+    activeConnectionType: string,
+    localConnectionType: string,
     mode: string,
     requestedPeerId: string,
     peerLabel: string
@@ -294,7 +296,7 @@ const formatInboundWsConnection = (
         `  deviceId=${deviceId || "unknown"}`,
         `  peerId=${requestedPeerId || "-"}`,
         `  peerLabel=${peerLabel || "-"}`,
-        `  archetype(local=${localArchetype}, remote=${activeArchetype})`
+        `  connectionType(local=${localConnectionType}, remote=${activeConnectionType})`
     ].join("\n");
 };
 
@@ -329,8 +331,10 @@ type ClientInfo = {
     namespace: string;
     remoteAddress?: string;
     reverse: boolean;
-    localArchetype: WsConnectionArchetype;
-    remoteArchetype?: WsConnectionIntent;
+    localConnectionType: WsConnectionType;
+    remoteConnectionType?: WsConnectionIntent;
+    topology?: string;
+    requestedTopology?: string;
     deviceId?: string;
     peerLabel?: string;
     peerId?: string;
@@ -357,8 +361,12 @@ export type WsHub = {
         peerId?: string;
         peerLabel?: string;
         reverse: boolean;
-        localArchetype: WsConnectionArchetype;
-        remoteArchetype?: WsConnectionIntent;
+        localConnectionType: WsConnectionType;
+        remoteConnectionType?: WsConnectionIntent;
+        localDisplayConnectionType?: string;
+        remoteDisplayConnectionType?: string;
+        displayTopology?: string;
+        requestedTopology?: string;
         remoteAddress?: string;
         connectedAt: number;
         surface: string;
@@ -786,10 +794,11 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         const mode = params.get("mode") || "push";
         const deviceId = params.get("deviceId") || "";
         const isReverse = mode === "reverse";
-        const remoteArchetypeRaw = params.get("archetype") || params.get("connectionArchetype") || params.get("connectionRole");
-        const parsedRemoteArchetype = parseWsArchetype(remoteArchetypeRaw);
-        const localArchetype = inferServerSideArchetype(isReverse);
-        const remoteArchetype = parsedRemoteArchetype || inferExpectedRemoteArchetype(isReverse);
+        const remoteConnectionTypeRaw = params.get("connectionType") || params.get("archetype") || params.get("connectionRole");
+        const topology = params.get("topology") || params.get("rolePair") || undefined;
+        const parsedRemoteConnectionType = parseWsConnectionType(remoteConnectionTypeRaw);
+        const localConnectionType = inferServerSideConnectionType(isReverse);
+        const remoteConnectionType = parsedRemoteConnectionType || inferExpectedRemoteConnectionType(isReverse);
         const userIdKey = normalizeSocketUser(userId);
         const normalizedDeviceId = normalizeSocketPeer(deviceId);
         const settings = await verify(userId, userKey);
@@ -803,27 +812,27 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             ws.close(4002, "Missing deviceId");
             return;
         }
-        if (remoteArchetypeRaw && !parsedRemoteArchetype) {
-            ws.close(4005, `Invalid websocket archetype: ${remoteArchetypeRaw}`);
+        if (remoteConnectionTypeRaw && !parsedRemoteConnectionType) {
+            ws.close(4005, `Invalid websocket connectionType: ${remoteConnectionTypeRaw}`);
             return;
         }
         const runtimeRoles = config.roles as string[] | undefined;
         const roleAllowed = isReverse
-            ? supportsReverseServerArchetype(runtimeRoles) || ((remoteArchetype === "client-reverse" || remoteArchetype === "first-order") && supportsConnectorRole(runtimeRoles))
-            : supportsForwardServerArchetype(runtimeRoles);
+            ? supportsReverseServerConnectionType(runtimeRoles) || ((remoteConnectionType === "responser-initiator" || remoteConnectionType === "first-order") && supportsConnectorRole(runtimeRoles))
+            : supportsForwardServerConnectionType(runtimeRoles);
         if (!roleAllowed) {
-            ws.close(4003, `Unsupported websocket archetype for this node: ${localArchetype}`);
+            ws.close(4003, `Unsupported websocket connectionType for this node: ${localConnectionType}`);
             return;
         }
-        if (!areArchetypesCompatible(localArchetype, remoteArchetype)) {
-            ws.close(4004, `Incompatible websocket archetypes: local=${localArchetype}, remote=${remoteArchetype}`);
+        if (!areConnectionTypesCompatible(localConnectionType, remoteConnectionType)) {
+            ws.close(4004, `Incompatible websocket connection types: local=${localConnectionType}, remote=${remoteConnectionType}`);
             return;
         }
         
-        let activeArchetype = remoteArchetype;
-        if (activeArchetype === "first-order") {
-            activeArchetype = localArchetype === "server-reverse" ? "client-reverse" : "client-forward";
-            console.log(`[Server] Raw WS accepted first-order connection, acting as ${activeArchetype}`);
+        let activeConnectionType = remoteConnectionType;
+        if (activeConnectionType === "first-order") {
+            activeConnectionType = localConnectionType === "requestor-initiated" ? "responser-initiator" : "requestor-initiator";
+            console.log(`[Server] Raw WS accepted first-order connection, acting as ${activeConnectionType}`);
         }
         
         const peerLabel = isReverse ? normalizePeerLabel(userId || "", normalizedDeviceId, requestedPeerId) : undefined;
@@ -836,8 +845,10 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             namespace: normalizeSocketUser(namespace || userId),
             remoteAddress: req.socket?.remoteAddress,
             reverse: isReverse,
-            localArchetype,
-            remoteArchetype: activeArchetype,
+            localConnectionType,
+            remoteConnectionType: activeConnectionType,
+            topology,
+            requestedTopology: topology,
             deviceId: isReverse ? normalizedDeviceId : undefined,
             peerLabel,
             peerId: isReverse ? requestedPeerId : undefined,
@@ -849,12 +860,17 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                     req,
                     userId || "",
                     normalizedDeviceId || "",
-                    String(activeArchetype || ""),
-                    String(localArchetype || ""),
+                    String(activeConnectionType || ""),
+                    String(localConnectionType || ""),
                     mode,
                     requestedPeerId || "",
                     peerLabel || ""
                 )
+            );
+            console.log(
+                `[Server] WS role pair`,
+                `display=${toDisplayTopology(localConnectionType, activeConnectionType)}`,
+                `legacy=${localConnectionType}<->${activeConnectionType}`
             );
         }
         clients.set(ws, info);
@@ -878,11 +894,19 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 deviceId,
                 peerLabel,
                 peerId: requestedPeerId,
-                archetype: info.localArchetype,
-                remoteArchetype: info.remoteArchetype
+                connectionType: info.localConnectionType,
+                remoteConnectionType: info.remoteConnectionType,
+                topology: info.requestedTopology
             }));
         } else {
-            ws.send(JSON.stringify({ type: "welcome", id: info.id, userId, archetype: info.localArchetype, remoteArchetype: info.remoteArchetype }));
+            ws.send(JSON.stringify({
+                type: "welcome",
+                id: info.id,
+                userId,
+                connectionType: info.localConnectionType,
+                remoteConnectionType: info.remoteConnectionType,
+                topology: info.requestedTopology
+            }));
         }
 
         ws.on("message", async (data) => {
@@ -1103,8 +1127,12 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         peerId?: string;
         peerLabel?: string;
         reverse: boolean;
-        localArchetype: WsConnectionArchetype;
-        remoteArchetype?: WsConnectionIntent;
+        localConnectionType: WsConnectionType;
+        remoteConnectionType?: WsConnectionIntent;
+        localDisplayConnectionType?: string;
+        remoteDisplayConnectionType?: string;
+        displayTopology?: string;
+        requestedTopology?: string;
         remoteAddress?: string;
         connectedAt: number;
         surface: string;
@@ -1121,11 +1149,15 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
                 peerId: entry.peerId,
                 peerLabel: entry.peerLabel,
                 reverse: entry.reverse,
-                localArchetype: entry.localArchetype,
-                remoteArchetype: entry.remoteArchetype,
+                localConnectionType: entry.localConnectionType,
+                remoteConnectionType: entry.remoteConnectionType,
+                localDisplayConnectionType: describeDisplayConnectionType(entry.localConnectionType),
+                remoteDisplayConnectionType: describeDisplayConnectionType(entry.remoteConnectionType || inferExpectedRemoteConnectionType(entry.reverse)),
+                displayTopology: toDisplayTopology(entry.localConnectionType, entry.remoteConnectionType || inferExpectedRemoteConnectionType(entry.reverse)),
+                requestedTopology: entry.requestedTopology || entry.topology,
                 remoteAddress: entry.remoteAddress,
                 connectedAt: entry.connectedAt,
-                surface: entry.reverse ? "server-reverse" : "endpoint-server"
+                surface: entry.reverse ? "requestor-initiated" : "endpoint-server"
             }];
         });
     };
