@@ -9,6 +9,7 @@ import { isBroadcast, normalizeSocketFrame } from "../stack/messages.ts";
 import { inferNetworkSurface } from "../stack/topology.ts";
 import { pickEnvBoolLegacy, pickEnvStringLegacy } from "../../lib/env.ts";
 import { parsePortableInteger, safeJsonParse } from "../../lib/parsing.ts";
+import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict } from "../stack/endpoint-policy.ts";
 import {
     type WsConnectionType,
     type WsConnectionIntent,
@@ -159,6 +160,23 @@ const normalizeOptionalIp = (value: string | undefined): string => {
     return trimmed || "-";
 };
 
+const resolvePolicyKnownIpHint = (rawTarget: string): string => {
+    const policyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+    const normalizedTarget = normalizeSocketPeer(stripFramePort(rawTarget).replace(/^[hlp]-/, ""));
+    if (!normalizedTarget) return "";
+    const candidateTargets = [rawTarget, normalizedTarget, `l-${normalizedTarget}`, `h-${normalizedTarget}`, `p-${normalizedTarget}`];
+    for (const candidate of candidateTargets) {
+        const policy = resolveEndpointIdPolicyStrict(policyMap, normalizeSocketPeer(candidate));
+        if (!policy) continue;
+        const origins = Array.isArray(policy.origins) ? policy.origins : [];
+        for (const origin of origins) {
+            const normalizedOrigin = normalizeSocketPeer(stripFramePort(String(origin || "")));
+            if (normalizedOrigin) return normalizedOrigin;
+        }
+    }
+    return "";
+};
+
 const formatWsFrameLog = (
     direction: string,
     req: any,
@@ -186,6 +204,8 @@ const formatWsFrameLog = (
     const toId = targetClient?.deviceId || targetClient?.peerId || targetClient?.id || targetClient?.userId || resolvedTarget.id || "-";
     const fromIp = sourceClient?.remoteAddress || resolvedFrameSource.ip || "-";
     const toIp = targetClient?.remoteAddress || (targetKind === "ip" ? stripFramePort(directionTarget) : resolvedTarget.ip || "-");
+    const fromIpKnown = resolvePolicyKnownIpHint(fromId || resolvedFrameSource.raw || "") || fromIp;
+    const toIpKnown = resolvePolicyKnownIpHint(toId || directionTarget || "") || toIp;
     const fromKind = resolvedFrameSource.source || "unknown";
     const toKind = targetKind === "ip" ? "ip" : targetClient ? "id" : resolvedTarget.source || "unknown";
     const srcId = fromId;
@@ -206,13 +226,16 @@ const formatWsFrameLog = (
         `  fromKind=${fromKind}`,
         `  fromId=${fromId}`,
         `  fromIp=${fromIp}`,
+        `  fromIpKnown=${fromIpKnown}`,
         `  fromToken=${fromToken}`,
         `  srcId=${srcId}`,
         `  srcIp=${srcIp}`,
+        `  srcIpKnown=${fromIpKnown}`,
         `  srcToken=${srcToken}`,
         `  toToken=${toToken}`,
         `  dstId=${dstId}`,
         `  dstIp=${normalizeOptionalIp(dstIp)}`,
+        `  dstIpKnown=${normalizeOptionalIp(toIpKnown)}`,
         `  dstToken=${dstToken}`,
         `  type=${type || "unknown"}`,
         `  to=${directionTarget || "-"}`,
@@ -220,10 +243,11 @@ const formatWsFrameLog = (
     ];
     if (targetKind === "ip") {
         lines.push(`  toIp=${stripFramePort(directionTarget)}`);
-        lines.push(`  toIpKnown=${toIp}`);
+        lines.push(`  toIpKnown=${toIpKnown}`);
     } else {
         lines.push(`  toId=${toId}`);
         lines.push(`  toIp=${toIp}`);
+        lines.push(`  toIpKnown=${toIpKnown}`);
     }
     lines.push(`  delivered=${delivered ? "yes" : "no"}`);
     return lines.join("\n");
@@ -339,6 +363,12 @@ type ClientInfo = {
     peerLabel?: string;
     peerId?: string;
     connectedAt: number;
+};
+
+type ResolvedTargetMatch = {
+    client: ClientInfo;
+    score: number;
+    reasons: string[];
 };
 
 export type WsHub = {
@@ -483,6 +513,43 @@ const expandClientAlias = (value: string): string[] => {
     return Array.from(candidates);
 };
 
+const normalizePolicyTokenLiteral = (value: string): string => {
+    const raw = normalizeSocketPeer(value);
+    if (!raw) return "";
+    if (raw.startsWith("inline:")) return raw.slice("inline:".length).trim();
+    if (raw.startsWith("token:")) return raw.slice("token:".length).trim();
+    if (raw.startsWith("env:") || raw.startsWith("fs:")) return "";
+    return raw;
+};
+
+const toNormalizedTokenSet = (values: Array<string | undefined>): Set<string> => {
+    const out = new Set<string>();
+    for (const value of values) {
+        const normalized = normalizeSocketPeer(value);
+        if (normalized) out.add(normalized);
+    }
+    return out;
+};
+
+const resolvePolicyAliases = (policyId: string, origins: string[]): Set<string> => {
+    const aliases = new Set<string>();
+    const addAlias = (value: string | undefined) => {
+        for (const alias of resolveTargetAlias(String(value || ""))) {
+            aliases.add(alias);
+        }
+    };
+    addAlias(policyId);
+    for (const origin of origins) {
+        const normalizedOrigin = normalizeSocketPeer(stripFramePort(String(origin || "")));
+        if (!normalizedOrigin) continue;
+        addAlias(normalizedOrigin);
+        addAlias(`l-${normalizedOrigin}`);
+        addAlias(`h-${normalizedOrigin}`);
+        addAlias(`p-${normalizedOrigin}`);
+    }
+    return aliases;
+};
+
 export const createWsServer = (app: FastifyInstance): WsHub => {
     const server = app.server;
     const wss = new WebSocketServer({ noServer: true });
@@ -499,6 +566,109 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
         }
     >();
     const tcpSessions = new Map<WebSocket, Map<string, TcpSession>>();
+    const endpointPolicyMap = normalizeEndpointPolicies((config as any)?.endpointIDs || {});
+    const resolvePolicyOriginIps = (target: string): string[] => {
+        const normalizedTarget = normalizeSocketPeer(stripFramePort(target));
+        if (!normalizedTarget) return [];
+        const policy = resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedTarget);
+        if (!policy) return [];
+        const ips = new Set<string>();
+        const rawOrigins = Array.isArray(policy.origins) ? policy.origins : [];
+        for (const origin of rawOrigins) {
+            const normalized = normalizeSocketPeer(stripFramePort(String(origin || "")));
+            if (normalized) ips.add(normalized);
+        }
+        return Array.from(ips);
+    };
+    const resolveTargetsForFrame = (frameTo: string, frame: any, source: ClientInfo): ResolvedTargetMatch[] => {
+        const normalizedFrameTo = normalizeSocketPeer(stripFramePort(frameTo));
+        const frameAliases = new Set(resolveTargetAlias(normalizedFrameTo));
+        const frameIpHint = normalizeSocketPeer(stripFramePort(normalizedFrameTo.replace(/^[hlp]-/, "")));
+        const frameTokenHints = toNormalizedTokenSet([
+            String(frame?.toToken || ""),
+            String(frame?.dstToken || ""),
+            String(frame?.token || "")
+        ]);
+        if (source.userKey) frameTokenHints.add(normalizeSocketPeer(source.userKey));
+
+        const strictPolicy = resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedFrameTo);
+        const policyAliases = resolvePolicyAliases(strictPolicy?.id || normalizedFrameTo, Array.isArray(strictPolicy?.origins) ? strictPolicy.origins : []);
+        const policyOrigins = new Set(resolvePolicyOriginIps(normalizedFrameTo));
+        const policyTokens = new Set(
+            (Array.isArray(strictPolicy?.tokens) ? strictPolicy.tokens : [])
+                .map((entry) => normalizePolicyTokenLiteral(String(entry || "")))
+                .filter(Boolean)
+        );
+
+        const matches: ResolvedTargetMatch[] = [];
+        for (const candidate of clients.values()) {
+            if (candidate.id === source.id) continue;
+            const candidateAliases = new Set<string>([
+                ...resolveTargetAlias(candidate.id),
+                ...resolveTargetAlias(candidate.deviceId || ""),
+                ...resolveTargetAlias(candidate.peerId || ""),
+                ...resolveTargetAlias(candidate.userId || "")
+            ]);
+            if (candidate.remoteAddress) {
+                candidateAliases.add(normalizeSocketPeer(candidate.remoteAddress));
+            }
+
+            let score = 0;
+            const reasons: string[] = [];
+            const hasExactAlias = Array.from(frameAliases).some((alias) => candidateAliases.has(alias));
+            if (hasExactAlias) {
+                score += 100;
+                reasons.push("direct-alias");
+            }
+            if (frameIpHint && candidate.remoteAddress && normalizeSocketPeer(candidate.remoteAddress) === frameIpHint) {
+                score += 70;
+                reasons.push("target-ip");
+            }
+            const hasPolicyAlias = policyAliases.size > 0 && Array.from(policyAliases).some((alias) => candidateAliases.has(alias));
+            if (hasPolicyAlias) {
+                score += 50;
+                reasons.push("policy-alias");
+            }
+            if (candidate.remoteAddress && policyOrigins.has(normalizeSocketPeer(candidate.remoteAddress))) {
+                score += 40;
+                reasons.push("policy-origin-ip");
+            }
+            const candidateToken = normalizeSocketPeer(candidate.userKey || "");
+            let hasStrongSignal = hasExactAlias || hasPolicyAlias || reasons.includes("target-ip") || reasons.includes("policy-origin-ip");
+            if (candidateToken && policyTokens.has(candidateToken)) {
+                score += 30;
+                reasons.push("policy-token");
+                hasStrongSignal = true;
+            }
+            if (candidateToken && frameTokenHints.has(candidateToken) && hasStrongSignal) {
+                score += 20;
+                reasons.push("frame-token");
+            }
+
+            if (score <= 0) continue;
+            matches.push({ client: candidate, score, reasons });
+        }
+
+        matches.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.client.connectedAt - a.client.connectedAt;
+        });
+
+        if (matches.length === 0 && frameTokenHints.size > 0) {
+            for (const candidate of clients.values()) {
+                if (candidate.id === source.id) continue;
+                const candidateToken = normalizeSocketPeer(candidate.userKey || "");
+                if (!candidateToken || !frameTokenHints.has(candidateToken)) continue;
+                matches.push({ client: candidate, score: 10, reasons: ["token-fanout"] });
+            }
+        }
+
+        const deduped = new Map<string, ResolvedTargetMatch>();
+        for (const match of matches) {
+            if (!deduped.has(match.client.id)) deduped.set(match.client.id, match);
+        }
+        return Array.from(deduped.values());
+    };
     const reverseClientKey = (userId: string, deviceId: string) => `${userId}:${deviceId}`;
     const requestKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
     const resolveReverseClientByTarget = (userId: string, target: string): ClientInfo | undefined => {
@@ -957,30 +1127,42 @@ export const createWsServer = (app: FastifyInstance): WsHub => {
             const shouldBroadcast = isBroadcast(frame);
             // Simple forwarding: if targetId matches a client, relay
             if (!shouldBroadcast) {
-                const frameTargetAliases = resolveTargetAlias(frame.to);
                 const normalizedFrameTo = normalizeSocketPeer(frame.to);
-                const target = [...clients.values()].find((c) => {
-                    if (c.id === frame.to) return true;
-                    const aliases = [
-                        ...resolveTargetAlias(c.deviceId || ""),
-                        ...resolveTargetAlias(c.peerId || ""),
-                        normalizeSocketUser(c.userId)
-                    ];
-                    return frameTargetAliases.some((alias) => alias && aliases.includes(alias));
-                });
+                const targetMatches = resolveTargetsForFrame(normalizedFrameTo || frame.to || "", frame, info);
+                const primaryTarget = targetMatches[0]?.client;
                 if (isWebSocketTunnelDebug()) {
                     console.log(
-                        formatWsFrameLog("IN", req, info, frame, clients, normalizedFrameTo || frame.to || "", undefined, info, false)
+                        formatWsFrameLog("IN", req, info, frame, clients, normalizedFrameTo || frame.to || "", primaryTarget, info, false)
                     );
                 }
-                if (target) {
+                if (targetMatches.length > 0) {
                     const frameFrom = frame.from || frameSource;
-                    const frameTo = target?.deviceId || target?.peerId || frame.to;
-                    target.ws?.send?.(JSON.stringify({ type, payload, from: frameFrom, via: "ws" }));
-                    if (isWebSocketTunnelDebug()) {
-                        console.log(
-                            formatWsFrameLog("OUT", req, info, { ...frame, from: frameFrom, to: frameTo }, clients, frameTo, target, info, true)
-                        );
+                    for (const match of targetMatches) {
+                        const target = match.client;
+                        const frameTo = target?.deviceId || target?.peerId || frame.to;
+                        const envelope = {
+                            type,
+                            payload,
+                            data: payload,
+                            from: frameFrom,
+                            source: frameFrom,
+                            via: "ws",
+                            to: frameTo,
+                            target: frameTo,
+                            targetId: frameTo,
+                            targetDeviceId: frameTo,
+                            deviceId: frameTo,
+                            userId: target?.userId || info.userId
+                        };
+                        target.ws?.send?.(JSON.stringify(envelope));
+                        if (isWebSocketTunnelDebug()) {
+                            console.log(
+                                formatWsFrameLog("OUT", req, info, { ...frame, from: frameFrom, to: frameTo }, clients, frameTo, target, info, true)
+                            );
+                            console.log(
+                                `[ws] ROUTE score=${match.score} reasons=${match.reasons.join("|") || "-"} target=${frameTo || target.id || "-"}`
+                            );
+                        }
                     }
                 } else {
                     if (isWebSocketTunnelDebug()) {

@@ -15,14 +15,26 @@
         "nodeModulesMode": "none",
         "includeNodeModules": false,
         "archiveRetentionCount": 1,
-        "preserveTargets": ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
+        "preserveTargets": [
+            "node_modules",
+            ".data",
+            ".endpoint.config.json",
+            ".config.endpoint.json",
+            "portable.config.json"
+        ]
     },
     "remote": {
         "host": "192.168.0.110",
         "user": "U2RE",
         "port": 22,
         "path": "C:\\\\Users\\\\U2RE\\\\endpoint-portable",
-        "preserveTargets": ["node_modules", ".data", ".endpoint.config.json", ".config.endpoint.json", "portable.config.json"]
+        "preserveTargets": [
+            "node_modules",
+            ".data",
+            ".endpoint.config.json",
+            ".config.endpoint.json",
+            "portable.config.json"
+        ]
     },
     "launcherEnv": {
         "CWS_AIRPAD_VERBOSE": 1,
@@ -37,9 +49,18 @@
         "CWS_HTTPS_KEY": "fs:./https/local/multi.key",
         "CWS_HTTPS_CERT": "fs:./https/local/multi.crt",
         "CWS_HTTPS_CA": "fs:./https/local/rootCA.crt",
-        "CWS_CLIPBOARD_LOGGING": "false",
+        "CWS_CLIPBOARD_LOGGING": "true",
         "CWS_ASSOCIATED_ID": "L-192.168.0.200",
-        "CWS_BRIDGE_ENDPOINTS": ["https://192.168.0.200:8443/", "https://45.147.121.152:8443/"],
-        "CWS_ROLES": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator"]
+        "CWS_BRIDGE_ENDPOINTS": [
+            "https://45.147.121.152:8443/"
+        ],
+        "CWS_ROLES": [
+            "responser-initiated",
+            "requestor-initiated",
+            "responser-initiator",
+            "requestor-initiator"
+        ],
+        "CWS_CLIPBOARD_LOG_HASH": "true",
+        "CWS_CLIPBOARD_LOG_PREVIEW": 64
     }
 }

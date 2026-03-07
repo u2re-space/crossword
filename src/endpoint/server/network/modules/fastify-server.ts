@@ -84,9 +84,29 @@ const makeReadableFastifyLogger = () => {
 
 const handleLocalAirpadPayload = (app: FastifyInstance, frame: any): boolean => {
     const payload = frame?.payload || frame?.data || frame;
+    const frameType = String(frame?.type || payload?.type || "").toLowerCase();
     if (!payload) return false;
     
     const action = String(payload.action || payload.type || "").toLowerCase();
+    // Accept plain "clipboard" tunnel frames where payload can be a string/object.
+    if (frameType === "clipboard" || action === "clipboard") {
+        const text =
+            (typeof frame?.text === "string" && frame.text) ||
+            (typeof payload?.text === "string" && payload.text) ||
+            (typeof payload?.body === "string" && payload.body) ||
+            (typeof payload?.data === "string" && payload.data) ||
+            (typeof payload === "string" ? payload : "");
+        if (typeof text === "string" && text.trim()) {
+            app.log?.info?.("Clipboard write via tunnel");
+            import("../../io/clipboard.ts").then(({ writeClipboard }) => {
+                writeClipboard(text).catch(err => {
+                    app.log?.error?.({ err }, "Failed to write clipboard");
+                });
+            });
+            return true;
+        }
+    }
+
     if (
         action === "clipboard" ||
         action === "clipboard.write" ||

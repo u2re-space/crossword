@@ -4,6 +4,7 @@
 
 import clipboardy from "clipboardy";
 import axios from "axios";
+import { createHash } from "node:crypto";
 import config from "../config/config.ts";
 import { pickEnvBoolLegacy, pickEnvListLegacy } from "../lib/env.ts";
 import { parsePortableInteger } from "../lib/parsing.ts";
@@ -15,6 +16,9 @@ const clipboardUnsupportedRetryIntervalMs = Math.max(5000, parsePortableInteger(
 const clipboardFeatureEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_ENABLED", true) !== false;
 const stopClipboardRetryOnUnsupported = pickEnvBoolLegacy("CWS_CLIPBOARD_STOP_ON_UNSUPPORTED", true) !== false;
 const clipboardLoggingEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_LOGGING", true) !== false;
+const clipboardLogHashEnabled = pickEnvBoolLegacy("CWS_CLIPBOARD_LOG_HASH", true) !== false;
+const clipboardPreviewLength = Math.max(8, parsePortableInteger((config as any)?.clipboardLogPreviewLength ?? process.env.CWS_CLIPBOARD_LOG_PREVIEW) ?? 64);
+const clipboardNodeLabel = String(process.env.CWS_ASSOCIATED_ID || process.env.CWS_BRIDGE_CLIENT_ID || process.env.HOSTNAME || "").trim() || "endpoint";
 const logClipboard = (level: "info" | "warn" | "error" | "debug", ...args: any[]) => {
     if (!clipboardLoggingEnabled) return;
     const logger = (app as any)?.log;
@@ -29,6 +33,20 @@ const logClipboard = (level: "info" | "warn" | "error" | "debug", ...args: any[]
     } else {
         console.log(...args);
     }
+};
+
+const summarizeClipboardText = (text: string) => {
+    const value = String(text ?? "");
+    const compact = value.replace(/\s+/g, " ").trim();
+    const preview = compact.length > clipboardPreviewLength ? `${compact.slice(0, clipboardPreviewLength)}...` : compact;
+    const result: { len: number; preview: string; sha256_12?: string } = {
+        len: value.length,
+        preview
+    };
+    if (clipboardLogHashEnabled) {
+        result.sha256_12 = createHash("sha256").update(value, "utf8").digest("hex").slice(0, 12);
+    }
+    return result;
 };
 
 type ClipboardProtocol = "http" | "https";
@@ -171,7 +189,11 @@ const buildClipboardPeerUrlCandidates = (raw: string): string[] => {
 async function sendClipboardToPeer(candidate: string, body: string, headers: Record<string, string>): Promise<void> {
     const client = httpClient || axios;
     await client.post(candidate, body, { headers });
-    logClipboard("info", `[Broadcast] Sent to ${candidate}`);
+    logClipboard("info", "[ClipboardTx] Sent clipboard payload to peer", {
+        from: clipboardNodeLabel,
+        candidate,
+        text: summarizeClipboardText(body)
+    });
 }
 
 const formatBroadcastError = (err: unknown): string => [err instanceof Error ? err.message : String(err), (err as any)?.code ? `code=${(err as any).code}` : "", (err as any)?.response?.status ? `status=${(err as any).response.status}` : ""].filter(Boolean).join(" ");
@@ -261,15 +283,34 @@ async function broadcastClipboard(text: string) {
         headers["x-auth-token"] = secret;
     }
 
-    logClipboard("info", "[Broadcast] Sending to peers", { peers });
+    const traceId = `clip-${Date.now().toString(36)}`;
+    logClipboard("info", "[ClipboardTx] Broadcasting clipboard payload", {
+        traceId,
+        from: clipboardNodeLabel,
+        peers,
+        text: summarizeClipboardText(text)
+    });
     isBroadcasting = true;
     const results = await Promise.all(peers.map((rawUrl) => sendClipboardToPeerCandidates(rawUrl, body, headers)));
 
     for (const result of results) {
         if (!result.ok) {
-            logClipboard("warn", result.error || `[Broadcast] Failed to send to ${result.target}`);
+            logClipboard("warn", "[ClipboardTx] Peer delivery failed", {
+                traceId,
+                from: clipboardNodeLabel,
+                target: result.target,
+                error: result.error || "unknown error"
+            });
         }
     }
+
+    const delivered = results.filter((entry) => entry.ok).map((entry) => entry.target);
+    logClipboard("info", "[ClipboardTx] Broadcast cycle finished", {
+        traceId,
+        from: clipboardNodeLabel,
+        deliveredCount: delivered.length,
+        delivered
+    });
 
     isBroadcasting = false;
 }
@@ -283,11 +324,17 @@ async function pollClipboard() {
             return;
         }
 
-        logClipboard("info", "[Local] Clipboard changed");
+        logClipboard("info", "[ClipboardPoll] Local clipboard changed", {
+            node: clipboardNodeLabel,
+            text: summarizeClipboardText(current)
+        });
         lastClipboard = current;
 
         if (current === lastNetworkClipboard) {
-            logClipboard("info", "[Local] Change is from network, no broadcast.");
+            logClipboard("info", "[ClipboardPoll] Skip rebroadcast: change originated from network", {
+                node: clipboardNodeLabel,
+                text: summarizeClipboardText(current)
+            });
             emitClipboardChange(current, "network");
             return;
         }
@@ -371,6 +418,10 @@ export async function writeClipboard(text: string): Promise<boolean> {
     }
     lastNetworkClipboard = text;
     lastClipboard = text;
+    logClipboard("info", "[ClipboardRx] Clipboard payload applied", {
+        node: clipboardNodeLabel,
+        text: summarizeClipboardText(text)
+    });
     emitClipboardChange(text, "network");
     return true;
 }

@@ -4,7 +4,7 @@
     "h-192.168.0.200": "alias:H-192.168.0.200",
     "H-192.168.0.200": {
         "origins": ["192.168.0.200", "45.147.121.152"],
-        "clients": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.208", "*"],
+        "clients": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.200", "L-192.168.0.208", "L-45.150.9.153", "*"],
         "tokens": [],
         "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator"],
         "acceptance": {
@@ -17,7 +17,7 @@
             "conditions": ["airpad", "mouse", "keyboard"]
         }, "self"],
         "broadcast": [{
-            "targets": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.208"],
+            "targets": ["L-192.168.0.196", "L-192.168.0.110", "L-192.168.0.208", "L-45.150.9.153"],
             "conditions": ["clipboard-tunnel", "clipboard-write", "clipboard-read"]
         }],
         "ports": {

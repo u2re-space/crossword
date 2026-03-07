@@ -60,6 +60,16 @@ const normalizeClipboardTarget = (value: any): string[] => {
         .filter((entry) => entry.length > 0);
 };
 
+const summarizeClipboardText = (text: string): { len: number; preview: string } => {
+    const value = String(text ?? "");
+    const compact = value.replace(/\s+/g, " ").trim();
+    const previewLimit = 64;
+    return {
+        len: value.length,
+        preview: compact.length > previewLimit ? `${compact.slice(0, previewLimit)}...` : compact
+    };
+};
+
 const collectClipboardTargets = (requestBody: any): string[] => {
     if (!requestBody || typeof requestBody !== "object") return [];
     const out = new Set<string>();
@@ -114,6 +124,12 @@ export function registerRoutes(app: any) {
         try {
             const text = normalizeClipboardText(request.body);
             const relayPayload = buildClipboardBroadcastPayload(request.body, text, request);
+            const source = String(
+                request?.headers?.["x-forwarded-for"] ||
+                request?.ip ||
+                request?.socket?.remoteAddress ||
+                ""
+            ).trim() || "unknown";
 
             if (!text) {
                 setUtf8Plain(reply);
@@ -121,6 +137,17 @@ export function registerRoutes(app: any) {
             }
 
             if (relayPayload) {
+                if (isClipboardLoggingEnabled()) {
+                    app.log.info(
+                        {
+                            source,
+                            via: "http:/clipboard->dispatch",
+                            targets: relayPayload.requests?.map((item: any) => item?.deviceId).filter(Boolean),
+                            text: summarizeClipboardText(text)
+                        },
+                        "Clipboard relay request accepted"
+                    );
+                }
                 const relayResponse = await app.inject({
                     method: "POST",
                     url: "/core/ops/http/dispatch",
@@ -137,7 +164,14 @@ export function registerRoutes(app: any) {
             const written = await writeClipboard(text);
             if (written) {
                 if (isClipboardLoggingEnabled()) {
-                    app.log.info("Copied to clipboard");
+                    app.log.info(
+                        {
+                            source,
+                            via: "http:/clipboard->local-write",
+                            text: summarizeClipboardText(text)
+                        },
+                        "Copied to clipboard"
+                    );
                 }
             } else {
                 if (isClipboardLoggingEnabled()) {

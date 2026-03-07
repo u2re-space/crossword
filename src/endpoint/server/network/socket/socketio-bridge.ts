@@ -13,11 +13,12 @@ import {
     requiresAirpadMessageAuth,
     createAirpadObjectMessageHandler
 } from "../../airpad/index.ts";
+import { getAirPadTokenFromSocket } from "../../airpad/airpad.ts";
 import { pickEnvBoolLegacy, pickEnvNumberLegacy } from "../../lib/env.ts";
 import { parsePortableInteger } from "../../lib/parsing.ts";
 import config from "../../config/config.ts";
 import { areConnectionTypesCompatible, describeDisplayConnectionType, inferExpectedRemoteConnectionType, parseWsConnectionType, supportsForwardServerConnectionType, toDisplayTopology } from "../stack/connection-types.ts";
-import { normalizeEndpointPolicies, resolveEndpointTransportPreference } from "../stack/endpoint-policy.ts";
+import { normalizeEndpointPolicies, resolveEndpointIdPolicyStrict, resolveEndpointTransportPreference } from "../stack/endpoint-policy.ts";
 type ClipHistoryEntry = AirpadClipHistoryEntry;
 
 export type SocketIoBridge = {
@@ -220,6 +221,151 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     >();
     const requestToDeviceKey = (userId: string, deviceId: string, requestId: string) => `${userId}:${deviceId}:${requestId}`;
     const normalizeHint = (value: unknown): string => airpadRouter.normalizeHint(value);
+    const normalizePolicyTokenLiteral = (value: unknown): string => {
+        const raw = normalizeHint(value);
+        if (!raw) return "";
+        if (raw.startsWith("inline:")) return normalizeHint(raw.slice("inline:".length));
+        if (raw.startsWith("token:")) return normalizeHint(raw.slice("token:".length));
+        if (raw.startsWith("env:") || raw.startsWith("fs:")) return "";
+        return raw;
+    };
+    const resolvePolicyOriginIps = (target: string): string[] => {
+        const normalizedTarget = normalizeHint(target);
+        if (!normalizedTarget) return [];
+        const policy = resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedTarget);
+        if (!policy) return [];
+        const ips = new Set<string>();
+        const origins = Array.isArray(policy.origins) ? policy.origins : [];
+        for (const rawOrigin of origins) {
+            const origin = normalizeHint(String(rawOrigin || "").replace(/:\d+$/, ""));
+            if (origin) ips.add(origin);
+        }
+        return Array.from(ips);
+    };
+    const resolvePolicyAliases = (target: string): Set<string> => {
+        const normalizedTarget = normalizeHint(target);
+        const aliases = new Set<string>();
+        if (!normalizedTarget) return aliases;
+        const policy = resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedTarget);
+        const policyId = normalizeHint(policy?.id || normalizedTarget);
+        if (policyId) aliases.add(policyId);
+        const origins = Array.isArray(policy?.origins) ? policy.origins : [];
+        for (const rawOrigin of origins) {
+            const origin = normalizeHint(String(rawOrigin || "").replace(/:\d+$/, ""));
+            if (!origin) continue;
+            aliases.add(origin);
+            aliases.add(`l-${origin}`);
+            aliases.add(`h-${origin}`);
+            aliases.add(`p-${origin}`);
+        }
+        return aliases;
+    };
+    const resolveSocketCandidates = (targetHint: string, frame?: Record<string, unknown>, sourceSocket?: Socket): Array<{ socket: Socket; score: number; reasons: string[] }> => {
+        const normalizedTarget = normalizeHint(String(targetHint || "").replace(/:\d+$/, ""));
+        if (!normalizedTarget) return [];
+        const targetIpHint = normalizeHint(normalizedTarget.replace(/^[hlp]-/, ""));
+        const frameTokenHints = new Set<string>([
+            normalizeHint((frame as any)?.toToken),
+            normalizeHint((frame as any)?.dstToken),
+            normalizeHint((frame as any)?.token),
+            normalizeHint((frame as any)?.fromToken)
+        ].filter(Boolean));
+        const sourceToken = sourceSocket ? normalizeHint(getAirPadTokenFromSocket(sourceSocket)) : "";
+        if (sourceToken) frameTokenHints.add(sourceToken);
+
+        const strictPolicy = resolveEndpointIdPolicyStrict(endpointPolicyMap, normalizedTarget);
+        const policyTokens = new Set<string>(
+            (Array.isArray(strictPolicy?.tokens) ? strictPolicy.tokens : [])
+                .map((value) => normalizePolicyTokenLiteral(value))
+                .filter(Boolean)
+        );
+        const policyAliases = resolvePolicyAliases(normalizedTarget);
+        const policyOriginIps = new Set(resolvePolicyOriginIps(normalizedTarget));
+        const targetAliases = new Set<string>([normalizedTarget].filter(Boolean));
+        if (targetIpHint) {
+            targetAliases.add(targetIpHint);
+            targetAliases.add(`l-${targetIpHint}`);
+            targetAliases.add(`h-${targetIpHint}`);
+            targetAliases.add(`p-${targetIpHint}`);
+        }
+        for (const alias of policyAliases) targetAliases.add(alias);
+
+        const candidates: Array<{ socket: Socket; score: number; reasons: string[] }> = [];
+        for (const socket of io.sockets.sockets.values()) {
+            if (!socket?.connected) continue;
+            if (sourceSocket && socket.id === sourceSocket.id) continue;
+            const meta = airpadRouter.getConnectionMeta(socket);
+            const socketToken = normalizeHint(getAirPadTokenFromSocket(socket));
+            const remoteAddress = normalizeHint(meta?.remoteAddress || (socket as any)?.conn?.remoteAddress || (socket as any)?.handshake?.address);
+            const aliasSet = new Set<string>(
+                [
+                    normalizeHint(socket.id),
+                    normalizeHint((socket as any).airpadSourceId),
+                    normalizeHint(meta?.clientId),
+                    normalizeHint(meta?.sourceId),
+                    normalizeHint(meta?.routeTarget),
+                    normalizeHint(meta?.targetHost),
+                    normalizeHint(meta?.hostHint)
+                ].filter(Boolean)
+            );
+            const expandedAliasSet = new Set<string>(aliasSet);
+            for (const alias of aliasSet) {
+                const noPrefix = normalizeHint(alias.replace(/^[hlp]-/, ""));
+                if (noPrefix) {
+                    expandedAliasSet.add(noPrefix);
+                    expandedAliasSet.add(`l-${noPrefix}`);
+                    expandedAliasSet.add(`h-${noPrefix}`);
+                    expandedAliasSet.add(`p-${noPrefix}`);
+                }
+            }
+            if (remoteAddress) expandedAliasSet.add(remoteAddress);
+
+            let score = 0;
+            const reasons: string[] = [];
+            const hasDirectAlias = Array.from(targetAliases).some((alias) => expandedAliasSet.has(alias));
+            if (hasDirectAlias) {
+                score += 100;
+                reasons.push("direct-alias");
+            }
+            if (targetIpHint && remoteAddress && remoteAddress === targetIpHint) {
+                score += 70;
+                reasons.push("target-ip");
+            }
+            let hasStrongSignal = hasDirectAlias || reasons.includes("target-ip");
+            if (remoteAddress && policyOriginIps.has(remoteAddress)) {
+                score += 50;
+                reasons.push("policy-origin-ip");
+                hasStrongSignal = true;
+            }
+            if (socketToken && policyTokens.has(socketToken)) {
+                score += 35;
+                reasons.push("policy-token");
+                hasStrongSignal = true;
+            }
+            if (socketToken && frameTokenHints.has(socketToken) && hasStrongSignal) {
+                score += 20;
+                reasons.push("frame-token");
+            }
+            if (score <= 0) continue;
+            candidates.push({ socket, score, reasons });
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        if (candidates.length === 0 && frameTokenHints.size > 0) {
+            for (const socket of io.sockets.sockets.values()) {
+                if (!socket?.connected) continue;
+                if (sourceSocket && socket.id === sourceSocket.id) continue;
+                const socketToken = normalizeHint(getAirPadTokenFromSocket(socket));
+                if (!socketToken || !frameTokenHints.has(socketToken)) continue;
+                candidates.push({ socket, score: 10, reasons: ["token-fanout"] });
+            }
+        }
+        const deduped = new Map<string, { socket: Socket; score: number; reasons: string[] }>();
+        for (const candidate of candidates) {
+            if (!deduped.has(candidate.socket.id)) deduped.set(candidate.socket.id, candidate);
+        }
+        return Array.from(deduped.values());
+    };
 
     const removeSocketRequestPendings = (userId: string, deviceId: string): void => {
         const normalizedUser = normalizeHint(userId);
@@ -335,7 +481,7 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
     const requestToDevice = async (userId: string, deviceId: string, payload: any, waitMs = NETWORK_FETCH_TIMEOUT_MS) => {
         const normalizedDevice = normalizeHint(deviceId);
         if (!normalizedDevice) return undefined;
-        const targetSocket = airpadRouter.getSocket(normalizedDevice);
+        const targetSocket = airpadRouter.getSocket(normalizedDevice) || resolveSocketCandidates(normalizedDevice, payload as Record<string, unknown>)[0]?.socket;
         if (!targetSocket?.connected) return undefined;
         const requestId = String(payload?.requestId || randomUUID()).trim() || randomUUID();
         const envelope = { ...payload, requestId };
@@ -484,10 +630,41 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         }
 
         const targetSocket = airpadRouter.getSocket(processed.to);
-        if (targetSocket) {
-            targetSocket.emit("message", processed);
-            logMsg(`OUT(to=${processed.to})`, processed, targetSource, sourceSocket, targetSocket);
-            return;
+        const candidateTargets = targetSocket ? [{ socket: targetSocket, score: 100, reasons: ["direct"] }] : resolveSocketCandidates(String(processed.to || ""), processed as Record<string, unknown>, sourceSocket);
+        if (candidateTargets.length > 0) {
+            let sent = 0;
+            for (const candidate of candidateTargets) {
+                candidate.socket.emit("message", processed);
+                sent += 1;
+                logMsg(`OUT(to=${processed.to})`, processed, targetSource, sourceSocket, candidate.socket);
+                if (isTunnelDebug) {
+                    console.log(
+                        formatBridgeSocketLog("[Router] Socket.IO route match", {
+                            to: processed.to,
+                            socketId: candidate.socket.id,
+                            score: candidate.score,
+                            reasons: candidate.reasons.join("|") || "-"
+                        })
+                    );
+                }
+            }
+            if (sent > 0) return;
+        }
+
+        const policyTarget = (() => {
+            const rawTarget = normalizeHint(processed.to);
+            const strictPolicy = resolveEndpointIdPolicyStrict(endpointPolicyMap, rawTarget);
+            return normalizeHint(strictPolicy?.id || rawTarget);
+        })();
+        if (policyTarget && policyTarget !== normalizeHint(processed.to)) {
+            const policyCandidates = resolveSocketCandidates(policyTarget, processed as Record<string, unknown>, sourceSocket);
+            if (policyCandidates.length > 0) {
+                for (const candidate of policyCandidates) {
+                    candidate.socket.emit("message", { ...processed, to: policyTarget, target: policyTarget, targetId: policyTarget });
+                    logMsg(`OUT(to=${policyTarget})`, { ...processed, to: policyTarget }, targetSource, sourceSocket, candidate.socket);
+                }
+                return;
+            }
         }
         
         const userIdForReverse = (sourceSocket as any).userId || "";
@@ -943,7 +1120,22 @@ export const createSocketIoBridge = (app: FastifyInstance, opts: SocketIoBridgeO
         getConnectedDevices: () => airpadRouter.getConnectedDevices(),
         getConnectionRegistry,
         getClipboardHistory: (limit = maxHistory) => clipHistory.slice(-limit),
-        sendToDevice: airpadRouter.sendToDevice,
+        sendToDevice: (userId: string, deviceId: string, payload: any) => {
+            const normalizedDevice = normalizeHint(deviceId);
+            if (!normalizedDevice) return false;
+            if (airpadRouter.sendToDevice(userId, normalizedDevice, payload)) return true;
+            const matches = resolveSocketCandidates(normalizedDevice, payload as Record<string, unknown>);
+            let sent = false;
+            for (const match of matches) {
+                try {
+                    match.socket.emit("message", payload);
+                    sent = true;
+                } catch {
+                    // no-op
+                }
+            }
+            return sent;
+        },
         requestToDevice
     };
 };
