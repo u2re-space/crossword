@@ -1380,7 +1380,12 @@ export const registerOpsRoutes = async (
                     resolvedReverseDeviceId.trim(),
                     {
                         type: (entry as any).type || "dispatch",
-                        data: (entry as any).data ?? (entry as any).body
+                        data: (entry as any).data ?? (entry as any).body,
+                        to: resolvedReverseDeviceId,
+                        target: resolvedReverseDeviceId,
+                        targetId: resolvedReverseDeviceId,
+                        targetDeviceId: resolvedReverseDeviceId,
+                        deviceId: resolvedReverseDeviceId
                     },
                     { mode: "dispatch" },
                     { wsHub, socketIoBridge, networkContext }
