@@ -6,7 +6,7 @@
     "l-45.150.9.153": "alias:L-45.150.9.153",
     "l-45.150.9.15": "alias:L-45.150.9.153",
     "L-192.168.0.200": {
-        "origins": ["192.168.0.200", "45.147.121.152"],
+        "origins": ["192.168.0.200", "45.147.121.152", "100.76.202.88"],
         "tokens": [],
         "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator", "exchanger-initiator"],
         "relations": {
@@ -62,7 +62,7 @@
         }
     },
     "L-192.168.0.110": {
-        "origins": ["192.168.0.110"],
+        "origins": ["192.168.0.110", "100.110.152.73"],
         "tokens": [],
         "roles": ["responser-initiated", "requestor-initiated", "responser-initiator", "requestor-initiator", "exchanger-initiator"],
         "relations": {
@@ -117,7 +117,7 @@
         }
     },
     "L-192.168.0.208": {
-        "origins": ["192.168.0.208"],
+        "origins": ["192.168.0.208", "100.90.155.65"],
         "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
         "roles": ["responser-initiator", "requestor-initiator"],
         "flags": {
@@ -163,7 +163,7 @@
         }
     },
     "L-192.168.0.196": {
-        "origins": ["192.168.0.196"],
+        "origins": ["192.168.0.196", "100.99.178.6"],
         "tokens": ["inline:n3v3rm1nd", "inline:n3v3rm1nd-2", "env:CWS_ASSOCIATED_TOKEN"],
         "roles": ["responser-initiator", "requestor-initiator"],
         "flags": {
