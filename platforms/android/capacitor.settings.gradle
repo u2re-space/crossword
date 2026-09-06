@@ -2,11 +2,16 @@
  * Filename: capacitor.settings.gradle
  * FullPath: platforms/android/capacitor.settings.gradle
  * FIND:sku
- * WHY: sibling SKUs have no @capacitor/android of their own — use CWSP-shell's copy.
+ * WHY: sibling SKUs share @capacitor/android — nested shell copy or hoisted workspace root.
  */
-def capAndroid = new File(settingsDir, '../../../CWSP-shell/node_modules/@capacitor/android/capacitor').canonicalFile
-if (!capAndroid.exists()) {
-    throw new GradleException("Unable to find @capacitor/android at ${capAndroid}")
+def capCandidates = [
+    new File(settingsDir, '../../../CWSP-shell/node_modules/@capacitor/android/capacitor'),
+    new File(settingsDir, '../../../../node_modules/@capacitor/android/capacitor'),
+    new File(settingsDir, '../../node_modules/@capacitor/android/capacitor')
+]
+def capAndroid = capCandidates.collect { it.canonicalFile }.find { it.exists() }
+if (capAndroid == null) {
+    throw new GradleException("Unable to find @capacitor/android in ${capCandidates}")
 }
 include ':capacitor-android'
 project(':capacitor-android').projectDir = capAndroid

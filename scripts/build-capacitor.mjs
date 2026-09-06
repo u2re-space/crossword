@@ -7,9 +7,9 @@
  * Reason for changes: Stage latest-document.json after assemble so Check sees the new versionCode.
  */
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireJavaHome } from "../../CWSP-shell/scripts/resolve-java-home.mjs";
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHELL_SCRIPTS = path.resolve(APP_ROOT, "../CWSP-shell/scripts");
@@ -21,19 +21,6 @@ function run(cmd, args, cwd = APP_ROOT, env) {
     if (r.status !== 0) throw new Error(`${cmd} failed`);
 }
 
-function resolveJavaHome() {
-    if (process.env.JAVA_HOME && fs.existsSync(path.join(process.env.JAVA_HOME, "bin/java"))) {
-        return process.env.JAVA_HOME;
-    }
-    for (const home of [
-        process.env.JAVA_HOME_21,
-        "/usr/lib/jvm/java-21-openjdk-amd64",
-        "/usr/lib/jvm/java-17-openjdk-amd64"
-    ].filter(Boolean)) {
-        if (fs.existsSync(path.join(home, "bin/java"))) return home;
-    }
-    return process.env.JAVA_HOME || "";
-}
 
 run(process.execPath, [path.join(SHELL_SCRIPTS, "project-sibling-sku-android.mjs"), "document"]);
 const noBump =
@@ -51,12 +38,13 @@ run(process.execPath, [path.join(APP_ROOT, "scripts/sync-capacitor-android-icons
 run(process.execPath, [path.join(APP_ROOT, "scripts/run-vite.mjs"), "build", "--config", "vite.config.js", "--mode", "capacitor"]);
 run(process.execPath, [path.join(SHELL_SCRIPTS, "sync-sibling-sku-web.mjs"), "document"]);
 
-const javaHome = resolveJavaHome();
+const javaHome = requireJavaHome();
 const env = {
+    JAVA_HOME: javaHome,
     ANDROID_HOME: process.env.ANDROID_HOME || "/home/u2re-dev/Android/Sdk",
     ANDROID_SDK_ROOT: process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME || "/home/u2re-dev/Android/Sdk"
 };
-if (javaHome) env.JAVA_HOME = javaHome;
+console.log(`[build:capacitor] JAVA_HOME=${javaHome}`);
 run("./gradlew", ["--no-daemon", "assembleDebug", "copyCwspApks"], ANDROID_ROOT, env);
 if (noPublish) {
     console.log("[build:capacitor] --no-publish — skip staging latest-document.json");
