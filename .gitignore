@@ -239,3 +239,10 @@ src/**/*.js.map
 .backups/**/*
 .backup/*
 .backup/**/*
+
+# Capacitor web dump + Gradle (rebuild on assemble; do not grow .git)
+platforms/android/.gradle/
+platforms/android/build/
+platforms/android/local.properties
+platforms/android/capacitor-cordova-android-plugins/build/
+platforms/android/src/main/assets/public/
