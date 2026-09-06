@@ -39,6 +39,7 @@
         "last 1 edge version"
     ],
     "devDependencies": {
+        "@toon-format/toon": ">=4.1.1",
         "@cap-js-community/websocket": "^1.11.1",
         "@capacitor/clipboard": "^8.0.1",
         "@capacitor/core": "^8.5.1",
@@ -46,7 +47,6 @@
         "@jsquash/png": ">=3.1.1",
         "@phosphor-icons/core": ">=2.1.1",
         "@rolldown/binding-linux-x64-gnu": "1.2.7",
-        "@toon-format/toon": "^4.1.1",
         "@types/sanitize-html": ">=2.16.1",
         "autoprefixer": ">=10.5.5",
         "baseline-browser-mapping": ">=2.11.21",
