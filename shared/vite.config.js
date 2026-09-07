@@ -261,7 +261,7 @@ const spaFallbackPlugin = () => ({
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=overlays-content" />
   <title>SW handoff for /user</title>
   <style>
     body { margin:0; min-height:100vh; display:grid; place-items:center; background:#0f1115; color:#d6dbea; font:14px/1.45 ui-monospace,Menlo,Consolas,monospace; }
@@ -491,6 +491,7 @@ export const initiate = (NAME = "generic", tsconfig = {}, __dirname = resolve(".
             { find: /^@fest-lib\/lure\/code-overlay$/, replacement: resolve(workspaceRoot, "modules/projects/lur.e/src/lure/misc/CodeOverlay.ts") },
             /* WHY: viewer/workcenter copies cannot `../../../projects/fl.ui` from app src/. Do not use the fl-ui barrel. */
             { find: /^@fest-lib\/fl-ui\/markdown\/highlight$/, replacement: resolve(workspaceRoot, "modules/projects/fl.ui/src/ui/markdown/highlight.ts") },
+            { find: /^@fest-lib\/fl-ui\/markdown\/raw-editor$/, replacement: resolve(workspaceRoot, "modules/projects/fl.ui/src/ui/markdown/raw-editor/index.ts") },
             { find: /^@fest-lib\/fl-ui\/markdown\/render$/, replacement: resolve(workspaceRoot, "modules/projects/fl.ui/src/ui/markdown/render.ts") },
             /* Rolldown: bare tsconfig alias loses `?inline` imports on this key (viewer-view Markdown typography). */
             { find: /^markdown-view-typography(.*)$/, replacement: `${markdownTypographyScss}$1` },
